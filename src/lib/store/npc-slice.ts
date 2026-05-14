@@ -1,9 +1,20 @@
 import type { StateCreator } from "zustand";
+import {
+	createRemoteActivity,
+	createRemoteEntity,
+	deleteRemoteEntity,
+	updateRemoteEntity,
+} from "../remote-store";
+import {
+	entityNameOf,
+	generateEntry,
+	pushLog,
+	remoteErrorMessage,
+} from "./helpers";
 import type { Npc, RPGState } from "./types";
-import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
-import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
 
 export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
+	kind: "npc",
 	name: "",
 	race: "",
 	role: "",
@@ -28,17 +39,20 @@ export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
 
 export interface NpcSlice {
 	npcs: Npc[];
-	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc;
+	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc | null;
 	updateNpc: (id: string, npc: Partial<Npc>) => void;
 	removeNpc: (id: string) => void;
 }
 
-export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (set, get) => ({
+export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
+	set,
+	get,
+) => ({
 	npcs: [],
 	addNpc: (npc) => {
 		if (get().globalRecordsCount >= 20) {
 			set({ syncError: "Limite de registros atingido (20)." });
-			return {} as Npc;
+			return null;
 		}
 		const created = generateEntry(npcDefaults, npc) as Npc;
 		const log = {
