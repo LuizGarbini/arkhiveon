@@ -14,10 +14,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
+import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
-
-const FREE_CREATION_LIMIT = 20;
 
 const grimoireItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House },

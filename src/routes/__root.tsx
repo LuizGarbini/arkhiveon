@@ -48,14 +48,20 @@ function RootContent() {
 
 function ProtectedLayout() {
 	const navigate = useNavigate();
-	const { loading, session } = useAuth();
+	const { loading, session, plan } = useAuth();
 	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
 	const setupRealtime = useRPGStore((s) => s.setupRealtime);
 	const clearLocalData = useRPGStore((s) => s.clearLocalData);
 	const loadCampaigns = useRPGStore((s) => s.loadCampaigns);
 	const createCampaign = useRPGStore((s) => s.createCampaign);
 	const syncError = useRPGStore((s) => s.syncError);
+	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+	// Sincroniza o plano do Auth Context → Zustand Store
+	useEffect(() => {
+		setUserPlan(plan);
+	}, [plan, setUserPlan]);
 
 	useEffect(() => {
 		if (loading) return;

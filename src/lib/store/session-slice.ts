@@ -2,6 +2,7 @@ import type { StateCreator } from "zustand";
 import type { Session, RPGState } from "./types";
 import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
 import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
+import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 
 export const sessionDefaults: Omit<Session, "id" | "createdAt"> = {
 	title: "",
@@ -34,8 +35,8 @@ export interface SessionSlice {
 export const createSessionSlice: StateCreator<RPGState, [], [], SessionSlice> = (set, get) => ({
 	sessions: [],
 	addSession: (session) => {
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return {} as Session;
 		}
 		const created = generateEntry(sessionDefaults, session) as Session;

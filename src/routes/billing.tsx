@@ -9,12 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
+import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 
 export const Route = createFileRoute("/billing")({
 	component: BillingPage,
 });
-
-const FREE_LIMIT = 20;
 
 const benefits = [
 	"Mais espaço para personagens, NPCs e locais",
@@ -41,11 +40,11 @@ function BillingPage() {
 		totals.lores;
 	const usagePercent = isPro
 		? 100
-		: Math.min(100, Math.round((used / FREE_LIMIT) * 100));
+		: Math.min(100, Math.round((used / FREE_CREATION_LIMIT) * 100));
 	const planName = isPro ? "Pro" : "Free";
 	const usageTitle = isPro
 		? "Criações ilimitadas"
-		: `${used} de ${FREE_LIMIT} criações`;
+		: `${used} de ${FREE_CREATION_LIMIT} criações`;
 
 	return (
 		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 sm:px-8">

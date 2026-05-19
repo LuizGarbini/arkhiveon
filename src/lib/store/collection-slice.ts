@@ -2,6 +2,7 @@ import type { StateCreator } from "zustand";
 import type { Item, GameLocation, Lore, RPGState } from "./types";
 import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
 import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
+import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 
 export const itemDefaults: Omit<Item, "id" | "createdAt"> = {
 	name: "",
@@ -81,8 +82,8 @@ export interface CollectionSlice {
 export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSlice> = (set, get) => ({
 	items: [],
 	addItem: (item) => {
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return {} as Item;
 		}
 		const created = generateEntry(itemDefaults, item) as Item;
@@ -152,8 +153,8 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 
 	locations: [],
 	addLocation: (location) => {
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return {} as GameLocation;
 		}
 		const created = generateEntry(locationDefaults, location) as GameLocation;
@@ -223,8 +224,8 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 
 	lores: [],
 	addLore: (lore) => {
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return {} as Lore;
 		}
 		const created = generateEntry(loreDefaults, lore) as Lore;
