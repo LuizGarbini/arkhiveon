@@ -1,5 +1,6 @@
 import {
 	BookOpen,
+	Crown,
 	FileText,
 	GitFork,
 	House,
@@ -11,13 +12,13 @@ import {
 	User,
 	Users,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
+import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
-const FREE_CREATION_LIMIT = 20;
-
-const arkhiveonItems = [
+const grimoireItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House },
 	{ to: "/characters", label: "Elenco", Icon: User },
 	{ to: "/sheets", label: "Fichas", Icon: FileText },
@@ -43,11 +44,13 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
+	const { isPro, planLoading } = useAuth();
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
-	const usagePercentage = Math.min(
-		100,
-		Math.round((usedCreations / FREE_CREATION_LIMIT) * 100),
-	);
+	const usagePercentage = isPro
+		? 100
+		: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
+	const planLabel = isPro ? "Plano Pro" : "Plano Free";
+	const badgeLabel = planLoading ? "..." : isPro ? "Pro" : "Free";
 
 	return (
 		<aside
@@ -118,7 +121,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 						className={`overflow-hidden rounded-2xl border border-primary/20 bg-primary/8 ring-1 ring-primary/10 transition-[height,padding,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
 							isCollapsed ? "h-10 p-0" : "h-[176px] p-4"
 						}`}
-						title={isCollapsed ? "Plano Free" : undefined}
+						title={isCollapsed ? planLabel : undefined}
 					>
 						<div
 							className={`flex items-center gap-2 transition-[justify-content] duration-300 ${
@@ -126,7 +129,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							}`}
 						>
 							<div className="flex items-center gap-2 text-[11px] font-bold text-primary">
-								<Sparkles className="h-3.5 w-3.5 shrink-0" />
+								{isPro ? (
+									<Crown className="h-3.5 w-3.5 shrink-0" />
+								) : (
+									<Sparkles className="h-3.5 w-3.5 shrink-0" />
+								)}
 								<span
 									className={`whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
 										isCollapsed
@@ -134,7 +141,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 											: "max-w-24 translate-x-0 opacity-100"
 									}`}
 								>
-									Plano Free
+									{planLoading ? "Verificando" : planLabel}
 								</span>
 							</div>
 							<span
@@ -144,7 +151,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										: "max-w-16 translate-x-0 opacity-100"
 								}`}
 							>
-								Free
+								{badgeLabel}
 							</span>
 						</div>
 
@@ -156,12 +163,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							}`}
 						>
 							<p className="mt-2 text-[11px] font-medium leading-relaxed text-foreground/90">
-								Crie até {FREE_CREATION_LIMIT} registros no plano gratuito.
+								{isPro
+									? "Criações ilimitadas liberadas para este grimório."
+									: `Crie até ${FREE_CREATION_LIMIT} registros no plano gratuito.`}
 							</p>
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
 									<span>{usedCreations} usados</span>
-									<span>{FREE_CREATION_LIMIT} limite</span>
+									<span>{isPro ? "Sem limite" : `${FREE_CREATION_LIMIT} limite`}</span>
 								</div>
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
 									<div
@@ -174,13 +183,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 								type="button"
 								className="mt-3 w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
 							>
-								Upgrade
+								{isPro ? "Pro ativo" : "Upgrade"}
 							</button>
 						</div>
 						{isCollapsed && (
 							<div className="sr-only">
-								{usedCreations} de {FREE_CREATION_LIMIT} registros usados no
-								plano Free
+								{isPro
+									? `${usedCreations} registros usados no plano Pro sem limite`
+									: `${usedCreations} de ${FREE_CREATION_LIMIT} registros usados no plano Free`}
 							</div>
 						)}
 					</div>

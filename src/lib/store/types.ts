@@ -1,3 +1,5 @@
+import type { UserPlan } from "../user-plan";
+
 // =====================================================
 //  Sistemas suportados
 // =====================================================
@@ -345,6 +347,8 @@ export interface RPGState {
 	clearLocalData: () => void;
 
 	// ----- Plan Limits -----
+	userPlan: UserPlan;
+	setUserPlan: (plan: UserPlan) => void;
 	globalRecordsCount: number;
 
 	// ----- Campanhas -----

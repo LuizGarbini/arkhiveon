@@ -18,6 +18,7 @@ export {
 export { abilityModifier, formatModifier, systemLabel } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
 export { sessionDefaults } from "./store/session-slice";
+export { FREE_CREATION_LIMIT, isCreationLimitReached } from "./store/sync-slice";
 // Re-export types for convenience
 export * from "./store/types";
 

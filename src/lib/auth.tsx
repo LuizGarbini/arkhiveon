@@ -8,12 +8,20 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { getSupabase } from "./supabase";
+import { getSupabase, SUPABASE_TABLES } from "./supabase";
+import {
+	loadCurrentUserPlan,
+	planFromRealtimeRow,
+	type UserPlan,
+} from "./user-plan";
 
 interface AuthContextValue {
 	user: User | null;
 	session: Session | null;
 	loading: boolean;
+	plan: UserPlan;
+	isPro: boolean;
+	planLoading: boolean;
 	signIn: (email: string, password: string) => Promise<string | null>;
 	signUp: (
 		name: string,
@@ -32,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
 	const suppressAutoSignInRef = useRef(false);
+	const [plan, setPlan] = useState<UserPlan>("free");
+	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
 		if (!supabase) {
@@ -66,11 +76,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		};
 	}, [supabase]);
 
+	useEffect(() => {
+		const userId = session?.user.id;
+		if (!supabase || !userId) {
+			setPlan("free");
+			setPlanLoading(false);
+			return;
+		}
+
+		let mounted = true;
+		setPlanLoading(true);
+
+		loadCurrentUserPlan(userId)
+			.then((nextPlan) => {
+				if (mounted) setPlan(nextPlan);
+			})
+			.catch(() => {
+				if (mounted) setPlan("free");
+			})
+			.finally(() => {
+				if (mounted) setPlanLoading(false);
+			});
+
+		const channel = supabase
+			.channel(`user-plan-${userId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: SUPABASE_TABLES.userPlans,
+					filter: `user_id=eq.${userId}`,
+				},
+				(payload) => {
+					if (payload.eventType === "DELETE") {
+						setPlan("free");
+						return;
+					}
+					setPlan(planFromRealtimeRow(payload.new));
+				},
+			)
+			.subscribe();
+
+		return () => {
+			mounted = false;
+			void supabase.removeChannel(channel);
+		};
+	}, [session?.user.id, supabase]);
+
 	const value = useMemo<AuthContextValue>(
 		() => ({
 			user: session?.user ?? null,
 			session,
 			loading,
+			plan,
+			isPro: plan === "pro",
+			planLoading,
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = false;
@@ -130,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				return error?.message ?? null;
 			},
 		}),
-		[loading, session, supabase],
+		[loading, plan, planLoading, session, supabase],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

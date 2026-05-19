@@ -409,6 +409,90 @@
       var(--card);
   }
 
+  .family-flow-controls.react-flow__controls {
+    overflow: hidden;
+    border: 1px solid color-mix(in oklch, var(--primary) 42%, transparent) !important;
+    border-radius: 0.9rem !important;
+    background: color-mix(in oklch, var(--card) 94%, var(--primary) 6%) !important;
+    box-shadow:
+      0 18px 45px oklch(0 0 0 / 0.28),
+      inset 0 1px 0 oklch(1 0 0 / 0.08) !important;
+  }
+
+  .family-flow-controls .react-flow__controls-button {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    border: 0 !important;
+    border-bottom: 1px solid color-mix(in oklch, var(--primary) 26%, transparent) !important;
+    background: color-mix(in oklch, var(--card) 90%, var(--primary) 10%) !important;
+    color: var(--foreground) !important;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .family-flow-controls .react-flow__controls-button:hover {
+    background: var(--primary-muted) !important;
+    color: var(--primary) !important;
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+
+  .family-flow-controls .react-flow__controls-button svg {
+    color: currentColor !important;
+    fill: currentColor !important;
+  }
+
+  .family-flow-controls .react-flow__controls-button svg path {
+    fill: currentColor !important;
+    stroke: currentColor !important;
+  }
+
+  .family-flow-controls .react-flow__controls-button:disabled {
+    background: color-mix(in oklch, var(--card) 96%, var(--primary) 4%) !important;
+    color: var(--muted-foreground) !important;
+    opacity: 0.45;
+  }
+
+  .family-flow-minimap.react-flow__minimap {
+    overflow: hidden;
+    border: 1px solid color-mix(in oklch, var(--primary) 38%, transparent) !important;
+    border-radius: 1rem !important;
+    background: color-mix(in oklch, var(--card) 92%, var(--primary) 8%) !important;
+    box-shadow: 0 18px 45px oklch(0 0 0 / 0.30) !important;
+  }
+
+  .family-flow-minimap .react-flow__minimap-mask {
+    fill: oklch(0.10 0.012 285 / 0.68) !important;
+  }
+
+  .family-flow-minimap .react-flow__minimap-node {
+    fill: var(--primary) !important;
+    stroke: color-mix(in oklch, var(--primary) 65%, white 35%) !important;
+    stroke-width: 2px !important;
+  }
+
+  @media (max-width: 639px) {
+    .family-flow-controls.react-flow__controls {
+      left: 0.75rem !important;
+      bottom: 0.75rem !important;
+      transform: scale(0.88);
+      transform-origin: bottom left;
+    }
+
+    .family-flow-minimap.react-flow__minimap {
+      display: none !important;
+    }
+
+    .family-flow-edit-panel.react-flow__panel {
+      top: auto !important;
+      right: 0.75rem !important;
+      bottom: 0.75rem !important;
+      left: 4.25rem !important;
+      margin: 0 !important;
+    }
+  }
+
   /* Editorial panel: thin border + subtle ring + sigil corner */
   .panel {
     background: var(--card);

@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import type { RPGState, ActivityEntry, Character, Npc, Session, Item, GameLocation, Lore } from "./types";
+import type { UserPlan } from "../user-plan";
 import { remoteErrorMessage } from "./helpers";
 import { loadRemoteState, fetchGlobalTotalCount } from "../remote-store";
 import { getSupabase } from "../supabase";
@@ -8,10 +9,23 @@ import { npcDefaults } from "./npc-slice";
 import { sessionDefaults } from "./session-slice";
 import { itemDefaults, locationDefaults, loreDefaults } from "./collection-slice";
 
+export const FREE_CREATION_LIMIT = 20;
+
+/**
+ * Verifica se o limite de criação foi atingido.
+ * Usuários Pro não possuem limite.
+ */
+export function isCreationLimitReached(state: RPGState): boolean {
+	if (state.userPlan === "pro") return false;
+	return state.globalRecordsCount >= FREE_CREATION_LIMIT;
+}
+
 export interface SyncSlice {
 	isLoadingRemote: boolean;
 	syncError: string | null;
 	activityLog: ActivityEntry[];
+	userPlan: UserPlan;
+	setUserPlan: (plan: UserPlan) => void;
 	globalRecordsCount: number;
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
@@ -23,6 +37,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (set, 
 	isLoadingRemote: false,
 	syncError: null,
 	activityLog: [],
+	userPlan: "free",
+	setUserPlan: (plan) => set({ userPlan: plan }),
 	globalRecordsCount: 0,
 	loadRemoteData: async () => {
 		const state = get();

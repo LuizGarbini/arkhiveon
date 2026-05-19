@@ -77,6 +77,7 @@ export const SUPABASE_TABLES = {
 	lores: "lores",
 	activity: "activity_log",
 	campaigns: "campaigns",
+	userPlans: "user_plans",
 } as const;
 
 export const SUPABASE_BUCKETS = {

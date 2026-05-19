@@ -15,6 +15,7 @@ import {
 	pushLog,
 	remoteErrorMessage,
 } from "./helpers";
+import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Character, RPGState } from "./types";
 
 export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
@@ -99,8 +100,8 @@ export const createCharacterSlice: StateCreator<
 > = (set, get) => ({
 	characters: [],
 	addCharacter: (character) => {
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return {} as Character; // Retorna objeto vazio pois o tipo exige um Character
 		}
 		const created = generateEntry(characterDefaults, {
@@ -176,8 +177,8 @@ export const createCharacterSlice: StateCreator<
 		const source = get().characters.find((character) => character.id === id);
 		if (!source) return null;
 
-		if (get().globalRecordsCount >= 20) {
-			set({ syncError: "Limite de registros atingido (20)." });
+		if (isCreationLimitReached(get())) {
+			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
 			return null;
 		}
 

@@ -7,13 +7,13 @@ import {
 	Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
+import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 
 export const Route = createFileRoute("/billing")({
 	component: BillingPage,
 });
-
-const FREE_LIMIT = 20;
 
 const benefits = [
 	"Mais espaço para personagens, NPCs e locais",
@@ -22,6 +22,7 @@ const benefits = [
 ];
 
 function BillingPage() {
+	const { isPro, planLoading } = useAuth();
 	const totals = useRPGStore((state) => ({
 		characters: state.characters.length,
 		npcs: state.npcs.length,
@@ -37,7 +38,13 @@ function BillingPage() {
 		totals.items +
 		totals.locations +
 		totals.lores;
-	const usagePercent = Math.min(100, Math.round((used / FREE_LIMIT) * 100));
+	const usagePercent = isPro
+		? 100
+		: Math.min(100, Math.round((used / FREE_CREATION_LIMIT) * 100));
+	const planName = isPro ? "Pro" : "Free";
+	const usageTitle = isPro
+		? "Criações ilimitadas"
+		: `${used} de ${FREE_CREATION_LIMIT} criações`;
 
 	return (
 		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 sm:px-8">
@@ -50,16 +57,25 @@ function BillingPage() {
 							Plano & Assinatura
 						</div>
 						<h1 className="font-display mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-							Plano Free ativo
+							{planLoading
+								? "Verificando plano"
+								: isPro
+									? "Plano Pro ativo"
+									: "Plano Free ativo"}
 						</h1>
 						<p className="mt-3 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-							Acompanhe o uso atual do arquivo e veja o que entra quando o
-							upgrade estiver disponível.
+							{isPro
+								? "Seu grimório está liberado para crescer sem limite de criações."
+								: "Acompanhe o uso atual do seu grimório e veja o que entra quando o upgrade estiver disponível."}
 						</p>
 					</div>
-					<Button className="h-11 gap-2 px-5">
+					<Button
+						className="h-11 gap-2 px-5"
+						disabled={isPro || planLoading}
+						variant={isPro ? "outline" : "default"}
+					>
 						<Crown className="h-4 w-4" />
-						Fazer upgrade
+						{isPro ? "Pro ativo" : "Fazer upgrade"}
 					</Button>
 				</div>
 			</header>
@@ -69,14 +85,14 @@ function BillingPage() {
 					<div className="flex items-center justify-between gap-4">
 						<div>
 							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-								Free
+								{planName}
 							</p>
 							<h2 className="font-display mt-1 text-2xl font-bold text-foreground">
-								{used} de {FREE_LIMIT} criações
+								{usageTitle}
 							</h2>
 						</div>
 						<span className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-							Ativo
+							{planLoading ? "Verificando" : "Ativo"}
 						</span>
 					</div>
 					<div className="mt-5 h-2 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
@@ -86,8 +102,9 @@ function BillingPage() {
 						/>
 					</div>
 					<p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-						Contabilizamos personagens, NPCs, sessões, itens, locais e lore para
-						representar o uso total da campanha.
+						{isPro
+							? `Você já tem ${used} criações salvas e pode continuar criando sem limite.`
+							: "Contabilizamos personagens, NPCs, sessões, itens, locais e lore para representar o uso total da campanha."}
 					</p>
 				</section>
 
@@ -98,7 +115,7 @@ function BillingPage() {
 								Upgrade
 							</p>
 							<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-								Benefícios planejados
+								{isPro ? "Benefícios liberados" : "Benefícios planejados"}
 							</h2>
 						</div>
 						<Sparkles className="h-5 w-5 text-primary" />
@@ -126,11 +143,12 @@ function BillingPage() {
 							Cobrança
 						</p>
 						<h2 className="font-display mt-1 text-lg font-bold text-foreground">
-							Sem cobrança ativa
+							{isPro ? "Plano Pro liberado" : "Sem cobrança ativa"}
 						</h2>
 						<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-							Esta tela já está pronta para receber uma integração de pagamento
-							no futuro, sem alterar os fluxos atuais.
+							{isPro
+								? "Seu usuário está marcado como Pro no Supabase. A cobrança pode ser integrada depois sem mudar o status atual."
+								: "Esta tela já está pronta para receber uma integração de pagamento no futuro, sem alterar os fluxos atuais."}
 						</p>
 					</div>
 					<Button variant="outline" className="h-10 gap-2">
