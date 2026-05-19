@@ -14,9 +14,7 @@ const AUTH_MODES = ["login", "register", "forgot", "reset"] as const;
 type AuthMode = (typeof AUTH_MODES)[number];
 
 function isAuthMode(value: unknown): value is AuthMode {
-	return (
-		typeof value === "string" && AUTH_MODES.includes(value as AuthMode)
-	);
+	return typeof value === "string" && AUTH_MODES.includes(value as AuthMode);
 }
 
 export const Route = createFileRoute("/auth")({
@@ -179,10 +177,10 @@ function AuthPage() {
 					</div>
 					<div className="text-center leading-none">
 						<span className="font-display text-base font-bold tracking-[0.18em] text-foreground">
-							RPG NOTES
+							ARKHIVEON
 						</span>
 						<p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-							Grimoire
+							Arkhiveon
 						</p>
 					</div>
 				</div>
@@ -265,7 +263,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 		}
 		toast.success({
 			title: "Login realizado",
-			description: "Bem-vindo de volta ao seu grimório.",
+			description: "Bem-vindo de volta ao Arkhiveon.",
 		});
 		window.location.assign("/dashboard");
 	}
@@ -284,7 +282,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 					Bem-vindo de volta
 				</h2>
 				<p className="mt-1 text-[12px] text-muted-foreground">
-					Entre no seu grimório
+					Entre no Arkhiveon
 				</p>
 			</div>
 
@@ -409,7 +407,7 @@ function RegisterForm() {
 					</h2>
 					<p className="mt-2 text-[13px] text-muted-foreground leading-relaxed">
 						Sua conta foi criada. Por segurança, faça login com seu email e
-						senha para acessar o RPG Notes.
+						senha para acessar o Arkhiveon.
 					</p>
 				</div>
 				<Button
@@ -427,7 +425,7 @@ function RegisterForm() {
 		<form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
 			<div className="text-center mb-5">
 				<h2 className="font-display text-lg font-bold text-foreground">
-					Crie seu grimório
+					Crie seu arquivo
 				</h2>
 				<p className="mt-1 text-[12px] text-muted-foreground">
 					Registre-se e organize suas campanhas
@@ -698,7 +696,7 @@ function ResetPasswordForm() {
 						Senha Reforjada
 					</h2>
 					<p className="mt-2 text-[13px] text-muted-foreground leading-relaxed">
-						Sua nova senha foi gravada no grimório com sucesso. Agora você já
+						Sua nova senha foi gravada no Arkhiveon com sucesso. Agora você já
 						pode entrar novamente.
 					</p>
 				</div>
@@ -721,7 +719,7 @@ function ResetPasswordForm() {
 					Nova Senha Arcaica
 				</h2>
 				<p className="mt-1 text-[12px] text-muted-foreground">
-					Escolha uma nova combinação para proteger seu grimório
+					Escolha uma nova combinação para proteger sua conta
 				</p>
 			</div>
 

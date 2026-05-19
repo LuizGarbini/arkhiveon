@@ -42,7 +42,8 @@ const swatches = [
 const surfaces = [
 	{
 		title: "Hero editorial",
-		description: "Abertura de páginas importantes, com gradiente radial e título display.",
+		description:
+			"Abertura de páginas importantes, com gradiente radial e título display.",
 	},
 	{
 		title: "Painel de seção",
@@ -50,11 +51,13 @@ const surfaces = [
 	},
 	{
 		title: "Card interativo",
-		description: "Listas e entidades usam hover sutil, borda ativa e sombra leve.",
+		description:
+			"Listas e entidades usam hover sutil, borda ativa e sombra leve.",
 	},
 	{
 		title: "Empty state",
-		description: "Usado dentro de grids quando a busca ou coleção não tem resultado.",
+		description:
+			"Usado dentro de grids quando a busca ou coleção não tem resultado.",
 	},
 ];
 
@@ -69,11 +72,11 @@ function DesignSystem() {
 						Design System
 					</div>
 					<h1 className="font-display mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-						RPG Notes UI
+						Arkhiveon UI
 					</h1>
 					<p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-						Fonte viva do visual atual: editorial, arcano, escuro, com superfícies
-						ricas e interações rápidas.
+						Fonte viva do visual atual: editorial, arcano, escuro, com
+						superfícies ricas e interações rápidas.
 					</p>
 				</div>
 			</header>
@@ -179,7 +182,10 @@ function DesignSystem() {
 						<Button disabled>Desabilitado</Button>
 					</div>
 					<div className="mt-5 grid gap-3 sm:grid-cols-2">
-						<Input placeholder="Nome da campanha" aria-label="Nome da campanha" />
+						<Input
+							placeholder="Nome da campanha"
+							aria-label="Nome da campanha"
+						/>
 						<Select aria-label="Sistema">
 							<option>D&D 5ª Edição</option>
 							<option>Tormenta 20</option>
@@ -224,17 +230,17 @@ function DesignSystem() {
 								<div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">
 									<img
 										src="/favicon.svg"
-										alt="RPG Notes"
+										alt="Arkhiveon"
 										className="h-6 w-6"
 										draggable={false}
 									/>
 								</div>
 								<div>
 									<p className="font-display text-[13px] font-bold tracking-[0.2em]">
-										RPG NOTES
+										ARKHIVEON
 									</p>
 									<p className="text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
-										Grimório
+										Arkhiveon
 									</p>
 								</div>
 							</div>
@@ -249,7 +255,7 @@ function DesignSystem() {
 								</Button>
 								<div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border/70 bg-background/55 px-4 py-2 text-[13px] text-muted-foreground">
 									<Search className="h-3.5 w-3.5" />
-									Pesquisar no Grimório...
+									Pesquisar no Arkhiveon...
 								</div>
 								<Button variant="ghost" size="icon" className="rounded-xl">
 									<Bell className="h-4 w-4" />

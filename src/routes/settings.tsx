@@ -33,12 +33,12 @@ const preferences = [
 	{
 		title: "Aparência escura",
 		description:
-			"Tema editorial escuro do grimório, otimizado para mesa online.",
+			"Tema editorial escuro do Arkhiveon, otimizado para mesa online.",
 		Icon: Moon,
 		defaultChecked: true,
 	},
 	{
-		title: "Notificações do grimório",
+		title: "Notificações do Arkhiveon",
 		description: "Alertas de sincronização, sessões e novidades da campanha.",
 		Icon: Bell,
 		defaultChecked: true,

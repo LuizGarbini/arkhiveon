@@ -1,161 +1,142 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+	ArrowUpRight,
 	BookOpen,
-	MapIcon,
-	Package,
+	Check,
+	Crown,
+	FileText,
+	Map,
 	ScrollText,
-	Shield,
+	ShieldCheck,
 	Sparkles,
 	User,
 	Users,
+	Zap,
 } from "lucide-react";
-import { useId } from "react";
-import { Button } from "@/components/ui/button";
+import { useId, useState } from "react";
+import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-background";
+import { EfferdStickyFooter } from "@/components/efferd-sticky-footer";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,
 });
 
-/* ─── Features ─── */
+/* ─── Data ─── */
 
 const features = [
 	{
 		Icon: User,
-		title: "Elenco",
-		desc: "Personagens da campanha",
-		color: "text-violet-400",
+		title: "Personagens",
+		desc: "Fichas, vínculos e elenco completo",
 	},
 	{
 		Icon: ScrollText,
 		title: "Sessões",
-		desc: "Crônicas da sua aventura",
-		color: "text-amber-400",
-	},
-	{
-		Icon: Users,
-		title: "NPCs",
-		desc: "Aliados, vilões e mistérios",
-		color: "text-fuchsia-400",
-	},
-	{
-		Icon: MapIcon,
-		title: "Locais",
-		desc: "Mapeie reinos e fronteiras",
-		color: "text-rose-400",
-	},
-	{
-		Icon: Package,
-		title: "Itens",
-		desc: "Tesouros e relíquias arcanas",
-		color: "text-emerald-400",
+		desc: "Registro claro da campanha",
 	},
 	{
 		Icon: BookOpen,
 		title: "Lore",
-		desc: "Todo o saber do mundo",
-		color: "text-indigo-400",
+		desc: "Mundos, lugares e segredos",
 	},
 ];
 
-const particles = Array.from({ length: 6 }, (_, index) => ({
-	id: `particle-${index}`,
-	left: `${15 + index * 15}%`,
-	top: `${20 + (index % 3) * 25}%`,
-	animation: `glow-pulse ${3 + index * 0.7}s ease-in-out infinite`,
-	animationDelay: `${index * 0.5}s`,
-}));
+const pillars = [
+	{
+		Icon: Map,
+		eyebrow: "Mesa",
+		title: "Tudo volta para o mesmo lugar.",
+		description:
+			"Nada de procurar anotação perdida quando a sessão já começou.",
+	},
+	{
+		Icon: Zap,
+		eyebrow: "Ritmo",
+		title: "Menos ruído entre uma ideia e outra.",
+		description: "A interface fica quieta para a campanha aparecer primeiro.",
+	},
+	{
+		Icon: Users,
+		eyebrow: "Arquivo",
+		title: "Um mundo cresce sem virar bagunça.",
+		description: "Personagens, lugares e sessões conectados por contexto.",
+	},
+];
+
+const sheetModules = [
+	{ label: "Atributos", value: "+3" },
+	{ label: "Inventário", value: "12" },
+	{ label: "Notas", value: "6" },
+];
+
+const freePlanFeatures = [
+	"20 registros de campanha",
+	"Personagens e sessões essenciais",
+	"Backup manual do arquivo",
+];
+
+const proPlanFeatures = [
+	"Campanhas sem limite prático",
+	"Fichas avançadas e módulos extras",
+	"Organização visual para mesas longas",
+];
 
 /* ─── Page ─── */
 
 function LandingPage() {
 	const featuresId = useId();
+	const [activeDemoTab, setActiveDemoTab] = useState<"Personagens" | "Sessões" | "Lore">("Personagens");
 	const { loading, session } = useAuth();
 	const isAuthenticated = !!session;
 
 	return (
-		<div className="relative min-h-screen overflow-hidden">
-			{/* Background effects */}
-			<div className="pointer-events-none fixed inset-0 -z-20 arcane-grid opacity-[0.05]" />
-			<div
-				className="pointer-events-none fixed inset-0 -z-10"
-				style={{
-					background: `
-						radial-gradient(ellipse 800px 500px at 20% 20%, oklch(0.66 0.20 290 / 0.08), transparent 60%),
-						radial-gradient(ellipse 600px 400px at 80% 80%, oklch(0.55 0.20 320 / 0.06), transparent 60%),
-						radial-gradient(ellipse 400px 300px at 50% 50%, oklch(0.60 0.18 285 / 0.04), transparent 70%)
-					`,
-				}}
-			/>
+		<div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+			{/* Subtle grid background */}
+			<div className="pointer-events-none fixed inset-0 -z-20 arcane-grid opacity-[0.04]" />
 
-			{/* Floating particles */}
-			<div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-				{particles.map((particle) => (
-					<div
-						key={particle.id}
-						className="absolute h-1 w-1 rounded-full bg-primary/30"
-						style={{
-							left: particle.left,
-							top: particle.top,
-							animation: particle.animation,
-							animationDelay: particle.animationDelay,
-						}}
-					/>
-				))}
-			</div>
+			{/* ── Header ── */}
+			<header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 px-6 backdrop-blur-xl sm:px-10 lg:px-14">
+				<div className="mx-auto flex h-16 max-w-[92rem] items-center justify-between">
+					<Link to="/" className="flex items-center gap-3">
+						<span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_8px_24px_-14px_var(--primary)]">
+							<img
+								src="/favicon.svg"
+								alt="Arkhiveon"
+								className="h-5 w-5"
+								draggable={false}
+							/>
+						</span>
+						<span className="font-display text-[14px] font-bold tracking-[0.2em] text-foreground">
+							ARKHIVEON
+						</span>
+					</Link>
 
-			{/* Navbar */}
-			<header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 md:bg-background/70 md:backdrop-blur-xl">
-				<div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-					<div className="flex items-center gap-2.5">
-						<div className="relative flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/30">
-							<svg
-								width="18"
-								height="18"
-								viewBox="0 0 512 512"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-								aria-hidden="true"
-							>
-								<path d="M126 182C211.8 182 297.6 182 386 182C384.507 185.733 383.049 188.83 381.051 192.262C380.458 193.285 379.865 194.307 379.254 195.361C378.613 196.459 377.973 197.557 377.312 198.688C376.638 199.849 375.963 201.012 375.289 202.174C373.889 204.587 372.487 207 371.084 209.412C367.875 214.933 364.689 220.467 361.5 226C360.25 228.167 359 230.333 357.75 232.5C357.131 233.572 356.512 234.645 355.875 235.75C334 273.667 312.125 311.583 290.25 349.5C289.631 350.574 289.011 351.647 288.373 352.753C287.13 354.909 285.886 357.064 284.643 359.219C281.755 364.223 278.868 369.228 275.983 374.233C274.974 375.983 273.964 377.734 272.955 379.484C271.698 381.664 270.442 383.844 269.186 386.023C268.038 388.014 266.887 390.003 265.734 391.991C264.503 394.128 263.285 396.273 262.078 398.423C261.454 399.523 260.83 400.624 260.188 401.758C259.624 402.762 259.061 403.766 258.48 404.801C257.748 405.89 257.748 405.89 257 407C256.34 407 255.68 407 255 407C254.391 405.932 254.391 405.932 253.769 404.842C244.51 388.612 235.212 372.405 225.863 356.227C223.98 352.965 222.099 349.701 220.219 346.438C214.196 335.983 208.155 325.54 202.062 315.125C196.641 305.855 191.298 296.542 185.981 287.212C180.78 278.087 175.52 268.999 170.217 259.933C164.071 249.424 157.994 238.876 151.917 228.326C149.959 224.929 147.998 221.535 146.035 218.141C134.821 198.742 134.821 198.742 129.562 189.438C129.191 188.782 128.819 188.127 128.436 187.453C126 183.12 126 183.12 126 182Z" fill="#6468F0" />
-								<path d="M255 0C258.088 1.34646 259.89 2.73481 261.996 5.35156C262.548 6.02969 263.1 6.70782 263.668 7.40649C264.252 8.1386 264.836 8.87071 265.438 9.625C266.053 10.3848 266.668 11.1446 267.302 11.9275C268.582 13.508 269.858 15.091 271.132 16.6763C273.398 19.4944 275.681 22.298 277.965 25.1011C280.111 27.7362 282.251 30.3762 284.391 33.0161C287.092 36.3461 289.796 39.6729 292.5 43C293.583 44.3333 294.667 45.6667 295.75 47C296.554 47.99 296.554 47.99 297.375 49C302.25 55 302.25 55 303.876 57.0012C304.956 58.3305 306.036 59.6598 307.116 60.989C309.875 64.3841 312.633 67.7796 315.391 71.1758C320.085 76.9574 324.781 82.7385 329.5 88.5C334.79 94.9574 340.049 101.439 345.311 107.919C347.502 110.618 349.693 113.315 351.885 116.013C352.961 117.336 354.036 118.66 355.111 119.983C357.891 123.407 360.674 126.828 363.461 130.246C366.649 134.158 369.829 138.075 373 142C373.782 142.968 374.565 143.936 375.371 144.934C376.012 145.739 376.652 146.545 377.312 147.375C377.845 148.043 378.377 148.71 378.926 149.398C380 151 380 151 380 153C298.16 153 216.32 153 132 153C134.249 147.378 134.249 147.378 136.539 144.801C137.033 144.237 137.526 143.673 138.035 143.092C138.56 142.505 139.084 141.918 139.625 141.312C140.724 140.057 141.822 138.801 142.918 137.543C143.451 136.934 143.984 136.324 144.533 135.697C147.055 132.78 149.437 129.758 151.828 126.734C154.588 123.26 157.387 119.817 160.188 116.375C160.74 115.696 161.293 115.016 161.862 114.316C163 112.917 164.138 111.518 165.277 110.119C166.989 108.014 168.7 105.907 170.41 103.801C175.808 97.1526 181.214 90.5115 186.641 83.8867C191.21 78.2954 195.759 72.6866 200.311 67.0806C203.04 63.7197 205.77 60.3599 208.5 57C209.583 55.6667 210.667 54.3333 211.75 53C218.25 45 224.75 37 231.25 29C232.056 28.0082 232.056 28.0082 232.878 26.9963C233.951 25.6752 235.025 24.354 236.099 23.033C238.958 19.5143 241.816 15.9943 244.672 12.4727C245.271 11.7347 245.869 10.9967 246.486 10.2363C247.642 8.81222 248.797 7.38776 249.951 5.96289C253.888 1.11246 253.888 1.11246 255 0Z" fill="#6468F0" />
-								<path d="M408 202C411.472 205.157 412.697 208.881 414.273 213.203C414.589 214.047 414.904 214.891 415.229 215.76C415.919 217.608 416.606 219.457 417.289 221.308C418.784 225.357 420.297 229.399 421.809 233.441C422.618 235.605 423.426 237.77 424.233 239.934C428.411 251.128 432.67 262.291 436.939 273.45C438.258 276.895 439.575 280.341 440.891 283.786C443.133 289.655 445.377 295.523 447.62 301.391C451.38 311.226 455.139 321.061 458.897 330.896C460.2 334.308 461.505 337.719 462.81 341.13C465.213 347.418 467.609 353.708 470 360C470.428 361.124 470.855 362.247 471.296 363.405C472.571 366.759 473.841 370.116 475.109 373.473C475.697 375.017 475.697 375.017 476.296 376.592C476.83 378.009 476.83 378.009 477.374 379.453C477.689 380.286 478.004 381.118 478.329 381.975C479 384 479 384 479 386C473.761 387.366 468.556 388.496 463.207 389.341C462.465 389.462 461.723 389.582 460.959 389.705C458.497 390.103 456.035 390.496 453.572 390.889C451.797 391.175 450.022 391.461 448.248 391.747C443.445 392.521 438.641 393.29 433.837 394.059C429.823 394.701 425.81 395.346 421.796 395.99C412.33 397.51 402.862 399.027 393.395 400.541C383.63 402.103 373.867 403.67 364.104 405.241C355.715 406.591 347.325 407.936 338.934 409.279C333.926 410.081 328.918 410.884 323.91 411.69C319.205 412.448 314.498 413.201 309.791 413.951C308.065 414.227 306.338 414.504 304.613 414.783C302.255 415.164 299.897 415.539 297.539 415.913C296.858 416.024 296.176 416.135 295.475 416.25C291.612 416.855 287.908 417.105 284 417C292.471 401.4 301.054 385.852 310.112 370.583C313.853 364.272 317.524 357.92 321.188 351.562C321.826 350.455 322.464 349.348 323.121 348.207C324.429 345.937 325.737 343.666 327.044 341.395C330.193 335.928 333.347 330.464 336.5 325C340.264 318.478 344.026 311.955 347.785 305.43C353.807 294.978 359.847 284.537 365.938 274.125C371.013 265.447 376.022 256.734 381 248C386.191 238.894 391.41 229.806 396.688 220.75C397.251 219.781 397.815 218.811 398.396 217.812C401.509 212.483 404.7 207.216 408 202Z" fill="#6468F0" />
-								<path d="M103 202C105.656 204.4 107.28 206.964 109.047 210.066C109.932 211.611 109.932 211.611 110.834 213.186C111.466 214.3 112.099 215.415 112.75 216.562C113.419 217.733 114.088 218.902 114.758 220.072C116.15 222.504 117.539 224.937 118.927 227.371C122.12 232.966 125.342 238.545 128.562 244.125C129.184 245.202 129.805 246.28 130.445 247.389C134.585 254.566 138.754 261.724 142.938 268.875C148.359 278.145 153.702 287.458 159.019 296.788C164.22 305.913 169.48 315.001 174.783 324.067C180.938 334.591 187.024 345.154 193.109 355.718C195.614 360.066 198.122 364.413 200.63 368.759C201.87 370.908 203.109 373.057 204.348 375.206C207.268 380.269 210.19 385.33 213.12 390.388C214.499 392.768 215.877 395.149 217.255 397.531C218.224 399.205 219.195 400.878 220.166 402.551C221.051 404.08 221.051 404.08 221.953 405.641C222.47 406.533 222.988 407.425 223.521 408.345C225.105 411.188 226.565 414.079 228 417C217.905 416.384 208.025 414.852 198.054 413.24C196.273 412.956 194.491 412.671 192.709 412.388C187.905 411.621 183.103 410.849 178.3 410.076C173.266 409.266 168.231 408.461 163.196 407.655C154.755 406.303 146.314 404.947 137.873 403.589C128.108 402.019 118.342 400.453 108.575 398.891C99.1722 397.387 89.7697 395.879 80.3674 394.369C76.3669 393.727 72.3661 393.086 68.3651 392.446C63.6647 391.694 58.9648 390.938 54.2654 390.18C52.5377 389.902 50.8099 389.625 49.0819 389.35C46.7311 388.974 44.3811 388.595 42.0312 388.214C41.341 388.105 40.6507 387.996 39.9396 387.883C35.2283 387.114 35.2283 387.114 33 386C34.8474 379.599 36.8955 373.336 39.2734 367.113C39.7467 365.863 39.7467 365.863 40.2295 364.587C41.2746 361.827 42.3247 359.07 43.375 356.312C44.1288 354.326 44.8824 352.34 45.6357 350.353C48.0847 343.9 50.5417 337.45 53 331C53.6218 329.368 53.6218 329.368 54.2562 327.703C59.4613 314.044 64.6766 300.389 69.8967 286.736C72.9464 278.759 75.9928 270.78 79.0368 262.8C80.2272 259.68 81.4178 256.559 82.6084 253.439C83.972 249.865 85.3355 246.291 86.6984 242.717C89.4598 235.476 92.2262 228.237 95 221C95.3553 220.072 95.7107 219.144 96.0768 218.188C97.0611 215.62 98.0493 213.054 99.0391 210.488C99.3277 209.735 99.6163 208.981 99.9137 208.204C101.885 203.115 101.885 203.115 103 202Z" fill="#6468F0" />
-								<path d="M27 142C30.9058 143.562 34.2195 145.163 37.8398 147.238C38.9758 147.888 40.1118 148.538 41.2822 149.207C42.5007 149.909 43.7192 150.611 44.9375 151.312C46.1858 152.029 47.4342 152.745 48.6826 153.461C59.8472 159.874 70.9418 166.405 82 173C81.3547 178.179 79.7842 182.662 77.9219 187.496C77.6032 188.336 77.2846 189.177 76.9563 190.042C75.8929 192.843 74.8214 195.64 73.75 198.438C72.992 200.429 72.2344 202.42 71.4773 204.412C69.424 209.809 67.3634 215.203 65.301 220.597C63.0951 226.367 60.8937 232.139 58.6914 237.91C56.0082 244.941 53.324 251.971 50.637 259C43.3808 277.983 36.1724 296.985 29 316C28.34 316 27.68 316 27 316C27 258.58 27 201.16 27 142Z" fill="#6468F0" />
-								<path d="M485 142C485 199.42 485 256.84 485 316C484.34 316 483.68 316 483 316C482.64 315.034 482.28 314.069 481.909 313.074C474.44 293.059 466.903 273.071 459.25 253.125C458.505 251.181 457.76 249.237 457.014 247.293C453.8 238.908 450.585 230.522 447.365 222.139C445.145 216.358 442.931 210.575 440.72 204.79C439.871 202.57 439.019 200.351 438.166 198.133C436.979 195.047 435.799 191.96 434.621 188.871C434.268 187.044 433.915 187.044 433.551 186.103C431.894 181.738 430.537 177.673 430 173C440.413 166.911 450.825 160.822 461.277 154.801C461.869 154.46 462.46 154.119 463.069 153.768C465.947 152.111 468.826 150.455 471.707 148.801C472.748 148.201 473.79 147.602 474.863 146.984C476.244 146.191 476.244 146.191 477.654 145.382C483.396 142 483.396 142 485 142Z" fill="#6468F0" />
-								<path d="M319 30C323.109 31.2576 326.654 32.7798 330.359 34.9492C331.379 35.5422 332.399 36.1352 333.449 36.7461C335.083 37.7071 335.083 37.7071 336.75 38.6875C337.907 39.3626 339.065 40.037 340.223 40.7109C342.626 42.1102 345.027 43.5119 347.428 44.9155C352.938 48.1345 358.47 51.3152 364 54.5C366.167 55.7498 368.333 56.9998 370.5 58.25C372.109 59.1781 372.109 59.1781 373.75 60.125C377 62 380.25 63.875 383.5 65.75C384.573 66.3688 385.645 66.9877 386.75 67.6252C388.916 68.8744 391.081 70.1235 393.246 71.3728C398.686 74.512 404.127 77.6499 409.57 80.7852C429.772 92.4246 449.917 104.158 470 116C467.223 118.989 464.561 121.011 460.984 122.961C459.991 123.509 458.998 124.056 457.975 124.621C456.379 125.489 456.379 125.489 454.75 126.375C447.823 130.18 440.931 134.006 434.152 138.066C433.067 138.715 431.981 139.364 430.862 140.032C428.775 141.285 426.693 142.547 424.618 143.82C423.676 144.383 422.733 144.947 421.762 145.527C420.936 146.03 420.111 146.533 419.26 147.051C417 148 417 148 414.89 147.858C412.6 146.818 411.57 145.709 410.004 143.746C409.452 143.065 408.9 142.383 408.332 141.681C407.748 140.941 407.164 140.2 406.562 139.438C405.947 138.673 405.332 137.909 404.698 137.121C403.417 135.531 402.141 133.937 400.868 132.34C398.609 129.51 396.323 126.703 394.035 123.897C392.425 121.922 390.819 119.944 389.215 117.965C385.98 113.974 382.74 109.987 379.5 106C376.202 101.942 372.905 97.8836 369.609 93.8242C364.915 88.0426 360.219 82.2615 355.5 76.5C351.351 71.4348 347.22 66.3554 343.094 61.2715C340.23 57.7433 337.363 54.2182 334.488 50.6992C333.914 49.9956 333.34 49.292 332.749 48.5671C331.664 47.2369 330.577 45.9075 329.489 44.5793C319 31.7109 319 31.7109 319 30Z" fill="#6468F0" />
-								<path d="M191 30C191.99 30.495 191.99 30.495 193 31C186.63 39.0058 180.18 46.9456 173.723 54.8813C172.011 56.9865 170.3 59.0926 168.59 61.1992C163.192 67.8474 157.786 74.4885 152.359 81.1133C147.79 86.7046 143.241 92.3134 138.689 97.9194C135.96 101.28 133.23 104.64 130.5 108C129.417 109.333 128.333 110.667 127.25 112C117.5 124 107.75 136 98 148C94.1944 147.419 91.4734 146.336 88.1758 144.367C86.7739 143.539 86.7739 143.539 85.3438 142.694C84.3434 142.094 83.3431 141.493 82.3125 140.875C80.1736 139.609 78.0343 138.343 75.8945 137.078C74.7764 136.415 73.6583 135.752 72.5063 135.068C67.1143 131.879 61.683 128.758 56.2533 125.634C54.5113 124.631 52.7698 123.628 51.0286 122.625C48.3527 121.082 45.6765 119.541 43 118C43 117.01 43 116.02 43 115C43.6316 114.649 44.2633 114.298 44.9141 113.937C58.667 106.29 72.3337 98.5191 85.9102 90.5625C92.2157 86.8679 98.5429 83.2115 104.875 79.5625C105.955 78.94 107.035 78.3174 108.148 77.676C110.338 76.4142 112.528 75.1526 114.718 73.8911C120.147 70.7632 125.573 67.6314 131 64.5C133.16 63.2539 135.32 62.0078 137.48 60.7617C142.991 57.5825 148.501 54.4009 154.01 51.2188C157.251 49.3479 160.495 47.4804 163.738 45.6133C167.912 43.2098 172.074 40.7891 176.23 38.3555C178.154 37.2369 180.077 36.1184 182 35C183.327 34.2156 183.327 34.2156 184.681 33.4153C185.487 32.9482 186.294 32.4812 187.125 32C187.829 31.5875 188.533 31.175 189.258 30.75C190.12 30.3787 190.12 30.3787 191 30Z" fill="#6468F0" />
-							</svg>
-						</div>
-						<div className="flex flex-col leading-none">
-							<span className="font-display text-[13px] font-bold tracking-[0.18em] text-foreground">
-								RPG NOTES
-							</span>
-							<span className="mt-0.5 text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
-								Grimoire
-							</span>
-						</div>
-					</div>
 					{!loading && (
 						<div className="flex items-center gap-2">
 							{isAuthenticated ? (
 								<Link to="/dashboard">
 									<Button size="sm" className="gap-2">
 										<Sparkles className="h-3.5 w-3.5" />
-										Acessar dashboard
+										Dashboard
 									</Button>
 								</Link>
 							) : (
 								<>
 									<Link to="/auth" search={{ mode: "login" }}>
-										<Button variant="ghost" size="sm">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="text-muted-foreground hover:text-foreground"
+										>
 											Entrar
 										</Button>
 									</Link>
 									<Link to="/auth" search={{ mode: "register" }}>
-										<Button size="sm">
+										<Button size="sm" className="gap-2">
 											<Sparkles className="h-3.5 w-3.5" />
-											Criar Conta
+											Criar conta
 										</Button>
 									</Link>
 								</>
@@ -165,129 +146,525 @@ function LandingPage() {
 				</div>
 			</header>
 
-			{/* Hero */}
-			<section className="relative mx-auto max-w-6xl px-6 pt-20 pb-16 text-center lg:pt-28 lg:pb-20">
-				<div className="relative inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-medium text-primary mb-6">
-					<Shield className="h-3 w-3" />
-					Seu grimório digital de RPG
-				</div>
-				<h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-					<span className="text-gradient-primary">Organize</span>{" "}
-					<span className="text-foreground">suas</span>
-					<br />
-					<span className="text-foreground">campanhas de RPG</span>
-				</h1>
-				<p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground leading-relaxed sm:text-lg">
-					Registre personagens, sessões, lore, itens e tudo que faz parte da sua
-					aventura — tudo em um só lugar, bonito e organizado.
-				</p>
-				<div className="mt-8 flex items-center justify-center gap-3">
-					{loading ? (
-						<Button size="lg" className="gap-2 px-6" disabled>
-							<Sparkles className="h-4 w-4" />
-							Carregando...
-						</Button>
-					) : isAuthenticated ? (
-						<Link to="/dashboard">
-							<Button size="lg" className="gap-2 px-6">
-								<Sparkles className="h-4 w-4" />
-								Acessar dashboard
-							</Button>
-						</Link>
-					) : (
-						<Link to="/auth" search={{ mode: "register" }}>
-							<Button size="lg" className="gap-2 px-6">
-								<Sparkles className="h-4 w-4" />
-								Começar Agora
-							</Button>
-						</Link>
-					)}
-					<Button
-						variant="outline"
-						size="lg"
-						className="px-6"
-						onClick={() =>
-							document
-								.getElementById(featuresId)
-								?.scrollIntoView({ behavior: "smooth" })
-						}
-					>
-						Explorar
-					</Button>
-				</div>
-			</section>
+			<main className="relative z-10">
+				{/* ── Hero ── */}
+				<section className="w-full px-6 pb-16 pt-16 sm:px-10 sm:pt-20 lg:px-14 lg:pt-24 lg:pb-24">
+					<div className="relative mx-auto w-full max-w-[92rem] overflow-hidden rounded-[2rem] border border-border/60 bg-linear-to-br from-card via-card/95 to-primary-muted/15 p-8 shadow-xl shadow-black/5 sm:p-12 lg:p-14">
+						{/* Decorative blobs */}
+						<div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary/8 blur-3xl" />
+						<div className="pointer-events-none absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
 
-			{/* Features */}
-			<section id={featuresId} className="mx-auto max-w-5xl px-6 py-16">
-				<div className="text-center mb-10">
-					<h2 className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground heading-rule mx-auto w-fit">
-						Funcionalidades
-					</h2>
-				</div>
-				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-					{features.map((f) => (
-						<div
-							key={f.title}
-							className="group rounded-lg border border-border bg-card-elevated p-4 text-center transition-all hover:border-border-hover hover:-translate-y-0.5"
-						>
-							<div
-								className={`mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-md bg-background/60 ring-1 ring-border ${f.color}`}
-							>
-								<f.Icon className="h-4.5 w-4.5" strokeWidth={1.6} />
+						<div className="relative grid gap-12 lg:grid-cols-[1fr_420px] lg:items-center">
+							{/* Left: copy */}
+							<div>
+								<div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+									<Sparkles className="h-3 w-3" />
+									Arquivo narrativo de RPG
+								</div>
+
+								<h1 className="mt-7 font-display text-[clamp(3rem,6vw,5.75rem)] font-black leading-[0.88] tracking-tight text-foreground">
+									Campanhas
+									<br />
+									<span className="text-gradient-primary">com memória.</span>
+								</h1>
+
+								<p className="mt-6 max-w-lg text-[16px] font-medium leading-7 text-muted-foreground">
+									Personagens, fichas e sessões em um arquivo feito para{" "}
+									<strong className="font-semibold text-foreground">
+										voltar
+									</strong>
+									.
+								</p>
+
+								<div className="mt-9 flex flex-wrap items-center gap-3">
+									{loading ? (
+										<Button size="lg" className="gap-2 px-7" disabled>
+											<Sparkles className="h-4 w-4" />
+											Carregando
+										</Button>
+									) : isAuthenticated ? (
+										<Link to="/dashboard">
+											<Button size="lg" className="gap-2 px-7">
+												Abrir arquivo
+												<ArrowUpRight className="h-4 w-4" />
+											</Button>
+										</Link>
+									) : (
+										<Link to="/auth" search={{ mode: "register" }}>
+											<Button size="lg" className="gap-2 px-7">
+												Criar arquivo
+												<ArrowUpRight className="h-4 w-4" />
+											</Button>
+										</Link>
+									)}
+									<Button
+										variant="outline"
+										size="lg"
+										className="px-7"
+										onClick={() =>
+											document
+												.getElementById(featuresId)
+												?.scrollIntoView({ behavior: "smooth" })
+										}
+									>
+										Ver estrutura
+									</Button>
+								</div>
 							</div>
-							<h3 className="text-[13px] font-semibold text-foreground">
-								{f.title}
-							</h3>
-							<p className="mt-0.5 text-[11px] text-muted-foreground">
-								{f.desc}
+
+							{/* Right: mini dashboard card */}
+							<div className="rounded-2xl border border-border/60 bg-card/60 p-5 shadow-sm shadow-black/5 sm:p-6">
+								<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+									Resumo
+								</p>
+								<p className="mt-5 font-display text-xl font-bold leading-tight text-foreground">
+									Tudo que importa
+									<br />
+									sem ocupar a mesa.
+								</p>
+								<div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+									{features.map(({ Icon, title, desc }) => (
+										<button
+											key={title}
+											type="button"
+											onClick={() => {
+												setActiveDemoTab(title as "Personagens" | "Sessões" | "Lore");
+												setTimeout(() => {
+													document.getElementById("demo-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+												}, 50);
+											}}
+											className={`group relative flex flex-col items-start rounded-xl border p-3.5 text-left transition-all hover:-translate-y-1 hover:shadow-lg ${
+												activeDemoTab === title 
+													? "border-primary/50 bg-primary/10 shadow-primary/10" 
+													: "border-border/60 bg-background/40 hover:border-primary/30 hover:bg-primary/5 hover:shadow-primary/5"
+											}`}
+										>
+											<Icon
+												className={`h-4 w-4 transition-transform group-hover:scale-110 ${activeDemoTab === title ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`}
+												strokeWidth={1.8}
+											/>
+											<p className={`mt-3 text-[13px] font-bold ${activeDemoTab === title ? "text-primary" : "text-foreground"}`}>
+												{title}
+											</p>
+											<p className="mt-0.5 text-[11px] text-muted-foreground">
+												{desc}
+											</p>
+										</button>
+									))}
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				{/* ── Interactive Demo Section ── */}
+				<section id="demo-section" className="w-full px-6 py-10 sm:px-10 lg:px-14">
+					<div className="mx-auto w-full max-w-[92rem]">
+						<div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/40 shadow-2xl shadow-black/20 backdrop-blur-md">
+							<div className="pointer-events-none absolute inset-0 z-0 opacity-30">
+								<ArkhiveonGradientBackground />
+							</div>
+							<div className="relative z-10 p-6 sm:p-10">
+								<DemoInteractiveSection activeTab={activeDemoTab} />
+							</div>
+						</div>
+					</div>
+				</section>
+
+				{/* ── Pillars ── */}
+				<section
+					id={featuresId}
+					className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24"
+				>
+					<div className="mx-auto w-full max-w-[92rem]">
+						<div className="mb-10 max-w-xl">
+							<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+								Estrutura
+							</p>
+							<h2 className="mt-5 font-display text-3xl font-black leading-[0.96] text-foreground sm:text-4xl">
+								Menos tela.
+								<br />
+								Mais campanha.
+							</h2>
+						</div>
+
+						<div className="grid gap-4 lg:grid-cols-3">
+							{pillars.map(({ Icon, eyebrow, title, description }) => (
+								<article
+									key={eyebrow}
+									className="group rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm shadow-black/5 transition-all hover:border-primary/25 hover:shadow-md"
+								>
+									<span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary transition-transform group-hover:scale-105">
+										<Icon className="h-5 w-5" strokeWidth={1.8} />
+									</span>
+									<p className="mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
+										{eyebrow}
+									</p>
+									<h3 className="mt-2 font-display text-lg font-bold leading-tight text-foreground">
+										{title}
+									</h3>
+									<p className="mt-3 text-[13px] font-medium leading-6 text-muted-foreground">
+										{description}
+									</p>
+								</article>
+							))}
+						</div>
+					</div>
+				</section>
+
+				{/* ── Characters section ── */}
+				<section className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
+					<div className="mx-auto grid w-full max-w-[92rem] gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+						<div>
+							<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+								Personagens
+							</p>
+							<h2 className="mt-5 font-display text-3xl font-black leading-[0.96] text-foreground sm:text-4xl">
+								Um personagem novo
+								<br />
+								sem cadastro pesado.
+							</h2>
+							<p className="mt-5 max-w-md text-[15px] font-medium leading-7 text-muted-foreground">
+								O registro mostra o essencial e deixa os detalhes para
+								crescerem depois.
 							</p>
 						</div>
-					))}
-				</div>
-			</section>
 
-			{/* CTA */}
-			<section className="mx-auto max-w-2xl px-6 py-16 text-center">
-				<div className="panel corner-mark p-8 sm:p-12">
-					<h2 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-						Pronto para a{" "}
-						<span className="text-gradient-primary">aventura</span>?
-					</h2>
-					<p className="mt-3 text-[13px] text-muted-foreground leading-relaxed">
-						{isAuthenticated
-							? "Sua campanha continua esperando por você no dashboard."
-							: "Crie sua conta gratuitamente e comece a documentar sua campanha agora mesmo."}
-					</p>
-					<div className="mt-6">
-						{loading ? (
-							<Button size="lg" className="gap-2 px-8" disabled>
-								<Sparkles className="h-4 w-4" />
-								Carregando...
-							</Button>
-						) : isAuthenticated ? (
-							<Link to="/dashboard">
-								<Button size="lg" className="gap-2 px-8">
-									<Sparkles className="h-4 w-4" />
-									Acessar dashboard
-								</Button>
-							</Link>
+						<article className="rounded-[1.75rem] border border-border/60 bg-card/80 p-6 shadow-sm shadow-black/5 sm:p-7 lg:ml-auto lg:w-full lg:max-w-xl">
+							<div className="flex items-center justify-between gap-4">
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+										Prévia
+									</p>
+									<h3 className="mt-4 font-display text-2xl font-black leading-none text-foreground">
+										Elara Moonveil
+									</h3>
+								</div>
+								<span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+									<User className="h-5 w-5" strokeWidth={1.8} />
+								</span>
+							</div>
+
+							<div className="mt-6 grid gap-2 sm:grid-cols-3">
+								<PreviewField label="Origem" value="Biblioteca perdida" />
+								<PreviewField label="Papel" value="Guardiã de memória" />
+								<PreviewField label="Vínculo" value="Ordem do Eclipse" />
+							</div>
+						</article>
+					</div>
+				</section>
+
+				{/* ── Sheets section ── */}
+				<section className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
+					<div className="mx-auto grid w-full max-w-[92rem] gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+						<article className="relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-card/80 p-6 shadow-sm shadow-black/5 sm:p-7 lg:max-w-xl">
+							<div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+							<div className="relative">
+								<div className="flex items-center justify-between gap-4">
+									<div>
+										<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+											Ficha
+										</p>
+										<h3 className="mt-4 font-display text-2xl font-black leading-none text-foreground">
+											Módulos vivos
+										</h3>
+									</div>
+									<span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+										<FileText className="h-5 w-5" strokeWidth={1.8} />
+									</span>
+								</div>
+
+								<div className="mt-6 grid grid-cols-3 gap-2">
+									{sheetModules.map((module) => (
+										<div
+											key={module.label}
+											className="rounded-xl border border-border/60 bg-background/40 p-3"
+										>
+											<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+												{module.label}
+											</p>
+											<p className="mt-2 font-display text-2xl font-black text-foreground">
+												{module.value}
+											</p>
+										</div>
+									))}
+								</div>
+							</div>
+						</article>
+
+						<div className="lg:ml-auto lg:w-full lg:max-w-xl text-right">
+							<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule-right">
+								Fichas
+							</p>
+							<h2 className="mt-5 font-display text-3xl font-black leading-[0.96] text-foreground sm:text-4xl">
+								O sistema acompanha
+								<br />o jeito da sua mesa.
+							</h2>
+							<p className="mt-5 ml-auto max-w-md text-[15px] font-medium leading-7 text-muted-foreground">
+								Atributos, inventário e notas ficam próximos sem virar painel
+								lotado.
+							</p>
+						</div>
+					</div>
+				</section>
+
+				{/* ── Pricing ── */}
+				<section className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
+					<div className="mx-auto w-full max-w-[92rem]">
+						<div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+							<div>
+								<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+									Planos
+								</p>
+								<h2 className="mt-5 font-display text-3xl font-black leading-[0.96] text-foreground sm:text-4xl">
+									Comece pequeno
+									<br />e cresça quando a mesa pedir.
+								</h2>
+							</div>
+							<p className="max-w-xs text-[15px] font-medium leading-6 text-muted-foreground sm:text-right">
+								Free para experimentar.
+								<br />
+								Pro para campanha que não para.
+							</p>
+						</div>
+
+						<div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+							<PlanCard
+								name="Free"
+								price="R$ 0"
+								description="Para testar uma campanha curta."
+								features={freePlanFeatures}
+							/>
+							<PlanCard
+								name="Pro"
+								price="R$ 19"
+								description="Para mesas longas, mundos grandes e fichas completas."
+								features={proPlanFeatures}
+								highlight
+							/>
+						</div>
+					</div>
+				</section>
+			</main>
+
+			<EfferdStickyFooter />
+		</div>
+	);
+}
+
+/* ─── Sub-components ─── */
+
+function PreviewField({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+			<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+				{label}
+			</p>
+			<p className="mt-1 text-[14px] font-bold text-foreground">{value}</p>
+		</div>
+	);
+}
+
+function PlanCard({
+	name,
+	price,
+	description,
+	features,
+	highlight = false,
+}: {
+	name: string;
+	price: string;
+	description: string;
+	features: string[];
+	highlight?: boolean;
+}) {
+	return (
+		<article
+			className={`relative overflow-hidden rounded-[1.75rem] border p-7 shadow-sm transition-all sm:p-8 ${
+				highlight
+					? "pro-plan-card border-primary/45 bg-linear-to-br from-primary/16 via-card to-card shadow-[0_28px_90px_-55px_var(--primary)]"
+					: "border-border/60 bg-card/60"
+			}`}
+		>
+			{highlight && (
+				<>
+					<div className="pointer-events-none absolute inset-0 z-0 hidden dark:block">
+						<ArkhiveonGradientBackground />
+					</div>
+					<div className="pointer-events-none absolute inset-0 z-0 hidden bg-background/28 dark:block" />
+					<div className="pointer-events-none absolute -right-20 -top-20 z-[1] h-56 w-56 rounded-full bg-sky-950/28 blur-3xl" />
+					<div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-primary/70 to-transparent" />
+				</>
+			)}
+			<div className="plan-card-content relative">
+				<div className="flex items-start justify-between gap-4">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+							Plano
+						</p>
+						<h3 className="mt-4 font-display text-3xl font-black leading-none text-foreground">
+							{name}
+						</h3>
+					</div>
+					<span
+						className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${
+							highlight
+								? "border-primary/35 bg-primary/15 text-primary"
+								: "border-border/70 bg-background/45 text-muted-foreground"
+						}`}
+					>
+						{highlight ? (
+							<Crown className="h-5 w-5" strokeWidth={1.8} />
 						) : (
-							<Link to="/auth" search={{ mode: "register" }}>
-								<Button size="lg" className="gap-2 px-8">
-									<Sparkles className="h-4 w-4" />
-									Criar Conta Grátis
-								</Button>
-							</Link>
+							<ShieldCheck className="h-5 w-5" strokeWidth={1.8} />
 						)}
+					</span>
+				</div>
+
+				<div className="mt-7 flex items-end gap-2">
+					<span className="font-display text-5xl font-black leading-none text-foreground">
+						{price}
+					</span>
+					<span className="pb-1 text-[13px] font-bold text-muted-foreground">
+						/mês
+					</span>
+				</div>
+				<p className="mt-3 max-w-md text-[14px] font-medium leading-6 text-muted-foreground">
+					{description}
+				</p>
+
+				<ul className="mt-7 space-y-3">
+					{features.map((feature) => (
+						<li
+							key={feature}
+							className="flex items-center gap-3 text-[14px] font-semibold text-foreground"
+						>
+							<span
+								className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${
+									highlight
+										? "bg-primary/15 text-primary"
+										: "bg-muted text-muted-foreground"
+								}`}
+							>
+								<Check className="h-3.5 w-3.5" strokeWidth={2.2} />
+							</span>
+							{feature}
+						</li>
+					))}
+				</ul>
+
+				<a
+					href={highlight ? "/auth?mode=register" : "/billing"}
+					className={buttonVariants({
+						variant: highlight ? "default" : "outline",
+						className: "mt-8 h-11 w-full gap-2 text-[13px] font-black",
+					})}
+				>
+					{highlight ? "Começar com Pro" : "Começar gratuitamente"}
+					<ArrowUpRight className="h-4 w-4" />
+				</a>
+			</div>
+		</article>
+	);
+}
+
+function DemoInteractiveSection({ activeTab }: { activeTab: "Personagens" | "Sessões" | "Lore" }) {
+	const [selectedTemplate, setSelectedTemplate] = useState("Fantasia Clássica");
+	
+	let Icon = User;
+	let title = "Personagem";
+	let description = "Crie um novo herói ou vilão para sua história.";
+
+	if (activeTab === "Sessões") {
+		Icon = ScrollText;
+		title = "Sessão";
+		description = "Registre os acontecimentos do último encontro.";
+	} else if (activeTab === "Lore") {
+		Icon = BookOpen;
+		title = "Lore";
+		description = "Adicione um novo local, facção ou lenda ao mundo.";
+	}
+
+	return (
+		<div className="mx-auto max-w-2xl text-left">
+			<div className="mb-8 flex items-center justify-between border-b border-border/50 pb-6">
+				<div className="flex items-center gap-4">
+					<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+						<Icon className="h-6 w-6 text-primary" strokeWidth={2} />
+					</div>
+					<div>
+						<h3 className="font-display text-2xl font-bold text-foreground">
+							Novo {title}
+						</h3>
+						<p className="mt-1 text-[13px] text-muted-foreground">
+							{description}
+						</p>
 					</div>
 				</div>
-			</section>
+				<span className="hidden sm:inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+					Modo Demonstração
+				</span>
+			</div>
 
-			{/* Footer */}
-			<footer className="border-t border-border/50 py-8 text-center text-[11px] text-muted-foreground">
-				<span className="font-display tracking-wider">RPG NOTES</span> — Seu
-				grimório digital
-			</footer>
+			<div className="grid gap-6">
+				<div className="space-y-2">
+					<label className="text-[13px] font-bold text-foreground">Nome</label>
+					<input
+						type="text"
+						placeholder={`Ex: O início da jornada`}
+						className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
+					/>
+				</div>
+
+				<div className="space-y-2">
+					<label className="text-[13px] font-bold text-foreground">
+						Template (Estrutura)
+					</label>
+					<div className="grid gap-3 sm:grid-cols-2">
+						{["Fantasia Clássica", "Sci-Fi / Cyberpunk"].map((template) => (
+							<button
+								key={template}
+								type="button"
+								onClick={() => setSelectedTemplate(template)}
+								className={`group flex flex-col rounded-xl border p-4 text-left transition-all hover:border-primary/40 hover:bg-primary/5 ${
+									selectedTemplate === template
+										? "border-primary/50 bg-primary/10"
+										: "border-border/50 bg-background/30"
+								}`}
+							>
+								<span className={`font-bold transition-colors group-hover:text-primary ${selectedTemplate === template ? "text-primary" : "text-foreground"}`}>
+									{template}
+								</span>
+								<span className="mt-1 text-[11px] text-muted-foreground">
+									Estrutura recomendada
+								</span>
+							</button>
+						))}
+					</div>
+				</div>
+
+				<div className="space-y-2">
+					<label className="text-[13px] font-bold text-foreground">
+						Resumo Inicial
+					</label>
+					<textarea
+						placeholder="Uma breve descrição..."
+						className="h-24 w-full resize-none rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
+					/>
+				</div>
+			</div>
+
+			<div className="mt-8 flex items-center justify-between border-t border-border/50 pt-6">
+				<p className="hidden sm:block text-[12px] text-muted-foreground">
+					Crie uma conta gratuita para salvar e editar.
+				</p>
+				<div className="flex w-full sm:w-auto justify-end gap-3">
+					<Button variant="outline" className="font-bold cursor-default hover:bg-transparent hover:text-foreground">
+						Cancelar
+					</Button>
+					<Button className="font-bold cursor-default">Simular criação</Button>
+				</div>
+			</div>
 		</div>
 	);
 }

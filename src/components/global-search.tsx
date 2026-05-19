@@ -202,7 +202,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 								O que você está procurando?
 							</p>
 							<p className="mt-1 text-xs text-muted-foreground">
-								Pesquise por qualquer registro no seu grimório.
+								Pesquise por qualquer registro no Arkhiveon.
 							</p>
 						</div>
 					) : results.length > 0 ? (

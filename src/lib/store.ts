@@ -61,7 +61,7 @@ export const useRPGStore = create<RPGState>()(
 			...createSyncSlice(...a),
 		}),
 		{
-			name: "rpg-notes-storage",
+			name: "arkhiveon-storage",
 			version: 2,
 			migrate: (persistedState) => stripPersistedDataImages(persistedState),
 			partialize: (state) => ({

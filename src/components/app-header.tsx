@@ -53,7 +53,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 		typeof metadataName === "string" && metadataName.trim()
 			? metadataName
 			: "Aventureiro";
-	const userEmail = user?.email || "grimoire@rpg.notes";
+	const userEmail = user?.email || "contato@arkhiveon.com";
 	const userImage = spotifyUser?.image || "";
 	const initials = userName
 		.split(" ")
@@ -80,7 +80,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 		clearLocalData();
 		toast.success({
 			title: "Sessão encerrada",
-			description: "Você saiu do seu grimório com segurança.",
+			description: "Você saiu do Arkhiveon com segurança.",
 		});
 		await navigate({ to: "/auth", search: { mode: "login" }, replace: true });
 	}
@@ -124,7 +124,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 					<div className="hidden h-4 w-px bg-border/40 sm:block md:hidden" />
 					<div className="hidden min-w-36 flex-col sm:flex">
 						<span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-							RPG Notes
+							Arkhiveon
 						</span>
 						<span className="mt-0.5 text-[13px] font-bold text-foreground">
 							{pageTitle}
@@ -139,7 +139,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 						>
 							<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
 							<div className="flex h-10 w-full items-center gap-2 rounded-2xl border border-border/70 bg-background/55 px-9 text-[13px] text-muted-foreground shadow-sm shadow-black/5 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-primary/45 group-hover:bg-background/75">
-								<span>Pesquisar no Grimório...</span>
+								<span>Pesquisar no Arkhiveon...</span>
 								<kbd className="pointer-events-none ml-auto hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
 									<span className="text-xs">⌘</span>K
 								</kbd>
@@ -281,7 +281,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 								className="gap-2 text-xs font-bold cursor-pointer"
 							>
 								<LogOut className="h-3.5 w-3.5" />
-								<span>{isSigningOut ? "Saindo..." : "Sair do Grimório"}</span>
+								<span>{isSigningOut ? "Saindo..." : "Sair do Arkhiveon"}</span>
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -305,7 +305,7 @@ function getPageTitle(pathname: string) {
 	if (pathname.startsWith("/locations")) return "Locais";
 	if (pathname.startsWith("/lore")) return "Lore";
 	if (pathname.startsWith("/design-system")) return "Design System";
-	return "Grimório";
+	return "Arkhiveon";
 }
 
 function NotificationItem({

@@ -3,7 +3,7 @@ import { AlertTriangle, Home, RefreshCcw } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
 
-const DEFAULT_TITLE = "Algo quebrou no grimório";
+const DEFAULT_TITLE = "Algo quebrou no Arkhiveon";
 const DEFAULT_MESSAGE =
 	"Não foi possível carregar esta parte da aventura. Tente novamente ou volte para uma área segura.";
 const MAX_ERROR_TEXT_LENGTH = 900;
@@ -84,7 +84,9 @@ export function getErrorDetails(error: unknown): ErrorDetails {
 	if (error instanceof AggregateError) {
 		const message = cleanErrorText(error.message);
 		const firstCause = error.errors.find((cause) => cause !== undefined);
-		const firstCauseDetails = firstCause ? getErrorDetails(firstCause) : undefined;
+		const firstCauseDetails = firstCause
+			? getErrorDetails(firstCause)
+			: undefined;
 
 		return {
 			title: DEFAULT_TITLE,

@@ -3,6 +3,12 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+@font-face {
+  font-family: "Arkhive";
+  src: local("Arkhive");
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -98,6 +104,7 @@
 @theme inline {
     --font-sans: 'Inter Variable', sans-serif;
     --font-display: 'Cinzel', 'Inter Variable', serif;
+    --font-arkhiveon: 'Arkhive', var(--font-display);
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
     --color-sidebar-ring: var(--sidebar-ring);
@@ -247,6 +254,11 @@
     letter-spacing: 0.02em;
   }
 
+  .font-arkhiveon {
+    font-family: var(--font-arkhiveon);
+    letter-spacing: 0;
+  }
+
   /* Decorative arcane grid - very subtle */
   .arcane-grid {
     background-image:
@@ -273,11 +285,122 @@
     background: linear-gradient(90deg, var(--primary), transparent);
   }
 
+  .heading-rule-right {
+    position: relative;
+    padding-bottom: 0.5rem;
+  }
+  .heading-rule-right::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(270deg, var(--primary), transparent);
+  }
+
   .text-gradient-primary {
     background: linear-gradient(120deg, var(--primary) 0%, oklch(0.75 0.18 320) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  .pro-plan-card.pro-plan-card {
+    border-color: transparent !important;
+    background:
+      linear-gradient(135deg, var(--primary-muted), var(--card) 44%, var(--card)) padding-box,
+      linear-gradient(
+        90deg,
+        oklch(0.66 0.2 290 / 0.12),
+        transparent 16%,
+        var(--primary) 42%,
+        oklch(0.96 0.05 300 / 0.95) 50%,
+        var(--primary) 58%,
+        transparent 84%,
+        oklch(0.66 0.2 290 / 0.12)
+      ) border-box;
+    background-position:
+      0 0,
+      0% 0;
+    background-size:
+      100% 100%,
+      240% 100%;
+    animation: pro-border-slide 3.8s ease-in-out infinite alternate;
+  }
+
+  .pro-plan-card::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 78% 10%, var(--primary-muted), transparent 28%),
+      radial-gradient(circle at 12% 90%, oklch(0.45 0.19 305 / 0.16), transparent 32%);
+    opacity: 0.9;
+  }
+
+  .pro-plan-card .plan-card-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  .arkhiveon-gradient-blob {
+    animation: arkhiveon-gradient-drift 16s ease-in-out infinite alternate;
+    will-change: transform, opacity;
+  }
+
+  .arkhiveon-gradient-blob-delay {
+    animation-delay: -5s;
+  }
+
+  .arkhiveon-gradient-blob-slow {
+    animation-duration: 22s;
+    animation-delay: -9s;
+  }
+
+  .efferd-footer-reveal {
+    animation: efferd-footer-reveal 0.8s ease both;
+  }
+
+  @keyframes pro-border-slide {
+    from {
+      background-position:
+        0 0,
+        0% 0;
+    }
+    to {
+      background-position:
+        0 0,
+      100% 0;
+    }
+  }
+
+  @keyframes arkhiveon-gradient-drift {
+    from {
+      opacity: 0.72;
+      transform: translate3d(-2%, -1%, 0) scale(1);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(3%, 2%, 0) scale(1.08);
+    }
+  }
+
+  @keyframes efferd-footer-reveal {
+    from {
+      filter: blur(4px);
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      filter: blur(0);
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .bg-card-elevated {

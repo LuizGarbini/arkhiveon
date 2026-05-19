@@ -44,7 +44,7 @@ function AccountPage() {
 						{userName}
 					</h1>
 					<p className="mt-3 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-						Seu perfil de aventureiro, sessão atual e um resumo do grimório
+						Seu perfil de aventureiro, sessão atual e um resumo do arquivo
 						conectado nesta campanha.
 					</p>
 				</div>
@@ -84,7 +84,7 @@ function AccountPage() {
 								Resumo
 							</p>
 							<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-								Seu grimório em números
+								Seu arquivo em números
 							</h2>
 						</div>
 						<WandSparkles className="h-5 w-5 text-primary" />

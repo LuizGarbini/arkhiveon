@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, CheckCircle2, CreditCard, Crown, Sparkles } from "lucide-react";
+import {
+	ArrowUpRight,
+	CheckCircle2,
+	CreditCard,
+	Crown,
+	Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRPGStore } from "@/lib/store";
 
@@ -47,7 +53,7 @@ function BillingPage() {
 							Plano Free ativo
 						</h1>
 						<p className="mt-3 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-							Acompanhe o uso atual do seu grimório e veja o que entra quando o
+							Acompanhe o uso atual do arquivo e veja o que entra quando o
 							upgrade estiver disponível.
 						</p>
 					</div>
@@ -80,8 +86,8 @@ function BillingPage() {
 						/>
 					</div>
 					<p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-						Contabilizamos personagens, NPCs, sessões, itens, locais e lore
-						para representar o uso total da campanha.
+						Contabilizamos personagens, NPCs, sessões, itens, locais e lore para
+						representar o uso total da campanha.
 					</p>
 				</section>
 

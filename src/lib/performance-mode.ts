@@ -10,8 +10,8 @@ type NavigatorWithHints = Navigator & {
 
 export type PerformanceModePreference = "auto" | "on" | "off";
 
-const STORAGE_KEY = "rpg-notes-performance-mode";
-const CHANGE_EVENT = "rpg-notes-performance-mode-change";
+const STORAGE_KEY = "arkhiveon-performance-mode";
+const CHANGE_EVENT = "arkhiveon-performance-mode-change";
 
 export function getPerformanceModePreference(): PerformanceModePreference {
 	const value = localStorage.getItem(STORAGE_KEY);

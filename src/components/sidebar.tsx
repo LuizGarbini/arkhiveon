@@ -17,7 +17,7 @@ import { SidebarNav } from "./sidebar-nav";
 
 const FREE_CREATION_LIMIT = 20;
 
-const grimoireItems = [
+const arkhiveonItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House },
 	{ to: "/characters", label: "Elenco", Icon: User },
 	{ to: "/sheets", label: "Fichas", Icon: FileText },
@@ -66,7 +66,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-[0_12px_28px_-22px_var(--primary)]">
 							<img
 								src="/favicon.svg"
-								alt="RPG Notes"
+								alt="Arkhiveon"
 								className="h-6 w-6"
 								draggable={false}
 							/>
@@ -79,10 +79,10 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							}`}
 						>
 							<span className="font-display block whitespace-nowrap text-[13px] font-bold tracking-[0.2em] text-foreground">
-								RPG NOTES
+								ARKHIVEON
 							</span>
 							<span className="mt-0.5 block whitespace-nowrap text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
-								Grimório
+								Arkhiveon
 							</span>
 						</div>
 					</div>
@@ -93,9 +93,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 				{/* Nav Sections */}
 				<div className="flex-1 space-y-7 overflow-y-auto px-4 py-2 scrollbar-none">
 					<SidebarNav
-						title="Grimório"
+						title="Arkhiveon"
 						isCollapsed={isCollapsed}
-						items={grimoireItems}
+						items={arkhiveonItems}
 						onItemClick={onItemClick}
 					/>
 					<SidebarNav

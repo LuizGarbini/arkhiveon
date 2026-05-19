@@ -5,7 +5,7 @@ describe("getErrorDetails", () => {
 	it("uses the default copy for an Error with an empty message", () => {
 		const details = getErrorDetails(new Error(""));
 
-		expect(details.title).toBe("Algo quebrou no grimório");
+		expect(details.title).toBe("Algo quebrou no Arkhiveon");
 		expect(details.message).toContain("Não foi possível carregar");
 	});
 
@@ -33,7 +33,9 @@ describe("getErrorDetails", () => {
 	});
 
 	it("keeps aggregate errors readable", () => {
-		const details = getErrorDetails(new AggregateError([new Error("Falha interna")]));
+		const details = getErrorDetails(
+			new AggregateError([new Error("Falha interna")]),
+		);
 
 		expect(details.message).toBe("Falha interna");
 	});
