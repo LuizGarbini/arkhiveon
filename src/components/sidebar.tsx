@@ -98,7 +98,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 					<SidebarNav
 						title="Arkhiveon"
 						isCollapsed={isCollapsed}
-						items={arkhiveonItems}
+						items={grimoireItems}
 						onItemClick={onItemClick}
 					/>
 					<SidebarNav
@@ -170,7 +170,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
 									<span>{usedCreations} usados</span>
-									<span>{isPro ? "Sem limite" : `${FREE_CREATION_LIMIT} limite`}</span>
+									<span>
+										{isPro ? "Sem limite" : `${FREE_CREATION_LIMIT} limite`}
+									</span>
 								</div>
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
 									<div

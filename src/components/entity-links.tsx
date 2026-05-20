@@ -1,5 +1,3 @@
-import { Link2, Plus, Sparkles, X } from "lucide-react";
-import { useMemo, useState } from "react";
 import {
 	addEntityLink,
 	collectEntityText,
@@ -10,6 +8,8 @@ import {
 } from "@/lib/entity-links";
 import type { EntityKind, EntityLink } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
+import { Link2, Plus, Sparkles, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Button } from "./ui/button";
 import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
@@ -52,7 +52,10 @@ export function EntityLinkManager({
 
 	function addSelectedLink() {
 		if (!selectedKey) return;
-		const [entityKind, entityId] = selectedKey.split(":") as [EntityKind, string];
+		const [entityKind, entityId] = selectedKey.split(":") as [
+			EntityKind,
+			string,
+		];
 		onChange(
 			addEntityLink(currentLinks, {
 				entityKind,

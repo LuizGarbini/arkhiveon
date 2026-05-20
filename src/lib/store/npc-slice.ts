@@ -11,10 +11,8 @@ import {
 	pushLog,
 	remoteErrorMessage,
 } from "./helpers";
-import type { Npc, RPGState } from "./types";
-import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
-import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
+import type { Npc, RPGState } from "./types";
 
 export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
 	kind: "npc",
@@ -54,7 +52,9 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 	npcs: [],
 	addNpc: (npc) => {
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return {} as Npc;
 		}
 		const created = generateEntry(npcDefaults, npc) as Npc;
