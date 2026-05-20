@@ -11,9 +11,9 @@ import {
 	User,
 	Users,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { NeatGradient } from "@firecms/neat";
 import { ActivityFeed } from "@/components/activity-feed";
-import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-background";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRPGStore } from "@/lib/store";
@@ -122,21 +122,127 @@ function Dashboard() {
 	);
 	const lastActivity = activityLog[0];
 
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const gradientRef = useRef<NeatGradient | null>(null);
+
+	useEffect(() => {
+		if (!canvasRef.current) return;
+
+		const gradient = new NeatGradient({
+			ref: canvasRef.current,
+			colors: [
+				{ color: "#130437", enabled: true },
+				{ color: "#B34BD0", enabled: true },
+				{ color: "#210751", enabled: true },
+				{ color: "#3511A5", enabled: true },
+				{ color: "#8F3E8D", enabled: false },
+				{ color: "#FF9A9E", enabled: false },
+			],
+			speed: 4,
+			horizontalPressure: 7,
+			verticalPressure: 3,
+			waveFrequencyX: 0,
+			waveFrequencyY: 0,
+			waveAmplitude: 0,
+			shadows: 4,
+			highlights: 0,
+			colorBrightness: 1.95,
+			colorSaturation: 2,
+			wireframe: false,
+			colorBlending: 9,
+			backgroundColor: "#003FFF",
+			backgroundAlpha: 1,
+			grainScale: 6,
+			grainSparsity: 0,
+			grainIntensity: 0.125,
+			grainSpeed: 0,
+			resolution: 1.15,
+			yOffset: 0,
+			yOffsetWaveMultiplier: 4.5,
+			yOffsetColorMultiplier: 4.8,
+			yOffsetFlowMultiplier: 5.2,
+			flowDistortionA: 0.4,
+			flowDistortionB: 10,
+			flowScale: 3.3,
+			flowEase: 0.37,
+			flowEnabled: true,
+			enableProceduralTexture: false,
+			textureVoidLikelihood: 0.06,
+			textureVoidWidthMin: 10,
+			textureVoidWidthMax: 500,
+			textureBandDensity: 0.8,
+			textureColorBlending: 0.06,
+			textureSeed: 333,
+			textureEase: 0.38,
+			proceduralBackgroundColor: "#003FFF",
+			textureShapeTriangles: 20,
+			textureShapeCircles: 15,
+			textureShapeBars: 15,
+			textureShapeSquiggles: 10,
+			domainWarpEnabled: false,
+			domainWarpIntensity: 0,
+			domainWarpScale: 3,
+			vignetteIntensity: 0,
+			vignetteRadius: 0.8,
+			fresnelEnabled: false,
+			fresnelPower: 2,
+			fresnelIntensity: 0.5,
+			fresnelColor: "#FFFFFF",
+			iridescenceEnabled: false,
+			iridescenceIntensity: 0.5,
+			iridescenceSpeed: 1,
+			bloomIntensity: 0,
+			bloomThreshold: 0.7,
+			chromaticAberration: 0,
+		});
+
+		gradientRef.current = gradient;
+
+		return () => {
+			gradient.destroy();
+			gradientRef.current = null;
+		};
+	}, []);
+
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-6 py-10 sm:px-8">
-			<section className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#080b1d] p-7 text-white shadow-xl shadow-black/10 sm:p-10">
-				<ArkhiveonGradientBackground />
-				<div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,rgba(8,11,29,0.88)_0%,rgba(8,11,29,0.62)_46%,rgba(8,11,29,0.34)_100%)]" />
-				<div className="pointer-events-none absolute inset-0 z-[1] ring-1 ring-inset ring-white/10" />
-				<div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
+			<section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 p-7 shadow-xl shadow-black/5 sm:p-10">
+				{/* Neat gradient background */}
+				<canvas
+					ref={canvasRef}
+					style={{
+						position: "absolute",
+						top: 0,
+						left: 0,
+						width: "100%",
+						height: "100%",
+						zIndex: 0,
+					}}
+				/>
+				{/* Cover the Neat watermark in the bottom-right */}
+				<div
+					style={{
+						position: "absolute",
+						bottom: 0,
+						right: 0,
+						width: 120,
+						height: 32,
+						zIndex: 1,
+						background: "inherit",
+						borderRadius: "0 0 1.75rem 0",
+					}}
+				/>
+				{/* Dark overlay for better text contrast */}
+				<div className="absolute inset-0 z-[1] bg-black/35 rounded-[1.75rem]" />
+				<div className="relative z-[2] grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
 					<div className="max-w-3xl">
-						<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">
 							Visão geral
 						</p>
 						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
 							Sua campanha em foco
 						</h1>
-						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/72">
+						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/80">
 							Acompanhe os registros principais, retome a última sessão e acesse
 							as coleções que mantêm o mundo organizado.
 						</p>
@@ -148,7 +254,7 @@ function Dashboard() {
 								</Button>
 							</Link>
 							<Link to="/sessions">
-								<Button variant="outline" className="h-11 gap-2 px-5 font-bold">
+								<Button variant="outline" className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white">
 									<ScrollText className="h-4 w-4" />
 									Registrar sessão
 								</Button>
