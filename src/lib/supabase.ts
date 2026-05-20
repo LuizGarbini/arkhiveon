@@ -77,6 +77,8 @@ export const SUPABASE_TABLES = {
 	lores: "lores",
 	activity: "activity_log",
 	campaigns: "campaigns",
+	memberships: "memberships",
+	invites: "invites",
 	userPlans: "user_plans",
 } as const;
 

@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand";
-import type { Campaign, RPGState } from "./types";
+import type { Campaign, MembershipRole, RPGState } from "./types";
 import { getSupabase } from "../supabase";
 import { SUPABASE_TABLES } from "../supabase";
 
@@ -22,9 +22,20 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 		const supabase = getSupabase();
 		if (!supabase) return;
 
+		// Carregar campanhas das quais o usuário é membro, com role
 		const { data, error } = await supabase
-			.from(SUPABASE_TABLES.campaigns)
-			.select("id,name,description,created_at,updated_at")
+			.from(SUPABASE_TABLES.memberships)
+			.select(`
+				role,
+				campaign:campaigns (
+					id,
+					name,
+					description,
+					owner_id,
+					created_at,
+					updated_at
+				)
+			`)
 			.order("created_at", { ascending: true });
 
 		if (error) {
@@ -32,13 +43,20 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 			return;
 		}
 
-		const campaigns: Campaign[] = (data ?? []).map((row) => ({
-			id: row.id,
-			name: row.name ?? "Sem nome",
-			description: row.description ?? "",
-			createdAt: new Date(row.created_at).getTime(),
-			updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
-		}));
+		const campaigns: Campaign[] = (data ?? [])
+			.filter((row: any) => row.campaign !== null)
+			.map((row: any) => {
+				const c = row.campaign;
+				return {
+					id: c.id,
+					name: c.name ?? "Sem nome",
+					description: c.description ?? "",
+					ownerId: c.owner_id,
+					myRole: row.role as MembershipRole,
+					createdAt: new Date(c.created_at).getTime(),
+					updatedAt: c.updated_at ? new Date(c.updated_at).getTime() : undefined,
+				};
+			});
 
 		set({ campaigns });
 
@@ -58,6 +76,8 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 			id,
 			name,
 			description,
+			ownerId: "", // será preenchido pelo supabase (auth.uid())
+			myRole: "owner",
 			createdAt: Date.now(),
 		};
 
@@ -66,13 +86,25 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 		}));
 
 		if (supabase) {
-			const { error } = await supabase.from(SUPABASE_TABLES.campaigns).insert({
+			// Criar a campanha
+			const { error: campaignError } = await supabase.from(SUPABASE_TABLES.campaigns).insert({
 				id,
 				name,
 				description,
 			});
-			if (error) {
-				console.error("Erro ao criar campanha remotamente:", error);
+			if (campaignError) {
+				console.error("Erro ao criar campanha remotamente:", campaignError);
+			} else {
+				// Criar membership 'owner' para o criador
+				const { error: membershipError } = await supabase
+					.from(SUPABASE_TABLES.memberships)
+					.insert({
+						campaign_id: id,
+						role: "owner",
+					});
+				if (membershipError) {
+					console.error("Erro ao criar membership:", membershipError);
+				}
 			}
 		}
 

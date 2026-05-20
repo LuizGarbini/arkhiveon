@@ -58,6 +58,10 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (set, 
 		}
 		try {
 			const campaignId = get().activeCampaignId;
+			if (!campaignId) {
+				set({ isLoadingRemote: false });
+				return;
+			}
 			const [remote, globalCount] = await Promise.all([
 				loadRemoteState(campaignId),
 				fetchGlobalTotalCount(),

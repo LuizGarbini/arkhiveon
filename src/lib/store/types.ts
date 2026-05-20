@@ -326,12 +326,24 @@ export interface Lore {
 }
 
 // =====================================================
-//  Campanha
+//  Campanha + Memberships
 // =====================================================
+export type MembershipRole = "owner" | "editor" | "viewer";
+
+export interface Membership {
+	id: string;
+	campaignId: string;
+	userId: string;
+	role: MembershipRole;
+	createdAt: number;
+}
+
 export interface Campaign {
 	id: string;
 	name: string;
 	description: string;
+	ownerId: string;
+	myRole?: MembershipRole;
 	createdAt: number;
 	updatedAt?: number;
 }

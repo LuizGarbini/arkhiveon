@@ -122,7 +122,7 @@ export const createCharacterSlice: StateCreator<
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("character", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -141,8 +141,8 @@ export const createCharacterSlice: StateCreator<
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("character", updated),
-				createRemoteActivity(log, get().activeCampaignId),
+				updateRemoteEntity("character", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				characters: state.characters.map((c) => (c.id === id ? updated : c)),
@@ -162,7 +162,7 @@ export const createCharacterSlice: StateCreator<
 				};
 				void Promise.all([
 					deleteRemoteEntity("character", id),
-					createRemoteActivity(log, get().activeCampaignId),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					characters: state.characters.filter((c) => c.id !== id),

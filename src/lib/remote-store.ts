@@ -139,15 +139,13 @@ function entityName(
 function rowFor(
 	kind: RemoteEntityKind,
 	entity: Record<string, unknown>,
-	campaignId?: string | null,
+	campaignId: string,
 ): EntityInsert {
 	const base: Record<string, unknown> = {
 		id: stringValue(entity.id, crypto.randomUUID()),
 		data: toJson(entity),
+		campaign_id: campaignId,
 	};
-	if (campaignId) {
-		base.campaign_id = campaignId;
-	}
 
 	switch (kind) {
 		case "character":
@@ -305,31 +303,24 @@ async function updateEntityRow(
 	}
 }
 
-async function selectEntities(table: EntityTable, campaignId?: string | null): Promise<unknown[]> {
+async function selectEntities(table: EntityTable, campaignId: string): Promise<unknown[]> {
 	const supabase = requireSupabase();
-	let query = supabase
+	const { data, error } = await supabase
 		.from(table)
-		.select("id,data,created_at,updated_at");
-
-	if (campaignId) {
-		query = query.eq("campaign_id", campaignId);
-	}
-
-	const { data, error } = await query.order("updated_at", { ascending: false });
+		.select("id,data,created_at,updated_at")
+		.eq("campaign_id", campaignId)
+		.order("updated_at", { ascending: false });
 	if (error) throw error;
 	return ((data ?? []) as EntityRow[]).map(fromEntityRow);
 }
 
-export async function loadRemoteState(campaignId?: string | null): Promise<RemoteStateSnapshot> {
+export async function loadRemoteState(campaignId: string): Promise<RemoteStateSnapshot> {
 	const supabase = requireSupabase();
 
-	let activityQuery = supabase
+	const activityQuery = supabase
 		.from(SUPABASE_TABLES.activity)
-		.select("id,action,entity_kind,entity_id,entity_name,created_at");
-
-	if (campaignId) {
-		activityQuery = activityQuery.eq("campaign_id", campaignId);
-	}
+		.select("id,action,entity_kind,entity_id,entity_name,created_at")
+		.eq("campaign_id", campaignId);
 
 	const [characters, npcs, sessions, items, locations, lores, activityRows] =
 		await Promise.all([
@@ -362,7 +353,7 @@ export async function loadRemoteState(campaignId?: string | null): Promise<Remot
 export async function createRemoteEntity<T extends { id: string }>(
 	kind: RemoteEntityKind,
 	entity: T,
-	campaignId?: string | null,
+	campaignId: string,
 ): Promise<T> {
 	const row = rowFor(kind, entity as Record<string, unknown>, campaignId);
 	await insertEntityRow(kind, row);
@@ -372,8 +363,9 @@ export async function createRemoteEntity<T extends { id: string }>(
 export async function updateRemoteEntity<T extends { id: string }>(
 	kind: RemoteEntityKind,
 	entity: T,
+	campaignId: string,
 ): Promise<T> {
-	const row = rowFor(kind, entity as Record<string, unknown>);
+	const row = rowFor(kind, entity as Record<string, unknown>, campaignId);
 	await updateEntityRow(kind, entity.id, row);
 	return entity;
 }
@@ -413,7 +405,7 @@ export async function fetchGlobalTotalCount(): Promise<number> {
 
 export async function createRemoteActivity(
 	entry: Omit<RemoteActivityEntry, "id" | "timestamp">,
-	campaignId?: string | null,
+	campaignId: string,
 ): Promise<void> {
 	const supabase = requireSupabase();
 	const row: ActivityInsert = {
@@ -422,9 +414,7 @@ export async function createRemoteActivity(
 		entity_id: entry.entityId,
 		entity_name: entry.entityName,
 	};
-	if (campaignId) {
-		(row as Record<string, unknown>).campaign_id = campaignId;
-	}
+	(row as Record<string, unknown>).campaign_id = campaignId;
 	const { error } = await supabase.from(SUPABASE_TABLES.activity).insert(row);
 	if (error) throw error;
 }

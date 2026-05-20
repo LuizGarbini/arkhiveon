@@ -98,6 +98,76 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			invites: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+					email: string;
+					id: string;
+					invited_by: string;
+					role: string;
+					status: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+					email: string;
+					id?: string;
+					invited_by: string;
+					role?: string;
+					status?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+					email?: string;
+					id?: string;
+					invited_by?: string;
+					role?: string;
+					status?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "invites_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			memberships: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+					id: string;
+					role: string;
+					user_id: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+					id?: string;
+					role?: string;
+					user_id?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+					id?: string;
+					role?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "memberships_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			user_plans: {
 				Row: {
 					created_at: string;

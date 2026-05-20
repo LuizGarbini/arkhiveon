@@ -70,7 +70,7 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("npc", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -89,8 +89,8 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("npc", updated),
-				createRemoteActivity(log, get().activeCampaignId),
+				updateRemoteEntity("npc", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				npcs: state.npcs.map((n) => (n.id === id ? updated : n)),
@@ -110,7 +110,7 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 				};
 				void Promise.all([
 					deleteRemoteEntity("npc", id),
-					createRemoteActivity(log, get().activeCampaignId),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					npcs: state.npcs.filter((n) => n.id !== id),

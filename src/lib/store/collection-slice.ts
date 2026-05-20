@@ -99,7 +99,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("item", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -118,8 +118,8 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("item", updated),
-				createRemoteActivity(log),
+				updateRemoteEntity("item", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				items: state.items.map((i) => (i.id === id ? updated : i)),
@@ -139,7 +139,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				};
 				void Promise.all([
 					deleteRemoteEntity("item", id),
-					createRemoteActivity(log),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					items: state.items.filter((i) => i.id !== id),
@@ -170,7 +170,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("location", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -189,8 +189,8 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("location", updated),
-				createRemoteActivity(log),
+				updateRemoteEntity("location", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				locations: state.locations.map((l) => (l.id === id ? updated : l)),
@@ -210,7 +210,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				};
 				void Promise.all([
 					deleteRemoteEntity("location", id),
-					createRemoteActivity(log),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					locations: state.locations.filter((l) => l.id !== id),
@@ -241,7 +241,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("lore", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -260,8 +260,8 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("lore", updated),
-				createRemoteActivity(log),
+				updateRemoteEntity("lore", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				lores: state.lores.map((l) => (l.id === id ? updated : l)),
@@ -281,7 +281,7 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 				};
 				void Promise.all([
 					deleteRemoteEntity("lore", id),
-					createRemoteActivity(log),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					lores: state.lores.filter((l) => l.id !== id),

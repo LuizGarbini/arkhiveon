@@ -52,7 +52,7 @@ export const createSessionSlice: StateCreator<RPGState, [], [], SessionSlice> = 
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId;
+		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("session", created, campaignId),
 			createRemoteActivity(log, campaignId),
@@ -71,8 +71,8 @@ export const createSessionSlice: StateCreator<RPGState, [], [], SessionSlice> = 
 				entityName: entityNameOf(updated),
 			};
 			void Promise.all([
-				updateRemoteEntity("session", updated),
-				createRemoteActivity(log, get().activeCampaignId),
+				updateRemoteEntity("session", updated, get().activeCampaignId!),
+				createRemoteActivity(log, get().activeCampaignId!),
 			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 			return {
 				sessions: state.sessions.map((s) => (s.id === id ? updated : s)),
@@ -92,7 +92,7 @@ export const createSessionSlice: StateCreator<RPGState, [], [], SessionSlice> = 
 				};
 				void Promise.all([
 					deleteRemoteEntity("session", id),
-					createRemoteActivity(log, get().activeCampaignId),
+					createRemoteActivity(log, get().activeCampaignId!),
 				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
 				return {
 					sessions: state.sessions.filter((s) => s.id !== id),
