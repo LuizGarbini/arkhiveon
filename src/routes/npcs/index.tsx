@@ -22,7 +22,17 @@ function RouteComponent() {
 	const filteredNpcs = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
 		if (!query) return npcs;
-		return npcs.filter((npc) => npc.name.toLowerCase().includes(query));
+		return npcs.filter((npc) =>
+			[
+				npc.name,
+				npc.race,
+				npc.role,
+				npc.kind === "monster" ? "monstro monster criatura ameaça" : "npc",
+			]
+				.join(" ")
+				.toLowerCase()
+				.includes(query),
+		);
 	}, [npcs, deferredSearchQuery]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
@@ -30,11 +40,11 @@ function RouteComponent() {
 	return (
 		<div className="w-full">
 			<PageHeader
-				title="NPCs"
-				description="Aliados, mercadores, vilões e todo coadjuvante do enredo"
+				title="NPCs & Monstros"
+				description="Aliados, mercadores, vilões, criaturas e ameaças do enredo"
 				Icon={Users}
 				iconColor="text-fuchsia-300"
-				eyebrow="Coadjuvantes"
+				eyebrow="Elenco do mestre"
 				count={npcs.length}
 				action={<NpcForm />}
 			/>
@@ -49,8 +59,8 @@ function RouteComponent() {
 					{!isLoading && filteredNpcs.length === 0 && (
 						<EmptyState
 							Icon={Users}
-							title="Nenhum NPC encontrado"
-							description="Adicione personagens secundários para enriquecer o seu mundo."
+							title="Nenhum NPC ou monstro encontrado"
+							description="Crie aliados, coadjuvantes ou criaturas para enriquecer o seu mundo."
 						/>
 					)}
 				</div>

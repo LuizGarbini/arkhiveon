@@ -61,7 +61,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 			...npcs.map((n) => ({
 				id: n.id,
 				title: n.name || "Sem nome",
-				subtitle: n.role || n.race || "NPC",
+				subtitle:
+					n.role || n.race || (n.kind === "monster" ? "Monstro" : "NPC"),
 				type: "npc" as const,
 			})),
 			...sessions.map((s) => ({
@@ -201,7 +202,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 								O que você está procurando?
 							</p>
 							<p className="mt-1 text-xs text-muted-foreground">
-								Pesquise por qualquer registro no seu grimório.
+								Pesquise por qualquer registro no Arkhiveon.
 							</p>
 						</div>
 					) : results.length > 0 ? (

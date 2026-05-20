@@ -1,10 +1,21 @@
 import type { StateCreator } from "zustand";
-import type { Npc, RPGState } from "./types";
-import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
-import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
+import {
+	createRemoteActivity,
+	createRemoteEntity,
+	deleteRemoteEntity,
+	updateRemoteEntity,
+} from "../remote-store";
+import {
+	entityNameOf,
+	generateEntry,
+	pushLog,
+	remoteErrorMessage,
+} from "./helpers";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
+import type { Npc, RPGState } from "./types";
 
 export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
+	kind: "npc",
 	name: "",
 	race: "",
 	role: "",
@@ -29,16 +40,21 @@ export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
 
 export interface NpcSlice {
 	npcs: Npc[];
-	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc;
+	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc | null;
 	updateNpc: (id: string, npc: Partial<Npc>) => void;
 	removeNpc: (id: string) => void;
 }
 
-export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (set, get) => ({
+export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
+	set,
+	get,
+) => ({
 	npcs: [],
 	addNpc: (npc) => {
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return {} as Npc;
 		}
 		const created = generateEntry(npcDefaults, npc) as Npc;

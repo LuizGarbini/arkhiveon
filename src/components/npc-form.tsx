@@ -18,6 +18,7 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "./ui/toast";
 
 const TABS = [
 	{ id: "basic", label: "Básico" },
@@ -34,7 +35,7 @@ export function NpcForm() {
 			trigger={
 				<Button variant="default" size="sm">
 					<Plus className="h-3.5 w-3.5" />
-					Novo NPC
+					Novo NPC/Monstro
 				</Button>
 			}
 		/>
@@ -95,6 +96,7 @@ function NpcFormDialog({
 	const addNpc = useRPGStore((state) => state.addNpc);
 	const updateNpc = useRPGStore((state) => state.updateNpc);
 	const characters = useRPGStore((state) => state.characters);
+	const toast = useToast();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<NpcFormValues>({
@@ -103,6 +105,8 @@ function NpcFormDialog({
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedValues = useWatch({ control });
+	const watchedKind = useWatch({ control, name: "kind" }) ?? "npc";
+	const isMonster = watchedKind === "monster";
 
 	useEffect(() => {
 		if (open) {
@@ -112,8 +116,40 @@ function NpcFormDialog({
 	}, [open, npc, reset]);
 
 	function onSubmit(data: NpcFormValues) {
-		if (isEdit && npc) updateNpc(npc.id, data);
-		else addNpc(data);
+		const normalized = {
+			...data,
+			kind: data.kind ?? "npc",
+			name: data.name.trim(),
+			race: data.race.trim(),
+			role: data.role.trim(),
+			cr: data.cr.trim(),
+			stats: data.stats.trim(),
+			description: data.description.trim(),
+		};
+
+		if (!normalized.name) {
+			toast.error({
+				title: isMonster
+					? "Nome do monstro obrigatório"
+					: "Nome do NPC obrigatório",
+				description: "Informe um nome antes de salvar este registro.",
+			});
+			setTab("basic");
+			return;
+		}
+
+		if (isEdit && npc) updateNpc(npc.id, normalized);
+		else {
+			const created = addNpc(normalized);
+			if (!created) {
+				toast.error({
+					title: "Limite de registros atingido",
+					description:
+						"Remova algum registro ou faça upgrade antes de criar outro.",
+				});
+				return;
+			}
+		}
 		setOpen(false);
 	}
 
@@ -127,10 +163,16 @@ function NpcFormDialog({
 				>
 					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
 						<DialogTitle className="font-display text-lg">
-							{isEdit ? `Editar: ${npc?.name || "NPC"}` : "Novo NPC"}
+							{isEdit
+								? `Editar: ${npc?.name || (isMonster ? "Monstro" : "NPC")}`
+								: isMonster
+									? "Novo Monstro"
+									: "Novo NPC"}
 						</DialogTitle>
 						<DialogDescription>
-							Aliados, inimigos, mercadores — tudo o que dá vida ao mundo.
+							{isMonster
+								? "Criaturas, encontros e ameaças prontas para entrar em cena."
+								: "Aliados, inimigos e mercadores que dão vida ao mundo."}
 						</DialogDescription>
 						<div className="mt-3">
 							<FormTabs tabs={TABS} value={tab} onChange={setTab} />
@@ -140,6 +182,40 @@ function NpcFormDialog({
 					<div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 						{tab === "basic" && (
 							<FormSection title="Identidade">
+								<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/70 bg-background/45 p-1">
+									<button
+										type="button"
+										onClick={() =>
+											setValue("kind", "npc", {
+												shouldDirty: true,
+												shouldValidate: true,
+											})
+										}
+										className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
+											!isMonster
+												? "bg-card text-foreground shadow-sm"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
+									>
+										NPC
+									</button>
+									<button
+										type="button"
+										onClick={() =>
+											setValue("kind", "monster", {
+												shouldDirty: true,
+												shouldValidate: true,
+											})
+										}
+										className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
+											isMonster
+												? "bg-card text-foreground shadow-sm"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
+									>
+										Monstro
+									</button>
+								</div>
 								<ImageUploader
 									value={imageUrl ?? ""}
 									onChange={(url) =>
@@ -152,15 +228,27 @@ function NpcFormDialog({
 								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 									<Field label="Nome">
 										<Input
-											placeholder="Ex: Bob, o Taberneiro"
+											placeholder={
+												isMonster
+													? "Ex: Hidra de Cinzas"
+													: "Ex: Bob, o Taberneiro"
+											}
 											{...register("name", { required: true })}
 										/>
 									</Field>
 									<Field label="Raça">
-										<Input placeholder="Ex: Humano" {...register("race")} />
+										<Input
+											placeholder={isMonster ? "Ex: Aberração" : "Ex: Humano"}
+											{...register("race")}
+										/>
 									</Field>
 									<Field label="Papel / Ocupação">
-										<Input placeholder="Ex: Mercador" {...register("role")} />
+										<Input
+											placeholder={
+												isMonster ? "Ex: Elite, solo, enxame" : "Ex: Mercador"
+											}
+											{...register("role")}
+										/>
 									</Field>
 									<Field label="Localização">
 										<Input
@@ -215,7 +303,11 @@ function NpcFormDialog({
 								<Field label="Descrição">
 									<Textarea
 										rows={3}
-										placeholder="Quem é este NPC? Como o grupo o conheceu?"
+										placeholder={
+											isMonster
+												? "Que tipo de ameaça ele representa? Onde aparece?"
+												: "Quem é este NPC? Como o grupo o conheceu?"
+										}
 										{...register("description")}
 									/>
 								</Field>
@@ -276,7 +368,11 @@ function NpcFormDialog({
 						{tab === "stats" && (
 							<FormSection
 								title="Bloco de Stats"
-								description="Cole ou descreva o stat block do NPC se for relevante para combate."
+								description={
+									isMonster
+										? "Cole ou descreva o stat block do monstro para usar em combate."
+										: "Cole ou descreva o stat block do NPC se for relevante para combate."
+								}
 							>
 								<Field label="Stats / Atributos">
 									<Textarea
@@ -312,7 +408,7 @@ function NpcFormDialog({
 								className="h-3.5 w-3.5 rounded border-border accent-primary"
 								{...register("isAlive")}
 							/>
-							NPC está vivo
+							{isMonster ? "Monstro está vivo" : "NPC está vivo"}
 						</label>
 						<div className="flex items-center gap-2">
 							<Button
@@ -324,7 +420,11 @@ function NpcFormDialog({
 								Cancelar
 							</Button>
 							<Button type="submit" size="sm">
-								{isEdit ? "Salvar alterações" : "Salvar NPC"}
+								{isEdit
+									? "Salvar alterações"
+									: isMonster
+										? "Salvar monstro"
+										: "Salvar NPC"}
 							</Button>
 						</div>
 					</div>

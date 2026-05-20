@@ -88,6 +88,9 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 
 	const disposition =
 		dispositionStyles[npc.disposition] ?? dispositionStyles.neutral;
+	const isMonster = npc.kind === "monster";
+	const kindLabel = isMonster ? "Monstro" : "NPC";
+	const SubtitleIcon = isMonster ? Skull : User;
 
 	return (
 		<div className="flex flex-col">
@@ -96,7 +99,7 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 					onEdit={() => setEditOpen(true)}
 					onDelete={() => removeNpc(npc.id)}
 					entityName={npc.name || "Sem nome"}
-					entityKindLabel="NPC"
+					entityKindLabel={kindLabel}
 				/>
 
 				<div className="flex items-start gap-3">
@@ -125,10 +128,13 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 							{npc.name || "Sem nome"}
 						</h3>
 						<p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-							<User className="h-2.5 w-2.5" /> {npc.race || "?"}{" "}
+							<SubtitleIcon className="h-2.5 w-2.5" /> {npc.race || kindLabel}{" "}
 							{npc.role && <>· {npc.role}</>}
 						</p>
 						<div className="mt-1.5 flex flex-wrap items-center gap-1">
+							<span className="rounded bg-background/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+								{kindLabel}
+							</span>
 							<span
 								className={`rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ring-1 ${disposition.tone}`}
 							>

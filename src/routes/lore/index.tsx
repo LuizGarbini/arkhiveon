@@ -31,10 +31,10 @@ function RouteComponent() {
 		<div className="w-full">
 			<PageHeader
 				title="Lore & Notas"
-				description="O grimório de histórias, mitos e conhecimentos ocultos"
+				description="Arquivo de histórias, mitos e conhecimentos ocultos"
 				Icon={BookOpen}
 				iconColor="text-indigo-300"
-				eyebrow="Grimório"
+				eyebrow="Arkhiveon"
 				count={lores.length}
 				action={<LoreForm />}
 			/>

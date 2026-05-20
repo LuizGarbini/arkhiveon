@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
+import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-background";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRPGStore } from "@/lib/store";
@@ -123,18 +124,19 @@ function Dashboard() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-6 py-10 sm:px-8">
-			<section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/90 to-primary-muted/30 p-7 shadow-xl shadow-black/5 sm:p-10">
-				<div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-				<div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-fuchsia-500/5 blur-3xl" />
-				<div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
+			<section className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#080b1d] p-7 text-white shadow-xl shadow-black/10 sm:p-10">
+				<ArkhiveonGradientBackground />
+				<div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,rgba(8,11,29,0.88)_0%,rgba(8,11,29,0.62)_46%,rgba(8,11,29,0.34)_100%)]" />
+				<div className="pointer-events-none absolute inset-0 z-[1] ring-1 ring-inset ring-white/10" />
+				<div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
 					<div className="max-w-3xl">
 						<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">
 							Visão geral
 						</p>
-						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-foreground sm:text-5xl">
+						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
 							Sua campanha em foco
 						</h1>
-						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-muted-foreground">
+						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/72">
 							Acompanhe os registros principais, retome a última sessão e acesse
 							as coleções que mantêm o mundo organizado.
 						</p>
@@ -158,7 +160,7 @@ function Dashboard() {
 						<MetricCard
 							label="Registros"
 							value={totalEntries}
-							description="entradas no grimório"
+							description="entradas no Arkhiveon"
 							Icon={BookOpen}
 							isLoading={isLoading}
 						/>

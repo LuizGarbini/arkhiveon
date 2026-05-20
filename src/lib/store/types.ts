@@ -211,6 +211,7 @@ export interface Npc {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
+	kind: "npc" | "monster";
 	name: string;
 	race: string;
 	role: string;
@@ -355,12 +356,17 @@ export interface RPGState {
 	activeCampaignId: string | null;
 	loadCampaigns: () => Promise<void>;
 	createCampaign: (name: string, description?: string) => Promise<Campaign>;
-	updateCampaign: (id: string, data: Partial<Pick<Campaign, "name" | "description">>) => void;
+	updateCampaign: (
+		id: string,
+		data: Partial<Pick<Campaign, "name" | "description">>,
+	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
 
 	characters: Character[];
-	addCharacter: (character: Partial<Omit<Character, "id" | "createdAt">>) => Character;
+	addCharacter: (
+		character: Partial<Omit<Character, "id" | "createdAt">>,
+	) => Character;
 	updateCharacter: (id: string, character: Partial<Character>) => void;
 	removeCharacter: (id: string) => void;
 	transferCharacterToCampaign: (
@@ -369,7 +375,7 @@ export interface RPGState {
 	) => Promise<Character | null>;
 
 	npcs: Npc[];
-	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc;
+	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc | null;
 	updateNpc: (id: string, npc: Partial<Npc>) => void;
 	removeNpc: (id: string) => void;
 
@@ -384,7 +390,9 @@ export interface RPGState {
 	removeItem: (id: string) => void;
 
 	locations: GameLocation[];
-	addLocation: (location: Partial<Omit<GameLocation, "id" | "createdAt">>) => GameLocation;
+	addLocation: (
+		location: Partial<Omit<GameLocation, "id" | "createdAt">>,
+	) => GameLocation;
 	updateLocation: (id: string, location: Partial<GameLocation>) => void;
 	removeLocation: (id: string) => void;
 
@@ -401,12 +409,29 @@ export interface RPGState {
 	spotifyJamActive: boolean;
 	spotifyToken: string | null;
 	spotifyUser: { name: string; email?: string; image?: string } | null;
-	currentTrack: { title: string; artist: string; albumArt?: string; isPlaying: boolean } | null;
+	currentTrack: {
+		title: string;
+		artist: string;
+		albumArt?: string;
+		isPlaying: boolean;
+	} | null;
 	jamParticipants: { id: string; name: string; image?: string }[];
 	setSpotifyJam: (link: string | null) => void;
 	clearSpotifyJam: () => void;
-	setSpotifyAuth: (token: string, user?: { name: string; email?: string; image?: string }) => void;
+	setSpotifyAuth: (
+		token: string,
+		user?: { name: string; email?: string; image?: string },
+	) => void;
 	logoutSpotify: () => void;
-	setCurrentTrack: (track: { title: string; artist: string; albumArt?: string; isPlaying: boolean } | null) => void;
-	setJamParticipants: (participants: { id: string; name: string; image?: string }[]) => void;
+	setCurrentTrack: (
+		track: {
+			title: string;
+			artist: string;
+			albumArt?: string;
+			isPlaying: boolean;
+		} | null,
+	) => void;
+	setJamParticipants: (
+		participants: { id: string; name: string; image?: string }[],
+	) => void;
 }

@@ -246,7 +246,7 @@ function CharacterSheetPdfDocument({
 		.sort((a, b) => a.order - b.order);
 	const theme =
 		options.variant === "blackAndWhite" ? blackAndWhiteTheme : colorTheme;
-	const appName = "RPG Notes";
+	const appName = "Arkhiveon";
 
 	return (
 		<Document title={`${character.characterName || "Ficha"} | ${appName}`}>

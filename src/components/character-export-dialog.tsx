@@ -125,7 +125,7 @@ export function CharacterExportDialog({
 						<span>
 							<span className="flex items-center gap-2 font-semibold text-foreground">
 								<Stamp className="h-4 w-4 text-primary" />
-								Incluir marca do RPG Notes
+								Incluir marca do Arkhiveon
 							</span>
 							<span className="mt-1 block text-muted-foreground">
 								A marca fica discreta no cabecalho e no rodape. Pode ser

@@ -1,4 +1,4 @@
-# 🧙‍♂️ RPG Notes
+# 🧙‍♂️ Arkhiveon
 
 Uma aplicação moderna para gerenciamento de anotações de RPG, criada para ajudar mestres e jogadores a organizarem personagens, sessões, lore, itens, mapas e tudo mais que faz parte de uma boa campanha.
 
@@ -14,7 +14,7 @@ Desenvolvida com foco em velocidade, usabilidade e arquitetura escalável.
 
 ## ✨ Sobre o Projeto
 
-O RPG Notes funciona como um grimório digital, permitindo que você registre e organize facilmente todas as informações da sua campanha de RPG:
+O Arkhiveon funciona como um arquivo digital, permitindo que você registre e organize facilmente todas as informações da sua campanha de RPG:
 
 - 📓 Sessões e resumos
 - 👥 Personagens e NPCs

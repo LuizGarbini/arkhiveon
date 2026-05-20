@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { useToast } from "@/components/ui/toast";
 import { getSpotifyToken, getUserProfile } from "@/lib/spotify";
 import { useRPGStore } from "@/lib/store";
-import { useToast } from "@/components/ui/toast";
 
 export const Route = createFileRoute("/spotify-callback")({
 	component: SpotifyCallback,
@@ -38,13 +38,14 @@ function SpotifyCallback() {
 			void navigate({ to: "/dashboard" });
 			return;
 		}
+		const authCode = code;
 
 		async function handleAuth() {
 			if (processedRef.current) return;
 			processedRef.current = true;
 
 			try {
-				const data = await getSpotifyToken(code!);
+				const data = await getSpotifyToken(authCode);
 				const profile = await getUserProfile(data.access_token);
 
 				setSpotifyAuth(data.access_token, {
@@ -55,25 +56,27 @@ function SpotifyCallback() {
 
 				window.localStorage.removeItem("spotify_auth_state");
 				window.localStorage.removeItem("spotify_code_verifier");
-				
+
 				toast.success({
 					title: "Spotify Conectado",
 					description: `Bem-vindo, ${profile.display_name}!`,
 				});
-				
+
 				void navigate({ to: "/dashboard" });
-			} catch (error: any) {
+			} catch (error: unknown) {
 				console.error("Erro no fluxo de auth Spotify:", error);
-				
-				const isForbidden = error.message?.includes("403");
-				
+
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				const isForbidden = errorMessage.includes("403");
+
 				toast.error({
 					title: "Erro na Conexão",
-					description: isForbidden 
+					description: isForbidden
 						? "O Spotify negou o acesso. Verifique se sua conta está na whitelist do desenvolvedor."
 						: "Não foi possível sincronizar com o Spotify.",
 				});
-				
+
 				void navigate({ to: "/dashboard" });
 			}
 		}
@@ -85,7 +88,7 @@ function SpotifyCallback() {
 			<div className="flex flex-col items-center gap-4">
 				<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 				<p className="text-sm font-medium text-muted-foreground">
-					Sincronizando com seu Grimório Musical...
+					Sincronizando com o Arkhiveon Musical...
 				</p>
 			</div>
 		</div>

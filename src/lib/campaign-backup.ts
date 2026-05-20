@@ -2,19 +2,25 @@ import type { RPGState } from "./store";
 
 type BackupState = Pick<
 	RPGState,
-	"characters" | "npcs" | "sessions" | "items" | "locations" | "lores" | "activityLog"
+	| "characters"
+	| "npcs"
+	| "sessions"
+	| "items"
+	| "locations"
+	| "lores"
+	| "activityLog"
 >;
 
 export interface CampaignBackup extends BackupState {
 	version: 1;
 	exportedAt: string;
-	app: "rpg-notes";
+	app: "arkhiveon";
 }
 
 export function createCampaignBackup(state: BackupState): CampaignBackup {
 	return {
 		version: 1,
-		app: "rpg-notes",
+		app: "arkhiveon",
 		exportedAt: new Date().toISOString(),
 		characters: state.characters,
 		npcs: state.npcs,
@@ -35,7 +41,7 @@ export function downloadCampaignBackup(state: BackupState) {
 	const anchor = document.createElement("a");
 	const date = backup.exportedAt.slice(0, 10);
 	anchor.href = url;
-	anchor.download = `rpg-notes-backup-${date}.json`;
+	anchor.download = `arkhiveon-backup-${date}.json`;
 	document.body.appendChild(anchor);
 	anchor.click();
 	anchor.remove();
