@@ -19,18 +19,18 @@ import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
 const grimoireItems = [
-	{ to: "/dashboard", label: "Dashboard", Icon: House },
-	{ to: "/characters", label: "Elenco", Icon: User },
-	{ to: "/sheets", label: "Fichas", Icon: FileText },
-	{ to: "/family-tree", label: "Árvore", Icon: GitFork },
-	{ to: "/npcs", label: "NPCs", Icon: Users },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText },
+	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
+	{ to: "/characters", label: "Elenco", Icon: User, shortcut: "Alt+2" },
+	{ to: "/sheets", label: "Fichas", Icon: FileText, shortcut: "Alt+3" },
+	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+4" },
+	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+6" },
 ];
 
 const worldItems = [
-	{ to: "/items", label: "Itens", Icon: Package },
-	{ to: "/locations", label: "Locais", Icon: MapIcon },
-	{ to: "/lore", label: "Lore", Icon: BookOpen },
+	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+7" },
+	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+8" },
+	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+9" },
 ];
 
 const systemItems = [

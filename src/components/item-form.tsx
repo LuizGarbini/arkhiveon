@@ -25,7 +25,12 @@ export function ItemForm() {
 	return (
 		<ItemFormDialog
 			trigger={
-				<Button variant="default" size="sm">
+				<Button
+					variant="default"
+					size="sm"
+					aria-keyshortcuts="Alt+N"
+					data-shortcut-action="new"
+				>
 					<Plus className="h-3.5 w-3.5" />
 					Novo Item
 				</Button>

@@ -4,6 +4,7 @@
 
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || "";
 const CONFIGURED_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || "";
+const SPOTIFY_REDIRECT_URI_STORAGE_KEY = "spotify_redirect_uri";
 
 function getSpotifyRedirectUri() {
 	if (typeof window === "undefined") {
@@ -11,15 +12,15 @@ function getSpotifyRedirectUri() {
 	}
 
 	const currentOriginRedirect = `${window.location.origin}/spotify-callback`;
-	if (CONFIGURED_REDIRECT_URI) {
-		return CONFIGURED_REDIRECT_URI;
-	}
-
 	const isLocalDev =
 		window.location.hostname === "localhost" ||
 		window.location.hostname === "127.0.0.1";
 
-	return isLocalDev ? currentOriginRedirect : "/spotify-callback";
+	if (isLocalDev) {
+		return currentOriginRedirect;
+	}
+
+	return CONFIGURED_REDIRECT_URI || currentOriginRedirect;
 }
 
 /**
@@ -73,6 +74,8 @@ export async function redirectToSpotifyAuth() {
 
 	const authUrl = new URL("https://accounts.spotify.com/authorize");
 	const redirectUri = getSpotifyRedirectUri();
+	window.localStorage.setItem(SPOTIFY_REDIRECT_URI_STORAGE_KEY, redirectUri);
+
 	const params = {
 		response_type: "code",
 		client_id: SPOTIFY_CLIENT_ID,
@@ -92,7 +95,9 @@ export async function redirectToSpotifyAuth() {
  */
 export async function getSpotifyToken(code: string): Promise<any> {
 	const verifier = window.localStorage.getItem("spotify_code_verifier");
-	const redirectUri = getSpotifyRedirectUri();
+	const redirectUri =
+		window.localStorage.getItem(SPOTIFY_REDIRECT_URI_STORAGE_KEY) ||
+		getSpotifyRedirectUri();
 
 	const params = new URLSearchParams({
 		client_id: SPOTIFY_CLIENT_ID,
@@ -141,9 +146,11 @@ export async function getUserProfile(accessToken: string) {
 		} catch (e) {
 			errorDetails = "Não foi possível ler o corpo do erro.";
 		}
-		
+
 		console.error(`Erro Spotify (${response.status}):`, errorDetails);
-		throw new Error(`Erro ao buscar perfil (${response.status}): ${errorDetails}`);
+		throw new Error(
+			`Erro ao buscar perfil (${response.status}): ${errorDetails}`,
+		);
 	}
 
 	return response.json();

@@ -58,6 +58,7 @@ function RootContent() {
 
 function ProtectedLayout() {
 	const navigate = useNavigate();
+	const mainContentId = useId();
 	const { loading, session, plan } = useAuth();
 	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
 	const setupRealtime = useRPGStore((s) => s.setupRealtime);
@@ -139,6 +140,12 @@ function ProtectedLayout() {
 
 	return (
 		<div className="relative flex h-screen overflow-hidden bg-background sm:gap-3 sm:p-3">
+			<a
+				href={`#${mainContentId}`}
+				className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[300] focus:rounded-lg focus:border focus:border-primary/30 focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:font-bold focus:text-primary focus:shadow-lg"
+			>
+				Pular para o conteúdo
+			</a>
 			{/* Mobile Sidebar Overlay */}
 			{isSidebarOpen && (
 				<button
@@ -172,7 +179,13 @@ function ProtectedLayout() {
 					isSidebarOpen={isSidebarOpen}
 					onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
 				/>
-				<main className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden bg-background scrollbar-none">
+				<main
+					id={mainContentId}
+					tabIndex={-1}
+					aria-label="Conteúdo principal"
+					data-shortcut-target="main-content"
+					className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden bg-background scrollbar-none focus:outline-none"
+				>
 					{syncError && !isLimitError && <SyncErrorBanner error={syncError} />}
 					<Outlet />
 				</main>

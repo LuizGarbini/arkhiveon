@@ -13,12 +13,18 @@ import {
 	useCallback,
 	useDeferredValue,
 	useEffect,
+	useId,
 	useMemo,
 	useState,
 } from "react";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from "./ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "./ui/dialog";
 
 interface GlobalSearchProps {
 	open: boolean;
@@ -37,6 +43,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 	const [query, setQuery] = useState("");
 	const deferredQuery = useDeferredValue(query);
 	const [selectedIndex, setSelectedIndex] = useState(0);
+	const resultsId = useId();
 
 	const characters = useRPGStore((s) => s.characters);
 	const npcs = useRPGStore((s) => s.npcs);
@@ -173,10 +180,24 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 				showCloseButton={false}
 				className="max-w-2xl overflow-hidden p-0 shadow-2xl"
 			>
+				<DialogTitle className="sr-only">Pesquisa global</DialogTitle>
+				<DialogDescription className="sr-only">
+					Pesquise e abra registros da campanha.
+				</DialogDescription>
 				<div className="relative flex items-center border-b border-border/50 px-4 py-3.5">
 					<Search className="h-5 w-5 text-muted-foreground" />
 					<input
 						autoFocus
+						role="combobox"
+						aria-label="Pesquisar no Arkhiveon"
+						aria-controls={resultsId}
+						aria-expanded={results.length > 0}
+						aria-autocomplete="list"
+						aria-activedescendant={
+							results[selectedIndex]
+								? `${resultsId}-${results[selectedIndex].type}-${results[selectedIndex].id}`
+								: undefined
+						}
 						className="ml-3 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
 						placeholder="Pesquisar personagens, itens, lores..."
 						value={query}
@@ -192,7 +213,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 					</div>
 				</div>
 
-				<div className="max-h-[400px] overflow-y-auto p-2">
+				<div
+					id={resultsId}
+					role="listbox"
+					aria-label="Resultados da pesquisa"
+					className="max-h-[400px] overflow-y-auto p-2"
+				>
 					{query.trim() === "" ? (
 						<div className="flex flex-col items-center justify-center py-10 text-center">
 							<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -213,7 +239,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 									<button
 										type="button"
 										key={`${result.type}-${result.id}`}
+										id={`${resultsId}-${result.type}-${result.id}`}
+										role="option"
+										aria-selected={index === selectedIndex}
 										onClick={() => handleSelect(result)}
+										onMouseEnter={() => setSelectedIndex(index)}
 										className={cn(
 											"flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
 											index === selectedIndex

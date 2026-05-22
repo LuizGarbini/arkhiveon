@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Shield, Sparkles, User, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 import {
 	abilityModifier,
 	type Character,
@@ -20,6 +21,7 @@ const abilitySkeletonKeys = ["str", "dex", "con", "int", "wis", "cha"];
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
 	const navigate = useNavigate();
+	const toast = useToast();
 
 	if (isLoading || !character) {
 		return (
@@ -52,20 +54,35 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 		);
 	}
 
-	const hpPercent = character.healthMax
-		? Math.min(100, Math.round((character.health / character.healthMax) * 100))
+	const currentCharacter = character;
+	const hpPercent = currentCharacter.healthMax
+		? Math.min(
+				100,
+				Math.round(
+					(currentCharacter.health / currentCharacter.healthMax) * 100,
+				),
+			)
 		: 0;
 
 	const abilities = [
-		{ label: "FOR", value: character.strength },
-		{ label: "DES", value: character.dexterity },
-		{ label: "CON", value: character.constitution },
-		{ label: "INT", value: character.intelligence },
-		{ label: "SAB", value: character.wisdom },
-		{ label: "CAR", value: character.charisma },
+		{ label: "FOR", value: currentCharacter.strength },
+		{ label: "DES", value: currentCharacter.dexterity },
+		{ label: "CON", value: currentCharacter.constitution },
+		{ label: "INT", value: currentCharacter.intelligence },
+		{ label: "SAB", value: currentCharacter.wisdom },
+		{ label: "CAR", value: currentCharacter.charisma },
 	];
 
-	const hasImage = !!character.imageUrl;
+	const hasImage = !!currentCharacter.imageUrl;
+	const characterName = currentCharacter.characterName || "Sem nome";
+
+	function handleDeleteCharacter() {
+		removeCharacter(currentCharacter.id);
+		toast.success({
+			title: "Personagem excluído com sucesso",
+			description: `${characterName} foi removido da campanha.`,
+		});
+	}
 
 	return (
 		<Link
@@ -80,8 +97,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						params: { characterId: character.id },
 					})
 				}
-				onDelete={() => removeCharacter(character.id)}
-				entityName={character.characterName || "Sem nome"}
+				onDelete={handleDeleteCharacter}
+				entityName={characterName}
 				entityKindLabel="personagem"
 			/>
 

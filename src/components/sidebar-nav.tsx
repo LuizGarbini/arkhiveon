@@ -9,6 +9,7 @@ interface SidebarNavProps {
 		label: string;
 		Icon: LucideIcon;
 		exact?: boolean;
+		shortcut?: string;
 	}[];
 	onItemClick?: () => void;
 }
@@ -33,10 +34,11 @@ export function SidebarNav({
 				</div>
 			)}
 			<div className="space-y-1">
-				{items.map(({ to, label, Icon, exact }) => (
+				{items.map(({ to, label, Icon, exact, shortcut }) => (
 					<Link
 						key={to}
 						to={to}
+						aria-keyshortcuts={shortcut}
 						onClick={onItemClick}
 						activeOptions={{ exact: exact ?? to === "/dashboard" }}
 						activeProps={{
