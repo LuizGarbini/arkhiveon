@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Home, RefreshCcw } from "lucide-react";
 import { useId } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_TITLE = "Algo quebrou no Arkhiveon";
 const DEFAULT_MESSAGE =
@@ -52,7 +53,7 @@ export function GlobalError({ error, reset }: GlobalErrorProps) {
 				<div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
 					<Button
 						type="button"
-						className="gap-2 px-5 font-bold sm:min-w-44"
+						className="w-full gap-2 px-5 font-bold sm:w-auto sm:min-w-44"
 						onClick={() => {
 							if (reset) {
 								reset();
@@ -65,14 +66,15 @@ export function GlobalError({ error, reset }: GlobalErrorProps) {
 						<RefreshCcw className="h-4 w-4" />
 						Tentar novamente
 					</Button>
-					<Link to="/">
-						<Button
-							variant="outline"
-							className="w-full gap-2 px-5 font-bold sm:min-w-32"
-						>
-							<Home className="h-4 w-4" />
-							Início
-						</Button>
+					<Link
+						to="/"
+						className={cn(
+							buttonVariants({ variant: "outline" }),
+							"w-full gap-2 px-5 font-bold sm:w-auto sm:min-w-32",
+						)}
+					>
+						<Home className="h-4 w-4" />
+						Início
 					</Link>
 				</div>
 			</section>

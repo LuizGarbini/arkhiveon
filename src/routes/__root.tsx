@@ -1,18 +1,28 @@
 import {
 	createRootRoute,
+	Link,
 	Outlet,
 	useLocation,
 	useNavigate,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import {
+	AlertTriangle,
+	ArrowUpRight,
+	CheckCircle2,
+	Crown,
+	X,
+} from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { GlobalError } from "@/components/global-error";
 import { NotFound } from "@/components/not-found";
 import { Sidebar } from "@/components/sidebar";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { usePerformanceMode } from "@/lib/performance-mode";
 import { useRPGStore } from "@/lib/store";
+import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { cn } from "@/lib/utils";
 
 export const Route = createRootRoute({
@@ -57,11 +67,24 @@ function ProtectedLayout() {
 	const syncError = useRPGStore((s) => s.syncError);
 	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [dismissedLimitError, setDismissedLimitError] = useState<string | null>(
+		null,
+	);
+	const isLimitError = Boolean(syncError && isCreationLimitError(syncError));
+	const showLimitDialog = Boolean(
+		syncError && isLimitError && dismissedLimitError !== syncError,
+	);
 
 	// Sincroniza o plano do Auth Context → Zustand Store
 	useEffect(() => {
 		setUserPlan(plan);
 	}, [plan, setUserPlan]);
+
+	useEffect(() => {
+		if (!syncError || !isCreationLimitError(syncError)) {
+			setDismissedLimitError(null);
+		}
+	}, [syncError]);
 
 	useEffect(() => {
 		if (loading) return;
@@ -150,14 +173,124 @@ function ProtectedLayout() {
 					onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
 				/>
 				<main className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden bg-background scrollbar-none">
-					{syncError && (
-						<div className="mx-4 mt-4 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-[12px] font-medium text-destructive sm:mx-6">
-							Falha ao sincronizar: {syncError}
-						</div>
-					)}
+					{syncError && !isLimitError && <SyncErrorBanner error={syncError} />}
 					<Outlet />
 				</main>
 			</div>
+			{showLimitDialog && (
+				<UpgradeLimitDialog
+					onDismiss={() => {
+						if (syncError) {
+							setDismissedLimitError(syncError);
+						}
+					}}
+				/>
+			)}
 		</div>
 	);
+}
+
+function UpgradeLimitDialog({ onDismiss }: { onDismiss: () => void }) {
+	const titleId = useId();
+	const descriptionId = useId();
+
+	return (
+		<div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-sm">
+			<div
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={titleId}
+				aria-describedby={descriptionId}
+				className="relative w-full max-w-[460px] overflow-hidden rounded-2xl border border-border/70 bg-card text-foreground shadow-2xl shadow-black/20"
+			>
+				<button
+					type="button"
+					aria-label="Fechar aviso de upgrade"
+					className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					onClick={onDismiss}
+				>
+					<X className="h-4 w-4" />
+				</button>
+
+				<div className="px-6 pb-5 pt-6">
+					<div className="flex items-start gap-4 pr-8">
+						<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+							<Crown className="h-5 w-5" />
+						</div>
+						<div className="min-w-0">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+								Plano Free
+							</p>
+							<h2
+								id={titleId}
+								className="font-display mt-1 text-xl font-bold leading-tight tracking-tight text-foreground"
+							>
+								Limite de criações atingido
+							</h2>
+							<p
+								id={descriptionId}
+								className="mt-2 text-[13px] leading-relaxed text-muted-foreground"
+							>
+								Você usou os {FREE_CREATION_LIMIT} registros do plano gratuito.
+								Com o Pro, seu grimório continua crescendo sem travar sua
+								sessão.
+							</p>
+						</div>
+					</div>
+
+					<div className="mt-5 grid gap-2 rounded-xl border border-border/70 bg-background/55 p-3">
+						<div className="flex items-center gap-2 text-[12px] font-medium">
+							<CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+							<span>Crie personagens, fichas, NPCs e notas sem limite.</span>
+						</div>
+						<div className="flex items-center gap-2 text-[12px] font-medium">
+							<CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+							<span>Mantenha suas campanhas e anotações sincronizadas.</span>
+						</div>
+					</div>
+				</div>
+
+				<div className="flex flex-col-reverse gap-2 border-t border-border/70 bg-background/50 px-6 py-4 sm:flex-row sm:justify-end">
+					<Button
+						type="button"
+						variant="ghost"
+						className="sm:min-w-28"
+						onClick={onDismiss}
+					>
+						Agora não
+					</Button>
+					<Link
+						to="/billing"
+						onClick={onDismiss}
+						className={cn(
+							buttonVariants({ variant: "default" }),
+							"h-10 gap-2 px-4 font-bold sm:min-w-36",
+						)}
+					>
+						Ver plano Pro
+						<ArrowUpRight className="h-4 w-4" />
+					</Link>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function SyncErrorBanner({ error }: { error: string }) {
+	return (
+		<div
+			role="alert"
+			className="mx-4 mt-4 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-[12px] font-medium text-destructive sm:mx-6"
+		>
+			<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+			<div>
+				<p className="font-bold">Falha ao sincronizar</p>
+				<p className="mt-0.5 leading-relaxed">{error}</p>
+			</div>
+		</div>
+	);
+}
+
+function isCreationLimitError(error: string): boolean {
+	return /limite de registros atingido/i.test(error);
 }
