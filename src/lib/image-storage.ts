@@ -169,6 +169,10 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 		const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp" });
 
 		// 2. Chama a Edge Function para pegar a URL de Upload temporária
+		if (!supabase) {
+			throw new Error("Supabase não configurado. Impossível fazer upload da imagem.");
+		}
+		
 		const { data, error } = await supabase.functions.invoke("r2-upload", {
 			body: {
 				fileName: webpFile.name,
