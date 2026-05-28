@@ -109,7 +109,7 @@ ALTER TABLE public.activity_log ALTER COLUMN created_by SET NOT NULL, ALTER COLU
 -- Associar entidades órfãs (sem campaign_id) à primeira campanha do dono
 
 -- Primeiro, garante que todos os usuários que têm alguma entidade tenham pelo menos uma campanha
-INSERT INTO public.campaigns (owner_id, title, description)
+INSERT INTO public.campaigns (owner_id, name, description)
 SELECT DISTINCT user_id, 'Campanha Automática', 'Criada automaticamente para recuperar seus itens.'
 FROM (
     SELECT user_id FROM public.characters WHERE campaign_id IS NULL
