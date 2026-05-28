@@ -3,6 +3,7 @@ import {
 	ArrowLeft,
 	ArrowRightLeft,
 	BookOpen,
+	Camera,
 	Download,
 	Edit,
 	Eye,
@@ -24,6 +25,7 @@ import {
 	sanitizeCharacterFormValues,
 } from "@/components/character-sheet-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
+import { ImageUploader } from "@/components/image-uploader";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -80,6 +82,7 @@ function CharacterSheetPage() {
 	const [editingModule, setEditingModule] = useState<SheetModuleConfig | null>(
 		null,
 	);
+	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 	const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
 
@@ -196,6 +199,14 @@ function CharacterSheetPage() {
 								) : (
 									<User className="h-7 w-7 text-primary/40" strokeWidth={1.4} />
 								)}
+								<button
+									type="button"
+									onClick={() => setIsImageDialogOpen(true)}
+									className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+									aria-label="Editar imagem da ficha"
+								>
+									<Camera className="h-5 w-5" />
+								</button>
 							</div>
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -241,6 +252,15 @@ function CharacterSheetPage() {
 								</Button>
 							</>
 						)}
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setIsImageDialogOpen(true)}
+							className="gap-2"
+						>
+							<Camera className="h-4 w-4" />
+							Imagem
+						</Button>
 						<Button
 							type="button"
 							variant="outline"
@@ -345,6 +365,14 @@ function CharacterSheetPage() {
 					setEditingModule(null);
 				}}
 			/>
+			<CharacterImageDialog
+				character={currentCharacter}
+				open={isImageDialogOpen}
+				onOpenChange={setIsImageDialogOpen}
+				onChange={(imageUrl) =>
+					updateCharacter(currentCharacter.id, { imageUrl })
+				}
+			/>
 			<CharacterTransferDialog
 				character={currentCharacter}
 				open={isTransferDialogOpen}
@@ -356,6 +384,48 @@ function CharacterSheetPage() {
 				onOpenChange={setIsExportDialogOpen}
 			/>
 		</div>
+	);
+}
+
+function CharacterImageDialog({
+	character,
+	open,
+	onOpenChange,
+	onChange,
+}: {
+	character: Character;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onChange: (imageUrl: string) => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-lg!">
+				<DialogHeader>
+					<DialogTitle className="font-display text-xl">
+						Editar imagem da ficha
+					</DialogTitle>
+					<DialogDescription>
+						Troque ou remova o avatar usado no cabeçalho, nos cards e na
+						exportação em PDF.
+					</DialogDescription>
+				</DialogHeader>
+
+				<ImageUploader
+					value={character.imageUrl ?? ""}
+					onChange={onChange}
+					label="Avatar do personagem"
+					folder="characters"
+					size="lg"
+				/>
+
+				<DialogFooter>
+					<Button type="button" onClick={() => onOpenChange(false)}>
+						Concluir
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
