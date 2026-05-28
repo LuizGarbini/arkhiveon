@@ -92,7 +92,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							</div>
 							<div
 								className={cn(
-									"flex min-w-0 flex-1 flex-col overflow-hidden leading-tight transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+									"flex min-w-0 flex-1 flex-col overflow-hidden leading-tight text-left transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
 									isCollapsed
 										? "max-w-0 -translate-x-2 opacity-0"
 										: "max-w-36 translate-x-0 opacity-100",
