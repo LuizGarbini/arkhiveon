@@ -10,6 +10,8 @@ import { supabase } from "./supabase";
 export interface UploadOptions {
 	/** Pasta logica (ex: "characters", "npcs"). Util para futuro R2/Supabase. */
 	folder?: string;
+	/** O ID da campanha para a qual a imagem está sendo enviada. Usado para deduzir o espaço do dono da campanha. */
+	campaignId?: string;
 	/** Limite maximo do lado maior em px. Padrao: 640. */
 	maxDimension?: number;
 	/** Qualidade da imagem (0..1) usada quando convertemos. Padrao: 0.72. */
@@ -178,6 +180,7 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 				fileName: webpFile.name,
 				contentType: webpFile.type,
 				fileSize: webpFile.size,
+				campaignId: options.campaignId,
 			},
 		});
 
