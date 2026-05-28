@@ -26,8 +26,8 @@ export async function loadCurrentUserPlan(userId: string): Promise<UserPlanData>
 
 	if (error) throw error;
 
-	const plan = (data as Pick<UserPlanRow, "plan" | "storage_used_bytes"> | null)?.plan;
-	const storageUsedBytes = (data as Pick<UserPlanRow, "plan" | "storage_used_bytes"> | null)?.storage_used_bytes ?? 0;
+	const plan = (data as any)?.plan;
+	const storageUsedBytes = (data as any)?.storage_used_bytes ?? 0;
 	return {
 		plan: isUserPlan(plan) ? plan : "free",
 		storageUsedBytes
