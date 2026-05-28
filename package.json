@@ -18,6 +18,7 @@
     "db:types:local": "supabase gen types --lang=typescript --local --schema public > src/lib/database.types.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1052.0",
     "@base-ui-components/react": "1.0.0-beta.7",
     "@base-ui/react": "^1.0.0",
     "@dagrejs/dagre": "^3.0.0",
