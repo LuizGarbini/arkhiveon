@@ -30,7 +30,11 @@ function RouteComponent() {
 				eyebrow="Mecânicas"
 				count={characters.length}
 				action={
-					<Link to="/sheets/new">
+					<Link
+						to="/sheets/new"
+						aria-keyshortcuts="Alt+N"
+						data-shortcut-action="new"
+					>
 						<Button size="sm" className="gap-2">
 							<Plus className="h-3.5 w-3.5" />
 							Nova Ficha

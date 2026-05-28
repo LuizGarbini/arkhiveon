@@ -25,7 +25,12 @@ export function LoreForm() {
 	return (
 		<LoreFormDialog
 			trigger={
-				<Button variant="default" size="sm">
+				<Button
+					variant="default"
+					size="sm"
+					aria-keyshortcuts="Alt+N"
+					data-shortcut-action="new"
+				>
 					<Plus className="h-3.5 w-3.5" />
 					Novo Lore
 				</Button>
@@ -135,7 +140,11 @@ function LoreFormDialog({
 								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-								<Field label="Título" htmlFor={titleId} className="sm:col-span-2">
+								<Field
+									label="Título"
+									htmlFor={titleId}
+									className="sm:col-span-2"
+								>
 									<Input
 										id={titleId}
 										placeholder="Ex: A Queda do Império de Netheril"

@@ -247,7 +247,11 @@ function Dashboard() {
 							as coleções que mantêm o mundo organizado.
 						</p>
 						<div className="mt-8 flex flex-wrap gap-3">
-							<Link to="/sheets/new">
+							<Link
+								to="/sheets/new"
+								aria-keyshortcuts="Alt+N"
+								data-shortcut-action="new"
+							>
 								<Button className="h-11 gap-2 px-5 font-bold">
 									<User className="h-4 w-4" />
 									Criar ficha

@@ -31,7 +31,12 @@ export function SessionForm() {
 	return (
 		<SessionFormDialog
 			trigger={
-				<Button variant="default" size="sm">
+				<Button
+					variant="default"
+					size="sm"
+					aria-keyshortcuts="Alt+N"
+					data-shortcut-action="new"
+				>
 					<Plus className="h-3.5 w-3.5" />
 					Nova Sessão
 				</Button>

@@ -56,6 +56,7 @@ function SpotifyCallback() {
 
 				window.localStorage.removeItem("spotify_auth_state");
 				window.localStorage.removeItem("spotify_code_verifier");
+				window.localStorage.removeItem("spotify_redirect_uri");
 
 				toast.success({
 					title: "Spotify Conectado",

@@ -33,7 +33,12 @@ export function NpcForm() {
 	return (
 		<NpcFormDialog
 			trigger={
-				<Button variant="default" size="sm">
+				<Button
+					variant="default"
+					size="sm"
+					aria-keyshortcuts="Alt+N"
+					data-shortcut-action="new"
+				>
 					<Plus className="h-3.5 w-3.5" />
 					Novo NPC/Monstro
 				</Button>

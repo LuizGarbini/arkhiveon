@@ -4,6 +4,7 @@ import {
 	CheckCircle2,
 	CreditCard,
 	Info,
+	Keyboard,
 	LogOut,
 	Music,
 	PanelLeftClose,
@@ -15,11 +16,24 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
+import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { SpotifyJamCard } from "@/components/spotify-jam-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
+import {
+	clickShortcutAction,
+	focusMainContent,
+	focusPageSearch,
+	GLOBAL_SEARCH_SHORTCUT_ARIA,
+	getPrimaryModifierLabel,
+	hasOpenBlockingDialog,
+	isEditableShortcutTarget,
+	NAVIGATION_SHORTCUTS,
+	SHORTCUT_HELP_SHORTCUT_ARIA,
+} from "@/lib/keyboard-shortcuts";
 import { useRPGStore } from "@/lib/store";
+import { useShortcutViewport } from "@/lib/use-shortcut-viewport";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button, buttonVariants } from "./ui/button";
@@ -88,17 +102,91 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+	const [shortcutAnnouncement, setShortcutAnnouncement] = useState("");
+	const supportsShortcuts = useShortcutViewport();
+	const primaryModifierLabel = getPrimaryModifierLabel();
 
 	useEffect(() => {
+		if (!supportsShortcuts) {
+			setIsShortcutsOpen(false);
+			return;
+		}
+
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+			const key = e.key.toLowerCase();
+			const isPrimaryModifier = e.metaKey || e.ctrlKey;
+			const isDialogOpen = hasOpenBlockingDialog();
+
+			if (
+				isPrimaryModifier &&
+				!e.altKey &&
+				!e.shiftKey &&
+				key === "k" &&
+				!isDialogOpen
+			) {
 				e.preventDefault();
 				setIsSearchOpen(true);
+				setIsShortcutsOpen(false);
+				return;
+			}
+
+			if (
+				isPrimaryModifier &&
+				!e.altKey &&
+				!e.shiftKey &&
+				e.key === "/" &&
+				!isDialogOpen
+			) {
+				e.preventDefault();
+				setIsShortcutsOpen(true);
+				setIsSearchOpen(false);
+				return;
+			}
+
+			if (isDialogOpen || isEditableShortcutTarget(e.target)) return;
+
+			if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+				const navigationShortcut = NAVIGATION_SHORTCUTS.find(
+					(shortcut) => shortcut.key === key,
+				);
+
+				if (navigationShortcut) {
+					e.preventDefault();
+					setShortcutAnnouncement(`Navegando para ${navigationShortcut.label}`);
+					void navigate({ to: navigationShortcut.to });
+					return;
+				}
+
+				if (key === "s") {
+					e.preventDefault();
+					if (focusPageSearch()) {
+						setShortcutAnnouncement("Filtro da página em foco");
+					} else {
+						setIsSearchOpen(true);
+					}
+					return;
+				}
+
+				if (key === "n") {
+					e.preventDefault();
+					if (clickShortcutAction("new")) {
+						setShortcutAnnouncement("Ação de novo registro aberta");
+					}
+					return;
+				}
+
+				if (key === "m") {
+					e.preventDefault();
+					if (focusMainContent()) {
+						setShortcutAnnouncement("Conteúdo principal em foco");
+					}
+				}
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, []);
+	}, [navigate, supportsShortcuts]);
 
 	return (
 		<>
@@ -106,11 +194,23 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 			{isSearchOpen && (
 				<GlobalSearch open={isSearchOpen} onOpenChange={setIsSearchOpen} />
 			)}
+			{supportsShortcuts && isShortcutsOpen && (
+				<KeyboardShortcutsDialog
+					open={isShortcutsOpen}
+					onOpenChange={setIsShortcutsOpen}
+				/>
+			)}
+			<span className="sr-only" aria-live="polite">
+				{shortcutAnnouncement}
+			</span>
 			<header className="sticky top-0 z-50 flex min-h-16 w-full items-center justify-between border-b border-border/40 bg-card px-6">
 				<div className="flex flex-1 items-center gap-4">
 					<Button
 						variant="ghost"
 						size="icon"
+						aria-label={
+							isSidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"
+						}
 						onClick={onToggleSidebar}
 						className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground md:hidden"
 					>
@@ -134,6 +234,8 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 					<div className="hidden flex-1 items-center justify-center md:flex">
 						<button
 							type="button"
+							aria-label="Abrir pesquisa global"
+							aria-keyshortcuts={GLOBAL_SEARCH_SHORTCUT_ARIA}
 							onClick={() => setIsSearchOpen(true)}
 							className="relative w-full max-w-md group"
 						>
@@ -141,7 +243,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							<div className="flex h-10 w-full items-center gap-2 rounded-2xl border border-border/70 bg-background/55 px-9 text-[13px] text-muted-foreground shadow-sm shadow-black/5 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-primary/45 group-hover:bg-background/75">
 								<span>Pesquisar no Arkhiveon...</span>
 								<kbd className="pointer-events-none ml-auto hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-									<span className="text-xs">⌘</span>K
+									<span>{primaryModifierLabel}</span>K
 								</kbd>
 							</div>
 						</button>
@@ -149,12 +251,27 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 				</div>
 
 				<div className="flex items-center gap-2.5">
+					{supportsShortcuts && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							aria-label="Abrir atalhos de teclado"
+							aria-keyshortcuts={SHORTCUT_HELP_SHORTCUT_ARIA}
+							title={`Atalhos de teclado (${primaryModifierLabel}+/)`}
+							onClick={() => setIsShortcutsOpen(true)}
+							className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+						>
+							<Keyboard className="h-4 w-4" />
+						</Button>
+					)}
 					<Popover>
 						<PopoverTrigger
 							className={cn(
 								buttonVariants({ variant: "ghost", size: "icon" }),
 								"relative h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 							)}
+							aria-label="Abrir notificações"
 						>
 							<Bell className="h-4 w-4" />
 							<span className="absolute right-2 top-2 flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -194,6 +311,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 								buttonVariants({ variant: "ghost", size: "icon" }),
 								"relative h-9 w-9 rounded-xl text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-400",
 							)}
+							aria-label="Abrir Spotify Jam"
 							title="Spotify Jam"
 						>
 							<Music className="h-4 w-4" />
@@ -216,6 +334,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							className={cn(
 								"flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border/70 transition-[opacity,transform,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:opacity-90 hover:shadow-md active:scale-[0.97] focus:outline-none",
 							)}
+							aria-label="Abrir menu da conta"
 						>
 							{isLoading ? (
 								<Skeleton className="h-full w-full rounded-full" />

@@ -100,7 +100,10 @@ function ConfirmDeleteDialog({
 }: ConfirmDeleteDialogProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-md">
+			<DialogContent
+				className="sm:max-w-md"
+				onClick={(event) => event.stopPropagation()}
+			>
 				<DialogHeader>
 					<DialogTitle className="font-display text-base">{title}</DialogTitle>
 					<DialogDescription>{description}</DialogDescription>
@@ -110,7 +113,11 @@ function ConfirmDeleteDialog({
 						variant="ghost"
 						size="sm"
 						type="button"
-						onClick={() => onOpenChange(false)}
+						onClick={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							onOpenChange(false);
+						}}
 					>
 						Cancelar
 					</Button>
@@ -118,7 +125,11 @@ function ConfirmDeleteDialog({
 						variant="destructive"
 						size="sm"
 						type="button"
-						onClick={onConfirm}
+						onClick={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							onConfirm();
+						}}
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 						Excluir
