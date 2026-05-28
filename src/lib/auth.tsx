@@ -13,6 +13,7 @@ import {
 	loadCurrentUserPlan,
 	planFromRealtimeRow,
 	type UserPlan,
+	type UserPlanData,
 } from "./user-plan";
 
 interface AuthContextValue {
@@ -20,6 +21,7 @@ interface AuthContextValue {
 	session: Session | null;
 	loading: boolean;
 	plan: UserPlan;
+	storageUsedBytes: number;
 	isPro: boolean;
 	planLoading: boolean;
 	signIn: (email: string, password: string) => Promise<string | null>;
@@ -40,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
 	const suppressAutoSignInRef = useRef(false);
-	const [plan, setPlan] = useState<UserPlan>("free");
+	const [planData, setPlanData] = useState<UserPlanData>({ plan: "free", storageUsedBytes: 0 });
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
@@ -79,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		const userId = session?.user.id;
 		if (!supabase || !userId) {
-			setPlan("free");
+			setPlanData({ plan: "free", storageUsedBytes: 0 });
 			setPlanLoading(false);
 			return;
 		}
@@ -88,11 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		setPlanLoading(true);
 
 		loadCurrentUserPlan(userId)
-			.then((nextPlan) => {
-				if (mounted) setPlan(nextPlan);
+			.then((nextPlanData) => {
+				if (mounted) setPlanData(nextPlanData);
 			})
 			.catch(() => {
-				if (mounted) setPlan("free");
+				if (mounted) setPlanData({ plan: "free", storageUsedBytes: 0 });
 			})
 			.finally(() => {
 				if (mounted) setPlanLoading(false);
@@ -110,10 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				},
 				(payload) => {
 					if (payload.eventType === "DELETE") {
-						setPlan("free");
+						setPlanData({ plan: "free", storageUsedBytes: 0 });
 						return;
 					}
-					setPlan(planFromRealtimeRow(payload.new));
+					setPlanData(planFromRealtimeRow(payload.new));
 				},
 			)
 			.subscribe();
@@ -129,8 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			user: session?.user ?? null,
 			session,
 			loading,
-			plan,
-			isPro: plan === "pro",
+			plan: planData.plan,
+			storageUsedBytes: planData.storageUsedBytes,
+			isPro: planData.plan === "pro",
 			planLoading,
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
