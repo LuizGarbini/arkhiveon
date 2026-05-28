@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				return error?.message ?? null;
 			},
 		}),
-		[loading, plan, planLoading, session, supabase],
+		[loading, planData, planLoading, session, supabase],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
