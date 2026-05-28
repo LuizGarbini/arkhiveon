@@ -398,6 +398,8 @@ function CharacterImageDialog({
 	onOpenChange: (open: boolean) => void;
 	onChange: (imageUrl: string) => void;
 }) {
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-lg!">
@@ -416,7 +418,7 @@ function CharacterImageDialog({
 					onChange={onChange}
 					label="Avatar do personagem"
 					folder="characters"
-					campaignId={character.campaign_id}
+					campaignId={activeCampaignId ?? undefined}
 					size="lg"
 				/>
 
