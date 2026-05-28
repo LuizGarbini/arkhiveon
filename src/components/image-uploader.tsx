@@ -6,6 +6,7 @@ interface ImageUploaderProps {
 	value: string;
 	onChange: (url: string) => void;
 	folder?: string;
+	campaignId?: string;
 	label?: string;
 	className?: string;
 	/** dimensão de exibição (preview) */
@@ -23,6 +24,7 @@ export function ImageUploader({
 	value,
 	onChange,
 	folder,
+	campaignId,
 	label = "Imagem",
 	className = "",
 	size = "md",
@@ -50,7 +52,7 @@ export function ImageUploader({
 		}
 		setBusy(true);
 		try {
-			const url = await imageStorage.upload(file, { folder });
+			const url = await imageStorage.upload(file, { folder, campaignId });
 			onChange(url);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Falha no upload.");
