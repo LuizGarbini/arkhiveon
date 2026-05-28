@@ -44,11 +44,18 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
-	const { isPro, planLoading } = useAuth();
+	const { isPro, planLoading, storageUsedBytes } = useAuth();
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
+	
 	const usagePercentage = isPro
 		? 100
 		: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
+		
+	const storageLimitBytes = isPro ? 2 * 1024 * 1024 * 1024 : 100 * 1024 * 1024;
+	const storageUsagePercentage = Math.min(100, Math.round((storageUsedBytes / storageLimitBytes) * 100));
+	const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(1);
+	const storageLimitMB = isPro ? "2GB" : "100MB";
+		
 	const planLabel = isPro ? "Plano Pro" : "Plano Free";
 	const badgeLabel = planLoading ? "..." : isPro ? "Pro" : "Free";
 
@@ -119,7 +126,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 				<div className="mt-auto space-y-4 p-4">
 					<div
 						className={`overflow-hidden rounded-2xl border border-primary/20 bg-primary/8 ring-1 ring-primary/10 transition-[height,padding,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-							isCollapsed ? "h-10 p-0" : "h-[176px] p-4"
+							isCollapsed ? "h-10 p-0" : "h-[200px] p-4"
 						}`}
 						title={isCollapsed ? planLabel : undefined}
 					>
@@ -159,19 +166,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							className={`transition-[max-height,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
 								isCollapsed
 									? "max-h-0 translate-y-2 opacity-0"
-									: "max-h-40 translate-y-0 opacity-100"
+									: "max-h-[160px] translate-y-0 opacity-100"
 							}`}
 						>
-							<p className="mt-2 text-[11px] font-medium leading-relaxed text-foreground/90">
-								{isPro
-									? "Criações ilimitadas liberadas para este grimório."
-									: `Crie até ${FREE_CREATION_LIMIT} registros no plano gratuito.`}
-							</p>
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
-									<span>{usedCreations} usados</span>
+									<span>Registros</span>
 									<span>
-										{isPro ? "Sem limite" : `${FREE_CREATION_LIMIT} limite`}
+										{usedCreations} / {isPro ? "∞" : FREE_CREATION_LIMIT}
 									</span>
 								</div>
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
@@ -181,20 +183,31 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 									/>
 								</div>
 							</div>
+							
+							<div className="mt-3">
+								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+									<span>Arquivos</span>
+									<span>
+										{storageUsedMB}MB / {storageLimitMB}
+									</span>
+								</div>
+								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
+									<div
+										className={`h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+											storageUsagePercentage > 90 ? "bg-rose-500" : "bg-linear-to-r from-sky-400 to-primary"
+										}`}
+										style={{ width: `${storageUsagePercentage}%` }}
+									/>
+								</div>
+							</div>
+
 							<button
 								type="button"
-								className="mt-3 w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
+								className="mt-4 w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
 							>
-								{isPro ? "Pro ativo" : "Upgrade"}
+								{isPro ? "Pro ativo" : "Fazer Upgrade"}
 							</button>
 						</div>
-						{isCollapsed && (
-							<div className="sr-only">
-								{isPro
-									? `${usedCreations} registros usados no plano Pro sem limite`
-									: `${usedCreations} de ${FREE_CREATION_LIMIT} registros usados no plano Free`}
-							</div>
-						)}
 					</div>
 				</div>
 			</div>
