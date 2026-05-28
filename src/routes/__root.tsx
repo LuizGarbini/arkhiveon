@@ -130,12 +130,16 @@ function ProtectedLayout() {
 		setupRealtime,
 	]);
 
-	if (loading || (!session && !loading)) {
+	if (loading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
-				Carregando sess├úo...
+				Autenticando...
 			</div>
 		);
+	}
+
+	if (!session) {
+		return null; // The useEffect handles the redirect without flickering the UI
 	}
 
 	return (
