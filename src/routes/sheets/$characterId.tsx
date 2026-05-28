@@ -416,6 +416,7 @@ function CharacterImageDialog({
 					onChange={onChange}
 					label="Avatar do personagem"
 					folder="characters"
+					campaignId={character.campaign_id}
 					size="lg"
 				/>
 
