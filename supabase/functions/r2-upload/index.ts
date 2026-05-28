@@ -1,0 +1,144 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { S3Client, PutObjectCommand } from "https://esm.sh/@aws-sdk/client-s3@3.540.0";
+import { getSignedUrl } from "https://esm.sh/@aws-sdk/s3-request-presigner@3.540.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+
+const corsHeaders = {
+	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Limites (em bytes)
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const QUOTAS = {
+	free: 100 * 1024 * 1024, // 100MB
+	pro: 5 * 1024 * 1024 * 1024, // 5GB
+};
+const RATE_LIMIT_MS = 5000; // 5 segundos
+
+serve(async (req) => {
+	// 1. Handle CORS
+	if (req.method === "OPTIONS") {
+		return new Response("ok", { headers: corsHeaders });
+	}
+
+	try {
+		// 2. Setup Supabase Client to verify user
+		const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+		const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+		const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+		const authHeader = req.headers.get("Authorization")!;
+		
+		const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+			global: { headers: { Authorization: authHeader } },
+		});
+
+		const { data: { user }, error: authError } = await supabaseUserClient.auth.getUser();
+
+		if (authError || !user) {
+			return new Response(JSON.stringify({ error: "Unauthorized" }), {
+				status: 401,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			});
+		}
+
+		// 3. Get file data from request
+		const { fileName, contentType, fileSize } = await req.json();
+
+		if (!fileName || !contentType || !fileSize) {
+			return new Response(JSON.stringify({ error: "Missing fileName, contentType, or fileSize" }), {
+				status: 400,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			});
+		}
+
+		// Validação 1: Tamanho máximo do arquivo
+		if (fileSize > MAX_FILE_SIZE) {
+			return new Response(JSON.stringify({ error: "File exceeds maximum allowed size of 5MB." }), {
+				status: 400,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			});
+		}
+
+		// 4. Setup Admin Client para checar banco de dados contornando RLS
+		const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+		// Busca o plano do usuário
+		const { data: planData, error: planError } = await supabaseAdmin
+			.from("user_plans")
+			.select("plan, storage_used_bytes, last_upload_time")
+			.eq("user_id", user.id)
+			.single();
+
+		if (planError && planError.code !== 'PGRST116') { // PGRST116 = no rows returned
+			throw planError;
+		}
+
+		const plan = planData?.plan || "free";
+		const storageUsed = planData?.storage_used_bytes || 0;
+		const lastUpload = planData?.last_upload_time ? new Date(planData.last_upload_time).getTime() : 0;
+		const now = Date.now();
+
+		// Validação 2: Rate Limiting
+		if (now - lastUpload < RATE_LIMIT_MS) {
+			return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait 5 seconds before uploading again." }), {
+				status: 429,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			});
+		}
+
+		// Validação 3: Cota do Plano
+		const limit = QUOTAS[plan as keyof typeof QUOTAS] || QUOTAS.free;
+		if (storageUsed + fileSize > limit) {
+			return new Response(JSON.stringify({ error: `Storage quota exceeded for your ${plan} plan.` }), {
+				status: 403,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			});
+		}
+
+		// 5. Setup AWS S3 Client for Cloudflare R2
+		const S3 = new S3Client({
+			region: "auto",
+			endpoint: Deno.env.get("R2_ENDPOINT"),
+			credentials: {
+				accessKeyId: Deno.env.get("R2_ACCESS_KEY_ID") ?? "",
+				secretAccessKey: Deno.env.get("R2_SECRET_ACCESS_KEY") ?? "",
+			},
+		});
+
+		// 6. Generate secure key
+		const fileExt = fileName.split(".").pop();
+		const finalKey = `${user.id}/${now}-${crypto.randomUUID()}.${fileExt}`;
+
+		// 7. Generate Presigned URL
+		const command = new PutObjectCommand({
+			Bucket: Deno.env.get("R2_BUCKET_NAME"),
+			Key: finalKey,
+			ContentType: contentType,
+		});
+
+		const url = await getSignedUrl(S3, command, { expiresIn: 300 }); // 5 minutes
+
+		// 8. Atualiza o banco de dados (Cota e Rate Limiting)
+		await supabaseAdmin
+			.from("user_plans")
+			.upsert({
+				user_id: user.id,
+				plan: plan,
+				storage_used_bytes: storageUsed + fileSize,
+				last_upload_time: new Date().toISOString()
+			}, { onConflict: "user_id" });
+
+		return new Response(JSON.stringify({ url, key: finalKey }), {
+			status: 200,
+			headers: { ...corsHeaders, "Content-Type": "application/json" },
+		});
+
+	} catch (error) {
+		console.error("Error generating presigned url:", error);
+		return new Response(JSON.stringify({ error: error.message }), {
+			status: 500,
+			headers: { ...corsHeaders, "Content-Type": "application/json" },
+		});
+	}
+});
