@@ -154,6 +154,7 @@ export interface Character {
 	flaws: string;
 	notes: string;
 	imageUrl: string;
+	imageAssetId?: string;
 	sheetLayout: SheetLayoutConfig;
 	familyRelations: FamilyRelation[];
 	entityLinks: EntityLink[];
@@ -348,6 +349,22 @@ export interface Campaign {
 	updatedAt?: number;
 }
 
+export interface ImageAsset {
+	id: string;
+	campaignId: string;
+	createdBy: string;
+	name: string;
+	url: string;
+	storageKey?: string;
+	mimeType: string;
+	sizeBytes: number;
+	width?: number;
+	height?: number;
+	isPrivate: boolean;
+	createdAt: number;
+	updatedAt?: number;
+}
+
 // =====================================================
 //  Store State Interface
 // =====================================================
@@ -374,6 +391,17 @@ export interface RPGState {
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
+
+	imageAssets: ImageAsset[];
+	loadImageAssets: () => Promise<void>;
+	addImageAsset: (
+		asset: Partial<Omit<ImageAsset, "id" | "createdAt" | "campaignId">>,
+	) => ImageAsset | null;
+	updateImageAsset: (
+		id: string,
+		asset: Partial<Pick<ImageAsset, "name" | "isPrivate">>,
+	) => void;
+	removeImageAsset: (id: string) => void;
 
 	characters: Character[];
 	addCharacter: (

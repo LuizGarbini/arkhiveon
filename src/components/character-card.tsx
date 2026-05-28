@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Shield, Sparkles, User, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { resolveCharacterImageUrl } from "@/lib/character-images";
 import {
 	abilityModifier,
 	type Character,
@@ -20,6 +21,12 @@ const abilitySkeletonKeys = ["str", "dex", "con", "int", "wis", "cha"];
 
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
+	const imageAssets = useRPGStore((s) => s.imageAssets);
+	const activeCampaignRole = useRPGStore(
+		(s) =>
+			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)
+				?.myRole,
+	);
 	const navigate = useNavigate();
 	const toast = useToast();
 
@@ -73,7 +80,12 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 		{ label: "CAR", value: currentCharacter.charisma },
 	];
 
-	const hasImage = !!currentCharacter.imageUrl;
+	const characterImageUrl = resolveCharacterImageUrl(
+		currentCharacter,
+		imageAssets,
+		activeCampaignRole,
+	);
+	const hasImage = !!characterImageUrl;
 	const characterName = currentCharacter.characterName || "Sem nome";
 
 	function handleDeleteCharacter() {
@@ -106,7 +118,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-primary/15 via-fuchsia-500/10 to-transparent">
 				{hasImage ? (
 					<img
-						src={character.imageUrl}
+						src={characterImageUrl}
 						alt={character.characterName}
 						loading="lazy"
 						decoding="async"

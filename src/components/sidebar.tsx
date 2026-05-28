@@ -4,6 +4,7 @@ import {
 	FileText,
 	GitFork,
 	House,
+	Images,
 	Map as MapIcon,
 	Package,
 	Palette,
@@ -31,6 +32,7 @@ const worldItems = [
 	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+7" },
 	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+8" },
 	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+9" },
+	{ to: "/images", label: "Imagens", Icon: Images },
 ];
 
 const systemItems = [
@@ -46,16 +48,19 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
 	const { isPro, planLoading, storageUsedBytes } = useAuth();
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
-	
+
 	const usagePercentage = isPro
 		? 100
 		: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
-		
+
 	const storageLimitBytes = isPro ? 2 * 1024 * 1024 * 1024 : 100 * 1024 * 1024;
-	const storageUsagePercentage = Math.min(100, Math.round((storageUsedBytes / storageLimitBytes) * 100));
+	const storageUsagePercentage = Math.min(
+		100,
+		Math.round((storageUsedBytes / storageLimitBytes) * 100),
+	);
 	const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(1);
 	const storageLimitMB = isPro ? "2GB" : "100MB";
-		
+
 	const planLabel = isPro ? "Plano Pro" : "Plano Free";
 	const badgeLabel = planLoading ? "..." : isPro ? "Pro" : "Free";
 
@@ -183,7 +188,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 									/>
 								</div>
 							</div>
-							
+
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
 									<span>Arquivos</span>
@@ -194,7 +199,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
 									<div
 										className={`h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-											storageUsagePercentage > 90 ? "bg-rose-500" : "bg-linear-to-r from-sky-400 to-primary"
+											storageUsagePercentage > 90
+												? "bg-rose-500"
+												: "bg-linear-to-r from-sky-400 to-primary"
 										}`}
 										style={{ width: `${storageUsagePercentage}%` }}
 									/>

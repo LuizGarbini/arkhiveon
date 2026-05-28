@@ -25,6 +25,22 @@ export interface RemoteActivityEntry {
 	entityName: string;
 }
 
+export interface RemoteImageAsset {
+	id: string;
+	campaignId: string;
+	createdBy: string;
+	name: string;
+	url: string;
+	storageKey?: string;
+	mimeType: string;
+	sizeBytes: number;
+	width?: number;
+	height?: number;
+	isPrivate: boolean;
+	createdAt: number;
+	updatedAt?: number;
+}
+
 export interface RemoteStateSnapshot {
 	characters: unknown[];
 	npcs: unknown[];
@@ -32,6 +48,7 @@ export interface RemoteStateSnapshot {
 	items: unknown[];
 	locations: unknown[];
 	lores: unknown[];
+	imageAssets: RemoteImageAsset[];
 	activityLog: RemoteActivityEntry[];
 }
 
@@ -48,6 +65,8 @@ type EntityInsert = TablesInsert<EntityTable>;
 type EntityUpdate = TablesUpdate<EntityTable>;
 type ActivityRow = Tables<"activity_log">;
 type ActivityInsert = TablesInsert<"activity_log">;
+type ImageAssetInsert = TablesInsert<"image_assets">;
+type ImageAssetUpdate = TablesUpdate<"image_assets">;
 
 function requireSupabase() {
 	const supabase = getSupabase();
@@ -77,6 +96,16 @@ function booleanValue(value: unknown, fallback: boolean): boolean {
 	return typeof value === "boolean" ? value : fallback;
 }
 
+function isMissingImageAssetsTableError(error: unknown): boolean {
+	if (!isRecord(error)) return false;
+	const message = typeof error.message === "string" ? error.message : "";
+	const code = typeof error.code === "string" ? error.code : "";
+	return (
+		code === "PGRST205" ||
+		(message.includes("image_assets") && message.includes("schema cache"))
+	);
+}
+
 function toTimestamp(value?: string | null): number | undefined {
 	if (!value) return undefined;
 	const timestamp = Date.parse(value);
@@ -102,6 +131,25 @@ function fromActivityRow(row: ActivityRow): RemoteActivityEntry {
 		entityKind: row.entity_kind,
 		entityId: row.entity_id,
 		entityName: row.entity_name,
+	};
+}
+
+function fromImageAssetRow(row: Record<string, unknown>): RemoteImageAsset {
+	return {
+		id: stringValue(row.id, crypto.randomUUID()),
+		campaignId: stringValue(row.campaign_id, ""),
+		createdBy: stringValue(row.created_by, ""),
+		name: stringValue(row.name, "Imagem sem nome"),
+		url: stringValue(row.url, ""),
+		storageKey:
+			typeof row.storage_key === "string" ? row.storage_key : undefined,
+		mimeType: stringValue(row.mime_type, "image/webp"),
+		sizeBytes: numberValue(row.size_bytes, 0),
+		width: typeof row.width === "number" ? row.width : undefined,
+		height: typeof row.height === "number" ? row.height : undefined,
+		isPrivate: booleanValue(row.is_private, false),
+		createdAt: toTimestamp(row.created_at as string | null) ?? Date.now(),
+		updatedAt: toTimestamp(row.updated_at as string | null),
 	};
 }
 
@@ -303,7 +351,10 @@ async function updateEntityRow(
 	}
 }
 
-async function selectEntities(table: EntityTable, campaignId: string): Promise<unknown[]> {
+async function selectEntities(
+	table: EntityTable,
+	campaignId: string,
+): Promise<unknown[]> {
 	const supabase = requireSupabase();
 	const { data, error } = await supabase
 		.from(table)
@@ -314,7 +365,28 @@ async function selectEntities(table: EntityTable, campaignId: string): Promise<u
 	return ((data ?? []) as EntityRow[]).map(fromEntityRow);
 }
 
-export async function loadRemoteState(campaignId: string): Promise<RemoteStateSnapshot> {
+export async function loadRemoteImageAssets(
+	campaignId: string,
+): Promise<RemoteImageAsset[]> {
+	const supabase = requireSupabase();
+	const { data, error } = await supabase
+		.from(SUPABASE_TABLES.imageAssets)
+		.select(
+			"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,created_at,updated_at",
+		)
+		.eq("campaign_id", campaignId)
+		.order("updated_at", { ascending: false });
+
+	if (error) {
+		if (isMissingImageAssetsTableError(error)) return [];
+		throw error;
+	}
+	return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
+}
+
+export async function loadRemoteState(
+	campaignId: string,
+): Promise<RemoteStateSnapshot> {
 	const supabase = requireSupabase();
 
 	const activityQuery = supabase
@@ -322,18 +394,25 @@ export async function loadRemoteState(campaignId: string): Promise<RemoteStateSn
 		.select("id,action,entity_kind,entity_id,entity_name,created_at")
 		.eq("campaign_id", campaignId);
 
-	const [characters, npcs, sessions, items, locations, lores, activityRows] =
-		await Promise.all([
-			selectEntities(SUPABASE_TABLES.characters, campaignId),
-			selectEntities(SUPABASE_TABLES.npcs, campaignId),
-			selectEntities(SUPABASE_TABLES.sessions, campaignId),
-			selectEntities(SUPABASE_TABLES.items, campaignId),
-			selectEntities(SUPABASE_TABLES.locations, campaignId),
-			selectEntities(SUPABASE_TABLES.lores, campaignId),
-			activityQuery
-				.order("created_at", { ascending: false })
-				.limit(200),
-		]);
+	const [
+		characters,
+		npcs,
+		sessions,
+		items,
+		locations,
+		lores,
+		imageAssets,
+		activityRows,
+	] = await Promise.all([
+		selectEntities(SUPABASE_TABLES.characters, campaignId),
+		selectEntities(SUPABASE_TABLES.npcs, campaignId),
+		selectEntities(SUPABASE_TABLES.sessions, campaignId),
+		selectEntities(SUPABASE_TABLES.items, campaignId),
+		selectEntities(SUPABASE_TABLES.locations, campaignId),
+		selectEntities(SUPABASE_TABLES.lores, campaignId),
+		loadRemoteImageAssets(campaignId),
+		activityQuery.order("created_at", { ascending: false }).limit(200),
+	]);
 
 	if (activityRows.error) throw activityRows.error;
 
@@ -344,10 +423,62 @@ export async function loadRemoteState(campaignId: string): Promise<RemoteStateSn
 		items,
 		locations,
 		lores,
+		imageAssets,
 		activityLog: ((activityRows.data ?? []) as ActivityRow[]).map(
 			fromActivityRow,
 		),
 	};
+}
+
+export async function createRemoteImageAsset(
+	asset: RemoteImageAsset,
+	campaignId: string,
+): Promise<RemoteImageAsset> {
+	const supabase = requireSupabase();
+	const row: ImageAssetInsert = {
+		id: asset.id,
+		campaign_id: campaignId,
+		name: asset.name,
+		url: asset.url,
+		storage_key: asset.storageKey ?? null,
+		mime_type: asset.mimeType,
+		size_bytes: asset.sizeBytes,
+		width: asset.width ?? null,
+		height: asset.height ?? null,
+		is_private: asset.isPrivate,
+	};
+	if (asset.createdBy) row.created_by = asset.createdBy;
+
+	const { error } = await supabase
+		.from(SUPABASE_TABLES.imageAssets)
+		.insert(row);
+	if (error) throw error;
+	return asset;
+}
+
+export async function updateRemoteImageAsset(
+	id: string,
+	patch: Partial<Pick<RemoteImageAsset, "name" | "isPrivate">>,
+): Promise<void> {
+	const supabase = requireSupabase();
+	const row: ImageAssetUpdate = {};
+	if (typeof patch.name === "string") row.name = patch.name;
+	if (typeof patch.isPrivate === "boolean") row.is_private = patch.isPrivate;
+
+	const { error } = await supabase
+		.from(SUPABASE_TABLES.imageAssets)
+		.update(row)
+		.eq("id", id);
+	if (error) throw error;
+}
+
+export async function deleteRemoteImageAsset(id: string): Promise<void> {
+	const supabase = requireSupabase();
+	const { error } = await supabase
+		.from(SUPABASE_TABLES.imageAssets)
+		.delete()
+		.eq("id", id);
+	if (error) throw error;
 }
 
 export async function createRemoteEntity<T extends { id: string }>(

@@ -181,6 +181,7 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 				contentType: webpFile.type,
 				fileSize: webpFile.size,
 				campaignId: options.campaignId,
+				folder: options.folder,
 			},
 		});
 

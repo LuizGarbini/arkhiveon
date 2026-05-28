@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { createCampaignSlice } from "./store/campaign-slice";
 import { createCharacterSlice } from "./store/character-slice";
 import { createCollectionSlice } from "./store/collection-slice";
+import { createImageLibrarySlice } from "./store/image-library-slice";
 import { createNpcSlice } from "./store/npc-slice";
 import { createSessionSlice } from "./store/session-slice";
 import { createSpotifySlice } from "./store/spotify-slice";
@@ -18,7 +19,10 @@ export {
 export { abilityModifier, formatModifier, systemLabel } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
 export { sessionDefaults } from "./store/session-slice";
-export { FREE_CREATION_LIMIT, isCreationLimitReached } from "./store/sync-slice";
+export {
+	FREE_CREATION_LIMIT,
+	isCreationLimitReached,
+} from "./store/sync-slice";
 // Re-export types for convenience
 export * from "./store/types";
 
@@ -58,6 +62,7 @@ export const useRPGStore = create<RPGState>()(
 			...createNpcSlice(...a),
 			...createSessionSlice(...a),
 			...createCollectionSlice(...a),
+			...createImageLibrarySlice(...a),
 			...createSpotifySlice(...a),
 			...createSyncSlice(...a),
 		}),
@@ -75,6 +80,7 @@ export const useRPGStore = create<RPGState>()(
 				items: stripPersistedDataImages(state.items),
 				locations: stripPersistedDataImages(state.locations),
 				lores: stripPersistedDataImages(state.lores),
+				imageAssets: stripPersistedDataImages(state.imageAssets),
 				activityLog: state.activityLog,
 				spotifyJamLink: state.spotifyJamLink,
 				spotifyJamActive: state.spotifyJamActive,
