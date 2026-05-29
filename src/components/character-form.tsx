@@ -1,6 +1,7 @@
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { createDefaultSheetLayout } from "@/lib/sheet-modules";
 import {
 	abilityModifier,
 	type Character,
@@ -9,7 +10,6 @@ import {
 	type RpgSystem,
 	useRPGStore,
 } from "@/lib/store";
-import { createDefaultSheetLayout } from "@/lib/sheet-modules";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
 import { sanitizeCharacterFormValues } from "./character-sheet-fields";
 import { ImageUploader } from "./image-uploader";
@@ -133,7 +133,8 @@ function CharacterFormDialog({
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
 
 	const [step, setStep] = useState<DialogStep>(isEdit ? "form" : "system");
-	const [activeSection, setActiveSection] = useState<CharacterSection>("identity");
+	const [activeSection, setActiveSection] =
+		useState<CharacterSection>("identity");
 
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildDefaults(character ?? undefined),
@@ -410,7 +411,10 @@ function IdentitySection({
 			<FormSection title="Aparência">
 				<ImageUploader
 					value={imageUrl ?? ""}
-					onChange={(url) => setValue("imageUrl", url, { shouldDirty: true })}
+					onChange={(url) => {
+						setValue("imageUrl", url, { shouldDirty: true });
+						setValue("imageAssetId", "", { shouldDirty: true });
+					}}
 					label="Avatar do personagem"
 					folder="characters"
 					size="lg"

@@ -1,4 +1,9 @@
-import { useWatch, type Control, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
+import {
+	type Control,
+	type UseFormRegister,
+	type UseFormSetValue,
+	useWatch,
+} from "react-hook-form";
 import {
 	abilityModifier,
 	type Character,
@@ -6,14 +11,17 @@ import {
 	formatModifier,
 	type SheetModuleKind,
 } from "@/lib/store";
-import { type SystemConfig, SYSTEM_CONFIG } from "@/lib/systems";
+import { SYSTEM_CONFIG, type SystemConfig } from "@/lib/systems";
 import { ImageUploader } from "./image-uploader";
 import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
-export type CharacterFormValues = Omit<Character, "id" | "createdAt" | "updatedAt">;
+export type CharacterFormValues = Omit<
+	Character,
+	"id" | "createdAt" | "updatedAt"
+>;
 export type CharacterRegister = UseFormRegister<CharacterFormValues>;
 export type CharacterControl = Control<CharacterFormValues>;
 export type CharacterSetValue = UseFormSetValue<CharacterFormValues>;
@@ -99,11 +107,17 @@ export function CharacterModuleFields({
 }) {
 	if (kind === "identity") {
 		return (
-			<IdentityFields register={register} control={control} setValue={setValue} />
+			<IdentityFields
+				register={register}
+				control={control}
+				setValue={setValue}
+			/>
 		);
 	}
 	if (kind === "abilities") {
-		return <AbilitiesFields register={register} control={control} config={config} />;
+		return (
+			<AbilitiesFields register={register} control={control} config={config} />
+		);
 	}
 	if (kind === "combat") {
 		return <CombatFields register={register} config={config} />;
@@ -189,7 +203,10 @@ export function IdentityFields({
 			<FormSection title="Aparência">
 				<ImageUploader
 					value={imageUrl ?? ""}
-					onChange={(url) => setValue("imageUrl", url, { shouldDirty: true })}
+					onChange={(url) => {
+						setValue("imageUrl", url, { shouldDirty: true });
+						setValue("imageAssetId", "", { shouldDirty: true });
+					}}
 					label="Avatar do personagem"
 					folder="characters"
 					size="lg"
@@ -398,7 +415,11 @@ export function CombatFields({
 	);
 }
 
-export function PersonalityFields({ register }: { register: CharacterRegister }) {
+export function PersonalityFields({
+	register,
+}: {
+	register: CharacterRegister;
+}) {
 	return (
 		<FormSection title="Personalidade & História">
 			<Field label="Traços de personalidade">
@@ -438,7 +459,10 @@ export function MagicFields({ register }: { register: CharacterRegister }) {
 		<FormSection title="Conjuração de Magias">
 			<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<Field label="Classe conjuradora">
-					<Input placeholder="Mago, Clérigo..." {...register("spellcastingClass")} />
+					<Input
+						placeholder="Mago, Clérigo..."
+						{...register("spellcastingClass")}
+					/>
 				</Field>
 				<Field label="Atributo de magia">
 					<Input placeholder="INT / SAB / CAR" {...register("spellAbility")} />
@@ -485,7 +509,10 @@ export function InventoryFields({ register }: { register: CharacterRegister }) {
 				/>
 			</Field>
 			<Field label="Moedas / Tesouro">
-				<Input placeholder="Ex: 50 PO, 12 PP, 30 PC" {...register("currency")} />
+				<Input
+					placeholder="Ex: 50 PO, 12 PP, 30 PC"
+					{...register("currency")}
+				/>
 			</Field>
 		</FormSection>
 	);

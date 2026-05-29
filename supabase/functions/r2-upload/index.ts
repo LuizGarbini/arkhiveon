@@ -43,7 +43,7 @@ serve(async (req) => {
 		}
 
 		// 3. Get file data from request
-		const { fileName, contentType, fileSize, campaignId } = await req.json();
+		const { fileName, contentType, fileSize, campaignId, folder } = await req.json();
 
 		if (!fileName || !contentType || !fileSize) {
 			return new Response(JSON.stringify({ error: "Missing fileName, contentType, or fileSize" }), {
@@ -136,7 +136,11 @@ serve(async (req) => {
 		// 6. Generate secure key
 		const fileExt = fileName.split(".").pop();
 		// Guardamos na pasta do dono da campanha para facilitar a gestão de espaço se necessário futuramente
-		const finalKey = `${targetUserId}/${now}-${crypto.randomUUID()}.${fileExt}`;
+		const safeFolder = typeof folder === "string"
+			? folder.replace(/[^a-z0-9_-]/gi, "").slice(0, 32)
+			: "";
+		const folderPrefix = safeFolder ? `${safeFolder}/` : "";
+		const finalKey = `${targetUserId}/${folderPrefix}${now}-${crypto.randomUUID()}.${fileExt}`;
 
 		// 7. Generate Presigned URL
 		const command = new PutObjectCommand({

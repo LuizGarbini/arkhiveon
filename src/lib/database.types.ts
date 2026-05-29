@@ -98,6 +98,62 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			image_assets: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+					created_by: string;
+					height: number | null;
+					id: string;
+					is_private: boolean;
+					mime_type: string;
+					name: string;
+					size_bytes: number;
+					storage_key: string | null;
+					updated_at: string;
+					url: string;
+					width: number | null;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+					created_by?: string;
+					height?: number | null;
+					id?: string;
+					is_private?: boolean;
+					mime_type?: string;
+					name?: string;
+					size_bytes?: number;
+					storage_key?: string | null;
+					updated_at?: string;
+					url: string;
+					width?: number | null;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+					created_by?: string;
+					height?: number | null;
+					id?: string;
+					is_private?: boolean;
+					mime_type?: string;
+					name?: string;
+					size_bytes?: number;
+					storage_key?: string | null;
+					updated_at?: string;
+					url?: string;
+					width?: number | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "image_assets_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			invites: {
 				Row: {
 					campaign_id: string;
