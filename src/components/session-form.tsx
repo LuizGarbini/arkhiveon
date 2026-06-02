@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -99,6 +100,7 @@ function SessionFormDialog({
 	const [tab, setTab] = useState(TABS[0].id);
 	const addSession = useRPGStore((state) => state.addSession);
 	const updateSession = useRPGStore((state) => state.updateSession);
+	const navigate = useNavigate();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<SessionFormValues>({
@@ -114,9 +116,20 @@ function SessionFormDialog({
 	}, [open, session, reset]);
 
 	function onSubmit(data: SessionFormValues) {
+		let createdId: string | null = null;
 		if (isEdit && session) updateSession(session.id, data);
-		else addSession(data);
+		else {
+			const created = addSession(data);
+			if (created.id) createdId = created.id;
+		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/sessions/$sessionId",
+				params: { sessionId: createdId },
+				search: { edit: true },
+			});
+		}
 	}
 
 	return (

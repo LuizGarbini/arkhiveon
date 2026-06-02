@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -92,6 +93,7 @@ function LoreFormDialog({
 
 	const addLore = useRPGStore((state) => state.addLore);
 	const updateLore = useRPGStore((state) => state.updateLore);
+	const navigate = useNavigate();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<LoreFormValues>({
@@ -106,9 +108,20 @@ function LoreFormDialog({
 	}, [open, lore, reset]);
 
 	function onSubmit(data: LoreFormValues) {
+		let createdId: string | null = null;
 		if (isEdit && lore) updateLore(lore.id, data);
-		else addLore(data);
+		else {
+			const created = addLore(data);
+			if (created.id) createdId = created.id;
+		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/lore/$loreId",
+				params: { loreId: createdId },
+				search: { edit: true },
+			});
+		}
 	}
 
 	return (
@@ -137,6 +150,7 @@ function LoreFormDialog({
 								}
 								label="Ilustração"
 								folder="lore"
+								libraryName={watchedValues.title}
 								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

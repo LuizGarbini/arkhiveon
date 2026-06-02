@@ -358,6 +358,7 @@ function IdentitySection({
 	setValue: SetValueFn;
 }) {
 	const imageUrl = useWatch({ control, name: "imageUrl" });
+	const characterName = useWatch({ control, name: "characterName" });
 	return (
 		<>
 			<FormSection title="Identidade Básica">
@@ -417,6 +418,7 @@ function IdentitySection({
 					}}
 					label="Avatar do personagem"
 					folder="characters"
+					libraryName={characterName}
 					size="lg"
 				/>
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

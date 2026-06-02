@@ -1,20 +1,21 @@
 /**
- * Camada de abstracao para armazenamento de imagens.
+ * Image storage layer.
  *
- * Agora usamos a impl `CloudflareR2ImageStorage`, que converte a imagem para WebP localmente
- * e envia para o Cloudflare R2 usando uma Supabase Edge Function para segurança.
+ * Images are resized to WebP in the browser, then sent to a Supabase Edge
+ * Function. The function uploads to Cloudflare R2 server-side so the browser
+ * does not depend on R2 bucket CORS for PUT requests.
  */
 
 import { supabase } from "./supabase";
 
 export interface UploadOptions {
-	/** Pasta logica (ex: "characters", "npcs"). Util para futuro R2/Supabase. */
+	/** Logical folder, for example "characters" or "npcs". */
 	folder?: string;
-	/** O ID da campanha para a qual a imagem está sendo enviada. Usado para deduzir o espaço do dono da campanha. */
+	/** Campaign id used by the Edge Function for ownership and quota checks. */
 	campaignId?: string;
-	/** Limite maximo do lado maior em px. Padrao: 640. */
+	/** Longest side in px. Defaults to 640. */
 	maxDimension?: number;
-	/** Qualidade da imagem (0..1) usada quando convertemos. Padrao: 0.72. */
+	/** WebP quality from 0 to 1. Defaults to 0.72. */
 	quality?: number;
 }
 
@@ -22,6 +23,14 @@ export interface ImageStorage {
 	upload(file: File, options?: UploadOptions): Promise<string>;
 	delete(url: string): Promise<void>;
 }
+
+interface R2UploadResponse {
+	key?: string;
+	url?: string;
+	error?: string;
+}
+
+type ConfiguredSupabaseClient = NonNullable<typeof supabase>;
 
 const DEFAULT_MAX_DIMENSION = 640;
 const DEFAULT_QUALITY = 0.72;
@@ -157,7 +166,7 @@ export class LocalImageStorage implements ImageStorage {
 	}
 
 	async delete(_url: string): Promise<void> {
-		// noop: a imagem local vive dentro do estado e some quando o campo e limpo.
+		// Noop: local images live in the in-memory state.
 	}
 }
 
@@ -165,17 +174,68 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 	async upload(file: File, options: UploadOptions = {}): Promise<string> {
 		const max = options.maxDimension ?? DEFAULT_MAX_DIMENSION;
 		const quality = options.quality ?? DEFAULT_QUALITY;
-		
-		// 1. Redimensiona e converte para WebP (blob) localmente
 		const blob = await resizeToBlob(file, max, quality);
-		const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp" });
+		const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
+			type: "image/webp",
+		});
 
-		// 2. Chama a Edge Function para pegar a URL de Upload temporária
 		if (!supabase) {
-			throw new Error("Supabase não configurado. Impossível fazer upload da imagem.");
+			throw new Error(
+				"Supabase nao configurado. Impossivel fazer upload da imagem.",
+			);
 		}
-		
-		const { data, error } = await supabase.functions.invoke("r2-upload", {
+
+		const data = await uploadThroughFunction(supabase, webpFile, options);
+		if (!data.key) {
+			throw new Error(data.error || "Falha ao enviar imagem para o R2.");
+		}
+
+		return publicR2Url(data.key);
+	}
+
+	async delete(_url: string): Promise<void> {
+		// TODO: Delete through the Edge Function when library removal needs it.
+	}
+}
+
+async function uploadThroughFunction(
+	client: ConfiguredSupabaseClient,
+	webpFile: File,
+	options: UploadOptions,
+): Promise<R2UploadResponse> {
+	const body = new FormData();
+	body.append("file", webpFile);
+	appendOptionalFormValue(body, "campaignId", options.campaignId);
+	appendOptionalFormValue(body, "folder", options.folder);
+
+	const { data, error } = await client.functions.invoke<R2UploadResponse>(
+		"r2-upload",
+		{ body },
+	);
+
+	if (error) {
+		console.warn(
+			"R2 server-side upload failed, trying signed URL fallback:",
+			error,
+		);
+		return uploadThroughSignedUrl(client, webpFile, options);
+	}
+
+	if (data?.url && data.key) {
+		return uploadSignedData(data, webpFile);
+	}
+
+	return data ?? {};
+}
+
+async function uploadThroughSignedUrl(
+	client: ConfiguredSupabaseClient,
+	webpFile: File,
+	options: UploadOptions,
+): Promise<R2UploadResponse> {
+	const { data, error } = await client.functions.invoke<R2UploadResponse>(
+		"r2-upload",
+		{
 			body: {
 				fileName: webpFile.name,
 				contentType: webpFile.type,
@@ -183,14 +243,28 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 				campaignId: options.campaignId,
 				folder: options.folder,
 			},
-		});
+		},
+	);
 
-		if (error || !data?.url || !data?.key) {
-			console.error("R2 Upload Error:", error || data?.error);
-			throw new Error("Falha ao gerar link de upload seguro do R2.");
-		}
+	if (error || !data?.url || !data?.key) {
+		console.error("R2 Upload Error:", error || data?.error);
+		throw new Error("Falha ao gerar link de upload seguro do R2.");
+	}
 
-		// 3. Faz o upload da imagem diretamente para o R2
+	return uploadSignedData(data, webpFile);
+}
+
+async function uploadSignedData(
+	data: R2UploadResponse,
+	webpFile: File,
+): Promise<R2UploadResponse> {
+	if (!data.url || !data.key) {
+		throw new Error(
+			data.error || "Falha ao gerar link de upload seguro do R2.",
+		);
+	}
+
+	try {
 		const uploadRes = await fetch(data.url, {
 			method: "PUT",
 			headers: {
@@ -202,20 +276,34 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 		if (!uploadRes.ok) {
 			throw new Error("Falha no upload do arquivo para o R2.");
 		}
-
-		// 4. Retorna a URL pública
-		const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
-		if (!publicUrl) {
-			console.warn("Aviso: VITE_R2_PUBLIC_URL não definida no .env. A imagem pode não renderizar.");
-			return data.key;
-		}
-
-		return `${publicUrl.replace(/\/$/, "")}/${data.key}`;
+	} catch (error) {
+		console.error("R2 signed URL upload failed:", error);
+		throw new Error(
+			"Falha ao enviar imagem para o R2. Atualize a funcao r2-upload para usar upload pelo servidor.",
+		);
 	}
 
-	async delete(_url: string): Promise<void> {
-		// TODO: Implementar exclusão futura através de Edge Function
+	return { key: data.key };
+}
+
+function appendOptionalFormValue(
+	body: FormData,
+	key: string,
+	value: string | undefined,
+) {
+	if (value) body.append(key, value);
+}
+
+function publicR2Url(key: string): string {
+	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+	if (!publicUrl) {
+		console.warn(
+			"Aviso: VITE_R2_PUBLIC_URL nao definida no .env. A imagem pode nao renderizar.",
+		);
+		return key;
 	}
+
+	return `${publicUrl.replace(/\/$/, "")}/${key}`;
 }
 
 export const imageStorage: ImageStorage = new CloudflareR2ImageStorage();

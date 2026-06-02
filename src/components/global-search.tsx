@@ -124,15 +124,35 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 					params: { characterId: result.id },
 				});
 			} else if (result.type === "npc") {
-				void navigate({ to: "/npcs" });
+				void navigate({
+					to: "/npcs/$npcId",
+					params: { npcId: result.id },
+					search: { edit: false },
+				});
 			} else if (result.type === "session") {
-				void navigate({ to: "/sessions" });
+				void navigate({
+					to: "/sessions/$sessionId",
+					params: { sessionId: result.id },
+					search: { edit: false },
+				});
 			} else if (result.type === "item") {
-				void navigate({ to: "/items" });
+				void navigate({
+					to: "/items/$itemId",
+					params: { itemId: result.id },
+					search: { edit: false },
+				});
 			} else if (result.type === "location") {
-				void navigate({ to: "/locations" });
+				void navigate({
+					to: "/locations/$locationId",
+					params: { locationId: result.id },
+					search: { edit: false },
+				});
 			} else {
-				void navigate({ to: "/lore" });
+				void navigate({
+					to: "/lore/$loreId",
+					params: { loreId: result.id },
+					search: { edit: false },
+				});
 			}
 
 			onOpenChange(false);

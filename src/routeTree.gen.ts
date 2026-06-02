@@ -29,6 +29,11 @@ import { Route as ItemsIndexRouteImport } from './routes/items/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as SheetsNewRouteImport } from './routes/sheets/new'
 import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
+import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
+import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
+import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
+import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
+import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
 
 const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
   id: '/spotify-callback',
@@ -130,6 +135,31 @@ const SheetsCharacterIdRoute = SheetsCharacterIdRouteImport.update({
   path: '/sheets/$characterId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SessionsSessionIdRoute = SessionsSessionIdRouteImport.update({
+  id: '/sessions/$sessionId',
+  path: '/sessions/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NpcsNpcIdRoute = NpcsNpcIdRouteImport.update({
+  id: '/npcs/$npcId',
+  path: '/npcs/$npcId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoreLoreIdRoute = LoreLoreIdRouteImport.update({
+  id: '/lore/$loreId',
+  path: '/lore/$loreId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
+  id: '/locations/$locationId',
+  path: '/locations/$locationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
+  id: '/items/$itemId',
+  path: '/items/$itemId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -143,6 +173,11 @@ export interface FileRoutesByFullPath {
   '/images': typeof ImagesRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/items/$itemId': typeof ItemsItemIdRoute
+  '/locations/$locationId': typeof LocationsLocationIdRoute
+  '/lore/$loreId': typeof LoreLoreIdRoute
+  '/npcs/$npcId': typeof NpcsNpcIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters': typeof CharactersIndexRoute
@@ -165,6 +200,11 @@ export interface FileRoutesByTo {
   '/images': typeof ImagesRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/items/$itemId': typeof ItemsItemIdRoute
+  '/locations/$locationId': typeof LocationsLocationIdRoute
+  '/lore/$loreId': typeof LoreLoreIdRoute
+  '/npcs/$npcId': typeof NpcsNpcIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters': typeof CharactersIndexRoute
@@ -188,6 +228,11 @@ export interface FileRoutesById {
   '/images': typeof ImagesRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/items/$itemId': typeof ItemsItemIdRoute
+  '/locations/$locationId': typeof LocationsLocationIdRoute
+  '/lore/$loreId': typeof LoreLoreIdRoute
+  '/npcs/$npcId': typeof NpcsNpcIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters/': typeof CharactersIndexRoute
@@ -212,6 +257,11 @@ export interface FileRouteTypes {
     | '/images'
     | '/settings'
     | '/spotify-callback'
+    | '/items/$itemId'
+    | '/locations/$locationId'
+    | '/lore/$loreId'
+    | '/npcs/$npcId'
+    | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters'
@@ -234,6 +284,11 @@ export interface FileRouteTypes {
     | '/images'
     | '/settings'
     | '/spotify-callback'
+    | '/items/$itemId'
+    | '/locations/$locationId'
+    | '/lore/$loreId'
+    | '/npcs/$npcId'
+    | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters'
@@ -256,6 +311,11 @@ export interface FileRouteTypes {
     | '/images'
     | '/settings'
     | '/spotify-callback'
+    | '/items/$itemId'
+    | '/locations/$locationId'
+    | '/lore/$loreId'
+    | '/npcs/$npcId'
+    | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters/'
@@ -279,6 +339,11 @@ export interface RootRouteChildren {
   ImagesRoute: typeof ImagesRoute
   SettingsRoute: typeof SettingsRoute
   SpotifyCallbackRoute: typeof SpotifyCallbackRoute
+  ItemsItemIdRoute: typeof ItemsItemIdRoute
+  LocationsLocationIdRoute: typeof LocationsLocationIdRoute
+  LoreLoreIdRoute: typeof LoreLoreIdRoute
+  NpcsNpcIdRoute: typeof NpcsNpcIdRoute
+  SessionsSessionIdRoute: typeof SessionsSessionIdRoute
   SheetsCharacterIdRoute: typeof SheetsCharacterIdRoute
   SheetsNewRoute: typeof SheetsNewRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
@@ -432,6 +497,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SheetsCharacterIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sessions/$sessionId': {
+      id: '/sessions/$sessionId'
+      path: '/sessions/$sessionId'
+      fullPath: '/sessions/$sessionId'
+      preLoaderRoute: typeof SessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/npcs/$npcId': {
+      id: '/npcs/$npcId'
+      path: '/npcs/$npcId'
+      fullPath: '/npcs/$npcId'
+      preLoaderRoute: typeof NpcsNpcIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lore/$loreId': {
+      id: '/lore/$loreId'
+      path: '/lore/$loreId'
+      fullPath: '/lore/$loreId'
+      preLoaderRoute: typeof LoreLoreIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations/$locationId': {
+      id: '/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof LocationsLocationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/items/$itemId': {
+      id: '/items/$itemId'
+      path: '/items/$itemId'
+      fullPath: '/items/$itemId'
+      preLoaderRoute: typeof ItemsItemIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -447,6 +547,11 @@ const rootRouteChildren: RootRouteChildren = {
   ImagesRoute: ImagesRoute,
   SettingsRoute: SettingsRoute,
   SpotifyCallbackRoute: SpotifyCallbackRoute,
+  ItemsItemIdRoute: ItemsItemIdRoute,
+  LocationsLocationIdRoute: LocationsLocationIdRoute,
+  LoreLoreIdRoute: LoreLoreIdRoute,
+  NpcsNpcIdRoute: NpcsNpcIdRoute,
+  SessionsSessionIdRoute: SessionsSessionIdRoute,
   SheetsCharacterIdRoute: SheetsCharacterIdRoute,
   SheetsNewRoute: SheetsNewRoute,
   CharactersIndexRoute: CharactersIndexRoute,

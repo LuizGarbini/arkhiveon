@@ -166,11 +166,22 @@ function toLinkableEntity(
 		entityId: entity.id,
 		name: name || "Sem nome",
 		label: ENTITY_KIND_LABELS[entityKind],
-		path:
-			entityKind === "character"
-				? `/sheets/${entity.id}`
-				: `${path}?selected=${entity.id}`,
+		path: entityKindPath(entityKind, entity.id, path),
 	};
+}
+
+function entityKindPath(
+	entityKind: EntityKind,
+	entityId: string,
+	path: string,
+) {
+	if (entityKind === "character") return `/sheets/${entityId}`;
+	if (entityKind === "npc") return `/npcs/${entityId}`;
+	if (entityKind === "session") return `/sessions/${entityId}`;
+	if (entityKind === "item") return `/items/${entityId}`;
+	if (entityKind === "location") return `/locations/${entityId}`;
+	if (entityKind === "lore") return `/lore/${entityId}`;
+	return `${path}?selected=${entityId}`;
 }
 
 function fallbackPathFor(kind: EntityKind) {

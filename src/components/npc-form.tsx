@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -102,6 +103,7 @@ function NpcFormDialog({
 	const updateNpc = useRPGStore((state) => state.updateNpc);
 	const characters = useRPGStore((state) => state.characters);
 	const toast = useToast();
+	const navigate = useNavigate();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<NpcFormValues>({
@@ -143,6 +145,7 @@ function NpcFormDialog({
 			return;
 		}
 
+		let createdId: string | null = null;
 		if (isEdit && npc) updateNpc(npc.id, normalized);
 		else {
 			const created = addNpc(normalized);
@@ -154,8 +157,16 @@ function NpcFormDialog({
 				});
 				return;
 			}
+			createdId = created.id;
 		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/npcs/$npcId",
+				params: { npcId: createdId },
+				search: { edit: true },
+			});
+		}
 	}
 
 	return (
@@ -228,6 +239,7 @@ function NpcFormDialog({
 									}
 									label="Retrato"
 									folder="npcs"
+									libraryName={watchedValues.name}
 									size="md"
 								/>
 								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

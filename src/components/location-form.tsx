@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -99,6 +100,7 @@ function LocationFormDialog({
 	const [tab, setTab] = useState(TABS[0].id);
 	const addLocation = useRPGStore((state) => state.addLocation);
 	const updateLocation = useRPGStore((state) => state.updateLocation);
+	const navigate = useNavigate();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<LocationFormValues>({
@@ -116,9 +118,20 @@ function LocationFormDialog({
 	}, [open, location, reset]);
 
 	function onSubmit(data: LocationFormValues) {
+		let createdId: string | null = null;
 		if (isEdit && location) updateLocation(location.id, data);
-		else addLocation(data);
+		else {
+			const created = addLocation(data);
+			if (created.id) createdId = created.id;
+		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/locations/$locationId",
+				params: { locationId: createdId },
+				search: { edit: true },
+			});
+		}
 	}
 
 	return (
@@ -151,6 +164,7 @@ function LocationFormDialog({
 									}
 									label="Imagem"
 									folder="locations"
+									libraryName={watchedValues.name}
 									size="md"
 								/>
 								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
