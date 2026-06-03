@@ -57,7 +57,7 @@ export const createImageLibrarySlice: StateCreator<
 			sizeBytes: asset.sizeBytes ?? 0,
 			width: asset.width,
 			height: asset.height,
-			isPrivate: asset.isPrivate ?? false,
+			isPrivate: asset.isPrivate ?? true,
 			createdAt: Date.now(),
 		};
 

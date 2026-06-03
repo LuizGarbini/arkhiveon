@@ -1,12 +1,16 @@
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage, isImageUrl } from "@/lib/image-storage";
+import { useRPGStore } from "@/lib/store";
 
 interface ImageUploaderProps {
 	value: string;
 	onChange: (url: string) => void;
 	folder?: string;
 	campaignId?: string;
+	libraryName?: string;
 	label?: string;
 	className?: string;
 	/** dimensão de exibição (preview) */
@@ -25,6 +29,7 @@ export function ImageUploader({
 	onChange,
 	folder,
 	campaignId,
+	libraryName,
 	label = "Imagem",
 	className = "",
 	size = "md",
@@ -32,9 +37,13 @@ export function ImageUploader({
 }: ImageUploaderProps) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const inputId = useId();
+	const { session } = useAuth();
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const addImageAsset = useRPGStore((state) => state.addImageAsset);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const uploadCampaignId = campaignId ?? activeCampaignId ?? undefined;
 	const hasImage = isImageUrl(value);
 	const sizeClass = SIZE_MAP[size];
 	const shapeClass = shape === "circle" ? "rounded-full" : "rounded-md";
@@ -52,7 +61,20 @@ export function ImageUploader({
 		}
 		setBusy(true);
 		try {
-			const url = await imageStorage.upload(file, { folder, campaignId });
+			const dimensions = await readImageDimensions(file);
+			const url = await imageStorage.upload(file, {
+				folder,
+				campaignId: uploadCampaignId,
+			});
+			addImageAsset({
+				createdBy: session?.user.id ?? "",
+				name: libraryName?.trim() || readableFileName(file.name),
+				url,
+				mimeType: file.type || "image/webp",
+				sizeBytes: file.size,
+				width: dimensions.width,
+				height: dimensions.height,
+			});
 			onChange(url);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Falha no upload.");
@@ -62,7 +84,6 @@ export function ImageUploader({
 	}
 
 	function clear() {
-		if (value) imageStorage.delete(value).catch(() => {});
 		onChange("");
 		setError(null);
 		if (inputRef.current) inputRef.current.value = "";

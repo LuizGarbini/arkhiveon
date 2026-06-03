@@ -17,7 +17,13 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import {
+	type ComponentType,
+	type FormEvent,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { CharacterExportDialog } from "@/components/character-export-dialog";
 import {
@@ -96,6 +102,7 @@ function CharacterSheetPage() {
 		null,
 	);
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+	const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
 	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 	const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
 
@@ -241,9 +248,22 @@ function CharacterSheetPage() {
 									<FileText className="h-3.5 w-3.5" />
 									{systemLabel(currentCharacter.system)}
 								</div>
-								<h1 className="font-display mt-3 truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-									{currentCharacter.characterName || "Ficha sem nome"}
-								</h1>
+								<div className="mt-3 flex min-w-0 items-center gap-2">
+									<h1 className="font-display min-w-0 truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+										{currentCharacter.characterName || "Ficha sem nome"}
+									</h1>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon-sm"
+										title="Renomear personagem"
+										aria-label="Renomear personagem"
+										className="shrink-0"
+										onClick={() => setIsNameDialogOpen(true)}
+									>
+										<Edit className="h-4 w-4" />
+									</Button>
+								</div>
 								<p className="mt-2 text-[13px] text-muted-foreground">
 									{[
 										currentCharacter.race,
@@ -399,6 +419,14 @@ function CharacterSheetPage() {
 				onOpenChange={setIsImageDialogOpen}
 				onChange={(patch) => updateCharacter(currentCharacter.id, patch)}
 			/>
+			<CharacterNameDialog
+				character={currentCharacter}
+				open={isNameDialogOpen}
+				onOpenChange={setIsNameDialogOpen}
+				onSave={(characterName) =>
+					updateCharacter(currentCharacter.id, { characterName })
+				}
+			/>
 			<CharacterTransferDialog
 				character={currentCharacter}
 				open={isTransferDialogOpen}
@@ -410,6 +438,72 @@ function CharacterSheetPage() {
 				onOpenChange={setIsExportDialogOpen}
 			/>
 		</div>
+	);
+}
+
+function CharacterNameDialog({
+	character,
+	open,
+	onOpenChange,
+	onSave,
+}: {
+	character: Character;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSave: (characterName: string) => void;
+}) {
+	const [draftName, setDraftName] = useState(character.characterName ?? "");
+	const canSave = draftName.trim().length > 0;
+
+	useEffect(() => {
+		if (open) setDraftName(character.characterName ?? "");
+	}, [character.characterName, open]);
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const characterName = draftName.trim();
+		if (!characterName) return;
+		onSave(characterName);
+		onOpenChange(false);
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-md!">
+				<form onSubmit={handleSubmit} className="space-y-5">
+					<DialogHeader>
+						<DialogTitle className="font-display text-xl">
+							Renomear personagem
+						</DialogTitle>
+						<DialogDescription>
+							Atualize o nome exibido no cabeçalho, nos cards e na ficha.
+						</DialogDescription>
+					</DialogHeader>
+
+					<Field label="Nome do personagem">
+						<Input
+							value={draftName}
+							onChange={(event) => setDraftName(event.target.value)}
+							placeholder="Ex: Lyra Cinzal"
+							autoFocus
+						/>
+					</Field>
+
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancelar
+						</Button>
+						<Button type="submit" disabled={!canSave}>
+							Salvar nome
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
@@ -467,6 +561,7 @@ function CharacterImageDialog({
 					label="Upload direto"
 					folder="characters"
 					campaignId={activeCampaignId ?? undefined}
+					libraryName={character.characterName}
 					size="lg"
 				/>
 

@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -92,6 +93,7 @@ function ItemFormDialog({
 
 	const addItem = useRPGStore((state) => state.addItem);
 	const updateItem = useRPGStore((state) => state.updateItem);
+	const navigate = useNavigate();
 
 	const { register, handleSubmit, reset, control, setValue } =
 		useForm<ItemFormValues>({
@@ -106,9 +108,20 @@ function ItemFormDialog({
 	}, [open, item, reset]);
 
 	function onSubmit(data: ItemFormValues) {
+		let createdId: string | null = null;
 		if (isEdit && item) updateItem(item.id, data);
-		else addItem(data);
+		else {
+			const created = addItem(data);
+			if (created.id) createdId = created.id;
+		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/items/$itemId",
+				params: { itemId: createdId },
+				search: { edit: true },
+			});
+		}
 	}
 
 	return (
@@ -137,6 +150,7 @@ function ItemFormDialog({
 								}
 								label="Ilustração"
 								folder="items"
+								libraryName={watchedValues.name}
 								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

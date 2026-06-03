@@ -1,18 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+	Check,
 	Eye,
 	ImageIcon,
 	Images,
 	Loader2,
 	LockKeyhole,
+	Pencil,
 	Search,
 	Trash2,
 	UnlockKeyhole,
 	UploadCloud,
+	X,
 } from "lucide-react";
 import {
 	type ChangeEvent,
 	type DragEvent,
+	type FormEvent,
 	useEffect,
 	useId,
 	useMemo,
@@ -25,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
+import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
 import type { ImageAsset } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
@@ -273,9 +278,14 @@ function ImagesRoute() {
 								isMaster ||
 								(asset.createdBy === session?.user.id && !asset.isPrivate)
 							}
+							canRename={
+								isMaster ||
+								(asset.createdBy === session?.user.id && !asset.isPrivate)
+							}
 							onTogglePrivate={() =>
 								updateImageAsset(asset.id, { isPrivate: !asset.isPrivate })
 							}
+							onRename={(name) => updateImageAsset(asset.id, { name })}
 							onDelete={() => removeImageAsset(asset.id)}
 						/>
 					))}
@@ -297,15 +307,34 @@ function ImageAssetCard({
 	asset,
 	isMaster,
 	canDelete,
+	canRename,
 	onTogglePrivate,
+	onRename,
 	onDelete,
 }: {
 	asset: ImageAsset;
 	isMaster: boolean;
 	canDelete: boolean;
+	canRename: boolean;
 	onTogglePrivate: () => void;
+	onRename: (name: string) => void;
 	onDelete: () => void;
 }) {
+	const [isRenaming, setIsRenaming] = useState(false);
+	const [draftName, setDraftName] = useState(asset.name);
+
+	useEffect(() => {
+		if (!isRenaming) setDraftName(asset.name);
+	}, [asset.name, isRenaming]);
+
+	function handleRename(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const nextName = draftName.trim();
+		if (!nextName) return;
+		onRename(nextName);
+		setIsRenaming(false);
+	}
+
 	return (
 		<article className="group overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5">
 			<div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -336,18 +365,66 @@ function ImageAssetCard({
 			</div>
 
 			<div className="space-y-3 p-4">
-				<div className="min-w-0">
-					<h2 className="truncate text-[13px] font-bold text-foreground">
-						{asset.name}
-					</h2>
-					<p className="mt-1 text-[11px] text-muted-foreground">
-						{asset.width && asset.height
-							? `${asset.width}×${asset.height} · ${formatBytes(asset.sizeBytes)}`
-							: formatBytes(asset.sizeBytes)}
-					</p>
-				</div>
+				{isRenaming ? (
+					<form onSubmit={handleRename} className="space-y-2">
+						<Input
+							value={draftName}
+							onChange={(event) => setDraftName(event.target.value)}
+							aria-label="Nome da imagem"
+							className="h-9 rounded-xl bg-background/70 text-[12px]"
+							autoFocus
+						/>
+						<div className="flex items-center gap-2">
+							<Button
+								type="submit"
+								variant="outline"
+								size="icon-sm"
+								title="Salvar nome"
+								aria-label="Salvar nome da imagem"
+							>
+								<Check className="h-4 w-4" />
+							</Button>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								title="Cancelar"
+								aria-label="Cancelar renomeação"
+								onClick={() => {
+									setDraftName(asset.name);
+									setIsRenaming(false);
+								}}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						</div>
+					</form>
+				) : (
+					<div className="min-w-0">
+						<h2 className="truncate text-[13px] font-bold text-foreground">
+							{asset.name}
+						</h2>
+						<p className="mt-1 text-[11px] text-muted-foreground">
+							{asset.width && asset.height
+								? `${asset.width}×${asset.height} · ${formatBytes(asset.sizeBytes)}`
+								: formatBytes(asset.sizeBytes)}
+						</p>
+					</div>
+				)}
 
 				<div className="flex items-center gap-2">
+					{canRename && !isRenaming && (
+						<Button
+							type="button"
+							variant="outline"
+							size="icon-sm"
+							title="Renomear imagem"
+							aria-label="Renomear imagem"
+							onClick={() => setIsRenaming(true)}
+						>
+							<Pencil className="h-4 w-4" />
+						</Button>
+					)}
 					{isMaster && (
 						<Button
 							type="button"
@@ -388,26 +465,6 @@ function ImageAssetCard({
 			</div>
 		</article>
 	);
-}
-
-async function readImageDimensions(
-	file: File,
-): Promise<{ width?: number; height?: number }> {
-	try {
-		const source = await createImageBitmap(file);
-		const dimensions = { width: source.width, height: source.height };
-		source.close();
-		return dimensions;
-	} catch {
-		return {};
-	}
-}
-
-function readableFileName(fileName: string): string {
-	return fileName
-		.replace(/\.[^/.]+$/, "")
-		.replace(/[-_]+/g, " ")
-		.trim();
 }
 
 function formatBytes(bytes: number): string {
