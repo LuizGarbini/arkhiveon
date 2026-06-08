@@ -699,9 +699,19 @@ function ModuleContent({
 	character: Character;
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 }) {
+	const customFields = config.customFields?.filter((f) => f.section === module.kind) || [];
+
+	if (module.kind === "custom_template_fields") {
+		return <CustomSheetRenderer templateId={character.customTemplateId || character.system} register={() => ({}) as any} viewMode character={character} />;
+	}
+
 	if (module.kind === "identity") {
 		return (
 			<div className="grid gap-3">
+				<div className="grid grid-cols-2 gap-3">
+					<InfoRow label="Nível" value={String(character.level || 1)} />
+					<InfoRow label="XP" value={String(character.xp || 0)} />
+				</div>
 				<InfoRow
 					label="Jogador"
 					value={character.playerName || "Não informado"}
@@ -709,24 +719,32 @@ function ModuleContent({
 				<InfoRow label="Raça" value={character.race || "Não informada"} />
 				<InfoRow label="Classe" value={character.class || "Não informada"} />
 				<InfoRow
-					label="Antecedente"
+					label="Antecedente / Origem"
 					value={character.background || "Não informado"}
 				/>
+				<InfoRow
+					label="Alinhamento"
+					value={character.alignment || "Não informado"}
+				/>
+				<TextBlock title="Aparência" value={character.appearance || "Não informada"} />
 			</div>
 		);
 	}
 
 	if (module.kind === "abilities") {
-		const abilities = [
-			{ label: config.abilityLabels[0], value: character.strength },
-			{ label: config.abilityLabels[1], value: character.dexterity },
-			{ label: config.abilityLabels[2], value: character.constitution },
-			{ label: config.abilityLabels[3], value: character.intelligence },
-			{ label: config.abilityLabels[4], value: character.wisdom },
-			{ label: config.abilityLabels[5], value: character.charisma },
-		];
+		const isStandardKey = (key: string) => [
+			"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
+		].includes(key);
+
+		const abilities = (config.attributes || []).map((attr) => {
+			const val = isStandardKey(attr.key) 
+				? Number((character as any)[attr.key]) || 10
+				: Number(character.systemAttributes?.[attr.key]) || 10;
+			return { label: attr.label, value: val };
+		});
+
 		return (
-			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+			<div className={`grid gap-3 ${abilities.length >= 8 ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8' : abilities.length === 9 ? 'grid-cols-3 sm:grid-cols-3 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6'}`}>
 				{abilities.map((ability) => (
 					<div
 						key={ability.label}
@@ -790,6 +808,9 @@ function ModuleContent({
 						label="Deslocamento"
 						value={`${character.speed}${config.speedUnit}`}
 					/>
+					{customFields.map((field) => (
+						<Metric key={field.key} Icon={Sparkles} label={field.label} value={character.systemFields?.[field.key] || "-"} />
+					))}
 				</div>
 			</div>
 		);
@@ -798,6 +819,9 @@ function ModuleContent({
 	if (module.kind === "sanity") {
 		return (
 			<div className="grid gap-3 sm:grid-cols-3">
+				{customFields.map((field) => (
+					<Metric key={field.key} Icon={Sparkles} label={field.label} value={character.systemFields?.[field.key] || "-"} />
+				))}
 				<Metric Icon={Eye} label="Sanidade" value={character.sanity} />
 				<Metric Icon={Eye} label="Sanidade Máx." value={character.sanityMax} />
 				<Metric Icon={Sparkles} label="Poder" value={character.power} />
@@ -821,6 +845,9 @@ function ModuleContent({
 						value={formatModifier(character.spellAttackBonus)}
 					/>
 				</div>
+				{customFields.map((field) => (
+					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+				))}
 				<TextBlock title="Magias" value={character.spells} />
 				<TextBlock title="Espaços" value={character.spellSlots} />
 			</div>
@@ -830,6 +857,9 @@ function ModuleContent({
 	if (module.kind === "inventory") {
 		return (
 			<div className="grid gap-3">
+				{customFields.map((field) => (
+					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+				))}
 				<TextBlock title="Equipamento" value={character.equipment} />
 				<TextBlock title="Moedas / Tesouro" value={character.currency} />
 			</div>
@@ -839,6 +869,9 @@ function ModuleContent({
 	if (module.kind === "personality") {
 		return (
 			<div className="grid gap-3">
+				{customFields.map((field) => (
+					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+				))}
 				<TextBlock title="Traços" value={character.personalityTraits} />
 				<TextBlock title="Ideais" value={character.ideals} />
 				<TextBlock title="Vínculos" value={character.bonds} />
@@ -848,7 +881,14 @@ function ModuleContent({
 	}
 
 	if (module.kind === "notes") {
-		return <TextBlock title="Anotações" value={character.notes} />;
+		return (
+			<div className="grid gap-3">
+				{customFields.map((field) => (
+					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+				))}
+				<TextBlock title="Anotações" value={character.notes} />
+			</div>
+		);
 	}
 
 	return (
