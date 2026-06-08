@@ -17,6 +17,7 @@ export const SHEET_MODULE_LABELS: Record<SheetModuleKind, string> = {
 	notes: "Notas",
 	customText: "Texto livre",
 	customStats: "Bloco de stats",
+	custom_template_fields: "Ficha",
 };
 
 const SYSTEMS_WITH_SANITY = new Set<RpgSystem>([
@@ -70,6 +71,18 @@ export function createDefaultSheetLayout(
 		showSanity?: boolean;
 	},
 ): SheetLayoutConfig {
+	if (system.startsWith("custom_")) {
+		return {
+			version: 1,
+			template: system,
+			modules: [
+				moduleConfig("custom_template_fields" as any, 10, "main", {
+					title: "Ficha do Personagem",
+				}),
+			],
+		};
+	}
+
 	const showSanity = options?.showSanity ?? SYSTEMS_WITH_SANITY.has(system);
 	const showSpells = options?.showSpells ?? !SYSTEMS_WITHOUT_MAGIC.has(system);
 	const modules: SheetModuleConfig[] = [

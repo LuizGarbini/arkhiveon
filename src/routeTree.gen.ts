@@ -20,6 +20,7 @@ import { Route as BillingRouteImport } from './routes/billing'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TemplatesIndexRouteImport } from './routes/templates/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
 import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
 import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
@@ -27,6 +28,7 @@ import { Route as LoreIndexRouteImport } from './routes/lore/index'
 import { Route as LocationsIndexRouteImport } from './routes/locations/index'
 import { Route as ItemsIndexRouteImport } from './routes/items/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
+import { Route as TemplatesNewRouteImport } from './routes/templates/new'
 import { Route as SheetsNewRouteImport } from './routes/sheets/new'
 import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
 import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
@@ -90,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TemplatesIndexRoute = TemplatesIndexRouteImport.update({
+  id: '/templates/',
+  path: '/templates/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SheetsIndexRoute = SheetsIndexRouteImport.update({
   id: '/sheets/',
   path: '/sheets/',
@@ -123,6 +130,11 @@ const ItemsIndexRoute = ItemsIndexRouteImport.update({
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
   id: '/characters/',
   path: '/characters/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesNewRoute = TemplatesNewRouteImport.update({
+  id: '/templates/new',
+  path: '/templates/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SheetsNewRoute = SheetsNewRouteImport.update({
@@ -180,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/characters': typeof CharactersIndexRoute
   '/items': typeof ItemsIndexRoute
   '/locations': typeof LocationsIndexRoute
@@ -187,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/npcs': typeof NpcsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
+  '/templates': typeof TemplatesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -207,6 +221,7 @@ export interface FileRoutesByTo {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/characters': typeof CharactersIndexRoute
   '/items': typeof ItemsIndexRoute
   '/locations': typeof LocationsIndexRoute
@@ -214,6 +229,7 @@ export interface FileRoutesByTo {
   '/npcs': typeof NpcsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
+  '/templates': typeof TemplatesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -235,6 +251,7 @@ export interface FileRoutesById {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/characters/': typeof CharactersIndexRoute
   '/items/': typeof ItemsIndexRoute
   '/locations/': typeof LocationsIndexRoute
@@ -242,6 +259,7 @@ export interface FileRoutesById {
   '/npcs/': typeof NpcsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/sheets/': typeof SheetsIndexRoute
+  '/templates/': typeof TemplatesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -264,6 +282,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/new'
     | '/characters'
     | '/items'
     | '/locations'
@@ -271,6 +290,7 @@ export interface FileRouteTypes {
     | '/npcs'
     | '/sessions'
     | '/sheets'
+    | '/templates'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -291,6 +311,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/new'
     | '/characters'
     | '/items'
     | '/locations'
@@ -298,6 +319,7 @@ export interface FileRouteTypes {
     | '/npcs'
     | '/sessions'
     | '/sheets'
+    | '/templates'
   id:
     | '__root__'
     | '/'
@@ -318,6 +340,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/new'
     | '/characters/'
     | '/items/'
     | '/locations/'
@@ -325,6 +348,7 @@ export interface FileRouteTypes {
     | '/npcs/'
     | '/sessions/'
     | '/sheets/'
+    | '/templates/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -346,6 +370,7 @@ export interface RootRouteChildren {
   SessionsSessionIdRoute: typeof SessionsSessionIdRoute
   SheetsCharacterIdRoute: typeof SheetsCharacterIdRoute
   SheetsNewRoute: typeof SheetsNewRoute
+  TemplatesNewRoute: typeof TemplatesNewRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
   ItemsIndexRoute: typeof ItemsIndexRoute
   LocationsIndexRoute: typeof LocationsIndexRoute
@@ -353,6 +378,7 @@ export interface RootRouteChildren {
   NpcsIndexRoute: typeof NpcsIndexRoute
   SessionsIndexRoute: typeof SessionsIndexRoute
   SheetsIndexRoute: typeof SheetsIndexRoute
+  TemplatesIndexRoute: typeof TemplatesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -434,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/templates/': {
+      id: '/templates/'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sheets/': {
       id: '/sheets/'
       path: '/sheets'
@@ -481,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/characters'
       fullPath: '/characters'
       preLoaderRoute: typeof CharactersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates/new': {
+      id: '/templates/new'
+      path: '/templates/new'
+      fullPath: '/templates/new'
+      preLoaderRoute: typeof TemplatesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sheets/new': {
@@ -554,6 +594,7 @@ const rootRouteChildren: RootRouteChildren = {
   SessionsSessionIdRoute: SessionsSessionIdRoute,
   SheetsCharacterIdRoute: SheetsCharacterIdRoute,
   SheetsNewRoute: SheetsNewRoute,
+  TemplatesNewRoute: TemplatesNewRoute,
   CharactersIndexRoute: CharactersIndexRoute,
   ItemsIndexRoute: ItemsIndexRoute,
   LocationsIndexRoute: LocationsIndexRoute,
@@ -561,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   NpcsIndexRoute: NpcsIndexRoute,
   SessionsIndexRoute: SessionsIndexRoute,
   SheetsIndexRoute: SheetsIndexRoute,
+  TemplatesIndexRoute: TemplatesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
