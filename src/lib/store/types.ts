@@ -45,7 +45,35 @@ export const RPG_SYSTEMS = [
 	{ value: "generic", label: "Genérico / Outro" },
 ] as const;
 
-export type RpgSystem = (typeof RPG_SYSTEMS)[number]["value"];
+export type RpgSystem = (typeof RPG_SYSTEMS)[number]["value"] | `custom_${string}`;
+
+// =====================================================
+//  Templates Customizados
+// =====================================================
+export type FieldType = "text" | "number" | "textarea" | "attribute_box" | "metric_box" | "image" | "checkbox";
+
+export interface TemplateField {
+	id: string; // ID único do campo (ex: 'str', 'hp_max')
+	type: FieldType;
+	label: string;
+	placeholder?: string;
+	width?: "full" | "half" | "third" | "quarter"; // Para organização no grid
+}
+
+export interface TemplateSection {
+	id: string;
+	title: string;
+	fields: TemplateField[];
+}
+
+export interface CustomTemplate {
+	id: string;
+	name: string;
+	description: string;
+	author: string;
+	sections: TemplateSection[];
+	createdAt: number;
+}
 
 // =====================================================
 //  Tipos de entidade
@@ -158,6 +186,9 @@ export interface Character {
 	sheetLayout: SheetLayoutConfig;
 	familyRelations: FamilyRelation[];
 	entityLinks: EntityLink[];
+	systemAttributes?: Record<string, number>;
+	systemFields?: Record<string, string>;
+	customTemplateId?: string;
 }
 
 export type FamilyRelationKind =
@@ -189,7 +220,8 @@ export type SheetModuleKind =
 	| "personality"
 	| "notes"
 	| "customText"
-	| "customStats";
+	| "customStats"
+	| "custom_template_fields";
 
 export interface SheetModuleConfig {
 	id: string;
@@ -413,6 +445,11 @@ export interface RPGState {
 		id: string,
 		targetCampaignId: string,
 	) => Promise<Character | null>;
+
+	customTemplates: CustomTemplate[];
+	addTemplate: (template: CustomTemplate) => void;
+	updateTemplate: (id: string, template: Partial<CustomTemplate>) => void;
+	removeTemplate: (id: string) => void;
 
 	npcs: Npc[];
 	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc | null;

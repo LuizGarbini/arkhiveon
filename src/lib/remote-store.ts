@@ -12,7 +12,8 @@ export type RemoteEntityKind =
 	| "session"
 	| "item"
 	| "location"
-	| "lore";
+	| "lore"
+	| "customTemplate";
 
 export type RemoteActivityAction = "create" | "update" | "delete";
 
@@ -48,6 +49,7 @@ export interface RemoteStateSnapshot {
 	items: unknown[];
 	locations: unknown[];
 	lores: unknown[];
+	customTemplates: unknown[];
 	imageAssets: RemoteImageAsset[];
 	activityLog: RemoteActivityEntry[];
 }
@@ -58,7 +60,8 @@ type EntityTable =
 	| "sessions"
 	| "items"
 	| "locations"
-	| "lores";
+	| "lores"
+	| "custom_templates";
 
 type EntityRow = Tables<EntityTable>;
 type EntityInsert = TablesInsert<EntityTable>;
@@ -154,14 +157,15 @@ function fromImageAssetRow(row: Record<string, unknown>): RemoteImageAsset {
 }
 
 function tableFor(kind: RemoteEntityKind): EntityTable {
-	const tables = {
+	const tables: Record<RemoteEntityKind, EntityTable> = {
 		character: SUPABASE_TABLES.characters,
 		npc: SUPABASE_TABLES.npcs,
 		session: SUPABASE_TABLES.sessions,
 		item: SUPABASE_TABLES.items,
 		location: SUPABASE_TABLES.locations,
 		lore: SUPABASE_TABLES.lores,
-	} as const;
+		customTemplate: "custom_templates" as any, // Needs to be added to SUPABASE_TABLES if exported
+	};
 	return tables[kind];
 }
 
@@ -237,6 +241,12 @@ function rowFor(
 				importance: stringValue(entity.importance, "supporting"),
 				is_secret: booleanValue(entity.isSecret, false),
 			};
+		case "customTemplate":
+			return {
+				...base,
+				name: entityName(kind, entity),
+				description: stringValue(entity.description, ""),
+			};
 	}
 }
 
@@ -286,6 +296,13 @@ async function insertEntityRow(
 			const { error } = await supabase
 				.from(SUPABASE_TABLES.lores)
 				.insert(row as TablesInsert<"lores">);
+			if (error) throw error;
+			return;
+		}
+		case "customTemplate": {
+			const { error } = await supabase
+				.from("custom_templates")
+				.insert(row as TablesInsert<"custom_templates">);
 			if (error) throw error;
 			return;
 		}
@@ -348,6 +365,14 @@ async function updateEntityRow(
 			if (error) throw error;
 			return;
 		}
+		case "customTemplate": {
+			const { error } = await supabase
+				.from("custom_templates")
+				.update(row as TablesUpdate<"custom_templates">)
+				.eq("id", id);
+			if (error) throw error;
+			return;
+		}
 	}
 }
 
@@ -401,6 +426,7 @@ export async function loadRemoteState(
 		items,
 		locations,
 		lores,
+		customTemplates,
 		imageAssets,
 		activityRows,
 	] = await Promise.all([
@@ -410,6 +436,7 @@ export async function loadRemoteState(
 		selectEntities(SUPABASE_TABLES.items, campaignId),
 		selectEntities(SUPABASE_TABLES.locations, campaignId),
 		selectEntities(SUPABASE_TABLES.lores, campaignId),
+		selectEntities("custom_templates" as any, campaignId),
 		loadRemoteImageAssets(campaignId),
 		activityQuery.order("created_at", { ascending: false }).limit(200),
 	]);
@@ -423,6 +450,7 @@ export async function loadRemoteState(
 		items,
 		locations,
 		lores,
+		customTemplates,
 		imageAssets,
 		activityLog: ((activityRows.data ?? []) as ActivityRow[]).map(
 			fromActivityRow,
