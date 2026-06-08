@@ -1,8 +1,10 @@
 import { ArrowRight, Search } from "lucide-react";
 import { useState } from "react";
 import type { RpgSystem } from "@/lib/store";
+import { useRPGStore } from "@/lib/store";
 import { SYSTEM_LIST } from "@/lib/systems";
 import { Input } from "./ui/input";
+import { LayoutTemplate } from "lucide-react";
 
 interface SystemPickerProps {
 	value?: RpgSystem;
@@ -15,8 +17,22 @@ interface SystemPickerProps {
  */
 export function SystemPicker({ value, onSelect }: SystemPickerProps) {
 	const [search, setSearch] = useState("");
+	const customTemplates = useRPGStore((state) => state.customTemplates || []);
 
-	const filtered = SYSTEM_LIST.filter((s) => {
+	const allSystems = [
+		...customTemplates.map((t) => ({
+			value: t.id as RpgSystem,
+			label: t.name,
+			tagline: "Template Customizado",
+			description: t.description || "Criado pelo Construtor",
+			Icon: LayoutTemplate,
+			bgAccent: "from-primary/10 to-transparent",
+			accent: "text-primary",
+		})),
+		...SYSTEM_LIST,
+	];
+
+	const filtered = allSystems.filter((s) => {
 		const q = search.toLowerCase();
 		return (
 			s.label.toLowerCase().includes(q) ||
