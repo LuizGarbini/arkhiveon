@@ -24,6 +24,7 @@ import {
 	sanitizeCharacterFormValues,
 	SystemFields,
 } from "@/components/character-sheet-fields";
+import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
 import { SystemPicker } from "@/components/system-picker";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form-tabs";
@@ -42,13 +43,21 @@ export const Route = createFileRoute("/sheets/new")({
 	component: NewSheetPage,
 });
 
-type WizardStep = "system" | "identity" | "abilities" | "combat" | "modules" | "review";
+type WizardStep = "system" | "identity" | "abilities" | "combat" | "modules" | "custom" | "review";
 
-const STEPS: Array<{ id: WizardStep; label: string; description: string }> = [
+const DEFAULT_STEPS: Array<{ id: WizardStep; label: string; description: string }> = [
 	{ id: "system", label: "Sistema", description: "Escolha o template" },
 	{ id: "identity", label: "Identidade", description: "Base da ficha" },
 	{ id: "abilities", label: "Atributos", description: "Números e perícias" },
 	{ id: "combat", label: "Combate", description: "PV, defesa e recursos" },
+	{ id: "modules", label: "Módulos", description: "Layout personalizável" },
+	{ id: "review", label: "Revisão", description: "Conferir e salvar" },
+];
+
+const CUSTOM_STEPS: Array<{ id: WizardStep; label: string; description: string }> = [
+	{ id: "system", label: "Sistema", description: "Escolha o template" },
+	{ id: "identity", label: "Identidade", description: "Base da ficha" },
+	{ id: "custom", label: "Ficha", description: "Preencher campos customizados" },
 	{ id: "modules", label: "Módulos", description: "Layout personalizável" },
 	{ id: "review", label: "Revisão", description: "Conferir e salvar" },
 ];
@@ -71,7 +80,12 @@ function NewSheetPage() {
 	const characterName = useWatch({ control, name: "characterName" });
 	const characterClass = useWatch({ control, name: "class" });
 	const characterRace = useWatch({ control, name: "race" });
-	const activeStepIndex = STEPS.findIndex((step) => step.id === activeStep);
+	const characterLevel = useWatch({ control, name: "level" });
+	const characterBackground = useWatch({ control, name: "background" });
+    
+    const isCustomSystem = system?.startsWith("custom_");
+    const activeSteps = isCustomSystem ? CUSTOM_STEPS : DEFAULT_STEPS;
+	const activeStepIndex = activeSteps.findIndex((step) => step.id === activeStep);
 	const enabledModules = useMemo(
 		() => modules.filter((module) => module.enabled),
 		[modules],
@@ -91,16 +105,23 @@ function NewSheetPage() {
 
 	function goToStep(step: WizardStep) {
 		setActiveStep(step);
+		window.scrollTo({ top: 0, behavior: "smooth" });
 	}
 
 	function goNext() {
-		const next = STEPS[activeStepIndex + 1];
-		if (next) setActiveStep(next.id);
+		const next = activeSteps[activeStepIndex + 1];
+		if (next) {
+			setActiveStep(next.id);
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		}
 	}
 
 	function goBack() {
-		const previous = STEPS[activeStepIndex - 1];
-		if (previous) setActiveStep(previous.id);
+		const previous = activeSteps[activeStepIndex - 1];
+		if (previous) {
+			setActiveStep(previous.id);
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		}
 	}
 
 	function handleSelectSystem(nextSystem: RpgSystem) {
@@ -139,12 +160,11 @@ function NewSheetPage() {
 				order: index * 10 + 10,
 			})),
 		};
-		const created = addCharacter(
-			sanitizeCharacterFormValues({
-				...values,
-				sheetLayout,
-			}),
-		);
+		const created = addCharacter({
+            ...values,
+            sheetLayout,
+            customTemplateId: isCustomSystem ? system : undefined,
+        });
 		void navigate({
 			to: "/sheets/$characterId",
 			params: { characterId: created.id },
@@ -191,7 +211,7 @@ function NewSheetPage() {
 
 			<div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
 				<aside className="rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5 lg:sticky lg:top-24 lg:self-start">
-					{STEPS.map((step, index) => {
+					{activeSteps.map((step, index) => {
 						const active = step.id === activeStep;
 						const done = index < activeStepIndex;
 						return (
@@ -266,7 +286,7 @@ function NewSheetPage() {
 						</div>
 					)}
 
-					{activeStep === "combat" && (
+					{activeStep === "combat" && !isCustomSystem && (
 						<div className="space-y-7">
 							<SectionIntro
 								eyebrow="Combate"
@@ -274,13 +294,26 @@ function NewSheetPage() {
 								description="PV, defesa, deslocamento e módulos especiais do sistema."
 							/>
 							<CombatFields register={register} config={config} />
-							{config.showSanity && <SanityFields register={register} />}
-							{config.showSpells && <MagicFields register={register} />}
-							<InventoryFields register={register} />
-							<PersonalityFields register={register} />
-							<NotesFields register={register} />
+							{config.showSanity && <SanityFields register={register} config={config} />}
+							{(config.showSpells || config.customFields?.some(f => f.section === "magic")) && (
+								<MagicFields register={register} config={config} />
+							)}
+							<InventoryFields register={register} config={config} />
+							<PersonalityFields register={register} config={config} />
+							<NotesFields register={register} config={config} />
 						</div>
 					)}
+
+                    {activeStep === "custom" && isCustomSystem && (
+                        <div className="space-y-7">
+							<SectionIntro
+								eyebrow="Ficha"
+								title="Preencha sua ficha customizada"
+								description="Os campos abaixo foram definidos no seu template."
+							/>
+                            <CustomSheetRenderer templateId={system} register={register} />
+                        </div>
+                    )}
 
 					{activeStep === "modules" && (
 						<div className="space-y-7">
@@ -380,7 +413,19 @@ function NewSheetPage() {
 								<ReviewCard label="Sistema" value={config.label} />
 								<ReviewCard
 									label="Nome"
-									value={characterName || "Sem nome ainda"}
+									value={characterName || "Sem nome"}
+								/>
+								<ReviewCard
+									label="Nível / NEX"
+									value={String(characterLevel || 1)}
+								/>
+								<ReviewCard
+									label="Raça / Origem"
+									value={characterRace || characterBackground || "Não definido"}
+								/>
+								<ReviewCard
+									label="Classe / Trilha"
+									value={characterClass || "Não definido"}
 								/>
 								<ReviewCard
 									label="Módulos ativos"
