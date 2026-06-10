@@ -51,6 +51,7 @@ interface LocationEditButtonProps {
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
 	trigger?: ReactNode;
+	defaultTab?: string;
 }
 
 export function LocationEditButton({
@@ -58,12 +59,14 @@ export function LocationEditButton({
 	open,
 	onOpenChange,
 	trigger,
+	defaultTab,
 }: LocationEditButtonProps) {
 	return (
 		<LocationFormDialog
 			location={location}
 			open={open}
 			onOpenChange={onOpenChange}
+			defaultTab={defaultTab}
 			trigger={
 				trigger === undefined ? (
 					<Button variant="ghost" size="sm">
@@ -83,6 +86,7 @@ interface LocationFormDialogProps {
 	trigger?: ReactNode;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	defaultTab?: string;
 }
 
 function LocationFormDialog({
@@ -90,6 +94,7 @@ function LocationFormDialog({
 	trigger,
 	open: openProp,
 	onOpenChange,
+	defaultTab,
 }: LocationFormDialogProps) {
 	const isEdit = !!location;
 	const [internalOpen, setInternalOpen] = useState(false);
@@ -97,7 +102,7 @@ function LocationFormDialog({
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
 
-	const [tab, setTab] = useState(TABS[0].id);
+	const [tab, setTab] = useState(defaultTab || TABS[0].id);
 	const addLocation = useRPGStore((state) => state.addLocation);
 	const updateLocation = useRPGStore((state) => state.updateLocation);
 	const navigate = useNavigate();
@@ -113,9 +118,9 @@ function LocationFormDialog({
 	useEffect(() => {
 		if (open) {
 			reset({ ...locationDefaults, ...(location ?? {}) });
-			setTab(TABS[0].id);
+			setTab(defaultTab || TABS[0].id);
 		}
-	}, [open, location, reset]);
+	}, [open, location, reset, defaultTab]);
 
 	function onSubmit(data: LocationFormValues) {
 		let createdId: string | null = null;
@@ -137,10 +142,10 @@ function LocationFormDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! max-h-[92vh] overflow-hidden p-0">
+			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
 				<form
 					onSubmit={handleSubmit(onSubmit)}
-					className="flex max-h-[92vh] flex-col"
+					className="flex h-full min-h-0 flex-col"
 				>
 					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
 						<DialogTitle className="font-display text-lg">
@@ -154,7 +159,7 @@ function LocationFormDialog({
 						</div>
 					</DialogHeader>
 
-					<div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 						{tab === "basic" && (
 							<FormSection title="Identificação">
 								<ImageUploader

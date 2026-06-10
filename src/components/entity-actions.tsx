@@ -5,7 +5,6 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "./ui/dialog";
@@ -101,14 +100,29 @@ function ConfirmDeleteDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				className="sm:max-w-md"
+				className="sm:max-w-md overflow-hidden p-0"
 				onClick={(event) => event.stopPropagation()}
 			>
-				<DialogHeader>
-					<DialogTitle className="font-display text-base">{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+				<DialogHeader className="border-b border-border/70 px-6 pb-4 pt-6">
+					<div className="flex items-center gap-3">
+						<div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-500/25 bg-rose-500/10 text-rose-400">
+							<Trash2 className="h-5 w-5" />
+						</div>
+						<div>
+							<DialogTitle className="font-display text-base uppercase tracking-wider text-foreground">
+								{title}
+							</DialogTitle>
+						</div>
+					</div>
 				</DialogHeader>
-				<DialogFooter>
+
+				<div className="px-6 py-5">
+					<DialogDescription className="text-[13px] text-muted-foreground leading-relaxed">
+						{description}
+					</DialogDescription>
+				</div>
+
+				<div className="flex items-center justify-end gap-2 border-t border-border/70 bg-card-elevated/40 px-6 py-3">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -134,7 +148,7 @@ function ConfirmDeleteDialog({
 						<Trash2 className="h-3.5 w-3.5" />
 						Excluir
 					</Button>
-				</DialogFooter>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

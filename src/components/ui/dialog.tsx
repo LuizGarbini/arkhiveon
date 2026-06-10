@@ -28,7 +28,7 @@ function DialogOverlay({
 		<DialogPrimitive.Backdrop
 			data-slot="dialog-overlay"
 			className={cn(
-				"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 isolate z-50",
+				"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 bg-black/60 duration-150 backdrop-blur-md fixed inset-0 isolate z-50",
 				className,
 			)}
 			{...props}
@@ -50,7 +50,7 @@ function DialogContent({
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(
-					"bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-6 rounded-xl p-6 text-sm ring-1 duration-100 sm:max-w-md fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
+					"bg-card-elevated/95 border border-border/70 backdrop-blur-xl shadow-2xl data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 grid max-w-[calc(100%-2rem)] gap-6 rounded-2xl p-6 text-sm duration-150 sm:max-w-md fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
 					className,
 				)}
 				{...props}
@@ -62,7 +62,7 @@ function DialogContent({
 						render={
 							<Button
 								variant="ghost"
-								className="absolute top-4 right-4"
+								className="absolute top-4 right-4 text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
 								size="icon-sm"
 							/>
 						}

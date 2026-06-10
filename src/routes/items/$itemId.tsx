@@ -10,7 +10,7 @@ import {
 	Sparkles,
 	Weight,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	DetailInfo,
 	DetailQuickStat,
@@ -38,11 +38,8 @@ function ItemDetailPage() {
 		state.items.find((entry) => entry.id === itemId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
-	const [editOpen, setEditOpen] = useState(edit);
-
-	useEffect(() => {
-		if (edit) setEditOpen(true);
-	}, [edit]);
+	const [isEditing, setIsEditing] = useState(edit || false);
+	const [dialogOpen, setDialogOpen] = useState(false);
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -77,8 +74,8 @@ function ItemDetailPage() {
 		.filter(Boolean)
 		.join(" · ");
 
-	function handleEditOpenChange(open: boolean) {
-		setEditOpen(open);
+	function handleDialogOpenChange(open: boolean) {
+		setDialogOpen(open);
 		if (!open && edit) {
 			void navigate({
 				to: "/items/$itemId",
@@ -131,11 +128,11 @@ function ItemDetailPage() {
 
 					<Button
 						type="button"
-						onClick={() => setEditOpen(true)}
+						onClick={() => setIsEditing((current) => !current)}
 						className="gap-2"
 					>
 						<Pencil className="h-4 w-4" />
-						Editar
+						{isEditing ? "Concluir edição" : "Editar"}
 					</Button>
 				</div>
 
@@ -169,7 +166,11 @@ function ItemDetailPage() {
 
 			<div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 				<main className="grid content-start gap-5">
-					<DetailSection eyebrow="Resumo" title="Identificacao">
+					<DetailSection
+						eyebrow="Resumo"
+						title="Identificacao"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<DetailInfo label="Tipo" value={currentItem.type} />
 							<DetailInfo label="Subtipo" value={currentItem.subtype} />
@@ -182,7 +183,11 @@ function ItemDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Mecanica" title="Efeitos">
+					<DetailSection
+						eyebrow="Mecanica"
+						title="Efeitos"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailText
 								title="Atributos / efeitos"
@@ -193,13 +198,21 @@ function ItemDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Descricao" title="Lore">
+					<DetailSection
+						eyebrow="Descricao"
+						title="Lore"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<DetailText value={currentItem.description} />
 					</DetailSection>
 				</main>
 
 				<aside className="grid content-start gap-5">
-					<DetailSection eyebrow="Posse" title="Dono & sintonia">
+					<DetailSection
+						eyebrow="Posse"
+						title="Dono & sintonia"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailInfo label="Pertence a" value={currentItem.owner} />
 							<DetailInfo
@@ -225,8 +238,8 @@ function ItemDetailPage() {
 
 			<ItemEditButton
 				item={currentItem}
-				open={editOpen}
-				onOpenChange={handleEditOpenChange}
+				open={dialogOpen}
+				onOpenChange={handleDialogOpenChange}
 				trigger={null}
 			/>
 		</div>
