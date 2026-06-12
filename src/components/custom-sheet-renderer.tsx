@@ -21,6 +21,14 @@ export function CustomSheetRenderer({ templateId, register, viewMode, character 
         return <p className="text-muted-foreground text-sm">Template não encontrado.</p>;
     }
 
+    if (!template.sections?.length) {
+        return (
+            <p className="text-muted-foreground text-sm">
+                Este layout usa blocos modulares — edite o conteúdo diretamente na ficha.
+            </p>
+        );
+    }
+
     return (
         <div className="space-y-10">
             {template.sections.map(section => (
