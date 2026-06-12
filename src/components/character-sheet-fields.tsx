@@ -3,6 +3,7 @@ import {
 	type UseFormRegister,
 	type UseFormSetValue,
 	useWatch,
+	type FieldErrors,
 } from "react-hook-form";
 import {
 	abilityModifier,
@@ -98,12 +99,14 @@ export function CharacterModuleFields({
 	control,
 	setValue,
 	config,
+	errors,
 }: {
 	kind: SheetModuleKind;
 	register: CharacterRegister;
 	control: CharacterControl;
 	setValue: CharacterSetValue;
 	config: SystemConfig;
+	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	if (kind === "identity") {
 		return (
@@ -120,7 +123,7 @@ export function CharacterModuleFields({
 		);
 	}
 	if (kind === "combat") {
-		return <CombatFields register={register} config={config} />;
+		return <CombatFields register={register} config={config} errors={errors} />;
 	}
 	if (kind === "sanity") {
 		return <SanityFields register={register} />;
@@ -360,23 +363,45 @@ export function SanityFields({ register }: { register: CharacterRegister }) {
 export function CombatFields({
 	register,
 	config,
+	errors,
 }: {
 	register: CharacterRegister;
 	config: SystemConfig;
+	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	return (
 		<FormSection title="Status de Combate">
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-				<Field label="HP Atual">
+				<Field label="HP Atual" error={errors?.health?.message}>
 					<Input
 						type="number"
-						{...register("health", { valueAsNumber: true })}
+						{...register("health", {
+							valueAsNumber: true,
+							validate: (val, formVals) => {
+								const currentVal = Number(val);
+								const maxVal = Number(formVals.healthMax);
+								if (Number.isFinite(currentVal) && Number.isFinite(maxVal) && currentVal > maxVal) {
+									return "HP Atual não pode exceder o Máximo";
+								}
+								return true;
+							},
+						})}
 					/>
 				</Field>
-				<Field label="HP Máximo">
+				<Field label="HP Máximo" error={errors?.healthMax?.message}>
 					<Input
 						type="number"
-						{...register("healthMax", { valueAsNumber: true })}
+						{...register("healthMax", {
+							valueAsNumber: true,
+							validate: (val, formVals) => {
+								const currentVal = Number(formVals.health);
+								const maxVal = Number(val);
+								if (Number.isFinite(currentVal) && Number.isFinite(maxVal) && currentVal > maxVal) {
+									return "HP Máximo não pode ser menor que o Atual";
+								}
+								return true;
+							},
+						})}
 					/>
 				</Field>
 				<Field label="HP Temporário">

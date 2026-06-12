@@ -43,7 +43,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Field } from "@/components/ui/form-tabs";
+import { Field, FormTabs } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,6 +71,11 @@ import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sheets/$characterId")({
+	validateSearch: (search: Record<string, unknown>): { edit?: boolean } => {
+		return {
+			edit: search.edit === true || search.edit === "true" || undefined,
+		};
+	},
 	component: CharacterSheetPage,
 });
 
@@ -86,6 +91,7 @@ const moduleSkeletonKeys = [
 
 function CharacterSheetPage() {
 	const { characterId } = Route.useParams();
+	const { edit } = Route.useSearch();
 	const character = useRPGStore((state) =>
 		state.characters.find((item) => item.id === characterId),
 	);
@@ -97,7 +103,7 @@ function CharacterSheetPage() {
 			state.campaigns.find((campaign) => campaign.id === state.activeCampaignId)
 				?.myRole,
 	);
-	const [isEditingLayout, setIsEditingLayout] = useState(false);
+	const [isEditingLayout, setIsEditingLayout] = useState(edit || false);
 	const [editingModule, setEditingModule] = useState<SheetModuleConfig | null>(
 		null,
 	);
@@ -880,122 +886,167 @@ function ModuleEditorDialog({
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildCharacterFormDefaults(character),
 	});
-	const { register, control, setValue, handleSubmit, reset } = form;
+	const { register, control, setValue, handleSubmit, reset, formState: { errors } } = form;
+	const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
 	const [draft, setDraft] = useState<Partial<SheetModuleConfig>>({});
 	const config = SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.generic;
 
 	useEffect(() => {
-		if (!module || !open) return;
+		if (module && open) {
+			setActiveModuleId(module.id);
+		}
+	}, [module, open]);
+
+	const activeModule = useMemo(() => {
+		return layout.modules.find((m) => m.id === activeModuleId) || module;
+	}, [layout.modules, activeModuleId, module]);
+
+	useEffect(() => {
+		if (!activeModule || !open) return;
 		reset(buildCharacterFormDefaults(character));
 		setDraft({
-			title: module.title,
-			content: module.content ?? "",
-			enabled: module.enabled,
-			column: module.column ?? "main",
+			title: activeModule.title,
+			content: activeModule.content ?? "",
+			enabled: activeModule.enabled,
+			column: activeModule.column ?? "main",
 		});
-	}, [character, module, open, reset]);
+	}, [character, activeModule, open, reset]);
 
-	if (!module) return null;
+	const tabs = useMemo(() => {
+		return layout.modules.map((m) => ({
+			id: m.id,
+			label: m.title || SHEET_MODULE_LABELS[m.kind] || m.kind,
+		}));
+	}, [layout.modules]);
+
+	if (!activeModule) return null;
 
 	function submit(values: CharacterFormValues) {
+		if (!activeModule) return;
+		const nextModules = layout.modules.map((m) =>
+			m.id === activeModule.id ? { ...m, ...draft } : m,
+		);
 		onSave(draft, {
 			...values,
-			sheetLayout: layout,
+			sheetLayout: {
+				...layout,
+				modules: nextModules,
+			},
 		});
 	}
 
 	const isCustom =
-		module.kind === "customText" || module.kind === "customStats";
+		activeModule.kind === "customText" || activeModule.kind === "customStats";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl! max-h-[90vh] overflow-y-auto">
-				<form onSubmit={handleSubmit(submit)} className="space-y-5">
-					<DialogHeader>
-						<DialogTitle className="font-display text-xl">
-							Editar módulo
-						</DialogTitle>
-						<DialogDescription>
-							Altere o conteúdo e a configuração deste bloco da ficha.
-						</DialogDescription>
+			<DialogContent className="max-w-3xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+				<form
+					onSubmit={handleSubmit(submit)}
+					className="flex h-full min-h-0 flex-col"
+				>
+					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<DialogTitle className="font-display text-lg">
+									Editar módulo
+								</DialogTitle>
+								<DialogDescription>
+									Altere o conteúdo e a configuração deste bloco da ficha.
+								</DialogDescription>
+							</div>
+						</div>
+						<div className="mt-3">
+							<FormTabs
+								tabs={tabs}
+								value={activeModuleId || ""}
+								onChange={setActiveModuleId}
+							/>
+						</div>
 					</DialogHeader>
 
-					<div className="grid gap-3 sm:grid-cols-[1fr_160px_140px]">
-						<Field label="Título do módulo">
-							<Input
-								value={draft.title ?? ""}
-								onChange={(event) =>
-									setDraft((current) => ({
-										...current,
-										title: event.target.value,
-									}))
-								}
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+						<div className="grid gap-3 sm:grid-cols-[1fr_160px_140px]">
+							<Field label="Título do módulo">
+								<Input
+									value={draft.title ?? ""}
+									onChange={(event) =>
+										setDraft((current) => ({
+											...current,
+											title: event.target.value,
+										}))
+									}
+								/>
+							</Field>
+							<Field label="Coluna">
+								<Select
+									value={draft.column ?? "main"}
+									onChange={(event) =>
+										setDraft((current) => ({
+											...current,
+											column: event.target.value as "main" | "side",
+										}))
+									}
+								>
+									<option value="main">Principal</option>
+									<option value="side">Lateral</option>
+								</Select>
+							</Field>
+							<Field label="Visibilidade">
+								<Select
+									value={draft.enabled === false ? "false" : "true"}
+									onChange={(event) =>
+										setDraft((current) => ({
+											...current,
+											enabled: event.target.value === "true",
+										}))
+									}
+								>
+									<option value="true">Ativo</option>
+									<option value="false">Oculto</option>
+								</Select>
+							</Field>
+						</div>
+
+						{isCustom ? (
+							<Field label="Conteúdo customizado">
+								<Textarea
+									rows={8}
+									value={draft.content ?? ""}
+									onChange={(event) =>
+										setDraft((current) => ({
+											...current,
+											content: event.target.value,
+										}))
+									}
+									placeholder="Escreva o conteúdo do módulo..."
+								/>
+							</Field>
+						) : (
+							<CharacterModuleFields
+								kind={activeModule.kind as SheetModuleKind}
+								register={register}
+								control={control}
+								setValue={setValue}
+								config={config}
+								errors={errors}
 							/>
-						</Field>
-						<Field label="Coluna">
-							<Select
-								value={draft.column ?? "main"}
-								onChange={(event) =>
-									setDraft((current) => ({
-										...current,
-										column: event.target.value as "main" | "side",
-									}))
-								}
-							>
-								<option value="main">Principal</option>
-								<option value="side">Lateral</option>
-							</Select>
-						</Field>
-						<Field label="Visibilidade">
-							<Select
-								value={draft.enabled === false ? "false" : "true"}
-								onChange={(event) =>
-									setDraft((current) => ({
-										...current,
-										enabled: event.target.value === "true",
-									}))
-								}
-							>
-								<option value="true">Ativo</option>
-								<option value="false">Oculto</option>
-							</Select>
-						</Field>
+						)}
 					</div>
 
-					{isCustom ? (
-						<Field label="Conteúdo customizado">
-							<Textarea
-								rows={8}
-								value={draft.content ?? ""}
-								onChange={(event) =>
-									setDraft((current) => ({
-										...current,
-										content: event.target.value,
-									}))
-								}
-								placeholder="Escreva o conteúdo do módulo..."
-							/>
-						</Field>
-					) : (
-						<CharacterModuleFields
-							kind={module.kind as SheetModuleKind}
-							register={register}
-							control={control}
-							setValue={setValue}
-							config={config}
-						/>
-					)}
-
-					<DialogFooter>
+					<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
 						<Button
 							type="button"
 							variant="ghost"
+							size="sm"
 							onClick={() => onOpenChange(false)}
 						>
 							Cancelar
 						</Button>
-						<Button type="submit">Salvar módulo</Button>
-					</DialogFooter>
+						<Button type="submit" size="sm">
+							Salvar módulo
+						</Button>
+					</div>
 				</form>
 			</DialogContent>
 		</Dialog>

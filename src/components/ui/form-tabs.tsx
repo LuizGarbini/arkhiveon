@@ -14,7 +14,7 @@ interface FormTabsProps {
 
 export function FormTabs({ tabs, value, onChange }: FormTabsProps) {
 	return (
-		<div className="-mx-1 flex flex-wrap gap-1 border-b border-border pb-1.5">
+		<div className="flex flex-wrap gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
 			{tabs.map((t) => {
 				const active = t.id === value;
 				return (
@@ -23,16 +23,13 @@ export function FormTabs({ tabs, value, onChange }: FormTabsProps) {
 						type="button"
 						onClick={() => onChange(t.id)}
 						className={cn(
-							"relative rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors",
+							"flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-all cursor-pointer text-center",
 							active
-								? "bg-primary/12 text-primary"
-								: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+								? "bg-card text-foreground border border-border/70 shadow-xs"
+								: "text-muted-foreground hover:bg-muted/40 hover:text-foreground border border-transparent",
 						)}
 					>
 						{t.label}
-						{active && (
-							<span className="absolute -bottom-1.5 left-1/2 h-[2px] w-6 -translate-x-1/2 rounded-full bg-primary" />
-						)}
 					</button>
 				);
 			})}
@@ -72,6 +69,7 @@ interface FieldProps {
 	label: string;
 	htmlFor?: string;
 	hint?: string;
+	error?: string;
 	className?: string;
 	children: React.ReactNode;
 }
@@ -80,6 +78,7 @@ export function Field({
 	label,
 	htmlFor,
 	hint,
+	error,
 	className,
 	children,
 }: FieldProps) {
@@ -92,9 +91,11 @@ export function Field({
 				{label}
 			</label>
 			{children}
-			{hint && (
+			{error ? (
+				<span className="text-[10.5px] text-destructive font-medium leading-none mt-0.5">{error}</span>
+			) : hint ? (
 				<span className="text-[10px] text-muted-foreground/70">{hint}</span>
-			)}
+			) : null}
 		</div>
 	);
 }

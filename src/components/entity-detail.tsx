@@ -1,4 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -6,19 +8,37 @@ export function DetailSection({
 	eyebrow,
 	title,
 	children,
+	onEdit,
 }: {
 	eyebrow: string;
 	title: string;
 	children: ReactNode;
+	onEdit?: () => void;
 }) {
 	return (
-		<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
-			<p className="text-[9px] font-bold uppercase tracking-[0.22em] text-primary">
-				{eyebrow}
-			</p>
-			<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-				{title}
-			</h2>
+		<section className="relative rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
+			<div className="flex items-start justify-between gap-3">
+				<div>
+					<p className="text-[9px] font-bold uppercase tracking-[0.22em] text-primary">
+						{eyebrow}
+					</p>
+					<h2 className="font-display mt-1 text-xl font-bold text-foreground">
+						{title}
+					</h2>
+				</div>
+				{onEdit && (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={onEdit}
+						className="gap-1.5"
+					>
+						<Pencil className="h-3.5 w-3.5" />
+						Editar
+					</Button>
+				)}
+			</div>
 			<div className="mt-4">{children}</div>
 		</section>
 	);

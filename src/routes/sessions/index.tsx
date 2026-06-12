@@ -46,7 +46,7 @@ function RouteComponent() {
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
 				<ListLayout onSearch={setSearchQuery} />
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				<div className={`${(!isLoading && filteredSessions.length === 0) ? "" : "relative border-l border-border/70 pl-8 sm:pl-10 ml-4 sm:ml-8"} space-y-8 py-2`}>
 					{isLoading
 						? loadingCardKeys.map((key) => <SessionCard key={key} isLoading />)
 						: filteredSessions.map((session) => (

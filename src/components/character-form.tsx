@@ -199,10 +199,10 @@ function CharacterFormDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
 
-			<DialogContent className="max-w-3xl! max-h-[92vh] overflow-hidden p-0">
+			<DialogContent className="max-w-3xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
 				<form
 					onSubmit={handleSubmit(onSubmit)}
-					className="flex max-h-[92vh] flex-col"
+					className="flex h-full min-h-0 flex-col"
 				>
 					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
 						<div className="flex items-start justify-between gap-3">
@@ -266,7 +266,7 @@ function CharacterFormDialog({
 						)}
 					</DialogHeader>
 
-					<div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 						{step === "system" ? (
 							<SystemPicker value={system} onSelect={handleSelectSystem} />
 						) : (

@@ -285,6 +285,22 @@
     background: linear-gradient(90deg, var(--primary), transparent);
   }
 
+  .heading-rule-center {
+    position: relative;
+    padding-bottom: 0.5rem;
+  }
+  .heading-rule-center::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 28px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  }
+
   .heading-rule-right {
     position: relative;
     padding-bottom: 0.5rem;
@@ -564,4 +580,116 @@ a[href*="neat.firecms.co"] {
 @keyframes glow-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 0.85; }
+}
+
+@keyframes footer-dot-pulse {
+  0%, 100% { opacity: 0.25; transform: scaleX(1); }
+  50% { opacity: 1; transform: scaleX(1.3); }
+}
+
+/* ─── Landing page entrance animations ─── */
+
+@keyframes lp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lp-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lp-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Page-load animations (hero — triggered immediately) */
+.lp-enter {
+  animation: lp-fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lp-enter-down {
+  animation: lp-fade-down 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lp-enter-scale {
+  animation: lp-scale-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered delay helpers */
+.lp-d1  { animation-delay: 0.05s; }
+.lp-d2  { animation-delay: 0.15s; }
+.lp-d3  { animation-delay: 0.25s; }
+.lp-d4  { animation-delay: 0.38s; }
+.lp-d5  { animation-delay: 0.50s; }
+.lp-d6  { animation-delay: 0.62s; }
+.lp-d7  { animation-delay: 0.74s; }
+
+/* Scroll-driven animations — CSS only, no JS */
+/* Progressive enhancement: unsupported browsers see content normally */
+@supports (animation-timeline: view()) {
+  .lp-reveal {
+    animation: lp-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 28%;
+  }
+
+  .lp-reveal-scale {
+    animation: lp-scale-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+
+  /* Staggered cards within a scrolling section */
+  .lp-reveal-s1 {
+    animation: lp-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 28%;
+  }
+  .lp-reveal-s2 {
+    animation: lp-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 33%;
+  }
+  .lp-reveal-s3 {
+    animation: lp-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 38%;
+  }
+}
+
+/* Disable all lp animations for perf-lite mode */
+.perf-lite .lp-enter,
+.perf-lite .lp-enter-down,
+.perf-lite .lp-enter-scale,
+.perf-lite .lp-reveal,
+.perf-lite .lp-reveal-scale,
+.perf-lite .lp-reveal-s1,
+.perf-lite .lp-reveal-s2,
+.perf-lite .lp-reveal-s3 {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
 }

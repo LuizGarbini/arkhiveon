@@ -338,7 +338,7 @@ function Dashboard() {
 			</section>
 
 			<section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-				<ActivityFeed limit={10} isLoading={isLoading} />
+				<ActivityFeed limit={6} isLoading={isLoading} />
 				<LastSessionCard lastSession={lastSession} isLoading={isLoading} />
 			</section>
 		</div>
@@ -560,7 +560,7 @@ function LastSessionCard({
 }) {
 	if (isLoading) {
 		return (
-			<aside className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-sm shadow-black/5">
+			<aside className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 h-full">
 				<div className="mb-5 flex items-center justify-between gap-3">
 					<div className="space-y-2">
 						<Skeleton className="h-3 w-16" />
@@ -568,13 +568,13 @@ function LastSessionCard({
 					</div>
 					<Skeleton className="h-5 w-5 rounded" />
 				</div>
-				<div className="rounded-xl border border-border/70 bg-card-elevated p-4">
+				<div className="rounded-xl border border-border/50 bg-background/50 p-5 flex-1 space-y-4">
 					<Skeleton className="h-3 w-20" />
-					<Skeleton className="mt-3 h-6 w-3/4" />
+					<Skeleton className="mt-3 h-7 w-3/4" />
 					<div className="mt-4 space-y-2">
-						<Skeleton className="h-3 w-full" />
-						<Skeleton className="h-3 w-full" />
-						<Skeleton className="h-3 w-2/3" />
+						<Skeleton className="h-3.5 w-full" />
+						<Skeleton className="h-3.5 w-full" />
+						<Skeleton className="h-3.5 w-2/3" />
 					</div>
 				</div>
 			</aside>
@@ -582,7 +582,7 @@ function LastSessionCard({
 	}
 
 	return (
-		<aside className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-sm shadow-black/5">
+		<aside className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 h-full">
 			<div className="mb-5 flex items-center justify-between gap-3">
 				<div>
 					<p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -592,36 +592,44 @@ function LastSessionCard({
 						Última sessão
 					</h2>
 				</div>
-				<CalendarDays className="h-5 w-5 text-amber-300" strokeWidth={1.7} />
+				<CalendarDays className="h-5 w-5 text-primary animate-pulse-slow" strokeWidth={1.7} />
 			</div>
 
 			{lastSession ? (
 				<Link
 					to="/sessions"
-					className="group block rounded-xl border border-border/70 bg-card-elevated p-4 transition-all hover:-translate-y-0.5 hover:border-primary/35"
+					className="group block rounded-xl border border-border/50 bg-background/40 p-5 transition-all hover:border-primary/30 hover:bg-background/60"
 				>
-					<div className="flex items-start justify-between gap-3">
-						<div className="min-w-0">
-							<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-								{lastSession.date || "Sem data"}
-							</p>
-							<h3 className="font-display mt-2 text-xl font-bold text-foreground">
-								{lastSession.title || "Sem título"}
-							</h3>
-						</div>
-						<ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+					<div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+						<span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+							{lastSession.date || "Sem data"}
+						</span>
+						<ArrowUpRight className="h-4.5 w-4.5 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
 					</div>
-					<p className="mt-3 line-clamp-4 text-[12px] leading-relaxed text-muted-foreground">
+					
+					<h3 className="font-display mt-4 text-xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+						{lastSession.title || "Sem título"}
+					</h3>
+					
+					<p className="mt-3.5 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground font-medium">
 						{lastSession.summary || "Ainda não há resumo para esta sessão."}
 					</p>
+
+					<div className="mt-6 flex items-center gap-1.5 text-[12px] font-bold text-primary/95 pt-4 border-t border-border/30">
+						<span>Ver crônicas</span>
+						<span className="transition-transform group-hover:translate-x-0.5">→</span>
+					</div>
 				</Link>
 			) : (
-				<div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
+				<div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 px-4 py-12 text-center bg-background/20">
+					<div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center mb-3 text-muted-foreground/45">
+						<CalendarDays className="h-5 w-5 text-primary/60" />
+					</div>
 					<p className="text-[13px] font-bold text-foreground">
 						Nenhuma sessão registrada
 					</p>
-					<p className="mt-1 text-[12px] text-muted-foreground">
-						Quando uma sessão for criada, ela aparece aqui como destaque.
+					<p className="mt-1 max-w-[200px] text-[11px] leading-normal text-muted-foreground/60 font-medium">
+						Quando registrar sua primeira sessão, ela aparecerá aqui.
 					</p>
 				</div>
 			)}
