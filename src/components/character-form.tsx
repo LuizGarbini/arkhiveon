@@ -1,7 +1,7 @@
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { createDefaultSheetLayout } from "@/lib/sheet-modules";
+import { cloneSheetLayout, createDefaultSheetLayout } from "@/lib/sheet-modules";
 import {
 	abilityModifier,
 	type Character,
@@ -11,9 +11,9 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
-import { sanitizeCharacterFormValues } from "./character-sheet-fields";
+import { sanitizeCharacterFormValues, getAttributeConstraints } from "./character-sheet-fields";
 import { ImageUploader } from "./image-uploader";
-import { SystemPicker } from "./system-picker";
+import { SystemPicker, type SystemPickerSelection } from "./system-picker";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -132,8 +132,12 @@ function CharacterFormDialog({
 
 	const addCharacter = useRPGStore((s) => s.addCharacter);
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
+	const customTemplates = useRPGStore((s) => s.customTemplates || []);
 
 	const [step, setStep] = useState<DialogStep>(isEdit ? "form" : "system");
+	const [selectedLayoutTemplateId, setSelectedLayoutTemplateId] = useState<
+		string | undefined
+	>();
 	const [activeSection, setActiveSection] =
 		useState<CharacterSection>("identity");
 
@@ -151,6 +155,7 @@ function CharacterFormDialog({
 			reset(buildDefaults(character ?? undefined));
 			setStep(isEdit ? "form" : "system");
 			setActiveSection("identity");
+			setSelectedLayoutTemplateId(character?.customTemplateId);
 		}
 	}, [open, character, isEdit, reset]);
 
@@ -180,12 +185,33 @@ function CharacterFormDialog({
 		setOpen(false);
 	}
 
-	function handleSelectSystem(value: RpgSystem) {
-		const selectedConfig = SYSTEM_CONFIG[value] ?? SYSTEM_CONFIG.generic;
-		setValue("system", value, { shouldDirty: true });
+	function handleSelectSystem(selection: SystemPickerSelection) {
+		setSelectedLayoutTemplateId(undefined);
+
+		if (selection.type === "layout") {
+			const template = customTemplates.find(
+				(item) => item.id === selection.layoutTemplateId,
+			);
+			if (!template?.sheetLayout) return;
+
+			const baseSystem = template.baseSystem ?? selection.system;
+			setSelectedLayoutTemplateId(template.id);
+			setValue("system", baseSystem, { shouldDirty: true });
+			setValue(
+				"sheetLayout",
+				cloneSheetLayout(template.sheetLayout, baseSystem),
+				{ shouldDirty: true },
+			);
+			setValue("customTemplateId", template.id, { shouldDirty: true });
+			setStep("form");
+			return;
+		}
+
+		const selectedConfig = SYSTEM_CONFIG[selection.system] ?? SYSTEM_CONFIG.generic;
+		setValue("system", selection.system, { shouldDirty: true });
 		setValue(
 			"sheetLayout",
-			createDefaultSheetLayout(value, {
+			createDefaultSheetLayout(selection.system, {
 				showSanity: selectedConfig.showSanity,
 				showSpells: selectedConfig.showSpells,
 			}),
@@ -193,6 +219,7 @@ function CharacterFormDialog({
 				shouldDirty: true,
 			},
 		);
+		setValue("customTemplateId", undefined, { shouldDirty: true });
 		setStep("form");
 	}
 
@@ -269,7 +296,11 @@ function CharacterFormDialog({
 
 					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 						{step === "system" ? (
-							<SystemPicker value={system} onSelect={handleSelectSystem} />
+							<SystemPicker
+								value={system}
+								layoutTemplateId={selectedLayoutTemplateId}
+								onSelect={handleSelectSystem}
+							/>
 						) : (
 							<>
 								{activeSection === "identity" && (
@@ -523,6 +554,7 @@ function AbilitiesSection({
 							name={f.key}
 							register={register}
 							control={control}
+							config={config}
 						/>
 					))}
 				</div>
@@ -673,10 +705,10 @@ function CombatSection({
 				{config.value.startsWith("dnd") && (
 					<>
 						<Field label="Testes contra Morte (Sucessos)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.successes" as any, { valueAsNumber: true })} />
+							<Input type="number" min={0} max={3} placeholder="0" {...register("deathSaves.successes" as any, { valueAsNumber: true })} />
 						</Field>
 						<Field label="Testes contra Morte (Falhas)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.failures" as any, { valueAsNumber: true })} />
+							<Input type="number" min={0} max={3} placeholder="0" {...register("deathSaves.failures" as any, { valueAsNumber: true })} />
 						</Field>
 					</>
 				)}
@@ -749,12 +781,15 @@ function MagicSection({ register, config }: { register: RegisterFn, config: Syst
 								<Field label="CD da magia">
 									<Input
 										type="number"
+										min={0}
+										placeholder="13"
 										{...register("spellSaveDc", { valueAsNumber: true })}
 									/>
 								</Field>
 								<Field label="Bônus de ataque mágico">
 									<Input
 										type="number"
+										placeholder="0"
 										{...register("spellAttackBonus", { valueAsNumber: true })}
 									/>
 								</Field>
@@ -821,17 +856,19 @@ interface AbilityFieldProps {
 	name: string;
 	register: RegisterFn;
 	control: ControlFn;
+	config: SystemConf;
 }
 
-function AbilityField({ label, name, register, control }: AbilityFieldProps) {
+function AbilityField({ label, name, register, control, config }: AbilityFieldProps) {
 	const isStandardKey = [
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
 	].includes(name);
 
 	const fieldName = isStandardKey ? name : `systemAttributes.${name}`;
 	const value = useWatch({ control, name: fieldName as any });
-	const numeric = Number(value ?? 10);
-	const mod = abilityModifier(Number.isFinite(numeric) ? numeric : 10);
+	const numeric = Number(value);
+	const mod = Number.isFinite(numeric) ? abilityModifier(numeric) : 0;
+	const { min, max, placeholder } = getAttributeConstraints(config);
 
 	return (
 		<div className="flex flex-col items-center gap-1 rounded-md border border-border bg-card-elevated/40 p-2">
@@ -840,8 +877,9 @@ function AbilityField({ label, name, register, control }: AbilityFieldProps) {
 			</span>
 			<Input
 				type="number"
-				min={1}
-				max={99}
+				min={min}
+				max={max}
+				placeholder={placeholder}
 				className="h-8 w-full text-center text-[14px] font-bold"
 				{...register(fieldName as any, { valueAsNumber: true })}
 			/>
