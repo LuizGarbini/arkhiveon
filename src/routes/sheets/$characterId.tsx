@@ -10,7 +10,6 @@ import {
 	FileText,
 	Heart,
 	LockKeyhole,
-	Plus,
 	Shield,
 	Sparkles,
 	User,
@@ -34,6 +33,8 @@ import {
 } from "@/components/character-sheet-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
+import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
+import { SheetModuleEditor } from "@/components/sheet-module-editor";
 import { ImageUploader } from "@/components/image-uploader";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +57,7 @@ import {
 import {
 	createCustomSheetModule,
 	normalizeSheetLayout,
+	normalizeModuleOrders,
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
 import {
@@ -188,13 +190,6 @@ function CharacterSheetPage() {
 	const config =
 		SYSTEM_CONFIG[currentCharacter.system] ?? SYSTEM_CONFIG.generic;
 	const layout = normalizeSheetLayout(currentCharacter);
-	const modules = (
-		isEditingLayout
-			? layout.modules
-			: layout.modules.filter((module) => module.enabled)
-	).sort((a, b) => a.order - b.order);
-	const mainModules = modules.filter((module) => module.column !== "side");
-	const sideModules = modules.filter((module) => module.column === "side");
 
 	function updateLayout(nextLayout: SheetLayoutConfig) {
 		updateCharacter(currentCharacter.id, { sheetLayout: nextLayout });
@@ -207,9 +202,8 @@ function CharacterSheetPage() {
 		);
 		updateLayout({
 			...layout,
-			modules: [...layout.modules, nextModule],
+			modules: normalizeModuleOrders([...layout.modules, nextModule]),
 		});
-		setEditingModule(nextModule);
 	}
 
 	return (
@@ -286,26 +280,9 @@ function CharacterSheetPage() {
 
 					<div className="flex flex-wrap items-center gap-2">
 						{isEditingLayout && (
-							<>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => handleAddCustomModule("customText")}
-									className="gap-2"
-								>
-									<Plus className="h-4 w-4" />
-									Texto
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => handleAddCustomModule("customStats")}
-									className="gap-2"
-								>
-									<Plus className="h-4 w-4" />
-									Stats
-								</Button>
-							</>
+							<p className="mr-2 text-[11px] text-muted-foreground">
+								Modo layout — arraste os blocos da ficha abaixo
+							</p>
 						)}
 						<Button
 							type="button"
@@ -340,7 +317,7 @@ function CharacterSheetPage() {
 							className="gap-2"
 						>
 							<Edit className="h-4 w-4" />
-							{isEditingLayout ? "Concluir edição" : "Editar ficha"}
+							{isEditingLayout ? "Concluir layout" : "Editar layout"}
 						</Button>
 					</div>
 				</div>
@@ -369,33 +346,35 @@ function CharacterSheetPage() {
 				</div>
 			</header>
 
-			<div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-				<main className="grid gap-5">
-					{mainModules.map((module) => (
-						<SheetModuleCard
-							key={module.id}
-							module={module}
-							character={currentCharacter}
-							config={config}
-							isEditingLayout={isEditingLayout}
-							onEdit={() => setEditingModule(module)}
-						/>
-					))}
-				</main>
+			<SheetModuleEditor
+				mode={isEditingLayout ? "layout" : "view"}
+				modules={layout.modules}
+				onChange={
+					isEditingLayout
+						? (nextModules) =>
+								updateLayout({
+									...layout,
+									modules: normalizeModuleOrders(nextModules),
+								})
+						: undefined
+				}
+				onAddCustom={isEditingLayout ? handleAddCustomModule : undefined}
+				renderBlockContent={(module) => (
+					<ModuleContent
+						module={module}
+						character={currentCharacter}
+						config={config}
+					/>
+				)}
+				onEditBlock={(module) => setEditingModule(module)}
+			/>
 
-				<aside className="grid content-start gap-5">
-					{sideModules.map((module) => (
-						<SheetModuleCard
-							key={module.id}
-							module={module}
-							character={currentCharacter}
-							config={config}
-							isEditingLayout={isEditingLayout}
-							onEdit={() => setEditingModule(module)}
-						/>
-					))}
-				</aside>
-			</div>
+			{isEditingLayout ? (
+				<SaveSheetLayoutPanel
+					baseSystem={currentCharacter.system}
+					modules={layout.modules}
+				/>
+			) : null}
 
 			<ModuleEditorDialog
 				character={currentCharacter}
@@ -646,54 +625,6 @@ function CharacterImageDialog({
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-function SheetModuleCard({
-	module,
-	character,
-	config,
-	isEditingLayout,
-	onEdit,
-}: {
-	module: SheetModuleConfig;
-	character: Character;
-	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
-	isEditingLayout: boolean;
-	onEdit: () => void;
-}) {
-	return (
-		<section
-			className={`rounded-2xl border bg-card/80 p-5 shadow-sm shadow-black/5 transition-all ${
-				module.enabled
-					? "border-border/70"
-					: "border-dashed border-border/60 opacity-60"
-			}`}
-		>
-			<div className="mb-4 flex items-start justify-between gap-3">
-				<div>
-					<p className="text-[9px] font-bold uppercase tracking-[0.22em] text-primary">
-						{SHEET_MODULE_LABELS[module.kind]}
-					</p>
-					<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-						{module.title}
-					</h2>
-				</div>
-				{isEditingLayout && (
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={onEdit}
-						className="gap-2"
-					>
-						<Edit className="h-3.5 w-3.5" />
-						Editar
-					</Button>
-				)}
-			</div>
-			<ModuleContent module={module} character={character} config={config} />
-		</section>
 	);
 }
 
@@ -1011,6 +942,7 @@ function ModuleEditorDialog({
 							<Field label="Título do módulo">
 								<Input
 									value={draft.title ?? ""}
+									placeholder="Ex: História de fundo"
 									onChange={(event) =>
 										setDraft((current) => ({
 											...current,
