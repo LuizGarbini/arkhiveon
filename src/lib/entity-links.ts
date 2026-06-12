@@ -76,7 +76,7 @@ export function listLinkableEntities(
 			toLinkableEntity("lore", entity, entity.title, "/lore"),
 		),
 		...state.customTemplates.map((entity) =>
-			toLinkableEntity("customTemplate", entity, entity.name, "/templates"),
+			toLinkableEntity("customTemplate", entity, entity.name, "/sheets/new"),
 		),
 	].filter(
 		(entity) =>
@@ -192,7 +192,7 @@ function entityKindPath(
 	if (entityKind === "item") return `/items/${entityId}`;
 	if (entityKind === "location") return `/locations/${entityId}`;
 	if (entityKind === "lore") return `/lore/${entityId}`;
-	if (entityKind === "customTemplate") return `/templates/${entityId}`;
+	if (entityKind === "customTemplate") return "/sheets/new";
 	return `${path}?selected=${entityId}`;
 }
 
@@ -204,7 +204,7 @@ function fallbackPathFor(kind: EntityKind) {
 		item: "/items",
 		location: "/locations",
 		lore: "/lore",
-		customTemplate: "/templates",
+		customTemplate: "/sheets/new",
 	};
 	return paths[kind];
 }
