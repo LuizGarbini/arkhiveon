@@ -71,8 +71,13 @@ export interface CustomTemplate {
 	name: string;
 	description: string;
 	author: string;
-	sections: TemplateSection[];
 	createdAt: number;
+	/** Sistema base usado pelos campos e atributos da ficha */
+	baseSystem: RpgSystem;
+	/** Layout modular salvo (blocos, ordem e colunas) */
+	sheetLayout: SheetLayoutConfig;
+	/** Legado — construtor antigo de campos; ignorado nos layouts salvos */
+	sections?: TemplateSection[];
 }
 
 // =====================================================
@@ -97,7 +102,7 @@ export const ENTITY_LABELS: Record<
 	item: { singular: "Item", plural: "Itens" },
 	location: { singular: "Local", plural: "Locais" },
 	lore: { singular: "Lore", plural: "Lore" },
-	customTemplate: { singular: "Template", plural: "Templates" },
+	customTemplate: { singular: "Layout salvo", plural: "Layouts salvos" },
 };
 
 // =====================================================
