@@ -336,7 +336,7 @@ function CharacterSheetPdfDocument({
 						key={module.id}
 						module={module}
 						character={character}
-						abilityLabels={config.abilityLabels}
+						config={config}
 						theme={theme}
 					/>
 				))}
@@ -371,19 +371,19 @@ function QuickPdfStat({
 function PdfModule({
 	module,
 	character,
-	abilityLabels,
+	config,
 	theme,
 }: {
 	module: SheetModuleConfig;
 	character: Character;
-	abilityLabels: readonly string[];
+	config: typeof SYSTEM_CONFIG[keyof typeof SYSTEM_CONFIG];
 	theme: typeof colorTheme;
 }) {
 	const title = module.title || SHEET_MODULE_LABELS[module.kind];
 	const fields = moduleFields(
 		module.kind,
 		character,
-		abilityLabels,
+		config,
 		module.content,
 	);
 	if (fields.length === 0) return null;
@@ -417,17 +417,12 @@ function PdfModule({
 function moduleFields(
 	kind: SheetModuleKind,
 	character: Character,
-	abilityLabels: readonly string[],
+	config: typeof SYSTEM_CONFIG[keyof typeof SYSTEM_CONFIG],
 	content?: string,
 ) {
-	const abilityValues = [
-		character.strength,
-		character.dexterity,
-		character.constitution,
-		character.intelligence,
-		character.wisdom,
-		character.charisma,
-	];
+	const isStandardKey = (key: string) => [
+		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
+	].includes(key);
 
 	switch (kind) {
 		case "identity":
@@ -442,15 +437,16 @@ function moduleFields(
 				field("Nivel", String(character.level)),
 			];
 		case "abilities":
-			return abilityLabels.map((label, index) =>
-				field(
-					label,
-					`${abilityValues[index]} (${formatSigned(modifier(abilityValues[index]))})`,
-					{
-						emphasis: true,
-					},
-				),
-			);
+			return (config.attributes || []).map((attr) => {
+				const val = isStandardKey(attr.key) 
+					? Number((character as any)[attr.key]) || 10
+					: Number(character.systemAttributes?.[attr.key]) || 10;
+				return field(
+					attr.label,
+					`${val} (${formatSigned(modifier(val))})`,
+					{ emphasis: true }
+				);
+			});
 		case "combat":
 			return [
 				field("Pontos de Vida", `${character.health}/${character.healthMax}`),

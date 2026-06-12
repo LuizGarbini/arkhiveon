@@ -414,7 +414,7 @@ function getPageTitle(pathname: string) {
 	if (pathname === "/dashboard") return "Dashboard";
 	if (pathname.startsWith("/account")) return "Minha Conta";
 	if (pathname.startsWith("/settings")) return "Configurações";
-	if (pathname.startsWith("/billing")) return "Plano & Assinatura";
+	if (pathname.startsWith("/dashboard")) return "Dashboard";
 	if (pathname.startsWith("/characters")) return "Elenco";
 	if (pathname.startsWith("/sheets")) return "Fichas";
 	if (pathname.startsWith("/family-tree")) return "Árvore Genealógica";

@@ -77,6 +77,8 @@ export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	sheetLayout: createDefaultSheetLayout("dnd5e"),
 	familyRelations: [],
 	entityLinks: [],
+	systemAttributes: {},
+	systemFields: {},
 };
 
 export interface CharacterSlice {
@@ -90,6 +92,10 @@ export interface CharacterSlice {
 		id: string,
 		targetCampaignId: string,
 	) => Promise<Character | null>;
+	customTemplates: import("./types").CustomTemplate[];
+	addTemplate: (template: import("./types").CustomTemplate) => void;
+	updateTemplate: (id: string, template: Partial<import("./types").CustomTemplate>) => void;
+	removeTemplate: (id: string) => void;
 }
 
 export const createCharacterSlice: StateCreator<
@@ -99,6 +105,80 @@ export const createCharacterSlice: StateCreator<
 	CharacterSlice
 > = (set, get) => ({
 	characters: [],
+	customTemplates: [],
+	addTemplate: (template) => {
+		const log = {
+			action: "create" as const,
+			entityKind: "customTemplate" as const,
+			entityId: template.id,
+			entityName: entityNameOf(template),
+		};
+		set((state) => ({ 
+			customTemplates: [...state.customTemplates, template],
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		const campaignId = get().activeCampaignId;
+		if (campaignId) {
+			void Promise.all([
+				createRemoteEntity("customTemplate", template, campaignId),
+				createRemoteActivity(log, campaignId),
+			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		}
+	},
+	updateTemplate: (id, template) => {
+		set((state) => {
+			const existing = state.customTemplates.find((t) => t.id === id);
+			if (!existing) return state;
+			const updated = { ...existing, ...template };
+			const log = {
+				action: "update" as const,
+				entityKind: "customTemplate" as const,
+				entityId: id,
+				entityName: entityNameOf(updated),
+			};
+			const campaignId = get().activeCampaignId;
+			if (campaignId) {
+				void Promise.all([
+					updateRemoteEntity("customTemplate", updated, campaignId),
+					createRemoteActivity(log, campaignId),
+				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+			}
+			return {
+				customTemplates: state.customTemplates.map((t) =>
+					t.id === id ? updated : t,
+				),
+				activityLog: pushLog(state.activityLog, log),
+				syncError: null,
+			};
+		});
+	},
+	removeTemplate: (id) => {
+		set((state) => {
+			const existing = state.customTemplates.find((t) => t.id === id);
+			if (existing) {
+				const log = {
+					action: "delete" as const,
+					entityKind: "customTemplate" as const,
+					entityId: id,
+					entityName: entityNameOf(existing),
+				};
+				const campaignId = get().activeCampaignId;
+				if (campaignId) {
+					void Promise.all([
+						deleteRemoteEntity("customTemplate", id),
+						createRemoteActivity(log, campaignId),
+					]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+				}
+				return {
+					customTemplates: state.customTemplates.filter((t) => t.id !== id),
+					activityLog: pushLog(state.activityLog, log),
+					syncError: null,
+				};
+			}
+			return state;
+		});
+	},
 	addCharacter: (character) => {
 		if (isCreationLimitReached(get())) {
 			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });

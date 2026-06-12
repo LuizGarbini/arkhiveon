@@ -10,6 +10,7 @@ import {
 	systemLabel,
 	useRPGStore,
 } from "@/lib/store";
+import { SYSTEM_CONFIG } from "@/lib/systems";
 import { EntityActions } from "./entity-actions";
 
 interface CharacterCardProps {
@@ -71,14 +72,17 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			)
 		: 0;
 
-	const abilities = [
-		{ label: "FOR", value: currentCharacter.strength },
-		{ label: "DES", value: currentCharacter.dexterity },
-		{ label: "CON", value: currentCharacter.constitution },
-		{ label: "INT", value: currentCharacter.intelligence },
-		{ label: "SAB", value: currentCharacter.wisdom },
-		{ label: "CAR", value: currentCharacter.charisma },
-	];
+	const sysConfig = SYSTEM_CONFIG[currentCharacter.system] ?? SYSTEM_CONFIG.dnd5e;
+	const isStandardKey = (key: string) => [
+		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
+	].includes(key);
+
+	const abilities = (sysConfig.attributes || []).map((attr) => {
+		const val = isStandardKey(attr.key) 
+			? (currentCharacter as any)[attr.key] 
+			: (currentCharacter.systemAttributes?.[attr.key] ?? 10);
+		return { label: attr.label, value: Number(val) || 10 };
+	});
 
 	const characterImageUrl = resolveCharacterImageUrl(
 		currentCharacter,
@@ -215,7 +219,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 				</div>
 
 				{/* Abilities row */}
-				<div className="mt-3 grid grid-cols-6 gap-1 border-t border-border/60 pt-3">
+				<div className={`mt-3 grid gap-1 border-t border-border/60 pt-3 ${abilities.length >= 8 ? 'grid-cols-4 sm:grid-cols-4' : abilities.length === 9 ? 'grid-cols-3' : 'grid-cols-6'}`}>
 					{abilities.map((a) => {
 						const mod = abilityModifier(a.value);
 						return (

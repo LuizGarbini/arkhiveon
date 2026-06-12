@@ -1,5 +1,6 @@
 import type {
 	Character,
+	CustomTemplate,
 	EntityKind,
 	EntityLink,
 	GameLocation,
@@ -12,7 +13,13 @@ import type {
 
 type EntityCollections = Pick<
 	RPGState,
-	"characters" | "npcs" | "sessions" | "items" | "locations" | "lores"
+	| "characters"
+	| "npcs"
+	| "sessions"
+	| "items"
+	| "locations"
+	| "lores"
+	| "customTemplates"
 >;
 
 export interface LinkableEntity {
@@ -37,6 +44,7 @@ export const ENTITY_KIND_LABELS: Record<EntityKind, string> = {
 	item: "Item",
 	location: "Local",
 	lore: "Lore",
+	customTemplate: "Template",
 };
 
 export function listLinkableEntities(
@@ -66,6 +74,9 @@ export function listLinkableEntities(
 		),
 		...state.lores.map((entity) =>
 			toLinkableEntity("lore", entity, entity.title, "/lore"),
+		),
+		...state.customTemplates.map((entity) =>
+			toLinkableEntity("customTemplate", entity, entity.name, "/sheets/new"),
 		),
 	].filter(
 		(entity) =>
@@ -157,7 +168,7 @@ export function collectEntityText(values: Record<string, unknown>) {
 
 function toLinkableEntity(
 	entityKind: EntityKind,
-	entity: Character | Npc | Session | Item | GameLocation | Lore,
+	entity: Character | Npc | Session | Item | GameLocation | Lore | CustomTemplate,
 	name: string,
 	path: string,
 ): LinkableEntity {
@@ -181,6 +192,7 @@ function entityKindPath(
 	if (entityKind === "item") return `/items/${entityId}`;
 	if (entityKind === "location") return `/locations/${entityId}`;
 	if (entityKind === "lore") return `/lore/${entityId}`;
+	if (entityKind === "customTemplate") return "/sheets/new";
 	return `${path}?selected=${entityId}`;
 }
 
@@ -192,6 +204,7 @@ function fallbackPathFor(kind: EntityKind) {
 		item: "/items",
 		location: "/locations",
 		lore: "/lore",
+		customTemplate: "/sheets/new",
 	};
 	return paths[kind];
 }

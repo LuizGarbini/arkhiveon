@@ -74,6 +74,7 @@ export const useRPGStore = create<RPGState>()(
 				// Persist everything except transient loading states
 				activeCampaignId: state.activeCampaignId,
 				campaigns: state.campaigns,
+				customTemplates: state.customTemplates,
 				characters: stripPersistedDataImages(state.characters),
 				npcs: stripPersistedDataImages(state.npcs),
 				sessions: stripPersistedDataImages(state.sessions),

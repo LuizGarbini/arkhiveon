@@ -606,11 +606,11 @@ function LastSessionCard({
 						</span>
 						<ArrowUpRight className="h-4.5 w-4.5 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
 					</div>
-					
+
 					<h3 className="font-display mt-4 text-xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
 						{lastSession.title || "Sem título"}
 					</h3>
-					
+
 					<p className="mt-3.5 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground font-medium">
 						{lastSession.summary || "Ainda não há resumo para esta sessão."}
 					</p>
