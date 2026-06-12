@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import {
 	AlertTriangle,
 	Bell,
@@ -24,6 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 export const Route = createFileRoute("/design-system")({
+	beforeLoad: () => {
+		if (!isDesignSystemEnabled()) {
+			throw notFound();
+		}
+	},
 	component: DesignSystem,
 });
 
