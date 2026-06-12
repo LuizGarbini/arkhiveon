@@ -130,8 +130,8 @@ function fromActivityRow(row: ActivityRow): RemoteActivityEntry {
 	return {
 		id: row.id,
 		timestamp: toTimestamp(row.created_at) ?? Date.now(),
-		action: row.action,
-		entityKind: row.entity_kind,
+		action: row.action as RemoteActivityAction,
+		entityKind: row.entity_kind as RemoteEntityKind,
 		entityId: row.entity_id,
 		entityName: row.entity_name,
 	};
@@ -164,7 +164,7 @@ function tableFor(kind: RemoteEntityKind): EntityTable {
 		item: SUPABASE_TABLES.items,
 		location: SUPABASE_TABLES.locations,
 		lore: SUPABASE_TABLES.lores,
-		customTemplate: "custom_templates" as any, // Needs to be added to SUPABASE_TABLES if exported
+		customTemplate: SUPABASE_TABLES.customTemplates,
 	};
 	return tables[kind];
 }
@@ -193,7 +193,7 @@ function rowFor(
 	entity: Record<string, unknown>,
 	campaignId: string,
 ): EntityInsert {
-	const base: Record<string, unknown> = {
+	const base = {
 		id: stringValue(entity.id, crypto.randomUUID()),
 		data: toJson(entity),
 		campaign_id: campaignId,
@@ -301,7 +301,7 @@ async function insertEntityRow(
 		}
 		case "customTemplate": {
 			const { error } = await supabase
-				.from("custom_templates")
+				.from(SUPABASE_TABLES.customTemplates)
 				.insert(row as TablesInsert<"custom_templates">);
 			if (error) throw error;
 			return;
@@ -367,7 +367,7 @@ async function updateEntityRow(
 		}
 		case "customTemplate": {
 			const { error } = await supabase
-				.from("custom_templates")
+				.from(SUPABASE_TABLES.customTemplates)
 				.update(row as TablesUpdate<"custom_templates">)
 				.eq("id", id);
 			if (error) throw error;
@@ -436,7 +436,7 @@ export async function loadRemoteState(
 		selectEntities(SUPABASE_TABLES.items, campaignId),
 		selectEntities(SUPABASE_TABLES.locations, campaignId),
 		selectEntities(SUPABASE_TABLES.lores, campaignId),
-		selectEntities("custom_templates" as any, campaignId),
+		selectEntities(SUPABASE_TABLES.customTemplates, campaignId),
 		loadRemoteImageAssets(campaignId),
 		activityQuery.order("created_at", { ascending: false }).limit(200),
 	]);
@@ -569,11 +569,11 @@ export async function createRemoteActivity(
 	const supabase = requireSupabase();
 	const row: ActivityInsert = {
 		action: entry.action,
+		campaign_id: campaignId,
 		entity_kind: entry.entityKind,
 		entity_id: entry.entityId,
 		entity_name: entry.entityName,
 	};
-	(row as Record<string, unknown>).campaign_id = campaignId;
 	const { error } = await supabase.from(SUPABASE_TABLES.activity).insert(row);
 	if (error) throw error;
 }

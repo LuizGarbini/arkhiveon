@@ -11,7 +11,7 @@ import {
 	ShieldAlert,
 	Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	DetailInfo,
 	DetailQuickStat,
@@ -39,11 +39,9 @@ function LocationDetailPage() {
 		state.locations.find((entry) => entry.id === locationId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
-	const [editOpen, setEditOpen] = useState(edit);
-
-	useEffect(() => {
-		if (edit) setEditOpen(true);
-	}, [edit]);
+	const [isEditing, setIsEditing] = useState(edit || false);
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -74,8 +72,8 @@ function LocationDetailPage() {
 		.filter(Boolean)
 		.join(" · ");
 
-	function handleEditOpenChange(open: boolean) {
-		setEditOpen(open);
+	function handleDialogOpenChange(open: boolean) {
+		setDialogOpen(open);
 		if (!open && edit) {
 			void navigate({
 				to: "/locations/$locationId",
@@ -137,11 +135,11 @@ function LocationDetailPage() {
 						)}
 						<Button
 							type="button"
-							onClick={() => setEditOpen(true)}
+							onClick={() => setIsEditing((current) => !current)}
 							className="gap-2"
 						>
 							<Pencil className="h-4 w-4" />
-							Editar
+							{isEditing ? "Concluir edição" : "Editar"}
 						</Button>
 					</div>
 				</div>
@@ -178,7 +176,11 @@ function LocationDetailPage() {
 
 			<div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 				<main className="grid content-start gap-5">
-					<DetailSection eyebrow="Resumo" title="Identificacao">
+					<DetailSection
+						eyebrow="Resumo"
+						title="Identificacao"
+						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<DetailInfo label="Tipo" value={currentLocation.type} />
 							<DetailInfo label="Regiao" value={currentLocation.region} />
@@ -194,11 +196,19 @@ function LocationDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Descricao" title="Primeira vista">
+					<DetailSection
+						eyebrow="Descricao"
+						title="Primeira vista"
+						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+					>
 						<DetailText value={currentLocation.description} />
 					</DetailSection>
 
-					<DetailSection eyebrow="Sociedade" title="Politica & economia">
+					<DetailSection
+						eyebrow="Sociedade"
+						title="Politica & economia"
+						onEdit={isEditing ? () => { setActiveTab("society"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<div className="grid gap-3 sm:grid-cols-2">
 								<DetailInfo
@@ -219,13 +229,21 @@ function LocationDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Historia" title="Passado do local">
+					<DetailSection
+						eyebrow="Historia"
+						title="Passado do local"
+						onEdit={isEditing ? () => { setActiveTab("history"); setDialogOpen(true); } : undefined}
+					>
 						<DetailText value={currentLocation.history} />
 					</DetailSection>
 				</main>
 
 				<aside className="grid content-start gap-5">
-					<DetailSection eyebrow="Mapa" title="Referencia">
+					<DetailSection
+						eyebrow="Mapa"
+						title="Referencia"
+						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailInfo
 								Icon={MapPin}
@@ -250,8 +268,9 @@ function LocationDetailPage() {
 
 			<LocationEditButton
 				location={currentLocation}
-				open={editOpen}
-				onOpenChange={handleEditOpenChange}
+				open={dialogOpen}
+				onOpenChange={handleDialogOpenChange}
+				defaultTab={activeTab}
 				trigger={null}
 			/>
 		</div>

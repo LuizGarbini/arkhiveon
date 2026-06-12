@@ -3,6 +3,8 @@ import {
 	type UseFormRegister,
 	type UseFormSetValue,
 	useWatch,
+	type FieldErrors,
+	type Path,
 } from "react-hook-form";
 import {
 	abilityModifier,
@@ -98,12 +100,14 @@ export function CharacterModuleFields({
 	control,
 	setValue,
 	config,
+	errors,
 }: {
 	kind: SheetModuleKind;
 	register: CharacterRegister;
 	control: CharacterControl;
 	setValue: CharacterSetValue;
 	config: SystemConfig;
+	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	if (kind === "identity") {
 		return (
@@ -120,7 +124,7 @@ export function CharacterModuleFields({
 		);
 	}
 	if (kind === "combat") {
-		return <CombatFields register={register} config={config} />;
+		return <CombatFields register={register} config={config} errors={errors} />;
 	}
 	if (kind === "sanity") {
 		return <SanityFields register={register} config={config} />;
@@ -160,14 +164,14 @@ export function CustomFieldsRenderer({
 						<Textarea
 							rows={3}
 							placeholder="..."
-							{...register(`systemFields.${field.key}` as any)}
+							{...register(`systemFields.${field.key}` as Path<CharacterFormValues>)}
 						/>
 					) : (
 						<Input
 							type={field.type}
 							placeholder="..."
 							{...register(
-								`systemFields.${field.key}` as any,
+								`systemFields.${field.key}` as Path<CharacterFormValues>,
 								field.type === "number" ? { valueAsNumber: true } : undefined,
 							)}
 						/>
@@ -402,25 +406,55 @@ export function SanityFields({ register, config }: { register: CharacterRegister
 export function CombatFields({
 	register,
 	config,
+	errors,
 }: {
 	register: CharacterRegister;
 	config: SystemConfig;
+	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	return (
 		<FormSection title="Status de Combate">
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-				<Field label="HP Atual">
+				<Field label="HP Atual" error={errors?.health?.message}>
 					<Input
 						type="number"
 						placeholder="10"
-						{...register("health", { valueAsNumber: true })}
+						{...register("health", {
+							valueAsNumber: true,
+							validate: (val, formVals) => {
+								const currentVal = Number(val);
+								const maxVal = Number(formVals.healthMax);
+								if (
+									Number.isFinite(currentVal) &&
+									Number.isFinite(maxVal) &&
+									currentVal > maxVal
+								) {
+									return "HP Atual não pode exceder o Máximo";
+								}
+								return true;
+							},
+						})}
 					/>
 				</Field>
-				<Field label="HP Máximo">
+				<Field label="HP Máximo" error={errors?.healthMax?.message}>
 					<Input
 						type="number"
 						placeholder="10"
-						{...register("healthMax", { valueAsNumber: true })}
+						{...register("healthMax", {
+							valueAsNumber: true,
+							validate: (val, formVals) => {
+								const currentVal = Number(formVals.health);
+								const maxVal = Number(val);
+								if (
+									Number.isFinite(currentVal) &&
+									Number.isFinite(maxVal) &&
+									currentVal > maxVal
+								) {
+									return "HP Máximo não pode ser menor que o Atual";
+								}
+								return true;
+							},
+						})}
 					/>
 				</Field>
 				<Field label="HP Temporário">
@@ -464,10 +498,10 @@ export function CombatFields({
 				{config.value.startsWith("dnd") && (
 					<>
 						<Field label="Testes contra Morte (Sucessos)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.successes" as any, { valueAsNumber: true })} />
+							<Input type="number" min={0} max={3} {...register("deathSaves.successes", { valueAsNumber: true })} />
 						</Field>
 						<Field label="Testes contra Morte (Falhas)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.failures" as any, { valueAsNumber: true })} />
+							<Input type="number" min={0} max={3} {...register("deathSaves.failures", { valueAsNumber: true })} />
 						</Field>
 					</>
 				)}
@@ -615,8 +649,10 @@ function AbilityField({
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
 	].includes(name);
 
-	const fieldName = isStandardKey ? name : `systemAttributes.${name}`;
-	const value = useWatch({ control, name: fieldName as any });
+	const fieldName = (
+		isStandardKey ? name : `systemAttributes.${name}`
+	) as Path<CharacterFormValues>;
+	const value = useWatch({ control, name: fieldName });
 	const numeric = Number(value ?? 10);
 	const mod = abilityModifier(Number.isFinite(numeric) ? numeric : 10);
 
@@ -630,7 +666,7 @@ function AbilityField({
 				min={1}
 				max={99}
 				className="h-8 w-full text-center text-[14px] font-bold"
-				{...register(fieldName as any, { valueAsNumber: true })}
+				{...register(fieldName, { valueAsNumber: true })}
 			/>
 			<span className="font-mono text-[11px] tabular-nums text-primary">
 				{formatModifier(mod)}

@@ -111,6 +111,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					void navigate({
 						to: "/sheets/$characterId",
 						params: { characterId: character.id },
+						search: { edit: true },
 					})
 				}
 				onDelete={handleDeleteCharacter}

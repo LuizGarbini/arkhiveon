@@ -9,7 +9,7 @@ import {
 	Sparkles,
 	Tags,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	DetailInfo,
 	DetailQuickStat,
@@ -44,11 +44,8 @@ function LoreDetailPage() {
 		state.lores.find((entry) => entry.id === loreId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
-	const [editOpen, setEditOpen] = useState(edit);
-
-	useEffect(() => {
-		if (edit) setEditOpen(true);
-	}, [edit]);
+	const [isEditing, setIsEditing] = useState(edit || false);
+	const [dialogOpen, setDialogOpen] = useState(false);
 
 	const tags = useMemo(
 		() =>
@@ -90,8 +87,8 @@ function LoreDetailPage() {
 	const importance =
 		importanceLabels[currentLore.importance] ?? currentLore.importance;
 
-	function handleEditOpenChange(open: boolean) {
-		setEditOpen(open);
+	function handleDialogOpenChange(open: boolean) {
+		setDialogOpen(open);
 		if (!open && edit) {
 			void navigate({
 				to: "/lore/$loreId",
@@ -147,11 +144,11 @@ function LoreDetailPage() {
 
 					<Button
 						type="button"
-						onClick={() => setEditOpen(true)}
+						onClick={() => setIsEditing((current) => !current)}
 						className="gap-2"
 					>
 						<Pencil className="h-4 w-4" />
-						Editar
+						{isEditing ? "Concluir edição" : "Editar"}
 					</Button>
 				</div>
 
@@ -187,11 +184,19 @@ function LoreDetailPage() {
 
 			<div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 				<main className="grid content-start gap-5">
-					<DetailSection eyebrow="Conteudo" title="Registro principal">
+					<DetailSection
+						eyebrow="Conteudo"
+						title="Registro principal"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<DetailText value={currentLore.content} />
 					</DetailSection>
 
-					<DetailSection eyebrow="Contexto" title="Referencia">
+					<DetailSection
+						eyebrow="Contexto"
+						title="Referencia"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<DetailInfo label="Era / periodo" value={currentLore.era} />
 							<DetailInfo label="Fonte" value={currentLore.source} />
@@ -203,7 +208,11 @@ function LoreDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Tags" title="Marcadores">
+					<DetailSection
+						eyebrow="Tags"
+						title="Marcadores"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						{tags.length > 0 ? (
 							<div className="flex flex-wrap gap-2">
 								{tags.map((tag) => (
@@ -230,7 +239,11 @@ function LoreDetailPage() {
 							emptyText="Nenhuma conexao registrada."
 						/>
 					</DetailSection>
-					<DetailSection eyebrow="Mestre" title="Notas privadas">
+					<DetailSection
+						eyebrow="Mestre"
+						title="Notas privadas"
+						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+					>
 						<DetailText value={currentLore.notes} />
 					</DetailSection>
 				</aside>
@@ -238,8 +251,8 @@ function LoreDetailPage() {
 
 			<LoreEditButton
 				lore={currentLore}
-				open={editOpen}
-				onOpenChange={handleEditOpenChange}
+				open={dialogOpen}
+				onOpenChange={handleDialogOpenChange}
 				trigger={null}
 			/>
 		</div>

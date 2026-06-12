@@ -84,7 +84,8 @@ export type EntityKind =
 	| "session"
 	| "item"
 	| "location"
-	| "lore";
+	| "lore"
+	| "customTemplate";
 
 export const ENTITY_LABELS: Record<
 	EntityKind,
@@ -96,6 +97,7 @@ export const ENTITY_LABELS: Record<
 	item: { singular: "Item", plural: "Itens" },
 	location: { singular: "Local", plural: "Locais" },
 	lore: { singular: "Lore", plural: "Lore" },
+	customTemplate: { singular: "Template", plural: "Templates" },
 };
 
 // =====================================================

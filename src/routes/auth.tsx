@@ -265,7 +265,9 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 			title: "Login realizado",
 			description: "Bem-vindo de volta ao Arkhiveon.",
 		});
-		window.location.assign("/dashboard");
+		// A navegação para /dashboard é feita pelo useEffect da AuthPage
+		// quando ele detecta que session !== null — não usar window.location.assign
+		// para evitar full page reload que causa o formulário piscar no dashboard.
 	}
 
 	function onInvalid(errors: FieldErrors<LoginValues>) {

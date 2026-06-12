@@ -214,10 +214,19 @@ function useEntityCollections() {
 	const items = useRPGStore((state) => state.items);
 	const locations = useRPGStore((state) => state.locations);
 	const lores = useRPGStore((state) => state.lores);
+	const customTemplates = useRPGStore((state) => state.customTemplates);
 
 	return useMemo(
-		() => ({ characters, npcs, sessions, items, locations, lores }),
-		[characters, npcs, sessions, items, locations, lores],
+		() => ({
+			characters,
+			npcs,
+			sessions,
+			items,
+			locations,
+			lores,
+			customTemplates,
+		}),
+		[characters, npcs, sessions, items, locations, lores, customTemplates],
 	);
 }
 

@@ -49,7 +49,7 @@ function TemplatesIndexPage() {
 					name: `${template.name} (Importado)`,
 				};
 				addTemplate(newTemplate);
-			} catch (error) {
+			} catch {
 				alert("Falha ao importar o template. Verifique se o arquivo é válido.");
 			}
 		};
@@ -116,7 +116,11 @@ function TemplatesIndexPage() {
 									{template.description || "Sem descrição"}
 								</p>
 								<div className="mt-auto flex items-center gap-2 pt-6">
-									<Link to={`/templates/${template.id}`} className="flex-1">
+									<Link
+										to="/templates/$templateId"
+										params={{ templateId: template.id }}
+										className="flex-1"
+									>
 										<Button variant="secondary" className="w-full">
 											Editar template
 										</Button>

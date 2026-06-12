@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, Plus, Trash, Settings } from "lucide-react";
-import { useState, useId } from "react";
+import { useState } from "react";
 import { useRPGStore } from "@/lib/store";
 import type { CustomTemplate, TemplateSection, TemplateField, FieldType } from "@/lib/store/types";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragOverlay,
   type DragEndEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -225,15 +223,16 @@ function NewTemplatePage() {
                     {selectedField ? (
                         <div className="space-y-5">
                             <div>
-                                <label className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Rótulo / Nome</label>
-                                <Input value={selectedField.label} onChange={e => handleUpdateField(selectedField.id, { label: e.target.value })} />
+                                <label htmlFor={`field-label-${selectedField.id}`} className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Rótulo / Nome</label>
+                                <Input id={`field-label-${selectedField.id}`} value={selectedField.label} onChange={e => handleUpdateField(selectedField.id, { label: e.target.value })} />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Largura</label>
+                                <label htmlFor={`field-width-${selectedField.id}`} className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Largura</label>
                                 <select 
+                                    id={`field-width-${selectedField.id}`}
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     value={selectedField.width || "full"}
-                                    onChange={e => handleUpdateField(selectedField.id, { width: e.target.value as any })}
+                                    onChange={e => handleUpdateField(selectedField.id, { width: e.target.value as TemplateField["width"] })}
                                 >
                                     <option value="full">100% (Linha inteira)</option>
                                     <option value="half">50% (Metade)</option>
@@ -243,8 +242,8 @@ function NewTemplatePage() {
                             </div>
                             {(selectedField.type === "text" || selectedField.type === "number") && (
                                 <div>
-                                    <label className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Placeholder (Opcional)</label>
-                                    <Input value={selectedField.placeholder || ""} onChange={e => handleUpdateField(selectedField.id, { placeholder: e.target.value })} />
+                                    <label htmlFor={`field-placeholder-${selectedField.id}`} className="mb-1.5 block text-xs font-bold uppercase text-muted-foreground">Placeholder (Opcional)</label>
+                                    <Input id={`field-placeholder-${selectedField.id}`} value={selectedField.placeholder || ""} onChange={e => handleUpdateField(selectedField.id, { placeholder: e.target.value })} />
                                 </div>
                             )}
                         </div>
@@ -283,7 +282,6 @@ function SortableField({ field, isSelected, onSelect, onRemove }: { field: Templ
             ref={setNodeRef} 
             style={style} 
             className={`group relative rounded-xl border p-3 transition-colors ${widthClass} ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-border bg-background hover:border-primary/50'} ${isDragging ? 'opacity-50' : ''}`}
-            onClick={onSelect}
         >
             <div className="mb-2 flex items-center justify-between">
                 <div {...attributes} {...listeners} className="cursor-grab text-[10px] font-bold uppercase tracking-wider text-muted-foreground active:cursor-grabbing">
@@ -294,12 +292,12 @@ function SortableField({ field, isSelected, onSelect, onRemove }: { field: Templ
                 </button>
             </div>
             
-            <div>
+            <button type="button" className="block w-full text-left" onClick={onSelect}>
                 <p className="mb-1 text-[11px] font-bold text-foreground">{field.label}</p>
                 <div className="flex h-10 w-full items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-3 text-xs text-muted-foreground">
                     {field.type}
                 </div>
-            </div>
+            </button>
         </div>
     );
 }

@@ -9,7 +9,7 @@ import {
 	ScrollText,
 	Sparkles,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	DetailInfo,
 	DetailQuickStat,
@@ -37,11 +37,9 @@ function SessionDetailPage() {
 		state.sessions.find((item) => item.id === sessionId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
-	const [editOpen, setEditOpen] = useState(edit);
-
-	useEffect(() => {
-		if (edit) setEditOpen(true);
-	}, [edit]);
+	const [isEditing, setIsEditing] = useState(edit || false);
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -78,8 +76,8 @@ function SessionDetailPage() {
 		.filter(Boolean)
 		.join(" · ");
 
-	function handleEditOpenChange(open: boolean) {
-		setEditOpen(open);
+	function handleDialogOpenChange(open: boolean) {
+		setDialogOpen(open);
 		if (!open && edit) {
 			void navigate({
 				to: "/sessions/$sessionId",
@@ -129,11 +127,11 @@ function SessionDetailPage() {
 
 					<Button
 						type="button"
-						onClick={() => setEditOpen(true)}
+						onClick={() => setIsEditing((current) => !current)}
 						className="gap-2"
 					>
 						<Pencil className="h-4 w-4" />
-						Editar
+						{isEditing ? "Concluir edição" : "Editar"}
 					</Button>
 				</div>
 
@@ -167,7 +165,11 @@ function SessionDetailPage() {
 
 			<div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 				<main className="grid content-start gap-5">
-					<DetailSection eyebrow="Resumo" title="Visao geral">
+					<DetailSection
+						eyebrow="Resumo"
+						title="Visao geral"
+						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailText value={currentSession.summary} />
 							<div className="grid gap-3 sm:grid-cols-2">
@@ -181,7 +183,11 @@ function SessionDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Mesa" title="Quem & onde">
+					<DetailSection
+						eyebrow="Mesa"
+						title="Quem & onde"
+						onEdit={isEditing ? () => { setActiveTab("people"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailText
 								title="Jogadores presentes"
@@ -198,7 +204,11 @@ function SessionDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Eventos" title="Acontecimentos">
+					<DetailSection
+						eyebrow="Eventos"
+						title="Acontecimentos"
+						onEdit={isEditing ? () => { setActiveTab("events"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailText
 								title="Eventos chave"
@@ -212,7 +222,11 @@ function SessionDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Recompensas" title="Loot & XP">
+					<DetailSection
+						eyebrow="Recompensas"
+						title="Loot & XP"
+						onEdit={isEditing ? () => { setActiveTab("rewards"); setDialogOpen(true); } : undefined}
+					>
 						<div className="grid gap-3">
 							<DetailText title="Loot" value={currentSession.loot} />
 							<DetailInfo
@@ -230,7 +244,11 @@ function SessionDetailPage() {
 							emptyText="Nenhuma conexao registrada."
 						/>
 					</DetailSection>
-					<DetailSection eyebrow="Mestre" title="Notas privadas">
+					<DetailSection
+						eyebrow="Mestre"
+						title="Notas privadas"
+						onEdit={isEditing ? () => { setActiveTab("dm"); setDialogOpen(true); } : undefined}
+					>
 						<DetailText value={currentSession.dmNotes} />
 					</DetailSection>
 				</aside>
@@ -238,8 +256,9 @@ function SessionDetailPage() {
 
 			<SessionEditButton
 				session={currentSession}
-				open={editOpen}
-				onOpenChange={handleEditOpenChange}
+				open={dialogOpen}
+				onOpenChange={handleDialogOpenChange}
+				defaultTab={activeTab}
 				trigger={null}
 			/>
 		</div>

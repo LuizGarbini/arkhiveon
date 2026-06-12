@@ -1,6 +1,5 @@
 import type { UseFormRegister } from "react-hook-form";
 import type { CharacterFormValues } from "./character-sheet-fields";
-import type { CustomTemplate } from "@/lib/store/types";
 import { Field } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";

@@ -29,6 +29,7 @@ import { Route as LocationsIndexRouteImport } from './routes/locations/index'
 import { Route as ItemsIndexRouteImport } from './routes/items/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as TemplatesNewRouteImport } from './routes/templates/new'
+import { Route as TemplatesTemplateIdRouteImport } from './routes/templates/$templateId'
 import { Route as SheetsNewRouteImport } from './routes/sheets/new'
 import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
 import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
@@ -137,6 +138,11 @@ const TemplatesNewRoute = TemplatesNewRouteImport.update({
   path: '/templates/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TemplatesTemplateIdRoute = TemplatesTemplateIdRouteImport.update({
+  id: '/templates/$templateId',
+  path: '/templates/$templateId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SheetsNewRoute = SheetsNewRouteImport.update({
   id: '/sheets/new',
   path: '/sheets/new',
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
   '/characters': typeof CharactersIndexRoute
   '/items': typeof ItemsIndexRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
   '/characters': typeof CharactersIndexRoute
   '/items': typeof ItemsIndexRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
   '/characters/': typeof CharactersIndexRoute
   '/items/': typeof ItemsIndexRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/$templateId'
     | '/templates/new'
     | '/characters'
     | '/items'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/$templateId'
     | '/templates/new'
     | '/characters'
     | '/items'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
+    | '/templates/$templateId'
     | '/templates/new'
     | '/characters/'
     | '/items/'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   SessionsSessionIdRoute: typeof SessionsSessionIdRoute
   SheetsCharacterIdRoute: typeof SheetsCharacterIdRoute
   SheetsNewRoute: typeof SheetsNewRoute
+  TemplatesTemplateIdRoute: typeof TemplatesTemplateIdRoute
   TemplatesNewRoute: typeof TemplatesNewRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
   ItemsIndexRoute: typeof ItemsIndexRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplatesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/templates/$templateId': {
+      id: '/templates/$templateId'
+      path: '/templates/$templateId'
+      fullPath: '/templates/$templateId'
+      preLoaderRoute: typeof TemplatesTemplateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sheets/new': {
       id: '/sheets/new'
       path: '/sheets/new'
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   SessionsSessionIdRoute: SessionsSessionIdRoute,
   SheetsCharacterIdRoute: SheetsCharacterIdRoute,
   SheetsNewRoute: SheetsNewRoute,
+  TemplatesTemplateIdRoute: TemplatesTemplateIdRoute,
   TemplatesNewRoute: TemplatesNewRoute,
   CharactersIndexRoute: CharactersIndexRoute,
   ItemsIndexRoute: ItemsIndexRoute,

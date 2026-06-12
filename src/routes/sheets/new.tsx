@@ -21,7 +21,6 @@ import {
 	NotesFields,
 	PersonalityFields,
 	SanityFields,
-	sanitizeCharacterFormValues,
 	SystemFields,
 } from "@/components/character-sheet-fields";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";

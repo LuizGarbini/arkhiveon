@@ -3,6 +3,18 @@ import type { Campaign, MembershipRole, RPGState } from "./types";
 import { getSupabase } from "../supabase";
 import { SUPABASE_TABLES } from "../supabase";
 
+interface MembershipCampaignRow {
+	role?: string | null;
+	campaign: {
+		id: string;
+		name?: string | null;
+		description?: string | null;
+		owner_id?: string | null;
+		created_at?: string | null;
+		updated_at?: string | null;
+	} | null;
+}
+
 export interface CampaignSlice {
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
@@ -43,17 +55,18 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 			return;
 		}
 
-		const campaigns: Campaign[] = (data ?? [])
-			.filter((row: any) => row.campaign !== null)
-			.map((row: any) => {
+		const campaigns: Campaign[] = ((data ?? []) as MembershipCampaignRow[])
+			.filter((row) => row.campaign !== null)
+			.map((row) => {
 				const c = row.campaign;
+				if (!c) throw new Error("Campanha ausente no membership.");
 				return {
 					id: c.id,
 					name: c.name ?? "Sem nome",
 					description: c.description ?? "",
-					ownerId: c.owner_id,
+					ownerId: c.owner_id ?? "",
 					myRole: row.role as MembershipRole,
-					createdAt: new Date(c.created_at).getTime(),
+					createdAt: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
 					updatedAt: c.updated_at ? new Date(c.updated_at).getTime() : undefined,
 				};
 			});
@@ -96,14 +109,22 @@ export const createCampaignSlice: StateCreator<RPGState, [], [], CampaignSlice> 
 				console.error("Erro ao criar campanha remotamente:", campaignError);
 			} else {
 				// Criar membership 'owner' para o criador
-				const { error: membershipError } = await supabase
-					.from(SUPABASE_TABLES.memberships)
-					.insert({
-						campaign_id: id,
-						role: "owner",
-					});
-				if (membershipError) {
-					console.error("Erro ao criar membership:", membershipError);
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				if (!user) {
+					console.error("Erro ao criar membership: usuário não autenticado.");
+				} else {
+					const { error: membershipError } = await supabase
+						.from(SUPABASE_TABLES.memberships)
+						.insert({
+							campaign_id: id,
+							role: "owner",
+							user_id: user.id,
+						});
+					if (membershipError) {
+						console.error("Erro ao criar membership:", membershipError);
+					}
 				}
 			}
 		}
