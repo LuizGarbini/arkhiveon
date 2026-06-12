@@ -13,6 +13,7 @@ import {
 	User,
 	Users,
 } from "lucide-react";
+import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
@@ -35,9 +36,9 @@ const worldItems = [
 	{ to: "/images", label: "Imagens", Icon: Images },
 ];
 
-const systemItems = [
-	{ to: "/design-system", label: "Design System", Icon: Palette },
-];
+const systemItems = isDesignSystemEnabled()
+	? [{ to: "/design-system", label: "Design System", Icon: Palette }]
+	: [];
 
 interface SidebarProps {
 	isOpen: boolean;
@@ -119,12 +120,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 						items={worldItems}
 						onItemClick={onItemClick}
 					/>
-					<SidebarNav
-						title="Sistema"
-						isCollapsed={isCollapsed}
-						items={systemItems}
-						onItemClick={onItemClick}
-					/>
+					{systemItems.length > 0 ? (
+						<SidebarNav
+							title="Sistema"
+							isCollapsed={isCollapsed}
+							items={systemItems}
+							onItemClick={onItemClick}
+						/>
+					) : null}
 				</div>
 
 				{/* Footer / Pro Card */}
