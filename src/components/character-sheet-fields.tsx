@@ -13,12 +13,139 @@ import {
 	formatModifier,
 	type SheetModuleKind,
 } from "@/lib/store";
-import { SYSTEM_CONFIG, type SystemConfig } from "@/lib/systems";
+import {
+	SYSTEM_CONFIG,
+	type CustomField,
+	type SystemConfig,
+} from "@/lib/systems";
 import { ImageUploader } from "./image-uploader";
 import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+
+const STANDARD_CHARACTER_ATTRIBUTE_KEYS = [
+	"strength",
+	"dexterity",
+	"constitution",
+	"intelligence",
+	"wisdom",
+	"charisma",
+	"power",
+	"size",
+	"education",
+] as const;
+
+const CUSTOM_NUMBER_CONSTRAINTS: Record<
+	string,
+	{ min?: number; max?: number; placeholder: string }
+> = {
+	nex: { min: 0, max: 99, placeholder: "0" },
+	luck: { min: 0, max: 99, placeholder: "50" },
+	magicPoints: { min: 0, max: 99, placeholder: "0" },
+	moveRate: { min: 0, placeholder: "8" },
+	pe: { min: 0, placeholder: "0" },
+	peMax: { min: 0, placeholder: "10" },
+	humanity: { min: 0, max: 10, placeholder: "7" },
+};
+
+export function getAttributeConstraints(config: SystemConfig) {
+	const isPercentile = config.value === "coc" || config.value === "ordem";
+	return {
+		min: 1,
+		max: isPercentile ? 99 : 30,
+		placeholder: "10",
+	};
+}
+
+function getCustomFieldPlaceholder(field: CustomField) {
+	const constraints = CUSTOM_NUMBER_CONSTRAINTS[field.key];
+	if (constraints?.placeholder) return constraints.placeholder;
+	if (field.hint) return field.hint;
+	if (field.type === "number") return "0";
+	if (field.type === "textarea") return `Descreva ${field.label.toLowerCase()}...`;
+	return `Ex: ${field.label}`;
+}
+
+function ensureSystemAttributeDefaults(
+	values: CharacterFormValues,
+): CharacterFormValues {
+	const config = SYSTEM_CONFIG[values.system] ?? SYSTEM_CONFIG.generic;
+	const systemAttributes = { ...(values.systemAttributes ?? {}) };
+
+	for (const attr of config.attributes) {
+		if (
+			STANDARD_CHARACTER_ATTRIBUTE_KEYS.includes(
+				attr.key as (typeof STANDARD_CHARACTER_ATTRIBUTE_KEYS)[number],
+			)
+		) {
+			continue;
+		}
+		const current = systemAttributes[attr.key];
+		if (
+			current == null ||
+			(typeof current === "number" && Number.isNaN(current))
+		) {
+			systemAttributes[attr.key] = 10;
+		}
+	}
+
+	return { ...values, systemAttributes };
+}
+
+const CREATION_EMPTY_NUMERIC_KEYS: Array<keyof CharacterFormValues> = [
+	"level",
+	"xp",
+	"strength",
+	"dexterity",
+	"constitution",
+	"intelligence",
+	"wisdom",
+	"charisma",
+	"power",
+	"size",
+	"education",
+	"sanity",
+	"sanityMax",
+	"health",
+	"healthMax",
+	"tempHealth",
+	"armorClass",
+	"initiative",
+	"speed",
+	"proficiencyBonus",
+	"spellSaveDc",
+	"spellAttackBonus",
+];
+
+export const CHARACTER_NAME_REQUIRED_MESSAGE =
+	"Informe o nome do personagem para continuar";
+
+export type BuildCharacterFormDefaultsOptions = {
+	forCreation?: boolean;
+};
+
+export function buildCharacterFormDefaults(
+	overrides?: Partial<CharacterFormValues>,
+	options?: BuildCharacterFormDefaultsOptions,
+): CharacterFormValues {
+	const base = { ...characterDefaults, ...overrides };
+
+	if (options?.forCreation) {
+		const empty = { ...base } as CharacterFormValues;
+		for (const key of CREATION_EMPTY_NUMERIC_KEYS) {
+			(empty as Record<string, unknown>)[key] = Number.NaN;
+		}
+		empty.deathSaves = {
+			successes: Number.NaN,
+			failures: Number.NaN,
+		};
+		empty.systemAttributes = {};
+		return empty;
+	}
+
+	return ensureSystemAttributeDefaults(base);
+}
 
 export type CharacterFormValues = Omit<
 	Character,
@@ -28,14 +155,13 @@ export type CharacterRegister = UseFormRegister<CharacterFormValues>;
 export type CharacterControl = Control<CharacterFormValues>;
 export type CharacterSetValue = UseFormSetValue<CharacterFormValues>;
 
-export function buildCharacterFormDefaults(
-	overrides?: Partial<CharacterFormValues>,
-): CharacterFormValues {
-	return { ...characterDefaults, ...overrides };
-}
+export type SanitizeCharacterFormOptions = {
+	emptyToZero?: boolean;
+};
 
 export function sanitizeCharacterFormValues(
 	values: CharacterFormValues,
+	options?: SanitizeCharacterFormOptions,
 ): CharacterFormValues {
 	const numericKeys: Array<keyof CharacterFormValues> = [
 		"level",
@@ -65,10 +191,31 @@ export function sanitizeCharacterFormValues(
 	for (const key of numericKeys) {
 		const value = sanitized[key];
 		if (typeof value === "number" && Number.isNaN(value)) {
-			(sanitized as Record<string, unknown>)[key] =
-				characterDefaults[key as keyof typeof characterDefaults] ?? 0;
+			(sanitized as Record<string, unknown>)[key] = options?.emptyToZero
+				? 0
+				: (characterDefaults[key as keyof typeof characterDefaults] ?? 0);
 		}
 	}
+
+	const deathSaves = { ...sanitized.deathSaves };
+	if (Number.isNaN(deathSaves.successes)) {
+		deathSaves.successes = options?.emptyToZero ? 0 : characterDefaults.deathSaves.successes;
+	}
+	if (Number.isNaN(deathSaves.failures)) {
+		deathSaves.failures = options?.emptyToZero ? 0 : characterDefaults.deathSaves.failures;
+	}
+	sanitized.deathSaves = deathSaves;
+
+	if (sanitized.systemAttributes) {
+		const nextAttributes = { ...sanitized.systemAttributes };
+		for (const [key, value] of Object.entries(nextAttributes)) {
+			if (typeof value === "number" && Number.isNaN(value)) {
+				nextAttributes[key] = 0;
+			}
+		}
+		sanitized.systemAttributes = nextAttributes;
+	}
+
 	return sanitized;
 }
 
@@ -115,6 +262,7 @@ export function CharacterModuleFields({
 				register={register}
 				control={control}
 				setValue={setValue}
+				errors={errors}
 			/>
 		);
 	}
@@ -158,26 +306,35 @@ export function CustomFieldsRenderer({
 
 	return (
 		<>
-			{fields.map((field) => (
-				<Field key={field.key} label={field.label} hint={field.hint}>
-					{field.type === "textarea" ? (
-						<Textarea
-							rows={3}
-							placeholder="..."
-							{...register(`systemFields.${field.key}` as Path<CharacterFormValues>)}
-						/>
-					) : (
-						<Input
-							type={field.type}
-							placeholder="..."
-							{...register(
-								`systemFields.${field.key}` as Path<CharacterFormValues>,
-								field.type === "number" ? { valueAsNumber: true } : undefined,
-							)}
-						/>
-					)}
-				</Field>
-			))}
+			{fields.map((field) => {
+				const placeholder = getCustomFieldPlaceholder(field);
+				const numberConstraints = CUSTOM_NUMBER_CONSTRAINTS[field.key];
+
+				return (
+					<Field key={field.key} label={field.label} hint={field.hint}>
+						{field.type === "textarea" ? (
+							<Textarea
+								rows={3}
+								placeholder={placeholder}
+								{...register(
+									`systemFields.${field.key}` as Path<CharacterFormValues>,
+								)}
+							/>
+						) : (
+							<Input
+								type={field.type}
+								placeholder={placeholder}
+								min={field.type === "number" ? numberConstraints?.min : undefined}
+								max={field.type === "number" ? numberConstraints?.max : undefined}
+								{...register(
+									`systemFields.${field.key}` as Path<CharacterFormValues>,
+									field.type === "number" ? { valueAsNumber: true } : undefined,
+								)}
+							/>
+						)}
+					</Field>
+				);
+			})}
 		</>
 	);
 }
@@ -186,10 +343,12 @@ export function IdentityFields({
 	register,
 	control,
 	setValue,
+	errors,
 }: {
 	register: CharacterRegister;
 	control: CharacterControl;
 	setValue: CharacterSetValue;
+	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const characterName = useWatch({ control, name: "characterName" });
@@ -197,10 +356,18 @@ export function IdentityFields({
 		<>
 			<FormSection title="Identidade Básica">
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<Field label="Nome do personagem">
+					<Field
+						label="Nome do personagem"
+						required
+						error={errors?.characterName?.message}
+					>
 						<Input
 							placeholder="Ex: Aragorn, Lyra Cinzal..."
-							{...register("characterName", { required: true })}
+							{...register("characterName", {
+								required: CHARACTER_NAME_REQUIRED_MESSAGE,
+								validate: (value) =>
+									value.trim().length > 0 || CHARACTER_NAME_REQUIRED_MESSAGE,
+							})}
 						/>
 					</Field>
 					<Field label="Tendência / Alinhamento">
@@ -318,6 +485,7 @@ export function AbilitiesFields({
 							name={field.key}
 							register={register}
 							control={control}
+							config={config}
 						/>
 					))}
 				</div>
@@ -498,10 +666,22 @@ export function CombatFields({
 				{config.value.startsWith("dnd") && (
 					<>
 						<Field label="Testes contra Morte (Sucessos)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.successes", { valueAsNumber: true })} />
+							<Input
+								type="number"
+								min={0}
+								max={3}
+								placeholder="0"
+								{...register("deathSaves.successes", { valueAsNumber: true })}
+							/>
 						</Field>
 						<Field label="Testes contra Morte (Falhas)" hint="0 a 3">
-							<Input type="number" min={0} max={3} {...register("deathSaves.failures", { valueAsNumber: true })} />
+							<Input
+								type="number"
+								min={0}
+								max={3}
+								placeholder="0"
+								{...register("deathSaves.failures", { valueAsNumber: true })}
+							/>
 						</Field>
 					</>
 				)}
@@ -570,12 +750,15 @@ export function MagicFields({ register, config }: { register: CharacterRegister,
 				<Field label="CD da magia">
 					<Input
 						type="number"
+						min={0}
+						placeholder="13"
 						{...register("spellSaveDc", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Bônus de ataque mágico">
 					<Input
 						type="number"
+						placeholder="0"
 						{...register("spellAttackBonus", { valueAsNumber: true })}
 					/>
 				</Field>
@@ -639,22 +822,25 @@ function AbilityField({
 	name,
 	register,
 	control,
+	config,
 }: {
 	label: string;
 	name: string;
 	register: CharacterRegister;
 	control: CharacterControl;
+	config: SystemConfig;
 }) {
-	const isStandardKey = [
-		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
-	].includes(name);
+	const isStandardKey = STANDARD_CHARACTER_ATTRIBUTE_KEYS.includes(
+		name as (typeof STANDARD_CHARACTER_ATTRIBUTE_KEYS)[number],
+	);
+	const { min, max, placeholder } = getAttributeConstraints(config);
 
 	const fieldName = (
 		isStandardKey ? name : `systemAttributes.${name}`
 	) as Path<CharacterFormValues>;
 	const value = useWatch({ control, name: fieldName });
-	const numeric = Number(value ?? 10);
-	const mod = abilityModifier(Number.isFinite(numeric) ? numeric : 10);
+	const numeric = Number(value);
+	const mod = Number.isFinite(numeric) ? abilityModifier(numeric) : 0;
 
 	return (
 		<div className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5">
@@ -663,8 +849,9 @@ function AbilityField({
 			</span>
 			<Input
 				type="number"
-				min={1}
-				max={99}
+				min={min}
+				max={max}
+				placeholder={placeholder}
 				className="h-8 w-full text-center text-[14px] font-bold"
 				{...register(fieldName, { valueAsNumber: true })}
 			/>
