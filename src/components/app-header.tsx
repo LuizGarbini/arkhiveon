@@ -417,7 +417,6 @@ function getPageTitle(pathname: string) {
 	if (pathname.startsWith("/dashboard")) return "Dashboard";
 	if (pathname.startsWith("/characters")) return "Elenco";
 	if (pathname.startsWith("/sheets")) return "Fichas";
-	if (pathname.startsWith("/templates")) return "Templates";
 	if (pathname.startsWith("/family-tree")) return "Árvore Genealógica";
 	if (pathname.startsWith("/npcs")) return "NPCs";
 	if (pathname.startsWith("/sessions")) return "Sessões";
