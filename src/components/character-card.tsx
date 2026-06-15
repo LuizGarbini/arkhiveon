@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Shield, Sparkles, User, Zap } from "lucide-react";
+import { FramedImage } from "@/components/framed-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
@@ -8,6 +9,8 @@ import {
 	type Character,
 	formatModifier,
 	systemLabel,
+	useActiveCampaignRole,
+	useImageAssetLookup,
 	useRPGStore,
 } from "@/lib/store";
 import { SYSTEM_CONFIG } from "@/lib/systems";
@@ -22,12 +25,8 @@ const abilitySkeletonKeys = ["str", "dex", "con", "int", "wis", "cha"];
 
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
-	const imageAssets = useRPGStore((s) => s.imageAssets);
-	const activeCampaignRole = useRPGStore(
-		(s) =>
-			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)
-				?.myRole,
-	);
+	const imageAssetLookup = useImageAssetLookup();
+	const activeCampaignRole = useActiveCampaignRole();
 	const navigate = useNavigate();
 	const toast = useToast();
 
@@ -86,7 +85,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 	const characterImageUrl = resolveCharacterImageUrl(
 		currentCharacter,
-		imageAssets,
+		imageAssetLookup,
 		activeCampaignRole,
 	);
 	const hasImage = !!characterImageUrl;
@@ -122,12 +121,13 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			{/* Banner com imagem ou padrão */}
 			<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-primary/15 via-fuchsia-500/10 to-transparent">
 				{hasImage ? (
-					<img
+					<FramedImage
 						src={characterImageUrl}
 						alt={character.characterName}
+						framing={currentCharacter}
 						loading="lazy"
 						decoding="async"
-						className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+						imgClassName="opacity-90 transition-transform duration-500 group-hover:scale-105"
 					/>
 				) : (
 					<div className="flex h-full w-full items-center justify-center text-primary/30">
