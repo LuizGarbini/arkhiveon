@@ -41,6 +41,7 @@
     "lucide-react": "^0.545.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^6.0.2",
     "react-hook-form": "^7.68.0",
     "shadcn": "^3.6.2",
     "tailwind-merge": "^3.4.0",
