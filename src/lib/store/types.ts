@@ -190,6 +190,9 @@ export interface Character {
 	notes: string;
 	imageUrl: string;
 	imageAssetId?: string;
+	imageFocusX?: number;
+	imageFocusY?: number;
+	imageZoom?: number;
 	sheetLayout: SheetLayoutConfig;
 	familyRelations: FamilyRelation[];
 	entityLinks: EntityLink[];
@@ -317,6 +320,10 @@ export interface Item {
 	description: string;
 	owner: string;
 	imageUrl: string;
+	imageAssetId?: string;
+	imageFocusX?: number;
+	imageFocusY?: number;
+	imageZoom?: number;
 	equipped: boolean;
 	entityLinks: EntityLink[];
 }

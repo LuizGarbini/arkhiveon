@@ -1,28 +1,33 @@
-import type { Character, ImageAsset, MembershipRole } from "./store";
+import type { Character, MembershipRole } from "./store";
+import {
+	isEntityImageHidden,
+	resolveEntityImageUrl,
+	type EntityImageSource,
+	type ImageAssetLookup,
+} from "./entity-images";
+
+export type { EntityImageSource };
 
 export function resolveCharacterImageUrl(
 	character: Character,
-	imageAssets: ImageAsset[],
+	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
 ): string {
-	if (character.imageAssetId) {
-		const asset = imageAssets.find(
-			(item) => item.id === character.imageAssetId,
-		);
-		if (!asset) return "";
-		if (asset.isPrivate && role !== "owner") return "";
-		return asset.url;
-	}
-
-	return character.imageUrl;
+	return resolveEntityImageUrl(character, imageAssets, role);
 }
 
 export function isCharacterImageHidden(
 	character: Character,
-	imageAssets: ImageAsset[],
+	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
 ): boolean {
-	if (!character.imageAssetId) return false;
-	const asset = imageAssets.find((item) => item.id === character.imageAssetId);
-	return !asset || (asset.isPrivate && role !== "owner");
+	return isEntityImageHidden(character, imageAssets, role);
+}
+
+export function resolveItemImageUrl(
+	item: EntityImageSource,
+	imageAssets: ImageAssetLookup,
+	role?: MembershipRole,
+): string {
+	return resolveEntityImageUrl(item, imageAssets, role);
 }
