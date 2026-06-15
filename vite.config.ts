@@ -27,5 +27,22 @@ export default defineConfig(({ command, mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+
+            if (id.includes('@react-pdf')) return 'react-pdf';
+            if (id.includes('@xyflow')) return 'xyflow';
+            if (id.includes('react-easy-crop')) return 'react-easy-crop';
+            if (id.includes('@firecms/neat')) return 'neat-gradient';
+            if (id.includes('@dagrejs')) return 'dagre';
+            if (id.includes('@dnd-kit')) return 'dnd-kit';
+            if (id.includes('@aws-sdk')) return 'aws-sdk';
+          },
+        },
+      },
+    },
   }
 })

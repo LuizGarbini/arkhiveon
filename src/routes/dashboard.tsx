@@ -12,7 +12,6 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { NeatGradient } from "@firecms/neat";
 import { ActivityFeed } from "@/components/activity-feed";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -123,12 +122,17 @@ function Dashboard() {
 	const lastActivity = activityLog[0];
 
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const gradientRef = useRef<NeatGradient | null>(null);
+	const gradientRef = useRef<{ destroy: () => void } | null>(null);
 
 	useEffect(() => {
 		if (!canvasRef.current) return;
 
-		const gradient = new NeatGradient({
+		let cancelled = false;
+
+		void import("@firecms/neat").then(({ NeatGradient }) => {
+			if (cancelled || !canvasRef.current) return;
+
+			const gradient = new NeatGradient({
 			ref: canvasRef.current,
 			colors: [
 				{ color: "#130437", enabled: true },
@@ -194,12 +198,14 @@ function Dashboard() {
 			bloomIntensity: 0,
 			bloomThreshold: 0.7,
 			chromaticAberration: 0,
+			});
+
+			gradientRef.current = gradient;
 		});
 
-		gradientRef.current = gradient;
-
 		return () => {
-			gradient.destroy();
+			cancelled = true;
+			gradientRef.current?.destroy();
 			gradientRef.current = null;
 		};
 	}, []);
