@@ -1,8 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Coins, Gem, Link2, Weight } from "lucide-react";
+import { FramedImage } from "@/components/framed-image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveItemImageUrl } from "@/lib/character-images";
 import type { Item } from "@/lib/store";
-import { useRPGStore } from "@/lib/store";
+import {
+	useActiveCampaignRole,
+	useImageAssetLookup,
+	useRPGStore,
+} from "@/lib/store";
 import { EntityActions } from "./entity-actions";
 
 interface ItemCardProps {
@@ -48,6 +54,8 @@ const rarityStyles: Record<
 
 export function ItemCard({ item, isLoading }: ItemCardProps) {
 	const removeItem = useRPGStore((s) => s.removeItem);
+	const imageAssetLookup = useImageAssetLookup();
+	const activeCampaignRole = useActiveCampaignRole();
 	const navigate = useNavigate();
 
 	if (isLoading || !item) {
@@ -82,6 +90,9 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 		.normalize("NFD")
 		.replace(/[\u0300-\u036f]/g, "");
 	const rarity = rarityStyles[rarityKey] ?? rarityStyles.comum;
+	const itemImageUrl = item
+		? resolveItemImageUrl(item, imageAssetLookup, activeCampaignRole)
+		: "";
 
 	return (
 		<Link
@@ -107,13 +118,11 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 				<div
 					className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br ${rarity.glow} to-transparent ring-1 ${rarity.ring} ${rarity.tone}`}
 				>
-					{item.imageUrl ? (
-						<img
-							src={item.imageUrl}
+					{itemImageUrl ? (
+						<FramedImage
+							src={itemImageUrl}
 							alt={item.name}
-							loading="lazy"
-							decoding="async"
-							className="h-full w-full object-cover"
+							framing={item}
 						/>
 					) : (
 						<Gem className="h-5 w-5" strokeWidth={1.6} />

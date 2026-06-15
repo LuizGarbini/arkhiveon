@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import type { Item } from "@/lib/store";
 import { itemDefaults, useRPGStore } from "@/lib/store";
 import { EntityLinkManager } from "./entity-links";
-import { ImageUploader } from "./image-uploader";
+import { EntityImagePicker } from "./entity-image-picker";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -101,6 +101,9 @@ function ItemFormDialog({
 		});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
+	const imageAssetId = useWatch({ control, name: "imageAssetId" });
+	const imageFocusY = useWatch({ control, name: "imageFocusY" });
+	const imageZoom = useWatch({ control, name: "imageZoom" });
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
@@ -143,15 +146,23 @@ function ItemFormDialog({
 
 					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 						<FormSection title="Identificação">
-							<ImageUploader
-								value={imageUrl ?? ""}
-								onChange={(url) =>
-									setValue("imageUrl", url, { shouldDirty: true })
-								}
-								label="Ilustração"
+							<EntityImagePicker
+								value={{
+									imageUrl: imageUrl ?? "",
+									imageAssetId,
+									imageFocusY,
+									imageZoom,
+								}}
+								onChange={(patch) => {
+									for (const [key, val] of Object.entries(patch)) {
+										setValue(key as keyof ItemFormValues, val as never, {
+											shouldDirty: true,
+										});
+									}
+								}}
+								uploadLabel="Ilustração"
 								folder="items"
 								libraryName={watchedValues.name}
-								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 								<Field label="Nome" htmlFor={nameId} className="sm:col-span-2">

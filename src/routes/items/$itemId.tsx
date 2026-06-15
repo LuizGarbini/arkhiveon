@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowLeft,
+	Camera,
 	Coins,
 	Gem,
 	Link2,
@@ -18,10 +19,13 @@ import {
 	DetailSkeleton,
 	DetailText,
 } from "@/components/entity-detail";
+import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { EntityLinkChips } from "@/components/entity-links";
+import { FramedImage } from "@/components/framed-image";
 import { ItemEditButton } from "@/components/item-form";
 import { Button } from "@/components/ui/button";
-import { useRPGStore } from "@/lib/store";
+import { resolveItemImageUrl } from "@/lib/character-images";
+import { useActiveCampaignId, useActiveCampaignRole, useImageAssetLookup, useRPGStore } from "@/lib/store";
 
 export const Route = createFileRoute("/items/$itemId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -38,8 +42,13 @@ function ItemDetailPage() {
 		state.items.find((entry) => entry.id === itemId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+	const imageAssetLookup = useImageAssetLookup();
+	const activeCampaignRole = useActiveCampaignRole();
+	const activeCampaignId = useActiveCampaignId();
+	const updateItem = useRPGStore((state) => state.updateItem);
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
+	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -66,6 +75,11 @@ function ItemDetailPage() {
 	}
 
 	const currentItem = item;
+	const itemImageUrl = resolveItemImageUrl(
+		currentItem,
+		imageAssetLookup,
+		activeCampaignRole,
+	);
 	const subtitle = [
 		currentItem.rarity || "comum",
 		currentItem.type,
@@ -101,15 +115,23 @@ function ItemDetailPage() {
 						</Link>
 						<div className="mt-4 flex items-start gap-4">
 							<div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20">
-								{currentItem.imageUrl ? (
-									<img
-										src={currentItem.imageUrl}
+								{itemImageUrl ? (
+									<FramedImage
+										src={itemImageUrl}
 										alt={currentItem.name}
-										className="h-full w-full object-cover"
+										framing={currentItem}
 									/>
 								) : (
 									<Gem className="h-7 w-7" strokeWidth={1.5} />
 								)}
+								<button
+									type="button"
+									onClick={() => setIsImageDialogOpen(true)}
+									className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+									aria-label="Editar imagem do item"
+								>
+									<Camera className="h-5 w-5" />
+								</button>
 							</div>
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -126,14 +148,25 @@ function ItemDetailPage() {
 						</div>
 					</div>
 
-					<Button
-						type="button"
-						onClick={() => setIsEditing((current) => !current)}
-						className="gap-2"
-					>
-						<Pencil className="h-4 w-4" />
-						{isEditing ? "Concluir edição" : "Editar"}
-					</Button>
+					<div className="flex shrink-0 flex-wrap items-center gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setIsImageDialogOpen(true)}
+							className="gap-2"
+						>
+							<Camera className="h-4 w-4" />
+							Imagem
+						</Button>
+						<Button
+							type="button"
+							onClick={() => setIsEditing((current) => !current)}
+							className="gap-2"
+						>
+							<Pencil className="h-4 w-4" />
+							{isEditing ? "Concluir edição" : "Editar"}
+						</Button>
+					</div>
 				</div>
 
 				<div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -241,6 +274,23 @@ function ItemDetailPage() {
 				open={dialogOpen}
 				onOpenChange={handleDialogOpenChange}
 				trigger={null}
+			/>
+			<EntityImageDialog
+				open={isImageDialogOpen}
+				onOpenChange={setIsImageDialogOpen}
+				title="Editar imagem do item"
+				description="Escolha da biblioteca, envie uma nova imagem ou ajuste o recorte."
+				value={{
+					imageUrl: currentItem.imageUrl ?? "",
+					imageAssetId: currentItem.imageAssetId,
+					imageFocusX: currentItem.imageFocusX,
+					imageFocusY: currentItem.imageFocusY,
+					imageZoom: currentItem.imageZoom,
+				}}
+				onChange={(patch) => updateItem(currentItem.id, patch)}
+				folder="items"
+				campaignId={activeCampaignId ?? undefined}
+				libraryName={currentItem.name}
 			/>
 		</div>
 	);
