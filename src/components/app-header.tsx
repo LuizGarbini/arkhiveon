@@ -385,7 +385,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 									<span>Configurações</span>
 								</DropdownMenuItem>
 								<DropdownMenuItem
-									onClick={() => void navigate({ to: "/billing" })}
+									onClick={() => void navigate({ to: "/billing", search: {} })}
 									className="gap-2 text-xs font-medium focus:bg-primary/10 focus:text-primary cursor-pointer"
 								>
 									<CreditCard className="h-3.5 w-3.5" />
