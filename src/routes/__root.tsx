@@ -278,6 +278,7 @@ function UpgradeLimitDialog({ onDismiss }: { onDismiss: () => void }) {
 					</Button>
 					<Link
 						to="/billing"
+						search={{}}
 						onClick={onDismiss}
 						className={cn(
 							buttonVariants({ variant: "default" }),
