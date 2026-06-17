@@ -38,14 +38,21 @@ function BillingPage() {
 	const toast = useToast();
 	const [checkoutLoading, setCheckoutLoading] = useState(false);
 	const [showSparkles, setShowSparkles] = useState(success);
-	const totals = useRPGStore((state) => ({
-		characters: state.characters.length,
-		npcs: state.npcs.length,
-		sessions: state.sessions.length,
-		items: state.items.length,
-		locations: state.locations.length,
-		lores: state.lores.length,
-	}));
+	const charactersCount = useRPGStore((state) => state.characters.length);
+	const npcsCount = useRPGStore((state) => state.npcs.length);
+	const sessionsCount = useRPGStore((state) => state.sessions.length);
+	const itemsCount = useRPGStore((state) => state.items.length);
+	const locationsCount = useRPGStore((state) => state.locations.length);
+	const loresCount = useRPGStore((state) => state.lores.length);
+
+	const totals = {
+		characters: charactersCount,
+		npcs: npcsCount,
+		sessions: sessionsCount,
+		items: itemsCount,
+		locations: locationsCount,
+		lores: loresCount,
+	};
 	const used =
 		totals.characters +
 		totals.npcs +
