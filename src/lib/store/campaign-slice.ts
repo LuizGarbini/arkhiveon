@@ -97,6 +97,18 @@ export const createCampaignSlice: StateCreator<
 	},
 
 	createCampaign: async (name, description = "") => {
+		const state = get();
+		const maxCampaigns = state.userPlan === "pro" ? 5 : 1;
+		if (state.campaigns.length >= maxCampaigns) {
+			const errorMsg = `Limite de campanhas atingido (${maxCampaigns}). ${
+				state.userPlan === "pro"
+					? "Você atingiu o limite máximo de 5 campanhas do plano Pro."
+					: "Faça upgrade para o plano Pro para criar até 5 campanhas."
+			}`;
+			set({ syncError: errorMsg });
+			throw new Error(errorMsg);
+		}
+
 		const supabase = getSupabase();
 		const id = crypto.randomUUID();
 		const campaign: Campaign = {
