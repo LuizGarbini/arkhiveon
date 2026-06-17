@@ -1,5 +1,7 @@
+import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
+
 	Crown,
 	FileText,
 	GitFork,
@@ -9,6 +11,7 @@ import {
 	Package,
 	Palette,
 	ScrollText,
+
 	Sparkles,
 	User,
 	Users,
@@ -211,12 +214,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 								</div>
 							</div>
 
-							<button
-								type="button"
-								className="mt-4 w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
+							<Link
+								to="/billing"
+								search={{}}
+								className="mt-4 block w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-center text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
+								onClick={onItemClick}
 							>
 								{isPro ? "Pro ativo" : "Fazer Upgrade"}
-							</button>
+							</Link>
 						</div>
 					</div>
 				</div>
