@@ -7,7 +7,7 @@ import {
 	Loader2,
 	Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SparklesCanvas } from "@/components/ui/sparkles-canvas";
 import { useToast } from "@/components/ui/toast";
@@ -179,13 +179,16 @@ function BillingPage() {
 	}
 
 	// ── Canceled toast ───────────────────────────────────────────────
-	if (canceled) {
-		toast.info({
-			title: "Checkout cancelado",
-			description: "Você pode tentar novamente quando quiser.",
-		});
-		void navigate({ to: "/billing", search: { success: undefined, canceled: undefined, mock: undefined }, replace: true });
-	}
+	useEffect(() => {
+		if (canceled) {
+			toast.info({
+				title: "Checkout cancelado",
+				description: "Você pode tentar novamente quando quiser.",
+			});
+			void navigate({ to: "/billing", search: { success: undefined, canceled: undefined, mock: undefined }, replace: true });
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [canceled]);
 
 	// ── Normal billing page ──────────────────────────────────────────
 	return (
