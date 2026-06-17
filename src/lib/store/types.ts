@@ -45,12 +45,21 @@ export const RPG_SYSTEMS = [
 	{ value: "generic", label: "Genérico / Outro" },
 ] as const;
 
-export type RpgSystem = (typeof RPG_SYSTEMS)[number]["value"] | `custom_${string}`;
+export type RpgSystem =
+	| (typeof RPG_SYSTEMS)[number]["value"]
+	| `custom_${string}`;
 
 // =====================================================
 //  Templates Customizados
 // =====================================================
-export type FieldType = "text" | "number" | "textarea" | "attribute_box" | "metric_box" | "image" | "checkbox";
+export type FieldType =
+	| "text"
+	| "number"
+	| "textarea"
+	| "attribute_box"
+	| "metric_box"
+	| "image"
+	| "checkbox";
 
 export interface TemplateField {
 	id: string; // ID único do campo (ex: 'str', 'hp_max')
