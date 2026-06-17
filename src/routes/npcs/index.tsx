@@ -44,7 +44,7 @@ function RouteComponent() {
 				description="Aliados, mercadores, vilões, criaturas e ameaças do enredo"
 				Icon={Users}
 				iconColor="text-fuchsia-300"
-				eyebrow="Elenco do mestre"
+				eyebrow="Personagens do mestre"
 				count={npcs.length}
 				action={<NpcForm />}
 			/>
