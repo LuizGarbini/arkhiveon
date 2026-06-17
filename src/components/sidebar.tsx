@@ -3,7 +3,6 @@ import {
 	BookOpen,
 
 	Crown,
-	FileText,
 	GitFork,
 	House,
 	Images,
@@ -25,17 +24,16 @@ import { SidebarNav } from "./sidebar-nav";
 
 const grimoireItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
-	{ to: "/characters", label: "Elenco", Icon: User, shortcut: "Alt+2" },
-	{ to: "/sheets", label: "Fichas", Icon: FileText, shortcut: "Alt+3" },
-	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+4" },
-	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+6" },
+	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
+	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
+	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+4" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+5" },
 ];
 
 const worldItems = [
-	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+7" },
-	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+8" },
-	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+9" },
+	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
+	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
+	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
 	{ to: "/images", label: "Imagens", Icon: Images },
 ];
 
