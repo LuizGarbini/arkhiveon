@@ -146,7 +146,7 @@ function DesignSystem() {
 			<SpecPanel eyebrow="Page pattern" title="Hero, busca e grid">
 				<div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-background/35">
 					<PageHeader
-						title="Elenco"
+						title="Personagens"
 						description="Visão narrativa dos personagens principais da campanha."
 						Icon={User}
 						eyebrow="Coleção"
