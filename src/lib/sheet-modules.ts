@@ -166,7 +166,9 @@ export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 		}));
 
 	for (const fallbackModule of fallback.modules) {
-		if (!normalizedModules.some((module) => module.kind === fallbackModule.kind)) {
+		if (
+			!normalizedModules.some((module) => module.kind === fallbackModule.kind)
+		) {
 			normalizedModules.push(fallbackModule);
 		}
 	}
@@ -179,7 +181,9 @@ export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 }
 
 export function enabledSheetModules(character: Character) {
-	return normalizeSheetLayout(character).modules.filter((module) => module.enabled);
+	return normalizeSheetLayout(character).modules.filter(
+		(module) => module.enabled,
+	);
 }
 
 export function createCustomSheetModule(
@@ -197,16 +201,11 @@ export function createCustomSheetModule(
 function columnOf(module: SheetModuleConfig): "main" | "side" {
 	return module.column === "side" ? "side" : "main";
 }
-
 export function normalizeModuleOrders(
 	modules: SheetModuleConfig[],
 ): SheetModuleConfig[] {
-	const main = modules
-		.filter((module) => columnOf(module) === "main")
-		.sort((a, b) => a.order - b.order);
-	const side = modules
-		.filter((module) => columnOf(module) === "side")
-		.sort((a, b) => a.order - b.order);
+	const main = modules.filter((module) => columnOf(module) === "main");
+	const side = modules.filter((module) => columnOf(module) === "side");
 
 	return [
 		...main.map((module, index) => ({
