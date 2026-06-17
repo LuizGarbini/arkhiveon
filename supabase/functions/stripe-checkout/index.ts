@@ -67,7 +67,7 @@ serve(async (req) => {
 			if (upsertError) {
 				return jsonResponse(
 					{ error: "Failed to update plan: " + upsertError.message },
-					500,
+					200,
 				);
 			}
 
@@ -86,7 +86,7 @@ serve(async (req) => {
 		if (!stripePriceId) {
 			return jsonResponse(
 				{ error: "STRIPE_PRO_PRICE_ID is not configured." },
-				500,
+				200,
 			);
 		}
 
@@ -122,6 +122,7 @@ serve(async (req) => {
 		return jsonResponse({ url: session.url });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Unknown error";
-		return jsonResponse({ error: message }, 500);
+		console.error("stripe-checkout error:", message);
+		return jsonResponse({ error: message }, 200);
 	}
 });
