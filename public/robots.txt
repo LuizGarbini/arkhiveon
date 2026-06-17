@@ -1,3 +1,25 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+# Permitir apenas páginas públicas
+Allow: /$
+Allow: /auth
+Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /logo.png
+
+# Bloquear rotas internas protegidas por login ou privadas
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /account
+Disallow: /sheets
+Disallow: /characters
+Disallow: /npcs
+Disallow: /sessions
+Disallow: /items
+Disallow: /locations
+Disallow: /lore
+Disallow: /templates
+Disallow: /billing
+Disallow: /images
+Disallow: /spotify-callback
+Disallow: /error-preview
