@@ -14,6 +14,7 @@ import { sessionDefaults } from "./session-slice";
 import type {
 	ActivityEntry,
 	Character,
+	CustomTemplate,
 	GameLocation,
 	ImageAsset,
 	Item,
@@ -66,7 +67,10 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			state.items.length > 0 ||
 			state.locations.length > 0 ||
 			state.lores.length > 0 ||
+			state.customTemplates.length > 0 ||
 			state.imageAssets.length > 0;
+
+		const startCampaignId = get().activeCampaignId;
 
 		// Só mostra skeleton se não houver NENHUM dado local ainda
 		if (!hasData) {
@@ -75,15 +79,19 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			set({ syncError: null });
 		}
 		try {
-			const campaignId = get().activeCampaignId;
-			if (!campaignId) {
+			if (!startCampaignId) {
 				set({ isLoadingRemote: false });
 				return;
 			}
 			const [remote, globalCount] = await Promise.all([
-				loadRemoteState(campaignId),
+				loadRemoteState(startCampaignId),
 				fetchGlobalTotalCount(),
 			]);
+
+			// Verificar se a campanha ativa mudou no meio do caminho
+			if (get().activeCampaignId !== startCampaignId) {
+				return;
+			}
 
 			// Validação defensiva básica
 			const ensureArray = (val: unknown) => (Array.isArray(val) ? val : []);
@@ -114,12 +122,17 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					...loreDefaults,
 					...(l as Partial<Lore>),
 				})) as Lore[],
+				customTemplates: ensureArray(
+					remote.customTemplates,
+				) as CustomTemplate[],
 				imageAssets: ensureArray(remote.imageAssets) as ImageAsset[],
 				activityLog: ensureArray(remote.activityLog) as ActivityEntry[],
 				isLoadingRemote: false,
 			});
 		} catch (error) {
-			set({ isLoadingRemote: false, syncError: remoteErrorMessage(error) });
+			if (get().activeCampaignId === startCampaignId) {
+				set({ isLoadingRemote: false, syncError: remoteErrorMessage(error) });
+			}
 		}
 	},
 	setupRealtime: () => {
@@ -143,6 +156,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					items: "items",
 					locations: "locations",
 					lores: "lores",
+					custom_templates: "customTemplates",
 					image_assets: "imageAssets",
 					activity_log: "activityLog",
 				};
@@ -150,8 +164,53 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				const storeKey = tableToKey[table];
 				if (!storeKey) return;
 
-				// Atualizar contador global em caso de inserts/deletes remotos
-				if (table !== "activity_log" && table !== "image_assets") {
+				const activeCampaign = get().activeCampaignId;
+				if (!activeCampaign) return;
+
+				// Determinar se o evento pertence à campanha ativa
+				let belongsToActiveCampaign = false;
+				if (eventType === "DELETE") {
+					if (oldRow) {
+						const currentArray = get()[storeKey] as Array<{ id: string }>;
+						belongsToActiveCampaign =
+							Array.isArray(currentArray) &&
+							currentArray.some((item) => item.id === oldRow.id);
+					}
+				} else {
+					belongsToActiveCampaign = !!(
+						newRow &&
+						"campaign_id" in newRow &&
+						newRow.campaign_id === activeCampaign
+					);
+				}
+
+				const countTables = [
+					"characters",
+					"npcs",
+					"sessions",
+					"items",
+					"locations",
+					"lores",
+				];
+				const isCountTable = countTables.includes(table);
+
+				if (!belongsToActiveCampaign) {
+					// Se o evento não pertencer à campanha ativa, mas for uma tabela de contagem,
+					// atualizamos apenas o contador global de registros e retornamos.
+					if (isCountTable) {
+						if (eventType === "INSERT") {
+							set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
+						} else if (eventType === "DELETE") {
+							set((s) => ({
+								globalRecordsCount: Math.max(0, s.globalRecordsCount - 1),
+							}));
+						}
+					}
+					return;
+				}
+
+				// Atualizar contador global de registros para a campanha ativa
+				if (isCountTable) {
 					if (eventType === "INSERT") {
 						set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
 					} else if (eventType === "DELETE") {
@@ -159,17 +218,6 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 							globalRecordsCount: Math.max(0, s.globalRecordsCount - 1),
 						}));
 					}
-				}
-
-				// Ignorar eventos de outras campanhas para o estado local
-				const activeCampaign = get().activeCampaignId;
-				if (
-					activeCampaign &&
-					newRow &&
-					"campaign_id" in newRow &&
-					newRow.campaign_id !== activeCampaign
-				) {
-					return;
 				}
 
 				set((state) => {
@@ -270,6 +318,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			items: [],
 			locations: [],
 			lores: [],
+			customTemplates: [],
 			imageAssets: [],
 			activityLog: [],
 			syncError: null,
