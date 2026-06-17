@@ -15,13 +15,16 @@ export const generateEntry = <T extends object>(
 
 export function pushLog(
 	log: ActivityEntry[],
-	entry: Omit<ActivityEntry, "id" | "timestamp">,
+	entry: Omit<ActivityEntry, "id" | "timestamp"> & {
+		id?: string;
+		timestamp?: number;
+	},
 ): ActivityEntry[] {
 	const next: ActivityEntry = {
 		...entry,
-		id: crypto.randomUUID(),
-		timestamp: Date.now(),
-	};
+		id: entry.id || crypto.randomUUID(),
+		timestamp: entry.timestamp || Date.now(),
+	} as ActivityEntry;
 	return [next, ...log].slice(0, MAX_ACTIVITY);
 }
 
