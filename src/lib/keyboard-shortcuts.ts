@@ -6,14 +6,13 @@ export const MAIN_CONTENT_SHORTCUT_ARIA = "Alt+M";
 
 export const NAVIGATION_SHORTCUTS = [
 	{ key: "1", label: "Dashboard", to: "/dashboard", aria: "Alt+1" },
-	{ key: "2", label: "Elenco", to: "/characters", aria: "Alt+2" },
-	{ key: "3", label: "Fichas", to: "/sheets", aria: "Alt+3" },
-	{ key: "4", label: "Árvore", to: "/family-tree", aria: "Alt+4" },
-	{ key: "5", label: "NPCs", to: "/npcs", aria: "Alt+5" },
-	{ key: "6", label: "Sessões", to: "/sessions", aria: "Alt+6" },
-	{ key: "7", label: "Itens", to: "/items", aria: "Alt+7" },
-	{ key: "8", label: "Locais", to: "/locations", aria: "Alt+8" },
-	{ key: "9", label: "Lore", to: "/lore", aria: "Alt+9" },
+	{ key: "2", label: "Personagens", to: "/characters", aria: "Alt+2" },
+	{ key: "3", label: "Árvore", to: "/family-tree", aria: "Alt+3" },
+	{ key: "4", label: "NPCs", to: "/npcs", aria: "Alt+4" },
+	{ key: "5", label: "Sessões", to: "/sessions", aria: "Alt+5" },
+	{ key: "6", label: "Itens", to: "/items", aria: "Alt+6" },
+	{ key: "7", label: "Locais", to: "/locations", aria: "Alt+7" },
+	{ key: "8", label: "Lore", to: "/lore", aria: "Alt+8" },
 ] as const;
 
 export function getPrimaryModifierLabel() {
