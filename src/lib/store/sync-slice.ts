@@ -126,8 +126,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const supabase = getSupabase();
 		if (!supabase) return () => {};
 
+		const campaignId = get().activeCampaignId;
+		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
+		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
+
 		const channel = supabase
-			.channel("db-changes")
+			.channel(channelName)
 			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
 				const { eventType, table, new: newRow, old: oldRow } = payload;
 
