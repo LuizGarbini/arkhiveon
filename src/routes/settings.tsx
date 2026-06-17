@@ -274,7 +274,7 @@ function SettingsPage() {
 							Exportar dados da campanha
 						</h2>
 						<p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-							Baixe um JSON versionado com fichas, elenco, NPCs, sessões, itens,
+							Baixe um JSON versionado com personagens, NPCs, sessões, itens,
 							locais, lore, conexões e histórico de atividade. Tokens de
 							serviços externos não entram no arquivo.
 						</p>
