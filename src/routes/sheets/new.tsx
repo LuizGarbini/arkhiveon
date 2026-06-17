@@ -60,12 +60,14 @@ const WIZARD_STEPS: Array<{
 ];
 
 function scrollToTop() {
-	const mainEl = document.querySelector("main");
-	if (mainEl) {
-		mainEl.scrollTo({ top: 0, behavior: "smooth" });
-	} else {
-		window.scrollTo({ top: 0, behavior: "smooth" });
-	}
+	setTimeout(() => {
+		const mainEl = document.querySelector("main");
+		if (mainEl) {
+			mainEl.scrollTo({ top: 0, behavior: "smooth" });
+		} else {
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		}
+	}, 50);
 }
 
 function NewSheetPage() {
@@ -426,7 +428,10 @@ function NewSheetPage() {
 							<FormTabs
 								tabs={detailsTabs}
 								value={detailsTab}
-								onChange={setDetailsTab}
+								onChange={(val) => {
+									setDetailsTab(val);
+									scrollToTop();
+								}}
 							/>
 							{detailsTab === "abilities" && (
 								<AbilitiesFields
