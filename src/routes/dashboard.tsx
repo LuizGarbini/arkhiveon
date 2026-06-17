@@ -25,7 +25,7 @@ export const Route = createFileRoute("/dashboard")({
 const sections = [
 	{
 		to: "/characters",
-		title: "Elenco",
+		title: "Personagens",
 		description: "Visão narrativa",
 		Icon: User,
 		accent: "text-violet-300",
