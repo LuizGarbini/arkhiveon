@@ -1,6 +1,8 @@
-import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
+import type { Campaign } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { CampaignForm } from "./campaign-form";
 import { Button } from "./ui/button";
@@ -53,12 +55,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
 	const deleteCampaign = useRPGStore((s) => s.deleteCampaign);
+	const userPlan = useRPGStore((s) => s.userPlan);
+	const toast = useToast();
 	const [showForm, setShowForm] = useState(false);
 	const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
+	const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
 	const isMobile = useIsMobileSidebar();
 
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const activeIndex = campaigns.findIndex((c) => c.id === activeCampaignId);
+	const maxCampaigns = userPlan === "pro" ? 5 : 1;
 
 	const handleDelete = async () => {
 		if (campaignToDelete) {
@@ -164,7 +170,20 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 									{campaign.id === activeCampaignId && (
 										<Check className="h-3.5 w-3.5 shrink-0 text-primary" />
 									)}
-									{campaigns.length > 1 && (
+									{campaign.myRole === "owner" && (
+										<button
+											type="button"
+											onClick={(e) => {
+												e.stopPropagation();
+												setCampaignToEdit(campaign);
+											}}
+											aria-label={`Editar campanha ${campaign.name}`}
+											className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
+										>
+											<Pencil className="h-3.5 w-3.5" />
+										</button>
+									)}
+									{campaigns.length > 1 && campaign.myRole === "owner" && (
 										<button
 											type="button"
 											onClick={(e) => {
@@ -185,7 +204,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem
-						onClick={() => setShowForm(true)}
+						onClick={() => {
+							if (campaigns.length >= maxCampaigns) {
+								toast.error({
+									title: "Limite Atingido",
+									description: `Você atingiu o limite de ${maxCampaigns} campanhas no plano ${userPlan === "pro" ? "Pro" : "Free"}.`,
+								});
+							} else {
+								setShowForm(true);
+							}
+						}}
 						className="flex items-center gap-3 py-2.5 text-primary"
 					>
 						<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-primary/40 bg-primary/8">
@@ -197,6 +225,11 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 			</DropdownMenu>
 
 			<CampaignForm open={showForm} onOpenChange={setShowForm} />
+			<CampaignForm
+				open={!!campaignToEdit}
+				onOpenChange={(open) => !open && setCampaignToEdit(null)}
+				campaign={campaignToEdit}
+			/>
 
 			<Dialog
 				open={!!campaignToDelete}
@@ -206,9 +239,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 					<DialogHeader>
 						<DialogTitle>Excluir Campanha?</DialogTitle>
 						<DialogDescription>
-							Isso removerá apenas o registro da campanha. Os dados associados a
-							ela no banco de dados não serão deletados, mas ficarão órfãos.
-							Esta ação não pode ser desfeita.
+							Isso removerá a campanha e TODOS os dados associados a ela
+							(personagens, NPCs, sessões, lores, etc.). Esta ação é definitiva
+							e não pode ser desfeita.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
