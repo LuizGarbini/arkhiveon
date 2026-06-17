@@ -165,10 +165,10 @@ function CharacterSheetPage() {
 						Essa ficha pode ter sido removida ou ainda não sincronizou.
 					</p>
 				</div>
-				<Link to="/sheets">
+				<Link to="/characters">
 					<Button variant="outline" size="sm">
 						<ArrowLeft className="h-3.5 w-3.5" />
-						Voltar para Fichas
+						Voltar para Personagens
 					</Button>
 				</Link>
 			</div>
@@ -212,11 +212,11 @@ function CharacterSheetPage() {
 				<div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 					<div className="min-w-0">
 						<Link
-							to="/sheets"
+							to="/characters"
 							className="inline-flex items-center gap-1.5 text-[12px] font-bold text-muted-foreground transition-colors hover:text-primary"
 						>
 							<ArrowLeft className="h-3.5 w-3.5" />
-							Voltar para fichas
+							Voltar para personagens
 						</Link>
 						<div className="mt-4 flex items-start gap-4">
 							<div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/20 via-fuchsia-500/10 to-transparent ring-1 ring-border/70">
