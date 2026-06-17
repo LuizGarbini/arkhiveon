@@ -59,6 +59,15 @@ const WIZARD_STEPS: Array<{
 	{ id: "review", label: "Revisão", description: "Salvar ficha" },
 ];
 
+function scrollToTop() {
+	const mainEl = document.querySelector("main");
+	if (mainEl) {
+		mainEl.scrollTo({ top: 0, behavior: "smooth" });
+	} else {
+		window.scrollTo({ top: 0, behavior: "smooth" });
+	}
+}
+
 function NewSheetPage() {
 	const navigate = useNavigate();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
@@ -150,14 +159,14 @@ function NewSheetPage() {
 							: "Complete esta etapa antes de continuar.",
 					);
 					setActiveStep(activeSteps[index].id);
-					window.scrollTo({ top: 0, behavior: "smooth" });
+					scrollToTop();
 					return;
 				}
 			}
 		}
 		setStepError(null);
 		setActiveStep(step);
-		window.scrollTo({ top: 0, behavior: "smooth" });
+		scrollToTop();
 	}
 
 	async function goNext() {
@@ -174,21 +183,21 @@ function NewSheetPage() {
 		const next = activeSteps[activeStepIndex + 1];
 		if (next) {
 			setActiveStep(next.id);
-			window.scrollTo({ top: 0, behavior: "smooth" });
+			scrollToTop();
 		}
 	}
 
 	function skipDetails() {
 		setStepError(null);
 		setActiveStep("review");
-		window.scrollTo({ top: 0, behavior: "smooth" });
+		scrollToTop();
 	}
 
 	function goBack() {
 		const previous = activeSteps[activeStepIndex - 1];
 		if (previous) {
 			setActiveStep(previous.id);
-			window.scrollTo({ top: 0, behavior: "smooth" });
+			scrollToTop();
 		}
 	}
 
@@ -210,6 +219,7 @@ function NewSheetPage() {
 			setValue("sheetLayout", nextLayout, { shouldDirty: true });
 			setValue("systemAttributes", {}, { shouldDirty: true });
 			setActiveStep("essential");
+			scrollToTop();
 			return;
 		}
 
@@ -223,6 +233,7 @@ function NewSheetPage() {
 		setValue("systemAttributes", {}, { shouldDirty: true });
 		setModules(nextLayout.modules);
 		setActiveStep("essential");
+		scrollToTop();
 	}
 
 	function addCustomModule(kind: "customText" | "customStats") {
@@ -269,11 +280,11 @@ function NewSheetPage() {
 					<div className="max-w-3xl">
 						<div className="flex flex-col items-start gap-4">
 							<Link
-								to="/sheets"
+								to="/characters"
 								className="inline-flex items-center gap-1.5 text-[12px] font-bold text-muted-foreground transition-colors hover:text-primary"
 							>
 								<ArrowLeft className="h-3.5 w-3.5" />
-								Voltar para fichas
+								Voltar para personagens
 							</Link>
 							<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
 								<FileText className="h-3.5 w-3.5" />
