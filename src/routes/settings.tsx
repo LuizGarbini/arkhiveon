@@ -79,15 +79,23 @@ function SettingsPage() {
 	const [performanceMode, setPerformanceMode] = useState(
 		getPerformanceModePreference,
 	);
-	const backupState = useRPGStore((state) => ({
-		characters: state.characters,
-		npcs: state.npcs,
-		sessions: state.sessions,
-		items: state.items,
-		locations: state.locations,
-		lores: state.lores,
-		activityLog: state.activityLog,
-	}));
+	const characters = useRPGStore((state) => state.characters);
+	const npcs = useRPGStore((state) => state.npcs);
+	const sessions = useRPGStore((state) => state.sessions);
+	const items = useRPGStore((state) => state.items);
+	const locations = useRPGStore((state) => state.locations);
+	const lores = useRPGStore((state) => state.lores);
+	const activityLog = useRPGStore((state) => state.activityLog);
+
+	const backupState = {
+		characters,
+		npcs,
+		sessions,
+		items,
+		locations,
+		lores,
+		activityLog,
+	};
 	const backupTotal =
 		backupState.characters.length +
 		backupState.npcs.length +
