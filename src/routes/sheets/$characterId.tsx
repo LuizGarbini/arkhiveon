@@ -4,6 +4,8 @@ import {
 	ArrowRightLeft,
 	BookOpen,
 	Camera,
+	ChevronDown,
+	ChevronUp,
 	Download,
 	Edit,
 	Eye,
@@ -68,6 +70,7 @@ import {
 	type SheetLayoutConfig,
 	type SheetModuleConfig,
 	type SheetModuleKind,
+	type Spell,
 	systemLabel,
 	useActiveCampaignId,
 	useActiveCampaignRole,
@@ -511,6 +514,65 @@ function CharacterNameDialog({
 	);
 }
 
+function SpellRow({ spell }: { spell: Spell }) {
+	const [expanded, setExpanded] = useState(false);
+	return (
+		<div className="border border-border/40 rounded-lg bg-background/25 overflow-hidden transition-all">
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="w-full flex items-center justify-between p-3 text-left hover:bg-background/40 transition-colors"
+			>
+				<div>
+					<span className="font-semibold text-sm text-foreground">
+						{spell.name}
+					</span>
+					{spell.is_homebrew && (
+						<span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">
+							Homebrew
+						</span>
+					)}
+					<span className="text-[11px] text-muted-foreground ml-2">
+						{spell.school || "Geral"}
+					</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">
+						{spell.casting_time || "1 ação"}
+					</span>
+					{expanded ? (
+						<ChevronUp className="h-4 w-4 text-muted-foreground" />
+					) : (
+						<ChevronDown className="h-4 w-4 text-muted-foreground" />
+					)}
+				</div>
+			</button>
+
+			{expanded && (
+				<div className="p-3 border-t border-border/40 bg-background/10 space-y-3 text-[12px] leading-relaxed">
+					<div className="grid grid-cols-2 gap-2 text-muted-foreground border-b border-border/20 pb-2">
+						<div>
+							<span className="font-bold">Alcance: </span>
+							{spell.range || "-"}
+						</div>
+						<div>
+							<span className="font-bold">Duração: </span>
+							{spell.duration || "-"}
+						</div>
+						<div className="col-span-2">
+							<span className="font-bold">Componentes: </span>
+							{spell.components || "-"}
+						</div>
+					</div>
+					<p className="text-muted-foreground whitespace-pre-line">
+						{spell.description}
+					</p>
+				</div>
+			)}
+		</div>
+	);
+}
+
 function ModuleContent({
 	module,
 	character,
@@ -683,6 +745,20 @@ function ModuleContent({
 	}
 
 	if (module.kind === "magic") {
+		const spellsList = character.spellsList || [];
+
+		const groupedSpells: Record<number, Spell[]> = {};
+		for (const spell of spellsList) {
+			const lvl = spell.level;
+			if (!groupedSpells[lvl]) groupedSpells[lvl] = [];
+			groupedSpells[lvl].push(spell);
+		}
+
+		const formatLevelName = (lvl: number) => {
+			if (lvl === 0) return "Truques";
+			return `${lvl}º Círculo / Nível`;
+		};
+
 		return (
 			<div className="grid gap-3">
 				<div className="grid gap-3 sm:grid-cols-3">
@@ -705,8 +781,41 @@ function ModuleContent({
 						value={character.systemFields?.[field.key]}
 					/>
 				))}
-				<TextBlock title="Magias" value={character.spells} />
+
 				<TextBlock title="Espaços" value={character.spellSlots} />
+
+				{spellsList.length > 0 && (
+					<div className="space-y-4 border-t border-border/30 pt-4 mt-2">
+						<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
+							<BookOpen className="h-4 w-4 text-primary" />
+							Grimório de Magias
+						</h4>
+						<div className="space-y-4">
+							{Object.keys(groupedSpells)
+								.map(Number)
+								.sort((a, b) => a - b)
+								.map((level) => (
+									<div key={level} className="space-y-2">
+										<h5 className="text-xs font-bold text-muted-foreground border-b border-border/20 pb-1">
+											{formatLevelName(level)}
+										</h5>
+										<div className="grid gap-1.5">
+											{groupedSpells[level].map((spell) => (
+												<SpellRow key={spell.id} spell={spell} />
+											))}
+										</div>
+									</div>
+								))}
+						</div>
+					</div>
+				)}
+
+				{character.spells?.trim() && (
+					<TextBlock
+						title={spellsList.length > 0 ? "Magias (Legado)" : "Magias"}
+						value={character.spells}
+					/>
+				)}
 			</div>
 		);
 	}

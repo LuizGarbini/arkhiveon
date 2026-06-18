@@ -1,11 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-	ArrowLeft,
-	ArrowRight,
-	Check,
-	FileText,
-	Sparkles,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import {
@@ -20,8 +14,8 @@ import {
 	NotesFields,
 	PersonalityFields,
 	SanityFields,
-	sanitizeCharacterFormValues,
 	SystemFields,
+	sanitizeCharacterFormValues,
 } from "@/components/character-sheet-fields";
 import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
 import { SheetModuleEditor } from "@/components/sheet-module-editor";
@@ -32,9 +26,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import {
+	cloneSheetLayout,
 	createCustomSheetModule,
 	createDefaultSheetLayout,
-	cloneSheetLayout,
 	normalizeModuleOrders,
 } from "@/lib/sheet-modules";
 import type { RpgSystem, SheetModuleConfig } from "@/lib/store";
@@ -114,7 +108,9 @@ function NewSheetPage() {
 	}, [characterName, stepError]);
 
 	const activeSteps = WIZARD_STEPS;
-	const activeStepIndex = activeSteps.findIndex((step) => step.id === activeStep);
+	const activeStepIndex = activeSteps.findIndex(
+		(step) => step.id === activeStep,
+	);
 	const enabledModules = useMemo(
 		() => modules.filter((module) => module.enabled),
 		[modules],
@@ -248,7 +244,9 @@ function NewSheetPage() {
 	}
 
 	function onSubmit(values: CharacterFormValues) {
-		const sanitized = sanitizeCharacterFormValues(values, { emptyToZero: true });
+		const sanitized = sanitizeCharacterFormValues(values, {
+			emptyToZero: true,
+		});
 		const sheetLayout = {
 			version: 1 as const,
 			template: system,
@@ -447,8 +445,15 @@ function NewSheetPage() {
 										<SanityFields register={register} config={config} />
 									)}
 									{(config.showSpells ||
-										config.customFields?.some((field) => field.section === "magic")) && (
-										<MagicFields register={register} config={config} />
+										config.customFields?.some(
+											(field) => field.section === "magic",
+										)) && (
+										<MagicFields
+											register={register}
+											config={config}
+											control={control}
+											setValue={setValue}
+										/>
 									)}
 								</div>
 							)}
@@ -472,15 +477,9 @@ function NewSheetPage() {
 							<div className="grid gap-3 sm:grid-cols-3">
 								<ReviewCard
 									label="Sistema"
-									value={
-										selectedLayoutTemplate?.name ??
-										config.label
-									}
+									value={selectedLayoutTemplate?.name ?? config.label}
 								/>
-								<ReviewCard
-									label="Nome"
-									value={characterName || "Sem nome"}
-								/>
+								<ReviewCard label="Nome" value={characterName || "Sem nome"} />
 								<ReviewCard
 									label="Nível / NEX"
 									value={
