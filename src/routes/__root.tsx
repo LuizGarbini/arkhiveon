@@ -19,6 +19,7 @@ import { NotFound } from "@/components/not-found";
 import { Sidebar } from "@/components/sidebar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ToastProvider } from "@/components/ui/toast";
+import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { usePerformanceMode } from "@/lib/performance-mode";
 import { useRPGStore } from "@/lib/store";
@@ -75,6 +76,27 @@ function ProtectedLayout() {
 	const showLimitDialog = Boolean(
 		syncError && isLimitError && dismissedLimitError !== syncError,
 	);
+
+	const location = useLocation();
+
+	const getPageTitle = (pathname: string) => {
+		if (pathname.startsWith("/dashboard")) return "Dashboard - Arkhiveon";
+		if (pathname.startsWith("/characters")) return "Personagens - Arkhiveon";
+		if (pathname.startsWith("/npcs")) return "NPCs - Arkhiveon";
+		if (pathname.startsWith("/sessions")) return "Sessões - Arkhiveon";
+		if (pathname.startsWith("/sheets/new"))
+			return "Novo Personagem - Arkhiveon";
+		if (pathname.startsWith("/sheets")) return "Fichas - Arkhiveon";
+		if (pathname.startsWith("/settings")) return "Configurações - Arkhiveon";
+		if (pathname.startsWith("/account")) return "Minha Conta - Arkhiveon";
+		if (pathname.startsWith("/billing")) return "Assinatura - Arkhiveon";
+		if (pathname.startsWith("/family-tree"))
+			return "Árvore Genealógica - Arkhiveon";
+		if (pathname.startsWith("/images")) return "Galeria de Imagens - Arkhiveon";
+		return "Arkhiveon";
+	};
+
+	useDocumentMetadata(getPageTitle(location.pathname), "", false);
 
 	// Sincroniza o plano do Auth Context → Zustand Store
 	useEffect(() => {
