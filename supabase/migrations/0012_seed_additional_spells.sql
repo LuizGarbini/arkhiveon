@@ -1,4 +1,6 @@
 -- Seed additional spells for D&D 5e, Tormenta 20, and Pathfinder 2e
+delete from public.spells where (system = 'tormenta20' or system = 'pathfinder') and user_id is null;
+
 insert into public.spells (user_id, system, name, level, school, casting_time, range, components, duration, description, is_homebrew) values
 
 -- D&D 5e (Adicionais)

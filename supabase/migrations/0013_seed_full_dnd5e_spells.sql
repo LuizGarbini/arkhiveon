@@ -1,4 +1,6 @@
 -- Seed ALL 319 D&D 5e SRD Spells in Portuguese
+delete from public.spells where system = 'dnd5e' and user_id is null;
+
 insert into public.spells (user_id, system, name, level, school, casting_time, range, components, duration, description, is_homebrew) values
   (null, 'dnd5e', 'Flecha Ácida', 2, 'Evocação', '1 ação', '27 metros', 'V, S, M', 'Instantânea', 'Uma flecha com um rastro verde cintilante voa em direção ao alvo dentro do alcance e explode, borrifando ácido. Faça um ataque mágico à distância contra o alvo. Em caso de acerto, o alvo sofre 4d4 pontos de dano ácido imediatamente e 2d4 pontos de dano ácido ao final do próximo turno dele. Se errar, a flecha borrifa ácido no alvo causando metade do dano inicial e não causa dano ao final do próximo turno dele.
 
