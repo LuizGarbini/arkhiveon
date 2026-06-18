@@ -14,6 +14,7 @@ import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-bac
 import { EfferdStickyFooter } from "@/components/efferd-sticky-footer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,
@@ -62,6 +63,11 @@ function LandingPage() {
 	const featuresId = useId();
 	const { loading, session } = useAuth();
 	const isAuthenticated = !!session;
+
+	useDocumentMetadata(
+		"Arkhiveon - O Grimório do seu RPG de Mesa",
+		"Organize seus personagens, fichas, NPCs e sessões de RPG em um ambiente conectado e responsivo. Experimente grátis.",
+	);
 
 	return (
 		<div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
