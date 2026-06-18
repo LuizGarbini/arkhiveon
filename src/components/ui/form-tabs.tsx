@@ -70,6 +70,7 @@ interface FieldProps {
 	htmlFor?: string;
 	hint?: string;
 	error?: string;
+	required?: boolean;
 	className?: string;
 	children: React.ReactNode;
 }
@@ -79,6 +80,7 @@ export function Field({
 	htmlFor,
 	hint,
 	error,
+	required,
 	className,
 	children,
 }: FieldProps) {
@@ -89,6 +91,11 @@ export function Field({
 				className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 			>
 				{label}
+				{required ? (
+					<span className="ml-1 text-destructive" aria-hidden="true">
+						*
+					</span>
+				) : null}
 			</label>
 			{children}
 			{error ? (

@@ -37,8 +37,8 @@ function RouteComponent() {
 	return (
 		<div className="w-full">
 			<PageHeader
-				title="Elenco"
-				description="A visão narrativa dos personagens que participam da campanha"
+				title="Personagens"
+				description="Crie, edite e consulte as fichas de todos os personagens da campanha"
 				Icon={User}
 				iconColor="text-violet-300"
 				eyebrow="Personagens da campanha"
@@ -51,7 +51,7 @@ function RouteComponent() {
 					>
 						<Button size="sm" className="gap-2">
 							<Plus className="h-3.5 w-3.5" />
-							Criar ficha
+							Novo Personagem
 						</Button>
 					</Link>
 				}
@@ -71,8 +71,8 @@ function RouteComponent() {
 					{!isLoading && filteredCharacters.length === 0 && (
 						<EmptyState
 							Icon={User}
-							title="Nenhum personagem no elenco"
-							description="Crie uma ficha para adicionar o primeiro protagonista da campanha."
+							title="Nenhum personagem encontrado"
+							description="Crie seu primeiro personagem para começar a organizar os dados de jogo."
 						/>
 					)}
 				</div>

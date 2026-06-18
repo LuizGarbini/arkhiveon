@@ -51,6 +51,11 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 ) => ({
 	npcs: [],
 	addNpc: (npc) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para adicionar NPC." });
+			return null;
+		}
 		if (isCreationLimitReached(get())) {
 			set({
 				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
@@ -64,61 +69,95 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 			entityId: created.id,
 			entityName: entityNameOf(created),
 		};
+		const originalNpcs = get().npcs;
+		const originalCount = get().globalRecordsCount;
 		set((state) => ({
 			npcs: [...state.npcs, created],
 			activityLog: pushLog(state.activityLog, log),
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("npc", created, campaignId),
 			createRemoteActivity(log, campaignId),
-		]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		]).catch((error) => {
+			set((state) => ({
+				npcs: originalNpcs,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter((l) => l.entityId !== created.id),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
 		return created;
 	},
-	updateNpc: (id, npc) =>
-		set((state) => {
-			const existing = state.npcs.find((n) => n.id === id);
-			if (!existing) return state;
-			const updated = { ...existing, ...npc, updatedAt: Date.now() };
-			const log = {
-				action: "update" as const,
-				entityKind: "npc" as const,
-				entityId: id,
-				entityName: entityNameOf(updated),
-			};
-			void Promise.all([
-				updateRemoteEntity("npc", updated, get().activeCampaignId!),
-				createRemoteActivity(log, get().activeCampaignId!),
-			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-			return {
-				npcs: state.npcs.map((n) => (n.id === id ? updated : n)),
-				activityLog: pushLog(state.activityLog, log),
-				syncError: null,
-			};
-		}),
-	removeNpc: (id) =>
-		set((state) => {
-			const existing = state.npcs.find((n) => n.id === id);
-			if (existing) {
-				const log = {
-					action: "delete" as const,
-					entityKind: "npc" as const,
-					entityId: id,
-					entityName: entityNameOf(existing),
-				};
-				void Promise.all([
-					deleteRemoteEntity("npc", id),
-					createRemoteActivity(log, get().activeCampaignId!),
-				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-				return {
-					npcs: state.npcs.filter((n) => n.id !== id),
-					activityLog: pushLog(state.activityLog, log),
-					globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
-					syncError: null,
-				};
-			}
-			return state;
-		}),
+	updateNpc: (id, npc) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar NPC." });
+			return;
+		}
+		const originalNpcs = get().npcs;
+		const existing = originalNpcs.find((n) => n.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...npc, updatedAt: Date.now() };
+		const log = {
+			action: "update" as const,
+			entityKind: "npc" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			npcs: state.npcs.map((n) => (n.id === id ? updated : n)),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("npc", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				npcs: originalNpcs,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeNpc: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover NPC." });
+			return;
+		}
+		const originalNpcs = get().npcs;
+		const existing = originalNpcs.find((n) => n.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "npc" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		const originalCount = get().globalRecordsCount;
+		set((state) => ({
+			npcs: state.npcs.filter((n) => n.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("npc", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				npcs: originalNpcs,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 });

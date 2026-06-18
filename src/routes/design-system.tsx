@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import {
 	AlertTriangle,
 	Bell,
@@ -24,6 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 export const Route = createFileRoute("/design-system")({
+	beforeLoad: () => {
+		if (!isDesignSystemEnabled()) {
+			throw notFound();
+		}
+	},
 	component: DesignSystem,
 });
 
@@ -140,7 +146,7 @@ function DesignSystem() {
 			<SpecPanel eyebrow="Page pattern" title="Hero, busca e grid">
 				<div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-background/35">
 					<PageHeader
-						title="Elenco"
+						title="Personagens"
 						description="Visão narrativa dos personagens principais da campanha."
 						Icon={User}
 						eyebrow="Coleção"

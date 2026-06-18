@@ -52,7 +52,21 @@ export type CharacterSection =
 	| "personality"
 	| "magic"
 	| "notes"
-	| "sanity";
+	| "sanity"
+	| "inventory";
+
+export interface SystemAttribute {
+	key: string;
+	label: string;
+}
+
+export interface CustomField {
+	key: string;
+	label: string;
+	type: "text" | "textarea" | "number";
+	section: CharacterSection;
+	hint?: string;
+}
 
 export interface SystemConfig {
 	value: RpgSystem;
@@ -63,7 +77,8 @@ export interface SystemConfig {
 	accent: string; // tailwind text color (ex: "text-amber-300")
 	bgAccent: string; // tailwind bg gradient
 	sections: CharacterSection[];
-	abilityLabels: [string, string, string, string, string, string]; // 6 atributos
+	attributes: SystemAttribute[];
+	customFields?: CustomField[];
 	defaultLevel: number;
 	speedUnit: string;
 	showSpells: boolean;
@@ -93,7 +108,14 @@ function sys(
 			"magic",
 			"notes",
 		],
-		abilityLabels: ["FOR", "DES", "CON", "INT", "SAB", "CAR"],
+		attributes: [
+			{ key: "strength", label: "FOR" },
+			{ key: "dexterity", label: "DES" },
+			{ key: "constitution", label: "CON" },
+			{ key: "intelligence", label: "INT" },
+			{ key: "wisdom", label: "SAB" },
+			{ key: "charisma", label: "CAR" },
+		],
 		defaultLevel: 1,
 		speedUnit: "m",
 		showSpells: true,
@@ -134,7 +156,23 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Moon,
 		accent: "text-violet-300",
 		bgAccent: "from-violet-500/15 to-rose-500/5",
-		abilityLabels: ["FOR", "DES", "CON", "INT", "RAC", "APA"],
+		attributes: [
+			{ key: "strength", label: "FOR" },
+			{ key: "dexterity", label: "DES" },
+			{ key: "stamina", label: "VIG" },
+			{ key: "charisma", label: "CAR" },
+			{ key: "manipulation", label: "MAN" },
+			{ key: "composure", label: "AUT" },
+			{ key: "intelligence", label: "INT" },
+			{ key: "wits", label: "RAC" },
+			{ key: "resolve", label: "PER" },
+		],
+		customFields: [
+			{ key: "disciplines", label: "Disciplinas", type: "textarea", section: "magic" },
+			{ key: "bloodPotency", label: "Potência de Sangue (ou Geração)", type: "text", section: "combat" },
+			{ key: "hunger", label: "Fome (ou Pontos de Sangue)", type: "text", section: "combat" },
+			{ key: "humanity", label: "Humanidade", type: "number", section: "personality" },
+		],
 		showSpells: false,
 	}),
 	coc: sys({
@@ -154,7 +192,21 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 			"personality",
 			"notes",
 		],
-		abilityLabels: ["FOR", "DES", "CON", "INT", "POD", "APA"],
+		attributes: [
+			{ key: "strength", label: "FOR" },
+			{ key: "constitution", label: "CON" },
+			{ key: "size", label: "TAM" },
+			{ key: "dexterity", label: "DES" },
+			{ key: "appearance", label: "APA" },
+			{ key: "intelligence", label: "INT" },
+			{ key: "power", label: "POD" },
+			{ key: "education", label: "EDU" },
+		],
+		customFields: [
+			{ key: "luck", label: "Sorte Atual", type: "number", section: "sanity" },
+			{ key: "magicPoints", label: "Pontos de Magia", type: "number", section: "sanity" },
+			{ key: "moveRate", label: "Taxa de Movimento", type: "number", section: "combat" },
+		],
 		showSpells: false,
 		showSanity: true,
 	}),
@@ -183,9 +235,26 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 			"sanity",
 			"combat",
 			"personality",
+			"magic",
 			"notes",
 		],
-		abilityLabels: ["FOR", "DES", "CON", "INT", "PRE", "VIG"],
+		attributes: [
+			{ key: "agility", label: "AGI" },
+			{ key: "strength", label: "FOR" },
+			{ key: "intellect", label: "INT" },
+			{ key: "presence", label: "PRE" },
+			{ key: "vigor", label: "VIG" },
+		],
+		customFields: [
+			{ key: "nex", label: "Nível de Exposição Paranormal (NEX %)", type: "number", section: "identity" },
+			{ key: "trilha", label: "Trilha", type: "text", section: "identity" },
+			{ key: "origem", label: "Origem", type: "text", section: "identity" },
+			{ key: "pe", label: "Pontos de Esforço Atual", type: "number", section: "sanity" },
+			{ key: "peMax", label: "PE Máximo", type: "number", section: "sanity" },
+			{ key: "defesa", label: "Defesas (Passiva, Esquiva, Bloqueio)", type: "text", section: "combat" },
+			{ key: "poderes", label: "Poderes Paranormais", type: "textarea", section: "magic" },
+			{ key: "rituais", label: "Rituais", type: "textarea", section: "magic" },
+		],
 		showSpells: false,
 		showSanity: true,
 	}),
@@ -241,7 +310,15 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Radiation,
 		accent: "text-lime-300",
 		bgAccent: "from-lime-500/15 to-green-500/5",
-		abilityLabels: ["STR", "PER", "END", "CHA", "INT", "AGI"],
+		attributes: [
+			{ key: "strength", label: "STR" },
+			{ key: "perception", label: "PER" },
+			{ key: "endurance", label: "END" },
+			{ key: "charisma", label: "CHA" },
+			{ key: "intelligence", label: "INT" },
+			{ key: "agility", label: "AGI" },
+			{ key: "luck", label: "LCK" },
+		],
 		showSpells: false,
 	}),
 	wilderfeast: sys({
@@ -305,7 +382,11 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Dices,
 		accent: "text-blue-300",
 		bgAccent: "from-blue-500/15 to-indigo-500/5",
-		abilityLabels: ["POD", "HAB", "RES", "INT", "SAB", "CAR"],
+		attributes: [
+			{ key: "power", label: "POD" },
+			{ key: "skill", label: "HAB" },
+			{ key: "resistance", label: "RES" },
+		],
 	}),
 	assassinscreed: sys({
 		value: "assassinscreed",
@@ -461,7 +542,11 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: CircleDot,
 		accent: "text-yellow-300",
 		bgAccent: "from-yellow-600/15 to-amber-500/5",
-		abilityLabels: ["PIS", "BRO", "FRI", "—", "—", "—"],
+		attributes: [
+			{ key: "gunslinger", label: "PIS" },
+			{ key: "brute", label: "BRO" },
+			{ key: "cold", label: "FRI" },
+		],
 		showSpells: false,
 	}),
 	somdasseis: sys({
@@ -564,7 +649,14 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Cog,
 		accent: "text-slate-300",
 		bgAccent: "from-slate-500/15 to-zinc-500/5",
-		abilityLabels: ["A1", "A2", "A3", "A4", "A5", "A6"],
+		attributes: [
+			{ key: "a1", label: "A1" },
+			{ key: "a2", label: "A2" },
+			{ key: "a3", label: "A3" },
+			{ key: "a4", label: "A4" },
+			{ key: "a5", label: "A5" },
+			{ key: "a6", label: "A6" },
+		],
 	}),
 };
 

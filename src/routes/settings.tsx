@@ -79,15 +79,23 @@ function SettingsPage() {
 	const [performanceMode, setPerformanceMode] = useState(
 		getPerformanceModePreference,
 	);
-	const backupState = useRPGStore((state) => ({
-		characters: state.characters,
-		npcs: state.npcs,
-		sessions: state.sessions,
-		items: state.items,
-		locations: state.locations,
-		lores: state.lores,
-		activityLog: state.activityLog,
-	}));
+	const characters = useRPGStore((state) => state.characters);
+	const npcs = useRPGStore((state) => state.npcs);
+	const sessions = useRPGStore((state) => state.sessions);
+	const items = useRPGStore((state) => state.items);
+	const locations = useRPGStore((state) => state.locations);
+	const lores = useRPGStore((state) => state.lores);
+	const activityLog = useRPGStore((state) => state.activityLog);
+
+	const backupState = {
+		characters,
+		npcs,
+		sessions,
+		items,
+		locations,
+		lores,
+		activityLog,
+	};
 	const backupTotal =
 		backupState.characters.length +
 		backupState.npcs.length +
@@ -266,7 +274,7 @@ function SettingsPage() {
 							Exportar dados da campanha
 						</h2>
 						<p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-							Baixe um JSON versionado com fichas, elenco, NPCs, sessões, itens,
+							Baixe um JSON versionado com personagens, NPCs, sessões, itens,
 							locais, lore, conexões e histórico de atividade. Tokens de
 							serviços externos não entram no arquivo.
 						</p>

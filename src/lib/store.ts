@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useMemo } from "react";
 import { createCampaignSlice } from "./store/campaign-slice";
 import { createCharacterSlice } from "./store/character-slice";
 import { createCollectionSlice } from "./store/collection-slice";
@@ -8,7 +9,7 @@ import { createNpcSlice } from "./store/npc-slice";
 import { createSessionSlice } from "./store/session-slice";
 import { createSpotifySlice } from "./store/spotify-slice";
 import { createSyncSlice } from "./store/sync-slice";
-import type { RPGState } from "./store/types";
+import type { ImageAsset, MembershipRole, RPGState } from "./store/types";
 
 export { characterDefaults } from "./store/character-slice";
 export {
@@ -74,6 +75,7 @@ export const useRPGStore = create<RPGState>()(
 				// Persist everything except transient loading states
 				activeCampaignId: state.activeCampaignId,
 				campaigns: state.campaigns,
+				customTemplates: state.customTemplates,
 				characters: stripPersistedDataImages(state.characters),
 				npcs: stripPersistedDataImages(state.npcs),
 				sessions: stripPersistedDataImages(state.sessions),
@@ -90,3 +92,27 @@ export const useRPGStore = create<RPGState>()(
 		},
 	),
 );
+
+export function useActiveCampaignId() {
+	return useRPGStore((s) => s.activeCampaignId);
+}
+
+export function useActiveCampaignRole(): MembershipRole | undefined {
+	return useRPGStore(
+		(s) =>
+			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)?.myRole,
+	);
+}
+
+export function useIsCampaignMaster() {
+	const role = useActiveCampaignRole();
+	return role === "owner";
+}
+
+export function useImageAssetLookup(): Map<string, ImageAsset> {
+	const imageAssets = useRPGStore((s) => s.imageAssets);
+	return useMemo(
+		() => new Map(imageAssets.map((asset) => [asset.id, asset])),
+		[imageAssets],
+	);
+}

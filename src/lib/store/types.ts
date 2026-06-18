@@ -45,7 +45,49 @@ export const RPG_SYSTEMS = [
 	{ value: "generic", label: "Genérico / Outro" },
 ] as const;
 
-export type RpgSystem = (typeof RPG_SYSTEMS)[number]["value"];
+export type RpgSystem =
+	| (typeof RPG_SYSTEMS)[number]["value"]
+	| `custom_${string}`;
+
+// =====================================================
+//  Templates Customizados
+// =====================================================
+export type FieldType =
+	| "text"
+	| "number"
+	| "textarea"
+	| "attribute_box"
+	| "metric_box"
+	| "image"
+	| "checkbox";
+
+export interface TemplateField {
+	id: string; // ID único do campo (ex: 'str', 'hp_max')
+	type: FieldType;
+	label: string;
+	placeholder?: string;
+	width?: "full" | "half" | "third" | "quarter"; // Para organização no grid
+}
+
+export interface TemplateSection {
+	id: string;
+	title: string;
+	fields: TemplateField[];
+}
+
+export interface CustomTemplate {
+	id: string;
+	name: string;
+	description: string;
+	author: string;
+	createdAt: number;
+	/** Sistema base usado pelos campos e atributos da ficha */
+	baseSystem: RpgSystem;
+	/** Layout modular salvo (blocos, ordem e colunas) */
+	sheetLayout: SheetLayoutConfig;
+	/** Legado — construtor antigo de campos; ignorado nos layouts salvos */
+	sections?: TemplateSection[];
+}
 
 // =====================================================
 //  Tipos de entidade
@@ -56,7 +98,8 @@ export type EntityKind =
 	| "session"
 	| "item"
 	| "location"
-	| "lore";
+	| "lore"
+	| "customTemplate";
 
 export const ENTITY_LABELS: Record<
 	EntityKind,
@@ -68,6 +111,7 @@ export const ENTITY_LABELS: Record<
 	item: { singular: "Item", plural: "Itens" },
 	location: { singular: "Local", plural: "Locais" },
 	lore: { singular: "Lore", plural: "Lore" },
+	customTemplate: { singular: "Layout salvo", plural: "Layouts salvos" },
 };
 
 // =====================================================
@@ -155,9 +199,31 @@ export interface Character {
 	notes: string;
 	imageUrl: string;
 	imageAssetId?: string;
+	imageFocusX?: number;
+	imageFocusY?: number;
+	imageZoom?: number;
 	sheetLayout: SheetLayoutConfig;
 	familyRelations: FamilyRelation[];
 	entityLinks: EntityLink[];
+	systemAttributes?: Record<string, number>;
+	systemFields?: Record<string, string>;
+	customTemplateId?: string;
+	spellsList?: Spell[];
+}
+
+export interface Spell {
+	id: string;
+	user_id?: string | null;
+	system: string;
+	name: string;
+	level: number;
+	school: string;
+	casting_time: string;
+	range: string;
+	components: string;
+	duration: string;
+	description: string;
+	is_homebrew?: boolean;
 }
 
 export type FamilyRelationKind =
@@ -189,7 +255,8 @@ export type SheetModuleKind =
 	| "personality"
 	| "notes"
 	| "customText"
-	| "customStats";
+	| "customStats"
+	| "custom_template_fields";
 
 export interface SheetModuleConfig {
 	id: string;
@@ -278,6 +345,10 @@ export interface Item {
 	description: string;
 	owner: string;
 	imageUrl: string;
+	imageAssetId?: string;
+	imageFocusX?: number;
+	imageFocusY?: number;
+	imageZoom?: number;
 	equipped: boolean;
 	entityLinks: EntityLink[];
 }
@@ -413,6 +484,11 @@ export interface RPGState {
 		id: string,
 		targetCampaignId: string,
 	) => Promise<Character | null>;
+
+	customTemplates: CustomTemplate[];
+	addTemplate: (template: CustomTemplate) => void;
+	updateTemplate: (id: string, template: Partial<CustomTemplate>) => void;
+	removeTemplate: (id: string) => void;
 
 	npcs: Npc[];
 	addNpc: (npc: Partial<Omit<Npc, "id" | "createdAt">>) => Npc | null;

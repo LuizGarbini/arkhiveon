@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
 	History,
+	LayoutTemplate,
 	MapIcon,
 	Package,
 	Pencil,
@@ -28,6 +29,7 @@ const ENTITY_ICONS: Record<EntityKind, LucideIcon> = {
 	item: Package,
 	location: MapIcon,
 	lore: BookOpen,
+	customTemplate: LayoutTemplate,
 };
 
 const ENTITY_COLORS: Record<EntityKind, string> = {
@@ -37,6 +39,7 @@ const ENTITY_COLORS: Record<EntityKind, string> = {
 	item: "text-emerald-300",
 	location: "text-rose-300",
 	lore: "text-indigo-300",
+	customTemplate: "text-violet-300",
 };
 
 const ACTION_META: Record<
@@ -57,7 +60,7 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 	const activity = useRPGStore((s) => s.activityLog);
 	const [visibleCount, setVisibleCount] = useState(limit);
 	const items = useMemo(() => activity.slice(0, visibleCount), [activity, visibleCount]);
-	
+
 	const skeletonKeys = useMemo(
 		() =>
 			Array.from(
@@ -132,7 +135,7 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 									<div className="absolute left-0 top-1.5 -translate-x-1/2 flex items-center justify-center">
 										<ActionIcon className={`h-3.5 w-3.5 ${action.color}`} strokeWidth={2.5} />
 									</div>
-									
+
 									<div className="min-w-0 flex-1">
 										<div className="flex items-center gap-1.5 text-[12px] text-muted-foreground/80">
 											<span className="font-semibold text-foreground/90 lowercase">

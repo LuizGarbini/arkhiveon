@@ -12,7 +12,6 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { NeatGradient } from "@firecms/neat";
 import { ActivityFeed } from "@/components/activity-feed";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +25,7 @@ export const Route = createFileRoute("/dashboard")({
 const sections = [
 	{
 		to: "/characters",
-		title: "Elenco",
+		title: "Personagens",
 		description: "Visão narrativa",
 		Icon: User,
 		accent: "text-violet-300",
@@ -117,12 +116,17 @@ function Dashboard() {
 	const lastActivity = activityLog[0];
 
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const gradientRef = useRef<NeatGradient | null>(null);
+	const gradientRef = useRef<{ destroy: () => void } | null>(null);
 
 	useEffect(() => {
 		if (!canvasRef.current) return;
 
-		const gradient = new NeatGradient({
+		let cancelled = false;
+
+		void import("@firecms/neat").then(({ NeatGradient }) => {
+			if (cancelled || !canvasRef.current) return;
+
+			const gradient = new NeatGradient({
 			ref: canvasRef.current,
 			colors: [
 				{ color: "#130437", enabled: true },
@@ -188,12 +192,14 @@ function Dashboard() {
 			bloomIntensity: 0,
 			bloomThreshold: 0.7,
 			chromaticAberration: 0,
+			});
+
+			gradientRef.current = gradient;
 		});
 
-		gradientRef.current = gradient;
-
 		return () => {
-			gradient.destroy();
+			cancelled = true;
+			gradientRef.current?.destroy();
 			gradientRef.current = null;
 		};
 	}, []);
@@ -595,11 +601,11 @@ function LastSessionCard({
 						</span>
 						<ArrowUpRight className="h-4.5 w-4.5 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
 					</div>
-					
+
 					<h3 className="font-display mt-4 text-xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
 						{lastSession.title || "Sem título"}
 					</h3>
-					
+
 					<p className="mt-3.5 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground font-medium">
 						{lastSession.summary || "Ainda não há resumo para esta sessão."}
 					</p>

@@ -152,7 +152,7 @@ function FamilyTreePage() {
 					<EmptyState
 						Icon={GitFork}
 						title="Nenhum personagem para montar árvore"
-						description="Crie fichas no elenco para começar a vincular laços familiares."
+						description="Crie fichas de personagens para começar a vincular laços familiares."
 					/>
 				) : (
 					<ReactFlowProvider>

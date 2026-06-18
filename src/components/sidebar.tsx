@@ -1,7 +1,8 @@
+import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
+
 	Crown,
-	FileText,
 	GitFork,
 	House,
 	Images,
@@ -9,10 +10,12 @@ import {
 	Package,
 	Palette,
 	ScrollText,
+
 	Sparkles,
 	User,
 	Users,
 } from "lucide-react";
+import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
@@ -21,23 +24,22 @@ import { SidebarNav } from "./sidebar-nav";
 
 const grimoireItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
-	{ to: "/characters", label: "Elenco", Icon: User, shortcut: "Alt+2" },
-	{ to: "/sheets", label: "Fichas", Icon: FileText, shortcut: "Alt+3" },
-	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+4" },
-	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+6" },
+	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
+	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
+	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+4" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+5" },
 ];
 
 const worldItems = [
-	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+7" },
-	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+8" },
-	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+9" },
+	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
+	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
+	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
 	{ to: "/images", label: "Imagens", Icon: Images },
 ];
 
-const systemItems = [
-	{ to: "/design-system", label: "Design System", Icon: Palette },
-];
+const systemItems = isDesignSystemEnabled()
+	? [{ to: "/design-system", label: "Design System", Icon: Palette }]
+	: [];
 
 interface SidebarProps {
 	isOpen: boolean;
@@ -119,12 +121,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 						items={worldItems}
 						onItemClick={onItemClick}
 					/>
-					<SidebarNav
-						title="Sistema"
-						isCollapsed={isCollapsed}
-						items={systemItems}
-						onItemClick={onItemClick}
-					/>
+					{systemItems.length > 0 ? (
+						<SidebarNav
+							title="Sistema"
+							isCollapsed={isCollapsed}
+							items={systemItems}
+							onItemClick={onItemClick}
+						/>
+					) : null}
 				</div>
 
 				{/* Footer / Pro Card */}
@@ -208,12 +212,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 								</div>
 							</div>
 
-							<button
-								type="button"
-								className="mt-4 w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
+							<Link
+								to="/billing"
+								search={{}}
+								className="mt-4 block w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-center text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
+								onClick={onItemClick}
 							>
 								{isPro ? "Pro ativo" : "Fazer Upgrade"}
-							</button>
+							</Link>
 						</div>
 					</div>
 				</div>

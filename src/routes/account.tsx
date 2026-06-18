@@ -91,7 +91,7 @@ function AccountPage() {
 					</div>
 
 					<div className="mt-5 grid gap-3 sm:grid-cols-2">
-						<Metric label="Fichas no elenco" value={characters} />
+						<Metric label="Fichas de personagens" value={characters} />
 						<Metric label="NPCs" value={npcs} />
 						<Metric label="Sessões" value={sessions} />
 						<Metric label="Registros de lore" value={lores} />

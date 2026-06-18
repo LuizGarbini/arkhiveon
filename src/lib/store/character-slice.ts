@@ -77,6 +77,9 @@ export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	sheetLayout: createDefaultSheetLayout("dnd5e"),
 	familyRelations: [],
 	entityLinks: [],
+	systemAttributes: {},
+	systemFields: {},
+	spellsList: [],
 };
 
 export interface CharacterSlice {
@@ -90,6 +93,13 @@ export interface CharacterSlice {
 		id: string,
 		targetCampaignId: string,
 	) => Promise<Character | null>;
+	customTemplates: import("./types").CustomTemplate[];
+	addTemplate: (template: import("./types").CustomTemplate) => void;
+	updateTemplate: (
+		id: string,
+		template: Partial<import("./types").CustomTemplate>,
+	) => void;
+	removeTemplate: (id: string) => void;
 }
 
 export const createCharacterSlice: StateCreator<
@@ -99,10 +109,118 @@ export const createCharacterSlice: StateCreator<
 	CharacterSlice
 > = (set, get) => ({
 	characters: [],
+	customTemplates: [],
+	addTemplate: (template) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para adicionar template." });
+			return;
+		}
+		const log = {
+			action: "create" as const,
+			entityKind: "customTemplate" as const,
+			entityId: template.id,
+			entityName: entityNameOf(template),
+		};
+		const originalTemplates = get().customTemplates;
+		set((state) => ({
+			customTemplates: [...state.customTemplates, template],
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			createRemoteEntity("customTemplate", template, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				customTemplates: originalTemplates,
+				activityLog: state.activityLog.filter(
+					(l) => l.entityId !== template.id,
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	updateTemplate: (id, template) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar template." });
+			return;
+		}
+		const originalTemplates = get().customTemplates;
+		const existing = originalTemplates.find((t) => t.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...template };
+		const log = {
+			action: "update" as const,
+			entityKind: "customTemplate" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			customTemplates: state.customTemplates.map((t) =>
+				t.id === id ? updated : t,
+			),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("customTemplate", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				customTemplates: originalTemplates,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeTemplate: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover template." });
+			return;
+		}
+		const originalTemplates = get().customTemplates;
+		const existing = originalTemplates.find((t) => t.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "customTemplate" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		set((state) => ({
+			customTemplates: state.customTemplates.filter((t) => t.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("customTemplate", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				customTemplates: originalTemplates,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 	addCharacter: (character) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para criar personagem." });
+			return {} as Character;
+		}
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
-			return {} as Character; // Retorna objeto vazio pois o tipo exige um Character
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
+			return {} as Character;
 		}
 		const created = generateEntry(characterDefaults, {
 			...character,
@@ -116,69 +234,105 @@ export const createCharacterSlice: StateCreator<
 			entityId: created.id,
 			entityName: entityNameOf(created),
 		};
+		const originalCharacters = get().characters;
+		const originalCount = get().globalRecordsCount;
 		set((state) => ({
 			characters: [...state.characters, created],
 			activityLog: pushLog(state.activityLog, log),
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("character", created, campaignId),
 			createRemoteActivity(log, campaignId),
-		]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		]).catch((error) => {
+			set((state) => ({
+				characters: originalCharacters,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter((l) => l.entityId !== created.id),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
 		return created;
 	},
-	updateCharacter: (id, character) =>
-		set((state) => {
-			const existing = state.characters.find((c) => c.id === id);
-			if (!existing) return state;
-			const updated = { ...existing, ...character, updatedAt: Date.now() };
-			const log = {
-				action: "update" as const,
-				entityKind: "character" as const,
-				entityId: id,
-				entityName: entityNameOf(updated),
-			};
-			void Promise.all([
-				updateRemoteEntity("character", updated, get().activeCampaignId!),
-				createRemoteActivity(log, get().activeCampaignId!),
-			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-			return {
-				characters: state.characters.map((c) => (c.id === id ? updated : c)),
-				activityLog: pushLog(state.activityLog, log),
-				syncError: null,
-			};
-		}),
-	removeCharacter: (id) =>
-		set((state) => {
-			const existing = state.characters.find((c) => c.id === id);
-			if (existing) {
-				const log = {
-					action: "delete" as const,
-					entityKind: "character" as const,
-					entityId: id,
-					entityName: entityNameOf(existing),
-				};
-				void Promise.all([
-					deleteRemoteEntity("character", id),
-					createRemoteActivity(log, get().activeCampaignId!),
-				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-				return {
-					characters: state.characters.filter((c) => c.id !== id),
-					activityLog: pushLog(state.activityLog, log),
-					globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
-					syncError: null,
-				};
-			}
-			return state;
-		}),
+	updateCharacter: (id, character) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar personagem." });
+			return;
+		}
+		const originalCharacters = get().characters;
+		const existing = originalCharacters.find((c) => c.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...character, updatedAt: Date.now() };
+		const log = {
+			action: "update" as const,
+			entityKind: "character" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			characters: state.characters.map((c) => (c.id === id ? updated : c)),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("character", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				characters: originalCharacters,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeCharacter: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover personagem." });
+			return;
+		}
+		const originalCharacters = get().characters;
+		const existing = originalCharacters.find((c) => c.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "character" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		const originalCount = get().globalRecordsCount;
+		set((state) => ({
+			characters: state.characters.filter((c) => c.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("character", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				characters: originalCharacters,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 	transferCharacterToCampaign: async (id, targetCampaignId) => {
 		const source = get().characters.find((character) => character.id === id);
 		if (!source) return null;
 
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return null;
 		}
 
@@ -198,7 +352,10 @@ export const createCharacterSlice: StateCreator<
 			entityId: transferred.id,
 			entityName: entityNameOf(transferred),
 		};
-		const isActiveCampaign = get().activeCampaignId === targetCampaignId;
+		const activeCampaignId = get().activeCampaignId;
+		const isActiveCampaign = activeCampaignId === targetCampaignId;
+		const originalCharacters = get().characters;
+		const originalCount = get().globalRecordsCount;
 
 		if (isActiveCampaign) {
 			set((state) => ({
@@ -223,7 +380,18 @@ export const createCharacterSlice: StateCreator<
 			}
 			return transferred;
 		} catch (error) {
-			set({ syncError: remoteErrorMessage(error) });
+			if (isActiveCampaign) {
+				set((state) => ({
+					characters: originalCharacters,
+					globalRecordsCount: originalCount,
+					activityLog: state.activityLog.filter(
+						(l) => l.entityId !== transferred.id,
+					),
+					syncError: remoteErrorMessage(error),
+				}));
+			} else {
+				set({ syncError: remoteErrorMessage(error) });
+			}
 			throw error;
 		}
 	},

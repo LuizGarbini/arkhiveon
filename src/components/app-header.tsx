@@ -385,7 +385,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 									<span>Configurações</span>
 								</DropdownMenuItem>
 								<DropdownMenuItem
-									onClick={() => void navigate({ to: "/billing" })}
+									onClick={() => void navigate({ to: "/billing", search: {} })}
 									className="gap-2 text-xs font-medium focus:bg-primary/10 focus:text-primary cursor-pointer"
 								>
 									<CreditCard className="h-3.5 w-3.5" />
@@ -414,9 +414,9 @@ function getPageTitle(pathname: string) {
 	if (pathname === "/dashboard") return "Dashboard";
 	if (pathname.startsWith("/account")) return "Minha Conta";
 	if (pathname.startsWith("/settings")) return "Configurações";
-	if (pathname.startsWith("/billing")) return "Plano & Assinatura";
-	if (pathname.startsWith("/characters")) return "Elenco";
-	if (pathname.startsWith("/sheets")) return "Fichas";
+	if (pathname.startsWith("/dashboard")) return "Dashboard";
+	if (pathname.startsWith("/characters")) return "Personagens";
+	if (pathname.startsWith("/sheets")) return "Personagens";
 	if (pathname.startsWith("/family-tree")) return "Árvore Genealógica";
 	if (pathname.startsWith("/npcs")) return "NPCs";
 	if (pathname.startsWith("/sessions")) return "Sessões";

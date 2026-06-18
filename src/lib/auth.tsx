@@ -33,6 +33,7 @@ interface AuthContextValue {
 	signOut: () => Promise<string | null>;
 	resetPassword: (email: string) => Promise<string | null>;
 	updatePassword: (password: string) => Promise<string | null>;
+	signInWithOAuth: (provider: "google" | "discord" | "github") => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -190,6 +191,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				if (!supabase) return "Supabase não está configurado.";
 				const { error } = await supabase.auth.updateUser({
 					password,
+				});
+				return error?.message ?? null;
+			},
+			signInWithOAuth: async (provider) => {
+				if (!supabase) return "Supabase não está configurado.";
+				const { error } = await supabase.auth.signInWithOAuth({
+					provider,
+					options: {
+						redirectTo: `${window.location.origin}/dashboard`,
+					},
 				});
 				return error?.message ?? null;
 			},

@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRPGStore } from "@/lib/store";
+import type { Campaign } from "@/lib/store/types";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 import {
 	Dialog,
 	DialogContent,
@@ -11,34 +10,58 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 
 interface CampaignFormProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	campaign?: Campaign | null;
 }
 
-export function CampaignForm({ open, onOpenChange }: CampaignFormProps) {
+export function CampaignForm({
+	open,
+	onOpenChange,
+	campaign,
+}: CampaignFormProps) {
 	const createCampaign = useRPGStore((s) => s.createCampaign);
+	const updateCampaign = useRPGStore((s) => s.updateCampaign);
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [isCreating, setIsCreating] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const nameInputId = useId();
+	const descInputId = useId();
+
+	useEffect(() => {
+		if (open) {
+			setName(campaign?.name ?? "");
+			setDescription(campaign?.description ?? "");
+		}
+	}, [open, campaign]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (!name.trim() || isCreating) return;
+		if (!name.trim() || isSaving) return;
 
-		setIsCreating(true);
+		setIsSaving(true);
 		try {
-			const campaign = await createCampaign(name.trim(), description.trim());
-			await switchCampaign(campaign.id);
+			if (campaign) {
+				updateCampaign(campaign.id, {
+					name: name.trim(),
+					description: description.trim(),
+				});
+			} else {
+				const created = await createCampaign(name.trim(), description.trim());
+				await switchCampaign(created.id);
+			}
 			setName("");
 			setDescription("");
 			onOpenChange(false);
 		} catch (error) {
-			console.error("Erro ao criar campanha:", error);
+			console.error("Erro ao salvar campanha:", error);
 		} finally {
-			setIsCreating(false);
+			setIsSaving(false);
 		}
 	}
 
@@ -46,23 +69,26 @@ export function CampaignForm({ open, onOpenChange }: CampaignFormProps) {
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle className="font-display">Nova Campanha</DialogTitle>
+					<DialogTitle className="font-display">
+						{campaign ? "Editar Campanha" : "Nova Campanha"}
+					</DialogTitle>
 					<DialogDescription>
-						Crie uma nova campanha com ambiente independente. Todos os dados
-						começarão do zero.
+						{campaign
+							? "Altere as informações da campanha abaixo."
+							: "Crie uma nova campanha com ambiente independente. Todos os dados começarão do zero."}
 					</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
 						<label
-							htmlFor="campaign-name"
+							htmlFor={nameInputId}
 							className="text-[12px] font-semibold text-foreground"
 						>
 							Nome da Campanha *
 						</label>
 						<Input
-							id="campaign-name"
+							id={nameInputId}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Ex: A Maldição de Strahd"
@@ -72,13 +98,13 @@ export function CampaignForm({ open, onOpenChange }: CampaignFormProps) {
 
 					<div className="space-y-2">
 						<label
-							htmlFor="campaign-description"
+							htmlFor={descInputId}
 							className="text-[12px] font-semibold text-foreground"
 						>
 							Descrição
 						</label>
 						<Textarea
-							id="campaign-description"
+							id={descInputId}
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Uma breve descrição da campanha..."
@@ -94,8 +120,12 @@ export function CampaignForm({ open, onOpenChange }: CampaignFormProps) {
 						>
 							Cancelar
 						</Button>
-						<Button type="submit" disabled={!name.trim() || isCreating}>
-							{isCreating ? "Criando..." : "Criar Campanha"}
+						<Button type="submit" disabled={!name.trim() || isSaving}>
+							{isSaving
+								? "Salvando..."
+								: campaign
+									? "Salvar Alterações"
+									: "Criar Campanha"}
 						</Button>
 					</DialogFooter>
 				</form>

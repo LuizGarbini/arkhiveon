@@ -14,6 +14,7 @@ import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-bac
 import { EfferdStickyFooter } from "@/components/efferd-sticky-footer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,
@@ -62,6 +63,11 @@ function LandingPage() {
 	const featuresId = useId();
 	const { loading, session } = useAuth();
 	const isAuthenticated = !!session;
+
+	useDocumentMetadata(
+		"Arkhiveon - O Grimório do seu RPG de Mesa",
+		"Organize seus personagens, fichas, NPCs e sessões de RPG em um ambiente conectado e responsivo. Experimente grátis.",
+	);
 
 	return (
 		<div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -208,7 +214,7 @@ function LandingPage() {
 					<div className="relative mt-8 w-full max-w-5xl px-4 md:px-0 z-10 lp-enter lp-d6 translate-y-24">
 						{/* Overlapping Container */}
 						<div className="relative h-[540px] rounded-2xl border border-border/80 bg-card-elevated shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden">
-							
+
 							{/* Mini Browser/Header bar to make it look premium */}
 							<div className="flex items-center gap-2 border-b border-border/60 bg-card/95 px-4 py-3 backdrop-blur-sm">
 								<div className="flex gap-1.5">
@@ -227,9 +233,9 @@ function LandingPage() {
 									{/* Portrait column */}
 									<div className="flex flex-col items-center">
 										<div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border/70 bg-linear-to-br from-primary/10 to-transparent">
-											<img 
-												src="/elara-portrait.png" 
-												alt="Elara Moonveil" 
+											<img
+												src="/elara-portrait.png"
+												alt="Elara Moonveil"
 												className="h-full w-full object-cover object-top"
 												draggable={false}
 											/>
@@ -548,5 +554,3 @@ function PlanCard({
 		</article>
 	);
 }
-
-

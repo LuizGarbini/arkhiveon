@@ -1,5 +1,6 @@
 import type {
 	Character,
+	CustomTemplate,
 	RpgSystem,
 	SheetLayoutConfig,
 	SheetModuleConfig,
@@ -17,6 +18,7 @@ export const SHEET_MODULE_LABELS: Record<SheetModuleKind, string> = {
 	notes: "Notas",
 	customText: "Texto livre",
 	customStats: "Bloco de stats",
+	custom_template_fields: "Ficha",
 };
 
 const SYSTEMS_WITH_SANITY = new Set<RpgSystem>([
@@ -70,6 +72,18 @@ export function createDefaultSheetLayout(
 		showSanity?: boolean;
 	},
 ): SheetLayoutConfig {
+	if (system.startsWith("custom_")) {
+		return {
+			version: 1,
+			template: system,
+			modules: [
+				moduleConfig("custom_template_fields" as any, 10, "main", {
+					title: "Ficha do Personagem",
+				}),
+			],
+		};
+	}
+
 	const showSanity = options?.showSanity ?? SYSTEMS_WITH_SANITY.has(system);
 	const showSpells = options?.showSpells ?? !SYSTEMS_WITHOUT_MAGIC.has(system);
 	const modules: SheetModuleConfig[] = [
@@ -152,7 +166,9 @@ export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 		}));
 
 	for (const fallbackModule of fallback.modules) {
-		if (!normalizedModules.some((module) => module.kind === fallbackModule.kind)) {
+		if (
+			!normalizedModules.some((module) => module.kind === fallbackModule.kind)
+		) {
 			normalizedModules.push(fallbackModule);
 		}
 	}
@@ -165,7 +181,9 @@ export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 }
 
 export function enabledSheetModules(character: Character) {
-	return normalizeSheetLayout(character).modules.filter((module) => module.enabled);
+	return normalizeSheetLayout(character).modules.filter(
+		(module) => module.enabled,
+	);
 }
 
 export function createCustomSheetModule(
@@ -178,4 +196,119 @@ export function createCustomSheetModule(
 		content: "",
 		fields: [],
 	});
+}
+
+function columnOf(module: SheetModuleConfig): "main" | "side" {
+	return module.column === "side" ? "side" : "main";
+}
+export function normalizeModuleOrders(
+	modules: SheetModuleConfig[],
+): SheetModuleConfig[] {
+	const main = modules.filter((module) => columnOf(module) === "main");
+	const side = modules.filter((module) => columnOf(module) === "side");
+
+	return [
+		...main.map((module, index) => ({
+			...module,
+			column: "main" as const,
+			order: (index + 1) * 10,
+		})),
+		...side.map((module, index) => ({
+			...module,
+			column: "side" as const,
+			order: (index + 1) * 10 + 500,
+		})),
+	];
+}
+
+export function applyModuleDrag(
+	modules: SheetModuleConfig[],
+	activeId: string,
+	overId: string,
+): SheetModuleConfig[] {
+	const active = modules.find((module) => module.id === activeId);
+	if (!active) return modules;
+
+	const isColumnTarget = overId === "column-main" || overId === "column-side";
+	const targetColumn: "main" | "side" = isColumnTarget
+		? overId === "column-side"
+			? "side"
+			: "main"
+		: columnOf(modules.find((module) => module.id === overId) ?? active);
+
+	const updated = { ...active, column: targetColumn };
+	const without = modules.filter((module) => module.id !== activeId);
+
+	const mainList = without
+		.filter((module) => columnOf(module) === "main")
+		.sort((a, b) => a.order - b.order);
+	const sideList = without
+		.filter((module) => columnOf(module) === "side")
+		.sort((a, b) => a.order - b.order);
+
+	const targetList = targetColumn === "main" ? [...mainList] : [...sideList];
+
+	if (isColumnTarget) {
+		targetList.push(updated);
+	} else {
+		const overIndex = targetList.findIndex((module) => module.id === overId);
+		if (overIndex === -1) {
+			targetList.push(updated);
+		} else {
+			targetList.splice(overIndex, 0, updated);
+		}
+	}
+
+	if (targetColumn === "main") {
+		return normalizeModuleOrders([...targetList, ...sideList]);
+	}
+	return normalizeModuleOrders([...mainList, ...targetList]);
+}
+
+export function isLayoutTemplate(template: CustomTemplate) {
+	return Boolean(template.sheetLayout?.modules?.length);
+}
+
+export function cloneSheetLayout(
+	layout: SheetLayoutConfig,
+	baseSystem: RpgSystem,
+): SheetLayoutConfig {
+	return {
+		version: 1,
+		template: baseSystem,
+		modules: layout.modules.map((module) => ({
+			...module,
+			id:
+				module.kind === "customText" || module.kind === "customStats"
+					? `${module.kind}-${crypto.randomUUID()}`
+					: module.id,
+		})),
+	};
+}
+
+export function createSavedSheetTemplate(input: {
+	name: string;
+	description?: string;
+	baseSystem: RpgSystem;
+	modules: SheetModuleConfig[];
+	author?: string;
+}): CustomTemplate {
+	const sheetLayout = normalizeModuleOrders(input.modules);
+	return {
+		id: `custom_${crypto.randomUUID()}`,
+		name: input.name.trim(),
+		description: input.description?.trim() ?? "",
+		author: input.author?.trim() ?? "Campanha",
+		createdAt: Date.now(),
+		baseSystem: input.baseSystem,
+		sheetLayout: {
+			version: 1,
+			template: input.baseSystem,
+			modules: sheetLayout,
+		},
+	};
+}
+
+export function isCustomSheetModule(module: SheetModuleConfig) {
+	return module.kind === "customText" || module.kind === "customStats";
 }

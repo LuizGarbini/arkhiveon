@@ -76,11 +76,13 @@ export const SUPABASE_TABLES = {
 	locations: "locations",
 	lores: "lores",
 	activity: "activity_log",
+	customTemplates: "custom_templates",
 	imageAssets: "image_assets",
 	campaigns: "campaigns",
 	memberships: "memberships",
 	invites: "invites",
 	userPlans: "user_plans",
+	spells: "spells",
 } as const;
 
 export const SUPABASE_BUCKETS = {

@@ -1,8 +1,18 @@
 import type { StateCreator } from "zustand";
-import type { Item, GameLocation, Lore, RPGState } from "./types";
-import { generateEntry, pushLog, entityNameOf, remoteErrorMessage } from "./helpers";
-import { createRemoteEntity, createRemoteActivity, updateRemoteEntity, deleteRemoteEntity } from "../remote-store";
+import {
+	createRemoteActivity,
+	createRemoteEntity,
+	deleteRemoteEntity,
+	updateRemoteEntity,
+} from "../remote-store";
+import {
+	entityNameOf,
+	generateEntry,
+	pushLog,
+	remoteErrorMessage,
+} from "./helpers";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
+import type { GameLocation, Item, Lore, RPGState } from "./types";
 
 export const itemDefaults: Omit<Item, "id" | "createdAt"> = {
 	name: "",
@@ -69,7 +79,9 @@ export interface CollectionSlice {
 	removeItem: (id: string) => void;
 
 	locations: GameLocation[];
-	addLocation: (location: Partial<Omit<GameLocation, "id" | "createdAt">>) => GameLocation;
+	addLocation: (
+		location: Partial<Omit<GameLocation, "id" | "createdAt">>,
+	) => GameLocation;
 	updateLocation: (id: string, location: Partial<GameLocation>) => void;
 	removeLocation: (id: string) => void;
 
@@ -79,11 +91,23 @@ export interface CollectionSlice {
 	removeLore: (id: string) => void;
 }
 
-export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSlice> = (set, get) => ({
+export const createCollectionSlice: StateCreator<
+	RPGState,
+	[],
+	[],
+	CollectionSlice
+> = (set, get) => ({
 	items: [],
 	addItem: (item) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para adicionar item." });
+			return {} as Item;
+		}
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return {} as Item;
 		}
 		const created = generateEntry(itemDefaults, item) as Item;
@@ -93,68 +117,109 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			entityId: created.id,
 			entityName: entityNameOf(created),
 		};
+		const originalItems = get().items;
+		const originalCount = get().globalRecordsCount;
 		set((state) => ({
 			items: [...state.items, created],
 			activityLog: pushLog(state.activityLog, log),
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("item", created, campaignId),
 			createRemoteActivity(log, campaignId),
-		]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		]).catch((error) => {
+			set((state) => ({
+				items: originalItems,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter((l) => l.entityId !== created.id),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
 		return created;
 	},
-	updateItem: (id, item) =>
-		set((state) => {
-			const existing = state.items.find((i) => i.id === id);
-			if (!existing) return state;
-			const updated = { ...existing, ...item, updatedAt: Date.now() };
-			const log = {
-				action: "update" as const,
-				entityKind: "item" as const,
-				entityId: id,
-				entityName: entityNameOf(updated),
-			};
-			void Promise.all([
-				updateRemoteEntity("item", updated, get().activeCampaignId!),
-				createRemoteActivity(log, get().activeCampaignId!),
-			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-			return {
-				items: state.items.map((i) => (i.id === id ? updated : i)),
-				activityLog: pushLog(state.activityLog, log),
-				syncError: null,
-			};
-		}),
-	removeItem: (id) =>
-		set((state) => {
-			const existing = state.items.find((i) => i.id === id);
-			if (existing) {
-				const log = {
-					action: "delete" as const,
-					entityKind: "item" as const,
-					entityId: id,
-					entityName: entityNameOf(existing),
-				};
-				void Promise.all([
-					deleteRemoteEntity("item", id),
-					createRemoteActivity(log, get().activeCampaignId!),
-				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-				return {
-					items: state.items.filter((i) => i.id !== id),
-					activityLog: pushLog(state.activityLog, log),
-					globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
-					syncError: null,
-				};
-			}
-			return state;
-		}),
+	updateItem: (id, item) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar item." });
+			return;
+		}
+		const originalItems = get().items;
+		const existing = originalItems.find((i) => i.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...item, updatedAt: Date.now() };
+		const log = {
+			action: "update" as const,
+			entityKind: "item" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			items: state.items.map((i) => (i.id === id ? updated : i)),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("item", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				items: originalItems,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeItem: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover item." });
+			return;
+		}
+		const originalItems = get().items;
+		const existing = originalItems.find((i) => i.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "item" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		const originalCount = get().globalRecordsCount;
+		set((state) => ({
+			items: state.items.filter((i) => i.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("item", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				items: originalItems,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 
 	locations: [],
 	addLocation: (location) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para adicionar localização." });
+			return {} as GameLocation;
+		}
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return {} as GameLocation;
 		}
 		const created = generateEntry(locationDefaults, location) as GameLocation;
@@ -164,68 +229,109 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			entityId: created.id,
 			entityName: entityNameOf(created),
 		};
+		const originalLocations = get().locations;
+		const originalCount = get().globalRecordsCount;
 		set((state) => ({
 			locations: [...state.locations, created],
 			activityLog: pushLog(state.activityLog, log),
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("location", created, campaignId),
 			createRemoteActivity(log, campaignId),
-		]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		]).catch((error) => {
+			set((state) => ({
+				locations: originalLocations,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter((l) => l.entityId !== created.id),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
 		return created;
 	},
-	updateLocation: (id, location) =>
-		set((state) => {
-			const existing = state.locations.find((l) => l.id === id);
-			if (!existing) return state;
-			const updated = { ...existing, ...location, updatedAt: Date.now() };
-			const log = {
-				action: "update" as const,
-				entityKind: "location" as const,
-				entityId: id,
-				entityName: entityNameOf(updated),
-			};
-			void Promise.all([
-				updateRemoteEntity("location", updated, get().activeCampaignId!),
-				createRemoteActivity(log, get().activeCampaignId!),
-			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-			return {
-				locations: state.locations.map((l) => (l.id === id ? updated : l)),
-				activityLog: pushLog(state.activityLog, log),
-				syncError: null,
-			};
-		}),
-	removeLocation: (id) =>
-		set((state) => {
-			const existing = state.locations.find((l) => l.id === id);
-			if (existing) {
-				const log = {
-					action: "delete" as const,
-					entityKind: "location" as const,
-					entityId: id,
-					entityName: entityNameOf(existing),
-				};
-				void Promise.all([
-					deleteRemoteEntity("location", id),
-					createRemoteActivity(log, get().activeCampaignId!),
-				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-				return {
-					locations: state.locations.filter((l) => l.id !== id),
-					activityLog: pushLog(state.activityLog, log),
-					globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
-					syncError: null,
-				};
-			}
-			return state;
-		}),
+	updateLocation: (id, location) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar localização." });
+			return;
+		}
+		const originalLocations = get().locations;
+		const existing = originalLocations.find((l) => l.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...location, updatedAt: Date.now() };
+		const log = {
+			action: "update" as const,
+			entityKind: "location" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			locations: state.locations.map((l) => (l.id === id ? updated : l)),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("location", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				locations: originalLocations,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeLocation: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover localização." });
+			return;
+		}
+		const originalLocations = get().locations;
+		const existing = originalLocations.find((l) => l.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "location" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		const originalCount = get().globalRecordsCount;
+		set((state) => ({
+			locations: state.locations.filter((l) => l.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("location", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				locations: originalLocations,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 
 	lores: [],
 	addLore: (lore) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para adicionar lore." });
+			return {} as Lore;
+		}
 		if (isCreationLimitReached(get())) {
-			set({ syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.` });
+			set({
+				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
+			});
 			return {} as Lore;
 		}
 		const created = generateEntry(loreDefaults, lore) as Lore;
@@ -235,61 +341,95 @@ export const createCollectionSlice: StateCreator<RPGState, [], [], CollectionSli
 			entityId: created.id,
 			entityName: entityNameOf(created),
 		};
+		const originalLores = get().lores;
+		const originalCount = get().globalRecordsCount;
 		set((state) => ({
 			lores: [...state.lores, created],
 			activityLog: pushLog(state.activityLog, log),
 			globalRecordsCount: state.globalRecordsCount + 1,
 			syncError: null,
 		}));
-		const campaignId = get().activeCampaignId!;
 		void Promise.all([
 			createRemoteEntity("lore", created, campaignId),
 			createRemoteActivity(log, campaignId),
-		]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
+		]).catch((error) => {
+			set((state) => ({
+				lores: originalLores,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter((l) => l.entityId !== created.id),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
 		return created;
 	},
-	updateLore: (id, lore) =>
-		set((state) => {
-			const existing = state.lores.find((l) => l.id === id);
-			if (!existing) return state;
-			const updated = { ...existing, ...lore, updatedAt: Date.now() };
-			const log = {
-				action: "update" as const,
-				entityKind: "lore" as const,
-				entityId: id,
-				entityName: entityNameOf(updated),
-			};
-			void Promise.all([
-				updateRemoteEntity("lore", updated, get().activeCampaignId!),
-				createRemoteActivity(log, get().activeCampaignId!),
-			]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-			return {
-				lores: state.lores.map((l) => (l.id === id ? updated : l)),
-				activityLog: pushLog(state.activityLog, log),
-				syncError: null,
-			};
-		}),
-	removeLore: (id) =>
-		set((state) => {
-			const existing = state.lores.find((l) => l.id === id);
-			if (existing) {
-				const log = {
-					action: "delete" as const,
-					entityKind: "lore" as const,
-					entityId: id,
-					entityName: entityNameOf(existing),
-				};
-				void Promise.all([
-					deleteRemoteEntity("lore", id),
-					createRemoteActivity(log, get().activeCampaignId!),
-				]).catch((error) => set({ syncError: remoteErrorMessage(error) }));
-				return {
-					lores: state.lores.filter((l) => l.id !== id),
-					activityLog: pushLog(state.activityLog, log),
-					globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
-					syncError: null,
-				};
-			}
-			return state;
-		}),
+	updateLore: (id, lore) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para atualizar lore." });
+			return;
+		}
+		const originalLores = get().lores;
+		const existing = originalLores.find((l) => l.id === id);
+		if (!existing) return;
+		const updated = { ...existing, ...lore, updatedAt: Date.now() };
+		const log = {
+			action: "update" as const,
+			entityKind: "lore" as const,
+			entityId: id,
+			entityName: entityNameOf(updated),
+		};
+		set((state) => ({
+			lores: state.lores.map((l) => (l.id === id ? updated : l)),
+			activityLog: pushLog(state.activityLog, log),
+			syncError: null,
+		}));
+		void Promise.all([
+			updateRemoteEntity("lore", updated, campaignId),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				lores: originalLores,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
+	removeLore: (id) => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) {
+			set({ syncError: "Nenhuma campanha ativa para remover lore." });
+			return;
+		}
+		const originalLores = get().lores;
+		const existing = originalLores.find((l) => l.id === id);
+		if (!existing) return;
+		const log = {
+			action: "delete" as const,
+			entityKind: "lore" as const,
+			entityId: id,
+			entityName: entityNameOf(existing),
+		};
+		const originalCount = get().globalRecordsCount;
+		set((state) => ({
+			lores: state.lores.filter((l) => l.id !== id),
+			activityLog: pushLog(state.activityLog, log),
+			globalRecordsCount: Math.max(0, state.globalRecordsCount - 1),
+			syncError: null,
+		}));
+		void Promise.all([
+			deleteRemoteEntity("lore", id),
+			createRemoteActivity(log, campaignId),
+		]).catch((error) => {
+			set((state) => ({
+				lores: originalLores,
+				globalRecordsCount: originalCount,
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "delete"),
+				),
+				syncError: remoteErrorMessage(error),
+			}));
+		});
+	},
 });
