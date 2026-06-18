@@ -208,6 +208,22 @@ export interface Character {
 	systemAttributes?: Record<string, number>;
 	systemFields?: Record<string, string>;
 	customTemplateId?: string;
+	spellsList?: Spell[];
+}
+
+export interface Spell {
+	id: string;
+	user_id?: string | null;
+	system: string;
+	name: string;
+	level: number;
+	school: string;
+	casting_time: string;
+	range: string;
+	components: string;
+	duration: string;
+	description: string;
+	is_homebrew?: boolean;
 }
 
 export type FamilyRelationKind =

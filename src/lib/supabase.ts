@@ -82,6 +82,7 @@ export const SUPABASE_TABLES = {
 	memberships: "memberships",
 	invites: "invites",
 	userPlans: "user_plans",
+	spells: "spells",
 } as const;
 
 export const SUPABASE_BUCKETS = {
