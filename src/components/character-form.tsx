@@ -1,7 +1,10 @@
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { cloneSheetLayout, createDefaultSheetLayout } from "@/lib/sheet-modules";
+import {
+	cloneSheetLayout,
+	createDefaultSheetLayout,
+} from "@/lib/sheet-modules";
 import {
 	abilityModifier,
 	type Character,
@@ -11,7 +14,12 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
-import { sanitizeCharacterFormValues, getAttributeConstraints } from "./character-sheet-fields";
+import {
+	getAttributeConstraints,
+	InventoryFields,
+	MagicFields,
+	sanitizeCharacterFormValues,
+} from "./character-sheet-fields";
 import { ImageUploader } from "./image-uploader";
 import { SystemPicker, type SystemPickerSelection } from "./system-picker";
 import { Button } from "./ui/button";
@@ -207,7 +215,8 @@ function CharacterFormDialog({
 			return;
 		}
 
-		const selectedConfig = SYSTEM_CONFIG[selection.system] ?? SYSTEM_CONFIG.generic;
+		const selectedConfig =
+			SYSTEM_CONFIG[selection.system] ?? SYSTEM_CONFIG.generic;
 		setValue("system", selection.system, { shouldDirty: true });
 		setValue(
 			"sheetLayout",
@@ -327,7 +336,12 @@ function CharacterFormDialog({
 									<PersonalitySection register={register} config={config} />
 								)}
 								{activeSection === "magic" && (
-									<MagicSection register={register} config={config} />
+									<MagicSection
+										register={register}
+										config={config}
+										control={control}
+										setValue={setValue}
+									/>
 								)}
 								{activeSection === "notes" && (
 									<NotesSection register={register} config={config} />
@@ -546,7 +560,9 @@ function AbilitiesSection({
 						: "Pontuações de 1 a 30."
 				}
 			>
-				<div className={`grid gap-3 ${fields.length >= 8 ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8' : fields.length === 9 ? 'grid-cols-3 sm:grid-cols-3 xl:grid-cols-9' : 'grid-cols-3 sm:grid-cols-6'}`}>
+				<div
+					className={`grid gap-3 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : fields.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-3 sm:grid-cols-6"}`}
+				>
 					{fields.map((f) => (
 						<AbilityField
 							key={f.key}
@@ -592,14 +608,24 @@ function AbilitiesSection({
 	);
 }
 
-function SanitySection({ register, config }: { register: RegisterFn, config: SystemConf }) {
+function SanitySection({
+	register,
+	config,
+}: {
+	register: RegisterFn;
+	config: SystemConf;
+}) {
 	return (
 		<FormSection
 			title="Sanidade & Atributos Específicos"
 			description="Para Cthulhu, Ordem Paranormal e similares."
 		>
 			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-				<CustomFieldsRenderer register={register} config={config} section="sanity" />
+				<CustomFieldsRenderer
+					register={register}
+					config={config}
+					section="sanity"
+				/>
 				{config.value === "coc" && (
 					<>
 						<Field label="Poder (POW)">
@@ -610,7 +636,11 @@ function SanitySection({ register, config }: { register: RegisterFn, config: Sys
 							/>
 						</Field>
 						<Field label="Tamanho (SIZ)">
-							<Input type="number" placeholder="10" {...register("size", { valueAsNumber: true })} />
+							<Input
+								type="number"
+								placeholder="10"
+								{...register("size", { valueAsNumber: true })}
+							/>
 						</Field>
 						<Field label="Educação (EDU)">
 							<Input
@@ -705,23 +735,53 @@ function CombatSection({
 				{config.value.startsWith("dnd") && (
 					<>
 						<Field label="Testes contra Morte (Sucessos)" hint="0 a 3">
-							<Input type="number" min={0} max={3} placeholder="0" {...register("deathSaves.successes" as any, { valueAsNumber: true })} />
+							<Input
+								type="number"
+								min={0}
+								max={3}
+								placeholder="0"
+								{...register("deathSaves.successes" as any, {
+									valueAsNumber: true,
+								})}
+							/>
 						</Field>
 						<Field label="Testes contra Morte (Falhas)" hint="0 a 3">
-							<Input type="number" min={0} max={3} placeholder="0" {...register("deathSaves.failures" as any, { valueAsNumber: true })} />
+							<Input
+								type="number"
+								min={0}
+								max={3}
+								placeholder="0"
+								{...register("deathSaves.failures" as any, {
+									valueAsNumber: true,
+								})}
+							/>
 						</Field>
 					</>
 				)}
-				<CustomFieldsRenderer register={register} config={config} section="combat" />
+				<CustomFieldsRenderer
+					register={register}
+					config={config}
+					section="combat"
+				/>
 			</div>
 		</FormSection>
 	);
 }
 
-function PersonalitySection({ register, config }: { register: RegisterFn, config: SystemConf }) {
+function PersonalitySection({
+	register,
+	config,
+}: {
+	register: RegisterFn;
+	config: SystemConf;
+}) {
 	return (
 		<FormSection title="Personalidade & História">
-			<CustomFieldsRenderer register={register} config={config} section="personality" />
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="personality"
+			/>
 			<Field label="Traços de personalidade">
 				<Textarea
 					rows={2}
@@ -754,92 +814,51 @@ function PersonalitySection({ register, config }: { register: RegisterFn, config
 	);
 }
 
-function MagicSection({ register, config }: { register: RegisterFn, config: SystemConf }) {
-	const hasCustomMagic = config.customFields?.some(f => f.section === "magic");
+function MagicSection({
+	register,
+	config,
+	control,
+	setValue,
+}: {
+	register: any;
+	config: any;
+	control: any;
+	setValue: any;
+}) {
+	const hasCustomMagic = config.customFields?.some(
+		(f: any) => f.section === "magic",
+	);
 	const shouldShowSpells = config.showSpells || hasCustomMagic;
 
 	return (
-		<>
+		<div className="space-y-6">
 			{shouldShowSpells && (
-				<FormSection title={config.showSpells ? "Conjuração de Magias" : "Poderes & Magia"}>
-					<CustomFieldsRenderer register={register} config={config} section="magic" />
-					{config.showSpells && (
-						<>
-							<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-								<Field label="Classe conjuradora">
-									<Input
-										placeholder="Mago, Clérigo..."
-										{...register("spellcastingClass")}
-									/>
-								</Field>
-								<Field label="Atributo de magia">
-									<Input
-										placeholder="INT / SAB / CAR"
-										{...register("spellAbility")}
-									/>
-								</Field>
-								<Field label="CD da magia">
-									<Input
-										type="number"
-										min={0}
-										placeholder="13"
-										{...register("spellSaveDc", { valueAsNumber: true })}
-									/>
-								</Field>
-								<Field label="Bônus de ataque mágico">
-									<Input
-										type="number"
-										placeholder="0"
-										{...register("spellAttackBonus", { valueAsNumber: true })}
-									/>
-								</Field>
-								<Field
-									label="Espaços de magia"
-									className="sm:col-span-2"
-									hint="Ex: Nv1: 4 / Nv2: 3"
-								>
-									<Input
-										placeholder="Nv1: 4 / Nv2: 3..."
-										{...register("spellSlots")}
-									/>
-								</Field>
-							</div>
-							<Field label="Magias preparadas / conhecidas">
-								<Textarea
-									rows={4}
-									placeholder="Mísseis Mágicos, Bola de Fogo..."
-									{...register("spells")}
-								/>
-							</Field>
-						</>
-					)}
-				</FormSection>
+				<MagicFields
+					register={register}
+					config={config}
+					control={control}
+					setValue={setValue}
+				/>
 			)}
-
-			<FormSection title="Equipamento">
-				<CustomFieldsRenderer register={register} config={config} section="inventory" />
-				<Field label="Inventário">
-					<Textarea
-						rows={4}
-						placeholder="Espada longa, escudo, mochila..."
-						{...register("equipment")}
-					/>
-				</Field>
-				<Field label="Moedas / Tesouro">
-					<Input
-						placeholder="Ex: 50 PO, 12 PP, 30 PC"
-						{...register("currency")}
-					/>
-				</Field>
-			</FormSection>
-		</>
+			<InventoryFields register={register} config={config} />
+		</div>
 	);
 }
 
-function NotesSection({ register, config }: { register: RegisterFn, config: SystemConf }) {
+function NotesSection({
+	register,
+	config,
+}: {
+	register: RegisterFn;
+	config: SystemConf;
+}) {
 	return (
 		<FormSection title="Notas Livres">
-			<CustomFieldsRenderer register={register} config={config} section="notes" />
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="notes"
+			/>
 			<Field label="Anotações do jogador">
 				<Textarea
 					rows={8}
@@ -859,9 +878,23 @@ interface AbilityFieldProps {
 	config: SystemConf;
 }
 
-function AbilityField({ label, name, register, control, config }: AbilityFieldProps) {
+function AbilityField({
+	label,
+	name,
+	register,
+	control,
+	config,
+}: AbilityFieldProps) {
 	const isStandardKey = [
-		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
+		"strength",
+		"dexterity",
+		"constitution",
+		"intelligence",
+		"wisdom",
+		"charisma",
+		"power",
+		"size",
+		"education",
 	].includes(name);
 
 	const fieldName = isStandardKey ? name : `systemAttributes.${name}`;

@@ -1,10 +1,12 @@
+import { BookOpen, Sparkles, Trash } from "lucide-react";
+import { useState } from "react";
 import {
 	type Control,
+	type FieldErrors,
+	type Path,
 	type UseFormRegister,
 	type UseFormSetValue,
 	useWatch,
-	type FieldErrors,
-	type Path,
 } from "react-hook-form";
 import {
 	abilityModifier,
@@ -12,13 +14,16 @@ import {
 	characterDefaults,
 	formatModifier,
 	type SheetModuleKind,
+	type Spell,
 } from "@/lib/store";
 import {
-	SYSTEM_CONFIG,
 	type CustomField,
+	SYSTEM_CONFIG,
 	type SystemConfig,
 } from "@/lib/systems";
 import { ImageUploader } from "./image-uploader";
+import { SpellSearchDialog } from "./spell-search-dialog";
+import { Button } from "./ui/button";
 import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
@@ -63,7 +68,8 @@ function getCustomFieldPlaceholder(field: CustomField) {
 	if (constraints?.placeholder) return constraints.placeholder;
 	if (field.hint) return field.hint;
 	if (field.type === "number") return "0";
-	if (field.type === "textarea") return `Descreva ${field.label.toLowerCase()}...`;
+	if (field.type === "textarea")
+		return `Descreva ${field.label.toLowerCase()}...`;
 	return `Ex: ${field.label}`;
 }
 
@@ -199,10 +205,14 @@ export function sanitizeCharacterFormValues(
 
 	const deathSaves = { ...sanitized.deathSaves };
 	if (Number.isNaN(deathSaves.successes)) {
-		deathSaves.successes = options?.emptyToZero ? 0 : characterDefaults.deathSaves.successes;
+		deathSaves.successes = options?.emptyToZero
+			? 0
+			: characterDefaults.deathSaves.successes;
 	}
 	if (Number.isNaN(deathSaves.failures)) {
-		deathSaves.failures = options?.emptyToZero ? 0 : characterDefaults.deathSaves.failures;
+		deathSaves.failures = options?.emptyToZero
+			? 0
+			: characterDefaults.deathSaves.failures;
 	}
 	sanitized.deathSaves = deathSaves;
 
@@ -278,7 +288,14 @@ export function CharacterModuleFields({
 		return <SanityFields register={register} config={config} />;
 	}
 	if (kind === "magic") {
-		return <MagicFields register={register} config={config} />;
+		return (
+			<MagicFields
+				register={register}
+				config={config}
+				control={control}
+				setValue={setValue}
+			/>
+		);
 	}
 	if (kind === "inventory") {
 		return <InventoryFields register={register} config={config} />;
@@ -324,8 +341,12 @@ export function CustomFieldsRenderer({
 							<Input
 								type={field.type}
 								placeholder={placeholder}
-								min={field.type === "number" ? numberConstraints?.min : undefined}
-								max={field.type === "number" ? numberConstraints?.max : undefined}
+								min={
+									field.type === "number" ? numberConstraints?.min : undefined
+								}
+								max={
+									field.type === "number" ? numberConstraints?.max : undefined
+								}
 								{...register(
 									`systemFields.${field.key}` as Path<CharacterFormValues>,
 									field.type === "number" ? { valueAsNumber: true } : undefined,
@@ -477,7 +498,9 @@ export function AbilitiesFields({
 						: "Pontuações de 1 a 30."
 				}
 			>
-				<div className={`grid gap-4 ${fields.length >= 8 ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8' : fields.length === 9 ? 'grid-cols-3 sm:grid-cols-3 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6'}`}>
+				<div
+					className={`grid gap-4 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : fields.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"}`}
+				>
 					{fields.map((field) => (
 						<AbilityField
 							key={field.key}
@@ -523,14 +546,24 @@ export function AbilitiesFields({
 	);
 }
 
-export function SanityFields({ register, config }: { register: CharacterRegister, config: SystemConfig }) {
+export function SanityFields({
+	register,
+	config,
+}: {
+	register: CharacterRegister;
+	config: SystemConfig;
+}) {
 	return (
 		<FormSection
 			title="Sanidade & Atributos Específicos"
 			description="Para Cthulhu, Ordem Paranormal e similares."
 		>
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-				<CustomFieldsRenderer register={register} config={config} section="sanity" />
+				<CustomFieldsRenderer
+					register={register}
+					config={config}
+					section="sanity"
+				/>
 				{config.value === "coc" && (
 					<>
 						<Field label="Poder (POW)">
@@ -541,7 +574,11 @@ export function SanityFields({ register, config }: { register: CharacterRegister
 							/>
 						</Field>
 						<Field label="Tamanho (SIZ)">
-							<Input type="number" placeholder="10" {...register("size", { valueAsNumber: true })} />
+							<Input
+								type="number"
+								placeholder="10"
+								{...register("size", { valueAsNumber: true })}
+							/>
 						</Field>
 						<Field label="Educação (EDU)">
 							<Input
@@ -685,7 +722,11 @@ export function CombatFields({
 						</Field>
 					</>
 				)}
-				<CustomFieldsRenderer register={register} config={config} section="combat" />
+				<CustomFieldsRenderer
+					register={register}
+					config={config}
+					section="combat"
+				/>
 			</div>
 		</FormSection>
 	);
@@ -700,7 +741,11 @@ export function PersonalityFields({
 }) {
 	return (
 		<FormSection title="Personalidade & História">
-			<CustomFieldsRenderer register={register} config={config} section="personality" />
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="personality"
+			/>
 			<Field label="Traços de personalidade">
 				<Textarea
 					rows={2}
@@ -733,11 +778,46 @@ export function PersonalityFields({
 	);
 }
 
-export function MagicFields({ register, config }: { register: CharacterRegister, config: SystemConfig }) {
+export function MagicFields({
+	register,
+	config,
+	control,
+	setValue,
+}: {
+	register: CharacterRegister;
+	config: SystemConfig;
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+}) {
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const system = useWatch({ control, name: "system" }) || "generic";
+	const spellsList = useWatch({ control, name: "spellsList" }) || [];
+	const legacySpells = useWatch({ control, name: "spells" }) || "";
+
+	const handleSelectSpell = (spell: Spell) => {
+		if (
+			spellsList.some((s) => s.name.toLowerCase() === spell.name.toLowerCase())
+		) {
+			return;
+		}
+		setValue("spellsList", [...spellsList, spell]);
+	};
+
+	const handleRemoveSpell = (spellId: string) => {
+		setValue(
+			"spellsList",
+			spellsList.filter((s) => s.id !== spellId),
+		);
+	};
+
 	return (
-		<FormSection title="Conjuração de Magias">
-			<CustomFieldsRenderer register={register} config={config} section="magic" />
-			<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+		<FormSection title="Magia">
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="magic"
+			/>
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
 				<Field label="Classe conjuradora">
 					<Input
 						placeholder="Mago, Clérigo..."
@@ -770,21 +850,105 @@ export function MagicFields({ register, config }: { register: CharacterRegister,
 					<Input placeholder="Nv1: 4 / Nv2: 3..." {...register("spellSlots")} />
 				</Field>
 			</div>
-			<Field label="Magias preparadas / conhecidas">
-				<Textarea
-					rows={4}
-					placeholder="Mísseis Mágicos, Bola de Fogo..."
-					{...register("spells")}
-				/>
-			</Field>
+
+			<div className="space-y-4 border-t border-border/40 pt-4">
+				<div className="flex items-center justify-between">
+					<h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+						<Sparkles className="h-4 w-4 text-primary" />
+						Grimório do Personagem
+					</h3>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => setDialogOpen(true)}
+						className="text-xs h-8 gap-1.5"
+					>
+						<BookOpen className="h-3.5 w-3.5" />
+						Buscar no Grimório
+					</Button>
+				</div>
+
+				{spellsList.length === 0 ? (
+					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
+						Nenhuma magia adicionada ao grimório ainda. Use o botão acima para
+						buscar e adicionar.
+					</div>
+				) : (
+					<div className="grid gap-2 sm:grid-cols-2">
+						{spellsList.map((spell) => (
+							<div
+								key={spell.id}
+								className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/30 text-[13px]"
+							>
+								<div>
+									<span className="font-bold text-foreground">
+										{spell.name}
+									</span>
+									<span className="text-[11px] text-muted-foreground ml-2">
+										{spell.level === 0 ? "Truque" : `${spell.level}º nível`}
+									</span>
+								</div>
+								<button
+									type="button"
+									onClick={() => handleRemoveSpell(spell.id)}
+									className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
+								>
+									<Trash className="h-4 w-4" />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
+			{(system !== "dnd5e" || legacySpells.trim()) && (
+				<div className="space-y-4 border-t border-border/40 pt-4 mt-6">
+					<Field
+						label={
+							system === "dnd5e"
+								? "Magias (Legado / Outras)"
+								: "Magias preparadas / conhecidas"
+						}
+						hint={
+							system === "dnd5e"
+								? "Campo de texto legado. Recomendamos migrar suas magias para o Grimório estruturado acima."
+								: undefined
+						}
+					>
+						<Textarea
+							rows={4}
+							placeholder="Mísseis Mágicos, Bola de Fogo..."
+							{...register("spells")}
+						/>
+					</Field>
+				</div>
+			)}
+
+			<SpellSearchDialog
+				system={system}
+				open={dialogOpen}
+				onOpenChange={setDialogOpen}
+				onSelectSpell={handleSelectSpell}
+				currentSpells={spellsList}
+			/>
 		</FormSection>
 	);
 }
-
-export function InventoryFields({ register, config }: { register: CharacterRegister, config: SystemConfig }) {
+export function InventoryFields({
+	register,
+	config,
+}: {
+	register: CharacterRegister;
+	config: SystemConfig;
+}) {
 	return (
 		<FormSection title="Equipamento">
-			<CustomFieldsRenderer register={register} config={config} section="inventory" />
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="inventory"
+			/>
 			<Field label="Inventário">
 				<Textarea
 					rows={4}
@@ -802,10 +966,20 @@ export function InventoryFields({ register, config }: { register: CharacterRegis
 	);
 }
 
-export function NotesFields({ register, config }: { register: CharacterRegister, config: SystemConfig }) {
+export function NotesFields({
+	register,
+	config,
+}: {
+	register: CharacterRegister;
+	config: SystemConfig;
+}) {
 	return (
 		<FormSection title="Notas Livres">
-			<CustomFieldsRenderer register={register} config={config} section="notes" />
+			<CustomFieldsRenderer
+				register={register}
+				config={config}
+				section="notes"
+			/>
 			<Field label="Anotações do jogador">
 				<Textarea
 					rows={8}
