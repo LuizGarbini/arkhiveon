@@ -26,7 +26,7 @@ import {
 } from "react";
 import { useForm } from "react-hook-form";
 import { CharacterExportDialog } from "@/components/character-export-dialog";
-import { CharacterImageDialog } from "@/components/character-image-dialog";
+
 import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
