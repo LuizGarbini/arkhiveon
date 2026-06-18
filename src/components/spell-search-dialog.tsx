@@ -1,5 +1,5 @@
 import { BookOpen, Check, Plus, Search, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -33,7 +33,7 @@ export function SpellSearchDialog({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [levelFilter, setLevelFilter] = useState<string>("all");
 	const [schoolFilter, setSchoolFilter] = useState<string>("all");
-	const [spells, setSpells] = useState<Spell[]>([]);
+	const [allSpells, setAllSpells] = useState<Spell[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [showHomebrewForm, setShowHomebrewForm] = useState(false);
 	const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
@@ -50,14 +50,14 @@ export function SpellSearchDialog({
 	const [creatingHb, setCreatingHb] = useState(false);
 	const [hbError, setHbError] = useState<string | null>(null);
 
-	// Load spells from Supabase
+	// Load spells from Supabase once when opening the dialog or changing system
 	useEffect(() => {
 		if (!open) return;
 
 		const client = getSupabase() as any;
 		if (!client) return;
 
-		async function fetchSpells() {
+		async function fetchAllSpells() {
 			setLoading(true);
 			try {
 				const getCompatibleSystems = (sys: string): string[] => {
@@ -65,41 +65,45 @@ export function SpellSearchDialog({
 					return [sys];
 				};
 
-				let query = client
+				const { data, error } = await client
 					.from("spells")
 					.select("*")
 					.in("system", getCompatibleSystems(system))
 					.order("name", { ascending: true });
 
-				// Apply frontend level filter
-				if (levelFilter !== "all") {
-					query = query.eq("level", Number(levelFilter));
-				}
-				// Apply school filter
-				if (schoolFilter !== "all") {
-					query = query.eq("school", schoolFilter);
-				}
-				// Apply search term filter
-				if (searchQuery.trim()) {
-					query = query.ilike("name", `%${searchQuery}%`);
-				}
-
-				const { data, error } = await query;
 				if (error) throw error;
-				setSpells((data as Spell[]) || []);
+				setAllSpells((data as Spell[]) || []);
 			} catch (err) {
-				console.error("Erro ao buscar magias:", err);
+				console.error("Erro ao carregar magias:", err);
 			} finally {
 				setLoading(false);
 			}
 		}
 
-		const delayDebounce = setTimeout(() => {
-			void fetchSpells();
-		}, 300);
+		void fetchAllSpells();
+	}, [open, system]);
 
-		return () => clearTimeout(delayDebounce);
-	}, [open, system, searchQuery, levelFilter, schoolFilter]);
+	// Filter spells in-memory (making search instant and supporting descriptions!)
+	const filteredSpells = useMemo(() => {
+		return allSpells.filter((spell) => {
+			// Level filter
+			if (levelFilter !== "all" && spell.level !== Number(levelFilter)) {
+				return false;
+			}
+			// School filter
+			if (schoolFilter !== "all" && spell.school !== schoolFilter) {
+				return false;
+			}
+			// Search query filter (matches name or description)
+			if (searchQuery.trim()) {
+				const query = searchQuery.toLowerCase().trim();
+				const nameMatch = spell.name.toLowerCase().includes(query);
+				const descMatch = spell.description?.toLowerCase().includes(query);
+				return nameMatch || descMatch;
+			}
+			return true;
+		});
+	}, [allSpells, levelFilter, schoolFilter, searchQuery]);
 
 	const resetHbForm = useCallback(() => {
 		setHbName("");
@@ -172,7 +176,7 @@ export function SpellSearchDialog({
 			if (data) {
 				const spell = data as Spell;
 				// Add to search list and select it
-				setSpells((prev) => [spell, ...prev]);
+				setAllSpells((prev) => [spell, ...prev]);
 				onSelectSpell(spell);
 				setShowHomebrewForm(false);
 				resetHbForm();
@@ -392,12 +396,12 @@ export function SpellSearchDialog({
 										<div className="text-center py-8 text-[13px] text-muted-foreground">
 											Buscando magias...
 										</div>
-									) : spells.length === 0 ? (
+									) : filteredSpells.length === 0 ? (
 										<div className="text-center py-8 text-[13px] text-muted-foreground">
 											Nenhuma magia encontrada.
 										</div>
 									) : (
-										spells.map((spell) => {
+										filteredSpells.map((spell) => {
 											const isAdded = currentSpells.some(
 												(s) =>
 													s.name.toLowerCase() === spell.name.toLowerCase(),
