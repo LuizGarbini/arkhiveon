@@ -32,10 +32,10 @@ import {
 } from "@/components/character-sheet-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
-import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
-import { SheetModuleEditor } from "@/components/sheet-module-editor";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { FramedImage } from "@/components/framed-image";
+import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
+import { SheetModuleEditor } from "@/components/sheet-module-editor";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -50,14 +50,15 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
 } from "@/lib/character-images";
 import {
 	createCustomSheetModule,
-	normalizeSheetLayout,
 	normalizeModuleOrders,
+	normalizeSheetLayout,
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
 import {
@@ -99,6 +100,12 @@ function CharacterSheetPage() {
 	const { edit } = Route.useSearch();
 	const character = useRPGStore((state) =>
 		state.characters.find((item) => item.id === characterId),
+	);
+
+	useDocumentMetadata(
+		character ? `${character.characterName} - Arkhiveon` : "Ficha - Arkhiveon",
+		"",
+		false,
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
@@ -513,10 +520,18 @@ function ModuleContent({
 	character: Character;
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 }) {
-	const customFields = config.customFields?.filter((f) => f.section === module.kind) || [];
+	const customFields =
+		config.customFields?.filter((f) => f.section === module.kind) || [];
 
 	if (module.kind === "custom_template_fields") {
-		return <CustomSheetRenderer templateId={character.customTemplateId || character.system} register={() => ({}) as any} viewMode character={character} />;
+		return (
+			<CustomSheetRenderer
+				templateId={character.customTemplateId || character.system}
+				register={() => ({}) as any}
+				viewMode
+				character={character}
+			/>
+		);
 	}
 
 	if (module.kind === "identity") {
@@ -540,25 +555,39 @@ function ModuleContent({
 					label="Alinhamento"
 					value={character.alignment || "Não informado"}
 				/>
-				<TextBlock title="Aparência" value={character.appearance || "Não informada"} />
+				<TextBlock
+					title="Aparência"
+					value={character.appearance || "Não informada"}
+				/>
 			</div>
 		);
 	}
 
 	if (module.kind === "abilities") {
-		const isStandardKey = (key: string) => [
-			"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
-		].includes(key);
+		const isStandardKey = (key: string) =>
+			[
+				"strength",
+				"dexterity",
+				"constitution",
+				"intelligence",
+				"wisdom",
+				"charisma",
+				"power",
+				"size",
+				"education",
+			].includes(key);
 
 		const abilities = (config.attributes || []).map((attr) => {
-			const val = isStandardKey(attr.key) 
+			const val = isStandardKey(attr.key)
 				? Number((character as any)[attr.key]) || 10
 				: Number(character.systemAttributes?.[attr.key]) || 10;
 			return { label: attr.label, value: val };
 		});
 
 		return (
-			<div className={`grid gap-3 ${abilities.length >= 8 ? 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8' : abilities.length === 9 ? 'grid-cols-3 sm:grid-cols-3 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6'}`}>
+			<div
+				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : abilities.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"}`}
+			>
 				{abilities.map((ability) => (
 					<div
 						key={ability.label}
@@ -623,7 +652,12 @@ function ModuleContent({
 						value={`${character.speed}${config.speedUnit}`}
 					/>
 					{customFields.map((field) => (
-						<Metric key={field.key} Icon={Sparkles} label={field.label} value={character.systemFields?.[field.key] || "-"} />
+						<Metric
+							key={field.key}
+							Icon={Sparkles}
+							label={field.label}
+							value={character.systemFields?.[field.key] || "-"}
+						/>
 					))}
 				</div>
 			</div>
@@ -634,7 +668,12 @@ function ModuleContent({
 		return (
 			<div className="grid gap-3 sm:grid-cols-3">
 				{customFields.map((field) => (
-					<Metric key={field.key} Icon={Sparkles} label={field.label} value={character.systemFields?.[field.key] || "-"} />
+					<Metric
+						key={field.key}
+						Icon={Sparkles}
+						label={field.label}
+						value={character.systemFields?.[field.key] || "-"}
+					/>
 				))}
 				<Metric Icon={Eye} label="Sanidade" value={character.sanity} />
 				<Metric Icon={Eye} label="Sanidade Máx." value={character.sanityMax} />
@@ -660,7 +699,11 @@ function ModuleContent({
 					/>
 				</div>
 				{customFields.map((field) => (
-					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+					<TextBlock
+						key={field.key}
+						title={field.label}
+						value={character.systemFields?.[field.key]}
+					/>
 				))}
 				<TextBlock title="Magias" value={character.spells} />
 				<TextBlock title="Espaços" value={character.spellSlots} />
@@ -672,7 +715,11 @@ function ModuleContent({
 		return (
 			<div className="grid gap-3">
 				{customFields.map((field) => (
-					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+					<TextBlock
+						key={field.key}
+						title={field.label}
+						value={character.systemFields?.[field.key]}
+					/>
 				))}
 				<TextBlock title="Equipamento" value={character.equipment} />
 				<TextBlock title="Moedas / Tesouro" value={character.currency} />
@@ -684,7 +731,11 @@ function ModuleContent({
 		return (
 			<div className="grid gap-3">
 				{customFields.map((field) => (
-					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+					<TextBlock
+						key={field.key}
+						title={field.label}
+						value={character.systemFields?.[field.key]}
+					/>
 				))}
 				<TextBlock title="Traços" value={character.personalityTraits} />
 				<TextBlock title="Ideais" value={character.ideals} />
@@ -698,7 +749,11 @@ function ModuleContent({
 		return (
 			<div className="grid gap-3">
 				{customFields.map((field) => (
-					<TextBlock key={field.key} title={field.label} value={character.systemFields?.[field.key]} />
+					<TextBlock
+						key={field.key}
+						title={field.label}
+						value={character.systemFields?.[field.key]}
+					/>
 				))}
 				<TextBlock title="Anotações" value={character.notes} />
 			</div>
@@ -734,7 +789,14 @@ function ModuleEditorDialog({
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildCharacterFormDefaults(character),
 	});
-	const { register, control, setValue, handleSubmit, reset, formState: { errors } } = form;
+	const {
+		register,
+		control,
+		setValue,
+		handleSubmit,
+		reset,
+		formState: { errors },
+	} = form;
 	const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
 	const [draft, setDraft] = useState<Partial<SheetModuleConfig>>({});
 	const config = SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.generic;
