@@ -60,10 +60,15 @@ export function SpellSearchDialog({
 		async function fetchSpells() {
 			setLoading(true);
 			try {
+				const getCompatibleSystems = (sys: string): string[] => {
+					if (sys === "dnd2024") return ["dnd5e", "dnd2024"];
+					return [sys];
+				};
+
 				let query = client
 					.from("spells")
 					.select("*")
-					.eq("system", system)
+					.in("system", getCompatibleSystems(system))
 					.order("name", { ascending: true });
 
 				// Apply frontend level filter
@@ -181,8 +186,18 @@ export function SpellSearchDialog({
 	}
 
 	const schoolOptions =
-		system === "dnd5e"
+		system === "tormenta20"
 			? [
+					"Abjuração",
+					"Adivinhação",
+					"Convocação",
+					"Encantamento",
+					"Evocação",
+					"Ilusão",
+					"Necromancia",
+					"Transmutação",
+				]
+			: [
 					"Abjuração",
 					"Adivinhação",
 					"Conjuração",
@@ -191,8 +206,7 @@ export function SpellSearchDialog({
 					"Ilusão",
 					"Necromancia",
 					"Transmutação",
-				]
-			: [];
+				];
 
 	const formatLevel = (lvl: number) => {
 		if (lvl === 0) return "Truque";
