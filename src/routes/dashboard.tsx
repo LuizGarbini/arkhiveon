@@ -30,7 +30,6 @@ const sections = [
 		description: "Visão narrativa",
 		Icon: User,
 		accent: "text-violet-300",
-		tint: "bg-violet-500/10 border-violet-500/20",
 		key: "characters" as const,
 	},
 	{
@@ -39,7 +38,6 @@ const sections = [
 		description: "Aliados, inimigos e mistérios",
 		Icon: Users,
 		accent: "text-fuchsia-300",
-		tint: "bg-fuchsia-500/10 border-fuchsia-500/20",
 		key: "npcs" as const,
 	},
 	{
@@ -48,7 +46,6 @@ const sections = [
 		description: "Crônicas das aventuras",
 		Icon: ScrollText,
 		accent: "text-amber-300",
-		tint: "bg-amber-500/10 border-amber-500/20",
 		key: "sessions" as const,
 	},
 	{
@@ -57,7 +54,6 @@ const sections = [
 		description: "Tesouros e relíquias",
 		Icon: Package,
 		accent: "text-emerald-300",
-		tint: "bg-emerald-500/10 border-emerald-500/20",
 		key: "items" as const,
 	},
 	{
@@ -66,7 +62,6 @@ const sections = [
 		description: "Reinos e fronteiras",
 		Icon: MapIcon,
 		accent: "text-rose-300",
-		tint: "bg-rose-500/10 border-rose-500/20",
 		key: "locations" as const,
 	},
 	{
@@ -75,7 +70,6 @@ const sections = [
 		description: "História e conhecimento",
 		Icon: BookOpen,
 		accent: "text-indigo-300",
-		tint: "bg-indigo-500/10 border-indigo-500/20",
 		key: "lores" as const,
 	},
 ];
@@ -329,7 +323,6 @@ function Dashboard() {
 							description={section.description}
 							Icon={section.Icon}
 							iconColor={section.accent}
-							tint={section.tint}
 							count={counts[section.key]}
 							isLoading={isLoading}
 						/>
@@ -400,7 +393,6 @@ interface DashboardCardProps {
 	description: string;
 	Icon: LucideIcon;
 	iconColor: string;
-	tint: string;
 	count: number;
 	isLoading?: boolean;
 }
@@ -411,7 +403,6 @@ function DashboardCard({
 	description,
 	Icon,
 	iconColor,
-	tint,
 	count,
 	isLoading,
 }: DashboardCardProps) {
@@ -444,10 +435,8 @@ function DashboardCard({
 		>
 			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 			<div className="flex items-start justify-between gap-4">
-				<div
-					className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${tint} ${iconColor}`}
-				>
-					<Icon className="h-5 w-5" strokeWidth={1.7} />
+				<div className={`flex h-11 w-11 shrink-0 items-center justify-center ${iconColor}`}>
+					<Icon className="h-6 w-6" strokeWidth={1.5} />
 				</div>
 				<div className="text-right">
 					<span className="font-display text-3xl font-bold leading-none text-foreground">
@@ -629,8 +618,13 @@ function LastSessionCard({
 						Nenhuma sessão registrada
 					</p>
 					<p className="mt-1 max-w-[200px] text-[11px] leading-normal text-muted-foreground/60 font-medium">
-						Quando registrar sua primeira sessão, ela aparecerá aqui.
+						Comece registrando o diário da sua primeira sessão de aventura!
 					</p>
+					<Link to="/sessions" className="mt-4">
+						<Button size="sm" variant="outline">
+							Registrar Sessão
+						</Button>
+					</Link>
 				</div>
 			)}
 		</aside>

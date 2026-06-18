@@ -294,6 +294,8 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 					id={emailId}
 					type="email"
 					placeholder="seu@email.com"
+					autoComplete="email"
+					spellCheck={false}
 					{...register("email")}
 					aria-invalid={!!errors.email}
 				/>
@@ -309,6 +311,9 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 						id={passwordId}
 						type={showPw ? "text" : "password"}
 						placeholder="••••••••"
+						autoComplete="current-password"
+						spellCheck={false}
+						className="pr-10"
 						{...register("password")}
 						aria-invalid={!!errors.password}
 					/>
@@ -317,6 +322,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 						onClick={() => setShowPw(!showPw)}
 						className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 						tabIndex={-1}
+						aria-label={showPw ? "Ocultar senha" : "Revelar senha"}
 					>
 						{showPw ? (
 							<EyeOff className="h-4 w-4" />
@@ -439,6 +445,8 @@ function RegisterForm() {
 				<Input
 					id={nameId}
 					placeholder="Seu nome de aventureiro"
+					autoComplete="username"
+					spellCheck={false}
 					{...register("name")}
 					aria-invalid={!!errors.name}
 				/>
@@ -453,6 +461,8 @@ function RegisterForm() {
 					id={emailId}
 					type="email"
 					placeholder="seu@email.com"
+					autoComplete="email"
+					spellCheck={false}
 					{...register("email")}
 					aria-invalid={!!errors.email}
 				/>
@@ -468,6 +478,9 @@ function RegisterForm() {
 						id={passwordId}
 						type={showPw ? "text" : "password"}
 						placeholder="Mínimo 8 caracteres"
+						autoComplete="new-password"
+						spellCheck={false}
+						className="pr-10"
 						{...register("password")}
 						aria-invalid={!!errors.password}
 					/>
@@ -476,6 +489,7 @@ function RegisterForm() {
 						onClick={() => setShowPw(!showPw)}
 						className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 						tabIndex={-1}
+						aria-label={showPw ? "Ocultar senha" : "Revelar senha"}
 					>
 						{showPw ? (
 							<EyeOff className="h-4 w-4" />
@@ -498,6 +512,9 @@ function RegisterForm() {
 						id={confirmPasswordId}
 						type={showConfirm ? "text" : "password"}
 						placeholder="Repita a senha"
+						autoComplete="new-password"
+						spellCheck={false}
+						className="pr-10"
 						{...register("confirmPassword")}
 						aria-invalid={!!errors.confirmPassword}
 					/>
@@ -506,6 +523,7 @@ function RegisterForm() {
 						onClick={() => setShowConfirm(!showConfirm)}
 						className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 						tabIndex={-1}
+						aria-label={showConfirm ? "Ocultar confirmação de senha" : "Revelar confirmação de senha"}
 					>
 						{showConfirm ? (
 							<EyeOff className="h-4 w-4" />
@@ -624,6 +642,8 @@ function ForgotPasswordForm() {
 					id={emailId}
 					type="email"
 					placeholder="seu@email.com"
+					autoComplete="email"
+					spellCheck={false}
 					{...register("email")}
 					aria-invalid={!!errors.email}
 				/>
@@ -732,6 +752,9 @@ function ResetPasswordForm() {
 						id={passwordId}
 						type={showPw ? "text" : "password"}
 						placeholder="••••••••"
+						autoComplete="new-password"
+						spellCheck={false}
+						className="pr-10"
 						{...register("password")}
 						aria-invalid={!!errors.password}
 					/>
@@ -740,6 +763,7 @@ function ResetPasswordForm() {
 						onClick={() => setShowPw(!showPw)}
 						className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 						tabIndex={-1}
+						aria-label={showPw ? "Ocultar senha" : "Revelar senha"}
 					>
 						{showPw ? (
 							<EyeOff className="h-4 w-4" />
@@ -762,6 +786,9 @@ function ResetPasswordForm() {
 						id={confirmPasswordId}
 						type={showConfirm ? "text" : "password"}
 						placeholder="Repita a nova senha"
+						autoComplete="new-password"
+						spellCheck={false}
+						className="pr-10"
 						{...register("confirmPassword")}
 						aria-invalid={!!errors.confirmPassword}
 					/>
@@ -770,6 +797,7 @@ function ResetPasswordForm() {
 						onClick={() => setShowConfirm(!showConfirm)}
 						className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 						tabIndex={-1}
+						aria-label={showConfirm ? "Ocultar confirmação de senha" : "Revelar confirmação de senha"}
 					>
 						{showConfirm ? (
 							<EyeOff className="h-4 w-4" />
