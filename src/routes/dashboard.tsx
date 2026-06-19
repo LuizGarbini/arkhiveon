@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
+import { InviteBanner } from "@/components/invite-banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRPGStore } from "@/lib/store";
@@ -88,6 +89,11 @@ function Dashboard() {
 	const lores = useRPGStore((s) => s.lores);
 	const activityLog = useRPGStore((s) => s.activityLog);
 	const isLoading = useRPGStore((s) => s.isLoadingRemote);
+	const loadInvites = useRPGStore((s) => s.loadInvites);
+
+	useEffect(() => {
+		void loadInvites();
+	}, [loadInvites]);
 
 	const counts = useMemo(
 		() => ({
@@ -133,71 +139,71 @@ function Dashboard() {
 			if (cancelled || !canvasRef.current) return;
 
 			const gradient = new NeatGradient({
-			ref: canvasRef.current,
-			colors: [
-				{ color: "#130437", enabled: true },
-				{ color: "#B34BD0", enabled: true },
-				{ color: "#210751", enabled: true },
-				{ color: "#3511A5", enabled: true },
-				{ color: "#8F3E8D", enabled: false },
-				{ color: "#FF9A9E", enabled: false },
-			],
-			speed: 4,
-			horizontalPressure: 7,
-			verticalPressure: 3,
-			waveFrequencyX: 0,
-			waveFrequencyY: 0,
-			waveAmplitude: 0,
-			shadows: 4,
-			highlights: 0,
-			colorBrightness: 1.95,
-			colorSaturation: 2,
-			wireframe: false,
-			colorBlending: 9,
-			backgroundColor: "#003FFF",
-			backgroundAlpha: 1,
-			grainScale: 6,
-			grainSparsity: 0,
-			grainIntensity: 0.125,
-			grainSpeed: 0,
-			resolution: 1.15,
-			yOffset: 0,
-			yOffsetWaveMultiplier: 4.5,
-			yOffsetColorMultiplier: 4.8,
-			yOffsetFlowMultiplier: 5.2,
-			flowDistortionA: 0.4,
-			flowDistortionB: 10,
-			flowScale: 3.3,
-			flowEase: 0.37,
-			flowEnabled: true,
-			enableProceduralTexture: false,
-			textureVoidLikelihood: 0.06,
-			textureVoidWidthMin: 10,
-			textureVoidWidthMax: 500,
-			textureBandDensity: 0.8,
-			textureColorBlending: 0.06,
-			textureSeed: 333,
-			textureEase: 0.38,
-			proceduralBackgroundColor: "#003FFF",
-			textureShapeTriangles: 20,
-			textureShapeCircles: 15,
-			textureShapeBars: 15,
-			textureShapeSquiggles: 10,
-			domainWarpEnabled: false,
-			domainWarpIntensity: 0,
-			domainWarpScale: 3,
-			vignetteIntensity: 0,
-			vignetteRadius: 0.8,
-			fresnelEnabled: false,
-			fresnelPower: 2,
-			fresnelIntensity: 0.5,
-			fresnelColor: "#FFFFFF",
-			iridescenceEnabled: false,
-			iridescenceIntensity: 0.5,
-			iridescenceSpeed: 1,
-			bloomIntensity: 0,
-			bloomThreshold: 0.7,
-			chromaticAberration: 0,
+				ref: canvasRef.current,
+				colors: [
+					{ color: "#130437", enabled: true },
+					{ color: "#B34BD0", enabled: true },
+					{ color: "#210751", enabled: true },
+					{ color: "#3511A5", enabled: true },
+					{ color: "#8F3E8D", enabled: false },
+					{ color: "#FF9A9E", enabled: false },
+				],
+				speed: 4,
+				horizontalPressure: 7,
+				verticalPressure: 3,
+				waveFrequencyX: 0,
+				waveFrequencyY: 0,
+				waveAmplitude: 0,
+				shadows: 4,
+				highlights: 0,
+				colorBrightness: 1.95,
+				colorSaturation: 2,
+				wireframe: false,
+				colorBlending: 9,
+				backgroundColor: "#003FFF",
+				backgroundAlpha: 1,
+				grainScale: 6,
+				grainSparsity: 0,
+				grainIntensity: 0.125,
+				grainSpeed: 0,
+				resolution: 1.15,
+				yOffset: 0,
+				yOffsetWaveMultiplier: 4.5,
+				yOffsetColorMultiplier: 4.8,
+				yOffsetFlowMultiplier: 5.2,
+				flowDistortionA: 0.4,
+				flowDistortionB: 10,
+				flowScale: 3.3,
+				flowEase: 0.37,
+				flowEnabled: true,
+				enableProceduralTexture: false,
+				textureVoidLikelihood: 0.06,
+				textureVoidWidthMin: 10,
+				textureVoidWidthMax: 500,
+				textureBandDensity: 0.8,
+				textureColorBlending: 0.06,
+				textureSeed: 333,
+				textureEase: 0.38,
+				proceduralBackgroundColor: "#003FFF",
+				textureShapeTriangles: 20,
+				textureShapeCircles: 15,
+				textureShapeBars: 15,
+				textureShapeSquiggles: 10,
+				domainWarpEnabled: false,
+				domainWarpIntensity: 0,
+				domainWarpScale: 3,
+				vignetteIntensity: 0,
+				vignetteRadius: 0.8,
+				fresnelEnabled: false,
+				fresnelPower: 2,
+				fresnelIntensity: 0.5,
+				fresnelColor: "#FFFFFF",
+				iridescenceEnabled: false,
+				iridescenceIntensity: 0.5,
+				iridescenceSpeed: 1,
+				bloomIntensity: 0,
+				bloomThreshold: 0.7,
+				chromaticAberration: 0,
 			});
 
 			gradientRef.current = gradient;
@@ -212,6 +218,7 @@ function Dashboard() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-6 py-10 sm:px-8">
+			<InviteBanner />
 			<section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 p-7 shadow-xl shadow-black/5 sm:p-10">
 				{/* Neat gradient background */}
 				<canvas
@@ -264,7 +271,10 @@ function Dashboard() {
 								</Button>
 							</Link>
 							<Link to="/sessions">
-								<Button variant="outline" className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white">
+								<Button
+									variant="outline"
+									className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+								>
 									<ScrollText className="h-4 w-4" />
 									Registrar sessão
 								</Button>
@@ -598,7 +608,10 @@ function LastSessionCard({
 						Última sessão
 					</h2>
 				</div>
-				<CalendarDays className="h-5 w-5 text-primary animate-pulse-slow" strokeWidth={1.7} />
+				<CalendarDays
+					className="h-5 w-5 text-primary animate-pulse-slow"
+					strokeWidth={1.7}
+				/>
 			</div>
 
 			{lastSession ? (
@@ -623,7 +636,9 @@ function LastSessionCard({
 
 					<div className="mt-6 flex items-center gap-1.5 text-[12px] font-bold text-primary/95 pt-4 border-t border-border/30">
 						<span>Ver crônicas</span>
-						<span className="transition-transform group-hover:translate-x-0.5">→</span>
+						<span className="transition-transform group-hover:translate-x-0.5">
+							→
+						</span>
 					</div>
 				</Link>
 			) : (
