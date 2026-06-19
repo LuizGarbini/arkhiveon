@@ -17,7 +17,7 @@ import { EntityLinkChips } from "@/components/entity-links";
 import { NpcEditButton } from "@/components/npc-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRPGStore } from "@/lib/store";
+import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/npcs/$npcId")({
@@ -65,6 +65,9 @@ function NpcDetailPage() {
 	const { npcId } = Route.useParams();
 	const { edit } = Route.useSearch();
 	const navigate = useNavigate();
+	const myRole = useActiveCampaignRole();
+	const isPlayer = myRole === "viewer";
+
 	const npc = useRPGStore((state) =>
 		state.npcs.find((item) => item.id === npcId),
 	);
@@ -188,14 +191,16 @@ function NpcDetailPage() {
 								</Button>
 							</Link>
 						)}
-						<Button
-							type="button"
-							onClick={() => setIsEditing((current) => !current)}
-							className="gap-2"
-						>
-							<Pencil className="h-4 w-4" />
-							{isEditing ? "Concluir edição" : "Editar"}
-						</Button>
+						{!isPlayer && (
+							<Button
+								type="button"
+								onClick={() => setIsEditing((current) => !current)}
+								className="gap-2"
+							>
+								<Pencil className="h-4 w-4" />
+								{isEditing ? "Concluir edição" : "Editar"}
+							</Button>
+						)}
 					</div>
 				</div>
 
@@ -325,13 +330,15 @@ function NpcDetailPage() {
 						)}
 					</SectionCard>
 
-					<SectionCard
-						eyebrow="Mestre"
-						title="Segredos"
-						onEdit={isEditing ? () => { setActiveTab("secrets"); setDialogOpen(true); } : undefined}
-					>
-						<TextBlock value={npc.secrets} />
-					</SectionCard>
+					{!isPlayer && (
+						<SectionCard
+							eyebrow="Mestre"
+							title="Segredos"
+							onEdit={isEditing ? () => { setActiveTab("secrets"); setDialogOpen(true); } : undefined}
+						>
+							<TextBlock value={npc.secrets} />
+						</SectionCard>
+					)}
 				</aside>
 			</div>
 
