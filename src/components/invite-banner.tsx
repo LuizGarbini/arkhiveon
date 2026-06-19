@@ -117,7 +117,7 @@ export function InviteBanner() {
 											invite.campaignName || "Campanha sem nome",
 										)
 									}
-									className="h-8 text-[11px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-xs"
+									className="h-8 text-[11px] font-bold gap-1.5 shadow-xs"
 								>
 									{isProcessing ? (
 										<Loader2 className="h-3 w-3 animate-spin" />

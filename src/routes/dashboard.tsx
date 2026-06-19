@@ -9,10 +9,12 @@ import {
 	Package,
 	ScrollText,
 	User,
+	UserPlus,
 	Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
+import { CampaignForm } from "@/components/campaign-form";
 import { InviteBanner } from "@/components/invite-banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,6 +92,14 @@ function Dashboard() {
 	const activityLog = useRPGStore((s) => s.activityLog);
 	const isLoading = useRPGStore((s) => s.isLoadingRemote);
 	const loadInvites = useRPGStore((s) => s.loadInvites);
+
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const activeCampaign = useMemo(
+		() => campaigns.find((c) => c.id === activeCampaignId),
+		[campaigns, activeCampaignId],
+	);
+	const [showInviteDialog, setShowInviteDialog] = useState(false);
 
 	useEffect(() => {
 		void loadInvites();
@@ -253,7 +263,7 @@ function Dashboard() {
 							Visão geral
 						</p>
 						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
-							Sua campanha em foco
+							{activeCampaign ? activeCampaign.name : "Sua campanha em foco"}
 						</h1>
 						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/80">
 							Acompanhe os registros principais, retome a última sessão e acesse
@@ -279,6 +289,17 @@ function Dashboard() {
 									Registrar sessão
 								</Button>
 							</Link>
+							{activeCampaign && activeCampaign.myRole === "owner" && (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setShowInviteDialog(true)}
+									className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+								>
+									<UserPlus className="h-4 w-4" />
+									Convidar Jogadores
+								</Button>
+							)}
 						</div>
 					</div>
 
@@ -357,6 +378,15 @@ function Dashboard() {
 				<ActivityFeed limit={6} isLoading={isLoading} />
 				<LastSessionCard lastSession={lastSession} isLoading={isLoading} />
 			</section>
+
+			{showInviteDialog && activeCampaign && (
+				<CampaignForm
+					open={showInviteDialog}
+					onOpenChange={setShowInviteDialog}
+					campaign={activeCampaign}
+					defaultTab="members"
+				/>
+			)}
 		</div>
 	);
 }

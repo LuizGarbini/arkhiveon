@@ -1,6 +1,8 @@
-import { useEffect, useId, useState } from "react";
+import { Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useRPGStore } from "@/lib/store";
-import type { Campaign, MembershipRole, Invite } from "@/lib/store/types";
+import type { Campaign, Invite, MembershipRole } from "@/lib/store/types";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -12,24 +14,26 @@ import {
 } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { cn } from "@/lib/utils";
-import { Trash2, UserPlus, Shield, User, Loader2 } from "lucide-react";
 
 interface CampaignFormProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	campaign?: Campaign | null;
+	defaultTab?: "general" | "members";
 }
 
 export function CampaignForm({
 	open,
 	onOpenChange,
 	campaign,
+	defaultTab = "general",
 }: CampaignFormProps) {
 	const createCampaign = useRPGStore((s) => s.createCampaign);
 	const updateCampaign = useRPGStore((s) => s.updateCampaign);
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
-	const loadCampaignMembersAndInvites = useRPGStore((s) => s.loadCampaignMembersAndInvites);
+	const loadCampaignMembersAndInvites = useRPGStore(
+		(s) => s.loadCampaignMembersAndInvites,
+	);
 	const createInvite = useRPGStore((s) => s.createInvite);
 	const revokeInvite = useRPGStore((s) => s.revokeInvite);
 	const removeMember = useRPGStore((s) => s.removeMember);
@@ -42,7 +46,9 @@ export function CampaignForm({
 	const descInputId = useId();
 
 	// Membros e Convites
-	const [members, setMembers] = useState<Array<{ id: string; userId: string; email: string; role: MembershipRole }>>([]);
+	const [members, setMembers] = useState<
+		Array<{ id: string; userId: string; email: string; role: MembershipRole }>
+	>([]);
 	const [invites, setInvites] = useState<Invite[]>([]);
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("viewer");
@@ -50,7 +56,7 @@ export function CampaignForm({
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-	const fetchMembersAndInvites = async () => {
+	const fetchMembersAndInvites = useCallback(async () => {
 		if (!campaign) return;
 		setIsLoadingMembers(true);
 		try {
@@ -62,7 +68,7 @@ export function CampaignForm({
 		} finally {
 			setIsLoadingMembers(false);
 		}
-	};
+	}, [campaign, loadCampaignMembersAndInvites]);
 
 	useEffect(() => {
 		if (open) {
@@ -71,13 +77,13 @@ export function CampaignForm({
 			setInviteEmail("");
 			setInviteRole("viewer");
 			setInviteError(null);
-			setActiveTab("general");
-			
+			setActiveTab(defaultTab);
+
 			if (campaign) {
 				void fetchMembersAndInvites();
 			}
 		}
-	}, [open, campaign]);
+	}, [open, campaign, defaultTab, fetchMembersAndInvites]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -140,7 +146,8 @@ export function CampaignForm({
 		}
 	}
 
-	const invitedCount = members.filter(m => m.role !== 'owner').length + invites.length;
+	const invitedCount =
+		members.filter((m) => m.role !== "owner").length + invites.length;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +172,7 @@ export function CampaignForm({
 								"px-4 py-2 text-[12px] font-semibold border-b-2 -mb-[2px] transition-colors cursor-pointer",
 								activeTab === "general"
 									? "border-primary text-primary"
-									: "border-transparent text-muted-foreground hover:text-foreground"
+									: "border-transparent text-muted-foreground hover:text-foreground",
 							)}
 						>
 							Dados Gerais
@@ -177,7 +184,7 @@ export function CampaignForm({
 								"px-4 py-2 text-[12px] font-semibold border-b-2 -mb-[2px] transition-colors cursor-pointer",
 								activeTab === "members"
 									? "border-primary text-primary"
-									: "border-transparent text-muted-foreground hover:text-foreground"
+									: "border-transparent text-muted-foreground hover:text-foreground",
 							)}
 						>
 							Jogadores Convocados ({invitedCount}/6)
@@ -240,9 +247,13 @@ export function CampaignForm({
 					<div className="space-y-6">
 						{/* Enviar Convite */}
 						{invitedCount < 6 ? (
-							<form onSubmit={handleSendInvite} className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20">
+							<form
+								onSubmit={handleSendInvite}
+								className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20"
+							>
 								<h3 className="text-[12px] font-bold flex items-center gap-1.5 text-foreground">
-									<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar Jogador
+									<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
+									Jogador
 								</h3>
 								<div className="flex gap-2">
 									<Input
@@ -255,29 +266,44 @@ export function CampaignForm({
 									/>
 									<select
 										value={inviteRole}
-										onChange={(e) => setInviteRole(e.target.value as "editor" | "viewer")}
+										onChange={(e) =>
+											setInviteRole(e.target.value as "editor" | "viewer")
+										}
 										className="rounded-lg border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground outline-hidden focus:border-primary"
 									>
 										<option value="viewer">Jogador (Ver)</option>
 										<option value="editor">Co-Mestre (Editar)</option>
 									</select>
-									<Button type="submit" size="sm" disabled={!inviteEmail.trim() || isSendingInvite}>
-										{isSendingInvite ? <Loader2 className="h-3 w-3 animate-spin" /> : "Convidar"}
+									<Button
+										type="submit"
+										size="sm"
+										disabled={!inviteEmail.trim() || isSendingInvite}
+									>
+										{isSendingInvite ? (
+											<Loader2 className="h-3 w-3 animate-spin" />
+										) : (
+											"Convidar"
+										)}
 									</Button>
 								</div>
 								{inviteError && (
-									<p className="text-[10px] text-destructive font-medium">{inviteError}</p>
+									<p className="text-[10px] text-destructive font-medium">
+										{inviteError}
+									</p>
 								)}
 							</form>
 						) : (
 							<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-								Limite de 6 participantes atingido. Remova um membro ou cancele um convite pendente para liberar espaço.
+								Limite de 6 participantes atingido. Remova um membro ou cancele
+								um convite pendente para liberar espaço.
 							</p>
 						)}
 
 						{/* Listagem de Participantes */}
 						<div className="space-y-3">
-							<h3 className="text-[12px] font-bold text-foreground">Lista de Participantes</h3>
+							<h3 className="text-[12px] font-bold text-foreground">
+								Lista de Participantes
+							</h3>
 							{isLoadingMembers ? (
 								<div className="flex justify-center py-6 text-muted-foreground">
 									<Loader2 className="h-5 w-5 animate-spin" />
@@ -292,14 +318,22 @@ export function CampaignForm({
 										>
 											<div className="flex items-center gap-2.5 min-w-0">
 												<div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-													{member.role === "owner" ? <Shield className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+													{member.role === "owner" ? (
+														<Shield className="h-3.5 w-3.5" />
+													) : (
+														<User className="h-3.5 w-3.5" />
+													)}
 												</div>
 												<div className="flex flex-col min-w-0 leading-tight">
 													<span className="text-[11px] font-semibold truncate text-foreground">
 														{member.email}
 													</span>
 													<span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">
-														{member.role === "owner" ? "Mestre" : member.role === "editor" ? "Co-Mestre" : "Jogador"}
+														{member.role === "owner"
+															? "Mestre"
+															: member.role === "editor"
+																? "Co-Mestre"
+																: "Jogador"}
 													</span>
 												</div>
 											</div>
@@ -333,7 +367,8 @@ export function CampaignForm({
 														{invite.email}
 													</span>
 													<span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1">
-														Pendente • {invite.role === "editor" ? "Co-Mestre" : "Jogador"}
+														Pendente •{" "}
+														{invite.role === "editor" ? "Co-Mestre" : "Jogador"}
 													</span>
 												</div>
 											</div>

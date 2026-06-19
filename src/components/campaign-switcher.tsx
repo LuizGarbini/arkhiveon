@@ -1,4 +1,11 @@
-import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+	Check,
+	ChevronDown,
+	Pencil,
+	Plus,
+	Trash2,
+	UserPlus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
@@ -60,6 +67,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const [showForm, setShowForm] = useState(false);
 	const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
 	const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
+	const [campaignEditTab, setCampaignEditTab] = useState<"general" | "members">(
+		"general",
+	);
 	const isMobile = useIsMobileSidebar();
 
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
@@ -180,22 +190,39 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 									</div>
 								</div>
 
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1.5">
 									{campaign.id === activeCampaignId && (
 										<Check className="h-3.5 w-3.5 shrink-0 text-primary" />
 									)}
 									{campaign.myRole === "owner" && (
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												setCampaignToEdit(campaign);
-											}}
-											aria-label={`Editar campanha ${campaign.name}`}
-											className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
-										>
-											<Pencil className="h-3.5 w-3.5" />
-										</button>
+										<>
+											<button
+												type="button"
+												onClick={(e) => {
+													e.stopPropagation();
+													setCampaignToEdit(campaign);
+													setCampaignEditTab("members");
+												}}
+												aria-label={`Gerenciar jogadores de ${campaign.name}`}
+												title="Gerenciar convites e membros"
+												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
+											>
+												<UserPlus className="h-3.5 w-3.5" />
+											</button>
+											<button
+												type="button"
+												onClick={(e) => {
+													e.stopPropagation();
+													setCampaignToEdit(campaign);
+													setCampaignEditTab("general");
+												}}
+												aria-label={`Editar campanha ${campaign.name}`}
+												title="Editar detalhes da campanha"
+												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
+											>
+												<Pencil className="h-3.5 w-3.5" />
+											</button>
+										</>
 									)}
 									{campaigns.length > 1 && campaign.myRole === "owner" && (
 										<button
@@ -243,6 +270,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 				open={!!campaignToEdit}
 				onOpenChange={(open) => !open && setCampaignToEdit(null)}
 				campaign={campaignToEdit}
+				defaultTab={campaignEditTab}
 			/>
 
 			<Dialog
