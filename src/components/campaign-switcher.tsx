@@ -104,9 +104,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 										: "max-w-36 translate-x-0 opacity-100",
 								)}
 							>
-								<span className="truncate text-[12px] font-bold text-foreground">
-									{activeCampaign?.name ?? "Sem campanha"}
-								</span>
+								<div className="flex items-center gap-1.5 min-w-0">
+									<span className="truncate text-[12px] font-bold text-foreground">
+										{activeCampaign?.name ?? "Sem campanha"}
+									</span>
+									{activeCampaign && activeCampaign.myRole !== "owner" && (
+										<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
+											Jogador
+										</span>
+									)}
+								</div>
 								<span className="truncate text-[10px] text-muted-foreground">
 									{activeCampaign?.description || "Campanha ativa"}
 								</span>
@@ -155,9 +162,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 										{campaignInitials(campaign.name)}
 									</div>
 									<div className="flex min-w-0 flex-1 flex-col leading-tight">
-										<span className="truncate text-[12px] font-semibold">
-											{campaign.name}
-										</span>
+										<div className="flex items-center gap-1.5 min-w-0">
+											<span className="truncate text-[12px] font-semibold">
+												{campaign.name}
+											</span>
+											{campaign.myRole !== "owner" && (
+												<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
+													Jogador
+												</span>
+											)}
+										</div>
 										{campaign.description && (
 											<span className="truncate text-[10px] text-muted-foreground">
 												{campaign.description}
