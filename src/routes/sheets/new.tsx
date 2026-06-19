@@ -435,14 +435,25 @@ function NewSheetPage() {
 								<AbilitiesFields
 									register={register}
 									control={control}
+									setValue={setValue}
 									config={config}
 								/>
 							)}
 							{detailsTab === "combat" && (
 								<div className="space-y-7">
-									<CombatFields register={register} config={config} />
+									<CombatFields
+										register={register}
+										control={control}
+										setValue={setValue}
+										config={config}
+									/>
 									{config.showSanity && (
-										<SanityFields register={register} config={config} />
+										<SanityFields
+											register={register}
+											control={control}
+											setValue={setValue}
+											config={config}
+										/>
 									)}
 									{(config.showSpells ||
 										config.customFields?.some(

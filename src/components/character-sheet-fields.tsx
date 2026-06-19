@@ -1,4 +1,4 @@
-import { BookOpen, Sparkles, Trash } from "lucide-react";
+import { BookOpen, Minus, Plus, Sparkles, Trash } from "lucide-react";
 import { useState } from "react";
 import {
 	type Control,
@@ -9,10 +9,10 @@ import {
 	useWatch,
 } from "react-hook-form";
 import {
-	abilityModifier,
 	type Character,
 	characterDefaults,
-	formatModifier,
+	getAttributeExtraInfo,
+	getAttributeFullName,
 	type SheetModuleKind,
 	type Spell,
 } from "@/lib/store";
@@ -21,6 +21,7 @@ import {
 	SYSTEM_CONFIG,
 	type SystemConfig,
 } from "@/lib/systems";
+import { cn } from "@/lib/utils";
 import { ImageUploader } from "./image-uploader";
 import { SpellSearchDialog } from "./spell-search-dialog";
 import { Button } from "./ui/button";
@@ -278,14 +279,34 @@ export function CharacterModuleFields({
 	}
 	if (kind === "abilities") {
 		return (
-			<AbilitiesFields register={register} control={control} config={config} />
+			<AbilitiesFields
+				register={register}
+				control={control}
+				setValue={setValue}
+				config={config}
+			/>
 		);
 	}
 	if (kind === "combat") {
-		return <CombatFields register={register} config={config} errors={errors} />;
+		return (
+			<CombatFields
+				register={register}
+				control={control}
+				setValue={setValue}
+				config={config}
+				errors={errors}
+			/>
+		);
 	}
 	if (kind === "sanity") {
-		return <SanityFields register={register} config={config} />;
+		return (
+			<SanityFields
+				register={register}
+				control={control}
+				setValue={setValue}
+				config={config}
+			/>
+		);
 	}
 	if (kind === "magic") {
 		return (
@@ -311,10 +332,14 @@ export function CharacterModuleFields({
 
 export function CustomFieldsRenderer({
 	register,
+	control,
+	setValue,
 	config,
 	section,
 }: {
 	register: CharacterRegister;
+	control?: CharacterControl;
+	setValue?: CharacterSetValue;
 	config: SystemConfig;
 	section: import("@/lib/systems").CharacterSection;
 }) {
@@ -336,6 +361,16 @@ export function CustomFieldsRenderer({
 								{...register(
 									`systemFields.${field.key}` as Path<CharacterFormValues>,
 								)}
+							/>
+						) : field.type === "number" && control && setValue ? (
+							<AdjustableNumberField
+								name={`systemFields.${field.key}`}
+								register={register}
+								control={control}
+								setValue={setValue}
+								min={numberConstraints?.min ?? 0}
+								max={numberConstraints?.max ?? 9999}
+								placeholder={placeholder}
 							/>
 						) : (
 							<Input
@@ -480,10 +515,12 @@ export function IdentityFields({
 export function AbilitiesFields({
 	register,
 	control,
+	setValue,
 	config,
 }: {
 	register: CharacterRegister;
 	control: CharacterControl;
+	setValue: CharacterSetValue;
 	config: SystemConfig;
 }) {
 	const fields = config.attributes || [];
@@ -508,6 +545,7 @@ export function AbilitiesFields({
 							name={field.key}
 							register={register}
 							control={control}
+							setValue={setValue}
 							config={config}
 						/>
 					))}
@@ -548,9 +586,13 @@ export function AbilitiesFields({
 
 export function SanityFields({
 	register,
+	control,
+	setValue,
 	config,
 }: {
 	register: CharacterRegister;
+	control: CharacterControl;
+	setValue: CharacterSetValue;
 	config: SystemConfig;
 }) {
 	return (
@@ -561,46 +603,68 @@ export function SanityFields({
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 				<CustomFieldsRenderer
 					register={register}
+					control={control}
+					setValue={setValue}
 					config={config}
 					section="sanity"
 				/>
 				{config.value === "coc" && (
 					<>
 						<Field label="Poder (POW)">
-							<Input
-								type="number"
+							<AdjustableNumberField
+								name="power"
+								register={register}
+								control={control}
+								setValue={setValue}
+								min={1}
+								max={99}
 								placeholder="10"
-								{...register("power", { valueAsNumber: true })}
 							/>
 						</Field>
 						<Field label="Tamanho (SIZ)">
-							<Input
-								type="number"
+							<AdjustableNumberField
+								name="size"
+								register={register}
+								control={control}
+								setValue={setValue}
+								min={1}
+								max={99}
 								placeholder="10"
-								{...register("size", { valueAsNumber: true })}
 							/>
 						</Field>
 						<Field label="Educação (EDU)">
-							<Input
-								type="number"
+							<AdjustableNumberField
+								name="education"
+								register={register}
+								control={control}
+								setValue={setValue}
+								min={1}
+								max={99}
 								placeholder="10"
-								{...register("education", { valueAsNumber: true })}
 							/>
 						</Field>
 					</>
 				)}
 				<Field label="Sanidade Atual">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="sanity"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
+						max={99}
 						placeholder="0"
-						{...register("sanity", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Sanidade Máxima">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="sanityMax"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
+						max={99}
 						placeholder="0"
-						{...register("sanityMax", { valueAsNumber: true })}
 					/>
 				</Field>
 			</div>
@@ -610,10 +674,14 @@ export function SanityFields({
 
 export function CombatFields({
 	register,
+	control,
+	setValue,
 	config,
 	errors,
 }: {
 	register: CharacterRegister;
+	control: CharacterControl;
+	setValue: CharacterSetValue;
 	config: SystemConfig;
 	errors?: FieldErrors<CharacterFormValues>;
 }) {
@@ -621,80 +689,98 @@ export function CombatFields({
 		<FormSection title="Status de Combate">
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 				<Field label="HP Atual" error={errors?.health?.message}>
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="health"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
 						placeholder="10"
-						{...register("health", {
-							valueAsNumber: true,
-							validate: (val, formVals) => {
-								const currentVal = Number(val);
-								const maxVal = Number(formVals.healthMax);
-								if (
-									Number.isFinite(currentVal) &&
-									Number.isFinite(maxVal) &&
-									currentVal > maxVal
-								) {
-									return "HP Atual não pode exceder o Máximo";
-								}
-								return true;
-							},
-						})}
+						validate={(val, formVals) => {
+							const currentVal = Number(val);
+							const maxVal = Number(formVals.healthMax);
+							if (
+								Number.isFinite(currentVal) &&
+								Number.isFinite(maxVal) &&
+								currentVal > maxVal
+							) {
+								return "HP Atual não pode exceder o Máximo";
+							}
+							return true;
+						}}
 					/>
 				</Field>
 				<Field label="HP Máximo" error={errors?.healthMax?.message}>
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="healthMax"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={1}
 						placeholder="10"
-						{...register("healthMax", {
-							valueAsNumber: true,
-							validate: (val, formVals) => {
-								const currentVal = Number(formVals.health);
-								const maxVal = Number(val);
-								if (
-									Number.isFinite(currentVal) &&
-									Number.isFinite(maxVal) &&
-									currentVal > maxVal
-								) {
-									return "HP Máximo não pode ser menor que o Atual";
-								}
-								return true;
-							},
-						})}
+						validate={(val, formVals) => {
+							const currentVal = Number(formVals.health);
+							const maxVal = Number(val);
+							if (
+								Number.isFinite(currentVal) &&
+								Number.isFinite(maxVal) &&
+								currentVal > maxVal
+							) {
+								return "HP Máximo não pode ser menor que o Atual";
+							}
+							return true;
+						}}
 					/>
 				</Field>
 				<Field label="HP Temporário">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="tempHealth"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
 						placeholder="0"
-						{...register("tempHealth", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="CA / Defesa">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="armorClass"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
 						placeholder="10"
-						{...register("armorClass", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Iniciativa">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="initiative"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={-20}
+						max={50}
 						placeholder="0"
-						{...register("initiative", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label={`Deslocamento (${config.speedUnit})`}>
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="speed"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
 						placeholder="9"
-						{...register("speed", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Bônus de proficiência">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="proficiencyBonus"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={0}
 						placeholder="2"
-						{...register("proficiencyBonus", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Dados de Vida (Hit Dice)" hint="Ex: 5d8">
@@ -703,27 +789,33 @@ export function CombatFields({
 				{config.value.startsWith("dnd") && (
 					<>
 						<Field label="Testes contra Morte (Sucessos)" hint="0 a 3">
-							<Input
-								type="number"
+							<AdjustableNumberField
+								name="deathSaves.successes"
+								register={register}
+								control={control}
+								setValue={setValue}
 								min={0}
 								max={3}
 								placeholder="0"
-								{...register("deathSaves.successes", { valueAsNumber: true })}
 							/>
 						</Field>
 						<Field label="Testes contra Morte (Falhas)" hint="0 a 3">
-							<Input
-								type="number"
+							<AdjustableNumberField
+								name="deathSaves.failures"
+								register={register}
+								control={control}
+								setValue={setValue}
 								min={0}
 								max={3}
 								placeholder="0"
-								{...register("deathSaves.failures", { valueAsNumber: true })}
 							/>
 						</Field>
 					</>
 				)}
 				<CustomFieldsRenderer
 					register={register}
+					control={control}
+					setValue={setValue}
 					config={config}
 					section="combat"
 				/>
@@ -814,6 +906,8 @@ export function MagicFields({
 		<FormSection title="Magia">
 			<CustomFieldsRenderer
 				register={register}
+				control={control}
+				setValue={setValue}
 				config={config}
 				section="magic"
 			/>
@@ -828,18 +922,24 @@ export function MagicFields({
 					<Input placeholder="INT / SAB / CAR" {...register("spellAbility")} />
 				</Field>
 				<Field label="CD da magia">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="spellSaveDc"
+						register={register}
+						control={control}
+						setValue={setValue}
 						min={0}
 						placeholder="13"
-						{...register("spellSaveDc", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field label="Bônus de ataque mágico">
-					<Input
-						type="number"
+					<AdjustableNumberField
+						name="spellAttackBonus"
+						register={register}
+						control={control}
+						setValue={setValue}
+						min={-20}
+						max={50}
 						placeholder="0"
-						{...register("spellAttackBonus", { valueAsNumber: true })}
 					/>
 				</Field>
 				<Field
@@ -991,17 +1091,94 @@ export function NotesFields({
 	);
 }
 
+export interface AdjustableNumberFieldProps {
+	name: string;
+	register: CharacterRegister;
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+	min?: number;
+	max?: number;
+	placeholder?: string;
+	className?: string;
+	validate?: import("react-hook-form").RegisterOptions<CharacterFormValues, Path<CharacterFormValues>>["validate"];
+}
+
+export function AdjustableNumberField({
+	name,
+	register,
+	control,
+	setValue,
+	min = 0,
+	max = 9999,
+	placeholder = "0",
+	className,
+	validate,
+}: AdjustableNumberFieldProps) {
+	const fieldName = name as Path<CharacterFormValues>;
+	const value = useWatch({ control, name: fieldName });
+	const numeric =
+		typeof value === "number" ? value : Number.parseInt(value as string, 10) || 0;
+
+	const handleAdjustment = (delta: number) => {
+		const currentVal = Number.isNaN(numeric) ? 0 : numeric;
+		const newVal = Math.max(min, Math.min(max, currentVal + delta));
+		setValue(fieldName, newVal, { shouldValidate: true, shouldDirty: true });
+	};
+
+	return (
+		<div
+			className={cn(
+				"relative flex items-center w-full max-w-[140px] rounded-lg border border-border bg-input/10 focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15 transition-all p-0.5",
+				className,
+			)}
+		>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon-xs"
+				disabled={numeric <= min}
+				onClick={() => handleAdjustment(-1)}
+				className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0"
+			>
+				<Minus className="h-3 w-3" />
+			</Button>
+
+			<input
+				type="number"
+				min={min}
+				max={max}
+				placeholder={placeholder}
+				className="h-7 w-full bg-transparent text-center text-[13.5px] font-extrabold text-foreground p-0 focus:outline-none focus:ring-0 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+				{...register(fieldName, { valueAsNumber: true, validate })}
+			/>
+
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon-xs"
+				disabled={numeric >= max}
+				onClick={() => handleAdjustment(1)}
+				className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0"
+			>
+				<Plus className="h-3 w-3" />
+			</Button>
+		</div>
+	);
+}
+
 function AbilityField({
 	label,
 	name,
 	register,
 	control,
+	setValue,
 	config,
 }: {
 	label: string;
 	name: string;
 	register: CharacterRegister;
 	control: CharacterControl;
+	setValue: CharacterSetValue;
 	config: SystemConfig;
 }) {
 	const isStandardKey = STANDARD_CHARACTER_ATTRIBUTE_KEYS.includes(
@@ -1013,25 +1190,69 @@ function AbilityField({
 		isStandardKey ? name : `systemAttributes.${name}`
 	) as Path<CharacterFormValues>;
 	const value = useWatch({ control, name: fieldName });
-	const numeric = Number(value);
-	const mod = Number.isFinite(numeric) ? abilityModifier(numeric) : 0;
+	const numeric =
+		typeof value === "number" ? value : Number.parseInt(value as string, 10) || 0;
+
+	const handleAdjustment = (delta: number) => {
+		const currentVal = Number.isNaN(numeric) || numeric === 0 ? 10 : numeric;
+		const newVal = Math.max(min, Math.min(max, currentVal + delta));
+		setValue(fieldName, newVal, { shouldValidate: true, shouldDirty: true });
+	};
+
+	const fullName = getAttributeFullName(label || name);
+	const extraInfo = getAttributeExtraInfo(numeric, config.value);
 
 	return (
-		<div className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5">
-			<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+		<div className="group/tooltip relative flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/50 hover:bg-card p-3 shadow-xs transition-all duration-200 hover:border-primary/35 hover:-translate-y-[2px] hover:shadow-md hover:shadow-primary/5">
+			{/* Tooltip */}
+			<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+				{fullName}
+			</div>
+
+			<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover/tooltip:text-primary">
 				{label}
 			</span>
-			<Input
-				type="number"
-				min={min}
-				max={max}
-				placeholder={placeholder}
-				className="h-8 w-full text-center text-[14px] font-bold"
-				{...register(fieldName, { valueAsNumber: true })}
-			/>
-			<span className="font-mono text-[11px] tabular-nums text-primary">
-				{formatModifier(mod)}
-			</span>
+
+			<div className="flex w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-muted/20 p-0.5 focus-within:border-primary/45 transition-all">
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					disabled={numeric <= min}
+					onClick={() => handleAdjustment(-1)}
+					className="h-6 w-6 rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0"
+				>
+					<Minus className="h-3 w-3" />
+				</Button>
+
+				<input
+					type="number"
+					min={min}
+					max={max}
+					placeholder={placeholder}
+					className="h-6 w-full bg-transparent text-center text-[15px] font-extrabold text-foreground p-0 focus:outline-none focus:ring-0 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					{...register(fieldName, { valueAsNumber: true })}
+				/>
+
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					disabled={numeric >= max}
+					onClick={() => handleAdjustment(1)}
+					className="h-6 w-6 rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0"
+				>
+					<Plus className="h-3 w-3" />
+				</Button>
+			</div>
+
+			{extraInfo ? (
+				<span className="font-mono text-[11.5px] font-extrabold tabular-nums text-primary/80 transition-colors group-hover/tooltip:text-primary">
+					{extraInfo}
+				</span>
+			) : (
+				<span className="h-4" />
+			)}
 		</div>
 	);
 }
