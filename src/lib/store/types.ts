@@ -1,4 +1,5 @@
 import type { UserPlan } from "../user-plan";
+export type { UserPlan };
 
 // =====================================================
 //  Sistemas suportados
@@ -410,6 +411,19 @@ export interface Membership {
 	createdAt: number;
 }
 
+export type InviteStatus = "pending" | "accepted" | "declined" | "expired";
+
+export interface Invite {
+	id: string;
+	campaignId: string;
+	email: string;
+	role: "editor" | "viewer";
+	status: InviteStatus;
+	invitedBy: string;
+	createdAt: number;
+	campaignName?: string;
+}
+
 export interface Campaign {
 	id: string;
 	name: string;
@@ -450,6 +464,7 @@ export interface RPGState {
 	userPlan: UserPlan;
 	setUserPlan: (plan: UserPlan) => void;
 	globalRecordsCount: number;
+	activeCampaignOwnerPlan: UserPlan;
 
 	// ----- Campanhas -----
 	campaigns: Campaign[];
@@ -462,6 +477,28 @@ export interface RPGState {
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
+
+	// ----- Convites & Membros -----
+	pendingInvites: Invite[];
+	loadInvites: () => Promise<void>;
+	createInvite: (
+		campaignId: string,
+		email: string,
+		role: "editor" | "viewer",
+	) => Promise<void>;
+	revokeInvite: (inviteId: string) => Promise<void>;
+	acceptInvite: (inviteId: string) => Promise<void>;
+	declineInvite: (inviteId: string) => Promise<void>;
+	removeMember: (campaignId: string, userId: string) => Promise<void>;
+	loadCampaignMembersAndInvites: (campaignId: string) => Promise<{
+		members: Array<{
+			id: string;
+			userId: string;
+			email: string;
+			role: MembershipRole;
+		}>;
+		invites: Invite[];
+	}>;
 
 	imageAssets: ImageAsset[];
 	loadImageAssets: () => Promise<void>;
