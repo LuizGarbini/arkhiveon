@@ -1100,7 +1100,10 @@ export interface AdjustableNumberFieldProps {
 	max?: number;
 	placeholder?: string;
 	className?: string;
-	validate?: import("react-hook-form").RegisterOptions<CharacterFormValues, Path<CharacterFormValues>>["validate"];
+	validate?: import("react-hook-form").RegisterOptions<
+		CharacterFormValues,
+		Path<CharacterFormValues>
+	>["validate"];
 }
 
 export function AdjustableNumberField({
@@ -1117,7 +1120,9 @@ export function AdjustableNumberField({
 	const fieldName = name as Path<CharacterFormValues>;
 	const value = useWatch({ control, name: fieldName });
 	const numeric =
-		typeof value === "number" ? value : Number.parseInt(value as string, 10) || 0;
+		typeof value === "number" && !Number.isNaN(value)
+			? value
+			: Number.parseInt(value as string, 10) || 0;
 
 	const handleAdjustment = (delta: number) => {
 		const currentVal = Number.isNaN(numeric) ? 0 : numeric;
@@ -1190,11 +1195,15 @@ function AbilityField({
 		isStandardKey ? name : `systemAttributes.${name}`
 	) as Path<CharacterFormValues>;
 	const value = useWatch({ control, name: fieldName });
+	const fallbackScore = Number.parseInt(placeholder, 10) || 10;
 	const numeric =
-		typeof value === "number" ? value : Number.parseInt(value as string, 10) || 0;
+		typeof value === "number" && !Number.isNaN(value)
+			? value
+			: Number.parseInt(value as string, 10) || fallbackScore;
 
 	const handleAdjustment = (delta: number) => {
-		const currentVal = Number.isNaN(numeric) || numeric === 0 ? 10 : numeric;
+		const currentVal =
+			Number.isNaN(numeric) || numeric === 0 ? fallbackScore : numeric;
 		const newVal = Math.max(min, Math.min(max, currentVal + delta));
 		setValue(fieldName, newVal, { shouldValidate: true, shouldDirty: true });
 	};
