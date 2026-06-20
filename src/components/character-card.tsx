@@ -124,7 +124,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			/>
 
 			{/* Banner com imagem ou padrão */}
-			<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-primary/15 via-fuchsia-500/10 to-transparent">
+			<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-primary/15 via-fuchsia-500/10 to-transparent [transform:translateZ(0)]">
 				{hasImage ? (
 					<FramedImage
 						src={characterImageUrl}
@@ -132,14 +132,15 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						framing={currentCharacter}
 						loading="lazy"
 						decoding="async"
-						imgClassName="opacity-90 transition-transform duration-500 group-hover:scale-105"
+						innerClassName="transition-transform duration-500 group-hover:scale-105"
+						imgClassName="opacity-90"
 					/>
 				) : (
 					<div className="flex h-full w-full items-center justify-center text-primary/30">
 						<User className="h-12 w-12" strokeWidth={1.4} />
 					</div>
 				)}
-				<div className="absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
+				<div className="absolute inset-x-0 bottom-0 z-10 h-12 bg-linear-to-t from-card to-transparent" />
 				{/* Camera overlay button */}
 				<button
 					type="button"
@@ -148,7 +149,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						e.stopPropagation();
 						setIsImageDialogOpen(true);
 					}}
-					className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
+					className={`absolute inset-0 z-20 flex items-center justify-center text-white transition focus:outline-none ${
 						hasImage
 							? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
 							: "bg-black/0 opacity-0 hover:bg-black/40 hover:opacity-100 focus:bg-black/40 focus:opacity-100"
@@ -166,14 +167,14 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							e.stopPropagation();
 							setIsImageDialogOpen(true);
 						}}
-						className="absolute bottom-8 right-2 flex items-center gap-1 rounded-lg border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground backdrop-blur transition hover:border-primary/40 hover:text-primary"
+						className="absolute bottom-8 right-2 z-10 flex items-center gap-1 rounded-lg border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground backdrop-blur transition hover:border-primary/40 hover:text-primary"
 						aria-label="Adicionar imagem"
 					>
 						<Camera className="h-3 w-3" />
 						Adicionar foto
 					</button>
 				)}
-				<div className="absolute right-2 bottom-2 flex h-8 min-w-8 items-center justify-center rounded-xl bg-background/85 px-1.5 backdrop-blur ring-1 ring-border/70">
+				<div className="absolute right-2 bottom-2 z-10 flex h-8 min-w-8 items-center justify-center rounded-xl bg-background/85 px-1.5 backdrop-blur ring-1 ring-border/70">
 					<span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
 						Lv
 					</span>

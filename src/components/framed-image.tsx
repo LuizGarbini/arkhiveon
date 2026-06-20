@@ -6,6 +6,7 @@ interface FramedImageProps {
 	alt: string;
 	framing?: ImageFraming;
 	className?: string;
+	innerClassName?: string;
 	imgClassName?: string;
 	loading?: "lazy" | "eager";
 	decoding?: "async" | "auto" | "sync";
@@ -16,20 +17,23 @@ export function FramedImage({
 	alt,
 	framing,
 	className,
+	innerClassName,
 	imgClassName,
 	loading,
 	decoding,
 }: FramedImageProps) {
 	return (
 		<div className={cn("relative h-full w-full overflow-hidden", className)}>
-			<img
-				src={src}
-				alt={alt}
-				loading={loading}
-				decoding={decoding}
-				className={cn("h-full w-full object-cover", imgClassName)}
-				style={imageFramingStyle(framing)}
-			/>
+			<div className={cn("h-full w-full", innerClassName)}>
+				<img
+					src={src}
+					alt={alt}
+					loading={loading}
+					decoding={decoding}
+					className={cn("h-full w-full object-cover", imgClassName)}
+					style={imageFramingStyle(framing)}
+				/>
+			</div>
 		</div>
 	);
 }

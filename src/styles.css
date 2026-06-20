@@ -560,6 +560,10 @@
     backdrop-filter: none !important;
   }
 
+  .perf-lite [data-slot="dialog-overlay"] {
+    background-color: oklch(0 0 0 / 0.84) !important;
+  }
+
   .perf-lite [class*="blur-2xl"],
   .perf-lite [class*="blur-3xl"],
   .perf-lite [class*="blur-["] {
