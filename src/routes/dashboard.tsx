@@ -590,7 +590,9 @@ function DashboardCard({
 		>
 			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 			<div className="flex items-start justify-between gap-4">
-				<div className={`flex h-11 w-11 shrink-0 items-center justify-center ${iconColor}`}>
+				<div
+					className={`flex h-11 w-11 shrink-0 items-center justify-center ${iconColor}`}
+				>
 					<Icon className="h-6 w-6" strokeWidth={1.5} />
 				</div>
 				<div className="text-right">

@@ -105,14 +105,11 @@ export function EfferdStickyFooter() {
 						<div className="absolute left-0 top-0 h-[80rem] w-[15rem] -translate-y-[21.875rem] -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,oklch(0.96_0.01_290/0.06)_0,oklch(0.66_0.2_290/0.02)_82%,transparent_100%)]" />
 					</div>
 
-
 					{/* ── Main content ── */}
 					<div className="relative z-10 px-6 sm:px-10 lg:px-14">
 						<div className="mx-auto w-full max-w-[92rem] pt-10 sm:pt-12 lg:pt-14">
-
 							{/* 4-column grid: brand | conta | legal | social */}
 							<div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-
 								{/* Brand + CTA */}
 								<AnimatedContainer className="space-y-7">
 									<a href="/" className="inline-flex w-fit items-center gap-3">
@@ -136,7 +133,6 @@ export function EfferdStickyFooter() {
 										</p>
 									</div>
 								</AnimatedContainer>
-
 
 								{footerLinkGroups.map((group, index) => (
 									<AnimatedContainer
@@ -245,7 +241,6 @@ export function EfferdStickyFooter() {
 									&copy; 2026 Arkhiveon. Todos os direitos reservados.
 								</p>
 							</div>
-
 						</div>
 					</div>
 

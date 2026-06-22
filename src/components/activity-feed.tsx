@@ -13,6 +13,7 @@ import {
 	Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	type ActivityAction,
 	ENTITY_LABELS,
@@ -20,7 +21,6 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const ENTITY_ICONS: Record<EntityKind, LucideIcon> = {
 	character: User,
@@ -59,7 +59,10 @@ interface ActivityFeedProps {
 export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 	const activity = useRPGStore((s) => s.activityLog);
 	const [visibleCount, setVisibleCount] = useState(limit);
-	const items = useMemo(() => activity.slice(0, visibleCount), [activity, visibleCount]);
+	const items = useMemo(
+		() => activity.slice(0, visibleCount),
+		[activity, visibleCount],
+	);
 
 	const skeletonKeys = useMemo(
 		() =>
@@ -95,7 +98,10 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 				{isLoading ? (
 					<div className="relative border-l border-border/40 ml-3 space-y-6">
 						{skeletonKeys.map((key) => (
-							<div key={key} className="relative flex items-center justify-between gap-4 pl-6">
+							<div
+								key={key}
+								className="relative flex items-center justify-between gap-4 pl-6"
+							>
 								<div className="absolute -left-[10px] flex h-5 w-5 items-center justify-center rounded-full bg-background border border-border">
 									<div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 animate-pulse" />
 								</div>
@@ -133,7 +139,10 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 								>
 									{/* Timeline node - icon alone centered on the line */}
 									<div className="absolute left-0 top-1.5 -translate-x-1/2 flex items-center justify-center">
-										<ActionIcon className={`h-3.5 w-3.5 ${action.color}`} strokeWidth={2.5} />
+										<ActionIcon
+											className={`h-3.5 w-3.5 ${action.color}`}
+											strokeWidth={2.5}
+										/>
 									</div>
 
 									<div className="min-w-0 flex-1">
@@ -143,7 +152,9 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 											</span>
 											<span>{entityLabel.toLowerCase()}</span>
 											<span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded bg-background/50 border border-border px-0.5">
-												<Icon className={`h-2.5 w-2.5 ${ENTITY_COLORS[entry.entityKind]}`} />
+												<Icon
+													className={`h-2.5 w-2.5 ${ENTITY_COLORS[entry.entityKind]}`}
+												/>
 											</span>
 										</div>
 										<h4 className="mt-1 text-[14px] font-bold text-foreground truncate group-hover:text-primary transition-colors">

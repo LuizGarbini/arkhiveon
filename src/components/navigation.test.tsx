@@ -1,21 +1,23 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { routeTree } from "../routeTree.gen";
 
 // Mock matchMedia for jsdom environment
-window.matchMedia = window.matchMedia || (() => ({
-	matches: false,
-	media: "",
-	onchange: null,
-	addListener: vi.fn(),
-	removeListener: vi.fn(),
-	addEventListener: vi.fn(),
-	removeEventListener: vi.fn(),
-	dispatchEvent: vi.fn(),
-}));
-
+window.matchMedia =
+	window.matchMedia ||
+	(() => ({
+		matches: false,
+		media: "",
+		onchange: null,
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
+	}));
 
 // Mock the auth context hook
 vi.mock("@/lib/auth", () => {
@@ -23,7 +25,9 @@ vi.mock("@/lib/auth", () => {
 		AuthProvider: ({ children }: any) => children,
 		useAuth: () => ({
 			loading: false,
-			session: { user: { id: "test-user-id", email: "test@arkhiveon.com" } } as any,
+			session: {
+				user: { id: "test-user-id", email: "test@arkhiveon.com" },
+			} as any,
 			plan: "free",
 			storageUsedBytes: 0,
 			isPro: false,

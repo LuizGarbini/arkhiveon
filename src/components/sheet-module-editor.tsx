@@ -1,15 +1,15 @@
 import {
+	closestCorners,
 	DndContext,
+	type DragEndEvent,
 	DragOverlay,
+	type DragStartEvent,
 	KeyboardSensor,
 	PointerSensor,
 	TouchSensor,
-	closestCorners,
 	useDroppable,
 	useSensor,
 	useSensors,
-	type DragEndEvent,
-	type DragStartEvent,
 } from "@dnd-kit/core";
 import {
 	SortableContext,
@@ -18,16 +18,10 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-	Edit,
-	Eye,
-	EyeOff,
-	GripVertical,
-	Plus,
-	Trash2,
-} from "lucide-react";
+import { Edit, Eye, EyeOff, GripVertical, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	applyModuleDrag,
 	isCustomSheetModule,
@@ -35,7 +29,6 @@ import {
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
 import type { SheetModuleConfig, SheetModuleKind } from "@/lib/store";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const MODULE_HINTS: Partial<Record<SheetModuleKind, string>> = {
@@ -76,7 +69,9 @@ export function SheetModuleEditor({
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-		useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+		useSensor(TouchSensor, {
+			activationConstraint: { delay: 120, tolerance: 6 },
+		}),
 		useSensor(KeyboardSensor, {
 			coordinateGetter: sortableKeyboardCoordinates,
 		}),
@@ -89,8 +84,12 @@ export function SheetModuleEditor({
 	const visibleModules = isLayoutMode
 		? sortedModules
 		: sortedModules.filter((module) => module.enabled);
-	const mainModules = visibleModules.filter((module) => module.column !== "side");
-	const sideModules = visibleModules.filter((module) => module.column === "side");
+	const mainModules = visibleModules.filter(
+		(module) => module.column !== "side",
+	);
+	const sideModules = visibleModules.filter(
+		(module) => module.column === "side",
+	);
 	const activeModule =
 		sortedModules.find((module) => module.id === activeId) ?? null;
 
@@ -105,7 +104,9 @@ export function SheetModuleEditor({
 	}
 
 	function removeModule(moduleId: string) {
-		onChange?.(normalizeModuleOrders(modules.filter((module) => module.id !== moduleId)));
+		onChange?.(
+			normalizeModuleOrders(modules.filter((module) => module.id !== moduleId)),
+		);
 	}
 
 	function handleDragStart(event: DragStartEvent) {
@@ -260,7 +261,9 @@ function LayoutColumn({
 			>
 				{modules.length === 0 ? (
 					<div className="flex min-h-[160px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/30 px-4 text-center text-[11px] text-muted-foreground">
-						{isLayoutMode ? "Arraste blocos para cá" : "Nenhum bloco nesta coluna"}
+						{isLayoutMode
+							? "Arraste blocos para cá"
+							: "Nenhum bloco nesta coluna"}
 					</div>
 				) : (
 					modules.map((module) => (
@@ -310,7 +313,11 @@ function SortableSheetBlock({
 	};
 
 	return (
-		<div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-40")}>
+		<div
+			ref={setNodeRef}
+			style={style}
+			className={cn(isDragging && "opacity-40")}
+		>
 			<SheetBlock
 				module={module}
 				isLayoutMode={isLayoutMode}
@@ -354,7 +361,8 @@ function SheetBlock({
 					? "border-border/70"
 					: "border-dashed border-border/60 opacity-60",
 				isLayoutMode && "ring-1 ring-primary/10 hover:ring-primary/25",
-				isOverlay && "rotate-1 scale-[1.02] border-primary/30 shadow-xl shadow-primary/10",
+				isOverlay &&
+					"rotate-1 scale-[1.02] border-primary/30 shadow-xl shadow-primary/10",
 			)}
 		>
 			{isLayoutMode ? (
@@ -451,7 +459,8 @@ function ModuleBlockPlaceholder({ module }: { module: SheetModuleConfig }) {
 	if (module.kind === "customText" || module.kind === "customStats") {
 		return (
 			<div className="rounded-xl border border-dashed border-border/60 bg-background/40 px-4 py-6 text-[12px] leading-relaxed text-muted-foreground">
-				{module.content?.trim() || "Bloco vazio — preencha depois de criar a ficha."}
+				{module.content?.trim() ||
+					"Bloco vazio — preencha depois de criar a ficha."}
 			</div>
 		);
 	}

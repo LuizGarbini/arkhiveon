@@ -25,7 +25,12 @@ import { FramedImage } from "@/components/framed-image";
 import { ItemEditButton } from "@/components/item-form";
 import { Button } from "@/components/ui/button";
 import { resolveItemImageUrl } from "@/lib/character-images";
-import { useActiveCampaignId, useActiveCampaignRole, useImageAssetLookup, useRPGStore } from "@/lib/store";
+import {
+	useActiveCampaignId,
+	useActiveCampaignRole,
+	useImageAssetLookup,
+	useRPGStore,
+} from "@/lib/store";
 
 export const Route = createFileRoute("/items/$itemId")({
 	validateSearch: (search: Record<string, unknown>) => ({

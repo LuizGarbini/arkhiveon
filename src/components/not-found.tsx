@@ -15,9 +15,10 @@ export function NotFound() {
 				</h1>
 				<div className="absolute inset-0 -z-20 blur-3xl opacity-20 bg-primary" />
 			</div>
-			
+
 			<p className="mt-4 max-w-[300px] text-[14px] font-medium text-muted-foreground sm:max-w-md sm:text-[16px]">
-				A página que você procura pode ter sido movida ou não existe mais no reino.
+				A página que você procura pode ter sido movida ou não existe mais no
+				reino.
 			</p>
 
 			<div className="mt-8 flex flex-wrap items-center justify-center gap-3">

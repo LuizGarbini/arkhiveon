@@ -33,7 +33,9 @@ interface AuthContextValue {
 	signOut: () => Promise<string | null>;
 	resetPassword: (email: string) => Promise<string | null>;
 	updatePassword: (password: string) => Promise<string | null>;
-	signInWithOAuth: (provider: "google" | "discord" | "github") => Promise<string | null>;
+	signInWithOAuth: (
+		provider: "google" | "discord" | "github",
+	) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -43,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
 	const suppressAutoSignInRef = useRef(false);
-	const [planData, setPlanData] = useState<UserPlanData>({ plan: "free", storageUsedBytes: 0 });
+	const [planData, setPlanData] = useState<UserPlanData>({
+		plan: "free",
+		storageUsedBytes: 0,
+	});
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {

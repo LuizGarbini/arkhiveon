@@ -1,4 +1,10 @@
-import { ChevronLeft, ChevronRight, Images, LockKeyhole, Search } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	Images,
+	LockKeyhole,
+	Search,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -165,9 +171,7 @@ export function ImageLibraryPickerDialog({
 									size="icon-sm"
 									disabled={safePage >= totalPages - 1}
 									onClick={() =>
-										setPage((current) =>
-											Math.min(totalPages - 1, current + 1),
-										)
+										setPage((current) => Math.min(totalPages - 1, current + 1))
 									}
 									aria-label="Proxima pagina"
 								>

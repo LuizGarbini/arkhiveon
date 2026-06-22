@@ -113,7 +113,8 @@ export function SessionCard({ session, isLoading }: SessionCardProps) {
 				<div className="mt-3.5 flex items-center gap-2 text-[11px] text-muted-foreground/80 pl-1">
 					<Users className="h-3.5 w-3.5 text-primary" />
 					<span className="font-medium">
-						Participantes: <span className="text-foreground">{session.attendees}</span>
+						Participantes:{" "}
+						<span className="text-foreground">{session.attendees}</span>
 					</span>
 				</div>
 			)}
@@ -121,9 +122,12 @@ export function SessionCard({ session, isLoading }: SessionCardProps) {
 			{session.entityLinks?.length > 0 && (
 				<div className="mt-4 border-t border-border/65 pt-3 pl-1 flex items-center justify-between text-[11px] font-bold text-primary">
 					<span>
-						{session.entityLinks.length} conex{session.entityLinks.length === 1 ? "ão" : "ões"}
+						{session.entityLinks.length} conex
+						{session.entityLinks.length === 1 ? "ão" : "ões"}
 					</span>
-					<span className="transition-transform group-hover:translate-x-0.5">→</span>
+					<span className="transition-transform group-hover:translate-x-0.5">
+						→
+					</span>
 				</div>
 			)}
 

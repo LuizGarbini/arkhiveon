@@ -1,4 +1,4 @@
-import { imageFramingStyle, type ImageFraming } from "@/lib/image-framing";
+import { type ImageFraming, imageFramingStyle } from "@/lib/image-framing";
 import { cn } from "@/lib/utils";
 
 interface FramedImageProps {
