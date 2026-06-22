@@ -4,6 +4,7 @@ import {
 	BookOpen,
 	CalendarDays,
 	Clock3,
+	Loader2,
 	type LucideIcon,
 	MapIcon,
 	Package,
@@ -12,12 +13,14 @@ import {
 	UserPlus,
 	Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
 import { CampaignForm } from "@/components/campaign-form";
 import { InviteBanner } from "@/components/invite-banner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useRPGStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -83,6 +86,8 @@ const sections = [
 ];
 
 function Dashboard() {
+	const onboardingNameId = useId();
+	const onboardingDescId = useId();
 	const characters = useRPGStore((s) => s.characters);
 	const npcs = useRPGStore((s) => s.npcs);
 	const sessions = useRPGStore((s) => s.sessions);
@@ -100,6 +105,32 @@ function Dashboard() {
 		[campaigns, activeCampaignId],
 	);
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
+
+	const [firstCampaignName, setFirstCampaignName] = useState("");
+	const [firstCampaignDesc, setFirstCampaignDesc] = useState("");
+	const [isCreatingFirst, setIsCreatingFirst] = useState(false);
+	const createCampaign = useRPGStore((s) => s.createCampaign);
+	const switchCampaign = useRPGStore((s) => s.switchCampaign);
+	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
+
+	async function handleCreateFirstCampaign(e: React.FormEvent) {
+		e.preventDefault();
+		if (!firstCampaignName.trim() || isCreatingFirst) return;
+
+		setIsCreatingFirst(true);
+		try {
+			const created = await createCampaign(
+				firstCampaignName.trim(),
+				firstCampaignDesc.trim(),
+			);
+			await switchCampaign(created.id);
+			await loadRemoteData();
+		} catch (err) {
+			console.error("Erro ao criar primeira campanha:", err);
+		} finally {
+			setIsCreatingFirst(false);
+		}
+	}
 
 	useEffect(() => {
 		void loadInvites();
@@ -225,6 +256,84 @@ function Dashboard() {
 			gradientRef.current = null;
 		};
 	}, []);
+
+	if (!isLoading && campaigns.length === 0) {
+		return (
+			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full">
+				<div className="panel w-full max-w-md p-8 relative overflow-hidden shadow-2xl">
+					<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+					<div className="relative z-10 flex flex-col gap-6">
+						<div>
+							<h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+								Bem-vindo ao Arkhiveon!
+							</h2>
+							<p className="mt-2 text-sm text-muted-foreground">
+								Para começar a organizar suas aventuras de RPG de mesa, crie sua
+								primeira campanha.
+							</p>
+						</div>
+
+						<form
+							onSubmit={handleCreateFirstCampaign}
+							className="flex flex-col gap-4"
+						>
+							<div className="flex flex-col gap-1.5">
+								<label
+									htmlFor={onboardingNameId}
+									className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+								>
+									Nome da Campanha
+								</label>
+								<Input
+									id={onboardingNameId}
+									required
+									placeholder="Ex: A Lenda de Baldur's Gate"
+									value={firstCampaignName}
+									onChange={(e) => setFirstCampaignName(e.target.value)}
+									disabled={isCreatingFirst}
+								/>
+							</div>
+
+							<div className="flex flex-col gap-1.5">
+								<label
+									htmlFor={onboardingDescId}
+									className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+								>
+									Descrição (Opcional)
+								</label>
+								<Textarea
+									id={onboardingDescId}
+									placeholder="Ex: Uma jornada épica pela Costa da Espada contra o culto dos Três Mortos..."
+									value={firstCampaignDesc}
+									onChange={(e) => setFirstCampaignDesc(e.target.value)}
+									disabled={isCreatingFirst}
+									rows={3}
+								/>
+							</div>
+
+							<Button
+								type="submit"
+								disabled={isCreatingFirst || !firstCampaignName.trim()}
+								className="mt-2 gap-2 h-11 cursor-pointer"
+							>
+								{isCreatingFirst ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										Criando Campanha...
+									</>
+								) : (
+									<>
+										Criar Minha Primeira Campanha
+										<ArrowUpRight className="h-4 w-4" />
+									</>
+								)}
+							</Button>
+						</form>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-6 py-10 sm:px-8">
