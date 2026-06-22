@@ -101,7 +101,8 @@ export function ImageUploader({
 				<button
 					type="button"
 					onClick={() => inputRef.current?.click()}
-					className={`group relative flex ${sizeClass} ${shapeClass} shrink-0 items-center justify-center overflow-hidden border border-dashed border-border bg-card-elevated/40 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary`}
+					disabled={busy}
+					className={`group relative flex ${sizeClass} ${shapeClass} shrink-0 items-center justify-center overflow-hidden border border-dashed border-border bg-card-elevated/40 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 disabled:pointer-events-none`}
 					aria-label={hasImage ? "Trocar imagem" : "Adicionar imagem"}
 				>
 					{hasImage ? (

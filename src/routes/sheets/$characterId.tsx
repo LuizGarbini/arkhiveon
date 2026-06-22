@@ -26,6 +26,7 @@ import {
 } from "react";
 import { useForm } from "react-hook-form";
 import { CharacterExportDialog } from "@/components/character-export-dialog";
+
 import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
@@ -248,10 +249,14 @@ function CharacterSheetPage() {
 								<button
 									type="button"
 									onClick={() => setIsImageDialogOpen(true)}
-									className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+									className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
+										characterImageUrl
+											? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
+											: "bg-black/20 opacity-100 hover:bg-black/40"
+									}`}
 									aria-label="Editar imagem da ficha"
 								>
-									<Camera className="h-5 w-5" />
+									<Camera className="h-5 w-5 drop-shadow" />
 								</button>
 							</div>
 							<div className="min-w-0">

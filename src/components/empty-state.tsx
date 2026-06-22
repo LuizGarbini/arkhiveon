@@ -1,12 +1,24 @@
+import { Link } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface EmptyStateProps {
 	Icon: LucideIcon;
 	title: string;
 	description: string;
+	actionLabel?: string;
+	actionTo?: string;
+	onAction?: () => void;
 }
 
-export function EmptyState({ Icon, title, description }: EmptyStateProps) {
+export function EmptyState({
+	Icon,
+	title,
+	description,
+	actionLabel,
+	actionTo,
+	onAction,
+}: EmptyStateProps) {
 	return (
 		<div className="col-span-full">
 			<div className="relative flex min-h-56 flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border/70 bg-card/55 px-6 py-10 text-center shadow-sm shadow-black/5">
@@ -18,6 +30,21 @@ export function EmptyState({ Icon, title, description }: EmptyStateProps) {
 				<p className="mt-2 max-w-sm text-[12px] leading-relaxed text-muted-foreground">
 					{description}
 				</p>
+				{actionLabel && (
+					<div className="mt-5">
+						{actionTo ? (
+							<Link to={actionTo}>
+								<Button size="sm" variant="outline">
+									{actionLabel}
+								</Button>
+							</Link>
+						) : (
+							<Button size="sm" variant="outline" onClick={onAction}>
+								{actionLabel}
+							</Button>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	);
