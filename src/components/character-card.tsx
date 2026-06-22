@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Heart, Shield, Sparkles, User, Zap } from "lucide-react";
+import { Camera, Heart, Shield, Sparkles, User, Zap } from "lucide-react";
+import { useState } from "react";
+import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
@@ -25,10 +27,12 @@ const abilitySkeletonKeys = ["str", "dex", "con", "int", "wis", "cha"];
 
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
+	const updateCharacter = useRPGStore((s) => s.updateCharacter);
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
 	const navigate = useNavigate();
 	const toast = useToast();
+	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 
 	if (isLoading || !character) {
 		return (
@@ -100,6 +104,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	}
 
 	return (
+		<>
 		<Link
 			to="/sheets/$characterId"
 			params={{ characterId: character.id }}
@@ -135,6 +140,39 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					</div>
 				)}
 				<div className="absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
+				{/* Camera overlay button */}
+				<button
+					type="button"
+					onClick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						setIsImageDialogOpen(true);
+					}}
+					className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
+						hasImage
+							? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
+							: "bg-black/0 opacity-0 hover:bg-black/40 hover:opacity-100 focus:bg-black/40 focus:opacity-100"
+					}`}
+					aria-label="Editar imagem do personagem"
+				>
+					<Camera className="h-6 w-6 drop-shadow" />
+				</button>
+				{/* Persistent camera hint when no image */}
+				{!hasImage && (
+					<button
+						type="button"
+						onClick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							setIsImageDialogOpen(true);
+						}}
+						className="absolute bottom-8 right-2 flex items-center gap-1 rounded-lg border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground backdrop-blur transition hover:border-primary/40 hover:text-primary"
+						aria-label="Adicionar imagem"
+					>
+						<Camera className="h-3 w-3" />
+						Adicionar foto
+					</button>
+				)}
 				<div className="absolute right-2 bottom-2 flex h-8 min-w-8 items-center justify-center rounded-xl bg-background/85 px-1.5 backdrop-blur ring-1 ring-border/70">
 					<span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
 						Lv
@@ -249,6 +287,13 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 				)}
 			</div>
 		</Link>
+		<CharacterImageDialog
+			character={character}
+			open={isImageDialogOpen}
+			onOpenChange={setIsImageDialogOpen}
+			onChange={(patch) => updateCharacter(character.id, patch)}
+		/>
+		</>
 	);
 }
 

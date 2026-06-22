@@ -132,7 +132,7 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 									className="group relative flex items-start justify-between gap-4 pl-6 transition-all"
 								>
 									{/* Timeline node - icon alone centered on the line */}
-									<div className="absolute left-0 top-1.5 -translate-x-1/2 flex items-center justify-center bg-background p-0.5">
+									<div className="absolute left-0 top-1.5 -translate-x-1/2 flex items-center justify-center">
 										<ActionIcon className={`h-3.5 w-3.5 ${action.color}`} strokeWidth={2.5} />
 									</div>
 

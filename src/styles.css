@@ -161,10 +161,12 @@
   html {
     @apply font-sans;
     font-size: 14.5px;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply font-sans bg-background text-foreground antialiased;
+    text-rendering: optimizeLegibility;
     background-image: none;
     background-attachment: fixed;
     min-height: 100vh;
@@ -185,11 +187,19 @@
   .cursor-pointer,
   .hover\:cursor-pointer:hover {
     cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
 
   ::selection {
     background: var(--primary-muted);
     color: var(--foreground);
+  }
+
+  [class*="text-gradient-"]::selection {
+    -webkit-text-fill-color: var(--foreground) !important;
+    text-fill-color: var(--foreground) !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
   }
 
   /* Scrollbar - thin and discrete */
