@@ -77,21 +77,23 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 				entityKindLabel="local"
 			/>
 
-			<div className="relative h-24 w-full shrink-0 overflow-hidden bg-linear-to-br from-emerald-500/15 via-amber-500/5 to-transparent">
+			<div className="relative h-24 w-full shrink-0 overflow-hidden bg-linear-to-br from-emerald-500/15 via-amber-500/5 to-transparent [transform:translateZ(0)]">
 				{hasImage ? (
-					<img
-						src={location.imageUrl}
-						alt={location.name}
-						loading="lazy"
-						decoding="async"
-						className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
-					/>
+					<div className="h-full w-full transition-transform duration-500 group-hover:scale-105">
+						<img
+							src={location.imageUrl}
+							alt={location.name}
+							loading="lazy"
+							decoding="async"
+							className="h-full w-full object-cover opacity-90"
+						/>
+					</div>
 				) : (
 					<div className="flex h-full w-full items-center justify-center text-emerald-400/30">
 						<Compass className="h-10 w-10" strokeWidth={1.4} />
 					</div>
 				)}
-				<div className="absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-card to-transparent" />
+				<div className="absolute inset-x-0 bottom-0 z-10 h-10 bg-linear-to-t from-card to-transparent" />
 			</div>
 
 			<div className="flex flex-1 flex-col p-4">

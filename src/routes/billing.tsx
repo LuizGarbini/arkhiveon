@@ -135,6 +135,18 @@ function BillingPage() {
 		});
 	}
 
+	// ── Canceled toast ───────────────────────────────────────────────
+	useEffect(() => {
+		if (canceled) {
+			toast.info({
+				title: "Checkout cancelado",
+				description: "Você pode tentar novamente quando quiser.",
+			});
+			void navigate({ to: "/billing", search: { success: undefined, canceled: undefined, mock: undefined }, replace: true });
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [canceled]);
+
 	// ── Success celebration screen ───────────────────────────────────
 	if (success) {
 		return (

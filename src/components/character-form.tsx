@@ -157,22 +157,32 @@ function CharacterFormDialog({
 	const system = useWatch({ control, name: "system" }) as RpgSystem;
 	const config = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.dnd5e;
 
-	// Resetar quando abrir o dialog ou trocar a entidade.
-	useEffect(() => {
-		if (open) {
-			reset(buildDefaults(character ?? undefined));
+	// Sincronização de estado inline para evitar renderização obsoleta (recomendações do React)
+	const [prevOpen, setPrevOpen] = useState(open);
+	const [prevCharacter, setPrevCharacter] = useState(character);
+
+	if (open !== prevOpen || character !== prevCharacter) {
+		setPrevOpen(open);
+		setPrevCharacter(character);
+
+		if (open && (open !== prevOpen || character !== prevCharacter)) {
 			setStep(isEdit ? "form" : "system");
 			setActiveSection("identity");
 			setSelectedLayoutTemplateId(character?.customTemplateId);
 		}
-	}, [open, character, isEdit, reset]);
+	}
 
-	// Garantir que a aba ativa exista no sistema escolhido.
+	// Garantir que a aba ativa exista no sistema escolhido (ajuste inline)
+	if (!config.sections.includes(activeSection)) {
+		setActiveSection(config.sections[0]);
+	}
+
+	// Resetar valores do formulário (react-hook-form) quando abrir o dialog ou trocar a entidade
 	useEffect(() => {
-		if (!config.sections.includes(activeSection)) {
-			setActiveSection(config.sections[0]);
+		if (open) {
+			reset(buildDefaults(character ?? undefined));
 		}
-	}, [config.sections, activeSection]);
+	}, [open, character, reset]);
 
 	const tabs = useMemo(
 		() =>
