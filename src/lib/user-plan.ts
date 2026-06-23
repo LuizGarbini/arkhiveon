@@ -14,7 +14,9 @@ function isUserPlan(value: unknown): value is UserPlan {
 	return value === "free" || value === "pro";
 }
 
-export async function loadCurrentUserPlan(userId: string): Promise<UserPlanData> {
+export async function loadCurrentUserPlan(
+	userId: string,
+): Promise<UserPlanData> {
 	const supabase = getSupabase();
 	if (!supabase) return { plan: "free", storageUsedBytes: 0 };
 
@@ -30,16 +32,20 @@ export async function loadCurrentUserPlan(userId: string): Promise<UserPlanData>
 	const storageUsedBytes = (data as any)?.storage_used_bytes ?? 0;
 	return {
 		plan: isUserPlan(plan) ? plan : "free",
-		storageUsedBytes
+		storageUsedBytes,
 	};
 }
 
 export function planFromRealtimeRow(row: unknown): UserPlanData {
-	if (!row || typeof row !== "object") return { plan: "free", storageUsedBytes: 0 };
+	if (!row || typeof row !== "object")
+		return { plan: "free", storageUsedBytes: 0 };
 	const plan = "plan" in row ? (row as Pick<UserPlanRow, "plan">).plan : "free";
-	const storageUsedBytes = "storage_used_bytes" in row ? Number((row as any).storage_used_bytes) || 0 : 0;
+	const storageUsedBytes =
+		"storage_used_bytes" in row
+			? Number((row as any).storage_used_bytes) || 0
+			: 0;
 	return {
 		plan: isUserPlan(plan) ? plan : "free",
-		storageUsedBytes
+		storageUsedBytes,
 	};
 }

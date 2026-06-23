@@ -17,7 +17,7 @@ import { EntityLinkChips } from "@/components/entity-links";
 import { NpcEditButton } from "@/components/npc-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/npcs/$npcId")({
@@ -237,7 +237,14 @@ function NpcDetailPage() {
 					<SectionCard
 						eyebrow="Resumo"
 						title="Identidade"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<InfoRow label="Tipo" value={kindLabel} />
@@ -259,7 +266,14 @@ function NpcDetailPage() {
 					<SectionCard
 						eyebrow="Narrativa"
 						title="Descricao"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<TextBlock value={npc.description} />
 					</SectionCard>
@@ -267,7 +281,14 @@ function NpcDetailPage() {
 					<SectionCard
 						eyebrow="Mesa"
 						title="Personalidade & Aparencia"
-						onEdit={isEditing ? () => { setActiveTab("personality"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("personality");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<TextBlock title="Aparencia" value={npc.appearance} />
@@ -281,7 +302,14 @@ function NpcDetailPage() {
 						<SectionCard
 							eyebrow="Combate"
 							title="Stats"
-							onEdit={isEditing ? () => { setActiveTab("stats"); setDialogOpen(true); } : undefined}
+							onEdit={
+								isEditing
+									? () => {
+											setActiveTab("stats");
+											setDialogOpen(true);
+										}
+									: undefined
+							}
 						>
 							<pre className="whitespace-pre-wrap rounded-2xl border border-border/70 bg-background/45 p-4 font-mono text-[12px] leading-relaxed text-foreground/90">
 								{npc.stats}
@@ -294,7 +322,14 @@ function NpcDetailPage() {
 					<SectionCard
 						eyebrow="Estado"
 						title="Mesa"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<div
@@ -334,7 +369,14 @@ function NpcDetailPage() {
 						<SectionCard
 							eyebrow="Mestre"
 							title="Segredos"
-							onEdit={isEditing ? () => { setActiveTab("secrets"); setDialogOpen(true); } : undefined}
+							onEdit={
+								isEditing
+									? () => {
+											setActiveTab("secrets");
+											setDialogOpen(true);
+										}
+									: undefined
+							}
 						>
 							<TextBlock value={npc.secrets} />
 						</SectionCard>

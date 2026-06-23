@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Check,
 	Copy,
@@ -12,14 +11,15 @@ import {
 	Volume1,
 	Volume2,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentlyPlaying, setSpotifyVolume } from "@/lib/spotify";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { SpotifyConnect } from "./spotify-connect";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SpotifyConnect } from "./spotify-connect";
 
 // Usaremos uma API externa para gerar o QR Code e evitar erros de dependência não instalada
 function QRCodePlaceholder({ value, size }: { value: string; size: number }) {

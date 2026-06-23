@@ -156,44 +156,45 @@ export const createCampaignSlice: StateCreator<
 
 		const supabase = getSupabase();
 		const id = crypto.randomUUID();
-		const campaign: Campaign = {
-			id,
-			name,
-			description,
-			ownerId: "", // será preenchido pelo supabase (auth.uid())
-			myRole: "owner",
-			createdAt: Date.now(),
-		};
-
 		const originalCampaigns = get().campaigns;
-
-		set((state) => ({
-			campaigns: [...state.campaigns, campaign],
-			syncError: null,
-		}));
 
 		if (supabase) {
 			try {
-				// Criar a campanha
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				if (!user) {
+					throw new Error("Erro ao criar campanha: usuário não autenticado.");
+				}
+
+				const campaign: Campaign = {
+					id,
+					name,
+					description,
+					ownerId: user.id,
+					myRole: "owner",
+					createdAt: Date.now(),
+				};
+
+				set((state) => ({
+					campaigns: [...state.campaigns, campaign],
+					syncError: null,
+				}));
+
+				// Criar a campanha com owner_id explicitamente passado
 				const { error: campaignError } = await supabase
 					.from(SUPABASE_TABLES.campaigns)
 					.insert({
 						id,
 						name,
 						description,
+						owner_id: user.id,
 					});
 				if (campaignError) {
 					throw campaignError;
 				}
 
 				// Criar membership 'owner' para o criador
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
-				if (!user) {
-					throw new Error("Erro ao criar membership: usuário não autenticado.");
-				}
-
 				const { error: membershipError } = await supabase
 					.from(SUPABASE_TABLES.memberships)
 					.insert({
@@ -206,6 +207,8 @@ export const createCampaignSlice: StateCreator<
 					await supabase.from(SUPABASE_TABLES.campaigns).delete().eq("id", id);
 					throw membershipError;
 				}
+
+				return campaign;
 			} catch (error) {
 				const errMsg = error instanceof Error ? error.message : String(error);
 				set({
@@ -214,9 +217,21 @@ export const createCampaignSlice: StateCreator<
 				});
 				throw error;
 			}
+		} else {
+			const campaign: Campaign = {
+				id,
+				name,
+				description,
+				ownerId: "",
+				myRole: "owner",
+				createdAt: Date.now(),
+			};
+			set((state) => ({
+				campaigns: [...state.campaigns, campaign],
+				syncError: null,
+			}));
+			return campaign;
 		}
-
-		return campaign;
 	},
 
 	updateCampaign: (id, data) => {

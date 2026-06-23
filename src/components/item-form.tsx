@@ -4,8 +4,8 @@ import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Item } from "@/lib/store";
 import { itemDefaults, useRPGStore } from "@/lib/store";
-import { EntityLinkManager } from "./entity-links";
 import { EntityImagePicker } from "./entity-image-picker";
+import { EntityLinkManager } from "./entity-links";
 import { Button } from "./ui/button";
 import {
 	Dialog,

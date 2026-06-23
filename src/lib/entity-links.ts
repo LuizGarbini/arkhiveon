@@ -168,7 +168,14 @@ export function collectEntityText(values: Record<string, unknown>) {
 
 function toLinkableEntity(
 	entityKind: EntityKind,
-	entity: Character | Npc | Session | Item | GameLocation | Lore | CustomTemplate,
+	entity:
+		| Character
+		| Npc
+		| Session
+		| Item
+		| GameLocation
+		| Lore
+		| CustomTemplate,
 	name: string,
 	path: string,
 ): LinkableEntity {

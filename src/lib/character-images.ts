@@ -1,10 +1,10 @@
-import type { Character, MembershipRole } from "./store";
 import {
-	isEntityImageHidden,
-	resolveEntityImageUrl,
 	type EntityImageSource,
 	type ImageAssetLookup,
+	isEntityImageHidden,
+	resolveEntityImageUrl,
 } from "./entity-images";
+import type { Character, MembershipRole } from "./store";
 
 export type { EntityImageSource };
 

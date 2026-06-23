@@ -168,7 +168,14 @@ function SessionDetailPage() {
 					<DetailSection
 						eyebrow="Resumo"
 						title="Visao geral"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<DetailText value={currentSession.summary} />
@@ -186,7 +193,14 @@ function SessionDetailPage() {
 					<DetailSection
 						eyebrow="Mesa"
 						title="Quem & onde"
-						onEdit={isEditing ? () => { setActiveTab("people"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("people");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<DetailText
@@ -207,7 +221,14 @@ function SessionDetailPage() {
 					<DetailSection
 						eyebrow="Eventos"
 						title="Acontecimentos"
-						onEdit={isEditing ? () => { setActiveTab("events"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("events");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<DetailText
@@ -225,7 +246,14 @@ function SessionDetailPage() {
 					<DetailSection
 						eyebrow="Recompensas"
 						title="Loot & XP"
-						onEdit={isEditing ? () => { setActiveTab("rewards"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("rewards");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<DetailText title="Loot" value={currentSession.loot} />
@@ -247,7 +275,14 @@ function SessionDetailPage() {
 					<DetailSection
 						eyebrow="Mestre"
 						title="Notas privadas"
-						onEdit={isEditing ? () => { setActiveTab("dm"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("dm");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<DetailText value={currentSession.dmNotes} />
 					</DetailSection>

@@ -65,7 +65,6 @@ function ProtectedLayout() {
 	const setupRealtime = useRPGStore((s) => s.setupRealtime);
 	const clearLocalData = useRPGStore((s) => s.clearLocalData);
 	const loadCampaigns = useRPGStore((s) => s.loadCampaigns);
-	const createCampaign = useRPGStore((s) => s.createCampaign);
 	const syncError = useRPGStore((s) => s.syncError);
 	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -120,15 +119,8 @@ function ProtectedLayout() {
 		async function initCampaigns() {
 			await loadCampaigns();
 
-			// Se não há campanhas, criar a padrão
 			const state = useRPGStore.getState();
-			if (state.campaigns.length === 0) {
-				const defaultCampaign = await createCampaign(
-					"Campanha Principal",
-					"Sua primeira aventura",
-				);
-				await useRPGStore.getState().switchCampaign(defaultCampaign.id);
-			} else if (!state.activeCampaignId) {
+			if (state.campaigns.length > 0 && !state.activeCampaignId) {
 				await useRPGStore.getState().switchCampaign(state.campaigns[0].id);
 			}
 
@@ -143,7 +135,6 @@ function ProtectedLayout() {
 		};
 	}, [
 		clearLocalData,
-		createCampaign,
 		loadCampaigns,
 		loadRemoteData,
 		loading,

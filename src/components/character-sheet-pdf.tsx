@@ -376,16 +376,11 @@ function PdfModule({
 }: {
 	module: SheetModuleConfig;
 	character: Character;
-	config: typeof SYSTEM_CONFIG[keyof typeof SYSTEM_CONFIG];
+	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 	theme: typeof colorTheme;
 }) {
 	const title = module.title || SHEET_MODULE_LABELS[module.kind];
-	const fields = moduleFields(
-		module.kind,
-		character,
-		config,
-		module.content,
-	);
+	const fields = moduleFields(module.kind, character, config, module.content);
 	if (fields.length === 0) return null;
 
 	return (
@@ -417,12 +412,21 @@ function PdfModule({
 function moduleFields(
 	kind: SheetModuleKind,
 	character: Character,
-	config: typeof SYSTEM_CONFIG[keyof typeof SYSTEM_CONFIG],
+	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG],
 	content?: string,
 ) {
-	const isStandardKey = (key: string) => [
-		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma", "power", "size", "education"
-	].includes(key);
+	const isStandardKey = (key: string) =>
+		[
+			"strength",
+			"dexterity",
+			"constitution",
+			"intelligence",
+			"wisdom",
+			"charisma",
+			"power",
+			"size",
+			"education",
+		].includes(key);
 
 	switch (kind) {
 		case "identity":
@@ -438,14 +442,12 @@ function moduleFields(
 			];
 		case "abilities":
 			return (config.attributes || []).map((attr) => {
-				const val = isStandardKey(attr.key) 
+				const val = isStandardKey(attr.key)
 					? Number((character as any)[attr.key]) || 10
 					: Number(character.systemAttributes?.[attr.key]) || 10;
-				return field(
-					attr.label,
-					`${val} (${formatSigned(modifier(val))})`,
-					{ emphasis: true }
-				);
+				return field(attr.label, `${val} (${formatSigned(modifier(val))})`, {
+					emphasis: true,
+				});
 			});
 		case "combat":
 			return [

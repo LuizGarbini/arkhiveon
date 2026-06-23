@@ -38,9 +38,9 @@ export function CampaignForm({
 	const revokeInvite = useRPGStore((s) => s.revokeInvite);
 	const removeMember = useRPGStore((s) => s.removeMember);
 
-	const [activeTab, setActiveTab] = useState<"general" | "members">(defaultTab);
-	const [name, setName] = useState(campaign?.name ?? "");
-	const [description, setDescription] = useState(campaign?.description ?? "");
+	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
+	const [name, setName] = useState("");
+	const [description, setDescription] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const nameInputId = useId();
 	const descInputId = useId();
@@ -55,28 +55,6 @@ export function CampaignForm({
 	const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
-
-	// Sincronização de estado inline para evitar renderização obsoleta (recomendações do React)
-	const [prevOpen, setPrevOpen] = useState(open);
-	const [prevCampaign, setPrevCampaign] = useState(campaign);
-	const [prevDefaultTab, setPrevDefaultTab] = useState(defaultTab);
-
-	if (open !== prevOpen || campaign !== prevCampaign || defaultTab !== prevDefaultTab) {
-		setPrevOpen(open);
-		setPrevCampaign(campaign);
-		setPrevDefaultTab(defaultTab);
-
-		if (open && (open !== prevOpen || campaign !== prevCampaign)) {
-			setName(campaign?.name ?? "");
-			setDescription(campaign?.description ?? "");
-			setInviteEmail("");
-			setInviteRole("viewer");
-			setInviteError(null);
-			setActiveTab(defaultTab);
-			setMembers([]);
-			setInvites([]);
-		}
-	}
 
 	const fetchMembersAndInvites = useCallback(async () => {
 		if (!campaign) return;
@@ -93,10 +71,19 @@ export function CampaignForm({
 	}, [campaign, loadCampaignMembersAndInvites]);
 
 	useEffect(() => {
-		if (open && campaign) {
-			void fetchMembersAndInvites();
+		if (open) {
+			setName(campaign?.name ?? "");
+			setDescription(campaign?.description ?? "");
+			setInviteEmail("");
+			setInviteRole("viewer");
+			setInviteError(null);
+			setActiveTab(defaultTab);
+
+			if (campaign) {
+				void fetchMembersAndInvites();
+			}
 		}
-	}, [open, campaign, fetchMembersAndInvites]);
+	}, [open, campaign, defaultTab, fetchMembersAndInvites]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();

@@ -26,7 +26,7 @@ export function JamPresenceSync() {
 			.on("presence", { event: "sync" }, () => {
 				const newState = channel.presenceState();
 				const participants: any[] = [];
-				
+
 				for (const id in newState) {
 					const presence = newState[id] as any;
 					if (presence[0]) {
@@ -37,12 +37,12 @@ export function JamPresenceSync() {
 						});
 					}
 				}
-				
+
 				// Remover duplicatas (Supabase Presence pode ter múltiplas instâncias por usuário)
 				const uniqueParticipants = Array.from(
-					new Map(participants.map((p) => [p.id, p])).values()
+					new Map(participants.map((p) => [p.id, p])).values(),
 				);
-				
+
 				setJamParticipants(uniqueParticipants);
 			})
 			.subscribe(async (status) => {
