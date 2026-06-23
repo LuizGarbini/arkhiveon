@@ -56,6 +56,19 @@ export function CampaignForm({
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
 
+	useEffect(() => {
+		if (open) {
+			setName(campaign?.name ?? "");
+			setDescription(campaign?.description ?? "");
+			setInviteEmail("");
+			setInviteRole("viewer");
+			setInviteError(null);
+			setActiveTab(defaultTab);
+			setMembers([]);
+			setInvites([]);
+		}
+	}, [open, campaign?.id, defaultTab]);
+
 	const fetchMembersAndInvites = useCallback(async () => {
 		if (!campaign) return;
 		setIsLoadingMembers(true);
@@ -71,19 +84,10 @@ export function CampaignForm({
 	}, [campaign, loadCampaignMembersAndInvites]);
 
 	useEffect(() => {
-		if (open) {
-			setName(campaign?.name ?? "");
-			setDescription(campaign?.description ?? "");
-			setInviteEmail("");
-			setInviteRole("viewer");
-			setInviteError(null);
-			setActiveTab(defaultTab);
-
-			if (campaign) {
-				void fetchMembersAndInvites();
-			}
+		if (open && campaign) {
+			void fetchMembersAndInvites();
 		}
-	}, [open, campaign, defaultTab, fetchMembersAndInvites]);
+	}, [open, campaign?.id, fetchMembersAndInvites]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
