@@ -1,6 +1,6 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useMemo } from "react";
 import { createCampaignSlice } from "./store/campaign-slice";
 import { createCharacterSlice } from "./store/character-slice";
 import { createCollectionSlice } from "./store/collection-slice";
@@ -17,7 +17,13 @@ export {
 	locationDefaults,
 	loreDefaults,
 } from "./store/collection-slice";
-export { abilityModifier, formatModifier, systemLabel } from "./store/helpers";
+export {
+	abilityModifier,
+	formatModifier,
+	getAttributeExtraInfo,
+	getAttributeFullName,
+	systemLabel,
+} from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
 export { sessionDefaults } from "./store/session-slice";
 export {
@@ -100,7 +106,8 @@ export function useActiveCampaignId() {
 export function useActiveCampaignRole(): MembershipRole | undefined {
 	return useRPGStore(
 		(s) =>
-			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)?.myRole,
+			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)
+				?.myRole,
 	);
 }
 

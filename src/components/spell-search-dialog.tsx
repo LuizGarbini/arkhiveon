@@ -117,8 +117,10 @@ export function SpellSearchDialog({
 		setHbError(null);
 	}, []);
 
-	// Reset form when dialog closes
-	useEffect(() => {
+	// Reset form when dialog closes (inline render adjustment)
+	const [prevOpen, setPrevOpen] = useState(open);
+	if (open !== prevOpen) {
+		setPrevOpen(open);
 		if (!open) {
 			setSearchQuery("");
 			setLevelFilter("all");
@@ -127,7 +129,7 @@ export function SpellSearchDialog({
 			setSelectedSpell(null);
 			resetHbForm();
 		}
-	}, [open, resetHbForm]);
+	}
 
 	async function handleCreateHomebrew(e: React.FormEvent) {
 		e.preventDefault();

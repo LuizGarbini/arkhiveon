@@ -65,9 +65,10 @@ import {
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
 import {
-	abilityModifier,
 	type Character,
 	formatModifier,
+	getAttributeExtraInfo,
+	getAttributeFullName,
 	type SheetLayoutConfig,
 	type SheetModuleConfig,
 	type SheetModuleKind,
@@ -655,22 +656,33 @@ function ModuleContent({
 			<div
 				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : abilities.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"}`}
 			>
-				{abilities.map((ability) => (
-					<div
-						key={ability.label}
-						className="rounded-2xl border border-border/70 bg-background/45 p-3 text-center"
-					>
-						<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-							{ability.label}
-						</p>
-						<p className="font-display mt-2 text-3xl font-bold text-foreground">
-							{ability.value}
-						</p>
-						<p className="font-mono text-[12px] font-bold text-primary">
-							{formatModifier(abilityModifier(ability.value))}
-						</p>
-					</div>
-				))}
+				{abilities.map((ability) => {
+					const fullName = getAttributeFullName(ability.label);
+					const extraInfo = getAttributeExtraInfo(ability.value, character.system);
+					return (
+						<div
+							key={ability.label}
+							className="group/tooltip relative rounded-2xl border border-border/70 bg-background/45 p-3 text-center transition-all hover:border-primary/20 hover:bg-background/60 hover:translate-y-[-2px] hover:shadow-md hover:shadow-primary/5 cursor-default"
+						>
+							{/* Tooltip */}
+							<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+								{fullName}
+							</div>
+
+							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+								{ability.label}
+							</p>
+							<p className="font-display mt-2 text-3xl font-bold text-foreground">
+								{ability.value}
+							</p>
+							{extraInfo && (
+								<p className="font-mono text-[12px] font-bold text-primary mt-1">
+									{extraInfo}
+								</p>
+							)}
+						</div>
+					);
+				})}
 			</div>
 		);
 	}

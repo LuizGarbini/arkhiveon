@@ -1,3 +1,4 @@
+import { getAttributeFullName } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 interface Tab {
@@ -84,22 +85,38 @@ export function Field({
 	className,
 	children,
 }: FieldProps) {
+	const fullName = getAttributeFullName(label);
+	const hasTooltip = fullName !== label;
+
 	return (
 		<div className={cn("flex flex-col gap-1.5", className)}>
-			<label
-				htmlFor={htmlFor}
-				className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-			>
-				{label}
-				{required ? (
-					<span className="ml-1 text-destructive" aria-hidden="true">
-						*
-					</span>
-				) : null}
-			</label>
+			<div className="group/tooltip relative flex items-center">
+				<label
+					htmlFor={htmlFor}
+					className={cn(
+						"text-[11px] font-medium uppercase tracking-wider text-muted-foreground transition-colors",
+						hasTooltip &&
+							"cursor-help underline decoration-dotted underline-offset-2 decoration-muted-foreground/45 hover:decoration-primary/60 hover:text-foreground",
+					)}
+				>
+					{label}
+					{required ? (
+						<span className="ml-1 text-destructive" aria-hidden="true">
+							*
+						</span>
+					) : null}
+				</label>
+				{hasTooltip && (
+					<div className="pointer-events-none absolute -top-8 left-0 z-30 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-9 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+						{fullName}
+					</div>
+				)}
+			</div>
 			{children}
 			{error ? (
-				<span className="text-[10.5px] text-destructive font-medium leading-none mt-0.5">{error}</span>
+				<span className="text-[10.5px] text-destructive font-medium leading-none mt-0.5">
+					{error}
+				</span>
 			) : hint ? (
 				<span className="text-[10px] text-muted-foreground/70">{hint}</span>
 			) : null}

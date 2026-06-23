@@ -1,5 +1,5 @@
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,12 +44,19 @@ export function ImageCropDialog({
 	const [isApplying, setIsApplying] = useState(false);
 	const toast = useToast();
 
-	useEffect(() => {
-		if (!open) return;
-		setCrop({ x: 0, y: 0 });
-		setZoom(1);
-		setCroppedAreaPixels(null);
-	}, [open, imageSrc]);
+	const [prevOpen, setPrevOpen] = useState(open);
+	const [prevImageSrc, setPrevImageSrc] = useState(imageSrc);
+
+	if (open !== prevOpen || imageSrc !== prevImageSrc) {
+		setPrevOpen(open);
+		setPrevImageSrc(imageSrc);
+
+		if (open && (open !== prevOpen || imageSrc !== prevImageSrc)) {
+			setCrop({ x: 0, y: 0 });
+			setZoom(1);
+			setCroppedAreaPixels(null);
+		}
+	}
 
 	const onCropComplete = useCallback((_: Area, pixels: Area) => {
 		setCroppedAreaPixels(pixels);

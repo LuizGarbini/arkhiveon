@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Images, LockKeyhole, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -32,12 +32,20 @@ export function ImageLibraryPickerDialog({
 	const [query, setQuery] = useState("");
 	const [page, setPage] = useState(0);
 
-	useEffect(() => {
+	const [prevOpen, setPrevOpen] = useState(open);
+	if (open !== prevOpen) {
+		setPrevOpen(open);
 		if (!open) {
 			setQuery("");
 			setPage(0);
 		}
-	}, [open]);
+	}
+
+	const [prevQuery, setPrevQuery] = useState(query);
+	if (query !== prevQuery) {
+		setPrevQuery(query);
+		setPage(0);
+	}
 
 	const filteredAssets = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
@@ -46,10 +54,6 @@ export function ImageLibraryPickerDialog({
 			asset.name.toLowerCase().includes(normalized),
 		);
 	}, [assets, query]);
-
-	useEffect(() => {
-		setPage(0);
-	}, [query]);
 
 	const totalPages = Math.max(1, Math.ceil(filteredAssets.length / PAGE_SIZE));
 	const safePage = Math.min(page, totalPages - 1);

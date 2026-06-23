@@ -28,10 +28,10 @@ export const FREE_CREATION_LIMIT = 20;
 
 /**
  * Verifica se o limite de criação foi atingido.
- * Usuários Pro não possuem limite.
+ * Usuários Pro não possuem limite, e membros herdam o plano do mestre da campanha.
  */
 export function isCreationLimitReached(state: RPGState): boolean {
-	if (state.userPlan === "pro") return false;
+	if (state.userPlan === "pro" || state.activeCampaignOwnerPlan === "pro") return false;
 	return state.globalRecordsCount >= FREE_CREATION_LIMIT;
 }
 

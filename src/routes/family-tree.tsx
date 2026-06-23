@@ -40,7 +40,7 @@ import type {
 	FamilyRelation,
 	FamilyRelationKind,
 } from "@/lib/store";
-import { useRPGStore } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 
 export const Route = createFileRoute("/family-tree")({
 	component: FamilyTreePage,
@@ -126,14 +126,19 @@ function FamilyTreePage() {
 	const characters = useRPGStore((state) => state.characters);
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
 	const [isEditMode, setIsEditMode] = useState(false);
+	const myRole = useActiveCampaignRole();
+	const isPlayer = myRole === "viewer";
 
 	const relationCount = characters.reduce(
-		(total, character) => total + (character.familyRelations?.length ?? 0),
+		(total, character) =>
+			total +
+			(character.familyRelations?.filter((r) => !isPlayer || !r.isSecret)
+				.length ?? 0),
 		0,
 	);
 	const graphModel = useMemo(
-		() => buildFamilyGraph(characters, isEditMode),
-		[characters, isEditMode],
+		() => buildFamilyGraph(characters, isEditMode, isPlayer),
+		[characters, isEditMode, isPlayer],
 	);
 
 	return (
@@ -163,6 +168,7 @@ function FamilyTreePage() {
 							onEditModeChange={setIsEditMode}
 							onUpdateCharacter={updateCharacter}
 							relationCount={relationCount}
+							isPlayer={isPlayer}
 						/>
 					</ReactFlowProvider>
 				)}
@@ -178,6 +184,7 @@ function FamilyFlowCanvas({
 	onEditModeChange,
 	onUpdateCharacter,
 	relationCount,
+	isPlayer,
 }: {
 	characters: Character[];
 	graphModel: GraphModel;
@@ -185,6 +192,7 @@ function FamilyFlowCanvas({
 	onEditModeChange: (value: boolean) => void;
 	onUpdateCharacter: (characterId: string, patch: Partial<Character>) => void;
 	relationCount: number;
+	isPlayer: boolean;
 }) {
 	const [nodes, setNodes, onNodesChange] = useNodesState<FamilyNode>(
 		graphModel.nodes,
@@ -222,6 +230,7 @@ function FamilyFlowCanvas({
 
 	const onConnect = useCallback(
 		(connection: Connection) => {
+			if (isPlayer) return;
 			if (!isEditMode || !connection.source || !connection.target) return;
 			if (connection.source === connection.target) return;
 
@@ -234,7 +243,7 @@ function FamilyFlowCanvas({
 			});
 			setSelectedEdgeId(null);
 		},
-		[isEditMode],
+		[isEditMode, isPlayer],
 	);
 
 	function savePendingConnection() {
@@ -313,18 +322,20 @@ function FamilyFlowCanvas({
 				</div>
 
 				<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-					<Button
-						type="button"
-						variant={isEditMode ? "default" : "outline"}
-						onClick={() => {
-							onEditModeChange(!isEditMode);
-							setPendingConnection(null);
-						}}
-						className="min-w-0 gap-2"
-					>
-						<PencilLine className="h-4 w-4" />
-						{isEditMode ? "Editando" : "Modo edição"}
-					</Button>
+					{!isPlayer && (
+						<Button
+							type="button"
+							variant={isEditMode ? "default" : "outline"}
+							onClick={() => {
+								onEditModeChange(!isEditMode);
+								setPendingConnection(null);
+							}}
+							className="min-w-0 gap-2"
+						>
+							<PencilLine className="h-4 w-4" />
+							{isEditMode ? "Editando" : "Modo edição"}
+						</Button>
+					)}
 					<Button
 						type="button"
 						variant="outline"
@@ -449,6 +460,7 @@ function FamilyFlowCanvas({
 function buildFamilyGraph(
 	characters: Character[],
 	isEditMode: boolean,
+	isPlayer: boolean,
 ): GraphModel {
 	const characterById = new Map(
 		characters.map((character) => [character.id, character]),
@@ -459,7 +471,9 @@ function buildFamilyGraph(
 		position: { x: 0, y: 0 },
 		data: {
 			character,
-			directRelationCount: character.familyRelations?.length ?? 0,
+			directRelationCount:
+				character.familyRelations?.filter((r) => !isPlayer || !r.isSecret)
+					.length ?? 0,
 			isEditMode,
 		},
 	}));
@@ -467,6 +481,7 @@ function buildFamilyGraph(
 
 	for (const owner of characters) {
 		for (const relation of owner.familyRelations ?? []) {
+			if (isPlayer && relation.isSecret) continue;
 			const related = characterById.get(relation.relatedCharacterId);
 			if (!related) continue;
 
@@ -689,6 +704,8 @@ function GraphSidePanel({
 	isEditMode: boolean;
 	onRemoveEdge?: () => void;
 }) {
+	const myRole = useActiveCampaignRole();
+	const isPlayer = myRole === "viewer";
 	if (!character && !edge) return null;
 	const edgeData = edge?.data;
 
@@ -728,7 +745,9 @@ function GraphSidePanel({
 								Vínculos diretos
 							</span>
 							<span className="font-display text-lg font-bold text-foreground">
-								{character.familyRelations?.length ?? 0}
+								{character.familyRelations?.filter(
+									(r) => !isPlayer || !r.isSecret,
+								).length ?? 0}
 							</span>
 						</div>
 						<Link
