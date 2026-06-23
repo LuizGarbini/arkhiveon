@@ -10,8 +10,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import { type Character, useRPGStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 interface CharacterImageDialogProps {
 	character: Character;

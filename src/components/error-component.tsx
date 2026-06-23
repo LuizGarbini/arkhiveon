@@ -1,6 +1,6 @@
-import { AlertCircle, RefreshCcw, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useNavigate, useRouter } from "@tanstack/react-router";
+import { AlertCircle, Home, RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ErrorComponentProps {
 	error: Error;
@@ -24,7 +24,8 @@ export function ErrorComponent({ error, reset }: ErrorComponentProps) {
 				Falha Crítica!
 			</h1>
 			<p className="mb-8 max-w-[400px] text-sm leading-relaxed text-muted-foreground">
-				Um erro inesperado interrompeu sua jornada no Reino. Não se preocupe, seus dados estão seguros.
+				Um erro inesperado interrompeu sua jornada no Reino. Não se preocupe,
+				seus dados estão seguros.
 			</p>
 
 			<div className="mb-8 w-full max-w-md overflow-hidden rounded-lg border border-border/40 bg-muted/30 p-4 text-left">
@@ -47,7 +48,7 @@ export function ErrorComponent({ error, reset }: ErrorComponentProps) {
 					<RefreshCcw className="h-4 w-4" />
 					Tentar Novamente
 				</Button>
-				
+
 				<Button
 					variant="outline"
 					onClick={() => void navigate({ to: "/" })}

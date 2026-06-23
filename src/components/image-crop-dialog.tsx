@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
-import { croppedBlobFromUrl } from "@/lib/crop-image";
 import { useToast } from "@/components/ui/toast";
+import { croppedBlobFromUrl } from "@/lib/crop-image";
 
 type ImageCropDialogProps = {
 	open: boolean;
@@ -161,9 +161,7 @@ export function ImageCropDialog({
 							onClick={() => void handleApply()}
 							className="gap-2"
 						>
-							{isBusy ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
-							) : null}
+							{isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
 							Aplicar recorte
 						</Button>
 					</DialogFooter>

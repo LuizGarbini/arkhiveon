@@ -658,7 +658,10 @@ function ModuleContent({
 			>
 				{abilities.map((ability) => {
 					const fullName = getAttributeFullName(ability.label);
-					const extraInfo = getAttributeExtraInfo(ability.value, character.system);
+					const extraInfo = getAttributeExtraInfo(
+						ability.value,
+						character.system,
+					);
 					return (
 						<div
 							key={ability.label}

@@ -1,14 +1,25 @@
 import { Crop, ImagePlus, Images, Loader2, Trash2 } from "lucide-react";
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	lazy,
+	Suspense,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { FramedImage } from "@/components/framed-image";
 import { ImageLibraryPickerDialog } from "@/components/image-library-picker-dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { cropAspectFromPreview, cropShapeFromPreview } from "@/lib/crop-preview";
+import {
+	cropAspectFromPreview,
+	cropShapeFromPreview,
+} from "@/lib/crop-preview";
 import { resolveEntityImageUrl } from "@/lib/entity-images";
+import type { ImageFraming } from "@/lib/image-framing";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
-import type { ImageFraming } from "@/lib/image-framing";
 import {
 	useActiveCampaignId,
 	useActiveCampaignRole,
@@ -177,11 +188,7 @@ export function EntityImagePicker({
 					)}
 				>
 					{hasPreview ? (
-						<FramedImage
-							src={previewUrl}
-							alt={uploadLabel}
-							framing={value}
-						/>
+						<FramedImage src={previewUrl} alt={uploadLabel} framing={value} />
 					) : (
 						<ImagePlus className="h-8 w-8 text-muted-foreground/50" />
 					)}

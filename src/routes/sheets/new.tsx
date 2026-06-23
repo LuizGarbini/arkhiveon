@@ -68,7 +68,15 @@ function NewSheetPage() {
 	const navigate = useNavigate();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
 	const customTemplates = useRPGStore((state) => state.customTemplates || []);
+	const campaigns = useRPGStore((state) => state.campaigns);
+	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 	const [activeStep, setActiveStep] = useState<WizardStep>("system");
+
+	useEffect(() => {
+		if (!isLoading && campaigns.length === 0) {
+			void navigate({ to: "/dashboard" });
+		}
+	}, [isLoading, campaigns, navigate]);
 	const [stepError, setStepError] = useState<string | null>(null);
 	const [selectedLayoutTemplateId, setSelectedLayoutTemplateId] = useState<
 		string | undefined

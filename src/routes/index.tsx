@@ -13,14 +13,12 @@ import { useId } from "react";
 import { ArkhiveonGradientBackground } from "@/components/arkhiveon-gradient-background";
 import { EfferdStickyFooter } from "@/components/efferd-sticky-footer";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,
 });
-
-
 
 const pillars = [
 	{
@@ -43,7 +41,6 @@ const pillars = [
 		description: "Personagens, lugares e sessões conectados por contexto.",
 	},
 ];
-
 
 const freePlanFeatures = [
 	"20 registros de campanha",
@@ -167,11 +164,10 @@ function LandingPage() {
 						</h1>
 
 						<p className="lp-enter lp-d4 mt-6 max-w-2xl text-[16px] sm:text-[18px] font-medium leading-8 text-muted-foreground">
-							Personagens, fichas e sessões em um arquivo minimalista e potente feito para{" "}
-							<strong className="font-semibold text-foreground">
-								voltar
-							</strong>
-							. Organização inteligente para contar histórias marcantes.
+							Personagens, fichas e sessões em um arquivo minimalista e potente
+							feito para{" "}
+							<strong className="font-semibold text-foreground">voltar</strong>.
+							Organização inteligente para contar histórias marcantes.
 						</p>
 
 						<div className="lp-enter lp-d5 mt-9 flex flex-wrap items-center justify-center gap-3.5">
@@ -182,14 +178,20 @@ function LandingPage() {
 								</Button>
 							) : isAuthenticated ? (
 								<Link to="/dashboard">
-									<Button size="lg" className="gap-2 px-8 shadow-lg shadow-primary/20">
+									<Button
+										size="lg"
+										className="gap-2 px-8 shadow-lg shadow-primary/20"
+									>
 										Abrir arquivo
 										<ArrowUpRight className="h-4 w-4" />
 									</Button>
 								</Link>
 							) : (
 								<Link to="/auth" search={{ mode: "register" }}>
-									<Button size="lg" className="gap-2 px-8 shadow-lg shadow-primary/20">
+									<Button
+										size="lg"
+										className="gap-2 px-8 shadow-lg shadow-primary/20"
+									>
 										Criar arquivo
 										<ArrowUpRight className="h-4 w-4" />
 									</Button>
@@ -214,7 +216,6 @@ function LandingPage() {
 					<div className="relative mt-8 w-full max-w-5xl px-4 md:px-0 z-10 lp-enter lp-d6 translate-y-24">
 						{/* Overlapping Container */}
 						<div className="relative h-[540px] rounded-2xl border border-border/80 bg-card-elevated shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden">
-
 							{/* Mini Browser/Header bar to make it look premium */}
 							<div className="flex items-center gap-2 border-b border-border/60 bg-card/95 px-4 py-3 backdrop-blur-sm">
 								<div className="flex gap-1.5">
@@ -223,7 +224,9 @@ function LandingPage() {
 									<div className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
 								</div>
 								<div className="mx-auto flex h-5 w-48 items-center justify-center rounded bg-background/60 px-3 ring-1 ring-border/60">
-									<span className="text-[8px] text-muted-foreground/60 font-mono">arkhiveon.com/characters/elara</span>
+									<span className="text-[8px] text-muted-foreground/60 font-mono">
+										arkhiveon.com/characters/elara
+									</span>
 								</div>
 							</div>
 
@@ -240,8 +243,12 @@ function LandingPage() {
 												draggable={false}
 											/>
 											<div className="absolute right-3 bottom-3 flex h-7 min-w-7 items-center justify-center rounded-lg bg-background/90 px-1.5 backdrop-blur ring-1 ring-border/60">
-												<span className="text-[8px] font-semibold text-muted-foreground font-sans">Lv</span>
-												<span className="ml-0.5 font-display text-[12px] font-bold text-foreground">12</span>
+												<span className="text-[8px] font-semibold text-muted-foreground font-sans">
+													Lv
+												</span>
+												<span className="ml-0.5 font-display text-[12px] font-bold text-foreground">
+													12
+												</span>
 											</div>
 										</div>
 
@@ -249,7 +256,9 @@ function LandingPage() {
 											<span className="rounded bg-primary/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
 												D&D 5e
 											</span>
-											<span className="text-[10px] text-muted-foreground font-semibold mt-1">Neutro Bom</span>
+											<span className="text-[10px] text-muted-foreground font-semibold mt-1">
+												Neutro Bom
+											</span>
 										</div>
 									</div>
 
@@ -258,23 +267,40 @@ function LandingPage() {
 										<div>
 											<div className="flex items-start justify-between">
 												<div>
-													<h3 className="font-display text-xl font-bold text-foreground">Elara Moonveil</h3>
-													<p className="text-xs text-muted-foreground font-semibold mt-0.5">Elfa · Maga de Transmutação</p>
+													<h3 className="font-display text-xl font-bold text-foreground">
+														Elara Moonveil
+													</h3>
+													<p className="text-xs text-muted-foreground font-semibold mt-0.5">
+														Elfa · Maga de Transmutação
+													</p>
 												</div>
-												<span className="text-[10px] font-mono text-muted-foreground/80 font-bold bg-muted px-2 py-0.5 rounded">XP: 7.200</span>
+												<span className="text-[10px] font-mono text-muted-foreground/80 font-bold bg-muted px-2 py-0.5 rounded">
+													XP: 7.200
+												</span>
 											</div>
 
 											{/* HP Bar */}
 											<div className="mt-5">
 												<div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
 													<span className="flex items-center gap-1 font-bold">
-														<svg viewBox="0 0 24 24" className="h-3 w-3 text-rose-500" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+														<svg
+															viewBox="0 0 24 24"
+															className="h-3 w-3 text-rose-500"
+															fill="currentColor"
+														>
+															<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+														</svg>
 														Pontos de Vida
 													</span>
-													<span className="font-mono tabular-nums text-foreground/80 font-bold">68 / 68</span>
+													<span className="font-mono tabular-nums text-foreground/80 font-bold">
+														68 / 68
+													</span>
 												</div>
 												<div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-													<div className="absolute inset-y-0 left-0 rounded-full bg-rose-500" style={{ width: "100%" }} />
+													<div
+														className="absolute inset-y-0 left-0 rounded-full bg-rose-500"
+														style={{ width: "100%" }}
+													/>
 												</div>
 											</div>
 
@@ -282,18 +308,30 @@ function LandingPage() {
 											<div className="mt-5 grid grid-cols-3 gap-2 text-center">
 												<div className="flex flex-col items-center gap-1 rounded-xl bg-background/55 p-2.5 ring-1 ring-border/50">
 													<span className="text-xs">🛡</span>
-													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Armadura</span>
-													<span className="font-mono text-xs font-bold text-foreground">15</span>
+													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">
+														Armadura
+													</span>
+													<span className="font-mono text-xs font-bold text-foreground">
+														15
+													</span>
 												</div>
 												<div className="flex flex-col items-center gap-1 rounded-xl bg-background/55 p-2.5 ring-1 ring-border/50">
 													<span className="text-xs">⚡</span>
-													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Iniciativa</span>
-													<span className="font-mono text-xs font-bold text-foreground">+3</span>
+													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">
+														Iniciativa
+													</span>
+													<span className="font-mono text-xs font-bold text-foreground">
+														+3
+													</span>
 												</div>
 												<div className="flex flex-col items-center gap-1 rounded-xl bg-background/55 p-2.5 ring-1 ring-border/50">
 													<span className="text-xs">👣</span>
-													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Deslocamento</span>
-													<span className="font-mono text-xs font-bold text-foreground">9m</span>
+													<span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">
+														Deslocamento
+													</span>
+													<span className="font-mono text-xs font-bold text-foreground">
+														9m
+													</span>
 												</div>
 											</div>
 
@@ -307,10 +345,19 @@ function LandingPage() {
 													{ label: "SAB", value: 14, mod: "+2" },
 													{ label: "CAR", value: 12, mod: "+1" },
 												].map((ab) => (
-													<div key={ab.label} className="flex flex-col items-center bg-background/30 rounded-lg py-1.5">
-														<span className="text-[8px] font-bold text-muted-foreground">{ab.label}</span>
-														<span className="font-mono text-[11px] font-bold text-foreground">{ab.value}</span>
-														<span className="font-mono text-[9px] text-primary">{ab.mod}</span>
+													<div
+														key={ab.label}
+														className="flex flex-col items-center bg-background/30 rounded-lg py-1.5"
+													>
+														<span className="text-[8px] font-bold text-muted-foreground">
+															{ab.label}
+														</span>
+														<span className="font-mono text-[11px] font-bold text-foreground">
+															{ab.value}
+														</span>
+														<span className="font-mono text-[9px] text-primary">
+															{ab.mod}
+														</span>
 													</div>
 												))}
 											</div>
@@ -347,7 +394,7 @@ function LandingPage() {
 							{pillars.map(({ Icon, eyebrow, title, description }, i) => (
 								<article
 									key={eyebrow}
-									className={`group rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm shadow-black/5 transition-all hover:border-primary/25 hover:shadow-md flex flex-col items-center text-center ${["lp-reveal-s1","lp-reveal-s2","lp-reveal-s3"][i] ?? "lp-reveal"}`}
+									className={`group rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm shadow-black/5 transition-all hover:border-primary/25 hover:shadow-md flex flex-col items-center text-center ${["lp-reveal-s1", "lp-reveal-s2", "lp-reveal-s3"][i] ?? "lp-reveal"}`}
 								>
 									<span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary transition-transform group-hover:scale-105">
 										<Icon className="h-5 w-5" strokeWidth={1.8} />
@@ -368,7 +415,10 @@ function LandingPage() {
 				</section>
 
 				{/* ── Pricing ── */}
-				<section id="pricing-section" className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24">
+				<section
+					id="pricing-section"
+					className="w-full border-t border-border/50 px-6 py-16 sm:px-10 lg:px-14 lg:py-24"
+				>
 					<div className="mx-auto w-full max-w-5xl">
 						<div className="lp-reveal mb-12 max-w-2xl mx-auto text-center flex flex-col items-center">
 							<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule-center">
@@ -420,11 +470,15 @@ function LandingPage() {
 					/>
 					<div
 						className="h-1.5 w-1.5 rounded-full bg-primary/40"
-						style={{ animation: "footer-dot-pulse 1.6s ease-in-out 0.2s infinite" }}
+						style={{
+							animation: "footer-dot-pulse 1.6s ease-in-out 0.2s infinite",
+						}}
 					/>
 					<div
 						className="h-1.5 w-1.5 rounded-full bg-primary/20"
-						style={{ animation: "footer-dot-pulse 1.6s ease-in-out 0.4s infinite" }}
+						style={{
+							animation: "footer-dot-pulse 1.6s ease-in-out 0.4s infinite",
+						}}
 					/>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -435,7 +489,9 @@ function LandingPage() {
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						className="mt-0.5 h-3.5 w-3.5 text-primary/50"
-						style={{ animation: "footer-dot-pulse 1.6s ease-in-out 0.6s infinite" }}
+						style={{
+							animation: "footer-dot-pulse 1.6s ease-in-out 0.6s infinite",
+						}}
 					>
 						<path d="m6 9 6 6 6-6" />
 					</svg>
@@ -448,8 +504,6 @@ function LandingPage() {
 }
 
 /* ─── Sub-components ─── */
-
-
 
 function PlanCard({
 	name,
@@ -465,11 +519,12 @@ function PlanCard({
 	highlight?: boolean;
 }) {
 	return (
-		<article className={`relative h-full flex flex-col justify-between overflow-hidden rounded-[1.75rem] border p-7 shadow-sm transition-all sm:p-8 ${
-			highlight
-				? "pro-plan-card border-primary/45 bg-linear-to-br from-primary/16 via-card to-card shadow-[0_28px_90px_-55px_var(--primary)]"
-				: "border-border/60 bg-card/60"
-		}`}
+		<article
+			className={`relative h-full flex flex-col justify-between overflow-hidden rounded-[1.75rem] border p-7 shadow-sm transition-all sm:p-8 ${
+				highlight
+					? "pro-plan-card border-primary/45 bg-linear-to-br from-primary/16 via-card to-card shadow-[0_28px_90px_-55px_var(--primary)]"
+					: "border-border/60 bg-card/60"
+			}`}
 		>
 			{highlight && (
 				<>

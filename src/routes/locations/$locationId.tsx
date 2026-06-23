@@ -179,7 +179,14 @@ function LocationDetailPage() {
 					<DetailSection
 						eyebrow="Resumo"
 						title="Identificacao"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<DetailInfo label="Tipo" value={currentLocation.type} />
@@ -199,7 +206,14 @@ function LocationDetailPage() {
 					<DetailSection
 						eyebrow="Descricao"
 						title="Primeira vista"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<DetailText value={currentLocation.description} />
 					</DetailSection>
@@ -207,7 +221,14 @@ function LocationDetailPage() {
 					<DetailSection
 						eyebrow="Sociedade"
 						title="Politica & economia"
-						onEdit={isEditing ? () => { setActiveTab("society"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("society");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<div className="grid gap-3 sm:grid-cols-2">
@@ -232,7 +253,14 @@ function LocationDetailPage() {
 					<DetailSection
 						eyebrow="Historia"
 						title="Passado do local"
-						onEdit={isEditing ? () => { setActiveTab("history"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("history");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<DetailText value={currentLocation.history} />
 					</DetailSection>
@@ -242,7 +270,14 @@ function LocationDetailPage() {
 					<DetailSection
 						eyebrow="Mapa"
 						title="Referencia"
-						onEdit={isEditing ? () => { setActiveTab("basic"); setDialogOpen(true); } : undefined}
+						onEdit={
+							isEditing
+								? () => {
+										setActiveTab("basic");
+										setDialogOpen(true);
+									}
+								: undefined
+						}
 					>
 						<div className="grid gap-3">
 							<DetailInfo

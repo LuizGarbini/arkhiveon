@@ -13,13 +13,17 @@ import { SparklesCanvas } from "@/components/ui/sparkles-canvas";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
-import { getSupabase } from "@/lib/supabase";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
+import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/billing")({
-	validateSearch: (search: Record<string, unknown>): { success?: boolean; canceled?: boolean; mock?: boolean } => ({
-		success: search.success === "true" || search.success === true ? true : undefined,
-		canceled: search.canceled === "true" || search.canceled === true ? true : undefined,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { success?: boolean; canceled?: boolean; mock?: boolean } => ({
+		success:
+			search.success === "true" || search.success === true ? true : undefined,
+		canceled:
+			search.canceled === "true" || search.canceled === true ? true : undefined,
 		mock: search.mock === "true" || search.mock === true ? true : undefined,
 	}),
 	component: BillingPage,
@@ -97,7 +101,9 @@ function BillingPage() {
 			});
 
 			if (response.error) {
-				throw new Error(response.error.message || "Erro ao criar sessão de pagamento.");
+				throw new Error(
+					response.error.message || "Erro ao criar sessão de pagamento.",
+				);
 			}
 
 			const data = response.data as { url?: string; error?: string };
@@ -122,7 +128,11 @@ function BillingPage() {
 
 	function handleDismissSuccess() {
 		setShowSparkles(false);
-		void navigate({ to: "/billing", search: { success: undefined, canceled: undefined, mock: undefined }, replace: true });
+		void navigate({
+			to: "/billing",
+			search: { success: undefined, canceled: undefined, mock: undefined },
+			replace: true,
+		});
 	}
 
 	// ── Canceled toast ───────────────────────────────────────────────
@@ -196,6 +206,22 @@ function BillingPage() {
 			</>
 		);
 	}
+
+	// ── Canceled toast ───────────────────────────────────────────────
+	useEffect(() => {
+		if (canceled) {
+			toast.info({
+				title: "Checkout cancelado",
+				description: "Você pode tentar novamente quando quiser.",
+			});
+			void navigate({
+				to: "/billing",
+				search: { success: undefined, canceled: undefined, mock: undefined },
+				replace: true,
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [canceled]);
 
 	// ── Normal billing page ──────────────────────────────────────────
 	return (
@@ -319,7 +345,8 @@ function BillingPage() {
 						onClick={() => {
 							toast.info({
 								title: "Portal Stripe",
-								description: "O portal de gerenciamento da assinatura será integrado em breve.",
+								description:
+									"O portal de gerenciamento da assinatura será integrado em breve.",
 							});
 						}}
 					>
