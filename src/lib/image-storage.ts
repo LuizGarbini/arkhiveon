@@ -222,7 +222,7 @@ async function uploadThroughFunction(
 	}
 
 	if (data?.url && data.key) {
-		return uploadSignedData(data, webpFile);
+		return uploadSignedData(client, data, webpFile);
 	}
 
 	return data ?? {};
@@ -251,10 +251,11 @@ async function uploadThroughSignedUrl(
 		throw new Error("Falha ao gerar link de upload seguro do R2.");
 	}
 
-	return uploadSignedData(data, webpFile);
+	return uploadSignedData(client, data, webpFile);
 }
 
 async function uploadSignedData(
+	client: ConfiguredSupabaseClient,
 	data: R2UploadResponse,
 	webpFile: File,
 ): Promise<R2UploadResponse> {
@@ -281,6 +282,21 @@ async function uploadSignedData(
 		throw new Error(
 			"Falha ao enviar imagem para o R2. Atualize a funcao r2-upload para usar upload pelo servidor.",
 		);
+	}
+
+	// Confirmar o upload e contabilizar a cota de armazenamento
+	// somente após o PUT ter sido concluído com sucesso.
+	try {
+		await client.functions.invoke("r2-confirm-upload", {
+			body: { key: data.key },
+		});
+	} catch (error) {
+		console.warn(
+			"Falha ao confirmar upload para contabilização de cota:",
+			error,
+		);
+		// Não lançar erro aqui: o arquivo já está no R2 e a key é válida.
+		// A cota será reconciliada em uma eventual rotina de auditoria.
 	}
 
 	return { key: data.key };

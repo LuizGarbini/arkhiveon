@@ -178,16 +178,9 @@ serve(async (req) => {
 		});
 		const url = await getSignedUrl(s3, command, { expiresIn: 300 });
 
-		await updateUsage({
-			supabaseAdmin,
-			targetUserId,
-			userId: user.id,
-			plan,
-			storageUsed,
-			fileSize: payload.fileSize,
-		});
-
-		return jsonResponse({ url, key: finalKey });
+		// A cota será incrementada somente após o cliente confirmar o upload
+		// bem-sucedido via a Edge Function r2-confirm-upload.
+		return jsonResponse({ url, key: finalKey, fileSize: payload.fileSize });
 	} catch (error) {
 		console.error("Error uploading to R2:", error);
 		return jsonResponse(
