@@ -213,90 +213,9 @@ async function uploadThroughFunction(
 		{ body },
 	);
 
-	if (error) {
-		console.warn(
-			"R2 server-side upload failed, trying signed URL fallback:",
-			error,
-		);
-		return uploadThroughSignedUrl(client, webpFile, options);
-	}
-
-	if (data?.url && data.key) {
-		return uploadSignedData(client, data, webpFile);
-	}
-
-	return data ?? {};
-}
-
-async function uploadThroughSignedUrl(
-	client: ConfiguredSupabaseClient,
-	webpFile: File,
-	options: UploadOptions,
-): Promise<R2UploadResponse> {
-	const { data, error } = await client.functions.invoke<R2UploadResponse>(
-		"r2-upload",
-		{
-			body: {
-				fileName: webpFile.name,
-				contentType: webpFile.type,
-				fileSize: webpFile.size,
-				campaignId: options.campaignId,
-				folder: options.folder,
-			},
-		},
-	);
-
-	if (error || !data?.url || !data?.key) {
-		console.error("R2 Upload Error:", error || data?.error);
-		throw new Error("Falha ao gerar link de upload seguro do R2.");
-	}
-
-	return uploadSignedData(client, data, webpFile);
-}
-
-async function uploadSignedData(
-	client: ConfiguredSupabaseClient,
-	data: R2UploadResponse,
-	webpFile: File,
-): Promise<R2UploadResponse> {
-	if (!data.url || !data.key) {
-		throw new Error(
-			data.error || "Falha ao gerar link de upload seguro do R2.",
-		);
-	}
-
-	try {
-		const uploadRes = await fetch(data.url, {
-			method: "PUT",
-			headers: {
-				"Content-Type": webpFile.type,
-			},
-			body: webpFile,
-		});
-
-		if (!uploadRes.ok) {
-			throw new Error("Falha no upload do arquivo para o R2.");
-		}
-	} catch (error) {
-		console.error("R2 signed URL upload failed:", error);
-		throw new Error(
-			"Falha ao enviar imagem para o R2. Atualize a funcao r2-upload para usar upload pelo servidor.",
-		);
-	}
-
-	// Confirmar o upload e contabilizar a cota de armazenamento
-	// somente após o PUT ter sido concluído com sucesso.
-	try {
-		await client.functions.invoke("r2-confirm-upload", {
-			body: { key: data.key },
-		});
-	} catch (error) {
-		console.warn(
-			"Falha ao confirmar upload para contabilização de cota:",
-			error,
-		);
-		// Não lançar erro aqui: o arquivo já está no R2 e a key é válida.
-		// A cota será reconciliada em uma eventual rotina de auditoria.
+	if (error || !data?.key) {
+		console.error("R2 server-side upload failed:", error || data?.error);
+		throw new Error(data?.error || "Falha ao enviar imagem para o R2.");
 	}
 
 	return { key: data.key };
