@@ -23,9 +23,16 @@ import {
 	useEffect,
 	useMemo,
 	useState,
+	lazy,
+	Suspense,
 } from "react";
 import { useForm } from "react-hook-form";
-import { CharacterExportDialog } from "@/components/character-export-dialog";
+
+const CharacterExportDialog = lazy(() =>
+	import("@/components/character-export-dialog").then((module) => ({
+		default: module.CharacterExportDialog,
+	})),
+);
 
 import {
 	buildCharacterFormDefaults,
@@ -445,11 +452,15 @@ function CharacterSheetPage() {
 				open={isTransferDialogOpen}
 				onOpenChange={setIsTransferDialogOpen}
 			/>
-			<CharacterExportDialog
-				character={{ ...currentCharacter, imageUrl: characterImageUrl }}
-				open={isExportDialogOpen}
-				onOpenChange={setIsExportDialogOpen}
-			/>
+			{isExportDialogOpen && (
+				<Suspense fallback={null}>
+					<CharacterExportDialog
+						character={{ ...currentCharacter, imageUrl: characterImageUrl }}
+						open={isExportDialogOpen}
+						onOpenChange={setIsExportDialogOpen}
+					/>
+				</Suspense>
+			)}
 		</div>
 	);
 }
