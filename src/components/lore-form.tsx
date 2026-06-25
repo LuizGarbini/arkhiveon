@@ -95,7 +95,7 @@ function LoreFormDialog({
 	const updateLore = useRPGStore((state) => state.updateLore);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue } =
+	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
 		useForm<LoreFormValues>({
 			defaultValues: { ...loreDefaults, ...(lore ?? {}) },
 		});
@@ -258,8 +258,13 @@ function LoreFormDialog({
 						>
 							Cancelar
 						</Button>
-						<Button type="submit" size="sm">
-							{isEdit ? "Salvar alterações" : "Salvar Lore"}
+						<Button
+							type="submit"
+							size="sm"
+							loading={isSubmitting}
+							loadingText="Salvando..."
+						>
+							{isEdit ? "Salvar alterações" : "Criar Artigo"}
 						</Button>
 					</div>
 				</form>

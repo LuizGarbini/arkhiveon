@@ -50,9 +50,23 @@ function RouteComponent() {
 					className={`${!isLoading && filteredSessions.length === 0 ? "" : "relative border-l border-border/70 pl-8 sm:pl-10 ml-4 sm:ml-8"} space-y-8 py-2`}
 				>
 					{isLoading
-						? loadingCardKeys.map((key) => <SessionCard key={key} isLoading />)
-						: filteredSessions.map((session) => (
-								<SessionCard key={session.id} session={session} />
+						? loadingCardKeys.map((key, i) => (
+								<div
+									key={key}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<SessionCard isLoading />
+								</div>
+							))
+						: filteredSessions.map((session, i) => (
+								<div
+									key={session.id}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<SessionCard session={session} />
+								</div>
 							))}
 					{!isLoading && filteredSessions.length === 0 && (
 						<EmptyState

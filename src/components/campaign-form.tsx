@@ -56,6 +56,22 @@ export function CampaignForm({
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
 
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+
+	useEffect(() => {
+		const tabsList = ["general", "members"];
+		const index = tabsList.indexOf(activeTab);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else if (prevIndex !== -1 && index > prevIndex) {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [activeTab, prevIndex]);
+
 	useEffect(() => {
 		if (open) {
 			setName(campaign?.name ?? "");
@@ -66,6 +82,7 @@ export function CampaignForm({
 			setActiveTab(defaultTab);
 			setMembers([]);
 			setInvites([]);
+			setPrevIndex(-1);
 		}
 	}, [open, campaign?.id, defaultTab]);
 
@@ -196,207 +213,270 @@ export function CampaignForm({
 					</div>
 				)}
 
-				{activeTab === "general" ? (
-					<form onSubmit={handleSubmit} className="space-y-4">
-						<div className="space-y-2">
-							<label
-								htmlFor={nameInputId}
-								className="text-[12px] font-semibold text-foreground"
-							>
-								Nome da Campanha *
-							</label>
-							<Input
-								id={nameInputId}
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								placeholder="Ex: A Maldição de Strahd"
-								autoFocus
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<label
-								htmlFor={descInputId}
-								className="text-[12px] font-semibold text-foreground"
-							>
-								Descrição
-							</label>
-							<Textarea
-								id={descInputId}
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-								placeholder="Uma breve descrição da campanha..."
-								rows={3}
-							/>
-						</div>
-
-						<DialogFooter className="pt-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancelar
-							</Button>
-							<Button type="submit" disabled={!name.trim() || isSaving}>
-								{isSaving
-									? "Salvando..."
-									: campaign
-										? "Salvar Alterações"
-										: "Criar Campanha"}
-							</Button>
-						</DialogFooter>
-					</form>
-				) : (
-					<div className="space-y-6">
-						{/* Enviar Convite */}
-						{invitedCount < 6 ? (
-							<form
-								onSubmit={handleSendInvite}
-								className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20"
-							>
-								<h3 className="text-[12px] font-bold flex items-center gap-1.5 text-foreground">
-									<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
-									Jogador
-								</h3>
-								<div className="flex gap-2">
-									<Input
-										type="email"
-										value={inviteEmail}
-										onChange={(e) => setInviteEmail(e.target.value)}
-										placeholder="e-mail-do-jogador@gmail.com"
-										className="flex-1"
-										required
-									/>
-									<select
-										value={inviteRole}
-										onChange={(e) =>
-											setInviteRole(e.target.value as "editor" | "viewer")
-										}
-										className="rounded-lg border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground outline-hidden focus:border-primary"
+				{campaign ? (
+					<div
+						key={activeTab}
+						className={cn(
+							"flex-1 min-h-0 overflow-y-auto",
+							slideDirection === "left" ? "t-tab-slide-left" : "t-tab-slide-right"
+						)}
+					>
+						{activeTab === "general" ? (
+							<form onSubmit={handleSubmit} className="space-y-4">
+								<div className="space-y-2">
+									<label
+										htmlFor={nameInputId}
+										className="text-[12px] font-semibold text-foreground"
 									>
-										<option value="viewer">Jogador (Ver)</option>
-										<option value="editor">Co-Mestre (Editar)</option>
-									</select>
+										Nome da Campanha *
+									</label>
+									<Input
+										id={nameInputId}
+										value={name}
+										onChange={(e) => setName(e.target.value)}
+										placeholder="Ex: A Maldição de Strahd"
+										autoFocus
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										htmlFor={descInputId}
+										className="text-[12px] font-semibold text-foreground"
+									>
+										Descrição
+									</label>
+									<Textarea
+										id={descInputId}
+										value={description}
+										onChange={(e) => setDescription(e.target.value)}
+										placeholder="Uma breve descrição da campanha..."
+										rows={3}
+									/>
+								</div>
+
+								<DialogFooter className="pt-2">
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => onOpenChange(false)}
+									>
+										Cancelar
+									</Button>
 									<Button
 										type="submit"
-										size="sm"
-										disabled={!inviteEmail.trim() || isSendingInvite}
+										loading={isSaving}
+										loadingText="Salvando..."
+										disabled={!name.trim()}
 									>
-										{isSendingInvite ? (
-											<Loader2 className="h-3 w-3 animate-spin" />
-										) : (
-											"Convidar"
-										)}
+										{campaign ? "Salvar Alterações" : "Criar Campanha"}
 									</Button>
-								</div>
-								{inviteError && (
-									<p className="text-[10px] text-destructive font-medium">
-										{inviteError}
-									</p>
-								)}
+								</DialogFooter>
 							</form>
 						) : (
-							<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-								Limite de 6 participantes atingido. Remova um membro ou cancele
-								um convite pendente para liberar espaço.
-							</p>
-						)}
-
-						{/* Listagem de Participantes */}
-						<div className="space-y-3">
-							<h3 className="text-[12px] font-bold text-foreground">
-								Lista de Participantes
-							</h3>
-							{isLoadingMembers ? (
-								<div className="flex justify-center py-6 text-muted-foreground">
-									<Loader2 className="h-5 w-5 animate-spin" />
-								</div>
-							) : (
-								<div className="max-h-52 overflow-y-auto space-y-2 pr-1">
-									{/* Membros Ativos */}
-									{members.map((member) => (
-										<div
-											key={member.id}
-											className="flex items-center justify-between p-2.5 rounded-lg border border-border/40 bg-background/50 hover:bg-muted/10 transition-colors"
-										>
-											<div className="flex items-center gap-2.5 min-w-0">
-												<div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-													{member.role === "owner" ? (
-														<Shield className="h-3.5 w-3.5" />
-													) : (
-														<User className="h-3.5 w-3.5" />
-													)}
-												</div>
-												<div className="flex flex-col min-w-0 leading-tight">
-													<span className="text-[11px] font-semibold truncate text-foreground">
-														{member.email}
-													</span>
-													<span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">
-														{member.role === "owner"
-															? "Mestre"
-															: member.role === "editor"
-																? "Co-Mestre"
-																: "Jogador"}
-													</span>
-												</div>
-											</div>
-											{member.role !== "owner" && (
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													onClick={() => handleKickMember(member.userId)}
-													className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-													title="Remover participante"
-												>
-													<Trash2 className="h-3.5 w-3.5" />
-												</Button>
-											)}
-										</div>
-									))}
-
-									{/* Convites Pendentes */}
-									{invites.map((invite) => (
-										<div
-											key={invite.id}
-											className="flex items-center justify-between p-2.5 rounded-lg border border-dashed border-border bg-muted/5 hover:bg-muted/10 transition-colors"
-										>
-											<div className="flex items-center gap-2.5 min-w-0">
-												<div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-muted-foreground/45 text-muted-foreground">
-													<Loader2 className="h-3.5 w-3.5 animate-pulse" />
-												</div>
-												<div className="flex flex-col min-w-0 leading-tight">
-													<span className="text-[11px] font-semibold truncate text-muted-foreground">
-														{invite.email}
-													</span>
-													<span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1">
-														Pendente •{" "}
-														{invite.role === "editor" ? "Co-Mestre" : "Jogador"}
-													</span>
-												</div>
-											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												onClick={() => handleRevokeInvite(invite.id)}
-												className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-												title="Cancelar convite"
+							<div className="space-y-6">
+								{/* Enviar Convite */}
+								{invitedCount < 6 ? (
+									<form
+										onSubmit={handleSendInvite}
+										className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20"
+									>
+										<h3 className="text-[12px] font-bold flex items-center gap-1.5 text-foreground">
+											<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
+											Jogador
+										</h3>
+										<div className="flex gap-2">
+											<Input
+												type="email"
+												value={inviteEmail}
+												onChange={(e) => setInviteEmail(e.target.value)}
+												placeholder="e-mail-do-jogador@gmail.com"
+												className="flex-1"
+												required
+											/>
+											<select
+												value={inviteRole}
+												onChange={(e) =>
+													setInviteRole(e.target.value as "editor" | "viewer")
+												}
+												className="rounded-lg border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground outline-hidden focus:border-primary"
 											>
-												<Trash2 className="h-3.5 w-3.5" />
+												<option value="viewer">Jogador (Ver)</option>
+												<option value="editor">Co-Mestre (Editar)</option>
+											</select>
+											<Button
+												type="submit"
+												size="sm"
+												loading={isSendingInvite}
+												loadingText="Enviando..."
+												disabled={!inviteEmail.trim()}
+											>
+												Convidar
 											</Button>
 										</div>
-									))}
+										{inviteError && (
+											<p className="text-[10px] text-destructive font-medium">
+												{inviteError}
+											</p>
+										)}
+									</form>
+								) : (
+									<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
+										Limite de 6 participantes atingido. Remova um membro ou cancele
+										um convite pendente antes de enviar outro.
+									</p>
+								)}
 
-									{members.length === 0 && invites.length === 0 && (
-										<p className="text-center py-6 text-[11px] text-muted-foreground">
-											Nenhum jogador convidado para esta campanha ainda.
-										</p>
+								{/* Listagem de Participantes */}
+								<div className="space-y-3">
+									<h3 className="text-[12px] font-bold text-foreground">
+										Lista de Participantes
+									</h3>
+									{isLoadingMembers ? (
+										<div className="flex justify-center py-6 text-muted-foreground">
+											<Loader2 className="h-5 w-5 animate-spin" />
+										</div>
+									) : (
+										<div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+											{/* Membros Ativos */}
+											{members.map((member) => (
+												<div
+													key={member.id}
+													className="flex items-center justify-between p-2.5 rounded-lg border border-border/40 bg-background/50 hover:bg-muted/10 transition-colors"
+												>
+													<div className="flex items-center gap-2.5 min-w-0">
+														<div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+															{member.role === "owner" ? (
+																<Shield className="h-3.5 w-3.5" />
+															) : (
+																<User className="h-3.5 w-3.5" />
+															)}
+														</div>
+														<div className="flex flex-col min-w-0 leading-tight">
+															<span className="text-[11px] font-semibold truncate text-foreground">
+																{member.email}
+															</span>
+															<span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">
+																{member.role === "owner"
+																	? "Mestre"
+																	: member.role === "editor"
+																		? "Co-Mestre"
+																		: "Jogador"}
+															</span>
+														</div>
+													</div>
+													{member.role !== "owner" && (
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															onClick={() => handleKickMember(member.userId)}
+															className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+															title="Remover participante"
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</Button>
+													)}
+												</div>
+											))}
+
+											{/* Convites Pendentes */}
+											{invites.map((invite) => (
+												<div
+													key={invite.id}
+													className="flex items-center justify-between p-2.5 rounded-lg border border-dashed border-border bg-muted/5 hover:bg-muted/10 transition-colors"
+												>
+													<div className="flex items-center gap-2.5 min-w-0">
+														<div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-muted-foreground/45 text-muted-foreground">
+															<Loader2 className="h-3.5 w-3.5 animate-pulse" />
+														</div>
+														<div className="flex flex-col min-w-0 leading-tight">
+															<span className="text-[11px] font-semibold truncate text-muted-foreground">
+																{invite.email}
+															</span>
+															<span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1">
+																Pendente •{" "}
+																{invite.role === "editor" ? "Co-Mestre" : "Jogador"}
+															</span>
+														</div>
+													</div>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														onClick={() => handleRevokeInvite(invite.id)}
+														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+														title="Cancelar convite"
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</Button>
+												</div>
+											))}
+
+											{members.length === 0 && invites.length === 0 && (
+												<p className="text-center py-6 text-[11px] text-muted-foreground">
+													Nenhum jogador convidado para esta campanha ainda.
+												</p>
+											)}
+										</div>
 									)}
 								</div>
-							)}
-						</div>
+							</div>
+						)}
+					</div>
+				) : (
+					<div className="flex-1 min-h-0 overflow-y-auto">
+						<form onSubmit={handleSubmit} className="space-y-4">
+							<div className="space-y-2">
+								<label
+									htmlFor={nameInputId}
+									className="text-[12px] font-semibold text-foreground"
+								>
+									Nome da Campanha *
+								</label>
+								<Input
+									id={nameInputId}
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									placeholder="Ex: A Maldição de Strahd"
+									autoFocus
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<label
+									htmlFor={descInputId}
+									className="text-[12px] font-semibold text-foreground"
+								>
+									Descrição
+								</label>
+								<Textarea
+									id={descInputId}
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Uma breve descrição da campanha..."
+									rows={3}
+								/>
+							</div>
+
+							<DialogFooter className="pt-2">
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => onOpenChange(false)}
+								>
+									Cancelar
+								</Button>
+								<Button
+									type="submit"
+									loading={isSaving}
+									loadingText="Salvando..."
+									disabled={!name.trim()}
+								>
+									{campaign ? "Salvar Alterações" : "Criar Campanha"}
+								</Button>
+							</DialogFooter>
+						</form>
 					</div>
 				)}
 			</DialogContent>

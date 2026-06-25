@@ -1,5 +1,7 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { useEffect, useState, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -41,18 +43,82 @@ const buttonVariants = cva(
 	},
 );
 
+export type ButtonProps = ButtonPrimitive.Props &
+	VariantProps<typeof buttonVariants> & {
+		loading?: boolean;
+		loadingText?: string;
+	};
+
 function Button({
 	className,
 	variant = "default",
 	size = "default",
+	loading = false,
+	loadingText,
+	children,
+	disabled,
 	...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
+	const [text, setText] = useState<React.ReactNode>(() => (loading && loadingText ? loadingText : children));
+	const [stateClass, setStateClass] = useState("");
+	const isFirstRender = useRef(true);
+
+	useEffect(() => {
+		if (isFirstRender.current) {
+			isFirstRender.current = false;
+			return;
+		}
+
+		if (loading && loadingText) {
+			setStateClass("is-exit");
+			const timer1 = setTimeout(() => {
+				setText(loadingText);
+				setStateClass("is-enter-start");
+				const timer2 = setTimeout(() => {
+					setStateClass("");
+				}, 20);
+				return () => clearTimeout(timer2);
+			}, 200);
+			return () => clearTimeout(timer1);
+		} else if (!loading) {
+			setStateClass("is-exit");
+			const timer1 = setTimeout(() => {
+				setText(children);
+				setStateClass("is-enter-start");
+				const timer2 = setTimeout(() => {
+					setStateClass("");
+				}, 20);
+				return () => clearTimeout(timer2);
+			}, 200);
+			return () => clearTimeout(timer1);
+		}
+	}, [loading, loadingText]);
+
+	// Update text instantly when children changes under non-loading state
+	useEffect(() => {
+		if (!loading) {
+			setText(children);
+		}
+	}, [children, loading]);
+
+	const hasTransition = loadingText !== undefined;
+	const content = hasTransition ? (
+		<span className={cn("t-text-swap inline-block", stateClass)}>
+			{text}
+		</span>
+	) : (
+		children
+	);
+
 	return (
 		<ButtonPrimitive
 			data-slot="button"
 			className={cn(buttonVariants({ variant, size, className }))}
+			disabled={disabled || loading}
 			{...props}
-		/>
+		>
+			{content}
+		</ButtonPrimitive>
 	);
 }
 

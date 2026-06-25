@@ -95,7 +95,7 @@ function ItemFormDialog({
 	const updateItem = useRPGStore((state) => state.updateItem);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue } =
+	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
 		useForm<ItemFormValues>({
 			defaultValues: { ...itemDefaults, ...(item ?? {}) },
 		});
@@ -293,8 +293,13 @@ function ItemFormDialog({
 						>
 							Cancelar
 						</Button>
-						<Button type="submit" size="sm">
-							{isEdit ? "Salvar alterações" : "Salvar Item"}
+						<Button
+							type="submit"
+							size="sm"
+							loading={isSubmitting}
+							loadingText="Salvando..."
+						>
+							{isEdit ? "Salvar alterações" : "Criar Item"}
 						</Button>
 					</div>
 				</form>

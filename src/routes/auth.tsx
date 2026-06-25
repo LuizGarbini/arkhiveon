@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const AUTH_MODES = ["login", "register", "forgot", "reset"] as const;
 type AuthMode = (typeof AUTH_MODES)[number];
@@ -80,6 +81,8 @@ function firstFormError<T extends Record<string, unknown>>(
 function AuthPage() {
 	const { mode: initialMode } = Route.useSearch();
 	const [mode, setMode] = useState<AuthMode>(initialMode);
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 	const { session, loading } = useAuth();
 	const navigate = useNavigate();
 
@@ -95,6 +98,18 @@ function AuthPage() {
 		"Acesse sua conta no Arkhiveon para gerenciar seus personagens, fichas, NPCs e sessões de RPG.",
 		true,
 	);
+
+	useEffect(() => {
+		const index = AUTH_MODES.indexOf(mode);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else if (prevIndex !== -1 && index > prevIndex) {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [mode, prevIndex]);
 
 	useEffect(() => {
 		if (!loading && session && mode !== "reset") {
@@ -247,13 +262,80 @@ function AuthPage() {
 						</div>
 					)}
 
-					{mode === "login" && <LoginForm onForgot={() => setMode("forgot")} />}
-					{mode === "register" && <RegisterForm />}
-					{mode === "forgot" && <ForgotPasswordForm />}
-					{mode === "reset" && <ResetPasswordForm />}
+					<div
+						key={mode}
+						className={cn(
+							slideDirection === "left"
+								? "t-tab-slide-left"
+								: "t-tab-slide-right",
+						)}
+					>
+						{mode === "login" && <LoginForm onForgot={() => setMode("forgot")} />}
+						{mode === "register" && <RegisterForm />}
+						{mode === "forgot" && <ForgotPasswordForm />}
+						{mode === "reset" && <ResetPasswordForm />}
+					</div>
 				</div>
 			</div>
 		</div>
+	);
+}
+
+/* ─── Submit Button with Text State Swap (transitions.dev) ─── */
+
+interface SubmitButtonWithSwapProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+	isSubmitting: boolean;
+	defaultText: string;
+	submittingText: string;
+	size?: "default" | "sm" | "lg" | "icon";
+	variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+}
+
+function SubmitButtonWithSwap({
+	isSubmitting,
+	defaultText,
+	submittingText,
+	className,
+	size,
+	variant,
+	...props
+}: SubmitButtonWithSwapProps) {
+	const [text, setText] = useState(defaultText);
+	const [stateClass, setStateClass] = useState("");
+
+	useEffect(() => {
+		const targetText = isSubmitting ? submittingText : defaultText;
+		
+		setStateClass("is-exit");
+		const timer1 = setTimeout(() => {
+			setText(targetText);
+			setStateClass("is-enter-start");
+			const timer2 = setTimeout(() => {
+				setStateClass("");
+			}, 20);
+			return () => clearTimeout(timer2);
+		}, 200);
+
+		return () => {
+			clearTimeout(timer1);
+			setText(targetText);
+			setStateClass("");
+		};
+	}, [isSubmitting, defaultText, submittingText]);
+
+	return (
+		<Button
+			type="submit"
+			className={cn("w-full transition-transform active:scale-[0.985]", className)}
+			disabled={isSubmitting}
+			size={size}
+			variant={variant}
+			{...(props as any)}
+		>
+			<span className={cn("t-text-swap inline-block", stateClass)}>
+				{text}
+			</span>
+		</Button>
 	);
 }
 
@@ -369,14 +451,12 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 				</button>
 			</div>
 
-			<Button
-				type="submit"
-				className="w-full"
+			<SubmitButtonWithSwap
+				isSubmitting={isSubmitting}
+				defaultText="Entrar"
+				submittingText="Entrando..."
 				size="lg"
-				disabled={isSubmitting}
-			>
-				{isSubmitting ? "Entrando..." : "Entrar"}
-			</Button>
+			/>
 
 			<div className="relative my-6">
 				<div className="absolute inset-0 flex items-center">
@@ -607,14 +687,12 @@ function RegisterForm() {
 					</p>
 				)}
 			</div>
-			<Button
-				type="submit"
-				className="w-full"
+			<SubmitButtonWithSwap
+				isSubmitting={isSubmitting}
+				defaultText="Criar Conta"
+				submittingText="Criando conta..."
 				size="lg"
-				disabled={isSubmitting}
-			>
-				{isSubmitting ? "Criando conta..." : "Criar Conta"}
-			</Button>
+			/>
 
 			<div className="relative my-6">
 				<div className="absolute inset-0 flex items-center">
@@ -764,14 +842,12 @@ function ForgotPasswordForm() {
 				)}
 			</div>
 
-			<Button
-				type="submit"
-				className="w-full"
+			<SubmitButtonWithSwap
+				isSubmitting={isSubmitting}
+				defaultText="Enviar Link"
+				submittingText="Enviando..."
 				size="lg"
-				disabled={isSubmitting}
-			>
-				{isSubmitting ? "Enviando..." : "Enviar Link"}
-			</Button>
+			/>
 		</form>
 	);
 }
@@ -929,14 +1005,12 @@ function ResetPasswordForm() {
 				)}
 			</div>
 
-			<Button
-				type="submit"
-				className="w-full"
+			<SubmitButtonWithSwap
+				isSubmitting={isSubmitting}
+				defaultText="Atualizar Senha"
+				submittingText="Atualizando..."
 				size="lg"
-				disabled={isSubmitting}
-			>
-				{isSubmitting ? "Atualizando..." : "Atualizar Senha"}
-			</Button>
+			/>
 		</form>
 	);
 }

@@ -118,7 +118,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<Link
 				to="/sheets/$characterId"
 				params={{ characterId: character.id }}
-				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5"
+				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
 			>
 				<EntityActions
 					onEdit={() =>

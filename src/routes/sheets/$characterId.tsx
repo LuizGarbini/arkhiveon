@@ -61,12 +61,14 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
+import { cn } from "@/lib/utils";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
 } from "@/lib/character-images";
 import {
 	createCustomSheetModule,
+	isCustomSheetModule,
 	normalizeModuleOrders,
 	normalizeSheetLayout,
 	SHEET_MODULE_LABELS,
@@ -214,10 +216,32 @@ function CharacterSheetPage() {
 	}
 
 	function handleAddCustomModule(kind: "customText" | "customStats") {
-		const nextModule = createCustomSheetModule(
-			kind,
-			layout.modules.length * 10 + 100,
+		const title = window.prompt(
+			kind === "customText"
+				? "Digite o título para o novo Bloco de Texto:"
+				: "Digite o título para o novo Bloco de Stats:"
 		);
+		if (title === null) return; // User cancelled
+		const trimmed = title.trim();
+		if (!trimmed) {
+			alert("O título não pode ser vazio.");
+			return;
+		}
+		if (
+			trimmed.toLowerCase() === "novo texto livre" ||
+			trimmed.toLowerCase() === "novo bloco de stats"
+		) {
+			alert("Por favor, digite um título personalizado e diferente do padrão.");
+			return;
+		}
+
+		const nextModule = {
+			...createCustomSheetModule(
+				kind,
+				layout.modules.length * 10 + 100,
+			),
+			title: trimmed,
+		};
 		updateLayout({
 			...layout,
 			modules: normalizeModuleOrders([...layout.modules, nextModule]),
@@ -676,7 +700,7 @@ function ModuleContent({
 					return (
 						<div
 							key={ability.label}
-							className="group/tooltip relative rounded-2xl border border-border/70 bg-background/45 p-3 text-center transition-all hover:border-primary/20 hover:bg-background/60 hover:translate-y-[-2px] hover:shadow-md hover:shadow-primary/5 cursor-default"
+							className="group/tooltip relative rounded-2xl border border-border/70 bg-background/45 py-4 px-1 text-center transition-all hover:border-primary/20 hover:bg-background/60 hover:translate-y-[-2px] hover:shadow-md hover:shadow-primary/5 cursor-default"
 						>
 							{/* Tooltip */}
 							<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
@@ -686,7 +710,7 @@ function ModuleContent({
 							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 								{ability.label}
 							</p>
-							<p className="font-display mt-2 text-3xl font-bold text-foreground">
+							<p className="font-display mt-1.5 text-2xl sm:text-3xl font-bold text-foreground leading-none">
 								{ability.value}
 							</p>
 							{extraInfo && (
@@ -940,6 +964,23 @@ function ModuleEditorDialog({
 	const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
 	const [draft, setDraft] = useState<Partial<SheetModuleConfig>>({});
 	const config = SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.generic;
+	const [titleError, setTitleError] = useState<string | null>(null);
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+
+	const validateTitle = (val: string) => {
+		const trimmed = val.trim();
+		if (!trimmed) {
+			return "O título é obrigatório";
+		}
+		if (
+			trimmed.toLowerCase() === "novo texto livre" ||
+			trimmed.toLowerCase() === "novo bloco de stats"
+		) {
+			return "Por favor, digite um título personalizado e diferente do padrão";
+		}
+		return null;
+	};
 
 	useEffect(() => {
 		if (module && open) {
@@ -960,6 +1001,7 @@ function ModuleEditorDialog({
 			enabled: activeModule.enabled,
 			column: activeModule.column ?? "main",
 		});
+		setTitleError(null);
 	}, [character, activeModule, open, reset]);
 
 	const tabs = useMemo(() => {
@@ -969,10 +1011,29 @@ function ModuleEditorDialog({
 		}));
 	}, [layout.modules]);
 
+	useEffect(() => {
+		if (activeModuleId) {
+			const index = tabs.findIndex((t) => t.id === activeModuleId);
+			if (index !== -1) {
+				if (prevIndex !== -1 && index < prevIndex) {
+					setSlideDirection("right");
+				} else {
+					setSlideDirection("left");
+				}
+				setPrevIndex(index);
+			}
+		}
+	}, [activeModuleId, tabs, prevIndex]);
+
 	if (!activeModule) return null;
 
 	function submit(values: CharacterFormValues) {
 		if (!activeModule) return;
+		const err = validateTitle(draft.title ?? "");
+		if (err) {
+			setTitleError(err);
+			return;
+		}
 		const nextModules = layout.modules.map((m) =>
 			m.id === activeModule.id ? { ...m, ...draft } : m,
 		);
@@ -985,8 +1046,7 @@ function ModuleEditorDialog({
 		});
 	}
 
-	const isCustom =
-		activeModule.kind === "customText" || activeModule.kind === "customStats";
+	const isCustom = isCustomSheetModule(activeModule);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -1015,20 +1075,37 @@ function ModuleEditorDialog({
 						</div>
 					</DialogHeader>
 
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-						<div className="grid gap-3 sm:grid-cols-[1fr_160px_140px]">
-							<Field label="Título do módulo">
-								<Input
-									value={draft.title ?? ""}
-									placeholder="Ex: História de fundo"
-									onChange={(event) =>
-										setDraft((current) => ({
-											...current,
-											title: event.target.value,
-										}))
-									}
-								/>
-							</Field>
+					<div
+						key={activeModuleId}
+						className={cn(
+							"flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6",
+							slideDirection === "left" ? "t-tab-slide-left" : "t-tab-slide-right"
+						)}
+					>
+						<div className={cn(
+							"grid gap-3",
+							isCustom ? "sm:grid-cols-[1fr_160px_140px]" : "sm:grid-cols-2"
+						)}>
+							{isCustom && (
+								<Field
+									label="Título do módulo"
+									error={titleError || undefined}
+									required
+								>
+									<Input
+										value={draft.title ?? ""}
+										placeholder="Ex: História de fundo"
+										onChange={(event) => {
+											const val = event.target.value;
+											setDraft((current) => ({
+												...current,
+												title: val,
+											}));
+											setTitleError(validateTitle(val));
+										}}
+									/>
+								</Field>
+							)}
 							<Field label="Coluna">
 								<Select
 									value={draft.column ?? "main"}

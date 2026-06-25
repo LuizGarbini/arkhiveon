@@ -54,8 +54,24 @@ function RouteComponent() {
 
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading
-						? loadingCardKeys.map((key) => <NpcCard key={key} isLoading />)
-						: filteredNpcs.map((npc) => <NpcCard key={npc.id} npc={npc} />)}
+						? loadingCardKeys.map((key, i) => (
+								<div
+									key={key}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<NpcCard isLoading />
+								</div>
+							))
+						: filteredNpcs.map((npc, i) => (
+								<div
+									key={npc.id}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<NpcCard npc={npc} />
+								</div>
+							))}
 					{!isLoading && filteredNpcs.length === 0 && (
 						<EmptyState
 							Icon={Users}

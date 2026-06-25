@@ -4,7 +4,6 @@ import {
 	CheckCircle2,
 	CreditCard,
 	Crown,
-	Loader2,
 	Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -249,20 +248,14 @@ function BillingPage() {
 					</div>
 					<Button
 						className="h-11 gap-2 px-5"
-						disabled={isPro || planLoading || checkoutLoading}
+						loading={checkoutLoading}
+						loadingText="Redirecionando..."
+						disabled={isPro || planLoading}
 						variant={isPro ? "outline" : "default"}
 						onClick={handleUpgrade}
 					>
-						{checkoutLoading ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
-						) : (
-							<Crown className="h-4 w-4" />
-						)}
-						{isPro
-							? "Pro ativo"
-							: checkoutLoading
-								? "Redirecionando..."
-								: "Fazer upgrade"}
+						<Crown className="h-4 w-4" />
+						{isPro ? "Pro ativo" : "Fazer upgrade"}
 					</Button>
 				</div>
 			</header>

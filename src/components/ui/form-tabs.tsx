@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { getAttributeFullName } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -14,26 +16,118 @@ interface FormTabsProps {
 }
 
 export function FormTabs({ tabs, value, onChange }: FormTabsProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [hasOverflow, setHasOverflow] = useState(false);
+	const isDragging = useRef(false);
+	const startX = useRef(0);
+	const scrollLeftState = useRef(0);
+	const dragDistance = useRef(0);
+
+	const checkOverflow = () => {
+		if (containerRef.current) {
+			const { scrollWidth, clientWidth } = containerRef.current;
+			setHasOverflow(scrollWidth > clientWidth);
+		}
+	};
+
+	useEffect(() => {
+		checkOverflow();
+		window.addEventListener("resize", checkOverflow);
+		return () => window.removeEventListener("resize", checkOverflow);
+	}, [tabs]);
+
+	const handleMouseDown = (e: React.MouseEvent) => {
+		if (!containerRef.current) return;
+		isDragging.current = true;
+		startX.current = e.pageX - containerRef.current.offsetLeft;
+		scrollLeftState.current = containerRef.current.scrollLeft;
+		dragDistance.current = 0;
+		containerRef.current.style.cursor = "grabbing";
+		containerRef.current.style.userSelect = "none";
+	};
+
+	const handleMouseLeave = () => {
+		if (!isDragging.current) return;
+		isDragging.current = false;
+		if (containerRef.current) {
+			containerRef.current.style.cursor = "pointer";
+			containerRef.current.style.userSelect = "";
+		}
+	};
+
+	const handleMouseUp = () => {
+		if (!isDragging.current) return;
+		isDragging.current = false;
+		if (containerRef.current) {
+			containerRef.current.style.cursor = "pointer";
+			containerRef.current.style.userSelect = "";
+		}
+	};
+
+	const handleMouseMove = (e: React.MouseEvent) => {
+		if (!isDragging.current || !containerRef.current) return;
+		e.preventDefault();
+		const x = e.pageX - containerRef.current.offsetLeft;
+		const walk = (x - startX.current) * 1.5;
+		dragDistance.current += Math.abs(x - startX.current);
+		containerRef.current.scrollLeft = scrollLeftState.current - walk;
+	};
+
+	const scrollRight = () => {
+		if (containerRef.current) {
+			containerRef.current.scrollBy({ left: 160, behavior: "smooth" });
+		}
+	};
+
 	return (
-		<div className="flex flex-wrap gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
-			{tabs.map((t) => {
-				const active = t.id === value;
-				return (
+		<div className="relative flex items-center w-full">
+			<div
+				ref={containerRef}
+				onMouseDown={handleMouseDown}
+				onMouseLeave={handleMouseLeave}
+				onMouseUp={handleMouseUp}
+				onMouseMove={handleMouseMove}
+				className="flex-1 flex flex-nowrap gap-1 rounded-xl border border-border/50 bg-muted/30 p-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden select-none cursor-pointer"
+			>
+				{tabs.map((t) => {
+					const active = t.id === value;
+					return (
+						<button
+							key={t.id}
+							type="button"
+							onClick={(e) => {
+								if (dragDistance.current > 8) {
+									e.preventDefault();
+									return;
+								}
+								onChange(t.id);
+							}}
+							className={cn(
+								"flex-1 shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-all cursor-pointer text-center whitespace-nowrap",
+								active
+									? "bg-card text-foreground border border-border/70 shadow-xs"
+									: "text-muted-foreground hover:bg-muted/40 hover:text-foreground border border-transparent",
+							)}
+						>
+							{t.label}
+						</button>
+					);
+				})}
+			</div>
+			{hasOverflow && (
+				<>
+					{/* Gradiente sutil indicando mais abas */}
+					<div className="absolute right-9 top-[2px] bottom-[2px] w-8 pointer-events-none bg-gradient-to-r from-transparent to-background/90" />
 					<button
-						key={t.id}
 						type="button"
-						onClick={() => onChange(t.id)}
-						className={cn(
-							"flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-all cursor-pointer text-center",
-							active
-								? "bg-card text-foreground border border-border/70 shadow-xs"
-								: "text-muted-foreground hover:bg-muted/40 hover:text-foreground border border-transparent",
-						)}
+						onClick={scrollRight}
+						className="ml-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-card border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border shadow-xs cursor-pointer active:scale-95 transition-all"
+						aria-label="Ver mais abas"
 					>
-						{t.label}
+						<ChevronRight className="h-4 w-4" />
 					</button>
-				);
-			})}
+				</>
+			)}
 		</div>
 	);
 }

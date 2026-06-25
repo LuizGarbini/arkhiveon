@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import {
 	AlertTriangle,
@@ -325,6 +326,70 @@ function DesignSystem() {
 					/>
 				</div>
 			</SpecPanel>
+
+			<SpecPanel eyebrow="Motion Design" title="Showcase de Transições (transitions.dev)">
+				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-4">
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">01 · Card Resize</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								Redimensiona containers de forma fluida usando variáveis de transição e aceleração gráfica.
+							</p>
+						</div>
+						<CardResizeShowcase />
+					</div>
+
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">02 · Number Pop-in</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								Re-entrada de dígitos com desfoque e efeito staggered (escalonamento) nos decimais.
+							</p>
+						</div>
+						<NumberPopInShowcase />
+					</div>
+
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">03 · Notification Badge</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								O badge de notificação desliza em diagonal e o número expande com efeito elástico.
+							</p>
+						</div>
+						<NotificationBadgeShowcase />
+					</div>
+
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">04 · Text States Swap</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								Substitui textos com movimentação vertical e desfoque, ideal para botões de salvar/processar.
+							</p>
+						</div>
+						<TextStatesSwapShowcase />
+					</div>
+
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">05 · Menu Dropdown</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								Menus de opções crescem em escala a partir da origem do gatilho e fecham suavemente.
+							</p>
+						</div>
+						<MenuDropdownShowcase />
+					</div>
+
+					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
+						<div>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">06 · Error State Shake</h3>
+							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+								Tremedeira com overshoot e auto-reversão no timer para feedbacks rápidos em formulários.
+							</p>
+						</div>
+						<ErrorStateShakeShowcase />
+					</div>
+				</div>
+			</SpecPanel>
 		</div>
 	);
 }
@@ -414,6 +479,263 @@ function MotionRule({
 			<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
 				{description}
 			</p>
+		</div>
+	);
+}
+
+// ─── Componentes de Demonstração Interativa (transitions.dev) ───
+
+function CardResizeShowcase() {
+	const [isExpanded, setIsExpanded] = useState(false);
+	return (
+		<div className="flex flex-col gap-3">
+			<Button onClick={() => setIsExpanded(!isExpanded)} className="w-fit h-9 text-[12px] rounded-xl px-4">
+				{isExpanded ? "Contrair Card" : "Expandir Card"}
+			</Button>
+			<div 
+				className="t-resize overflow-hidden border border-border bg-background rounded-2xl p-4"
+				style={{
+					width: isExpanded ? "100%" : "230px",
+					height: isExpanded ? "150px" : "80px",
+				}}
+			>
+				<h4 className="font-display font-bold text-[13px] text-foreground">Aelyra Moonwhisper</h4>
+				<p className="text-[11px] text-muted-foreground mt-0.5">Elfa · Maga Nível 5</p>
+				{isExpanded && (
+					<div className="mt-3 pt-3 border-t border-border/50 text-[11px] leading-relaxed text-muted-foreground">
+						<p><strong>PV:</strong> 28/28 | <strong>PM:</strong> 15/15</p>
+						<p className="mt-1">Equipada com o Orbe de Âmbar e Cajado.</p>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function NumberPopInShowcase() {
+	const [count, setCount] = useState(128.5);
+
+	const digitsStr = count.toFixed(1);
+	const digits = digitsStr.split("");
+
+	return (
+		<div className="flex flex-col gap-3">
+			<div className="flex gap-1.5">
+				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev + 1.2)}>
+					+1.2
+				</Button>
+				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev - 0.7)}>
+					-0.7
+				</Button>
+				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(100.0)}>
+					Reset
+				</Button>
+			</div>
+			<div className="text-2xl font-bold text-primary">
+				<span key={count} className="t-digit-group is-animating">
+					{digits.map((digit, i) => {
+						let staggerVal = undefined;
+						if (i === digits.length - 2) staggerVal = "1";
+						else if (i === digits.length - 1) staggerVal = "2";
+						return (
+							<span key={i} className="t-digit" data-stagger={staggerVal}>
+								{digit}
+							</span>
+						);
+					})}
+				</span>
+			</div>
+		</div>
+	);
+}
+
+function NotificationBadgeShowcase() {
+	const [count, setCount] = useState(0);
+
+	return (
+		<div className="flex flex-col gap-3 items-start">
+			<div className="flex gap-1.5">
+				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev + 1)}>
+					Notificar
+				</Button>
+				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(0)}>
+					Limpar
+				</Button>
+			</div>
+			<div 
+				className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary cursor-pointer hover:bg-primary/15 transition-colors"
+			>
+				<Bell className="h-5 w-5" />
+				<span className="t-badge" data-open={count > 0 ? "true" : "false"}>
+					<span className="t-badge-dot flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[9px] font-bold text-white leading-none">
+						{count}
+					</span>
+				</span>
+			</div>
+		</div>
+	);
+}
+
+function TextStatesSwapShowcase() {
+	const [step, setStep] = useState(0);
+	const [text, setText] = useState("Salvar Ficha");
+	const [stateClass, setStateClass] = useState("");
+
+	const texts = ["Salvar Ficha", "Salvando...", "Salvo!"];
+
+	const handleTrigger = () => {
+		const nextStep = (step + 1) % 3;
+		setStep(nextStep);
+		
+		setStateClass("is-exit");
+		
+		setTimeout(() => {
+			setText(texts[nextStep]);
+			setStateClass("is-enter-start");
+			
+			setTimeout(() => {
+				setStateClass("");
+			}, 20);
+		}, 200); // 200ms
+	};
+
+	return (
+		<div className="flex flex-col gap-2">
+			<Button 
+				onClick={handleTrigger} 
+				variant={step === 2 ? "outline" : "default"}
+				className="w-36 h-9 text-[12px] rounded-xl"
+			>
+				<span className={`t-text-swap ${stateClass}`}>
+					{text}
+				</span>
+			</Button>
+			<p className="text-[10px] text-muted-foreground">
+				Transição vertical suave e desfoque ao trocar.
+			</p>
+		</div>
+	);
+}
+
+function MenuDropdownShowcase() {
+	const [isOpen, setIsOpen] = useState(false);
+	const [isClosing, setIsClosing] = useState(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	const toggleDropdown = () => {
+		if (isOpen) {
+			setIsClosing(true);
+			setIsOpen(false);
+			setTimeout(() => setIsClosing(false), 150);
+		} else {
+			setIsOpen(true);
+		}
+	};
+
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+				if (isOpen) {
+					setIsClosing(true);
+					setIsOpen(false);
+					setTimeout(() => setIsClosing(false), 150);
+				}
+			}
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, [isOpen]);
+
+	return (
+		<div className="relative inline-block text-left" ref={containerRef}>
+			<Button onClick={toggleDropdown} variant="outline" className="gap-2 h-9 text-[12px] rounded-xl px-4">
+				Menu de Opções
+				<ChevronRight className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
+			</Button>
+			
+			<div 
+				data-origin="top-left"
+				className={`t-dropdown absolute left-0 mt-2 w-48 rounded-2xl border border-border/75 bg-card-elevated p-1.5 shadow-xl shadow-black/15 z-50 ${isOpen ? "is-open" : ""} ${isClosing ? "is-closing" : ""}`}
+			>
+				<div className="flex flex-col gap-0.5">
+					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors">
+						Visualizar Perfil
+					</button>
+					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors">
+						Configurações
+					</button>
+					<hr className="border-border/50 my-1" />
+					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-destructive/10 text-destructive text-left transition-colors">
+						Excluir
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ErrorStateShakeShowcase() {
+	const [value, setValue] = useState("");
+	const [isError, setIsError] = useState(false);
+	const [isShaking, setIsShaking] = useState(false);
+	const revertTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+	const triggerError = () => {
+		setIsError(true);
+		setIsShaking(false);
+		
+		setTimeout(() => {
+			setIsShaking(true);
+		}, 10);
+
+		setTimeout(() => {
+			setIsShaking(false);
+		}, 290);
+
+		if (revertTimerRef.current) clearTimeout(revertTimerRef.current);
+		revertTimerRef.current = setTimeout(() => {
+			setIsError(false);
+			revertTimerRef.current = null;
+		}, 3280);
+	};
+
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setValue(e.target.value);
+		if (revertTimerRef.current) {
+			clearTimeout(revertTimerRef.current);
+			revertTimerRef.current = null;
+		}
+		setIsError(false);
+		setIsShaking(false);
+	};
+
+	useEffect(() => {
+		return () => {
+			if (revertTimerRef.current) clearTimeout(revertTimerRef.current);
+		};
+	}, []);
+
+	return (
+		<div className={`t-input-wrap flex flex-col gap-1.5 w-full ${isError ? "is-error" : ""}`}>
+			<div className="flex gap-2 w-full">
+				<div className={`t-input flex-1 rounded-2xl border ${isError ? "border-destructive is-error" : "border-border/70"} ${isShaking ? "is-shaking" : ""} overflow-hidden bg-background`}>
+					<input 
+						type="text" 
+						placeholder="Digite seu e-mail" 
+						value={value}
+						onChange={handleInputChange}
+						className="w-full h-9 px-3 bg-transparent text-[12px] border-none outline-none focus:ring-0"
+					/>
+				</div>
+				<Button onClick={triggerError} className="h-9 text-[12px] rounded-xl px-4">
+					Validar
+				</Button>
+			</div>
+			{isError && (
+				<p className="t-error-msg text-[11px] text-destructive font-semibold pl-1 leading-none">
+					E-mail inválido.
+				</p>
+			)}
 		</div>
 	);
 }

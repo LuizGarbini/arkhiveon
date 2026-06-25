@@ -71,6 +71,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 		"general",
 	);
 	const isMobile = useIsMobileSidebar();
+	const [isOpen, setIsOpen] = useState(false);
 
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const activeIndex = campaigns.findIndex((c) => c.id === activeCampaignId);
@@ -85,60 +86,56 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 
 	return (
 		<>
-			<DropdownMenu>
+			<DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
 				<DropdownMenuTrigger
-					render={
-						<button
-							type="button"
-							aria-label="Trocar campanha"
-							className={cn(
-								"flex w-full items-center overflow-hidden rounded-2xl border border-border/60 bg-background/45 transition-[background-color,border-color,box-shadow,transform,padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/25 hover:bg-primary/8 active:scale-[0.98]",
-								isCollapsed
-									? "justify-center gap-0 p-2"
-									: "justify-start gap-3 p-3",
-							)}
-						>
-							<div
-								className={cn(
-									"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br text-[10px] font-bold text-white shadow-sm",
-									colorForIndex(activeIndex >= 0 ? activeIndex : 0),
-								)}
-							>
-								{activeCampaign ? campaignInitials(activeCampaign.name) : "??"}
-							</div>
-							<div
-								className={cn(
-									"flex min-w-0 flex-1 flex-col overflow-hidden leading-tight text-left transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-									isCollapsed
-										? "max-w-0 -translate-x-2 opacity-0"
-										: "max-w-36 translate-x-0 opacity-100",
-								)}
-							>
-								<div className="flex items-center gap-1.5 min-w-0">
-									<span className="truncate text-[12px] font-bold text-foreground">
-										{activeCampaign?.name ?? "Sem campanha"}
-									</span>
-									{activeCampaign && activeCampaign.myRole !== "owner" && (
-										<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
-											Jogador
-										</span>
-									)}
-								</div>
-								<span className="truncate text-[10px] text-muted-foreground">
-									{activeCampaign?.description || "Campanha ativa"}
+					className={cn(
+						"flex w-full items-center overflow-hidden rounded-2xl border border-border/60 bg-background/45 transition-[background-color,border-color,box-shadow,transform,padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/25 hover:bg-primary/8 active:scale-[0.98] focus:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
+						isCollapsed
+							? "justify-center gap-0 p-2"
+							: "justify-start gap-3 p-3",
+					)}
+					aria-label="Trocar campanha"
+				>
+					<div
+						className={cn(
+							"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br text-[10px] font-bold text-white shadow-sm",
+							colorForIndex(activeIndex >= 0 ? activeIndex : 0),
+						)}
+					>
+						{activeCampaign ? campaignInitials(activeCampaign.name) : "??"}
+					</div>
+					<div
+						className={cn(
+							"flex min-w-0 flex-1 flex-col overflow-hidden leading-tight text-left transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+							isCollapsed
+								? "max-w-0 -translate-x-2 opacity-0"
+								: "max-w-36 translate-x-0 opacity-100",
+						)}
+					>
+						<div className="flex items-center gap-1.5 min-w-0">
+							<span className="truncate text-[12px] font-bold text-foreground">
+								{activeCampaign?.name ?? "Sem campanha"}
+							</span>
+							{activeCampaign && activeCampaign.myRole !== "owner" && (
+								<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
+									Jogador
 								</span>
-							</div>
-							<ChevronDown
-								className={cn(
-									"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-[opacity,transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-									isCollapsed
-										? "w-0 -translate-x-2 opacity-0"
-										: "w-3.5 translate-x-0 opacity-100",
-								)}
-							/>
-						</button>
-					}
-				/>
+							)}
+						</div>
+						<span className="truncate text-[10px] text-muted-foreground">
+							{activeCampaign?.description || "Campanha ativa"}
+						</span>
+					</div>
+					<ChevronDown
+						className={cn(
+							"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-[opacity,transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+							isCollapsed
+								? "w-0 -translate-x-2 opacity-0"
+								: "w-3.5 translate-x-0 opacity-100",
+							isOpen ? "rotate-0" : "-rotate-90",
+						)}
+					/>
+				</DropdownMenuTrigger>
 
 				<DropdownMenuContent
 					side={isMobile ? "bottom" : "right"}
@@ -155,90 +152,96 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							Campanhas
 						</DropdownMenuLabel>
 						{campaigns.map((campaign, index) => (
-							<DropdownMenuItem
+							<div
 								key={campaign.id}
-								onClick={() => {
-									void switchCampaign(campaign.id);
-								}}
-								className="group flex items-center justify-between gap-3 py-2.5"
+								className="flex items-center justify-between gap-1 rounded-xl p-1 hover:bg-muted/10 group/item"
 							>
-								<div className="flex min-w-0 flex-1 items-center gap-3">
-									<div
-										className={cn(
-											"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-[9px] font-bold text-white",
-											colorForIndex(index),
-										)}
-									>
-										{campaignInitials(campaign.name)}
-									</div>
-									<div className="flex min-w-0 flex-1 flex-col leading-tight">
-										<div className="flex items-center gap-1.5 min-w-0">
-											<span className="truncate text-[12px] font-semibold">
-												{campaign.name}
-											</span>
-											{campaign.myRole !== "owner" && (
-												<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
-													Jogador
+								<DropdownMenuItem
+									onClick={() => {
+										void switchCampaign(campaign.id);
+									}}
+									className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2.5 py-1.5 focus:bg-accent focus:text-accent-foreground select-none outline-none"
+								>
+									<div className="flex min-w-0 flex-1 items-center gap-3">
+										<div
+											className={cn(
+												"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-[9px] font-bold text-white",
+												colorForIndex(index),
+											)}
+										>
+											{campaignInitials(campaign.name)}
+										</div>
+										<div className="flex min-w-0 flex-1 flex-col leading-tight">
+											<div className="flex items-center gap-1.5 min-w-0">
+												<span className="truncate text-[12px] font-semibold">
+													{campaign.name}
+												</span>
+												{campaign.myRole !== "owner" && (
+													<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
+														Jogador
+													</span>
+												)}
+											</div>
+											{campaign.description && (
+												<span className="truncate text-[10px] text-muted-foreground">
+													{campaign.description}
 												</span>
 											)}
 										</div>
-										{campaign.description && (
-											<span className="truncate text-[10px] text-muted-foreground">
-												{campaign.description}
-											</span>
-										)}
 									</div>
-								</div>
-
-								<div className="flex items-center gap-1.5">
 									{campaign.id === activeCampaignId && (
 										<Check className="h-3.5 w-3.5 shrink-0 text-primary" />
 									)}
-									{campaign.myRole === "owner" && (
-										<>
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													setCampaignToEdit(campaign);
-													setCampaignEditTab("members");
-												}}
-												aria-label={`Gerenciar jogadores de ${campaign.name}`}
-												title="Gerenciar convites e membros"
-												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
-											>
-												<UserPlus className="h-3.5 w-3.5" />
-											</button>
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													setCampaignToEdit(campaign);
-													setCampaignEditTab("general");
-												}}
-												aria-label={`Editar campanha ${campaign.name}`}
-												title="Editar detalhes da campanha"
-												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary md:opacity-0 md:group-hover:opacity-100"
-											>
-												<Pencil className="h-3.5 w-3.5" />
-											</button>
-										</>
-									)}
-									{campaigns.length > 1 && campaign.myRole === "owner" && (
+								</DropdownMenuItem>
+
+								{campaign.myRole === "owner" && (
+									<div className="flex items-center gap-0.5 pr-1">
 										<button
 											type="button"
 											onClick={(e) => {
+												e.preventDefault();
 												e.stopPropagation();
-												setCampaignToDelete(campaign.id);
+												setCampaignToEdit(campaign);
+												setCampaignEditTab("members");
 											}}
-											aria-label={`Excluir campanha ${campaign.name}`}
-											className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+											aria-label={`Gerenciar jogadores de ${campaign.name}`}
+											title="Gerenciar convites e membros"
+											className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-[0.88] transition-transform duration-100"
 										>
-											<Trash2 className="h-3.5 w-3.5" />
+											<UserPlus className="h-3.5 w-3.5" />
 										</button>
-									)}
-								</div>
-							</DropdownMenuItem>
+										<button
+											type="button"
+											onClick={(e) => {
+												e.preventDefault();
+												e.stopPropagation();
+												setCampaignToEdit(campaign);
+												setCampaignEditTab("general");
+											}}
+											aria-label={`Editar campanha ${campaign.name}`}
+											title="Editar detalhes da campanha"
+											className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-[0.88] transition-transform duration-100"
+										>
+											<Pencil className="h-3.5 w-3.5" />
+										</button>
+										{campaigns.length > 1 && (
+											<button
+												type="button"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													setCampaignToDelete(campaign.id);
+												}}
+												aria-label={`Excluir campanha ${campaign.name}`}
+												title="Excluir campanha"
+												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive active:scale-[0.88] transition-transform duration-100"
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</button>
+										)}
+									</div>
+								)}
+							</div>
 						))}
 					</DropdownMenuGroup>
 

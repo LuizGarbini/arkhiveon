@@ -62,7 +62,7 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 			to="/locations/$locationId"
 			params={{ locationId: location.id }}
 			search={{ edit: false }}
-			className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none ${danger.ring}`}
+			className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none ${danger.ring}`}
 		>
 			<EntityActions
 				onEdit={() =>

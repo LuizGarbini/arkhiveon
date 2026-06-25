@@ -35,6 +35,7 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { cn } from "@/lib/utils";
 
 // =====================================================
 //  Form values & defaults
@@ -148,6 +149,8 @@ function CharacterFormDialog({
 	>();
 	const [activeSection, setActiveSection] =
 		useState<CharacterSection>("identity");
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildDefaults(character ?? undefined),
@@ -156,6 +159,18 @@ function CharacterFormDialog({
 
 	const system = useWatch({ control, name: "system" }) as RpgSystem;
 	const config = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.dnd5e;
+
+	useEffect(() => {
+		const index = config.sections.indexOf(activeSection);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [activeSection, config.sections, prevIndex]);
 
 	// Inicializa e reseta o formulário ao abrir ou trocar de personagem
 	useEffect(() => {
@@ -317,7 +332,15 @@ function CharacterFormDialog({
 								onSelect={handleSelectSystem}
 							/>
 						) : (
-							<>
+							<div
+								key={activeSection}
+								className={cn(
+									"space-y-6",
+									slideDirection === "left"
+										? "t-tab-slide-left"
+										: "t-tab-slide-right",
+								)}
+							>
 								{activeSection === "identity" && (
 									<IdentitySection
 										register={register}
@@ -352,7 +375,7 @@ function CharacterFormDialog({
 								{activeSection === "notes" && (
 									<NotesSection register={register} config={config} />
 								)}
-							</>
+							</div>
 						)}
 					</div>
 
@@ -379,7 +402,8 @@ function CharacterFormDialog({
 								<Button
 									type="submit"
 									size="sm"
-									disabled={formState.isSubmitting}
+									loading={formState.isSubmitting}
+									loadingText="Salvando..."
 								>
 									{isEdit ? "Salvar alterações" : "Salvar Ficha"}
 								</Button>

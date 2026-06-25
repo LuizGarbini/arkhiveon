@@ -19,6 +19,7 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { cn } from "@/lib/utils";
 
 const TABS = [
 	{ id: "basic", label: "Básico" },
@@ -103,11 +104,13 @@ function LocationFormDialog({
 	const setOpen = onOpenChange ?? setInternalOpen;
 
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 	const addLocation = useRPGStore((state) => state.addLocation);
 	const updateLocation = useRPGStore((state) => state.updateLocation);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue } =
+	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
 		useForm<LocationFormValues>({
 			defaultValues: { ...locationDefaults, ...(location ?? {}) },
 		});
@@ -116,9 +119,22 @@ function LocationFormDialog({
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
+		const index = TABS.findIndex((t) => t.id === tab);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else if (prevIndex !== -1 && index > prevIndex) {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [tab, prevIndex]);
+
+	useEffect(() => {
 		if (open) {
 			reset({ ...locationDefaults, ...(location ?? {}) });
 			setTab(defaultTab || TABS[0].id);
+			setPrevIndex(-1);
 		}
 	}, [open, location, reset, defaultTab]);
 
@@ -159,7 +175,16 @@ function LocationFormDialog({
 						</div>
 					</DialogHeader>
 
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+						<div
+							key={tab}
+							className={cn(
+								"space-y-6",
+								slideDirection === "left"
+									? "t-tab-slide-left"
+									: "t-tab-slide-right",
+							)}
+						>
 						{tab === "basic" && (
 							<FormSection title="Identificação">
 								<ImageUploader
@@ -306,6 +331,7 @@ function LocationFormDialog({
 								}}
 							/>
 						)}
+						</div>
 					</div>
 
 					<div className="flex items-center justify-between gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
@@ -326,8 +352,13 @@ function LocationFormDialog({
 							>
 								Cancelar
 							</Button>
-							<Button type="submit" size="sm">
-								{isEdit ? "Salvar alterações" : "Salvar Local"}
+							<Button
+								type="submit"
+								size="sm"
+								loading={isSubmitting}
+								loadingText="Salvando..."
+							>
+								{isEdit ? "Salvar alterações" : "Criar Local"}
 							</Button>
 						</div>
 					</div>

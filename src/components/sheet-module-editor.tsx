@@ -387,7 +387,7 @@ function SheetBlock({
 						{SHEET_MODULE_LABELS[module.kind]}
 					</p>
 					<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-						{module.title}
+						{isCustomSheetModule(module) ? module.title : SHEET_MODULE_LABELS[module.kind]}
 					</h2>
 					{isLayoutMode && hint ? (
 						<p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
