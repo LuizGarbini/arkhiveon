@@ -409,15 +409,22 @@ export function SpellSearchDialog({
 											const isSelected = selectedSpell?.id === spell.id;
 
 											return (
-												<button
+												<div
 													key={spell.id}
-													type="button"
-													className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group ${
+													role="button"
+													tabIndex={0}
+													className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group cursor-pointer ${
 														isSelected
 															? "bg-primary/10 border-primary"
 															: "bg-background/40 border-border/40 hover:bg-background/70 hover:border-border/80"
 													}`}
 													onClick={() => setSelectedSpell(spell)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															setSelectedSpell(spell);
+														}
+													}}
 												>
 													<div className="min-w-0 pr-2">
 														<div className="flex items-center gap-1.5">
@@ -452,7 +459,7 @@ export function SpellSearchDialog({
 															<Plus className="h-4 w-4" />
 														</button>
 													)}
-												</button>
+												</div>
 											);
 										})
 									)}
