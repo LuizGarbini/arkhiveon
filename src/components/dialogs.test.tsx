@@ -2,7 +2,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { SpellSearchDialog } from "./spell-search-dialog";
-import React from "react";
 
 // Mock matchMedia for jsdom environment
 window.matchMedia =
