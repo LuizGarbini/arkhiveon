@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SpellSearchDialog } from "./spell-search-dialog";
-import React from "react";
 
 // Mock matchMedia for jsdom environment
 window.matchMedia =
@@ -75,7 +74,7 @@ describe("SpellSearchDialog State Resets", () => {
 				onOpenChange={onOpenChange}
 				onSelectSpell={onSelectSpell}
 				currentSpells={[]}
-			/>
+			/>,
 		);
 
 		// Verify it loads spells
@@ -85,7 +84,9 @@ describe("SpellSearchDialog State Resets", () => {
 		});
 
 		// Type in the search input
-		const searchInput = screen.getByPlaceholderText("Buscar magias pelo nome...");
+		const searchInput = screen.getByPlaceholderText(
+			"Buscar magias pelo nome...",
+		);
 		fireEvent.change(searchInput, { target: { value: "Fogo" } });
 		expect((searchInput as HTMLInputElement).value).toBe("Fogo");
 
@@ -97,7 +98,7 @@ describe("SpellSearchDialog State Resets", () => {
 				onOpenChange={onOpenChange}
 				onSelectSpell={onSelectSpell}
 				currentSpells={[]}
-			/>
+			/>,
 		);
 
 		// Open it again to verify search query is reset to empty string
@@ -108,11 +109,13 @@ describe("SpellSearchDialog State Resets", () => {
 				onOpenChange={onOpenChange}
 				onSelectSpell={onSelectSpell}
 				currentSpells={[]}
-			/>
+			/>,
 		);
 
 		await waitFor(() => {
-			const reopenedSearchInput = screen.getByPlaceholderText("Buscar magias pelo nome...");
+			const reopenedSearchInput = screen.getByPlaceholderText(
+				"Buscar magias pelo nome...",
+			);
 			expect((reopenedSearchInput as HTMLInputElement).value).toBe("");
 		});
 	});
