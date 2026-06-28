@@ -53,7 +53,12 @@ serve(async (req) => {
 			return jsonResponse({ error: "Unauthorized" }, 401);
 		}
 
-		const payload = await readUploadPayload(req);
+		let payload: UploadPayload;
+		try {
+			payload = await readUploadPayload(req);
+		} catch (err) {
+			return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 400);
+		}
 
 		if (!payload.fileName || !payload.contentType || !payload.fileSize) {
 			return jsonResponse(
@@ -149,38 +154,29 @@ serve(async (req) => {
 		const folderPrefix = safeFolder ? `${safeFolder}/` : "";
 		const finalKey = `${targetUserId}/${folderPrefix}${now}-${crypto.randomUUID()}.${fileExt}`;
 
-		if (payload.fileBody) {
-			await s3.send(
-				new PutObjectCommand({
-					Bucket: Deno.env.get("R2_BUCKET_NAME"),
-					Key: finalKey,
-					ContentType: payload.contentType,
-					Body: payload.fileBody,
-				}),
-			);
-
-			await updateUsage({
-				supabaseAdmin,
-				targetUserId,
-				userId: user.id,
-				plan,
-				storageUsed,
-				fileSize: payload.fileSize,
-			});
-
-			return jsonResponse({ key: finalKey });
+		if (!payload.fileBody) {
+			return jsonResponse({ error: "Missing file body for upload" }, 400);
 		}
 
-		const command = new PutObjectCommand({
-			Bucket: Deno.env.get("R2_BUCKET_NAME"),
-			Key: finalKey,
-			ContentType: payload.contentType,
-		});
-		const url = await getSignedUrl(s3, command, { expiresIn: 300 });
+		await s3.send(
+			new PutObjectCommand({
+				Bucket: Deno.env.get("R2_BUCKET_NAME"),
+				Key: finalKey,
+				ContentType: payload.contentType,
+				Body: payload.fileBody,
+			}),
+		);
 
-		// A cota será incrementada somente após o cliente confirmar o upload
-		// bem-sucedido via a Edge Function r2-confirm-upload.
-		return jsonResponse({ url, key: finalKey, fileSize: payload.fileSize });
+		await updateUsage({
+			supabaseAdmin,
+			targetUserId,
+			userId: user.id,
+			plan,
+			storageUsed,
+			fileSize: payload.fileSize,
+		});
+
+		return jsonResponse({ key: finalKey });
 	} catch (error) {
 		console.error("Error uploading to R2:", error);
 		return jsonResponse(
@@ -193,30 +189,23 @@ serve(async (req) => {
 async function readUploadPayload(req: Request): Promise<UploadPayload> {
 	const contentType = req.headers.get("Content-Type") ?? "";
 
-	if (contentType.includes("multipart/form-data")) {
-		const formData = await req.formData();
-		const file = formData.get("file");
-		if (!(file instanceof File)) {
-			return { fileName: "", contentType: "", fileSize: 0 };
-		}
-
-		return {
-			fileName: file.name,
-			contentType: file.type || "application/octet-stream",
-			fileSize: file.size,
-			campaignId: optionalString(formData.get("campaignId")),
-			folder: optionalString(formData.get("folder")),
-			fileBody: new Uint8Array(await file.arrayBuffer()),
-		};
+	if (!contentType.includes("multipart/form-data")) {
+		throw new Error("Only multipart/form-data content type is allowed.");
 	}
 
-	const body = await req.json();
+	const formData = await req.formData();
+	const file = formData.get("file");
+	if (!(file instanceof File)) {
+		throw new Error("No file found in the multipart form data.");
+	}
+
 	return {
-		fileName: String(body.fileName ?? ""),
-		contentType: String(body.contentType ?? ""),
-		fileSize: Number(body.fileSize ?? 0),
-		campaignId: optionalString(body.campaignId),
-		folder: optionalString(body.folder),
+		fileName: file.name,
+		contentType: file.type || "application/octet-stream",
+		fileSize: file.size,
+		campaignId: optionalString(formData.get("campaignId")),
+		folder: optionalString(formData.get("folder")),
+		fileBody: new Uint8Array(await file.arrayBuffer()),
 	};
 }
 
