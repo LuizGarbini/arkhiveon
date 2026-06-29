@@ -53,6 +53,14 @@ serve(async (req) => {
 			return jsonResponse({ error: "Unauthorized" }, 401);
 		}
 
+		const contentLengthHeader = req.headers.get("content-length");
+		if (contentLengthHeader) {
+			const length = Number.parseInt(contentLengthHeader, 10);
+			if (length > 6 * 1024 * 1024) {
+				return jsonResponse({ error: "Payload too large. Max size is 5MB." }, 413);
+			}
+		}
+
 		let payload: UploadPayload;
 		try {
 			payload = await readUploadPayload(req);
