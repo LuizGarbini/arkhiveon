@@ -14,57 +14,57 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		id: "v1.2.0-upload",
 		version: "1.2.0",
 		date: "29/06/2026",
-		title: "Envio de Imagens Otimizado e Mais Seguro",
-		description: "Reformulamos o sistema de upload de arquivos para processamento direto no servidor Deno, eliminando vulnerabilidades de cota e tornando o carregamento mais leve.",
+		title: "Imagens e Avatares Mais Rápidos",
+		description: "Melhoramos o envio de fotos para que você consiga subir retratos de personagens e capas de campanhas instantaneamente, mesmo em conexões lentas ou no celular.",
 		bullets: [
-			"Upload direto para o servidor com compressão em segundo plano no navegador.",
-			"Validação instantânea de cota de armazenamento antes do envio.",
-			"Mais velocidade de upload em conexões móveis ou lentas."
+			"Upload inteligente com compressão de imagem automática em segundo plano.",
+			"Mais estabilidade e segurança ao guardar seus arquivos na nuvem.",
+			"Visualização imediata da imagem logo após o envio."
 		]
 	},
 	{
 		id: "v1.1.5-transitions",
 		version: "1.1.5",
 		date: "25/06/2026",
-		title: "Transições e Micro-animações Fluidas",
-		description: "Adicionamos animações refinadas nas abas de formulários e caixas de diálogos para tornar a navegação pela plataforma premium e dinâmica.",
+		title: "Navegação Suave e Transições Animadas",
+		description: "Adicionamos pequenas animações e efeitos fluidos para deixar a navegação pelo Arkhiveon muito mais gostosa e intuitiva.",
 		bullets: [
-			"Efeito de slide direcional nas abas baseado na direção do clique.",
-			"Efeito de tremor nos campos com preenchimento inválido.",
-			"Animação de pop-in para números que sofrem atualizações."
+			"As abas dos formulários agora deslizam suavemente acompanhando o seu clique.",
+			"Feedback visual inteligente (campo treme na tela se você esquecer de preencher algo obrigatório).",
+			"Números de vida e atributos atualizam com efeitos visuais discretos e elegantes."
 		]
 	},
 	{
 		id: "v1.1.0-pdf-export",
 		version: "1.1.0",
 		date: "24/06/2026",
-		title: "Carregamento Otimizado de PDFs",
-		description: "Carregamento sob demanda da biblioteca de PDF para poupar megabytes no carregamento inicial da página.",
+		title: "Carregamento de Fichas Mais Leve",
+		description: "Otimizamos a abertura das fichas de personagens para que a página principal carregue muito mais rápido, economizando internet.",
 		bullets: [
-			"Abertura instantânea da ficha de personagem.",
-			"Mecanismo de 'lazy loading' do gerador de PDFs."
+			"Abertura das fichas praticamente instantânea.",
+			"O gerador de PDFs agora só é carregado se você realmente clicar para exportar a ficha."
 		]
 	},
 	{
 		id: "v1.0.5-spotify-security",
 		version: "1.0.5",
 		date: "22/06/2026",
-		title: "Segurança Aprimorada do Spotify",
-		description: "Remoção de tokens sensíveis de autenticação do armazenamento local, mantendo-os estritamente em memória temporária.",
+		title: "Segurança e Proteção de Acesso",
+		description: "Atualizamos nossas regras de segurança interna para blindar seu login e garantir que suas integrações (como o Spotify) fiquem 100% protegidas.",
 		bullets: [
-			"Prevenção contra roubo de tokens via XSS.",
-			"Autenticação mais limpa e em conformidade com as diretrizes do Spotify."
+			"Proteção extra para sua conta contra invasões e scripts maliciosos.",
+			"Conexão mais limpa e estável com serviços externos."
 		]
 	},
 	{
 		id: "v1.0.0-launch",
 		version: "1.0.0",
 		date: "19/06/2026",
-		title: "Lançamento Oficial do Arkhiveon!",
-		description: "Seja bem-vindo ao Arkhiveon! A plataforma completa para organizar suas campanhas de RPG de mesa.",
+		title: "Bem-vindo ao Arkhiveon!",
+		description: "Seja muito bem-vindo! O Arkhiveon é o seu novo grimório digital para mestrar e jogar RPG de mesa de forma organizada.",
 		bullets: [
-			"Fichas customizadas para D&D 5e, Call of Cthulhu, Ordem Paranormal e mais.",
-			"Diário de sessões, NPCs, grimório de magias e diário de lore da campanha.",
+			"Fichas customizadas para múltiplos sistemas (D&D 5e, Chamado de Cthulhu, Ordem Paranormal e mais).",
+			"Diário de sessões, NPCs, grimório de magias e anotações de lore compartilhadas.",
 			"Sincronização em tempo real entre mestre e jogadores."
 		]
 	}
