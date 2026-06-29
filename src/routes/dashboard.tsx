@@ -326,7 +326,7 @@ function Dashboard() {
 			<InviteBanner />
 
 			<a
-				href="https://discord.gg/xcB2QRbeF"
+				href="https://discord.gg/64jBCNfzvd"
 				target="_blank"
 				rel="noopener noreferrer"
 				className="group relative flex items-center justify-between rounded-2xl border border-border/70 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-[#5865F2]/40 active:scale-[0.985] active:translate-y-0"
