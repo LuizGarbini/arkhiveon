@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import type { Session, User } from "@supabase/supabase-js";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { routeTree } from "../routeTree.gen";
 
@@ -22,12 +24,19 @@ window.matchMedia =
 // Mock the auth context hook
 vi.mock("@/lib/auth", () => {
 	return {
-		AuthProvider: ({ children }: any) => children,
+		AuthProvider: ({ children }: { children: ReactNode }) => children,
 		useAuth: () => ({
+			user: {
+				id: "test-user-id",
+				email: "test@arkhiveon.com",
+			} as unknown as User,
 			loading: false,
 			session: {
-				user: { id: "test-user-id", email: "test@arkhiveon.com" },
-			} as any,
+				user: {
+					id: "test-user-id",
+					email: "test@arkhiveon.com",
+				} as unknown as User,
+			} as unknown as Session,
 			plan: "free",
 			storageUsedBytes: 0,
 			isPro: false,
