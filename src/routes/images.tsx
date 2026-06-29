@@ -197,14 +197,12 @@ function ImagesRoute() {
 						type="button"
 						size="sm"
 						className="gap-2"
-						disabled={!canUpload || isUploading}
+						loading={isUploading}
+						loadingText="Enviando..."
+						disabled={!canUpload}
 						onClick={() => inputRef.current?.click()}
 					>
-						{isUploading ? (
-							<Loader2 className="h-3.5 w-3.5 animate-spin" />
-						) : (
-							<UploadCloud className="h-3.5 w-3.5" />
-						)}
+						<UploadCloud className="h-3.5 w-3.5" />
 						Enviar
 					</Button>
 				}

@@ -205,7 +205,8 @@ export function EntityImagePicker({
 						variant="outline"
 						size="sm"
 						className="gap-2"
-						disabled={isUploading}
+						loading={isUploading}
+						loadingText="Enviando..."
 						onClick={() => inputRef.current?.click()}
 					>
 						<ImagePlus className="h-4 w-4" />

@@ -1,4 +1,4 @@
-import { Check, Loader2, Mail, Sparkles, X } from "lucide-react";
+import { Check, Mail, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -91,7 +91,8 @@ export function InviteBanner() {
 									type="button"
 									variant="ghost"
 									size="sm"
-									disabled={isProcessing}
+									loading={isProcessing}
+									loadingText="Recusando..."
 									onClick={() =>
 										handleDecline(
 											invite.id,
@@ -100,17 +101,14 @@ export function InviteBanner() {
 									}
 									className="h-8 text-[11px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive gap-1.5"
 								>
-									{isProcessing ? (
-										<Loader2 className="h-3 w-3 animate-spin" />
-									) : (
-										<X className="h-3.5 w-3.5" />
-									)}
+									<X className="h-3.5 w-3.5" />
 									Recusar
 								</Button>
 								<Button
 									type="button"
 									size="sm"
-									disabled={isProcessing}
+									loading={isProcessing}
+									loadingText="Aceitando..."
 									onClick={() =>
 										handleAccept(
 											invite.id,
@@ -119,11 +117,7 @@ export function InviteBanner() {
 									}
 									className="h-8 text-[11px] font-bold gap-1.5 shadow-xs"
 								>
-									{isProcessing ? (
-										<Loader2 className="h-3 w-3 animate-spin" />
-									) : (
-										<Check className="h-3.5 w-3.5" />
-									)}
+									<Check className="h-3.5 w-3.5" />
 									Aceitar Convite
 								</Button>
 							</div>

@@ -94,7 +94,7 @@ function LandingPage() {
 									.getElementById(featuresId)
 									?.scrollIntoView({ behavior: "smooth" })
 							}
-							className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+							className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-all duration-100 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer"
 						>
 							Estrutura
 						</button>
@@ -104,7 +104,7 @@ function LandingPage() {
 									.getElementById("pricing-section")
 									?.scrollIntoView({ behavior: "smooth" })
 							}
-							className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+							className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-all duration-100 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 cursor-pointer"
 						>
 							Planos
 						</button>
@@ -394,7 +394,7 @@ function LandingPage() {
 							{pillars.map(({ Icon, eyebrow, title, description }, i) => (
 								<article
 									key={eyebrow}
-									className={`group rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm shadow-black/5 transition-all hover:border-primary/25 hover:shadow-md flex flex-col items-center text-center ${["lp-reveal-s1", "lp-reveal-s2", "lp-reveal-s3"][i] ?? "lp-reveal"}`}
+									className={`group rounded-2xl border border-border/60 bg-card/70 p-6 shadow-sm shadow-black/5 transition-all duration-150 active:scale-[0.985] active:translate-y-0 hover:border-primary/25 hover:shadow-md flex flex-col items-center text-center cursor-pointer ${["lp-reveal-s1", "lp-reveal-s2", "lp-reveal-s3"][i] ?? "lp-reveal"}`}
 								>
 									<span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary transition-transform group-hover:scale-105">
 										<Icon className="h-5 w-5" strokeWidth={1.8} />
@@ -520,7 +520,7 @@ function PlanCard({
 }) {
 	return (
 		<article
-			className={`relative h-full flex flex-col justify-between overflow-hidden rounded-[1.75rem] border p-7 shadow-sm transition-all sm:p-8 ${
+			className={`relative h-full flex flex-col justify-between overflow-hidden rounded-[1.75rem] border p-7 shadow-sm transition-all duration-200 active:scale-[0.99] active:translate-y-0 cursor-pointer sm:p-8 ${
 				highlight
 					? "pro-plan-card border-primary/45 bg-linear-to-br from-primary/16 via-card to-card shadow-[0_28px_90px_-55px_var(--primary)]"
 					: "border-border/60 bg-card/60"

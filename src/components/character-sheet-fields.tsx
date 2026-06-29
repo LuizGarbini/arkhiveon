@@ -1148,14 +1148,29 @@ export function AdjustableNumberField({
 				<Minus className="h-3 w-3" />
 			</Button>
 
-			<input
-				type="number"
-				min={min}
-				max={max}
-				placeholder={placeholder}
-				className="h-7 w-full bg-transparent text-center text-[13.5px] font-extrabold text-foreground p-0 focus:outline-none focus:ring-0 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-				{...register(fieldName, { valueAsNumber: true, validate })}
-			/>
+			<div className="relative flex-1 h-7 flex items-center justify-center min-w-0">
+				<span key={numeric} className="t-digit-group is-animating text-[13.5px] font-extrabold text-foreground pointer-events-none select-none">
+					{String(Number.isNaN(numeric) ? 0 : numeric).split("").map((digit, i, arr) => {
+						let staggerVal = undefined;
+						if (i === arr.length - 2) staggerVal = "1";
+						else if (i === arr.length - 1) staggerVal = "2";
+						return (
+							<span key={i} className="t-digit" data-stagger={staggerVal}>
+								{digit}
+							</span>
+						);
+					})}
+				</span>
+
+				<input
+					type="number"
+					min={min}
+					max={max}
+					placeholder={placeholder}
+					className="absolute inset-0 w-full h-full opacity-0 cursor-default outline-none border-none p-0 text-center text-[13.5px] font-extrabold text-foreground focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					{...register(fieldName, { valueAsNumber: true, validate })}
+				/>
+			</div>
 
 			<Button
 				type="button"
@@ -1234,14 +1249,29 @@ function AbilityField({
 					<Minus className="h-3 w-3" />
 				</Button>
 
-				<input
-					type="number"
-					min={min}
-					max={max}
-					placeholder={placeholder}
-					className="h-6 w-full bg-transparent text-center text-[15px] font-extrabold text-foreground p-0 focus:outline-none focus:ring-0 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-					{...register(fieldName, { valueAsNumber: true })}
-				/>
+				<div className="relative flex-1 h-6 flex items-center justify-center min-w-0">
+					<span key={numeric} className="t-digit-group is-animating text-[15px] font-extrabold text-foreground pointer-events-none select-none">
+						{String(Number.isNaN(numeric) || numeric === 0 ? fallbackScore : numeric).split("").map((digit, i, arr) => {
+							let staggerVal = undefined;
+							if (i === arr.length - 2) staggerVal = "1";
+							else if (i === arr.length - 1) staggerVal = "2";
+							return (
+								<span key={i} className="t-digit" data-stagger={staggerVal}>
+									{digit}
+								</span>
+							);
+						})}
+					</span>
+
+					<input
+						type="number"
+						min={min}
+						max={max}
+						placeholder={placeholder}
+						className="absolute inset-0 w-full h-full opacity-0 cursor-default outline-none border-none p-0 text-center text-[15px] font-extrabold text-foreground focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+						{...register(fieldName, { valueAsNumber: true })}
+					/>
+				</div>
 
 				<Button
 					type="button"

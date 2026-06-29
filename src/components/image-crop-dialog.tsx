@@ -1,4 +1,4 @@
-import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/ui/button";
@@ -157,11 +157,11 @@ export function ImageCropDialog({
 						</Button>
 						<Button
 							type="button"
-							disabled={!imageSrc || !croppedAreaPixels || isBusy}
+							loading={isBusy}
+							loadingText="Aplicando..."
+							disabled={!imageSrc || !croppedAreaPixels}
 							onClick={() => void handleApply()}
-							className="gap-2"
 						>
-							{isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
 							Aplicar recorte
 						</Button>
 					</DialogFooter>

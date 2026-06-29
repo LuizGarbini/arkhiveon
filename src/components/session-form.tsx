@@ -17,6 +17,7 @@ import {
 import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { cn } from "@/lib/utils";
 
 const TABS = [
 	{ id: "basic", label: "Visão Geral" },
@@ -103,20 +104,35 @@ function SessionFormDialog({
 	const setOpen = onOpenChange ?? setInternalOpen;
 
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 	const addSession = useRPGStore((state) => state.addSession);
 	const updateSession = useRPGStore((state) => state.updateSession);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue } =
+	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
 		useForm<SessionFormValues>({
 			defaultValues: { ...sessionDefaults, ...(session ?? {}) },
 		});
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
+		const index = TABS.findIndex((t) => t.id === tab);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else if (prevIndex !== -1 && index > prevIndex) {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [tab, prevIndex]);
+
+	useEffect(() => {
 		if (open) {
 			reset({ ...sessionDefaults, ...(session ?? {}) });
 			setTab(defaultTab || TABS[0].id);
+			setPrevIndex(-1);
 		}
 	}, [open, session, reset, defaultTab]);
 
@@ -157,163 +173,173 @@ function SessionFormDialog({
 						</div>
 					</DialogHeader>
 
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-						{tab === "basic" && (
-							<FormSection title="Informações Gerais">
-								<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-									<Field
-										label="Título"
-										htmlFor={titleId}
-										className="sm:col-span-2"
-									>
-										<Input
-											id={titleId}
-											placeholder="Ex: A Caverna dos Goblins"
-											{...register("title", { required: true })}
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+						<div
+							key={tab}
+							className={cn(
+								"space-y-6",
+								slideDirection === "left"
+									? "t-tab-slide-left"
+									: "t-tab-slide-right",
+							)}
+						>
+							{tab === "basic" && (
+								<FormSection title="Informações Gerais">
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+										<Field
+											label="Título"
+											htmlFor={titleId}
+											className="sm:col-span-2"
+										>
+											<Input
+												id={titleId}
+												placeholder="Ex: A Caverna dos Goblins"
+												{...register("title", { required: true })}
+											/>
+										</Field>
+										<Field label="Sessão #">
+											<Input
+												type="number"
+												min={1}
+												{...register("number", { valueAsNumber: true })}
+											/>
+										</Field>
+										<Field label="Data real">
+											<Input placeholder="Ex: 12/04/2026" {...register("date")} />
+										</Field>
+										<Field label="Data in-game">
+											<Input
+												placeholder="Ex: 15 de Mirtul"
+												{...register("inGameDate")}
+											/>
+										</Field>
+										<Field label="Duração">
+											<Input placeholder="Ex: 4h" {...register("duration")} />
+										</Field>
+										<Field
+											label="Local de partida (in-game)"
+											className="sm:col-span-2"
+										>
+											<Input
+												placeholder="Onde a sessão começou"
+												{...register("location")}
+											/>
+										</Field>
+										<Field label="Tom / Humor da sessão">
+											<Input
+												placeholder="Ex: tenso, cômico..."
+												{...register("mood")}
+											/>
+										</Field>
+									</div>
+									<Field label="Resumo geral">
+										<Textarea
+											rows={4}
+											placeholder="O grupo encontrou um tesouro e quase morreu..."
+											{...register("summary")}
 										/>
 									</Field>
-									<Field label="Sessão #">
-										<Input
-											type="number"
-											min={1}
-											{...register("number", { valueAsNumber: true })}
-										/>
-									</Field>
-									<Field label="Data real">
-										<Input placeholder="Ex: 12/04/2026" {...register("date")} />
-									</Field>
-									<Field label="Data in-game">
-										<Input
-											placeholder="Ex: 15 de Mirtul"
-											{...register("inGameDate")}
-										/>
-									</Field>
-									<Field label="Duração">
-										<Input placeholder="Ex: 4h" {...register("duration")} />
-									</Field>
-									<Field
-										label="Local de partida (in-game)"
-										className="sm:col-span-2"
-									>
-										<Input
-											placeholder="Onde a sessão começou"
-											{...register("location")}
-										/>
-									</Field>
-									<Field label="Tom / Humor da sessão">
-										<Input
-											placeholder="Ex: tenso, cômico..."
-											{...register("mood")}
-										/>
-									</Field>
-								</div>
-								<Field label="Resumo geral">
-									<Textarea
-										rows={4}
-										placeholder="O grupo encontrou um tesouro e quase morreu..."
-										{...register("summary")}
-									/>
-								</Field>
-							</FormSection>
-						)}
+								</FormSection>
+							)}
 
-						{tab === "people" && (
-							<FormSection title="Quem & Onde">
-								<Field label="Jogadores presentes" hint="Separe por vírgula">
-									<Textarea
-										rows={2}
-										placeholder="Aragorn (Lucas), Lyra (Maria)..."
-										{...register("attendees")}
-									/>
-								</Field>
-								<Field label="NPCs envolvidos">
-									<Textarea
-										rows={3}
-										placeholder="NPCs com quem o grupo interagiu"
-										{...register("npcsPresent")}
-									/>
-								</Field>
-								<Field label="Locais visitados">
-									<Textarea
-										rows={3}
-										placeholder="Cidades, masmorras, regiões..."
-										{...register("locationsVisited")}
-									/>
-								</Field>
-							</FormSection>
-						)}
+							{tab === "people" && (
+								<FormSection title="Quem & Onde">
+									<Field label="Jogadores presentes" hint="Separe por vírgula">
+										<Textarea
+											rows={2}
+											placeholder="Aragorn (Lucas), Lyra (Maria)..."
+											{...register("attendees")}
+										/>
+									</Field>
+									<Field label="NPCs envolvidos">
+										<Textarea
+											rows={3}
+											placeholder="NPCs com quem o grupo interagiu"
+											{...register("npcsPresent")}
+										/>
+									</Field>
+									<Field label="Locais visitados">
+										<Textarea
+											rows={3}
+											placeholder="Cidades, masmorras, regiões..."
+											{...register("locationsVisited")}
+										/>
+									</Field>
+								</FormSection>
+							)}
 
-						{tab === "events" && (
-							<FormSection title="Acontecimentos">
-								<Field label="Eventos chave">
-									<Textarea
-										rows={5}
-										placeholder="Decisões, descobertas, combates..."
-										{...register("keyEvents")}
-									/>
-								</Field>
-								<Field label="Combates / Eventos táticos">
-									<Textarea
-										rows={4}
-										placeholder="Inimigos enfrentados..."
-										{...register("combatLog")}
-									/>
-								</Field>
-								<Field label="Cliffhanger / Como terminou">
-									<Textarea
-										rows={2}
-										placeholder="A sessão terminou com..."
-										{...register("cliffhanger")}
-									/>
-								</Field>
-							</FormSection>
-						)}
+							{tab === "events" && (
+								<FormSection title="Acontecimentos">
+									<Field label="Eventos chave">
+										<Textarea
+											rows={5}
+											placeholder="Decisões, descobertas, combates..."
+											{...register("keyEvents")}
+										/>
+									</Field>
+									<Field label="Combates / Eventos táticos">
+										<Textarea
+											rows={4}
+											placeholder="Inimigos enfrentados..."
+											{...register("combatLog")}
+										/>
+									</Field>
+									<Field label="Cliffhanger / Como terminou">
+										<Textarea
+											rows={2}
+											placeholder="A sessão terminou com..."
+											{...register("cliffhanger")}
+										/>
+									</Field>
+								</FormSection>
+							)}
 
-						{tab === "rewards" && (
-							<FormSection title="Recompensas">
-								<Field label="Loot / Itens conquistados">
-									<Textarea
-										rows={4}
-										placeholder="Espada +1, 200 PO..."
-										{...register("loot")}
-									/>
-								</Field>
-								<Field label="XP concedido">
-									<Input
-										placeholder="Ex: 750 XP por personagem"
-										{...register("xpAwarded")}
-									/>
-								</Field>
-							</FormSection>
-						)}
+							{tab === "rewards" && (
+								<FormSection title="Recompensas">
+									<Field label="Loot / Itens conquistados">
+										<Textarea
+											rows={4}
+											placeholder="Espada +1, 200 PO..."
+											{...register("loot")}
+										/>
+									</Field>
+									<Field label="XP concedido">
+										<Input
+											placeholder="Ex: 750 XP por personagem"
+											{...register("xpAwarded")}
+										/>
+									</Field>
+								</FormSection>
+							)}
 
-						{tab === "dm" && (
-							<FormSection
-								title="Notas Privadas do Mestre"
-								description="Visíveis apenas para você — planos futuros, segredos."
-							>
-								<Field label="Notas do Mestre">
-									<Textarea
-										rows={10}
-										placeholder="Próximos passos do vilão..."
-										{...register("dmNotes")}
-									/>
-								</Field>
-							</FormSection>
-						)}
-						{tab === "people" && (
-							<EntityLinkManager
-								value={watchedValues.entityLinks ?? []}
-								onChange={(links) =>
-									setValue("entityLinks", links, { shouldDirty: true })
-								}
-								sourceValues={watchedValues as Record<string, unknown>}
-								currentEntity={{
-									entityKind: "session",
-									entityId: session?.id,
-								}}
-							/>
-						)}
+							{tab === "dm" && (
+								<FormSection
+									title="Notas Privadas do Mestre"
+									description="Visíveis apenas para você — planos futuros, segredos."
+								>
+									<Field label="Notas do Mestre">
+										<Textarea
+											rows={10}
+											placeholder="Próximos passos do vilão..."
+											{...register("dmNotes")}
+										/>
+									</Field>
+								</FormSection>
+							)}
+							{tab === "people" && (
+								<EntityLinkManager
+									value={watchedValues.entityLinks ?? []}
+									onChange={(links) =>
+										setValue("entityLinks", links, { shouldDirty: true })
+									}
+									sourceValues={watchedValues as Record<string, unknown>}
+									currentEntity={{
+										entityKind: "session",
+										entityId: session?.id,
+									}}
+								/>
+							)}
+						</div>
 					</div>
 
 					<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
@@ -325,8 +351,13 @@ function SessionFormDialog({
 						>
 							Cancelar
 						</Button>
-						<Button type="submit" size="sm">
-							{isEdit ? "Salvar alterações" : "Salvar Sessão"}
+						<Button
+							type="submit"
+							size="sm"
+							loading={isSubmitting}
+							loadingText="Salvando..."
+						>
+							{isEdit ? "Salvar alterações" : "Criar Sessão"}
 						</Button>
 					</div>
 				</form>

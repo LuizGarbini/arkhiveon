@@ -25,6 +25,7 @@ import {
 } from "@/components/system-picker";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { cn } from "@/lib/utils";
 import {
 	cloneSheetLayout,
 	createCustomSheetModule,
@@ -64,6 +65,12 @@ function scrollToTop() {
 	}, 50);
 }
 
+const detailsTabs = [
+	{ id: "abilities", label: "Atributos" },
+	{ id: "combat", label: "Combate" },
+	{ id: "extra", label: "Inventário & notas" },
+];
+
 function NewSheetPage() {
 	const navigate = useNavigate();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
@@ -82,6 +89,20 @@ function NewSheetPage() {
 		string | undefined
 	>();
 	const [detailsTab, setDetailsTab] = useState("abilities");
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+
+	useEffect(() => {
+		const index = detailsTabs.findIndex((t) => t.id === detailsTab);
+		if (index !== -1) {
+			if (prevIndex !== -1 && index < prevIndex) {
+				setSlideDirection("right");
+			} else {
+				setSlideDirection("left");
+			}
+			setPrevIndex(index);
+		}
+	}, [detailsTab, prevIndex]);
 	const [modules, setModules] = useState<SheetModuleConfig[]>(
 		() => createDefaultSheetLayout("dnd5e").modules,
 	);
@@ -99,7 +120,7 @@ function NewSheetPage() {
 		setValue,
 		handleSubmit,
 		trigger,
-		formState: { errors },
+		formState: { errors, isSubmitting },
 	} = form;
 	const system = useWatch({ control, name: "system" }) as RpgSystem;
 	const config = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.dnd5e;
@@ -243,10 +264,32 @@ function NewSheetPage() {
 	}
 
 	function addCustomModule(kind: "customText" | "customStats") {
+		const title = window.prompt(
+			kind === "customText"
+				? "Digite o título para o novo Bloco de Texto:"
+				: "Digite o título para o novo Bloco de Stats:"
+		);
+		if (title === null) return; // User cancelled
+		const trimmed = title.trim();
+		if (!trimmed) {
+			alert("O título não pode ser vazio.");
+			return;
+		}
+		if (
+			trimmed.toLowerCase() === "novo texto livre" ||
+			trimmed.toLowerCase() === "novo bloco de stats"
+		) {
+			alert("Por favor, digite um título personalizado e diferente do padrão.");
+			return;
+		}
+
 		setModules((current) =>
 			normalizeModuleOrders([
 				...current,
-				createCustomSheetModule(kind, current.length * 10 + 100),
+				{
+					...createCustomSheetModule(kind, current.length * 10 + 100),
+					title: trimmed,
+				},
 			]),
 		);
 	}
@@ -270,12 +313,6 @@ function NewSheetPage() {
 			params: { characterId: created.id },
 		});
 	}
-
-	const detailsTabs = [
-		{ id: "abilities", label: "Atributos" },
-		{ id: "combat", label: "Combate" },
-		{ id: "extra", label: "Inventário & notas" },
-	];
 
 	return (
 		<form
@@ -439,50 +476,60 @@ function NewSheetPage() {
 									scrollToTop();
 								}}
 							/>
-							{detailsTab === "abilities" && (
-								<AbilitiesFields
-									register={register}
-									control={control}
-									setValue={setValue}
-									config={config}
-								/>
-							)}
-							{detailsTab === "combat" && (
-								<div className="space-y-7">
-									<CombatFields
+							<div
+								key={detailsTab}
+								className={cn(
+									"space-y-7",
+									slideDirection === "left"
+										? "t-tab-slide-left"
+										: "t-tab-slide-right",
+								)}
+							>
+								{detailsTab === "abilities" && (
+									<AbilitiesFields
 										register={register}
 										control={control}
 										setValue={setValue}
 										config={config}
 									/>
-									{config.showSanity && (
-										<SanityFields
+								)}
+								{detailsTab === "combat" && (
+									<div className="space-y-7">
+										<CombatFields
 											register={register}
 											control={control}
 											setValue={setValue}
 											config={config}
 										/>
-									)}
-									{(config.showSpells ||
-										config.customFields?.some(
-											(field) => field.section === "magic",
-										)) && (
-										<MagicFields
-											register={register}
-											config={config}
-											control={control}
-											setValue={setValue}
-										/>
-									)}
-								</div>
-							)}
-							{detailsTab === "extra" && (
-								<div className="space-y-7">
-									<InventoryFields register={register} config={config} />
-									<PersonalityFields register={register} config={config} />
-									<NotesFields register={register} config={config} />
-								</div>
-							)}
+										{config.showSanity && (
+											<SanityFields
+												register={register}
+												control={control}
+												setValue={setValue}
+												config={config}
+											/>
+										)}
+										{(config.showSpells ||
+											config.customFields?.some(
+												(field) => field.section === "magic",
+											)) && (
+											<MagicFields
+												register={register}
+												config={config}
+												control={control}
+												setValue={setValue}
+											/>
+										)}
+									</div>
+								)}
+								{detailsTab === "extra" && (
+									<div className="space-y-7">
+										<InventoryFields register={register} config={config} />
+										<PersonalityFields register={register} config={config} />
+										<NotesFields register={register} config={config} />
+									</div>
+								)}
+							</div>
 						</div>
 					)}
 
@@ -530,7 +577,12 @@ function NewSheetPage() {
 									com drag and drop e preencher módulo por módulo.
 								</p>
 							</div>
-							<Button type="submit" className="h-11 gap-2 px-5">
+							<Button 
+								type="submit" 
+								className="h-11 gap-2 px-5"
+								loading={isSubmitting}
+								loadingText="Criando ficha..."
+							>
 								<Check className="h-4 w-4" />
 								Criar ficha
 							</Button>

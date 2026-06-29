@@ -51,9 +51,23 @@ function RouteComponent() {
 
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading
-						? loadingCardKeys.map((key) => <LocationCard key={key} isLoading />)
-						: filteredLocations.map((location) => (
-								<LocationCard key={location.id} location={location} />
+						? loadingCardKeys.map((key, i) => (
+								<div
+									key={key}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<LocationCard isLoading />
+								</div>
+							))
+						: filteredLocations.map((location, i) => (
+								<div
+									key={location.id}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<LocationCard location={location} />
+								</div>
 							))}
 					{!isLoading && filteredLocations.length === 0 && (
 						<EmptyState

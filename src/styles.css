@@ -55,6 +55,59 @@
     --sidebar-accent-foreground: oklch(0.25 0.08 290);
     --sidebar-border: oklch(0.88 0.02 290);
     --sidebar-ring: oklch(0.50 0.22 285 / 50%);
+
+    /* ─── transitions-dev tokens ─── */
+    /* Card resize */
+    --resize-dur: 300ms;
+    --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    /* Number pop-in */
+    --digit-dur: 500ms;
+    --digit-distance: 8px;
+    --digit-stagger: 70ms;
+    --digit-blur: 2px;
+    --digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
+    --digit-translate-x: 0px;
+    --digit-translate-y: 8px;
+    /* Notification badge */
+    --badge-slide-dur: 260ms;
+    --badge-pop-dur: 500ms;
+    --badge-pop-close-dur: 180ms;
+    --badge-fade-dur: 400ms;
+    --badge-fade-close-dur: 180ms;
+    --badge-blur: 2px;
+    --badge-offset-x: -8.2px;
+    --badge-offset-y: 12.4px;
+    --badge-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --badge-pop-ease: cubic-bezier(0.34, 1.36, 0.64, 1);
+    --badge-close-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    /* Text states swap */
+    --text-swap-dur: 200ms;
+    --text-swap-translate-y: 8px;
+    --text-swap-blur: 2px;
+    --text-swap-ease: ease-out;
+    /* Menu dropdown */
+    --dropdown-open-dur: 250ms;
+    --dropdown-close-dur: 150ms;
+    --dropdown-pre-scale: 0.97;
+    --dropdown-closing-scale: 0.99;
+    --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    /* Page side-by-side / Tab transitions */
+    --page-slide-dur: 220ms;
+    --page-fade-dur: 220ms;
+    --page-slide-distance: 12px;
+    --page-blur: 2px;
+    --page-stagger: 0ms;
+    --page-exit-enabled: 1;
+    --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    /* Error state shake */
+    --shake-distance: 6px;
+    --shake-overshoot: 4px;
+    --shake-dur-a: 80ms;
+    --shake-dur-b: 60ms;
+    --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --revert-hold: 3000ms;
+    --revert-dur: 280ms;
 }
 
 .dark {
@@ -706,4 +759,255 @@ a[href*="neat.firecms.co"] {
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;
+}
+
+/* ─── Transitions.dev Classes ─── */
+
+/* 1. Card Resize */
+.t-resize {
+  transition:
+    width  var(--resize-dur) var(--resize-ease),
+    height var(--resize-dur) var(--resize-ease);
+  will-change: width, height;
+}
+
+/* 2. Number Pop-in */
+@keyframes t-digit-pop-in {
+  0%   {
+    transform: translate(
+      var(--digit-translate-x, 0px),
+      var(--digit-translate-y, 8px)
+    );
+    opacity: 0;
+    filter: blur(var(--digit-blur, 2px));
+  }
+  100% { transform: translate(0, 0); opacity: 1; filter: blur(0); }
+}
+.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+}
+.t-digit {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+.t-digit-group.is-animating .t-digit {
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+.t-digit-group.is-animating .t-digit[data-stagger="1"] {
+  animation-delay: var(--digit-stagger);
+}
+.t-digit-group.is-animating .t-digit[data-stagger="2"] {
+  animation-delay: calc(var(--digit-stagger) * 2);
+}
+
+/* 3. Notification Badge */
+@keyframes t-badge-slide-in {
+  from { transform: translate(var(--badge-offset-x), var(--badge-offset-y)); }
+  to   { transform: translate(0, 0); }
+}
+.t-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  pointer-events: none;
+  will-change: transform;
+}
+.t-badge[data-open="true"] {
+  animation: t-badge-slide-in var(--badge-slide-dur) var(--badge-slide-ease);
+}
+.t-badge-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  transform: scale(1);
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    transform var(--badge-pop-dur)  var(--badge-pop-ease),
+    opacity   var(--badge-fade-dur) var(--badge-pop-ease),
+    filter    var(--badge-pop-dur)  var(--badge-pop-ease);
+  will-change: transform, opacity, filter;
+}
+.t-badge[data-open="false"] .t-badge-dot {
+  transform: scale(0);
+  opacity: 0;
+  filter: blur(var(--badge-blur));
+  transition:
+    transform var(--badge-pop-close-dur)  var(--badge-close-ease),
+    opacity   var(--badge-fade-close-dur) var(--badge-close-ease),
+    filter    var(--badge-pop-close-dur)  var(--badge-close-ease);
+}
+
+/* 4. Text States Swap */
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter    var(--text-swap-dur) var(--text-swap-ease),
+    opacity   var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+/* 5. Menu Dropdown */
+.t-dropdown {
+  transform-origin: var(--transform-origin, top left);
+  transform: scale(var(--dropdown-pre-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-open-dur) var(--dropdown-ease),
+    opacity   var(--dropdown-open-dur) var(--dropdown-ease);
+  will-change: transform, opacity;
+}
+.t-dropdown[data-origin="top-right"]     { transform-origin: top right; }
+.t-dropdown[data-origin="top-center"]    { transform-origin: top center; }
+.t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
+.t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
+.t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
+
+.t-dropdown.is-open,
+.t-dropdown[data-open] {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-dropdown.is-closing,
+.t-dropdown[data-closed] {
+  transform: scale(var(--dropdown-closing-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-close-dur) var(--dropdown-ease),
+    opacity   var(--dropdown-close-dur) var(--dropdown-ease);
+}
+
+/* 6. Error State Shake */
+.t-input {
+  transition: border-color 150ms ease-out;
+  will-change: transform;
+}
+.t-input.is-error {
+  transition: border-color var(--revert-dur, 280ms) ease-out;
+}
+.t-error-msg {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity    var(--revert-dur, 280ms) ease-out,
+    visibility 0s linear var(--revert-dur, 280ms);
+}
+.t-input-wrap.is-error .t-error-msg {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity    var(--revert-dur, 280ms) ease-out,
+    visibility 0s linear 0s;
+}
+.t-input.is-shaking {
+  animation: t-input-shake calc(
+      var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2
+    ) linear;
+}
+@keyframes t-input-shake {
+  0%      { transform: translateX(0);                                 animation-timing-function: var(--shake-ease); }
+  28.57%  { transform: translateX(var(--shake-distance));             animation-timing-function: var(--shake-ease); }
+  57.14%  { transform: translateX(calc(var(--shake-distance) * -1)); animation-timing-function: var(--shake-ease); }
+  78.57%  { transform: translateX(var(--shake-overshoot));            animation-timing-function: var(--shake-ease); }
+  100%    { transform: translateX(0); }
+}
+
+/* Staggered entrance animation (Emil Kowalski guidelines) */
+@keyframes t-stagger-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.t-stagger-item {
+  opacity: 0;
+  animation: t-stagger-fade-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger-index, 0) * 35ms);
+}
+
+/* Tab slide animations (Emil Kowalski guidelines) */
+@keyframes t-tab-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(var(--page-slide-distance, 12px));
+    filter: blur(calc(var(--page-blur, 2px)));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+@keyframes t-tab-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--page-slide-distance, 12px) * -1));
+    filter: blur(calc(var(--page-blur, 2px)));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+.t-tab-slide-left {
+  animation: t-tab-slide-left var(--page-slide-dur, 220ms) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t-tab-slide-right {
+  animation: t-tab-slide-right var(--page-slide-dur, 220ms) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+
+/* 11. Avatar Group Hover */
+.t-avatar {
+  transform-origin: center;
+  transform:
+    translateY(var(--shift, 0px))
+    scale(var(--scale-active, 1));
+  transition: transform var(--avatar-dur) var(--avatar-ease-in);
+  will-change: transform;
+}
+
+/* Prefers Reduced Motion (Global Guard) */
+@media (prefers-reduced-motion: reduce) {
+  .t-resize,
+  .t-digit-group .t-digit,
+  .t-badge,
+  .t-badge-dot,
+  .t-text-swap,
+  .t-dropdown,
+  .t-input,
+  .t-stagger-item,
+  .t-tab-slide-left,
+  .t-tab-slide-right,
+  .t-avatar {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }

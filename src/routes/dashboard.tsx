@@ -4,7 +4,6 @@ import {
 	BookOpen,
 	CalendarDays,
 	Clock3,
-	Loader2,
 	type LucideIcon,
 	MapIcon,
 	Package,
@@ -307,20 +306,13 @@ function Dashboard() {
 
 							<Button
 								type="submit"
-								disabled={isCreatingFirst || !firstCampaignName.trim()}
+								loading={isCreatingFirst}
+								loadingText="Criando Campanha..."
+								disabled={!firstCampaignName.trim()}
 								className="mt-2 gap-2 h-11 cursor-pointer"
 							>
-								{isCreatingFirst ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin" />
-										Criando Campanha...
-									</>
-								) : (
-									<>
-										Criar Minha Primeira Campanha
-										<ArrowUpRight className="h-4 w-4" />
-									</>
-								)}
+								Criar Minha Primeira Campanha
+								<ArrowUpRight className="h-4 w-4" />
 							</Button>
 						</form>
 					</div>
@@ -441,16 +433,21 @@ function Dashboard() {
 			</section>
 
 			<section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-				{sections.map((section) => (
-					<StatPill
+				{sections.map((section, index) => (
+					<div
 						key={section.to}
-						to={section.to}
-						label={section.title}
-						value={counts[section.key]}
-						Icon={section.Icon}
-						iconColor={section.accent}
-						isLoading={isLoading}
-					/>
+						className="t-stagger-item"
+						style={{ "--stagger-index": index } as React.CSSProperties}
+					>
+						<StatPill
+							to={section.to}
+							label={section.title}
+							value={counts[section.key]}
+							Icon={section.Icon}
+							iconColor={section.accent}
+							isLoading={isLoading}
+						/>
+					</div>
 				))}
 			</section>
 
@@ -461,17 +458,22 @@ function Dashboard() {
 					description="Acesse rapidamente personagens, sessões, itens e os detalhes do cenário."
 				/>
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					{sections.map((section) => (
-						<DashboardCard
+					{sections.map((section, index) => (
+						<div
 							key={section.to}
-							to={section.to}
-							title={section.title}
-							description={section.description}
-							Icon={section.Icon}
-							iconColor={section.accent}
-							count={counts[section.key]}
-							isLoading={isLoading}
-						/>
+							className="t-stagger-item"
+							style={{ "--stagger-index": index + 3 } as React.CSSProperties}
+						>
+							<DashboardCard
+								to={section.to}
+								title={section.title}
+								description={section.description}
+								Icon={section.Icon}
+								iconColor={section.accent}
+								count={counts[section.key]}
+								isLoading={isLoading}
+							/>
+						</div>
 					))}
 				</div>
 			</section>
@@ -525,7 +527,7 @@ function StatPill({
 	return (
 		<Link
 			to={to}
-			className="group flex items-center justify-between rounded-2xl border border-border/70 bg-card-elevated px-4 py-4 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-primary/30"
+			className="group flex items-center justify-between rounded-2xl border border-border/70 bg-card-elevated px-4 py-4 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.985] active:translate-y-0"
 		>
 			<div className="flex flex-col">
 				<span className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -586,7 +588,7 @@ function DashboardCard({
 	return (
 		<Link
 			to={to}
-			className="group relative block overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5"
+			className="group relative block overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
 		>
 			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 			<div className="flex items-start justify-between gap-4">
