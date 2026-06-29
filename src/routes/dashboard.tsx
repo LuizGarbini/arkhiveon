@@ -343,7 +343,8 @@ function Dashboard() {
 							Entrar no Discord
 						</span>
 						<span className="text-[11px] text-muted-foreground leading-tight">
-							Conecte-se com outros mestres e jogadores para tirar dúvidas, compartilhar homebrews e jogar
+							Conecte-se com outros mestres e jogadores para tirar dúvidas,
+							compartilhar homebrews e jogar
 						</span>
 					</div>
 				</div>
@@ -829,6 +830,8 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 		<svg
 			viewBox="0 0 127.14 96.36"
 			fill="currentColor"
+			role="img"
+			aria-label="Discord"
 			{...props}
 		>
 			<path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,52.8,6.83,77.19,77.19,0,0,0,49.5,0,105.15,105.15,0,0,0,19.06,8.07C3.58,31.21-1.92,53.7,1,75.87a107.94,107.94,0,0,0,32,16.15,86.23,86.23,0,0,0,6.72-11A72.82,72.82,0,0,1,25,74.55c.9-.66,1.8-1.34,2.66-2a74.75,74.75,0,0,0,79,0c.87.69,1.76,1.37,2.66,2a72.82,72.82,0,0,1-14.73,6.51,86.23,86.23,0,0,0,6.72,11,107.94,107.94,0,0,0,32-16.15C129.8,49.12,123.63,26.83,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.35,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
