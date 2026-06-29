@@ -11,15 +11,18 @@ import {
 	PanelLeftOpen,
 	Search,
 	Settings,
+	Sparkles,
 	User,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { SpotifyJamCard } from "@/components/spotify-jam-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { CHANGELOG_DATA } from "@/data/updates";
 import { useAuth } from "@/lib/auth";
 import {
 	clickShortcutAction,
@@ -62,6 +65,22 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const location = useLocation();
 	const toast = useToast();
 	const [isSigningOut, setIsSigningOut] = useState(false);
+	const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+	const [hasUnreadUpdates, setHasUnreadUpdates] = useState(false);
+	const latestUpdateId = CHANGELOG_DATA[0]?.id;
+
+	useEffect(() => {
+		const lastSeenId = localStorage.getItem("arkhiveon_last_seen_update");
+		if (latestUpdateId && lastSeenId !== latestUpdateId) {
+			setHasUnreadUpdates(true);
+			if (user) {
+				setIsChangelogOpen(true);
+				localStorage.setItem("arkhiveon_last_seen_update", latestUpdateId);
+				setHasUnreadUpdates(false);
+			}
+		}
+	}, [user, latestUpdateId]);
+
 	const metadataName = user?.user_metadata?.name;
 	const userName =
 		typeof metadataName === "string" && metadataName.trim()
@@ -265,6 +284,29 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							<Keyboard className="h-4 w-4" />
 						</Button>
 					)}
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						aria-label="Abrir novidades e changelog"
+						title="Novidades e Atualizações"
+						onClick={() => {
+							setIsChangelogOpen(true);
+							if (latestUpdateId) {
+								localStorage.setItem(
+									"arkhiveon_last_seen_update",
+									latestUpdateId,
+								);
+							}
+							setHasUnreadUpdates(false);
+						}}
+						className="relative h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+					>
+						<Sparkles className="h-4 w-4" />
+						{hasUnreadUpdates && (
+							<span className="absolute right-2 top-2 flex h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+						)}
+					</Button>
 					<Popover>
 						<PopoverTrigger
 							className={cn(
@@ -406,6 +448,10 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 					</DropdownMenu>
 				</div>
 			</header>
+			<ChangelogPanel
+				open={isChangelogOpen}
+				onClose={() => setIsChangelogOpen(false)}
+			/>
 		</>
 	);
 }
