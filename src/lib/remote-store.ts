@@ -539,8 +539,30 @@ export async function deleteRemoteEntity(
 	if (error) throw error;
 }
 
-export async function fetchGlobalTotalCount(): Promise<number> {
+export async function fetchGlobalTotalCount(campaignId?: string | null): Promise<number> {
 	const supabase = requireSupabase();
+
+	if (!campaignId) return 0;
+
+	// 1. Encontrar o owner_id desta campanha
+	const { data: campaignData, error: campaignError } = await supabase
+		.from(SUPABASE_TABLES.campaigns)
+		.select("owner_id")
+		.eq("id", campaignId)
+		.maybeSingle();
+
+	if (campaignError || !campaignData?.owner_id) return 0;
+	const ownerId = campaignData.owner_id;
+
+	// 2. Encontrar todas as campanhas pertencentes a esse mesmo owner
+	const { data: ownerCampaigns, error: ownerCampaignsError } = await supabase
+		.from(SUPABASE_TABLES.campaigns)
+		.select("id")
+		.eq("owner_id", ownerId);
+
+	if (ownerCampaignsError || !ownerCampaigns || ownerCampaigns.length === 0) return 0;
+	const campaignIds = ownerCampaigns.map((c) => c.id);
+
 	const tables: EntityTable[] = [
 		SUPABASE_TABLES.characters,
 		SUPABASE_TABLES.npcs,
@@ -550,11 +572,13 @@ export async function fetchGlobalTotalCount(): Promise<number> {
 		SUPABASE_TABLES.lores,
 	];
 
+	// 3. Contar todos os registros criados em qualquer uma dessas campanhas (independente de quem criou)
 	const counts = await Promise.all(
 		tables.map((table) =>
 			supabase
 				.from(table)
 				.select("*", { count: "exact", head: true })
+				.in("campaign_id", campaignIds)
 				.then(({ count }) => count || 0),
 		),
 	);
