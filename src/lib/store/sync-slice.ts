@@ -86,7 +86,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			}
 			const [remote, globalCount] = await Promise.all([
 				loadRemoteState(startCampaignId),
-				fetchGlobalTotalCount(),
+				fetchGlobalTotalCount(startCampaignId),
 			]);
 
 			// Verificar se a campanha ativa mudou no meio do caminho
@@ -144,12 +144,6 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
 		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
 
-		// Capturar userId para filtrar contagem de registros próprios
-		let currentUserId: string | null = null;
-		void supabase.auth.getUser().then(({ data }) => {
-			currentUserId = data.user?.id ?? null;
-		});
-
 		const channel = supabase
 			.channel(channelName)
 			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
@@ -171,8 +165,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				const storeKey = tableToKey[table];
 				if (!storeKey) return;
 
-				const activeCampaign = get().activeCampaignId;
-				if (!activeCampaign) return;
+				const activeCampaignId = get().activeCampaignId;
+				if (!activeCampaignId) return;
 
 				// Determinar se o evento pertence à campanha ativa
 				let belongsToActiveCampaign = false;
@@ -187,7 +181,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					belongsToActiveCampaign = !!(
 						newRow &&
 						"campaign_id" in newRow &&
-						newRow.campaign_id === activeCampaign
+						newRow.campaign_id === activeCampaignId
 					);
 				}
 
@@ -201,17 +195,25 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				];
 				const isCountTable = countTables.includes(table);
 
-				// Verificar se o registro pertence ao usuário atual (para contagem do plano)
-				const isOwnRecord =
-					currentUserId != null &&
-					(eventType === "DELETE"
-						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
-						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
+				// Verificar se o registro pertence a alguma campanha do mesmo dono da campanha ativa
+				const activeCamp = get().campaigns.find((c) => c.id === activeCampaignId);
+				const activeOwnerId = activeCamp?.ownerId;
+				
+				// Se tivermos as campanhas carregadas localmente, podemos mapear as que têm o mesmo ownerId
+				const ownerCampaignIds = activeOwnerId
+					? get().campaigns.filter((c) => c.ownerId === activeOwnerId).map((c) => c.id)
+					: activeCampaignId ? [activeCampaignId] : [];
+
+				const rowCampaignId = eventType === "DELETE"
+					? oldRow && "campaign_id" in oldRow ? (oldRow as any).campaign_id : null
+					: newRow && "campaign_id" in newRow ? (newRow as any).campaign_id : null;
+
+				const belongsToOwnerCampaigns = rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
 
 				if (!belongsToActiveCampaign) {
-					// Se o evento não pertencer à campanha ativa, mas for do próprio usuário
+					// Se o evento não pertencer à campanha ativa, mas pertencer ao mesmo owner da campanha ativa
 					// numa tabela de contagem, atualizamos apenas o contador global.
-					if (isCountTable && isOwnRecord) {
+					if (isCountTable && belongsToOwnerCampaigns) {
 						if (eventType === "INSERT") {
 							set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
 						} else if (eventType === "DELETE") {
@@ -223,8 +225,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					return;
 				}
 
-				// Atualizar contador global de registros para a campanha ativa (apenas próprios)
-				if (isCountTable && isOwnRecord) {
+				// Atualizar contador global de registros para a campanha ativa
+				if (isCountTable && belongsToOwnerCampaigns) {
 					if (eventType === "INSERT") {
 						set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
 					} else if (eventType === "DELETE") {
