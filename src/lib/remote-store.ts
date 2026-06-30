@@ -541,6 +541,12 @@ export async function deleteRemoteEntity(
 
 export async function fetchGlobalTotalCount(): Promise<number> {
 	const supabase = requireSupabase();
+
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return 0;
+
 	const tables: EntityTable[] = [
 		SUPABASE_TABLES.characters,
 		SUPABASE_TABLES.npcs,
@@ -555,6 +561,7 @@ export async function fetchGlobalTotalCount(): Promise<number> {
 			supabase
 				.from(table)
 				.select("*", { count: "exact", head: true })
+				.eq("created_by", user.id)
 				.then(({ count }) => count || 0),
 		),
 	);

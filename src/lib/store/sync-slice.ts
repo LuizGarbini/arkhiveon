@@ -144,6 +144,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
 		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
 
+		// Capturar userId para filtrar contagem de registros próprios
+		let currentUserId: string | null = null;
+		void supabase.auth.getUser().then(({ data }) => {
+			currentUserId = data.user?.id ?? null;
+		});
+
 		const channel = supabase
 			.channel(channelName)
 			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
@@ -195,10 +201,17 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				];
 				const isCountTable = countTables.includes(table);
 
+				// Verificar se o registro pertence ao usuário atual (para contagem do plano)
+				const isOwnRecord =
+					currentUserId != null &&
+					(eventType === "DELETE"
+						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
+						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
+
 				if (!belongsToActiveCampaign) {
-					// Se o evento não pertencer à campanha ativa, mas for uma tabela de contagem,
-					// atualizamos apenas o contador global de registros e retornamos.
-					if (isCountTable) {
+					// Se o evento não pertencer à campanha ativa, mas for do próprio usuário
+					// numa tabela de contagem, atualizamos apenas o contador global.
+					if (isCountTable && isOwnRecord) {
 						if (eventType === "INSERT") {
 							set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
 						} else if (eventType === "DELETE") {
@@ -210,8 +223,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					return;
 				}
 
-				// Atualizar contador global de registros para a campanha ativa
-				if (isCountTable) {
+				// Atualizar contador global de registros para a campanha ativa (apenas próprios)
+				if (isCountTable && isOwnRecord) {
 					if (eventType === "INSERT") {
 						set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
 					} else if (eventType === "DELETE") {
