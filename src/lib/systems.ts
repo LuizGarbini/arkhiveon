@@ -149,6 +149,17 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		bgAccent: "from-yellow-500/15 to-amber-500/5",
 		speedUnit: "ft",
 	}),
+	dnd35: sys({
+		value: "dnd35",
+		label: "D&D 3.5",
+		tagline: "O clássico do D20",
+		description:
+			"Template completo para D&D 3.5 com atributos clássicos, magias e talentos sob regras OGL.",
+		Icon: Swords,
+		accent: "text-orange-300",
+		bgAccent: "from-orange-500/15 to-amber-500/5",
+		speedUnit: "m",
+	}),
 	vampire: sys({
 		value: "vampire",
 		label: "Vampiro: A Máscara",

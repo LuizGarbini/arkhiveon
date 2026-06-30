@@ -7,6 +7,7 @@ export type { UserPlan };
 export const RPG_SYSTEMS = [
 	{ value: "dnd5e", label: "D&D 5ª Edição (2014)" },
 	{ value: "dnd2024", label: "D&D 2024" },
+	{ value: "dnd35", label: "D&D 3.5" },
 	{ value: "vampire", label: "Vampiro: A Máscara" },
 	{ value: "coc", label: "Call of Cthulhu 7e" },
 	{ value: "tormenta20", label: "Tormenta 20" },
