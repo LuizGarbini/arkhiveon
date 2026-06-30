@@ -207,27 +207,14 @@ export function FeatSearchDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden bg-card-elevated border-border/80 text-foreground">
 				<DialogHeader className="p-6 pb-0 border-b border-border/40 shrink-0">
-					<div className="flex items-center justify-between">
-						<div>
-							<DialogTitle className="font-display text-xl flex items-center gap-2">
-								<BookOpen className="h-5 w-5 text-primary" />
-								Compêndio de {featsLabel}
-							</DialogTitle>
-							<DialogDescription className="text-xs text-muted-foreground mt-1">
-								Busque {featsLabel.toLowerCase()} oficiais ou crie customizados
-								(Homebrew).
-							</DialogDescription>
-						</div>
-						<Button
-							type="button"
-							variant={showHomebrewForm ? "ghost" : "default"}
-							size="sm"
-							onClick={() => setShowHomebrewForm(!showHomebrewForm)}
-							className="text-xs h-8"
-						>
-							{showHomebrewForm ? "Voltar à busca" : "Criar Customizado"}
-						</Button>
-					</div>
+					<DialogTitle className="font-display text-xl flex items-center gap-2">
+						<BookOpen className="h-5 w-5 text-primary" />
+						Compêndio de {featsLabel}
+					</DialogTitle>
+					<DialogDescription className="text-xs text-muted-foreground mt-1">
+						Busque {featsLabel.toLowerCase()} oficiais ou crie customizados
+						(Homebrew).
+					</DialogDescription>
 				</DialogHeader>
 
 				<div className="flex-1 min-h-0 flex flex-col md:flex-row">
@@ -417,6 +404,23 @@ export function FeatSearchDialog({
 											);
 										})
 									)}
+								</div>
+
+								{/* Bottom bar for Homebrew */}
+								<div className="mt-4 shrink-0 border-t border-border/40 pt-4 flex items-center justify-between gap-4">
+									<span className="text-[11px] text-muted-foreground">
+										Não achou o {featsLabel.toLowerCase()} que queria?
+									</span>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="gap-1.5 text-xs h-8"
+										onClick={() => setShowHomebrewForm(true)}
+									>
+										<Plus className="h-3.5 w-3.5" />
+										Criar Homebrew
+									</Button>
 								</div>
 							</>
 						)}
