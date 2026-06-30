@@ -1,4 +1,3 @@
-import { SYSTEM_CONFIG } from "./systems";
 import type {
 	Character,
 	CustomTemplate,
@@ -29,6 +28,22 @@ const SYSTEMS_WITH_SANITY = new Set<RpgSystem>([
 	"meltedlands",
 	"ashesoftomorrow",
 	"demonlord",
+]);
+
+const SYSTEMS_WITHOUT_FEATS = new Set<RpgSystem>([
+	"contosloop",
+	"mausritter",
+	"cyberpunkred",
+	"fallout2d20",
+	"wilderfeast",
+	"gothrpg",
+	"assassinscreed",
+	"corespringnpc",
+	"duna",
+	"stalker",
+	"fissura",
+	"sacramento",
+	"somdasseis",
 ]);
 
 const SYSTEMS_WITHOUT_MAGIC = new Set<RpgSystem>([
@@ -89,7 +104,7 @@ export function createDefaultSheetLayout(
 
 	const showSanity = options?.showSanity ?? SYSTEMS_WITH_SANITY.has(system);
 	const showSpells = options?.showSpells ?? !SYSTEMS_WITHOUT_MAGIC.has(system);
-	const showFeats = options?.showFeats ?? (SYSTEM_CONFIG[system]?.showFeats ?? true);
+	const showFeats = options?.showFeats ?? !SYSTEMS_WITHOUT_FEATS.has(system);
 	const modules: SheetModuleConfig[] = [
 		moduleConfig("identity", 10, "side", {
 			fields: ["characterName", "race", "class", "background"],
