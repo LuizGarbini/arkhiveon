@@ -205,17 +205,17 @@ export function FeatSearchDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-card border-border/40">
-				<DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
+			<DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden bg-card-elevated border-border/80 text-foreground">
+				<DialogHeader className="p-6 pb-0 border-b border-border/40 shrink-0">
 					<div className="flex items-center justify-between">
 						<div>
-							<DialogTitle className="text-lg font-bold flex items-center gap-2">
+							<DialogTitle className="font-display text-xl flex items-center gap-2">
 								<BookOpen className="h-5 w-5 text-primary" />
-								Buscar no Compêndio de {featsLabel}
+								Compêndio de {featsLabel}
 							</DialogTitle>
 							<DialogDescription className="text-xs text-muted-foreground mt-1">
-								Encontre e adicione {featsLabel.toLowerCase()} à sua ficha de
-								personagem.
+								Busque {featsLabel.toLowerCase()} oficiais ou crie customizados
+								(Homebrew).
 							</DialogDescription>
 						</div>
 						<Button
@@ -230,253 +230,258 @@ export function FeatSearchDialog({
 					</div>
 				</DialogHeader>
 
-				{showHomebrewForm ? (
-					<form
-						onSubmit={handleCreateHomebrew}
-						className="flex-1 overflow-y-auto p-6 space-y-4"
-					>
-						<DialogDescription className="text-xs text-muted-foreground pb-2">
-							Crie um registro customizado (Homebrew). Ele ficará disponível
-							apenas para as suas fichas.
-						</DialogDescription>
-
-						{hbError && (
-							<div className="bg-destructive/15 border border-destructive/20 text-destructive text-xs p-3 rounded-lg">
-								{hbError}
-							</div>
-						)}
-
-						<div className="grid grid-cols-2 gap-4">
-							<Field label="Nome">
-								<Input
-									placeholder="Ex: Robusto"
-									value={hbName}
-									onChange={(e) => setHbName(e.target.value)}
-									required
-								/>
-							</Field>
-							<Field label="Categoria">
-								<Input
-									placeholder="Ex: Geral, Combate, Ocultista..."
-									value={hbCategory}
-									onChange={(e) => setHbCategory(e.target.value)}
-								/>
-							</Field>
-						</div>
-
-						<div className="grid grid-cols-2 gap-4">
-							<Field label="Pré-requisitos">
-								<Input
-									placeholder="Ex: Força 13+ (Opcional)"
-									value={hbPrerequisites}
-									onChange={(e) => setHbPrerequisites(e.target.value)}
-								/>
-							</Field>
-							<Field label="Aumento de Atributo">
-								<Input
-									placeholder="Ex: +1 de Constituição (Opcional)"
-									value={hbAbilityIncrease}
-									onChange={(e) => setHbAbilityIncrease(e.target.value)}
-								/>
-							</Field>
-						</div>
-
-						<Field label="Descrição">
-							<Textarea
-								placeholder="Descreva as regras e efeitos mecânicos..."
-								value={hbDescription}
-								onChange={(e) => setHbDescription(e.target.value)}
-								rows={6}
-								required
-							/>
-						</Field>
-
-						<Field label="Fonte (Livro)">
-							<Input
-								placeholder="Ex: PHB, Suplemento X..."
-								value={hbSource}
-								onChange={(e) => setHbSource(e.target.value)}
-							/>
-						</Field>
-
-						<div className="flex justify-end gap-3 pt-4">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => setShowHomebrewForm(false)}
-								disabled={creatingHb}
+				<div className="flex-1 min-h-0 flex flex-col md:flex-row">
+					{/* Left column: Search and list */}
+					<div className="flex-1 flex flex-col p-6 min-h-0 border-r border-border/40">
+						{showHomebrewForm ? (
+							<form
+								onSubmit={handleCreateHomebrew}
+								className="flex-1 flex flex-col min-h-0"
 							>
-								Cancelar
-							</Button>
-							<Button type="submit" variant="default" disabled={creatingHb}>
-								{creatingHb ? "Criando..." : "Criar e Adicionar"}
-							</Button>
-						</div>
-					</form>
-				) : (
-					<div className="flex-1 flex overflow-hidden">
-						{/* Left Column: Search & List */}
-						<div className="flex-1 flex flex-col p-5 border-r border-border/30 overflow-hidden">
-							{/* Filters */}
-							<div className="flex gap-3 mb-4 shrink-0">
-								<div className="relative flex-1">
-									<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-									<Input
-										placeholder="Buscar por nome ou regras..."
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										className="pl-9 text-xs"
-									/>
-								</div>
-								{categoryOptions.length > 0 && (
-									<Select
-										value={categoryFilter}
-										onChange={(e) => setCategoryFilter(e.target.value)}
-										className="w-44 text-xs h-9.5"
-									>
-										<option value="all">Todas Categorias</option>
-										{categoryOptions.map((cat) => (
-											<option key={cat} value={cat}>
-												{cat}
-											</option>
-										))}
-									</Select>
-								)}
-							</div>
+								<div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-none">
+									<h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+										<Sparkles className="h-4 w-4 text-primary" />
+										Novo {featsLabel} Homebrew
+									</h3>
 
-							{/* Feats list */}
-							<div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin">
-								{loading ? (
-									<div className="text-center py-8 text-xs text-muted-foreground">
-										Buscando no compêndio...
+									{hbError && (
+										<div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-[12px] text-destructive">
+											{hbError}
+										</div>
+									)}
+
+									<div className="grid grid-cols-2 gap-3">
+										<Field label="Nome" className="col-span-2">
+											<Input
+												placeholder="Ex: Robusto"
+												value={hbName}
+												onChange={(e) => setHbName(e.target.value)}
+												required
+											/>
+										</Field>
+										<Field label="Categoria">
+											<Input
+												placeholder="Ex: Geral, Combate..."
+												value={hbCategory}
+												onChange={(e) => setHbCategory(e.target.value)}
+											/>
+										</Field>
+										<Field label="Fonte (Livro)">
+											<Input
+												placeholder="Ex: Livro do Jogador..."
+												value={hbSource}
+												onChange={(e) => setHbSource(e.target.value)}
+											/>
+										</Field>
+										<Field label="Pré-requisitos" className="col-span-2">
+											<Input
+												placeholder="Ex: Força 13+ (Opcional)"
+												value={hbPrerequisites}
+												onChange={(e) => setHbPrerequisites(e.target.value)}
+											/>
+										</Field>
+										<Field label="Melhoria de Atributo" className="col-span-2">
+											<Input
+												placeholder="Ex: +1 de Constituição (Opcional)"
+												value={hbAbilityIncrease}
+												onChange={(e) => setHbAbilityIncrease(e.target.value)}
+											/>
+										</Field>
+										<Field label="Descrição" className="col-span-2">
+											<Textarea
+												placeholder="Descreva as regras e efeitos..."
+												value={hbDescription}
+												onChange={(e) => setHbDescription(e.target.value)}
+												rows={4}
+												required
+											/>
+										</Field>
 									</div>
-								) : filteredFeats.length === 0 ? (
-									<div className="text-center py-8 text-xs text-muted-foreground">
-										Nenhum registro encontrado para a busca.
-									</div>
-								) : (
-									filteredFeats.map((feat) => {
-										const added = isAlreadyAdded(feat);
-										const selected = selectedFeat?.id === feat.id;
-										return (
-											// biome-ignore lint/a11y/useKeyWithClickEvents: selection only
-											// biome-ignore lint/a11y/noStaticElementInteractions: list container click
-											<div
-												key={feat.id}
-												onClick={() => setSelectedFeat(feat)}
-												className={`flex items-center justify-between p-3 rounded-lg border text-left cursor-pointer transition-all duration-150 ${
-													selected
-														? "border-primary/50 bg-primary/5"
-														: "border-border/30 hover:border-border/60 hover:bg-muted/10 bg-background/30"
-												}`}
+								</div>
+
+								<div className="flex justify-end gap-3 pt-4 border-t border-border/40 mt-4 shrink-0">
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => setShowHomebrewForm(false)}
+										disabled={creatingHb}
+									>
+										Cancelar
+									</Button>
+									<Button type="submit" variant="default" disabled={creatingHb}>
+										{creatingHb ? "Criando..." : "Criar e Adicionar"}
+									</Button>
+								</div>
+							</form>
+						) : (
+							<>
+								{/* Search & Filters */}
+								<div className="space-y-4 mb-4 shrink-0">
+									<div className="flex gap-2">
+										<div className="relative flex-1">
+											<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											<Input
+												placeholder="Buscar por nome ou regras..."
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												className="pl-9 text-xs"
+											/>
+										</div>
+										{categoryOptions.length > 0 && (
+											<Select
+												value={categoryFilter}
+												onChange={(e) => setCategoryFilter(e.target.value)}
+												className="w-44 text-xs"
 											>
-												<div className="min-w-0 pr-4">
-													<div className="flex items-center gap-1.5">
-														<span className="font-semibold text-xs text-foreground truncate">
-															{feat.name}
-														</span>
-														{feat.is_homebrew && (
-															<span className="text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded">
-																H
+												<option value="all">Todas as Categorias</option>
+												{categoryOptions.map((cat) => (
+													<option key={cat} value={cat}>
+														{cat}
+													</option>
+												))}
+											</Select>
+										)}
+									</div>
+								</div>
+
+								{/* Feats list */}
+								<div className="flex-1 overflow-y-auto pr-1 space-y-1 scrollbar-none min-h-0">
+									{loading ? (
+										<div className="text-center py-8 text-[13px] text-muted-foreground">
+											Buscando {featsLabel.toLowerCase()}...
+										</div>
+									) : filteredFeats.length === 0 ? (
+										<div className="text-center py-8 text-[13px] text-muted-foreground">
+											Nenhum registro encontrado.
+										</div>
+									) : (
+										filteredFeats.map((feat) => {
+											const added = isAlreadyAdded(feat);
+											const selected = selectedFeat?.id === feat.id;
+											return (
+												// biome-ignore lint/a11y/useSemanticElements: interactive list item containing nested buttons
+												<div
+													key={feat.id}
+													role="button"
+													tabIndex={0}
+													className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group cursor-pointer ${
+														selected
+															? "bg-primary/10 border-primary"
+															: "bg-background/40 border-border/40 hover:bg-background/70 hover:border-border/80"
+													}`}
+													onClick={() => setSelectedFeat(feat)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" || e.key === " ") {
+															e.preventDefault();
+															setSelectedFeat(feat);
+														}
+													}}
+												>
+													<div className="min-w-0 pr-2">
+														<div className="flex items-center gap-1.5">
+															<span className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">
+																{feat.name}
 															</span>
-														)}
-														<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-															({feat.category || "Geral"})
-														</span>
+															{feat.is_homebrew && (
+																<span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ring-1 ring-amber-500/20">
+																	Homebrew
+																</span>
+															)}
+														</div>
+														<div className="text-[11px] text-muted-foreground mt-0.5">
+															{feat.category || "Geral"}
+															{feat.prerequisites &&
+																` · Req: ${feat.prerequisites}`}
+														</div>
 													</div>
-													{feat.prerequisites && (
-														<p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
-															Req: {feat.prerequisites}
-														</p>
+
+													{added ? (
+														<span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+															<Check className="h-3.5 w-3.5" />
+														</span>
+													) : (
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon-sm"
+															onClick={(e) => {
+																e.stopPropagation();
+																onSelectFeat(feat);
+															}}
+															className="h-7 w-7 rounded-md shrink-0 opacity-80 hover:opacity-100 hover:bg-primary/20"
+														>
+															<Plus className="h-4 w-4" />
+														</Button>
 													)}
 												</div>
-												<Button
-													type="button"
-													variant={added ? "ghost" : "default"}
-													size="icon"
-													onClick={(e) => {
-														e.stopPropagation();
-														if (!added) onSelectFeat(feat);
-													}}
-													className="h-7 w-7 rounded-md shrink-0 cursor-pointer"
-													disabled={added}
-												>
-													{added ? (
-														<Check className="h-3.5 w-3.5 text-emerald-500" />
-													) : (
-														<Plus className="h-3.5 w-3.5" />
-													)}
-												</Button>
-											</div>
-										);
-									})
-								)}
-							</div>
-						</div>
-
-						{/* Right Column: Feat Details Preview */}
-						<div className="hidden md:flex w-80 bg-background/30 flex-col p-5 overflow-y-auto border-l border-border/10">
-							{selectedFeat ? (
-								<div className="space-y-4 text-xs">
-									<div>
-										<h4 className="text-sm font-bold text-foreground">
-											{selectedFeat.name}
-										</h4>
-										<div className="flex items-center gap-1.5 mt-1">
-											<span className="bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded text-[10px]">
-												{selectedFeat.category || "Geral"}
-											</span>
-											{selectedFeat.source && (
-												<span className="text-muted-foreground text-[10px]">
-													Fonte: {selectedFeat.source}
-												</span>
-											)}
-										</div>
-									</div>
-
-									{selectedFeat.ability_increase && (
-										<div className="bg-card-elevated border border-border/40 rounded-lg p-2.5">
-											<span className="font-bold text-foreground">
-												Melhoria:
-											</span>{" "}
-											<span className="text-muted-foreground">
-												{selectedFeat.ability_increase}
-											</span>
-										</div>
+											);
+										})
 									)}
+								</div>
+							</>
+						)}
+					</div>
 
-									{selectedFeat.prerequisites && (
-										<div>
-											<span className="font-bold text-foreground">
-												Pré-requisito:
-											</span>
-											<p className="text-muted-foreground mt-0.5">
-												{selectedFeat.prerequisites}
-											</p>
-										</div>
-									)}
-
-									<div className="border-t border-border/30 pt-3">
-										<span className="font-bold text-foreground block mb-1">
-											Efeitos:
+					{/* Right Column: Feat Details Preview */}
+					<div className="hidden md:flex w-80 flex-col p-6 overflow-y-auto bg-background/20">
+						{selectedFeat ? (
+							<div className="space-y-4 text-xs">
+								<div>
+									<h4 className="text-sm font-bold text-foreground">
+										{selectedFeat.name}
+									</h4>
+									<div className="flex items-center gap-1.5 mt-1">
+										<span className="bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded text-[10px]">
+											{selectedFeat.category || "Geral"}
 										</span>
-										<p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-											{selectedFeat.description}
+										{selectedFeat.source && (
+											<span className="text-muted-foreground text-[10px]">
+												Fonte: {selectedFeat.source}
+											</span>
+										)}
+									</div>
+								</div>
+
+								{selectedFeat.ability_increase && (
+									<div className="bg-card-elevated border border-border/40 rounded-lg p-2.5">
+										<span className="font-bold text-foreground">Melhoria:</span>{" "}
+										<span className="text-muted-foreground">
+											{selectedFeat.ability_increase}
+										</span>
+									</div>
+								)}
+
+								{selectedFeat.prerequisites && (
+									<div>
+										<span className="font-bold text-foreground">
+											Pré-requisito:
+										</span>
+										<p className="text-muted-foreground mt-0.5">
+											{selectedFeat.prerequisites}
 										</p>
 									</div>
-								</div>
-							) : (
-								<div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-									<Sparkles className="h-8 w-8 text-muted-foreground/30 mb-2" />
-									<p className="text-xs text-muted-foreground">
-										Selecione um item da lista para visualizar os detalhes
-										completos das regras e efeitos.
+								)}
+
+								<div className="border-t border-border/30 pt-3">
+									<span className="font-bold text-foreground block mb-1">
+										Efeitos:
+									</span>
+									<p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+										{selectedFeat.description}
 									</p>
 								</div>
-							)}
-						</div>
+							</div>
+						) : (
+							<div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+								<Sparkles className="h-8 w-8 text-muted-foreground/30 mb-2" />
+								<p className="text-xs text-muted-foreground">
+									Selecione um item da lista para visualizar os detalhes
+									completos das regras e efeitos.
+								</p>
+							</div>
+						)}
 					</div>
-				)}
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
