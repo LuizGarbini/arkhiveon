@@ -1,3 +1,4 @@
+import { SYSTEM_CONFIG } from "./systems";
 import type {
 	Character,
 	CustomTemplate,
@@ -13,6 +14,7 @@ export const SHEET_MODULE_LABELS: Record<SheetModuleKind, string> = {
 	combat: "Combate",
 	sanity: "Sanidade",
 	magic: "Magia",
+	feats: "Talentos",
 	inventory: "Inventário",
 	personality: "Personalidade",
 	notes: "Notas",
@@ -70,6 +72,7 @@ export function createDefaultSheetLayout(
 	options?: {
 		showSpells?: boolean;
 		showSanity?: boolean;
+		showFeats?: boolean;
 	},
 ): SheetLayoutConfig {
 	if (system.startsWith("custom_")) {
@@ -86,6 +89,7 @@ export function createDefaultSheetLayout(
 
 	const showSanity = options?.showSanity ?? SYSTEMS_WITH_SANITY.has(system);
 	const showSpells = options?.showSpells ?? !SYSTEMS_WITHOUT_MAGIC.has(system);
+	const showFeats = options?.showFeats ?? (SYSTEM_CONFIG[system]?.showFeats ?? true);
 	const modules: SheetModuleConfig[] = [
 		moduleConfig("identity", 10, "side", {
 			fields: ["characterName", "race", "class", "background"],
@@ -130,6 +134,16 @@ export function createDefaultSheetLayout(
 			0,
 			moduleConfig("magic", 38, "main", {
 				fields: ["spellcastingClass", "spellSaveDc", "spells", "spellSlots"],
+			}),
+		);
+	}
+
+	if (showFeats) {
+		modules.splice(
+			4,
+			0,
+			moduleConfig("feats", 39, "main", {
+				fields: [],
 			}),
 		);
 	}

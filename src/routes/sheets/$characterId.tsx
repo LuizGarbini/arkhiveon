@@ -20,11 +20,11 @@ import {
 import {
 	type ComponentType,
 	type FormEvent,
+	lazy,
+	Suspense,
 	useEffect,
 	useMemo,
 	useState,
-	lazy,
-	Suspense,
 } from "react";
 import { useForm } from "react-hook-form";
 
@@ -61,7 +61,6 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
-import { cn } from "@/lib/utils";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
@@ -75,6 +74,7 @@ import {
 } from "@/lib/sheet-modules";
 import {
 	type Character,
+	type Feat,
 	formatModifier,
 	getAttributeExtraInfo,
 	getAttributeFullName,
@@ -88,7 +88,8 @@ import {
 	useImageAssetLookup,
 	useRPGStore,
 } from "@/lib/store";
-import { SYSTEM_CONFIG } from "@/lib/systems";
+import { getFeatsLabel, SYSTEM_CONFIG } from "@/lib/systems";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sheets/$characterId")({
 	validateSearch: (search: Record<string, unknown>): { edit?: boolean } => {
@@ -197,6 +198,18 @@ function CharacterSheetPage() {
 	}
 
 	const currentCharacter = character;
+	const hasTough = currentCharacter.featsList?.some(
+		(f) =>
+			f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
+	);
+	const toughBonus =
+		hasTough &&
+		(currentCharacter.system === "dnd5e" ||
+			currentCharacter.system === "dnd2024")
+			? 2 * (currentCharacter.level || 1)
+			: 0;
+	const effectiveHealthMax = (currentCharacter.healthMax || 0) + toughBonus;
+
 	const characterImageUrl = resolveCharacterImageUrl(
 		currentCharacter,
 		imageAssetLookup,
@@ -219,7 +232,7 @@ function CharacterSheetPage() {
 		const title = window.prompt(
 			kind === "customText"
 				? "Digite o título para o novo Bloco de Texto:"
-				: "Digite o título para o novo Bloco de Stats:"
+				: "Digite o título para o novo Bloco de Stats:",
 		);
 		if (title === null) return; // User cancelled
 		const trimmed = title.trim();
@@ -236,10 +249,7 @@ function CharacterSheetPage() {
 		}
 
 		const nextModule = {
-			...createCustomSheetModule(
-				kind,
-				layout.modules.length * 10 + 100,
-			),
+			...createCustomSheetModule(kind, layout.modules.length * 10 + 100),
 			title: trimmed,
 		};
 		updateLayout({
@@ -371,7 +381,7 @@ function CharacterSheetPage() {
 				<div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
 					<QuickStat
 						label="PV"
-						value={`${currentCharacter.health}/${currentCharacter.healthMax}`}
+						value={`${currentCharacter.health}/${effectiveHealthMax}`}
 						color="text-rose-400"
 					/>
 					<QuickStat
@@ -614,6 +624,67 @@ function SpellRow({ spell }: { spell: Spell }) {
 	);
 }
 
+function FeatRow({ feat }: { feat: Feat }) {
+	const [expanded, setExpanded] = useState(false);
+	return (
+		<div className="border border-border/40 rounded-lg bg-background/25 overflow-hidden transition-all">
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="w-full flex items-center justify-between p-3 text-left hover:bg-background/40 transition-colors"
+			>
+				<div>
+					<span className="font-semibold text-sm text-foreground">
+						{feat.name}
+					</span>
+					{feat.is_homebrew && (
+						<span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">
+							Homebrew
+						</span>
+					)}
+					<span className="text-[11px] text-muted-foreground ml-2">
+						({feat.category || "Geral"})
+					</span>
+				</div>
+				<div className="flex items-center gap-2">
+					{feat.ability_increase && (
+						<span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">
+							{feat.ability_increase}
+						</span>
+					)}
+					{expanded ? (
+						<ChevronUp className="h-4 w-4 text-muted-foreground" />
+					) : (
+						<ChevronDown className="h-4 w-4 text-muted-foreground" />
+					)}
+				</div>
+			</button>
+
+			{expanded && (
+				<div className="p-3 border-t border-border/40 bg-background/10 space-y-3 text-[12px] leading-relaxed">
+					<div className="grid grid-cols-2 gap-2 text-muted-foreground border-b border-border/20 pb-2">
+						{feat.prerequisites && (
+							<div className="col-span-2">
+								<span className="font-bold">Pré-requisito: </span>
+								{feat.prerequisites}
+							</div>
+						)}
+						{feat.source && (
+							<div>
+								<span className="font-bold">Fonte: </span>
+								{feat.source}
+							</div>
+						)}
+					</div>
+					<p className="text-muted-foreground whitespace-pre-line">
+						{feat.description}
+					</p>
+				</div>
+			)}
+		</div>
+	);
+}
+
 function ModuleContent({
 	module,
 	character,
@@ -726,11 +797,19 @@ function ModuleContent({
 	}
 
 	if (module.kind === "combat") {
-		const hpPercent = character.healthMax
-			? Math.min(
-					100,
-					Math.round((character.health / character.healthMax) * 100),
-				)
+		const hasTough = character.featsList?.some(
+			(f) =>
+				f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
+		);
+		const toughBonus =
+			hasTough &&
+			(character.system === "dnd5e" || character.system === "dnd2024")
+				? 2 * (character.level || 1)
+				: 0;
+		const effectiveHealthMax = (character.healthMax || 0) + toughBonus;
+
+		const hpPercent = effectiveHealthMax
+			? Math.min(100, Math.round((character.health / effectiveHealthMax) * 100))
 			: 0;
 		return (
 			<div className="grid gap-4">
@@ -743,8 +822,13 @@ function ModuleContent({
 							<p className="font-display mt-1 text-4xl font-bold text-rose-400">
 								{character.health}
 								<span className="text-lg text-muted-foreground">
-									/{character.healthMax}
+									/{effectiveHealthMax}
 								</span>
+								{toughBonus > 0 && (
+									<span className="text-[10px] font-bold uppercase tracking-wider text-primary ml-2 bg-primary/10 px-1.5 py-0.5 rounded">
+										+{toughBonus} de Robusto
+									</span>
+								)}
 							</p>
 						</div>
 						<Heart className="h-5 w-5 text-rose-400" />
@@ -875,6 +959,41 @@ function ModuleContent({
 		);
 	}
 
+	if (module.kind === "feats") {
+		const featsList = character.featsList || [];
+		const featsLabel = getFeatsLabel(character.system);
+
+		return (
+			<div className="grid gap-3">
+				{customFields.map((field) => (
+					<TextBlock
+						key={field.key}
+						title={field.label}
+						value={character.systemFields?.[field.key]}
+					/>
+				))}
+
+				{featsList.length > 0 ? (
+					<div className="space-y-4">
+						<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
+							<Sparkles className="h-4 w-4 text-primary" />
+							{featsLabel}
+						</h4>
+						<div className="grid gap-2">
+							{featsList.map((feat) => (
+								<FeatRow key={feat.id} feat={feat} />
+							))}
+						</div>
+					</div>
+				) : (
+					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
+						Nenhum(a) {featsLabel.toLowerCase()} adicionado(a) ainda.
+					</div>
+				)}
+			</div>
+		);
+	}
+
 	if (module.kind === "inventory") {
 		return (
 			<div className="grid gap-3">
@@ -966,7 +1085,9 @@ function ModuleEditorDialog({
 	const config = SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.generic;
 	const [titleError, setTitleError] = useState<string | null>(null);
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 
 	const validateTitle = (val: string) => {
 		const trimmed = val.trim();
@@ -1079,13 +1200,17 @@ function ModuleEditorDialog({
 						key={activeModuleId}
 						className={cn(
 							"flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6",
-							slideDirection === "left" ? "t-tab-slide-left" : "t-tab-slide-right"
+							slideDirection === "left"
+								? "t-tab-slide-left"
+								: "t-tab-slide-right",
 						)}
 					>
-						<div className={cn(
-							"grid gap-3",
-							isCustom ? "sm:grid-cols-[1fr_160px_140px]" : "sm:grid-cols-2"
-						)}>
+						<div
+							className={cn(
+								"grid gap-3",
+								isCustom ? "sm:grid-cols-[1fr_160px_140px]" : "sm:grid-cols-2",
+							)}
+						>
 							{isCustom && (
 								<Field
 									label="Título do módulo"

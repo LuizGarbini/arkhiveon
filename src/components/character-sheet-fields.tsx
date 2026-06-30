@@ -8,9 +8,11 @@ import {
 	type UseFormSetValue,
 	useWatch,
 } from "react-hook-form";
+import { FeatSearchDialog } from "@/components/feat-search-dialog";
 import {
 	type Character,
 	characterDefaults,
+	type Feat,
 	getAttributeExtraInfo,
 	getAttributeFullName,
 	type SheetModuleKind,
@@ -18,6 +20,7 @@ import {
 } from "@/lib/store";
 import {
 	type CustomField,
+	getFeatsLabel,
 	SYSTEM_CONFIG,
 	type SystemConfig,
 } from "@/lib/systems";
@@ -311,6 +314,16 @@ export function CharacterModuleFields({
 	if (kind === "magic") {
 		return (
 			<MagicFields
+				register={register}
+				config={config}
+				control={control}
+				setValue={setValue}
+			/>
+		);
+	}
+	if (kind === "feats") {
+		return (
+			<FeatsFields
 				register={register}
 				config={config}
 				control={control}
@@ -1149,17 +1162,23 @@ export function AdjustableNumberField({
 			</Button>
 
 			<div className="relative flex-1 h-7 flex items-center justify-center min-w-0">
-				<span key={numeric} className="t-digit-group is-animating text-[13.5px] font-extrabold text-foreground pointer-events-none select-none">
-					{String(Number.isNaN(numeric) ? 0 : numeric).split("").map((digit, i, arr) => {
-						let staggerVal = undefined;
-						if (i === arr.length - 2) staggerVal = "1";
-						else if (i === arr.length - 1) staggerVal = "2";
-						return (
-							<span key={i} className="t-digit" data-stagger={staggerVal}>
-								{digit}
-							</span>
-						);
-					})}
+				<span
+					key={numeric}
+					className="t-digit-group is-animating text-[13.5px] font-extrabold text-foreground pointer-events-none select-none"
+				>
+					{String(Number.isNaN(numeric) ? 0 : numeric)
+						.split("")
+						.map((digit, i, arr) => {
+							let staggerVal: string | undefined;
+							if (i === arr.length - 2) staggerVal = "1";
+							else if (i === arr.length - 1) staggerVal = "2";
+							return (
+								// biome-ignore lint/suspicious/noArrayIndexKey: split digits are transient
+								<span key={i} className="t-digit" data-stagger={staggerVal}>
+									{digit}
+								</span>
+							);
+						})}
 				</span>
 
 				<input
@@ -1250,17 +1269,25 @@ function AbilityField({
 				</Button>
 
 				<div className="relative flex-1 h-6 flex items-center justify-center min-w-0">
-					<span key={numeric} className="t-digit-group is-animating text-[15px] font-extrabold text-foreground pointer-events-none select-none">
-						{String(Number.isNaN(numeric) || numeric === 0 ? fallbackScore : numeric).split("").map((digit, i, arr) => {
-							let staggerVal = undefined;
-							if (i === arr.length - 2) staggerVal = "1";
-							else if (i === arr.length - 1) staggerVal = "2";
-							return (
-								<span key={i} className="t-digit" data-stagger={staggerVal}>
-									{digit}
-								</span>
-							);
-						})}
+					<span
+						key={numeric}
+						className="t-digit-group is-animating text-[15px] font-extrabold text-foreground pointer-events-none select-none"
+					>
+						{String(
+							Number.isNaN(numeric) || numeric === 0 ? fallbackScore : numeric,
+						)
+							.split("")
+							.map((digit, i, arr) => {
+								let staggerVal: string | undefined;
+								if (i === arr.length - 2) staggerVal = "1";
+								else if (i === arr.length - 1) staggerVal = "2";
+								return (
+									// biome-ignore lint/suspicious/noArrayIndexKey: split digits are transient
+									<span key={i} className="t-digit" data-stagger={staggerVal}>
+										{digit}
+									</span>
+								);
+							})}
 					</span>
 
 					<input
@@ -1293,5 +1320,128 @@ function AbilityField({
 				<span className="h-4" />
 			)}
 		</div>
+	);
+}
+
+export function FeatsFields({
+	register,
+	config,
+	control,
+	setValue,
+}: {
+	register: CharacterRegister;
+	config: SystemConfig;
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+}) {
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const system = useWatch({ control, name: "system" }) || "generic";
+	const level = Number(useWatch({ control, name: "level" }) || 1);
+	const featsList = useWatch({ control, name: "featsList" }) || [];
+
+	const featsLabel = getFeatsLabel(system);
+
+	const handleSelectFeat = (feat: Feat) => {
+		if (
+			featsList.some((f) => f.name.toLowerCase() === feat.name.toLowerCase())
+		) {
+			return;
+		}
+		setValue("featsList", [...featsList, feat]);
+	};
+
+	const handleRemoveFeat = (featId: string) => {
+		setValue(
+			"featsList",
+			featsList.filter((f) => f.id !== featId),
+		);
+	};
+
+	const hasTough = featsList.some(
+		(f) =>
+			f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
+	);
+
+	return (
+		<FormSection title={featsLabel}>
+			<CustomFieldsRenderer
+				register={register}
+				control={control}
+				setValue={setValue}
+				config={config}
+				section="magic"
+			/>
+
+			{hasTough && (system === "dnd5e" || system === "dnd2024") && (
+				<div className="mb-4 bg-primary/10 border border-primary/20 text-primary text-xs p-3 rounded-lg flex items-center gap-2">
+					<Sparkles className="h-4 w-4 shrink-0 animate-pulse" />
+					<div>
+						<span className="font-bold">Talento Robusto Ativo:</span> Seu HP
+						máximo final receberá um bônus dinâmico de{" "}
+						<span className="font-extrabold font-mono text-[13px]">
+							+{2 * level} HP
+						</span>{" "}
+						(+2 por nível) no modo de visualização.
+					</div>
+				</div>
+			)}
+
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+						<Sparkles className="h-4 w-4 text-primary" />
+						Lista de {featsLabel} Selecionados
+					</h3>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => setDialogOpen(true)}
+						className="text-xs h-8 gap-1.5 cursor-pointer"
+					>
+						<BookOpen className="h-3.5 w-3.5" />
+						Buscar no Compêndio
+					</Button>
+				</div>
+
+				{featsList.length === 0 ? (
+					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
+						Nenhum item adicionado à lista ainda. Use o botão acima para buscar
+						e adicionar.
+					</div>
+				) : (
+					<div className="grid gap-2 sm:grid-cols-2">
+						{featsList.map((feat) => (
+							<div
+								key={feat.id}
+								className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/30 text-[13px]"
+							>
+								<div>
+									<span className="font-bold text-foreground">{feat.name}</span>
+									<span className="text-[11px] text-muted-foreground ml-2">
+										({feat.category || "Geral"})
+									</span>
+								</div>
+								<button
+									type="button"
+									onClick={() => handleRemoveFeat(feat.id)}
+									className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors cursor-pointer"
+								>
+									<Trash className="h-4 w-4" />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
+			<FeatSearchDialog
+				system={system}
+				open={dialogOpen}
+				onOpenChange={setDialogOpen}
+				onSelectFeat={handleSelectFeat}
+				currentFeats={featsList}
+			/>
+		</FormSection>
 	);
 }

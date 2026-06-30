@@ -83,6 +83,7 @@ export interface SystemConfig {
 	speedUnit: string;
 	showSpells: boolean;
 	showSanity: boolean;
+	showFeats: boolean;
 }
 
 // Helper to build a config entry with sensible defaults
@@ -120,6 +121,7 @@ function sys(
 		speedUnit: "m",
 		showSpells: true,
 		showSanity: false,
+		showFeats: true,
 		...partial,
 	};
 }
@@ -711,3 +713,19 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 };
 
 export const SYSTEM_LIST = RPG_SYSTEMS.map((s) => SYSTEM_CONFIG[s.value]);
+
+export function getFeatsLabel(system: string): string {
+	switch (system) {
+		case "ordem":
+		case "tormenta20":
+			return "Poderes";
+		case "vampire":
+			return "Qualidades e Defeitos";
+		case "savageworlds":
+			return "Vantagens e Complicações";
+		case "fabulaultima":
+			return "Habilidades de Classe";
+		default:
+			return "Talentos";
+	}
+}

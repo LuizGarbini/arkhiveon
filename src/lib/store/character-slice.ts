@@ -80,6 +80,7 @@ export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	systemAttributes: {},
 	systemFields: {},
 	spellsList: [],
+	featsList: [],
 };
 
 export interface CharacterSlice {

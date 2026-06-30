@@ -11,6 +11,7 @@ import {
 	IdentityFields,
 	InventoryFields,
 	MagicFields,
+	FeatsFields,
 	NotesFields,
 	PersonalityFields,
 	SanityFields,
@@ -169,6 +170,10 @@ function NewSheetPage() {
 			return Boolean(system);
 		}
 		if (step === "essential") {
+			const nameVal = form.getValues("characterName");
+			if (!nameVal?.trim()) {
+				return false;
+			}
 			return trigger("characterName");
 		}
 		return true;
@@ -295,6 +300,12 @@ function NewSheetPage() {
 	}
 
 	function onSubmit(values: CharacterFormValues) {
+		if (!values.characterName?.trim()) {
+			setStepError(CHARACTER_NAME_REQUIRED_MESSAGE);
+			setActiveStep("essential");
+			scrollToTop();
+			return;
+		}
 		const sanitized = sanitizeCharacterFormValues(values, {
 			emptyToZero: true,
 		});
@@ -514,6 +525,14 @@ function NewSheetPage() {
 												(field) => field.section === "magic",
 											)) && (
 											<MagicFields
+												register={register}
+												config={config}
+												control={control}
+												setValue={setValue}
+											/>
+										)}
+										{config.showFeats && (
+											<FeatsFields
 												register={register}
 												config={config}
 												control={control}

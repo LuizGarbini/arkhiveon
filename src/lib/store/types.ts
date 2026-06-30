@@ -210,6 +210,7 @@ export interface Character {
 	systemFields?: Record<string, string>;
 	customTemplateId?: string;
 	spellsList?: Spell[];
+	featsList?: Feat[];
 }
 
 export interface Spell {
@@ -224,6 +225,19 @@ export interface Spell {
 	components: string;
 	duration: string;
 	description: string;
+	is_homebrew?: boolean;
+}
+
+export interface Feat {
+	id: string;
+	user_id?: string | null;
+	system: string;
+	name: string;
+	category: string;
+	prerequisites: string;
+	description: string;
+	ability_increase: string;
+	source: string;
 	is_homebrew?: boolean;
 }
 
@@ -252,6 +266,7 @@ export type SheetModuleKind =
 	| "combat"
 	| "sanity"
 	| "magic"
+	| "feats"
 	| "inventory"
 	| "personality"
 	| "notes"

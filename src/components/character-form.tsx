@@ -18,6 +18,7 @@ import {
 	getAttributeConstraints,
 	InventoryFields,
 	MagicFields,
+	FeatsFields,
 	sanitizeCharacterFormValues,
 } from "./character-sheet-fields";
 import { ImageUploader } from "./image-uploader";
@@ -864,6 +865,14 @@ function MagicSection({
 		<div className="space-y-6">
 			{shouldShowSpells && (
 				<MagicFields
+					register={register}
+					config={config}
+					control={control}
+					setValue={setValue}
+				/>
+			)}
+			{config.showFeats && (
+				<FeatsFields
 					register={register}
 					config={config}
 					control={control}
