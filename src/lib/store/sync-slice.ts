@@ -196,19 +196,31 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				const isCountTable = countTables.includes(table);
 
 				// Verificar se o registro pertence a alguma campanha do mesmo dono da campanha ativa
-				const activeCamp = get().campaigns.find((c) => c.id === activeCampaignId);
+				const activeCamp = get().campaigns.find(
+					(c) => c.id === activeCampaignId,
+				);
 				const activeOwnerId = activeCamp?.ownerId;
-				
+
 				// Se tivermos as campanhas carregadas localmente, podemos mapear as que têm o mesmo ownerId
 				const ownerCampaignIds = activeOwnerId
-					? get().campaigns.filter((c) => c.ownerId === activeOwnerId).map((c) => c.id)
-					: activeCampaignId ? [activeCampaignId] : [];
+					? get()
+							.campaigns.filter((c) => c.ownerId === activeOwnerId)
+							.map((c) => c.id)
+					: activeCampaignId
+						? [activeCampaignId]
+						: [];
 
-				const rowCampaignId = eventType === "DELETE"
-					? oldRow && "campaign_id" in oldRow ? (oldRow as any).campaign_id : null
-					: newRow && "campaign_id" in newRow ? (newRow as any).campaign_id : null;
+				const rowCampaignId =
+					eventType === "DELETE"
+						? oldRow && "campaign_id" in oldRow
+							? (oldRow as { campaign_id: string }).campaign_id
+							: null
+						: newRow && "campaign_id" in newRow
+							? (newRow as { campaign_id: string }).campaign_id
+							: null;
 
-				const belongsToOwnerCampaigns = rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+				const belongsToOwnerCampaigns =
+					rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
 
 				if (!belongsToActiveCampaign) {
 					// Se o evento não pertencer à campanha ativa, mas pertencer ao mesmo owner da campanha ativa

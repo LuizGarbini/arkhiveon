@@ -539,7 +539,9 @@ export async function deleteRemoteEntity(
 	if (error) throw error;
 }
 
-export async function fetchGlobalTotalCount(campaignId?: string | null): Promise<number> {
+export async function fetchGlobalTotalCount(
+	campaignId?: string | null,
+): Promise<number> {
 	const supabase = requireSupabase();
 
 	if (!campaignId) return 0;
@@ -560,7 +562,8 @@ export async function fetchGlobalTotalCount(campaignId?: string | null): Promise
 		.select("id")
 		.eq("owner_id", ownerId);
 
-	if (ownerCampaignsError || !ownerCampaigns || ownerCampaigns.length === 0) return 0;
+	if (ownerCampaignsError || !ownerCampaigns || ownerCampaigns.length === 0)
+		return 0;
 	const campaignIds = ownerCampaigns.map((c) => c.id);
 
 	const tables: EntityTable[] = [
