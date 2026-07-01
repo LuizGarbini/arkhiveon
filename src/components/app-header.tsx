@@ -319,8 +319,10 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							aria-label="Abrir notificações"
 						>
 							<Bell className="h-4 w-4" />
-							{notifications.some((n) => !n.read) && (
-								<span className="absolute right-2 top-2 flex h-1.5 w-1.5 rounded-full bg-primary" />
+							{notifications.filter((n) => !n.read).length > 0 && (
+								<span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-md shadow-black/10 animate-in zoom-in-50 duration-200">
+									{notifications.filter((n) => !n.read).length}
+								</span>
 							)}
 						</PopoverTrigger>
 						<PopoverContent className="w-80 overflow-hidden p-0" align="end">
