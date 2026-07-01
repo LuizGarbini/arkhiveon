@@ -93,8 +93,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const abilities = (sysConfig.attributes || []).map((attr) => {
 		const val = isStandardKey(attr.key)
 			? (currentCharacter as any)[attr.key]
-			: (currentCharacter.systemAttributes?.[attr.key] ?? 10);
-		return { label: attr.label, value: Number(val) || 10 };
+			: (currentCharacter.systemAttributes?.[attr.key] ?? 0);
+		return { label: attr.label, value: Number(val) || 0 };
 	});
 
 	const characterImageUrl = resolveCharacterImageUrl(
@@ -149,7 +149,6 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							<User className="h-12 w-12" strokeWidth={1.4} />
 						</div>
 					)}
-					<div className="absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
 					{/* Camera overlay button */}
 					<button
 						type="button"
@@ -167,6 +166,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					>
 						<Camera className="h-6 w-6 drop-shadow" />
 					</button>
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
 					{/* Persistent camera hint when no image */}
 					{!hasImage && (
 						<button

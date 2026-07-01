@@ -245,5 +245,9 @@ export const imageStorage: ImageStorage = new CloudflareR2ImageStorage();
 
 export function isImageUrl(value: string | undefined | null): boolean {
 	if (!value) return false;
-	return value.startsWith("data:image/") || /^https?:\/\//.test(value);
+	return (
+		value.startsWith("data:image/") ||
+		value.startsWith("/") ||
+		/^https?:\/\//.test(value)
+	);
 }

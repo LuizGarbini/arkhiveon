@@ -24,6 +24,7 @@ import {
 	Suspense,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { useForm } from "react-hook-form";
@@ -263,7 +264,7 @@ function CharacterSheetPage() {
 			<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5">
 				<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 				<div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-					<div className="min-w-0">
+					<div className="min-w-0 lg:max-w-[65%]">
 						<Link
 							to="/characters"
 							className="inline-flex items-center gap-1.5 text-[12px] font-bold text-muted-foreground transition-colors hover:text-primary"
@@ -301,9 +302,17 @@ function CharacterSheetPage() {
 								</button>
 							</div>
 							<div className="min-w-0">
-								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-									<FileText className="h-3.5 w-3.5" />
-									{systemLabel(currentCharacter.system)}
+								<div className="flex flex-wrap items-center gap-2">
+									<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+										<FileText className="h-3.5 w-3.5" />
+										{systemLabel(currentCharacter.system)}
+									</div>
+									{isEditingLayout && (
+										<div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500 animate-pulse">
+											<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+											Modo Layout Ativo (Arraste os blocos)
+										</div>
+									)}
 								</div>
 								<div className="mt-3 flex min-w-0 items-center gap-2">
 									<h1 className="font-display min-w-0 truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -335,11 +344,6 @@ function CharacterSheetPage() {
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
-						{isEditingLayout && (
-							<p className="mr-2 text-[11px] text-muted-foreground">
-								Modo layout — arraste os blocos da ficha abaixo
-							</p>
-						)}
 						<Button
 							type="button"
 							variant="outline"
@@ -760,7 +764,7 @@ function ModuleContent({
 
 		return (
 			<div
-				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : abilities.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"}`}
+				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
 			>
 				{abilities.map((ability) => {
 					const fullName = getAttributeFullName(ability.label);
@@ -1113,17 +1117,22 @@ function ModuleEditorDialog({
 		return layout.modules.find((m) => m.id === activeModuleId) || module;
 	}, [layout.modules, activeModuleId, module]);
 
+	const wasOpen = useRef(false);
+
 	useEffect(() => {
-		if (!activeModule || !open) return;
-		reset(buildCharacterFormDefaults(character));
-		setDraft({
-			title: activeModule.title,
-			content: activeModule.content ?? "",
-			enabled: activeModule.enabled,
-			column: activeModule.column ?? "main",
-		});
-		setTitleError(null);
-	}, [character, activeModule, open, reset]);
+		if (!activeModule) return;
+		if (open && !wasOpen.current) {
+			reset(buildCharacterFormDefaults(character));
+			setDraft({
+				title: activeModule.title,
+				content: activeModule.content ?? "",
+				enabled: activeModule.enabled,
+				column: activeModule.column ?? "main",
+			});
+			setTitleError(null);
+		}
+		wasOpen.current = open;
+	}, [open, character, activeModule, reset]);
 
 	const tabs = useMemo(() => {
 		return layout.modules.map((m) => ({

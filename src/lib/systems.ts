@@ -84,6 +84,7 @@ export interface SystemConfig {
 	showSpells: boolean;
 	showSanity: boolean;
 	showFeats: boolean;
+	defaultDice?: "d20" | "d100" | "d10" | "d6";
 }
 
 // Helper to build a config entry with sensible defaults
@@ -122,6 +123,7 @@ function sys(
 		showSpells: true,
 		showSanity: false,
 		showFeats: true,
+		defaultDice: "d20",
 		...partial,
 	};
 }
@@ -169,6 +171,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Moon,
 		accent: "text-violet-300",
 		bgAccent: "from-violet-500/15 to-rose-500/5",
+		defaultDice: "d10",
 		attributes: [
 			{ key: "strength", label: "FOR" },
 			{ key: "dexterity", label: "DES" },
@@ -217,6 +220,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Eye,
 		accent: "text-cyan-300",
 		bgAccent: "from-cyan-500/15 to-indigo-500/5",
+		defaultDice: "d100",
 		sections: [
 			"identity",
 			"abilities",
@@ -272,6 +276,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Skull,
 		accent: "text-rose-300",
 		bgAccent: "from-rose-500/15 to-zinc-500/5",
+		defaultDice: "d100",
 		sections: [
 			"identity",
 			"abilities",
@@ -330,6 +335,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Joystick,
 		accent: "text-teal-300",
 		bgAccent: "from-teal-500/15 to-sky-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 	}),
 	mausritter: sys({
@@ -362,6 +368,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Zap,
 		accent: "text-red-400",
 		bgAccent: "from-red-500/15 to-yellow-500/5",
+		defaultDice: "d10",
 		showSpells: false,
 	}),
 	fallout2d20: sys({
@@ -404,6 +411,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Crown,
 		accent: "text-amber-400",
 		bgAccent: "from-amber-500/15 to-yellow-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 	}),
 	cosmere: sys({
@@ -425,6 +433,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Wand2,
 		accent: "text-purple-300",
 		bgAccent: "from-purple-500/15 to-indigo-500/5",
+		defaultDice: "d6",
 	}),
 	avatarlegends: sys({
 		value: "avatarlegends",
@@ -435,6 +444,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Flame,
 		accent: "text-orange-300",
 		bgAccent: "from-orange-500/15 to-red-500/5",
+		defaultDice: "d6",
 	}),
 	"3det": sys({
 		value: "3det",
@@ -445,6 +455,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Dices,
 		accent: "text-blue-300",
 		bgAccent: "from-blue-500/15 to-indigo-500/5",
+		defaultDice: "d6",
 		attributes: [
 			{ key: "power", label: "POD" },
 			{ key: "skill", label: "HAB" },
@@ -460,6 +471,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Target,
 		accent: "text-slate-300",
 		bgAccent: "from-slate-500/15 to-red-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 	}),
 	corespring: sys({
@@ -492,6 +504,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Music,
 		accent: "text-fuchsia-300",
 		bgAccent: "from-fuchsia-500/15 to-pink-500/5",
+		defaultDice: "d6",
 	}),
 	olddragon2e: sys({
 		value: "olddragon2e",
@@ -553,6 +566,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Biohazard,
 		accent: "text-yellow-400",
 		bgAccent: "from-yellow-500/15 to-lime-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 	}),
 	fissura: sys({
@@ -564,6 +578,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Hexagon,
 		accent: "text-violet-400",
 		bgAccent: "from-violet-500/15 to-purple-500/5",
+		defaultDice: "d100",
 		showSpells: false,
 	}),
 	meltedlands: sys({
@@ -575,6 +590,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Ghost,
 		accent: "text-red-300",
 		bgAccent: "from-red-500/15 to-orange-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 		showSanity: true,
 		sections: [
@@ -621,6 +637,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Guitar,
 		accent: "text-amber-300",
 		bgAccent: "from-amber-500/15 to-stone-500/5",
+		defaultDice: "d6",
 		showSpells: false,
 	}),
 	fabulaultima: sys({
@@ -642,6 +659,7 @@ export const SYSTEM_CONFIG: Record<RpgSystem, SystemConfig> = {
 		Icon: Atom,
 		accent: "text-emerald-300",
 		bgAccent: "from-emerald-500/15 to-teal-500/5",
+		defaultDice: "d6",
 		showSanity: true,
 		sections: [
 			"identity",

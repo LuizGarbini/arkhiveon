@@ -443,8 +443,8 @@ function moduleFields(
 		case "abilities":
 			return (config.attributes || []).map((attr) => {
 				const val = isStandardKey(attr.key)
-					? Number((character as any)[attr.key]) || 10
-					: Number(character.systemAttributes?.[attr.key]) || 10;
+					? Number((character as any)[attr.key]) || 0
+					: Number(character.systemAttributes?.[attr.key]) || 0;
 				return field(attr.label, `${val} (${formatSigned(modifier(val))})`, {
 					emphasis: true,
 				});

@@ -1,4 +1,4 @@
-import type { UseFormRegister } from "react-hook-form";
+import type { UseFormRegister, Path } from "react-hook-form";
 import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import type { CharacterFormValues } from "./character-sheet-fields";
@@ -63,7 +63,7 @@ export function CustomSheetRenderer({
 												</p>
 											) : (
 												<Textarea
-													{...register(`systemFields.${field.id}` as any)}
+													{...register(`systemFields.${field.id}` as Path<CharacterFormValues>)}
 													placeholder={field.placeholder}
 												/>
 											)
@@ -75,7 +75,7 @@ export function CustomSheetRenderer({
 											) : (
 												<Input
 													type="number"
-													{...register(`systemAttributes.${field.id}` as any)}
+													{...register(`systemAttributes.${field.id}` as Path<CharacterFormValues>)}
 													placeholder={field.placeholder}
 												/>
 											)
@@ -88,7 +88,7 @@ export function CustomSheetRenderer({
 												<div className="flex items-center gap-2 h-10 px-3 border border-input rounded-md bg-background">
 													<input
 														type="checkbox"
-														{...register(`systemFields.${field.id}` as any)}
+														{...register(`systemFields.${field.id}` as Path<CharacterFormValues>)}
 														className="w-4 h-4 text-primary bg-background border-input rounded"
 													/>
 													<span className="text-sm text-muted-foreground">
@@ -103,7 +103,7 @@ export function CustomSheetRenderer({
 														{field.label}
 													</p>
 													<p className="mt-2 text-center text-3xl font-bold font-display h-12 bg-transparent">
-														{character?.systemAttributes?.[field.id] || 10}
+														{character?.systemAttributes?.[field.id] ?? 0}
 													</p>
 												</div>
 											) : (
@@ -114,8 +114,8 @@ export function CustomSheetRenderer({
 													<Input
 														type="number"
 														className="mt-2 text-center text-3xl font-bold font-display h-12 bg-transparent border-transparent focus-visible:ring-1 focus-visible:border-primary"
-														{...register(`systemAttributes.${field.id}` as any)}
-														placeholder={field.placeholder || "10"}
+														{...register(`systemAttributes.${field.id}` as Path<CharacterFormValues>)}
+														placeholder={field.placeholder || "0"}
 													/>
 												</div>
 											)
@@ -126,7 +126,7 @@ export function CustomSheetRenderer({
 										) : (
 											<Input
 												type="text"
-												{...register(`systemFields.${field.id}` as any)}
+												{...register(`systemFields.${field.id}` as Path<CharacterFormValues>)}
 												placeholder={field.placeholder}
 											/>
 										)}
