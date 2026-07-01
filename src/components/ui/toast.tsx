@@ -4,7 +4,9 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { cn } from "@/lib/utils";
@@ -16,6 +18,8 @@ interface Toast {
 	title: string;
 	description?: string;
 	variant: ToastVariant;
+	/** Indica que o toast está saindo (animação de dismiss) */
+	dismissing?: boolean;
 }
 
 interface ToastInput {
@@ -32,6 +36,10 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** Duração da animação de saída em ms — deve espelhar a CSS */
+const EXIT_DURATION_MS = 280;
+const AUTO_DISMISS_MS = 4500;
+
 const ICON_BY_VARIANT = {
 	success: CheckCircle2,
 	error: XCircle,
@@ -46,19 +54,58 @@ const TONE_BY_VARIANT = {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const [toasts, setToasts] = useState<Toast[]>([]);
+	const timersRef = useRef<Map<string, number>>(
+		new Map(),
+	);
 
-	const dismiss = useCallback((id: string) => {
-		setToasts((current) => current.filter((toast) => toast.id !== id));
+	/** Remove efetivamente o toast do array (pós-animação de saída) */
+	const remove = useCallback((id: string) => {
+		setToasts((current) => current.filter((t) => t.id !== id));
+		timersRef.current.delete(id);
 	}, []);
+
+	/** Inicia a animação de saída e agenda a remoção real */
+	const dismiss = useCallback(
+		(id: string) => {
+			setToasts((current) =>
+				current.map((t) =>
+					t.id === id ? { ...t, dismissing: true } : t,
+				),
+			);
+			// Limpa timer de auto-dismiss se existir
+			const existing = timersRef.current.get(id);
+			if (existing) clearTimeout(existing);
+
+			const timer = window.setTimeout(() => remove(id), EXIT_DURATION_MS);
+			timersRef.current.set(id, timer);
+		},
+		[remove],
+	);
 
 	const push = useCallback(
 		(variant: ToastVariant, toast: ToastInput) => {
 			const id = crypto.randomUUID();
-			setToasts((current) => [...current.slice(-3), { id, variant, ...toast }]);
-			window.setTimeout(() => dismiss(id), 4500);
+			setToasts((current) => [
+				...current.slice(-3),
+				{ id, variant, ...toast },
+			]);
+			const timer = window.setTimeout(
+				() => dismiss(id),
+				AUTO_DISMISS_MS,
+			);
+			timersRef.current.set(id, timer);
 		},
 		[dismiss],
 	);
+
+	// Limpar timers ao desmontar
+	useEffect(() => {
+		const timers = timersRef.current;
+		return () => {
+			for (const timer of timers.values()) clearTimeout(timer);
+			timers.clear();
+		};
+	}, []);
 
 	const value = useMemo<ToastContextValue>(
 		() => ({
@@ -79,7 +126,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					return (
 						<output
 							key={toast.id}
-							className="rounded-lg border border-border bg-card-elevated p-3 text-foreground shadow-lg shadow-black/20 backdrop-blur-md animate-in fade-in-0 slide-in-from-top-2"
+							className={cn(
+								"rounded-lg border border-border bg-card-elevated p-3 text-foreground shadow-lg shadow-black/20 backdrop-blur-md",
+								"transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+								toast.dismissing
+									? "translate-x-2 scale-95 opacity-0"
+									: "animate-in fade-in-0 slide-in-from-top-2 translate-x-0 scale-100 opacity-100",
+							)}
 						>
 							<div className="flex gap-3">
 								<div
