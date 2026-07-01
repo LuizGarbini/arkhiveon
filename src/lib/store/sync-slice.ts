@@ -13,6 +13,7 @@ import { npcDefaults } from "./npc-slice";
 import { sessionDefaults } from "./session-slice";
 import type {
 	ActivityEntry,
+	AppNotification,
 	Character,
 	CustomTemplate,
 	GameLocation,
@@ -47,7 +48,20 @@ export interface SyncSlice {
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
 	clearActivity: () => void;
+	notifications: AppNotification[];
+	addNotification: (notification: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+	markAllNotificationsAsRead: () => void;
+	clearNotifications: () => void;
 }
+
+type SupabasePayloadRow = Record<string, unknown> & {
+	name?: string;
+	data?: {
+		characterName?: string;
+		name?: string;
+		title?: string;
+	};
+};
 
 export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	set,
@@ -59,6 +73,26 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	userPlan: "free",
 	setUserPlan: (plan) => set({ userPlan: plan }),
 	globalRecordsCount: 0,
+	notifications: [],
+	addNotification: (notification) => {
+		const newNotification: AppNotification = {
+			id: crypto.randomUUID(),
+			createdAt: Date.now(),
+			read: false,
+			...notification,
+		};
+		set((s) => ({
+			notifications: [newNotification, ...s.notifications].slice(0, 50),
+		}));
+	},
+	markAllNotificationsAsRead: () => {
+		set((s) => ({
+			notifications: s.notifications.map((n) => ({ ...n, read: true })),
+		}));
+	},
+	clearNotifications: () => {
+		set({ notifications: [] });
+	},
 	loadRemoteData: async () => {
 		const state = get();
 		const hasData =
@@ -144,10 +178,17 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
 		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
 
-		const channel = supabase
-			.channel(channelName)
-			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
-				const { eventType, table, new: newRow, old: oldRow } = payload;
+		let isCleanedUp = false;
+		let channel: ReturnType<typeof supabase.channel> | null = null;
+
+		void supabase.auth.getUser().then(({ data }) => {
+			if (isCleanedUp) return;
+			const currentUserId = data.user?.id ?? null;
+
+			channel = supabase
+				.channel(channelName)
+				.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+					const { eventType, table, new: newRow, old: oldRow } = payload;
 
 				// Mapeamento de tabelas para chaves do store
 				const tableToKey: Record<string, keyof RPGState> = {
@@ -221,6 +262,60 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 				const belongsToOwnerCampaigns =
 					rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+
+				const isOwnAction =
+					currentUserId != null &&
+					(eventType === "DELETE"
+						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
+						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
+
+				const newRowCasted = newRow as SupabasePayloadRow | null;
+				const oldRowCasted = oldRow as SupabasePayloadRow | null;
+
+				// Disparar notificações locais para ações de terceiros na campanha ativa
+				if (belongsToActiveCampaign && !isOwnAction && currentUserId != null) {
+					const entityName =
+						newRowCasted?.data?.characterName ||
+						newRowCasted?.data?.name ||
+						newRowCasted?.data?.title ||
+						newRowCasted?.name ||
+						oldRowCasted?.data?.characterName ||
+						oldRowCasted?.data?.name ||
+						oldRowCasted?.data?.title ||
+						oldRowCasted?.name ||
+						"Registro";
+
+					const kindLabels: Record<string, string> = {
+						characters: "Personagem",
+						npcs: "NPC",
+						sessions: "Sessão",
+						items: "Item",
+						locations: "Local",
+						lores: "Lore",
+						image_assets: "Imagem",
+					};
+					const label = kindLabels[table] || "Registro";
+
+					if (eventType === "INSERT") {
+						get().addNotification({
+							variant: "info",
+							title: `Novo ${label}`,
+							description: `"${entityName}" foi criado na campanha compartilhada.`,
+						});
+					} else if (eventType === "UPDATE") {
+						get().addNotification({
+							variant: "info",
+							title: `${label} Atualizado`,
+							description: `"${entityName}" teve alterações salvas.`,
+						});
+					} else if (eventType === "DELETE") {
+						get().addNotification({
+							variant: "error",
+							title: `${label} Removido`,
+							description: `Um registro de ${label.toLowerCase()} foi deletado.`,
+						});
+					}
+				}
 
 				if (!belongsToActiveCampaign) {
 					// Se o evento não pertencer à campanha ativa, mas pertencer ao mesmo owner da campanha ativa
@@ -331,11 +426,22 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 					return state;
 				});
-			})
-			.subscribe();
+			});
+
+			channel.subscribe((status, err) => {
+				if (status === "SUBSCRIBED") {
+					console.log("Realtime subscribed!", channelName);
+				} else if (status === "CHANNEL_ERROR") {
+					console.error("Realtime channel error:", err);
+				}
+			});
+		});
 
 		return () => {
-			void supabase.removeChannel(channel);
+			isCleanedUp = true;
+			if (channel) {
+				void supabase.removeChannel(channel);
+			}
 		};
 	},
 	clearLocalData: () =>
@@ -349,6 +455,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			customTemplates: [],
 			imageAssets: [],
 			activityLog: [],
+			notifications: [],
 			syncError: null,
 		}),
 	clearActivity: () => set({ activityLog: [] }),

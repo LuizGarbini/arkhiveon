@@ -130,6 +130,15 @@ export interface ActivityEntry {
 	entityName: string;
 }
 
+export interface AppNotification {
+	id: string;
+	variant: "success" | "error" | "info";
+	title: string;
+	description?: string;
+	createdAt: number;
+	read: boolean;
+}
+
 export interface EntityLink {
 	id: string;
 	entityKind: EntityKind;
@@ -603,4 +612,10 @@ export interface RPGState {
 	setJamParticipants: (
 		participants: { id: string; name: string; image?: string }[],
 	) => void;
+
+	// ----- Notifications -----
+	notifications: AppNotification[];
+	addNotification: (notification: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+	markAllNotificationsAsRead: () => void;
+	clearNotifications: () => void;
 }
