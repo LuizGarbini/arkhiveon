@@ -786,9 +786,7 @@ export function AbilitiesFields({
 			<DiceRollOverlay
 				open={rollState.open}
 				attributeLabel={rollState.label}
-				diceType={
-					config.value === "coc" || config.value === "ordem" ? "d100" : "d20"
-				}
+				diceType={config.defaultDice || "d20"}
 				onComplete={handleRollComplete}
 				onClose={() => setRollState((s) => ({ ...s, open: false }))}
 			/>

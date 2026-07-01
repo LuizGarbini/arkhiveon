@@ -5,7 +5,7 @@ import * as THREE from "three";
 interface DiceRollOverlayProps {
 	open: boolean;
 	attributeLabel: string;
-	diceType: "d20" | "d100";
+	diceType: "d20" | "d100" | "d10" | "d6";
 	onComplete: (value: number) => void;
 	onClose: () => void;
 }
@@ -220,11 +220,14 @@ export function DiceRollOverlay({
 
 		if (!canvasRef.current) return;
 
-		// Valor final sorteado (decidido antes de construir o dado)
 		const finalVal =
 			diceType === "d20"
 				? Math.floor(Math.random() * 20) + 1
-				: Math.floor(Math.random() * 100) + 1;
+				: diceType === "d10"
+					? Math.floor(Math.random() * 10) + 1
+					: diceType === "d6"
+						? Math.floor(Math.random() * 6) + 1
+						: Math.floor(Math.random() * 100) + 1;
 
 		// ========================================================
 		// THREE.JS — Cena, Câmera, Renderer
@@ -345,9 +348,10 @@ export function DiceRollOverlay({
 			const tq = new THREE.Quaternion();
 			tq.setFromUnitVectors(face0Normal!, new THREE.Vector3(0, 0, 1));
 			targetQuats.push(tq);
-		} else {
-			// D100 — dois D10s (cone duplo)
-			const tensList = getTensList(Math.floor(finalVal / 10) * 10);
+		} else if (diceType === "d100" || diceType === "d10") {
+			// D100 (dois D10s) ou D10 Simples
+			const isD100 = diceType === "d100";
+			const tensList = isD100 ? getTensList(Math.floor(finalVal / 10) * 10) : [];
 			const unitsList = getUnitsList(finalVal % 10);
 
 			const createD10 = (isLeft: boolean) => {
@@ -423,18 +427,69 @@ export function DiceRollOverlay({
 				return { grp, tq };
 			};
 
-			const { grp: d1, tq: tq1 } = createD10(true);
-			const { grp: d2, tq: tq2 } = createD10(false);
-			d1.position.x = -1.0;
-			d2.position.x = 1.0;
-			d2.position.y = -0.3;
+			const { grp: d1, tq: tq1 } = createD10(false); // Die das unidades (ou único)
+			
+			if (isD100) {
+				const { grp: d2, tq: tq2 } = createD10(true); // Die das dezenas
+				d2.position.x = -1.0;
+				d1.position.x = 1.0;
+				d1.position.y = -0.3;
 
-			diceGroup.add(d1);
-			diceGroup.add(d2);
-			diceMeshes.push(d1);
-			diceMeshes.push(d2);
-			targetQuats.push(tq1);
-			targetQuats.push(tq2);
+				diceGroup.add(d2);
+				diceGroup.add(d1);
+				diceMeshes.push(d2);
+				diceMeshes.push(d1);
+				targetQuats.push(tq2);
+				targetQuats.push(tq1);
+			} else {
+				// D10 simples centralizado
+				diceGroup.add(d1);
+				diceMeshes.push(d1);
+				targetQuats.push(tq1);
+			}
+		} else if (diceType === "d6") {
+			// D6 (Cubo)
+			const geo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+			const mesh = new THREE.Mesh(geo, faceMat);
+			mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat));
+
+			const facesData = [
+				{ num: 1, pos: [0, 0, 0.81], rot: [0, 0, 0] },                // Frente (Face 0)
+				{ num: 6, pos: [0, 0, -0.81], rot: [Math.PI, 0, 0] },         // Costas
+				{ num: 2, pos: [0.81, 0, 0], rot: [0, Math.PI / 2, 0] },      // Direita
+				{ num: 5, pos: [-0.81, 0, 0], rot: [0, -Math.PI / 2, 0] },    // Esquerda
+				{ num: 3, pos: [0, 0.81, 0], rot: [-Math.PI / 2, 0, 0] },     // Topo
+				{ num: 4, pos: [0, -0.81, 0], rot: [Math.PI / 2, 0, 0] },     // Fundo
+			];
+
+			const list = [1, 2, 3, 4, 5, 6];
+			if (finalVal !== 1) {
+				const idx = list.indexOf(finalVal);
+				[list[0], list[idx]] = [list[idx], list[0]];
+			}
+
+			for (let i = 0; i < 6; i++) {
+				const fData = facesData[i];
+				const v = list[i];
+				const planeGeo = new THREE.PlaneGeometry(0.9, 0.9);
+				const mat = new THREE.MeshBasicMaterial({
+					map: createStaticTexture(String(v)),
+					transparent: true,
+					depthWrite: false,
+					side: THREE.DoubleSide,
+				});
+				const plane = new THREE.Mesh(planeGeo, mat);
+				plane.position.set(fData.pos[0], fData.pos[1], fData.pos[2]);
+				plane.rotation.set(fData.rot[0], fData.rot[1], fData.rot[2]);
+				mesh.add(plane);
+			}
+
+			diceGroup.add(mesh);
+			diceMeshes.push(mesh);
+
+			const tq = new THREE.Quaternion();
+			tq.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 1));
+			targetQuats.push(tq);
 		}
 
 		// ========================================================
