@@ -126,19 +126,20 @@ function Dashboard() {
 	}
 
 	const addNotification = useRPGStore((s) => s.addNotification);
-	const notifications = useRPGStore((s) => s.notifications);
 
 	useEffect(() => {
 		void loadInvites();
 
-		if (notifications.length === 0) {
+		const hasTriggeredWelcome = sessionStorage.getItem("arkhiveon_welcome_triggered");
+		if (!hasTriggeredWelcome) {
 			addNotification({
 				variant: "success",
 				title: "Bem-vindo ao Arkhiveon!",
 				description: "O sistema de notificações dinâmico está funcionando com sucesso.",
 			});
+			sessionStorage.setItem("arkhiveon_welcome_triggered", "true");
 		}
-	}, [loadInvites, notifications.length, addNotification]);
+	}, [loadInvites, addNotification]);
 
 	const counts = useMemo(
 		() => ({
