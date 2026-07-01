@@ -56,21 +56,17 @@ export function CampaignForm({
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-	const [prevIndex, setPrevIndex] = useState(-1);
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 
-	useEffect(() => {
+	const handleTabChange = (newTab: "general" | "members") => {
+		if (newTab === activeTab) return;
 		const tabsList = ["general", "members"];
-		const index = tabsList.indexOf(activeTab);
-		if (index !== -1) {
-			if (prevIndex !== -1 && index < prevIndex) {
-				setSlideDirection("right");
-			} else if (prevIndex !== -1 && index > prevIndex) {
-				setSlideDirection("left");
-			}
-			setPrevIndex(index);
-		}
-	}, [activeTab, prevIndex]);
+		const oldIdx = tabsList.indexOf(activeTab);
+		const newIdx = tabsList.indexOf(newTab);
+		if (newIdx < oldIdx) setSlideDirection("right");
+		else if (newIdx > oldIdx) setSlideDirection("left");
+		setActiveTab(newTab);
+	};
 
 	useEffect(() => {
 		if (open) {
@@ -82,7 +78,6 @@ export function CampaignForm({
 			setActiveTab(defaultTab);
 			setMembers([]);
 			setInvites([]);
-			setPrevIndex(-1);
 		}
 	}, [open, campaign?.name, campaign?.description, defaultTab]);
 
@@ -188,7 +183,7 @@ export function CampaignForm({
 					<div className="flex border-b border-border/40 mb-4">
 						<button
 							type="button"
-							onClick={() => setActiveTab("general")}
+							onClick={() => handleTabChange("general")}
 							className={cn(
 								"px-4 py-2 text-[12px] font-semibold border-b-2 -mb-[2px] transition-colors cursor-pointer",
 								activeTab === "general"
@@ -200,7 +195,7 @@ export function CampaignForm({
 						</button>
 						<button
 							type="button"
-							onClick={() => setActiveTab("members")}
+							onClick={() => handleTabChange("members")}
 							className={cn(
 								"px-4 py-2 text-[12px] font-semibold border-b-2 -mb-[2px] transition-colors cursor-pointer",
 								activeTab === "members"
