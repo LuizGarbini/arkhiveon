@@ -84,7 +84,7 @@ export function CampaignForm({
 			setInvites([]);
 			setPrevIndex(-1);
 		}
-	}, [open, campaign?.id, defaultTab]);
+	}, [open, campaign?.name, campaign?.description, defaultTab]);
 
 	const fetchMembersAndInvites = useCallback(async () => {
 		if (!campaign) return;
@@ -104,7 +104,7 @@ export function CampaignForm({
 		if (open && campaign) {
 			void fetchMembersAndInvites();
 		}
-	}, [open, campaign?.id, fetchMembersAndInvites]);
+	}, [open, campaign, fetchMembersAndInvites]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();

@@ -58,6 +58,23 @@ function createStaticTexture(text: string): THREE.CanvasTexture {
 	return tex;
 }
 
+function disposeHierarchy(node: THREE.Object3D) {
+	node.traverse((child) => {
+		const mesh = child as THREE.Mesh;
+		if (mesh.geometry) {
+			mesh.geometry.dispose();
+		}
+		if (mesh.material) {
+			const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+			for (const mat of materials) {
+				const m = mat as THREE.Material & { map?: THREE.Texture };
+				if (m.map) m.map.dispose();
+				m.dispose();
+			}
+		}
+	});
+}
+
 // ============================================================
 // Helpers de geração de listas de números
 // ============================================================
@@ -322,7 +339,7 @@ export function DiceRollOverlay({
 			const faceCount = pos.count / 3;
 			const numbers = getD20NumbersList(finalVal); // [finalVal, ...outros]
 
-			let face0Normal: THREE.Vector3 | null = null;
+			let face0Normal: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 
 			for (let f = 0; f < faceCount; f++) {
 				const { center, normal } = computeFaceGeometry(pos, f);
@@ -346,7 +363,7 @@ export function DiceRollOverlay({
 			diceMeshes.push(mesh);
 
 			const tq = new THREE.Quaternion();
-			tq.setFromUnitVectors(face0Normal!, new THREE.Vector3(0, 0, 1));
+			tq.setFromUnitVectors(face0Normal, new THREE.Vector3(0, 0, 1));
 			targetQuats.push(tq);
 		} else if (diceType === "d100" || diceType === "d10") {
 			// D100 (dois D10s) ou D10 Simples
@@ -363,7 +380,7 @@ export function DiceRollOverlay({
 				grp.add(mesh);
 
 				const list = isLeft ? tensList : unitsList;
-				let face0Normal: THREE.Vector3 | null = null;
+				let face0Normal: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
 
 				// 5 faces superiores
 				for (let f = 0; f < 5; f++) {
@@ -423,7 +440,7 @@ export function DiceRollOverlay({
 
 				// Target quaternion para alinhar face 0 do topo à câmera
 				const tq = new THREE.Quaternion();
-				tq.setFromUnitVectors(face0Normal!, new THREE.Vector3(0, 0, 1));
+				tq.setFromUnitVectors(face0Normal, new THREE.Vector3(0, 0, 1));
 				return { grp, tq };
 			};
 
@@ -675,10 +692,7 @@ export function DiceRollOverlay({
 			clearTimeout(closeTimeout);
 			cancelAnimationFrame(animId);
 			renderer.dispose();
-			faceMat.dispose();
-			edgeMat.dispose();
-			groundMat.dispose();
-			groundGeo.dispose();
+			disposeHierarchy(scene);
 		};
 	}, [open, diceType, onComplete, onClose]);
 
