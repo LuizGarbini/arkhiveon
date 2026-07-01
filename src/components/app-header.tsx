@@ -37,7 +37,7 @@ import {
 } from "@/lib/keyboard-shortcuts";
 import { useRPGStore } from "@/lib/store";
 import { useShortcutViewport } from "@/lib/use-shortcut-viewport";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button, buttonVariants } from "./ui/button";
 import {
@@ -61,6 +61,9 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const clearLocalData = useRPGStore((state) => state.clearLocalData);
 	const spotifyJamLink = useRPGStore((state) => state.spotifyJamLink);
 	const spotifyUser = useRPGStore((state) => state.spotifyUser);
+	const notifications = useRPGStore((state) => state.notifications);
+	const markAllNotificationsAsRead = useRPGStore((state) => state.markAllNotificationsAsRead);
+	const clearNotifications = useRPGStore((state) => state.clearNotifications);
 	const navigate = useNavigate();
 	const location = useLocation();
 	const toast = useToast();
@@ -316,33 +319,60 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							aria-label="Abrir notificações"
 						>
 							<Bell className="h-4 w-4" />
-							<span className="absolute right-2 top-2 flex h-1.5 w-1.5 rounded-full bg-primary" />
+							{notifications.some((n) => !n.read) && (
+								<span className="absolute right-2 top-2 flex h-1.5 w-1.5 rounded-full bg-primary" />
+							)}
 						</PopoverTrigger>
 						<PopoverContent className="w-80 overflow-hidden p-0" align="end">
 							<div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
 								<span className="text-xs font-bold uppercase tracking-wider text-foreground">
 									Notificações
 								</span>
-								<button
-									type="button"
-									className="text-[10px] font-bold text-primary hover:underline"
-								>
-									Marcar todas como lidas
-								</button>
+								{notifications.length > 0 && (
+									<div className="flex items-center gap-2">
+										<button
+											type="button"
+											onClick={() => markAllNotificationsAsRead()}
+											className="text-[10px] font-bold text-primary hover:underline"
+										>
+											Marcar lidas
+										</button>
+										<span className="text-[10px] text-muted-foreground">•</span>
+										<button
+											type="button"
+											onClick={() => clearNotifications()}
+											className="text-[10px] font-bold text-destructive hover:underline"
+										>
+											Limpar
+										</button>
+									</div>
+								)}
 							</div>
 							<div className="max-h-[300px] overflow-y-auto">
-								<NotificationItem
-									icon={<CheckCircle2 className="h-3 w-3 text-emerald-400" />}
-									time="12 min atrás"
-									title="Ficha Sincronizada"
-									description="As alterações de Elara Moonwhisper foram salvas no reino."
-								/>
-								<NotificationItem
-									icon={<Info className="h-3 w-3 text-blue-400" />}
-									time="2 horas atrás"
-									title="Nova Lore Disponível"
-									description="Um novo fragmento de história foi adicionado pelo Mestre."
-								/>
+								{notifications.length === 0 ? (
+									<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+										<Bell className="h-8 w-8 opacity-25" />
+										<span className="mt-2 text-xs font-semibold">Tudo calmo por aqui</span>
+										<span className="text-[10px] opacity-60">Você não tem novas notificações</span>
+									</div>
+								) : (
+									notifications.map((n) => (
+										<NotificationItem
+											key={n.id}
+											icon={
+												n.variant === "success" ? (
+													<CheckCircle2 className="h-3 w-3 text-emerald-400" />
+												) : (
+													<Info className="h-3 w-3 text-blue-400" />
+												)
+											}
+											time={formatRelativeTime(n.createdAt)}
+											title={n.title}
+											description={n.description || ""}
+											read={n.read}
+										/>
+									))
+								)}
 							</div>
 						</PopoverContent>
 					</Popover>
@@ -478,20 +508,34 @@ function NotificationItem({
 	time,
 	title,
 	description,
+	read,
 }: {
 	icon: ReactNode;
 	time: string;
 	title: string;
 	description: string;
+	read: boolean;
 }) {
 	return (
-		<div className="flex gap-3 border-b border-border/40 p-3 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-muted/30">
+		<div
+			className={cn(
+				"flex gap-3 border-b border-border/40 p-3 transition-colors duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-muted/30",
+				!read && "bg-primary/5",
+			)}
+		>
 			<div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background/50 ring-1 ring-border/60">
 				{icon}
 			</div>
 			<div className="flex flex-1 flex-col gap-0.5">
 				<div className="flex items-center justify-between gap-2">
-					<span className="text-[11px] font-bold text-foreground">{title}</span>
+					<span
+						className={cn(
+							"text-[11px] font-bold truncate",
+							read ? "text-foreground/80 font-semibold" : "text-foreground font-extrabold",
+						)}
+					>
+						{title}
+					</span>
 					<span className="text-[9px] text-muted-foreground whitespace-nowrap">
 						{time}
 					</span>

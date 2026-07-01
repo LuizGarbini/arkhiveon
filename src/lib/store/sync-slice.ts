@@ -13,6 +13,7 @@ import { npcDefaults } from "./npc-slice";
 import { sessionDefaults } from "./session-slice";
 import type {
 	ActivityEntry,
+	AppNotification,
 	Character,
 	CustomTemplate,
 	GameLocation,
@@ -47,6 +48,10 @@ export interface SyncSlice {
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
 	clearActivity: () => void;
+	notifications: AppNotification[];
+	addNotification: (notification: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+	markAllNotificationsAsRead: () => void;
+	clearNotifications: () => void;
 }
 
 export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
@@ -59,6 +64,26 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	userPlan: "free",
 	setUserPlan: (plan) => set({ userPlan: plan }),
 	globalRecordsCount: 0,
+	notifications: [],
+	addNotification: (notification) => {
+		const newNotification: AppNotification = {
+			id: crypto.randomUUID(),
+			createdAt: Date.now(),
+			read: false,
+			...notification,
+		};
+		set((s) => ({
+			notifications: [newNotification, ...s.notifications].slice(0, 50),
+		}));
+	},
+	markAllNotificationsAsRead: () => {
+		set((s) => ({
+			notifications: s.notifications.map((n) => ({ ...n, read: true })),
+		}));
+	},
+	clearNotifications: () => {
+		set({ notifications: [] });
+	},
 	loadRemoteData: async () => {
 		const state = get();
 		const hasData =
@@ -144,6 +169,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
 		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
 
+		// Capturar userId para filtrar contagem de registros próprios e disparar notificações
+		let currentUserId: string | null = null;
+		void supabase.auth.getUser().then(({ data }) => {
+			currentUserId = data.user?.id ?? null;
+		});
+
 		const channel = supabase
 			.channel(channelName)
 			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
@@ -221,6 +252,57 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 				const belongsToOwnerCampaigns =
 					rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+
+				const isOwnAction =
+					currentUserId != null &&
+					(eventType === "DELETE"
+						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
+						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
+
+				// Disparar notificações locais para ações de terceiros na campanha ativa
+				if (belongsToActiveCampaign && !isOwnAction && currentUserId != null) {
+					const entityName =
+						(newRow as any)?.data?.characterName ||
+						(newRow as any)?.data?.name ||
+						(newRow as any)?.data?.title ||
+						(newRow as any)?.name ||
+						(oldRow as any)?.data?.characterName ||
+						(oldRow as any)?.data?.name ||
+						(oldRow as any)?.data?.title ||
+						(oldRow as any)?.name ||
+						"Registro";
+
+					const kindLabels: Record<string, string> = {
+						characters: "Personagem",
+						npcs: "NPC",
+						sessions: "Sessão",
+						items: "Item",
+						locations: "Local",
+						lores: "Lore",
+						image_assets: "Imagem",
+					};
+					const label = kindLabels[table] || "Registro";
+
+					if (eventType === "INSERT") {
+						get().addNotification({
+							variant: "info",
+							title: `Novo ${label}`,
+							description: `"${entityName}" foi criado na campanha compartilhada.`,
+						});
+					} else if (eventType === "UPDATE") {
+						get().addNotification({
+							variant: "info",
+							title: `${label} Atualizado`,
+							description: `"${entityName}" teve alterações salvas.`,
+						});
+					} else if (eventType === "DELETE") {
+						get().addNotification({
+							variant: "error",
+							title: `${label} Removido`,
+							description: `Um registro de ${label.toLowerCase()} foi deletado.`,
+						});
+					}
+				}
 
 				if (!belongsToActiveCampaign) {
 					// Se o evento não pertencer à campanha ativa, mas pertencer ao mesmo owner da campanha ativa
@@ -349,6 +431,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			customTemplates: [],
 			imageAssets: [],
 			activityLog: [],
+			notifications: [],
 			syncError: null,
 		}),
 	clearActivity: () => set({ activityLog: [] }),
