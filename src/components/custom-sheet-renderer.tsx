@@ -103,7 +103,7 @@ export function CustomSheetRenderer({
 														{field.label}
 													</p>
 													<p className="mt-2 text-center text-3xl font-bold font-display h-12 bg-transparent">
-														{character?.systemAttributes?.[field.id] || 10}
+														{character?.systemAttributes?.[field.id] ?? 0}
 													</p>
 												</div>
 											) : (
@@ -115,7 +115,7 @@ export function CustomSheetRenderer({
 														type="number"
 														className="mt-2 text-center text-3xl font-bold font-display h-12 bg-transparent border-transparent focus-visible:ring-1 focus-visible:border-primary"
 														{...register(`systemAttributes.${field.id}` as Path<CharacterFormValues>)}
-														placeholder={field.placeholder || "10"}
+														placeholder={field.placeholder || "0"}
 													/>
 												</div>
 											)

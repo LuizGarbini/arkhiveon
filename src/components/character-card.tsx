@@ -93,8 +93,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const abilities = (sysConfig.attributes || []).map((attr) => {
 		const val = isStandardKey(attr.key)
 			? (currentCharacter as any)[attr.key]
-			: (currentCharacter.systemAttributes?.[attr.key] ?? 10);
-		return { label: attr.label, value: Number(val) || 10 };
+			: (currentCharacter.systemAttributes?.[attr.key] ?? 0);
+		return { label: attr.label, value: Number(val) || 0 };
 	});
 
 	const characterImageUrl = resolveCharacterImageUrl(
