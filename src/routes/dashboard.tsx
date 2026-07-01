@@ -125,9 +125,20 @@ function Dashboard() {
 		}
 	}
 
+	const addNotification = useRPGStore((s) => s.addNotification);
+	const notifications = useRPGStore((s) => s.notifications);
+
 	useEffect(() => {
 		void loadInvites();
-	}, [loadInvites]);
+
+		if (notifications.length === 0) {
+			addNotification({
+				variant: "success",
+				title: "Bem-vindo ao Arkhiveon!",
+				description: "O sistema de notificações dinâmico está funcionando com sucesso.",
+			});
+		}
+	}, [loadInvites, notifications.length, addNotification]);
 
 	const counts = useMemo(
 		() => ({
