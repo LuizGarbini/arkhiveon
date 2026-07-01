@@ -88,7 +88,7 @@ export function SystemPicker({
 				</p>
 			)}
 
-			<div className="grid max-h-[58vh] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+			<div className="grid max-h-[58vh] grid-cols-1 gap-3 overflow-y-auto pt-1 pr-1 md:grid-cols-2">
 				{filtered.map((option) => {
 					const Icon = option.Icon;
 					const active =

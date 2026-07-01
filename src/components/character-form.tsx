@@ -1,6 +1,8 @@
-import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Dices, Pencil, Plus, Sparkles, Wand2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useToast } from "@/components/ui/toast";
+import { generateThematicName } from "@/lib/name-generator";
 import {
 	cloneSheetLayout,
 	createDefaultSheetLayout,
@@ -14,13 +16,15 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
+import { cn } from "@/lib/utils";
 import {
+	FeatsFields,
 	getAttributeConstraints,
 	InventoryFields,
 	MagicFields,
-	FeatsFields,
 	sanitizeCharacterFormValues,
 } from "./character-sheet-fields";
+import { DiceRollOverlay } from "./dice-roll-overlay";
 import { ImageUploader } from "./image-uploader";
 import { SystemPicker, type SystemPickerSelection } from "./system-picker";
 import { Button } from "./ui/button";
@@ -36,7 +40,6 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import { cn } from "@/lib/utils";
 
 // =====================================================
 //  Form values & defaults
@@ -151,7 +154,9 @@ function CharacterFormDialog({
 	const [activeSection, setActiveSection] =
 		useState<CharacterSection>("identity");
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildDefaults(character ?? undefined),
@@ -160,6 +165,33 @@ function CharacterFormDialog({
 
 	const system = useWatch({ control, name: "system" }) as RpgSystem;
 	const config = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.dnd5e;
+
+	const [rollState, setRollState] = useState<{
+		open: boolean;
+		label: string;
+		fieldName: string | null;
+	}>({
+		open: false,
+		label: "",
+		fieldName: null,
+	});
+
+	const handleRollTrigger = (label: string, fieldName: string) => {
+		setRollState({
+			open: true,
+			label,
+			fieldName,
+		});
+	};
+
+	const handleRollComplete = (value: number) => {
+		if (rollState.fieldName) {
+			setValue(rollState.fieldName as any, value, {
+				shouldValidate: true,
+				shouldDirty: true,
+			});
+		}
+	};
 
 	useEffect(() => {
 		const index = config.sections.indexOf(activeSection);
@@ -354,6 +386,8 @@ function CharacterFormDialog({
 										register={register}
 										control={control}
 										config={config}
+										setValue={setValue}
+										onRollTrigger={handleRollTrigger}
 									/>
 								)}
 								{activeSection === "sanity" && (
@@ -413,6 +447,15 @@ function CharacterFormDialog({
 					</div>
 				</form>
 			</DialogContent>
+			<DiceRollOverlay
+				open={rollState.open}
+				attributeLabel={rollState.label}
+				diceType={
+					config.value === "coc" || config.value === "ordem" ? "d100" : "d20"
+				}
+				onComplete={handleRollComplete}
+				onClose={() => setRollState((s) => ({ ...s, open: false }))}
+			/>
 		</Dialog>
 	);
 }
@@ -474,15 +517,77 @@ function IdentitySection({
 }) {
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const characterName = useWatch({ control, name: "characterName" });
+
+	const system = useWatch({ control, name: "system" }) || "dnd5e";
+	const race = useWatch({ control, name: "race" });
+	const className = useWatch({ control, name: "class" });
+
+	const strength = useWatch({ control, name: "strength" }) || 10;
+	const dexterity = useWatch({ control, name: "dexterity" }) || 10;
+	const constitution = useWatch({ control, name: "constitution" }) || 10;
+	const intelligence = useWatch({ control, name: "intelligence" }) || 10;
+	const wisdom = useWatch({ control, name: "wisdom" }) || 10;
+	const charisma = useWatch({ control, name: "charisma" }) || 10;
+
+	const toast = useToast();
+
+	const handleGenerateName = () => {
+		const generated = generateThematicName({
+			system,
+			race,
+			class: className,
+			attributes: {
+				strength,
+				dexterity,
+				constitution,
+				intelligence,
+				wisdom,
+				charisma,
+			},
+		});
+		setValue("characterName", generated, {
+			shouldValidate: true,
+			shouldDirty: true,
+		});
+
+		if (!race && !className) {
+			toast.info({
+				title: "Nome Genérico Gerado",
+				description:
+					"Dica: preencha a Raça e a Classe para gerar um nome temático e personalizado!",
+			});
+		} else {
+			const sysName = SYSTEM_CONFIG[system as RpgSystem]?.label || system;
+			const contextDesc = [race, className].filter(Boolean).join(" ");
+			toast.success({
+				title: "Nome Temático Gerado",
+				description: `Nome criado baseado no contexto: ${contextDesc} (${sysName}).`,
+			});
+		}
+	};
+
 	return (
 		<>
 			<FormSection title="Identidade Básica">
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<Field label="Nome do personagem">
-						<Input
-							placeholder="Ex: Aragorn, Lyra Cinzal..."
-							{...register("characterName", { required: true })}
-						/>
+						<div className="relative flex items-center">
+							<Input
+								placeholder="Ex: Aragorn, Lyra Cinzal..."
+								className="pr-10"
+								{...register("characterName", { required: true })}
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								onClick={handleGenerateName}
+								className="absolute right-1 text-muted-foreground/80 hover:text-primary hover:bg-primary/10 rounded-md h-8 w-8"
+								title="Gerar nome temático"
+							>
+								<Wand2 className="h-4 w-4" />
+							</Button>
+						</div>
 					</Field>
 					<Field label="Tendência / Alinhamento">
 						<Input placeholder="Ex: Caótico Bom" {...register("alignment")} />
@@ -574,12 +679,53 @@ function AbilitiesSection({
 	register,
 	control,
 	config,
+	setValue,
+	onRollTrigger,
 }: {
 	register: RegisterFn;
 	control: ControlFn;
 	config: SystemConf;
+	setValue: SetValueFn;
+	onRollTrigger?: (label: string, fieldName: string) => void;
 }) {
 	const fields = config.attributes || [];
+
+	const handleRollAll = () => {
+		const rollSingle = (system: string) => {
+			if (system === "coc" || system === "ordem") {
+				const r = () => Math.floor(Math.random() * 6) + 1;
+				return (r() + r() + r()) * 5;
+			}
+			const rolls = Array.from(
+				{ length: 4 },
+				() => Math.floor(Math.random() * 6) + 1,
+			);
+			rolls.sort((a, b) => a - b);
+			return rolls[1] + rolls[2] + rolls[3];
+		};
+
+		for (const field of fields) {
+			const isStandardKey = [
+				"strength",
+				"dexterity",
+				"constitution",
+				"intelligence",
+				"wisdom",
+				"charisma",
+				"power",
+				"size",
+				"education",
+			].includes(field.key);
+			const fieldName = isStandardKey
+				? field.key
+				: `systemAttributes.${field.key}`;
+			const newValue = rollSingle(config.value);
+			setValue(fieldName as any, newValue, {
+				shouldValidate: true,
+				shouldDirty: true,
+			});
+		}
+	};
 
 	return (
 		<>
@@ -590,9 +736,21 @@ function AbilitiesSection({
 						? "Cthulhu/Ordem: pontos podem ir até 99 (escala percentual)."
 						: "Pontuações de 1 a 30."
 				}
+				action={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={handleRollAll}
+						className="text-xs gap-1.5 h-8 font-semibold shrink-0 cursor-pointer"
+					>
+						<Sparkles className="h-3.5 w-3.5 text-primary" />
+						Rolar Atributos
+					</Button>
+				}
 			>
 				<div
-					className={`grid gap-3 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : fields.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-3 sm:grid-cols-6"}`}
+					className={`grid gap-3 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
 				>
 					{fields.map((f) => (
 						<AbilityField
@@ -602,6 +760,7 @@ function AbilitiesSection({
 							register={register}
 							control={control}
 							config={config}
+							onRollTrigger={onRollTrigger}
 						/>
 					))}
 				</div>
@@ -915,6 +1074,7 @@ interface AbilityFieldProps {
 	register: RegisterFn;
 	control: ControlFn;
 	config: SystemConf;
+	onRollTrigger?: (label: string, fieldName: string) => void;
 }
 
 function AbilityField({
@@ -923,6 +1083,7 @@ function AbilityField({
 	register,
 	control,
 	config,
+	onRollTrigger,
 }: AbilityFieldProps) {
 	const isStandardKey = [
 		"strength",
@@ -942,8 +1103,25 @@ function AbilityField({
 	const mod = Number.isFinite(numeric) ? abilityModifier(numeric) : 0;
 	const { min, max, placeholder } = getAttributeConstraints(config);
 
+	const handleRollSingle = () => {
+		if (onRollTrigger) {
+			onRollTrigger(label || name, fieldName);
+		}
+	};
+
 	return (
-		<div className="flex flex-col items-center gap-1 rounded-md border border-border bg-card-elevated/40 p-2">
+		<div className="group/tooltip relative flex flex-col items-center gap-1 rounded-md border border-border bg-card-elevated/40 p-2 hover:bg-card-elevated hover:border-primary/35 transition-all">
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon-xs"
+				onClick={handleRollSingle}
+				className="absolute top-1 right-1 h-5 w-5 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 rounded-md shrink-0 md:opacity-40 group-hover/tooltip:opacity-100 hover:!opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+				title="Rolar este atributo"
+			>
+				<Dices className="h-3.5 w-3.5" />
+			</Button>
+
 			<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
 				{label}
 			</span>

@@ -1,4 +1,13 @@
-import { BookOpen, Minus, Plus, Sparkles, Trash } from "lucide-react";
+import {
+	BookOpen,
+	Check,
+	Dices,
+	Minus,
+	Plus,
+	Sparkles,
+	Trash,
+	Wand2,
+} from "lucide-react";
 import { useState } from "react";
 import {
 	type Control,
@@ -8,7 +17,10 @@ import {
 	type UseFormSetValue,
 	useWatch,
 } from "react-hook-form";
+import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { FeatSearchDialog } from "@/components/feat-search-dialog";
+import { useToast } from "@/components/ui/toast";
+import { generateThematicName } from "@/lib/name-generator";
 import {
 	type Character,
 	characterDefaults,
@@ -408,6 +420,39 @@ export function CustomFieldsRenderer({
 	);
 }
 
+const AVATAR_PRESETS = [
+	{
+		id: "guerreiro",
+		label: "Guerreiro",
+		url: "/presets/warrior.png",
+	},
+	{
+		id: "mago",
+		label: "Mago",
+		url: "/presets/mage.png",
+	},
+	{
+		id: "ladino",
+		label: "Ladino",
+		url: "/presets/rogue.png",
+	},
+	{
+		id: "clerigo",
+		label: "Clérigo",
+		url: "/presets/cleric.png",
+	},
+	{
+		id: "detective",
+		label: "Investigador",
+		url: "/presets/detective.png",
+	},
+	{
+		id: "vampiro",
+		label: "Vampiro",
+		url: "/presets/vampire.png",
+	},
+];
+
 export function IdentityFields({
 	register,
 	control,
@@ -421,6 +466,55 @@ export function IdentityFields({
 }) {
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const characterName = useWatch({ control, name: "characterName" });
+
+	const system = useWatch({ control, name: "system" }) || "dnd5e";
+	const race = useWatch({ control, name: "race" });
+	const className = useWatch({ control, name: "class" });
+
+	const strength = useWatch({ control, name: "strength" }) || 10;
+	const dexterity = useWatch({ control, name: "dexterity" }) || 10;
+	const constitution = useWatch({ control, name: "constitution" }) || 10;
+	const intelligence = useWatch({ control, name: "intelligence" }) || 10;
+	const wisdom = useWatch({ control, name: "wisdom" }) || 10;
+	const charisma = useWatch({ control, name: "charisma" }) || 10;
+
+	const toast = useToast();
+
+	const handleGenerateName = () => {
+		const generated = generateThematicName({
+			system,
+			race,
+			class: className,
+			attributes: {
+				strength,
+				dexterity,
+				constitution,
+				intelligence,
+				wisdom,
+				charisma,
+			},
+		});
+		setValue("characterName", generated, {
+			shouldValidate: true,
+			shouldDirty: true,
+		});
+
+		if (!race && !className) {
+			toast.info({
+				title: "Nome Genérico Gerado",
+				description:
+					"Dica: preencha a Raça e a Classe para gerar um nome temático e personalizado!",
+			});
+		} else {
+			const sysName = SYSTEM_CONFIG[system]?.label || system;
+			const contextDesc = [race, className].filter(Boolean).join(" ");
+			toast.success({
+				title: "Nome Temático Gerado",
+				description: `Nome criado baseado no contexto: ${contextDesc} (${sysName}).`,
+			});
+		}
+	};
+
 	return (
 		<>
 			<FormSection title="Identidade Básica">
@@ -430,14 +524,27 @@ export function IdentityFields({
 						required
 						error={errors?.characterName?.message}
 					>
-						<Input
-							placeholder="Ex: Aragorn, Lyra Cinzal..."
-							{...register("characterName", {
-								required: CHARACTER_NAME_REQUIRED_MESSAGE,
-								validate: (value) =>
-									value.trim().length > 0 || CHARACTER_NAME_REQUIRED_MESSAGE,
-							})}
-						/>
+						<div className="relative flex items-center">
+							<Input
+								placeholder="Ex: Aragorn, Lyra Cinzal..."
+								className="pr-10"
+								{...register("characterName", {
+									required: CHARACTER_NAME_REQUIRED_MESSAGE,
+									validate: (value) =>
+										value.trim().length > 0 || CHARACTER_NAME_REQUIRED_MESSAGE,
+								})}
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								onClick={handleGenerateName}
+								className="absolute right-1 text-muted-foreground/80 hover:text-primary hover:bg-primary/10 rounded-md h-8 w-8"
+								title="Gerar nome temático"
+							>
+								<Wand2 className="h-4 w-4" />
+							</Button>
+						</div>
 					</Field>
 					<Field label="Tendência / Alinhamento">
 						<Input placeholder="Ex: Caótico Bom" {...register("alignment")} />
@@ -493,6 +600,46 @@ export function IdentityFields({
 					libraryName={characterName}
 					size="lg"
 				/>
+
+				<div className="mt-4 mb-6">
+					<span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.18em] block mb-2.5">
+						Ou escolha um avatar predefinido:
+					</span>
+					<div className="flex flex-wrap gap-2.5">
+						{AVATAR_PRESETS.map((preset) => {
+							const selected = imageUrl === preset.url;
+							return (
+								<button
+									key={preset.id}
+									type="button"
+									onClick={() => {
+										setValue("imageUrl", preset.url, { shouldDirty: true });
+										setValue("imageAssetId", "", { shouldDirty: true });
+									}}
+									className={cn(
+										"h-12 w-12 rounded-xl overflow-hidden border transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer relative",
+										selected
+											? "border-primary ring-2 ring-primary/20 scale-105"
+											: "border-border/60 hover:border-primary/40",
+									)}
+									title={preset.label}
+								>
+									<img
+										src={preset.url}
+										alt={preset.label}
+										className="h-full w-full object-cover"
+									/>
+									{selected && (
+										<div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
+											<Check className="h-4.5 w-4.5 text-white drop-shadow-md" />
+										</div>
+									)}
+								</button>
+							);
+						})}
+					</div>
+				</div>
+
 				<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
 					<Field label="Idade">
 						<Input placeholder="Ex: 137" {...register("age")} />
@@ -538,6 +685,65 @@ export function AbilitiesFields({
 }) {
 	const fields = config.attributes || [];
 
+	const [rollState, setRollState] = useState<{
+		open: boolean;
+		label: string;
+		fieldName: Path<CharacterFormValues> | null;
+	}>({
+		open: false,
+		label: "",
+		fieldName: null,
+	});
+
+	const handleRollTrigger = (
+		label: string,
+		fieldName: Path<CharacterFormValues>,
+	) => {
+		setRollState({
+			open: true,
+			label,
+			fieldName,
+		});
+	};
+
+	const handleRollComplete = (value: number) => {
+		if (rollState.fieldName) {
+			setValue(rollState.fieldName, value, {
+				shouldValidate: true,
+				shouldDirty: true,
+			});
+		}
+	};
+
+	const handleRollAll = () => {
+		const rollSingle = (system: string) => {
+			if (system === "coc" || system === "ordem") {
+				const r = () => Math.floor(Math.random() * 6) + 1;
+				return (r() + r() + r()) * 5;
+			}
+			const rolls = Array.from(
+				{ length: 4 },
+				() => Math.floor(Math.random() * 6) + 1,
+			);
+			rolls.sort((a, b) => a - b);
+			return rolls[1] + rolls[2] + rolls[3];
+		};
+
+		for (const field of fields) {
+			const isStandardKey = STANDARD_CHARACTER_ATTRIBUTE_KEYS.includes(
+				field.key as (typeof STANDARD_CHARACTER_ATTRIBUTE_KEYS)[number],
+			);
+			const fieldName = (
+				isStandardKey ? field.key : `systemAttributes.${field.key}`
+			) as Path<CharacterFormValues>;
+			const newValue = rollSingle(config.value);
+			setValue(fieldName, newValue, {
+				shouldValidate: true,
+				shouldDirty: true,
+			});
+		}
+	};
+
 	return (
 		<>
 			<FormSection
@@ -547,9 +753,21 @@ export function AbilitiesFields({
 						? "Cthulhu/Ordem: pontos podem ir até 99 (escala percentual)."
 						: "Pontuações de 1 a 30."
 				}
+				action={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={handleRollAll}
+						className="text-xs gap-1.5 h-8 font-semibold shrink-0 cursor-pointer"
+					>
+						<Sparkles className="h-3.5 w-3.5 text-primary" />
+						Rolar Atributos
+					</Button>
+				}
 			>
 				<div
-					className={`grid gap-4 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-8" : fields.length === 9 ? "grid-cols-3 sm:grid-cols-3 xl:grid-cols-9" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"}`}
+					className={`grid gap-4 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
 				>
 					{fields.map((field) => (
 						<AbilityField
@@ -560,10 +778,20 @@ export function AbilitiesFields({
 							control={control}
 							setValue={setValue}
 							config={config}
+							onRollTrigger={handleRollTrigger}
 						/>
 					))}
 				</div>
 			</FormSection>
+			<DiceRollOverlay
+				open={rollState.open}
+				attributeLabel={rollState.label}
+				diceType={
+					config.value === "coc" || config.value === "ordem" ? "d100" : "d20"
+				}
+				onComplete={handleRollComplete}
+				onClose={() => setRollState((s) => ({ ...s, open: false }))}
+			/>
 
 			<FormSection title="Proficiências">
 				<Field
@@ -1212,6 +1440,7 @@ function AbilityField({
 	control,
 	setValue,
 	config,
+	onRollTrigger,
 }: {
 	label: string;
 	name: string;
@@ -1219,6 +1448,7 @@ function AbilityField({
 	control: CharacterControl;
 	setValue: CharacterSetValue;
 	config: SystemConfig;
+	onRollTrigger?: (label: string, fieldName: Path<CharacterFormValues>) => void;
 }) {
 	const isStandardKey = STANDARD_CHARACTER_ATTRIBUTE_KEYS.includes(
 		name as (typeof STANDARD_CHARACTER_ATTRIBUTE_KEYS)[number],
@@ -1242,6 +1472,12 @@ function AbilityField({
 		setValue(fieldName, newVal, { shouldValidate: true, shouldDirty: true });
 	};
 
+	const handleRollSingle = () => {
+		if (onRollTrigger) {
+			onRollTrigger(label || name, fieldName);
+		}
+	};
+
 	const fullName = getAttributeFullName(label || name);
 	const extraInfo = getAttributeExtraInfo(numeric, config.value);
 
@@ -1251,6 +1487,18 @@ function AbilityField({
 			<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
 				{fullName}
 			</div>
+
+			{/* Individual Attribute Dice Roller */}
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon-xs"
+				onClick={handleRollSingle}
+				className="absolute top-1.5 right-1.5 h-5.5 w-5.5 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 rounded-md shrink-0 md:opacity-40 group-hover/tooltip:opacity-100 hover:!opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+				title="Rolar este atributo"
+			>
+				<Dices className="h-3.5 w-3.5" />
+			</Button>
 
 			<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover/tooltip:text-primary">
 				{label}
