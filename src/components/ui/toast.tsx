@@ -128,11 +128,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							key={toast.id}
 							className={cn(
 								"rounded-lg border border-border bg-card-elevated p-3 text-foreground shadow-lg shadow-black/20 backdrop-blur-md",
-								"transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+								"transition-all ease-[cubic-bezier(0.16,1,0.3,1)]",
 								toast.dismissing
 									? "translate-x-2 scale-95 opacity-0"
 									: "animate-in fade-in-0 slide-in-from-top-2 translate-x-0 scale-100 opacity-100",
 							)}
+							style={{ transitionDuration: `${EXIT_DURATION_MS}ms` }}
 						>
 							<div className="flex gap-3">
 								<div

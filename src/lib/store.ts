@@ -87,7 +87,6 @@ export const useRPGStore = create<RPGState>()(
 				})),
 				spotifyJamLink: state.spotifyJamLink,
 				spotifyJamActive: state.spotifyJamActive,
-				notifications: state.notifications,
 			}),
 		},
 	),

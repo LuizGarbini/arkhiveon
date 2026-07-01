@@ -14,7 +14,7 @@ import {
 	Sparkles,
 	User,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
@@ -64,6 +64,10 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const notifications = useRPGStore((state) => state.notifications);
 	const markAllNotificationsAsRead = useRPGStore((state) => state.markAllNotificationsAsRead);
 	const clearNotifications = useRPGStore((state) => state.clearNotifications);
+	const unreadCount = useMemo(
+		() => notifications.filter((n) => !n.read).length,
+		[notifications],
+	);
 	const navigate = useNavigate();
 	const location = useLocation();
 	const toast = useToast();
@@ -319,9 +323,9 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							aria-label="Abrir notificações"
 						>
 							<Bell className="h-4 w-4" />
-							{notifications.filter((n) => !n.read).length > 0 && (
+							{unreadCount > 0 && (
 								<span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-md shadow-black/10 animate-in zoom-in-50 duration-200">
-									{notifications.filter((n) => !n.read).length}
+									{unreadCount}
 								</span>
 							)}
 						</PopoverTrigger>
