@@ -54,6 +54,15 @@ export interface SyncSlice {
 	clearNotifications: () => void;
 }
 
+type SupabasePayloadRow = Record<string, unknown> & {
+	name?: string;
+	data?: {
+		characterName?: string;
+		name?: string;
+		title?: string;
+	};
+};
+
 export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	set,
 	get,
@@ -169,16 +178,17 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		const uniqueSuffix = Math.random().toString(36).substring(2, 11);
 		const channelName = `db-changes-${campaignId || "global"}-${uniqueSuffix}`;
 
-		// Capturar userId para filtrar contagem de registros próprios e disparar notificações
-		let currentUserId: string | null = null;
-		void supabase.auth.getUser().then(({ data }) => {
-			currentUserId = data.user?.id ?? null;
-		});
+		let isCleanedUp = false;
+		let channel: ReturnType<typeof supabase.channel> | null = null;
 
-		const channel = supabase
-			.channel(channelName)
-			.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
-				const { eventType, table, new: newRow, old: oldRow } = payload;
+		void supabase.auth.getUser().then(({ data }) => {
+			if (isCleanedUp) return;
+			const currentUserId = data.user?.id ?? null;
+
+			channel = supabase
+				.channel(channelName)
+				.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+					const { eventType, table, new: newRow, old: oldRow } = payload;
 
 				// Mapeamento de tabelas para chaves do store
 				const tableToKey: Record<string, keyof RPGState> = {
@@ -259,17 +269,20 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
 						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
 
+				const newRowCasted = newRow as SupabasePayloadRow | null;
+				const oldRowCasted = oldRow as SupabasePayloadRow | null;
+
 				// Disparar notificações locais para ações de terceiros na campanha ativa
 				if (belongsToActiveCampaign && !isOwnAction && currentUserId != null) {
 					const entityName =
-						(newRow as any)?.data?.characterName ||
-						(newRow as any)?.data?.name ||
-						(newRow as any)?.data?.title ||
-						(newRow as any)?.name ||
-						(oldRow as any)?.data?.characterName ||
-						(oldRow as any)?.data?.name ||
-						(oldRow as any)?.data?.title ||
-						(oldRow as any)?.name ||
+						newRowCasted?.data?.characterName ||
+						newRowCasted?.data?.name ||
+						newRowCasted?.data?.title ||
+						newRowCasted?.name ||
+						oldRowCasted?.data?.characterName ||
+						oldRowCasted?.data?.name ||
+						oldRowCasted?.data?.title ||
+						oldRowCasted?.name ||
 						"Registro";
 
 					const kindLabels: Record<string, string> = {
@@ -413,11 +426,22 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 					return state;
 				});
-			})
-			.subscribe();
+			});
+
+			channel.subscribe((status, err) => {
+				if (status === "SUBSCRIBED") {
+					console.log("Realtime subscribed!", channelName);
+				} else if (status === "CHANNEL_ERROR") {
+					console.error("Realtime channel error:", err);
+				}
+			});
+		});
 
 		return () => {
-			void supabase.removeChannel(channel);
+			isCleanedUp = true;
+			if (channel) {
+				void supabase.removeChannel(channel);
+			}
 		};
 	},
 	clearLocalData: () =>
