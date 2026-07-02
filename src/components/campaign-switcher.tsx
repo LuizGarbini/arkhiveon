@@ -249,7 +249,8 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 
 					<DropdownMenuItem
 						onClick={() => {
-							if (campaigns.length >= maxCampaigns) {
+							const ownedCampaignsCount = campaigns.filter((c) => c.myRole === "owner").length;
+							if (ownedCampaignsCount >= maxCampaigns) {
 								toast.error({
 									title: "Limite Atingido",
 									description: `Você atingiu o limite de ${maxCampaigns} campanhas no plano ${userPlan === "pro" ? "Pro" : "Free"}.`,
