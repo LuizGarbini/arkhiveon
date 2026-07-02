@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
