@@ -63,6 +63,101 @@ type SupabasePayloadRow = Record<string, unknown> & {
 	};
 };
 
+const ENTITY_KIND_LABELS: Record<string, string> = {
+	characters: "Personagem",
+	npcs: "NPC",
+	sessions: "Sessão",
+	items: "Item",
+	locations: "Local",
+	lores: "Lore",
+	image_assets: "Imagem",
+};
+
+function extractEntityName(row: SupabasePayloadRow | null): string {
+	if (!row) return "Registro";
+	return (
+		row.data?.characterName ||
+		row.data?.name ||
+		row.data?.title ||
+		row.name ||
+		"Registro"
+	);
+}
+
+function applyGlobalRecordsCountChange(
+	set: Parameters<StateCreator<RPGState, [], [], SyncSlice>>[0],
+	eventType: string,
+): void {
+	if (eventType === "INSERT") {
+		set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
+	} else if (eventType === "DELETE") {
+		set((s) => ({
+			globalRecordsCount: Math.max(0, s.globalRecordsCount - 1),
+		}));
+	}
+}
+
+function buildEntityNotification(
+	eventType: string,
+	label: string,
+	entityName: string,
+): Omit<AppNotification, "id" | "createdAt" | "read"> | null {
+	if (eventType === "INSERT") {
+		return {
+			variant: "info",
+			title: `Novo ${label}`,
+			description: `"${entityName}" foi criado na campanha compartilhada.`,
+		};
+	}
+	if (eventType === "UPDATE") {
+		return {
+			variant: "info",
+			title: `${label} Atualizado`,
+			description: `"${entityName}" teve alterações salvas.`,
+		};
+	}
+	if (eventType === "DELETE") {
+		return {
+			variant: "error",
+			title: `${label} Removido`,
+			description: `Um registro de ${label.toLowerCase()} foi deletado.`,
+		};
+	}
+	return null;
+}
+
+function isRealtimeEchoOfLocalMutation(
+	get: () => RPGState,
+	storeKey: keyof RPGState,
+	eventType: string,
+	newRow: Record<string, unknown> | undefined,
+	oldRow: Record<string, unknown> | undefined,
+	currentUserId: string | null,
+): boolean {
+	if (eventType === "INSERT") {
+		return (
+			currentUserId != null &&
+			!!newRow &&
+			"created_by" in newRow &&
+			newRow.created_by === currentUserId
+		);
+	}
+	if (eventType === "UPDATE" && newRow?.id && newRow.data) {
+		const currentArray = get()[storeKey] as Array<
+			{ id: string } & Record<string, unknown>
+		>;
+		const localItem = currentArray.find((item) => item.id === newRow.id);
+		if (!localItem) return false;
+		const incoming = newRow.data as Record<string, unknown>;
+		return Object.keys(incoming).every((key) => localItem[key] === incoming[key]);
+	}
+	if (eventType === "DELETE" && oldRow?.id) {
+		const currentArray = get()[storeKey] as Array<{ id: string }>;
+		return !currentArray.some((item) => item.id === oldRow.id);
+	}
+	return false;
+}
+
 export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	set,
 	get,
@@ -190,160 +285,102 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
 					const { eventType, table, new: newRow, old: oldRow } = payload;
 
-				// Mapeamento de tabelas para chaves do store
-				const tableToKey: Record<string, keyof RPGState> = {
-					characters: "characters",
-					npcs: "npcs",
-					sessions: "sessions",
-					items: "items",
-					locations: "locations",
-					lores: "lores",
-					custom_templates: "customTemplates",
-					image_assets: "imageAssets",
-					activity_log: "activityLog",
-				};
-
-				const storeKey = tableToKey[table];
-				if (!storeKey) return;
-
-				const activeCampaignId = get().activeCampaignId;
-				if (!activeCampaignId) return;
-
-				// Determinar se o evento pertence à campanha ativa
-				let belongsToActiveCampaign = false;
-				if (eventType === "DELETE") {
-					if (oldRow) {
-						const currentArray = get()[storeKey] as Array<{ id: string }>;
-						belongsToActiveCampaign =
-							Array.isArray(currentArray) &&
-							currentArray.some((item) => item.id === oldRow.id);
-					}
-				} else {
-					belongsToActiveCampaign = !!(
-						newRow &&
-						"campaign_id" in newRow &&
-						newRow.campaign_id === activeCampaignId
-					);
-				}
-
-				const countTables = [
-					"characters",
-					"npcs",
-					"sessions",
-					"items",
-					"locations",
-					"lores",
-				];
-				const isCountTable = countTables.includes(table);
-
-				// Verificar se o registro pertence a alguma campanha do mesmo dono da campanha ativa
-				const activeCamp = get().campaigns.find(
-					(c) => c.id === activeCampaignId,
-				);
-				const activeOwnerId = activeCamp?.ownerId;
-
-				// Se tivermos as campanhas carregadas localmente, podemos mapear as que têm o mesmo ownerId
-				const ownerCampaignIds = activeOwnerId
-					? get()
-							.campaigns.filter((c) => c.ownerId === activeOwnerId)
-							.map((c) => c.id)
-					: activeCampaignId
-						? [activeCampaignId]
-						: [];
-
-				const rowCampaignId =
-					eventType === "DELETE"
-						? oldRow && "campaign_id" in oldRow
-							? (oldRow as { campaign_id: string }).campaign_id
-							: null
-						: newRow && "campaign_id" in newRow
-							? (newRow as { campaign_id: string }).campaign_id
-							: null;
-
-				const belongsToOwnerCampaigns =
-					rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
-
-				const isOwnAction =
-					currentUserId != null &&
-					(eventType === "DELETE"
-						? oldRow && "created_by" in oldRow && oldRow.created_by === currentUserId
-						: newRow && "created_by" in newRow && newRow.created_by === currentUserId);
-
-				const newRowCasted = newRow as SupabasePayloadRow | null;
-				const oldRowCasted = oldRow as SupabasePayloadRow | null;
-
-				// Disparar notificações locais para ações de terceiros na campanha ativa
-				if (belongsToActiveCampaign && !isOwnAction && currentUserId != null) {
-					const entityName =
-						newRowCasted?.data?.characterName ||
-						newRowCasted?.data?.name ||
-						newRowCasted?.data?.title ||
-						newRowCasted?.name ||
-						oldRowCasted?.data?.characterName ||
-						oldRowCasted?.data?.name ||
-						oldRowCasted?.data?.title ||
-						oldRowCasted?.name ||
-						"Registro";
-
-					const kindLabels: Record<string, string> = {
-						characters: "Personagem",
-						npcs: "NPC",
-						sessions: "Sessão",
-						items: "Item",
-						locations: "Local",
-						lores: "Lore",
-						image_assets: "Imagem",
+					const tableToKey: Record<string, keyof RPGState> = {
+						characters: "characters",
+						npcs: "npcs",
+						sessions: "sessions",
+						items: "items",
+						locations: "locations",
+						lores: "lores",
+						custom_templates: "customTemplates",
+						image_assets: "imageAssets",
+						activity_log: "activityLog",
 					};
-					const label = kindLabels[table] || "Registro";
 
-					if (eventType === "INSERT") {
-						get().addNotification({
-							variant: "info",
-							title: `Novo ${label}`,
-							description: `"${entityName}" foi criado na campanha compartilhada.`,
-						});
-					} else if (eventType === "UPDATE") {
-						get().addNotification({
-							variant: "info",
-							title: `${label} Atualizado`,
-							description: `"${entityName}" teve alterações salvas.`,
-						});
-					} else if (eventType === "DELETE") {
-						get().addNotification({
-							variant: "error",
-							title: `${label} Removido`,
-							description: `Um registro de ${label.toLowerCase()} foi deletado.`,
-						});
-					}
-				}
+					const storeKey = tableToKey[table];
+					if (!storeKey) return;
 
-				if (!belongsToActiveCampaign) {
-					// Se o evento não pertencer à campanha ativa, mas pertencer ao mesmo owner da campanha ativa
-					// numa tabela de contagem, atualizamos apenas o contador global.
-					if (isCountTable && belongsToOwnerCampaigns) {
-						if (eventType === "INSERT") {
-							set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
-						} else if (eventType === "DELETE") {
-							set((s) => ({
-								globalRecordsCount: Math.max(0, s.globalRecordsCount - 1),
-							}));
+					const activeCampaignId = get().activeCampaignId;
+					if (!activeCampaignId) return;
+
+					const rowCampaignId =
+						eventType === "DELETE"
+							? oldRow && "campaign_id" in oldRow
+								? (oldRow as { campaign_id: string }).campaign_id
+								: null
+							: newRow && "campaign_id" in newRow
+								? (newRow as { campaign_id: string }).campaign_id
+								: null;
+
+					const belongsToActiveCampaign = rowCampaignId === activeCampaignId;
+
+					const countTables = [
+						"characters",
+						"npcs",
+						"sessions",
+						"items",
+						"locations",
+						"lores",
+					];
+					const isCountTable = countTables.includes(table);
+
+					const activeCamp = get().campaigns.find(
+						(c) => c.id === activeCampaignId,
+					);
+					const activeOwnerId = activeCamp?.ownerId;
+
+					const ownerCampaignIds = activeOwnerId
+						? get()
+								.campaigns.filter((c) => c.ownerId === activeOwnerId)
+								.map((c) => c.id)
+						: activeCampaignId
+							? [activeCampaignId]
+							: [];
+
+					const belongsToOwnerCampaigns =
+						rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+
+					const isOwnAction = isRealtimeEchoOfLocalMutation(
+						get,
+						storeKey,
+						eventType,
+						newRow,
+						oldRow,
+						currentUserId,
+					);
+
+					const newRowCasted = newRow as SupabasePayloadRow | null;
+					const oldRowCasted = oldRow as SupabasePayloadRow | null;
+
+					if (
+						belongsToActiveCampaign &&
+						!isOwnAction &&
+						currentUserId != null
+					) {
+						const entityName = extractEntityName(newRowCasted ?? oldRowCasted);
+						const label = ENTITY_KIND_LABELS[table] || "Registro";
+						const notification = buildEntityNotification(
+							eventType,
+							label,
+							entityName,
+						);
+						if (notification) {
+							get().addNotification(notification);
 						}
 					}
-					return;
-				}
 
-				// Atualizar contador global de registros para a campanha ativa
-				if (isCountTable && belongsToOwnerCampaigns) {
-					if (eventType === "INSERT") {
-						set((s) => ({ globalRecordsCount: s.globalRecordsCount + 1 }));
-					} else if (eventType === "DELETE") {
-						set((s) => ({
-							globalRecordsCount: Math.max(0, s.globalRecordsCount - 1),
-						}));
+					if (!belongsToActiveCampaign) {
+						if (isCountTable && belongsToOwnerCampaigns) {
+							applyGlobalRecordsCountChange(set, eventType);
+						}
+						return;
 					}
-				}
 
-				set((state) => {
+					if (isCountTable && belongsToOwnerCampaigns) {
+						applyGlobalRecordsCountChange(set, eventType);
+					}
+
+					set((state) => {
 					const currentArray = state[storeKey] as Array<
 						{ id: string } & Record<string, unknown>
 					>;
@@ -429,9 +466,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			});
 
 			channel.subscribe((status, err) => {
-				if (status === "SUBSCRIBED") {
-					console.log("Realtime subscribed!", channelName);
-				} else if (status === "CHANNEL_ERROR") {
+				if (status === "CHANNEL_ERROR") {
 					console.error("Realtime channel error:", err);
 				}
 			});
