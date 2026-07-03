@@ -49,8 +49,10 @@ function RootContent() {
 	const isLanding = location.pathname === "/";
 	const isAuth = location.pathname === "/auth";
 	const isErrorPreview = location.pathname === "/error-preview";
+	const isPrivacy = location.pathname === "/privacy";
+	const isTerms = location.pathname === "/terms";
 
-	if (isLanding || isAuth || isErrorPreview) {
+	if (isLanding || isAuth || isErrorPreview || isPrivacy || isTerms) {
 		return <Outlet />;
 	}
 

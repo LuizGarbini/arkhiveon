@@ -332,6 +332,18 @@
     mask-image: radial-gradient(ellipse 70% 50% at 50% 0%, black 30%, transparent 80%);
   }
 
+  /* Landing header slide-in when it becomes sticky */
+  @keyframes headerSlideIn {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
   /* Hairline ornament: a tiny purple flourish under headings */
   .heading-rule {
     position: relative;
