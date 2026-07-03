@@ -118,7 +118,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<Link
 				to="/sheets/$characterId"
 				params={{ characterId: character.id }}
-				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
+				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 h-full min-h-[420px]"
 			>
 				<EntityActions
 					onEdit={() =>
@@ -268,7 +268,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 					{/* Abilities row */}
 					<div
-						className={`mt-3 grid gap-1 border-t border-border/60 pt-3 ${abilities.length >= 8 ? "grid-cols-4 sm:grid-cols-4" : abilities.length === 9 ? "grid-cols-3" : "grid-cols-6"}`}
+						className={`mt-3 grid gap-1 border-t border-border/60 pt-3 min-h-[96px] content-start ${abilities.length >= 8 ? "grid-cols-4 sm:grid-cols-4" : abilities.length === 9 ? "grid-cols-3" : "grid-cols-6"}`}
 					>
 						{abilities.map((a) => {
 							const mod = abilityModifier(a.value);
@@ -292,10 +292,12 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						})}
 					</div>
 
-					{character.background && (
-						<p className="mt-3 line-clamp-2 border-t border-border/60 pt-2.5 text-[11px] italic text-muted-foreground">
+					{character.background ? (
+						<p className="mt-auto line-clamp-2 border-t border-border/60 pt-2.5 text-[11px] italic text-muted-foreground">
 							"{character.background}"
 						</p>
+					) : (
+						<div className="mt-auto" />
 					)}
 				</div>
 			</Link>
