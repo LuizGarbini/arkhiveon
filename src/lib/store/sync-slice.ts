@@ -135,12 +135,9 @@ function isRealtimeEchoOfLocalMutation(
 	currentUserId: string | null,
 ): boolean {
 	if (eventType === "INSERT") {
-		return (
-			currentUserId != null &&
-			!!newRow &&
-			"created_by" in newRow &&
-			newRow.created_by === currentUserId
-		);
+		if (currentUserId == null || !newRow) return false;
+		const creatorId = newRow.created_by ?? newRow.user_id;
+		return creatorId === currentUserId;
 	}
 	if (eventType === "UPDATE" && newRow?.id && newRow.data) {
 		const currentArray = get()[storeKey] as Array<
@@ -352,10 +349,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					const newRowCasted = newRow as SupabasePayloadRow | null;
 					const oldRowCasted = oldRow as SupabasePayloadRow | null;
 
+
 					if (
 						belongsToActiveCampaign &&
 						!isOwnAction &&
-						currentUserId != null
+						currentUserId != null &&
+						table in ENTITY_KIND_LABELS
 					) {
 						const entityName = extractEntityName(newRowCasted ?? oldRowCasted);
 						const label = ENTITY_KIND_LABELS[table] || "Registro";
@@ -466,6 +465,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			});
 
 			channel.subscribe((status, err) => {
+				console.log("[Realtime subscription status]", status, err);
 				if (status === "CHANNEL_ERROR") {
 					console.error("Realtime channel error:", err);
 				}

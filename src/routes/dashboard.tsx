@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useRPGStore } from "@/lib/store";
+import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -98,6 +98,8 @@ function Dashboard() {
 		[campaigns, activeCampaignId],
 	);
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
+	const activeCampaignRole = useActiveCampaignRole();
+	const isViewer = activeCampaignRole === "viewer";
 
 	const [firstCampaignName, setFirstCampaignName] = useState("");
 	const [firstCampaignDesc, setFirstCampaignDesc] = useState("");
@@ -395,25 +397,53 @@ function Dashboard() {
 							as coleções que mantêm o mundo organizado.
 						</p>
 						<div className="mt-8 flex flex-wrap gap-3">
-							<Link
-								to="/sheets/new"
-								aria-keyshortcuts="Alt+N"
-								data-shortcut-action="new"
-							>
-								<Button className="h-11 gap-2 px-5 font-bold">
-									<User className="h-4 w-4" />
-									Criar ficha
-								</Button>
-							</Link>
-							<Link to="/sessions">
-								<Button
-									variant="outline"
-									className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+							{isViewer ? (
+								<div className="group/tooltip relative inline-block">
+									<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+										Apenas mestre ou co-mestre podem criar fichas
+									</div>
+									<Button disabled className="h-11 gap-2 px-5 font-bold cursor-not-allowed opacity-50">
+										<User className="h-4 w-4" />
+										Criar ficha
+									</Button>
+								</div>
+							) : (
+								<Link
+									to="/sheets/new"
+									aria-keyshortcuts="Alt+N"
+									data-shortcut-action="new"
 								>
-									<ScrollText className="h-4 w-4" />
-									Registrar sessão
-								</Button>
-							</Link>
+									<Button className="h-11 gap-2 px-5 font-bold">
+										<User className="h-4 w-4" />
+										Criar ficha
+									</Button>
+								</Link>
+							)}
+							{isViewer ? (
+								<div className="group/tooltip relative inline-block">
+									<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+										Apenas mestre ou co-mestre podem registrar sessões
+									</div>
+									<Button
+										disabled
+										variant="outline"
+										className="h-11 gap-2 border-white/10 bg-white/5 px-5 font-bold text-white/40 cursor-not-allowed opacity-50"
+									>
+										<ScrollText className="h-4 w-4" />
+										Registrar sessão
+									</Button>
+								</div>
+							) : (
+								<Link to="/sessions">
+									<Button
+										variant="outline"
+										className="h-11 gap-2 border-white/30 bg-white/10 px-5 font-bold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+									>
+										<ScrollText className="h-4 w-4" />
+										Registrar sessão
+									</Button>
+								</Link>
+							)}
 							{activeCampaign && activeCampaign.myRole === "owner" && (
 								<Button
 									type="button"

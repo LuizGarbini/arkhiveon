@@ -28,7 +28,7 @@ import {
 	normalizeModuleOrders,
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
-import type { SheetModuleConfig, SheetModuleKind } from "@/lib/store";
+import { useActiveCampaignRole, type SheetModuleConfig, type SheetModuleKind } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const MODULE_HINTS: Partial<Record<SheetModuleKind, string>> = {
@@ -352,6 +352,8 @@ function SheetBlock({
 }) {
 	const canRemove = isCustomSheetModule(module);
 	const hint = MODULE_HINTS[module.kind];
+	const activeCampaignRole = useActiveCampaignRole();
+	const isViewer = activeCampaignRole === "viewer";
 
 	return (
 		<section
@@ -365,7 +367,7 @@ function SheetBlock({
 					"rotate-1 scale-[1.02] border-primary/30 shadow-xl shadow-primary/10",
 			)}
 		>
-			{isLayoutMode ? (
+			{isLayoutMode && !isViewer ? (
 				<button
 					type="button"
 					className="absolute left-3 top-3 flex h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-border/70 bg-background/90 text-muted-foreground opacity-0 transition-all hover:text-foreground active:cursor-grabbing group-hover:opacity-100 focus:opacity-100"
@@ -395,7 +397,7 @@ function SheetBlock({
 				</div>
 
 				<div className="flex shrink-0 items-center gap-1">
-					{isLayoutMode && onPatch ? (
+					{isLayoutMode && onPatch && !isViewer ? (
 						<>
 							<button
 								type="button"
@@ -428,16 +430,34 @@ function SheetBlock({
 						</>
 					) : null}
 					{onEditBlock && module.enabled ? (
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() => onEditBlock(module)}
-							className="gap-2"
-						>
-							<Edit className="h-3.5 w-3.5" />
-							Editar
-						</Button>
+						isViewer ? (
+							<div className="group/tooltip relative inline-block">
+								<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+									Sem permissão para editar
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled
+									className="gap-2 cursor-not-allowed opacity-50"
+								>
+									<Edit className="h-3.5 w-3.5" />
+									Editar
+								</Button>
+							</div>
+						) : (
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => onEditBlock(module)}
+								className="gap-2"
+							>
+								<Edit className="h-3.5 w-3.5" />
+								Editar
+							</Button>
+						)
 					) : null}
 				</div>
 			</div>

@@ -8,6 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "./ui/dialog";
+import { useActiveCampaignRole } from "@/lib/store";
 
 interface EntityActionsProps {
 	onEdit: () => void;
@@ -28,6 +29,8 @@ export function EntityActions({
 	entityKindLabel,
 }: EntityActionsProps) {
 	const [confirmOpen, setConfirmOpen] = useState(false);
+	const activeCampaignRole = useActiveCampaignRole();
+	const isViewer = activeCampaignRole === "viewer";
 
 	function handleConfirmDelete() {
 		onDelete();
@@ -37,32 +40,65 @@ export function EntityActions({
 	return (
 		<>
 			<div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover:opacity-100 focus-within:opacity-100">
-				<button
-					type="button"
-					onClick={(e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						onEdit();
-					}}
-					className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
-					aria-label={`Editar ${entityKindLabel}`}
-					title="Editar"
-				>
-					<Pencil className="h-3.5 w-3.5" />
-				</button>
-				<button
-					type="button"
-					onClick={(e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						setConfirmOpen(true);
-					}}
-					className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-rose-500/40 hover:text-rose-300"
-					aria-label={`Excluir ${entityKindLabel}`}
-					title="Excluir"
-				>
-					<Trash2 className="h-3.5 w-3.5" />
-				</button>
+				{isViewer ? (
+					<div className="group/tooltip relative">
+						<div className="pointer-events-none absolute -top-8 right-0 z-30 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-9 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+							Sem permissão para editar
+						</div>
+						<button
+							type="button"
+							disabled
+							className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md border border-border bg-background/50 text-muted-foreground/30 backdrop-blur"
+							aria-label={`Editar ${entityKindLabel}`}
+						>
+							<Pencil className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							onEdit();
+						}}
+						className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
+						aria-label={`Editar ${entityKindLabel}`}
+						title="Editar"
+					>
+						<Pencil className="h-3.5 w-3.5" />
+					</button>
+				)}
+
+				{isViewer ? (
+					<div className="group/tooltip relative">
+						<div className="pointer-events-none absolute -top-8 right-0 z-30 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-9 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+							Sem permissão para excluir
+						</div>
+						<button
+							type="button"
+							disabled
+							className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md border border-border bg-background/50 text-muted-foreground/30 backdrop-blur"
+							aria-label={`Excluir ${entityKindLabel}`}
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+						</button>
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							setConfirmOpen(true);
+						}}
+						className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-rose-500/40 hover:text-rose-300"
+						aria-label={`Excluir ${entityKindLabel}`}
+						title="Excluir"
+					>
+						<Trash2 className="h-3.5 w-3.5" />
+					</button>
+				)}
 			</div>
 
 			<ConfirmDeleteDialog

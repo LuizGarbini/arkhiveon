@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { useRPGStore } from "@/lib/store";
+import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
 
 export const Route = createFileRoute("/characters/")({
 	component: RouteComponent,
@@ -21,6 +21,8 @@ const loadingCardKeys = [
 
 function RouteComponent() {
 	const characters = useRPGStore((state) => state.characters);
+	const activeCampaignRole = useActiveCampaignRole();
+	const isViewer = activeCampaignRole === "viewer";
 	const [searchQuery, setSearchQuery] = useState("");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -44,16 +46,28 @@ function RouteComponent() {
 				eyebrow="Personagens da campanha"
 				count={characters.length}
 				action={
-					<Link
-						to="/sheets/new"
-						aria-keyshortcuts="Alt+N"
-						data-shortcut-action="new"
-					>
-						<Button size="sm" className="gap-2">
-							<Plus className="h-3.5 w-3.5" />
-							Novo Personagem
-						</Button>
-					</Link>
+					isViewer ? (
+						<div className="group/tooltip relative inline-block">
+							<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+								Apenas mestre ou co-mestre podem criar personagens
+							</div>
+							<Button size="sm" disabled className="gap-2 cursor-not-allowed opacity-50">
+								<Plus className="h-3.5 w-3.5" />
+								Novo Personagem
+							</Button>
+						</div>
+					) : (
+						<Link
+							to="/sheets/new"
+							aria-keyshortcuts="Alt+N"
+							data-shortcut-action="new"
+						>
+							<Button size="sm" className="gap-2">
+								<Plus className="h-3.5 w-3.5" />
+								Novo Personagem
+							</Button>
+						</Link>
+					)
 				}
 			/>
 

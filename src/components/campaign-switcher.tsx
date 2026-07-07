@@ -153,7 +153,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						</DropdownMenuLabel>
 						{campaigns.map((campaign, index) => (
 							<div
-								key={campaign.id}
+								key={`${campaign.id}-${index}`}
 								className="flex items-center justify-between gap-1 rounded-xl p-1 hover:bg-muted/10 group/item"
 							>
 								<DropdownMenuItem

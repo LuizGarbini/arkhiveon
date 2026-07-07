@@ -127,6 +127,7 @@ function CharacterSheetPage() {
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
 	const activeCampaignId = useActiveCampaignId();
+	const isViewer = activeCampaignRole === "viewer";
 	const [isEditingLayout, setIsEditingLayout] = useState(edit || false);
 	const [editingModule, setEditingModule] = useState<SheetModuleConfig | null>(
 		null,
@@ -287,18 +288,34 @@ function CharacterSheetPage() {
 								) : (
 									<User className="h-7 w-7 text-primary/40" strokeWidth={1.4} />
 								)}
-								<button
-									type="button"
-									onClick={() => setIsImageDialogOpen(true)}
-									className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
-										characterImageUrl
-											? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
-											: "bg-black/20 opacity-100 hover:bg-black/40"
-									}`}
-									aria-label="Editar imagem da ficha"
-								>
-									<Camera className="h-5 w-5 drop-shadow" />
-								</button>
+								{isViewer ? (
+									<div className="group/tooltip absolute inset-0">
+										<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+											Sem permissão para alterar imagem
+										</div>
+										<button
+											type="button"
+											disabled
+											className="absolute inset-0 flex cursor-not-allowed items-center justify-center text-white transition bg-black/0 opacity-0"
+											aria-label="Editar imagem da ficha"
+										>
+											<Camera className="h-5 w-5 drop-shadow" />
+										</button>
+									</div>
+								) : (
+									<button
+										type="button"
+										onClick={() => setIsImageDialogOpen(true)}
+										className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
+											characterImageUrl
+												? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
+												: "bg-black/20 opacity-100 hover:bg-black/40"
+										}`}
+										aria-label="Editar imagem da ficha"
+									>
+										<Camera className="h-5 w-5 drop-shadow" />
+									</button>
+								)}
 							</div>
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -309,17 +326,34 @@ function CharacterSheetPage() {
 									<h1 className="font-display min-w-0 truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
 										{currentCharacter.characterName || "Ficha sem nome"}
 									</h1>
-									<Button
-										type="button"
-										variant="outline"
-										size="icon-sm"
-										title="Renomear personagem"
-										aria-label="Renomear personagem"
-										className="shrink-0"
-										onClick={() => setIsNameDialogOpen(true)}
-									>
-										<Edit className="h-4 w-4" />
-									</Button>
+									{isViewer ? (
+										<div className="group/tooltip relative shrink-0">
+											<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+												Sem permissão para renomear
+											</div>
+											<Button
+												type="button"
+												variant="outline"
+												size="icon-sm"
+												disabled
+												className="cursor-not-allowed opacity-50 animate-none hover:bg-transparent"
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+										</div>
+									) : (
+										<Button
+											type="button"
+											variant="outline"
+											size="icon-sm"
+											title="Renomear personagem"
+											aria-label="Renomear personagem"
+											className="shrink-0"
+											onClick={() => setIsNameDialogOpen(true)}
+										>
+											<Edit className="h-4 w-4" />
+										</Button>
+									)}
 								</div>
 								<p className="mt-2 text-[13px] text-muted-foreground">
 									{[
@@ -340,24 +374,58 @@ function CharacterSheetPage() {
 								Modo layout — arraste os blocos da ficha abaixo
 							</p>
 						)}
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setIsImageDialogOpen(true)}
-							className="gap-2"
-						>
-							<Camera className="h-4 w-4" />
-							Imagem
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setIsTransferDialogOpen(true)}
-							className="gap-2"
-						>
-							<ArrowRightLeft className="h-4 w-4" />
-							Transferir
-						</Button>
+						{isViewer ? (
+							<div className="group/tooltip relative inline-block">
+								<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+									Sem permissão para alterar imagem
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									disabled
+									className="gap-2 cursor-not-allowed opacity-50"
+								>
+									<Camera className="h-4 w-4" />
+									Imagem
+								</Button>
+							</div>
+						) : (
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setIsImageDialogOpen(true)}
+								className="gap-2"
+							>
+								<Camera className="h-4 w-4" />
+								Imagem
+							</Button>
+						)}
+						{isViewer ? (
+							<div className="group/tooltip relative inline-block">
+								<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+									Sem permissão para transferir
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									disabled
+									className="gap-2 cursor-not-allowed opacity-50"
+								>
+									<ArrowRightLeft className="h-4 w-4" />
+									Transferir
+								</Button>
+							</div>
+						) : (
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setIsTransferDialogOpen(true)}
+								className="gap-2"
+							>
+								<ArrowRightLeft className="h-4 w-4" />
+								Transferir
+							</Button>
+						)}
 						<Button
 							type="button"
 							variant="outline"
@@ -367,14 +435,30 @@ function CharacterSheetPage() {
 							<Download className="h-4 w-4" />
 							Exportar PDF
 						</Button>
-						<Button
-							type="button"
-							onClick={() => setIsEditingLayout((current) => !current)}
-							className="gap-2"
-						>
-							<Edit className="h-4 w-4" />
-							{isEditingLayout ? "Concluir layout" : "Editar layout"}
-						</Button>
+						{isViewer ? (
+							<div className="group/tooltip relative inline-block">
+								<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
+									Sem permissão para editar layout
+								</div>
+								<Button
+									type="button"
+									disabled
+									className="gap-2 cursor-not-allowed opacity-50"
+								>
+									<Edit className="h-4 w-4" />
+									Editar layout
+								</Button>
+							</div>
+						) : (
+							<Button
+								type="button"
+								onClick={() => setIsEditingLayout((current) => !current)}
+								className="gap-2"
+							>
+								<Edit className="h-4 w-4" />
+								{isEditingLayout ? "Concluir layout" : "Editar layout"}
+							</Button>
+						)}
 					</div>
 				</div>
 

@@ -14,7 +14,7 @@ import {
 	Sparkles,
 	User,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useRef } from "react";
 import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
@@ -87,6 +87,26 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 			}
 		}
 	}, [user, latestUpdateId]);
+
+	const lastNotificationRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		if (notifications.length > 0) {
+			const latest = notifications[0];
+			if (latest.id !== lastNotificationRef.current) {
+				lastNotificationRef.current = latest.id;
+				if (!latest.read && Date.now() - latest.createdAt < 10000) {
+					if (latest.variant === "success") {
+						toast.success({ title: latest.title, description: latest.description });
+					} else if (latest.variant === "error") {
+						toast.error({ title: latest.title, description: latest.description });
+					} else {
+						toast.info({ title: latest.title, description: latest.description });
+					}
+				}
+			}
+		}
+	}, [notifications, toast]);
 
 	const metadataName = user?.user_metadata?.name;
 	const userName =
