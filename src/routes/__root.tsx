@@ -110,6 +110,8 @@ function ProtectedLayout() {
 		}
 	}, [syncError]);
 
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+
 	useEffect(() => {
 		if (loading) return;
 		if (!session) {
@@ -130,11 +132,6 @@ function ProtectedLayout() {
 		}
 
 		void initCampaigns();
-		const cleanup = setupRealtime();
-
-		return () => {
-			cleanup();
-		};
 	}, [
 		clearLocalData,
 		loadCampaigns,
@@ -142,8 +139,16 @@ function ProtectedLayout() {
 		loading,
 		navigate,
 		session,
-		setupRealtime,
 	]);
+
+	useEffect(() => {
+		if (loading || !session || !activeCampaignId) return;
+
+		const cleanup = setupRealtime();
+		return () => {
+			cleanup();
+		};
+	}, [loading, session, activeCampaignId, setupRealtime]);
 
 	if (loading) {
 		return (

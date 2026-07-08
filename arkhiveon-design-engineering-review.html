@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arkhiveon · Possíveis Melhorias de Design</title>
+  <style>
+    :root {
+      --bg: #0b0813;
+      --bg-soft: #120f1e;
+      --panel: rgba(25, 21, 39, 0.88);
+      --panel-2: rgba(33, 28, 51, 0.92);
+      --line: rgba(182, 157, 255, 0.16);
+      --line-strong: rgba(182, 157, 255, 0.3);
+      --text: #f4f0ff;
+      --muted: #b7b0ca;
+      --muted-2: #8d86a3;
+      --violet: #a46cff;
+      --violet-2: #c8a6ff;
+      --cyan: #7de7ff;
+      --green: #6ce2a0;
+      --amber: #ffcb7d;
+      --danger: #ff8ca7;
+      --shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --max: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(164, 108, 255, 0.16), transparent 30%),
+        radial-gradient(circle at 90% 10%, rgba(125, 231, 255, 0.08), transparent 22%),
+        linear-gradient(180deg, #09070f 0%, #0b0813 100%);
+      color: var(--text);
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.08;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+    }
+
+    .wrap {
+      width: min(calc(100% - 40px), var(--max));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 72px 0 28px;
+    }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+        rgba(18, 15, 30, 0.88);
+      border-radius: 32px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card::before,
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(64px);
+      pointer-events: none;
+    }
+
+    .hero-card::before {
+      width: 260px;
+      height: 260px;
+      right: -40px;
+      top: -80px;
+      background: rgba(164, 108, 255, 0.2);
+    }
+
+    .hero-card::after {
+      width: 180px;
+      height: 180px;
+      left: 10%;
+      bottom: -70px;
+      background: rgba(125, 231, 255, 0.11);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(164, 108, 255, 0.28);
+      background: rgba(164, 108, 255, 0.08);
+      color: var(--violet-2);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, h4, p { margin: 0; }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 28px;
+      margin-top: 22px;
+      align-items: end;
+    }
+
+    .hero-copy h1 {
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: clamp(42px, 7vw, 72px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      max-width: 10ch;
+    }
+
+    .hero-copy h1 span {
+      color: var(--violet-2);
+    }
+
+    .hero-copy p {
+      margin-top: 18px;
+      max-width: 64ch;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.75;
+    }
+
+    .hero-points {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .score-panel {
+      border-radius: 24px;
+      background: rgba(15, 12, 24, 0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 18px;
+    }
+
+    .score-panel h3 {
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted-2);
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: 108px 1fr 44px;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .metric span {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .bar {
+      height: 10px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--violet), var(--cyan));
+    }
+
+    section {
+      padding: 18px 0 10px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin: 26px 0 18px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(24px, 4vw, 38px);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      max-width: 60ch;
+      line-height: 1.7;
+    }
+
+    .grid-3,
+    .grid-2,
+    .mockups,
+    .roadmap,
+    .systems {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mockups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .roadmap { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .systems { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card {
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .pad-lg { padding: 22px; }
+    .pad-md { padding: 18px; }
+
+    .label {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--violet-2);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+    }
+
+    .card h3 {
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .list {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .list div {
+      display: flex;
+      gap: 10px;
+      align-items: start;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--violet), var(--cyan));
+      margin-top: 8px;
+      flex: 0 0 auto;
+    }
+
+    .problem { border-color: rgba(255, 140, 167, 0.18); }
+    .good { border-color: rgba(108, 226, 160, 0.18); }
+    .warning { border-color: rgba(255, 203, 125, 0.18); }
+
+    .mockup {
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .mockup-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .browser {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .browser i {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+    }
+
+    .browser i:nth-child(1) { background: #f38ba0; }
+    .browser i:nth-child(2) { background: #f5c97c; }
+    .browser i:nth-child(3) { background: #6ce2a0; }
+
+    .browser-path {
+      flex: 1;
+      min-width: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 8px 12px;
+      color: var(--muted-2);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      min-height: 380px;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: rgba(12, 10, 19, 0.7);
+      padding: 16px 12px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .sigil {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(164, 108, 255, 0.14);
+      border: 1px solid rgba(164, 108, 255, 0.3);
+      margin: 0 auto;
+      color: var(--violet-2);
+      font-weight: 700;
+    }
+
+    .nav-dot {
+      width: 100%;
+      height: 42px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .nav-dot.active {
+      background: linear-gradient(180deg, rgba(164, 108, 255, 0.16), rgba(164, 108, 255, 0.06));
+      border-color: rgba(164, 108, 255, 0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .content {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .command > div,
+    .surface,
+    .entity,
+    .mini-card,
+    .timeline-item,
+    .chip,
+    .detail-pane {
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .command-search {
+      padding: 14px 16px;
+      color: var(--muted-2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kpi {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .kpi strong {
+      font-size: 26px;
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .hero-surface {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+    }
+
+    .surface {
+      padding: 18px;
+      min-height: 152px;
+    }
+
+    .surface h4,
+    .entity h4,
+    .detail-pane h4 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .surface p,
+    .entity p,
+    .detail-pane p,
+    .timeline-item p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .cta-row,
+    .chips {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .btn {
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(164, 108, 255, 0.24), rgba(125, 231, 255, 0.14));
+      border-color: rgba(164, 108, 255, 0.3);
+    }
+
+    .chip {
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .entity {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .entity-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(164, 108, 255, 0.36), rgba(125, 231, 255, 0.2));
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .tag {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(108, 226, 160, 0.08);
+      border: 1px solid rgba(108, 226, 160, 0.15);
+      color: #abefc6;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 12px;
+    }
+
+    .detail-pane {
+      padding: 16px;
+      min-height: 248px;
+    }
+
+    .portrait {
+      border-radius: 20px;
+      min-height: 190px;
+      background:
+        linear-gradient(180deg, rgba(125, 231, 255, 0.12), transparent),
+        linear-gradient(135deg, rgba(164, 108, 255, 0.22), rgba(164, 108, 255, 0.04));
+      border: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 14px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .mini-card {
+      padding: 12px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .timeline-item {
+      padding: 12px 14px;
+    }
+
+    .timeline-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .roadmap .card h3 {
+      font-size: 18px;
+    }
+
+    .systems .card {
+      min-height: 180px;
+    }
+
+    footer {
+      padding: 20px 0 48px;
+    }
+
+    .footer-note {
+      color: var(--muted-2);
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: center;
+      max-width: 72ch;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1080px) {
+      .hero-grid,
+      .mockups,
+      .grid-3,
+      .roadmap,
+      .systems,
+      .grid-2,
+      .hero-surface,
+      .detail-layout,
+      .collection-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .command {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .hero { padding-top: 34px; }
+      .hero-card { padding: 20px; border-radius: 24px; }
+      .hero-copy p { font-size: 16px; }
+      .shell { grid-template-columns: 64px 1fr; }
+      .content { padding: 14px; }
+      .command { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .metric { grid-template-columns: 90px 1fr 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="wrap">
+    <header class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Design Engineer Review</div>
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h1>Como eu elevaria o <span>Arkhiveon</span> sem perder sua alma.</h1>
+            <p>
+              O produto já tem identidade, atmosfera e intenção. O principal salto agora não é “deixar mais bonito”, e sim
+              transformar essa ambientação em um sistema visual mais útil, mais legível e mais escalável para um produto que quer
+              ser ferramenta diária de campanha.
+            </p>
+            <div class="hero-points">
+              <div class="pill">Preservar o tom arcano</div>
+              <div class="pill">Reduzir ruído visual</div>
+              <div class="pill">Aumentar escaneabilidade</div>
+              <div class="pill">Melhorar retenção e fluxo</div>
+            </div>
+          </div>
+
+          <aside class="score-panel">
+            <h3>Leitura rápida</h3>
+            <div class="metric">
+              <span>Identidade</span>
+              <div class="bar"><i style="width: 86%"></i></div>
+              <strong>8.6</strong>
+            </div>
+            <div class="metric">
+              <span>Clareza</span>
+              <div class="bar"><i style="width: 62%"></i></div>
+              <strong>6.2</strong>
+            </div>
+            <div class="metric">
+              <span>Densidade</span>
+              <div class="bar"><i style="width: 59%"></i></div>
+              <strong>5.9</strong>
+            </div>
+            <div class="metric">
+              <span>Escala</span>
+              <div class="bar"><i style="width: 66%"></i></div>
+              <strong>6.6</strong>
+            </div>
+            <div class="metric">
+              <span>Direção</span>
+              <div class="bar"><i style="width: 81%"></i></div>
+              <strong>8.1</strong>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Diagnóstico</div>
+          <h2>O que já funciona muito bem</h2>
+        </div>
+        <p>Há uma assinatura visual clara, rara em ferramentas indie. O Arkhiveon transmite universo, cuidado e ambição. Isso é uma base forte para produto.</p>
+      </div>
+
+      <div class="grid-3">
+        <article class="card good pad-lg">
+          <div class="label">Força 01</div>
+          <h3>Personalidade própria</h3>
+          <p>O branding foge do SaaS genérico e já sugere um “grimório digital”, o que combina com o contexto de RPG e cria memorabilidade.</p>
+        </article>
+
+        <article class="card good pad-lg">
+          <div class="label">Força 02</div>
+          <h3>Base de componentes consistente</h3>
+          <p>Botões, cards, tags, shells e navegação já compartilham vocabulário visual. Isso facilita evoluir sem reconstruir o sistema inteiro.</p>
+        </article>
+
+        <article class="card good pad-lg">
+          <div class="label">Força 03</div>
+          <h3>Bom senso de atmosfera</h3>
+          <p>Gradientes, serif display, acentos violetas e superfícies escuras ajudam a contar a história do produto antes mesmo do usuário ler.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Atritos</div>
+          <h2>Onde eu mexeria primeiro</h2>
+        </div>
+        <p>As melhorias prioritárias não são cosméticas: elas atacam clareza de fluxo, legibilidade e o quanto a interface ajuda a organizar informação densa.</p>
+      </div>
+
+      <div class="grid-2">
+        <article class="card problem pad-lg">
+          <div class="label">Problema</div>
+          <h3>Atmosfera às vezes ganha da utilidade</h3>
+          <p>O app usa linguagem editorial forte até em áreas operacionais. Isso deixa a experiência marcante, mas reduz contraste hierárquico em tarefas do dia a dia.</p>
+          <div class="list">
+            <div><span class="dot"></span><span>Display typography e superfícies ricas aparecem onde o usuário só quer escanear e agir rápido.</span></div>
+            <div><span class="dot"></span><span>Cards grandes e arejados funcionam no marketing, mas pesam em coleções e dashboards.</span></div>
+          </div>
+        </article>
+
+        <article class="card warning pad-lg">
+          <div class="label">Problema</div>
+          <h3>Informação importante ainda compete entre si</h3>
+          <p>Na visão geral, métricas, atalhos, coleções e atividade parecem igualmente importantes. Falta uma narrativa mais objetiva de “o que fazer agora”.</p>
+          <div class="list">
+            <div><span class="dot"></span><span>Dashboard repete entradas em formatos parecidos: estatística, card de coleção e CTA convivem sem uma prioridade nítida.</span></div>
+            <div><span class="dot"></span><span>Landing page comunica mood e marca, mas ainda mostra pouco do diferencial operacional do produto.</span></div>
+          </div>
+        </article>
+
+        <article class="card problem pad-lg">
+          <div class="label">Problema</div>
+          <h3>Escaneabilidade pode crescer muito</h3>
+          <p>Um sistema de campanha naturalmente acumula densidade. O próximo nível do Arkhiveon depende de listas, filtros, estados e relações ficarem muito mais rápidas de ler.</p>
+          <div class="list">
+            <div><span class="dot"></span><span>As coleções ainda parecem orientadas por cards genéricos, não por modos de leitura específicos.</span></div>
+            <div><span class="dot"></span><span>Falta diferenciação mais forte entre visão de exploração, visão de gerenciamento e visão de detalhe.</span></div>
+          </div>
+        </article>
+
+        <article class="card warning pad-lg">
+          <div class="label">Problema</div>
+          <h3>O sistema visual ainda não comunica “camadas”</h3>
+          <p>Existe consistência, mas faltam níveis mais claros entre ornamento, produtividade, dados e premium. Hoje muita coisa usa intensidade parecida.</p>
+          <div class="list">
+            <div><span class="dot"></span><span>Mesmo raio, mesma borda e sombra semelhante fazem superfícies diferentes parecerem equivalentes.</span></div>
+            <div><span class="dot"></span><span>O produto precisa de regras mais claras para quando usar magia visual e quando ser quase invisível.</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Direção</div>
+          <h2>North Star de redesign</h2>
+        </div>
+        <p>Minha proposta seria posicionar o Arkhiveon como “dark productivity for storytelling”: menos fantasy decorativa, mais cockpit narrativo.</p>
+      </div>
+
+      <div class="systems">
+        <article class="card pad-md">
+          <div class="label">Princípio 01</div>
+          <h3>Fantasia só onde agrega</h3>
+          <p>Hero, campanhas, detalhes importantes e monetização podem carregar ambientação. Shells, listas e busca devem ficar mais silenciosos.</p>
+        </article>
+
+        <article class="card pad-md">
+          <div class="label">Princípio 02</div>
+          <h3>Produto primeiro</h3>
+          <p>Dashboard precisa responder rápido: onde parei, o que mudou, o que exige ação, e como registrar algo novo em um clique.</p>
+        </article>
+
+        <article class="card pad-md">
+          <div class="label">Princípio 03</div>
+          <h3>Camadas claras</h3>
+          <p>Criar níveis explícitos de superfície: base, utilitária, foco, premium e narrativa. Isso reduz monotonia e melhora orientação.</p>
+        </article>
+
+        <article class="card pad-md">
+          <div class="label">Princípio 04</div>
+          <h3>Densidade adaptativa</h3>
+          <p>Cards onde a emoção importa. Tabela ou lista híbrida onde a comparação importa. Painel lateral onde a relação entre entidades importa.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Exploração visual</div>
+          <h2>Como eu redesenharia a experiência</h2>
+        </div>
+        <p>Em vez de refazer tudo, eu reequilibraria o produto em quatro frentes: shell, dashboard, coleções e detalhe narrativo.</p>
+      </div>
+
+      <div class="mockups">
+        <article class="card mockup">
+          <div class="mockup-top">
+            <div class="browser"><i></i><i></i><i></i></div>
+            <div class="browser-path">arkhiveon.app/dashboard</div>
+          </div>
+          <div class="shell">
+            <div class="sidebar">
+              <div class="sigil">A</div>
+              <div class="nav-dot active"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+              <div class="nav-dot"></div>
+            </div>
+            <div class="content">
+              <div class="command">
+                <div class="command-search">⌘ K · Buscar personagens, sessões, locais e comandos</div>
+                <div class="kpi"><span>Registros</span><strong>128</strong></div>
+                <div class="kpi"><span>Última sessão</span><strong>Ontem</strong></div>
+                <div class="kpi"><span>Alertas</span><strong>03</strong></div>
+              </div>
+
+              <div class="hero-surface">
+                <div class="surface">
+                  <div class="label">Continue daqui</div>
+                  <h4>A Queda de Illyr</h4>
+                  <p>Retome a sessão 14, revise o arco de Elara e veja dois vínculos de lore atualizados desde o último encontro.</p>
+                  <div class="cta-row">
+                    <div class="btn primary">Abrir última sessão</div>
+                    <div class="btn">Adicionar evento</div>
+                  </div>
+                </div>
+                <div class="surface">
+                  <div class="label">Ações rápidas</div>
+                  <div class="chips">
+                    <div class="chip">Nova ficha</div>
+                    <div class="chip">Novo NPC</div>
+                    <div class="chip">Nova sessão</div>
+                    <div class="chip">Subir imagem</div>
+                    <div class="chip">Importar vínculo</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="collection-grid">
+                <div class="entity">
+                  <div class="entity-top">
+                    <div class="avatar"></div>
+                    <div class="tag">5 mudanças</div>
+                  </div>
+                  <div>
+                    <h4>Personagens</h4>
+                    <p>Vista focada em progresso, vínculos e status dramático.</p>
+                  </div>
+                </div>
+                <div class="entity">
+                  <div class="entity-top">
+                    <div class="avatar"></div>
+                    <div class="tag">Próxima</div>
+                  </div>
+                  <div>
+                    <h4>Sessões</h4>
+                    <p>Timeline viva com resumo, cliffhanger e pendências.</p>
+                  </div>
+                </div>
+                <div class="entity">
+                  <div class="entity-top">
+                    <div class="avatar"></div>
+                    <div class="tag">14 vínculos</div>
+                  </div>
+                  <div>
+                    <h4>Lore</h4>
+                    <p>Conexões contextuais como feature principal, não secundária.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card mockup">
+          <div class="mockup-top">
+            <div class="browser"><i></i><i></i><i></i></div>
+            <div class="browser-path">arkhiveon.app/characters/elara-moonveil</div>
+          </div>
+          <div class="content">
+            <div class="detail-layout">
+              <div class="detail-pane">
+                <div class="portrait"></div>
+                <h4>Elara Moonveil</h4>
+                <p>Magista de transmutação · nível 12 · estado narrativo: instável após pacto com o espelho.</p>
+                <div class="stats">
+                  <div class="mini-card"><strong>68</strong><p>Vida</p></div>
+                  <div class="mini-card"><strong>15</strong><p>Defesa</p></div>
+                  <div class="mini-card"><strong>+4</strong><p>INT</p></div>
+                </div>
+              </div>
+
+              <div class="detail-pane">
+                <div class="label">Resumo narrativo</div>
+                <h4>Detalhe como centro de decisão</h4>
+                <p>Eu reorganizaria a tela de entidade em blocos de leitura: visão rápida, relações, eventos recentes e edição contextual. Menos cara de ficha estática, mais sensação de personagem vivo dentro da campanha.</p>
+                <div class="timeline">
+                  <div class="timeline-item">
+                    <strong>Último evento</strong>
+                    <p>Fez um acordo com Nhar-Vel durante a sessão 14 e alterou relação com a facção da Torre Cinza.</p>
+                  </div>
+                  <div class="timeline-item">
+                    <strong>Relações críticas</strong>
+                    <p>3 NPCs, 2 locais e 1 item lendário deveriam aparecer como blocos clicáveis logo no topo.</p>
+                  </div>
+                  <div class="timeline-item">
+                    <strong>Próxima ação</strong>
+                    <p>Adicionar nota de consequência, atualizar status e anexar imagem ou handout direto daqui.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Melhorias concretas</div>
+          <h2>O que eu mudaria em cada área</h2>
+        </div>
+        <p>Essas decisões equilibram branding, UX e custo de implementação. São mudanças com cara de produto, não só de vitrine.</p>
+      </div>
+
+      <div class="grid-2">
+        <article class="card pad-lg">
+          <div class="label">Landing</div>
+          <h3>Mostrar mais “ferramenta” e menos só “mood”</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Trocar parte do hero por uma demonstração real do fluxo: campanha, vínculo entre entidades e recap de sessão.</span></div>
+            <div><span class="dot"></span><span>Explicar o diferencial como sistema de memória de campanha, e não apenas como arquivo bonito.</span></div>
+            <div><span class="dot"></span><span>Trazer uma seção “como funciona” em 3 passos para reduzir abstração.</span></div>
+            <div><span class="dot"></span><span>Deixar planos menos genéricos e mais ligados ao comportamento real de mestres long-form.</span></div>
+          </div>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Dashboard</div>
+          <h3>Virar cockpit narrativo</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Criar uma command bar persistente para busca global, criação rápida e atalhos.</span></div>
+            <div><span class="dot"></span><span>Substituir parte dos cards por um bloco principal de continuidade: última sessão, próximos ganchos e itens “quentes”.</span></div>
+            <div><span class="dot"></span><span>Diferenciar métricas de coleção de tarefas acionáveis para evitar repetição visual.</span></div>
+            <div><span class="dot"></span><span>Usar ambientação forte apenas no destaque da campanha ativa.</span></div>
+          </div>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Coleções</div>
+          <h3>Escaneabilidade acima de ornamentação</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Adicionar modos de visualização por contexto: grade, lista densa e visão relacional.</span></div>
+            <div><span class="dot"></span><span>Reforçar filtros salvos, ordenação e tags de estado narrativo.</span></div>
+            <div><span class="dot"></span><span>Usar thumbnails apenas quando ajudam; em muitos casos, título, status e vínculos importam mais.</span></div>
+            <div><span class="dot"></span><span>Padronizar altura, espaçamento e densidade para reduzir sensação de dashboard “fofo demais”.</span></div>
+          </div>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Detalhe</div>
+          <h3>Menos ficha estática, mais contexto vivo</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Organizar detalhe por camadas: resumo, relações, atividade recente, atributos e edição.</span></div>
+            <div><span class="dot"></span><span>Promover vínculos narrativos ao topo da experiência, porque eles são o verdadeiro diferencial do produto.</span></div>
+            <div><span class="dot"></span><span>Criar blocos colapsáveis para não esmagar leitura quando a ficha crescer.</span></div>
+            <div><span class="dot"></span><span>Adicionar “quick annotate” sem abrir um fluxo inteiro de edição.</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Sistema visual</div>
+          <h2>Refinamentos de design system que eu faria</h2>
+        </div>
+        <p>Aqui está a parte mais “design engineer”: menos novos componentes, mais regras de uso melhores para o que já existe.</p>
+      </div>
+
+      <div class="roadmap">
+        <article class="card pad-lg">
+          <div class="label">Tipografia</div>
+          <h3>Display mais raro e mais precioso</h3>
+          <p>Eu limitaria serif display a campanhas, títulos hero e pontos de storytelling. Em áreas funcionais, fortaleceria Inter e hierarquia por peso, não por ornamento.</p>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Superfícies</div>
+          <h3>5 níveis de intensidade</h3>
+          <p>Base, utilitária, foco, destaque e premium. Cada uma com regras de borda, brilho, blur e contraste. Hoje elas ainda parecem próximas demais.</p>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Raio e sombra</div>
+          <h3>Mais semântica, menos uniformidade</h3>
+          <p>Cards de coleção, painéis de detalhe, overlays e CTAs premium deveriam ter assinaturas diferentes de raio e profundidade.</p>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Busca</div>
+          <h3>Busca como feature principal</h3>
+          <p>O campo de busca atual pode virar um command center com resultados mistos, criação rápida, navegação e ações de contexto.</p>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Movimento</div>
+          <h3>Motion mais orientado a intenção</h3>
+          <p>Menos entrance animation ornamental e mais feedback útil: seleção, estado salvo, foco, movimento lateral entre painéis e continuidade.</p>
+        </article>
+
+        <article class="card pad-lg">
+          <div class="label">Estados</div>
+          <h3>Empty, loading e erro com mais narrativa</h3>
+          <p>Esses estados podem reforçar o universo sem comprometer clareza. Hoje há espaço para uma linguagem mais memorável e mais funcional.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Prioridade</div>
+          <h2>Plano de evolução em 3 ondas</h2>
+        </div>
+        <p>Se eu estivesse atuando no produto, eu faria a transformação em etapas para capturar impacto rápido e reduzir retrabalho.</p>
+      </div>
+
+      <div class="roadmap">
+        <article class="card good pad-lg">
+          <div class="label">Onda 1 · 1 a 2 semanas</div>
+          <h3>Quick wins de clareza</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Repriorizar dashboard.</span></div>
+            <div><span class="dot"></span><span>Refinar densidade das listas.</span></div>
+            <div><span class="dot"></span><span>Reduzir peso ornamental em áreas operacionais.</span></div>
+            <div><span class="dot"></span><span>Melhorar copy e prova de valor na landing.</span></div>
+          </div>
+        </article>
+
+        <article class="card warning pad-lg">
+          <div class="label">Onda 2 · 2 a 4 semanas</div>
+          <h3>Shell e comportamento de produto</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Busca global com comandos.</span></div>
+            <div><span class="dot"></span><span>Novos modos de coleção.</span></div>
+            <div><span class="dot"></span><span>Estrutura de detalhe baseada em contexto.</span></div>
+            <div><span class="dot"></span><span>Sistema de superfícies e densidade.</span></div>
+          </div>
+        </article>
+
+        <article class="card problem pad-lg">
+          <div class="label">Onda 3 · 4+ semanas</div>
+          <h3>Diferencial competitivo</h3>
+          <div class="list">
+            <div><span class="dot"></span><span>Graph view real entre entidades.</span></div>
+            <div><span class="dot"></span><span>Timeline narrativa com consequências.</span></div>
+            <div><span class="dot"></span><span>Templates de campanha e onboarding guiado.</span></div>
+            <div><span class="dot"></span><span>Camadas premium com valor visual e funcional.</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <p class="footer-note">
+        Resumindo: eu não mudaria a alma do Arkhiveon. Eu lapidaria o produto para que a fantasia passasse a servir a utilidade.
+        O potencial mais forte aqui é virar uma ferramenta de memória narrativa com cara premium, não apenas um app bonito de anotações.
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
