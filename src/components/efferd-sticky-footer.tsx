@@ -1,20 +1,10 @@
 import {
 	ArrowUpRight,
 	BookOpen,
-	Instagram,
-	Linkedin,
-	type LucideIcon,
 	Mail,
-	Monitor,
-	Moon,
-	Sun,
-	Twitch,
-	Twitter,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-
-type ThemeMode = "system" | "light" | "dark";
 
 type FooterLink = {
 	label: string;
@@ -33,64 +23,184 @@ const footerLinkGroups: FooterLinkGroup[] = [
 			{ label: "Entrar", href: "/auth?mode=login" },
 			{ label: "Criar conta", href: "/auth?mode=register" },
 			{ label: "Planos", href: "/billing" },
-			{ label: "Status", href: "/" },
 		],
 	},
 	{
 		label: "Legal",
 		links: [
-			{ label: "Política LGPD", href: "/" },
-			{ label: "Privacidade", href: "/" },
-			{ label: "Termos", href: "/" },
+			{ label: "Privacidade", href: "/privacy" },
+			{ label: "Termos", href: "/terms" },
 		],
 	},
 ];
 
-const socialLinks: Array<{
-	label: string;
-	href: string;
-	Icon: LucideIcon;
-}> = [
-	{ label: "Instagram", href: "https://www.instagram.com", Icon: Instagram },
-	{ label: "X (Twitter)", href: "https://x.com", Icon: Twitter },
-	{ label: "Twitch", href: "https://www.twitch.tv", Icon: Twitch },
-	{ label: "LinkedIn", href: "https://www.linkedin.com", Icon: Linkedin },
-];
+function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
+	return (
+		<svg
+			viewBox="0 0 127.14 96.36"
+			fill="currentColor"
+			role="img"
+			aria-label="Discord"
+			{...props}
+		>
+			<path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,52.8,6.83,77.19,77.19,0,0,0,49.5,0,105.15,105.15,0,0,0,19.06,8.07C3.58,31.21-1.92,53.7,1,75.87a107.94,107.94,0,0,0,32,16.15,86.23,86.23,0,0,0,6.72-11A72.82,72.82,0,0,1,25,74.55c.9-.66,1.8-1.34,2.66-2a74.75,74.75,0,0,0,79,0c.87.69,1.76,1.37,2.66,2a72.82,72.82,0,0,1-14.73,6.51,86.23,86.23,0,0,0,6.72,11,107.94,107.94,0,0,0,32-16.15C129.8,49.12,123.63,26.83,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.35,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
+		</svg>
+	);
+}
 
 export function EfferdStickyFooter() {
-	const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-		if (typeof window === "undefined") return "dark";
-		const stored = window.localStorage.getItem("arkhiveon-theme");
-		return stored === "system" || stored === "light" || stored === "dark"
-			? stored
-			: "dark";
-	});
+	const overlayRef = useRef<HTMLDivElement>(null);
+	const interactionRef = useRef<HTMLDivElement>(null);
+	const [isMobile, setIsMobile] = useState(false);
 
 	useEffect(() => {
-		const media = window.matchMedia("(prefers-color-scheme: dark)");
+		// App defaults to dark mode
+		document.body.classList.add("dark");
+		document.documentElement.style.colorScheme = "dark";
+	}, []);
 
-		function applyTheme() {
-			const shouldUseDark =
-				themeMode === "dark" || (themeMode === "system" && media.matches);
+	useEffect(() => {
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth < 768);
+		};
+		checkMobile();
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, []);
 
-			document.body.classList.toggle("dark", shouldUseDark);
-			document.documentElement.style.colorScheme = shouldUseDark
-				? "dark"
-				: "light";
-			window.localStorage.setItem("arkhiveon-theme", themeMode);
-		}
+	useEffect(() => {
+		const interaction = interactionRef.current;
+		const overlay = overlayRef.current;
+		if (!interaction || !overlay || isMobile) return;
 
-		applyTheme();
-		media.addEventListener("change", applyTheme);
+		const onMouseMove = (e: MouseEvent) => {
+			const rect = interaction.getBoundingClientRect();
+			const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+			const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+			
+			overlay.style.opacity = "1";
+			const mask = `radial-gradient(circle 180px at ${xPercent}% ${yPercent}%, black 10%, transparent 80%)`;
+			overlay.style.maskImage = mask;
+			overlay.style.webkitMaskImage = mask;
+		};
+
+		const onMouseLeave = () => {
+			overlay.style.opacity = "0";
+		};
+
+		interaction.addEventListener("mousemove", onMouseMove);
+		interaction.addEventListener("mouseleave", onMouseLeave);
 
 		return () => {
-			media.removeEventListener("change", applyTheme);
+			interaction.removeEventListener("mousemove", onMouseMove);
+			interaction.removeEventListener("mouseleave", onMouseLeave);
 		};
-	}, [themeMode]);
+	}, [isMobile]);
+
+	if (isMobile) {
+		return (
+			<footer className="relative z-10 w-full border-t border-border/70 bg-card text-foreground py-10 px-6">
+				<div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-8 text-center">
+					{/* Brand */}
+					<div className="flex flex-col items-center gap-3">
+						<a href="/" className="inline-flex items-center gap-3">
+							<span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+								<BookOpen className="h-4.5 w-4.5" strokeWidth={2.1} />
+							</span>
+							<span className="text-xl font-bold tracking-tight">
+								Arkhiveon
+							</span>
+						</a>
+						<p className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">
+							Um grimório digital para
+							<br />
+							organizar campanhas, personagens e mundos.
+						</p>
+					</div>
+
+					{/* Links */}
+					<div className="grid grid-cols-2 gap-8 w-full max-w-sm">
+						{footerLinkGroups.map((group) => (
+							<div key={group.label} className="flex flex-col items-center gap-3">
+								<h2 className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+									{group.label}
+								</h2>
+								<ul className="space-y-2">
+									{group.links.map((link) => (
+										<li key={link.label}>
+											<a
+												href={link.href}
+												className="text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
+											>
+												{link.label}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						))}
+					</div>
+
+					{/* Social & Contact */}
+					<div className="flex flex-col items-center gap-4">
+						<h2 className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
+							Social
+						</h2>
+						<a
+							href="https://discord.gg/Fd4XEDYBP"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="Discord"
+							className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+						>
+							<DiscordIcon className="h-4.5 w-4.5" />
+						</a>
+
+						<a
+							href="mailto:contato@arkhiveon.com"
+							className="inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+						>
+							<Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
+							contato@arkhiveon.com
+						</a>
+					</div>
+
+					{/* Divider */}
+					<div className="w-full border-t border-border/70 my-2" />
+
+					{/* Action Buttons */}
+					<div className="flex flex-col gap-3 w-full max-w-xs">
+						<a
+							href="/dashboard"
+							className={buttonVariants({
+								className: "h-10 w-full gap-2 px-4 text-[12px] font-black justify-center",
+							})}
+						>
+							Abrir arquivo
+							<ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+						</a>
+						<a
+							href="/characters"
+							className={buttonVariants({
+								variant: "outline",
+								className: "h-10 w-full px-4 text-[12px] font-black justify-center",
+							})}
+						>
+							Ver personagens
+						</a>
+					</div>
+
+					<p className="text-[11px] font-semibold text-muted-foreground">
+						&copy; 2026 Arkhiveon. Todos os direitos reservados.
+					</p>
+				</div>
+			</footer>
+		);
+	}
 
 	return (
 		<footer
-			className="relative z-10 h-[var(--footer-height)] w-full border-t border-border/70 bg-card text-foreground [--footer-height:1100px] sm:[--footer-height:960px] md:[--footer-height:740px] xl:[--footer-height:620px]"
+			className="relative z-10 h-[var(--footer-height)] w-full border-t border-border/70 bg-card text-foreground [--footer-height:760px] sm:[--footer-height:680px] md:[--footer-height:500px] xl:[--footer-height:440px]"
 			style={{ clipPath: "polygon(0% 0, 100% 0%, 100% 100%, 0 100%)" }}
 		>
 			<div className="fixed bottom-0 left-0 h-[var(--footer-height)] w-full">
@@ -107,29 +217,29 @@ export function EfferdStickyFooter() {
 
 					{/* ── Main content ── */}
 					<div className="relative z-10 px-6 sm:px-10 lg:px-14">
-						<div className="mx-auto w-full max-w-[92rem] pt-10 sm:pt-12 lg:pt-14">
+						<div className="mx-auto w-full max-w-5xl pt-6 sm:pt-8 lg:pt-10">
 							{/* 4-column grid: brand | conta | legal | social */}
-							<div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
 								{/* Brand + CTA */}
-								<AnimatedContainer className="space-y-7">
+								<AnimatedContainer className="space-y-4">
 									<a href="/" className="inline-flex w-fit items-center gap-3">
-										<span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_12px_28px_-22px_var(--primary)]">
-											<BookOpen className="h-5 w-5" strokeWidth={2.1} />
+										<span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_8px_20px_-16px_var(--primary)]">
+											<BookOpen className="h-4.5 w-4.5" strokeWidth={2.1} />
 										</span>
-										<span className="text-3xl font-bold tracking-tight">
+										<span className="text-xl font-bold tracking-tight">
 											Arkhiveon
 										</span>
 									</a>
 
 									<div>
-										<p className="max-w-md font-display text-[clamp(2rem,4vw,4.1rem)] font-black leading-[0.9] text-foreground">
+										<p className="max-w-md font-display text-[1.4rem] sm:text-[1.6rem] font-black leading-[0.9] text-foreground">
 											Pronto para a{" "}
 											<span className="text-primary">aventura?</span>
 										</p>
-										<p className="mt-5 max-w-sm text-[15px] font-semibold leading-6 text-muted-foreground">
-											Um arquivo vivo para organizar
+										<p className="mt-2.5 max-w-sm text-[13px] font-semibold leading-5 text-muted-foreground">
+											Um grimório digital para
 											<br />
-											campanhas, personagens e mundos.
+											organizar campanhas, personagens e mundos.
 										</p>
 									</div>
 								</AnimatedContainer>
@@ -143,14 +253,14 @@ export function EfferdStickyFooter() {
 										<h2 className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
 											{group.label}
 										</h2>
-										<ul className="mt-5 space-y-2.5">
+										<ul className="mt-3.5 space-y-2">
 											{group.links.map((link) => (
 												<li key={link.label}>
 													<a
 														href={link.href}
-														className="group inline-flex items-center gap-2 text-[14px] font-semibold text-foreground transition-colors hover:text-primary"
+														className="group inline-flex items-center gap-2 text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
 													>
-														<span className="h-px w-4 bg-border-hover transition-all group-hover:w-6 group-hover:bg-primary" />
+														<span className="h-px w-3 bg-border-hover transition-all group-hover:w-5 group-hover:bg-primary" />
 														{link.label}
 													</a>
 												</li>
@@ -159,146 +269,124 @@ export function EfferdStickyFooter() {
 									</AnimatedContainer>
 								))}
 
-								{/* Social + theme + email */}
-								<AnimatedContainer className="flex flex-col gap-5" delay={0.3}>
+								{/* Social + email */}
+								<AnimatedContainer className="flex flex-col gap-4" delay={0.3}>
 									<h2 className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
 										Social
 									</h2>
 									<ul className="flex flex-wrap gap-2">
-										{socialLinks.map(({ label, href, Icon }) => (
-											<li key={label}>
-												<a
-													href={href}
-													aria-label={label}
-													className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
-												>
-													<Icon className="h-4 w-4" strokeWidth={1.8} />
-												</a>
-											</li>
-										))}
+										<li>
+											<a
+												href="https://discord.gg/Fd4XEDYBP"
+												target="_blank"
+												rel="noopener noreferrer"
+												aria-label="Discord"
+												className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+											>
+												<DiscordIcon className="h-4 w-4" />
+											</a>
+										</li>
 									</ul>
-
-									<div className="flex w-fit items-center gap-1 rounded-2xl border border-border/70 bg-background/55 p-1 text-muted-foreground shadow-sm shadow-black/5">
-										<ThemeButton
-											active={themeMode === "system"}
-											label="Tema do sistema"
-											onClick={() => setThemeMode("system")}
-										>
-											<Monitor className="h-4 w-4" strokeWidth={1.8} />
-										</ThemeButton>
-										<ThemeButton
-											active={themeMode === "light"}
-											label="Tema claro"
-											onClick={() => setThemeMode("light")}
-										>
-											<Sun className="h-4 w-4" strokeWidth={1.8} />
-										</ThemeButton>
-										<ThemeButton
-											active={themeMode === "dark"}
-											label="Tema escuro"
-											onClick={() => setThemeMode("dark")}
-										>
-											<Moon className="h-4 w-4" strokeWidth={1.8} />
-										</ThemeButton>
-									</div>
 
 									<a
 										href="mailto:contato@arkhiveon.com"
 										className="inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-primary"
 									>
-										<Mail className="h-4 w-4" strokeWidth={1.8} />
+										<Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
 										contato@arkhiveon.com
 									</a>
 								</AnimatedContainer>
 							</div>
 
 							{/* Separator */}
-							<div className="mt-10 border-t border-border/70" />
+							<div className="mt-6 border-t border-border/70" />
 
 							{/* Bottom bar: Buttons + Copyright */}
-							<div className="mt-5 flex flex-wrap items-center justify-between gap-4 pb-5">
+							<div className="mt-4 flex flex-wrap items-center justify-between gap-4 pb-4">
 								<div className="flex flex-wrap items-center gap-3">
 									<a
 										href="/dashboard"
 										className={buttonVariants({
-											className: "h-11 gap-2 px-5 text-[13px] font-black",
+											className: "h-9.5 gap-2 px-4 text-[12px] font-black",
 										})}
 									>
 										Abrir arquivo
-										<ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+										<ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
 									</a>
 									<a
 										href="/characters"
 										className={buttonVariants({
 											variant: "outline",
-											className: "h-11 px-5 text-[13px] font-black",
+											className: "h-9.5 px-4 text-[12px] font-black",
 										})}
 									>
 										Ver personagens
 									</a>
 								</div>
-								<p className="text-[13px] font-semibold text-muted-foreground">
+								<p className="text-[12px] font-semibold text-muted-foreground">
 									&copy; 2026 Arkhiveon. Todos os direitos reservados.
 								</p>
 							</div>
 						</div>
 					</div>
-
 					{/* ── Decorative ARKHIVEON wordmark ── */}
 					<div
 						aria-hidden="true"
-						className="pointer-events-none absolute inset-x-0 bottom-0 z-0 translate-y-[30%] overflow-hidden px-6 sm:px-10 lg:px-14"
+						className="pointer-events-none absolute inset-x-0 bottom-0 z-0 translate-y-[30%] overflow-hidden px-6 sm:px-10 lg:px-14 select-none"
 					>
-						<div className="mx-auto w-full max-w-[92rem]">
+						<div className="mx-auto w-full max-w-[1400px] relative">
 							<svg
-								viewBox="0 0 1400 240"
-								className="h-auto w-full overflow-visible text-primary/14 dark:text-primary/20"
+								viewBox="0 0 2400 350"
+								className="h-auto w-full overflow-visible text-white/[0.03]"
 								role="img"
 								aria-label="Arkhiveon"
 							>
 								<title>Arkhiveon</title>
 								<text
-									x="700"
-									y="210"
-									textLength="1340"
-									lengthAdjust="spacingAndGlyphs"
+									x="1200"
+									y="315"
 									textAnchor="middle"
-									className="fill-current font-display text-[250px] font-black"
+									className="fill-current font-display text-[460px] font-black"
 								>
 									Arkhiveon
 								</text>
 							</svg>
+
+							{/* Glowing Purple Spotlight Overlay Wrapper (HTML DIV) */}
+							<div
+								ref={overlayRef}
+								className="absolute inset-0 transition-opacity duration-300 pointer-events-none opacity-0"
+								style={{
+									maskImage: "radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
+									WebkitMaskImage: "radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
+								}}
+							>
+								<svg
+									viewBox="0 0 2400 350"
+									className="h-auto w-full overflow-visible text-purple-500/80"
+									role="presentation"
+								>
+									<text
+										x="1200"
+										y="315"
+										textAnchor="middle"
+										className="fill-current font-display text-[460px] font-black"
+									>
+										Arkhiveon
+									</text>
+								</svg>
+							</div>
+
+							{/* Transparent Interaction Cover (HTML DIV) */}
+							<div
+								ref={interactionRef}
+								className="absolute inset-0 z-10 pointer-events-auto cursor-default"
+							/>
 						</div>
 					</div>
 				</div>
 			</div>
 		</footer>
-	);
-}
-
-function ThemeButton({
-	active,
-	children,
-	label,
-	onClick,
-}: {
-	active: boolean;
-	children: ReactNode;
-	label: string;
-	onClick: () => void;
-}) {
-	return (
-		<button
-			type="button"
-			aria-label={label}
-			aria-pressed={active}
-			className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-muted hover:text-foreground ${
-				active ? "bg-primary/12 text-primary ring-1 ring-primary/25" : ""
-			}`}
-			onClick={onClick}
-		>
-			{children}
-		</button>
 	);
 }
 

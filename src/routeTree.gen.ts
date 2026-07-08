@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SpotifyCallbackRouteImport } from './routes/spotify-callback'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as FamilyTreeRouteImport } from './routes/family-tree'
 import { Route as ErrorPreviewRouteImport } from './routes/error-preview'
@@ -35,6 +37,11 @@ import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
 import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
 import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
   id: '/spotify-callback',
   path: '/spotify-callback',
@@ -43,6 +50,11 @@ const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImagesRoute = ImagesRouteImport.update({
@@ -171,8 +183,10 @@ export interface FileRoutesByFullPath {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/terms': typeof TermsRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -198,8 +212,10 @@ export interface FileRoutesByTo {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/terms': typeof TermsRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -226,8 +242,10 @@ export interface FileRoutesById {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
+  '/terms': typeof TermsRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -255,8 +273,10 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/privacy'
     | '/settings'
     | '/spotify-callback'
+    | '/terms'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -282,8 +302,10 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/privacy'
     | '/settings'
     | '/spotify-callback'
+    | '/terms'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -309,8 +331,10 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/privacy'
     | '/settings'
     | '/spotify-callback'
+    | '/terms'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -337,8 +361,10 @@ export interface RootRouteChildren {
   ErrorPreviewRoute: typeof ErrorPreviewRoute
   FamilyTreeRoute: typeof FamilyTreeRoute
   ImagesRoute: typeof ImagesRoute
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SpotifyCallbackRoute: typeof SpotifyCallbackRoute
+  TermsRoute: typeof TermsRoute
   ItemsItemIdRoute: typeof ItemsItemIdRoute
   LocationsLocationIdRoute: typeof LocationsLocationIdRoute
   LoreLoreIdRoute: typeof LoreLoreIdRoute
@@ -357,6 +383,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/spotify-callback': {
       id: '/spotify-callback'
       path: '/spotify-callback'
@@ -369,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/images': {
@@ -545,8 +585,10 @@ const rootRouteChildren: RootRouteChildren = {
   ErrorPreviewRoute: ErrorPreviewRoute,
   FamilyTreeRoute: FamilyTreeRoute,
   ImagesRoute: ImagesRoute,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SpotifyCallbackRoute: SpotifyCallbackRoute,
+  TermsRoute: TermsRoute,
   ItemsItemIdRoute: ItemsItemIdRoute,
   LocationsLocationIdRoute: LocationsLocationIdRoute,
   LoreLoreIdRoute: LoreLoreIdRoute,
