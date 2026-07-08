@@ -388,6 +388,8 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 											icon={
 												n.variant === "success" ? (
 													<CheckCircle2 className="h-3 w-3 text-emerald-400" />
+												) : n.title.startsWith("Novo") ? (
+													<Sparkles className="h-3 w-3 text-purple-400" />
 												) : (
 													<Info className="h-3 w-3 text-blue-400" />
 												)
