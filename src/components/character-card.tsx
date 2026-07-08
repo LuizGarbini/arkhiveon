@@ -93,8 +93,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const abilities = (sysConfig.attributes || []).map((attr) => {
 		const val = isStandardKey(attr.key)
 			? (currentCharacter as any)[attr.key]
-			: (currentCharacter.systemAttributes?.[attr.key] ?? 10);
-		return { label: attr.label, value: Number(val) || 10 };
+			: (currentCharacter.systemAttributes?.[attr.key] ?? 0);
+		return { label: attr.label, value: Number(val) || 0 };
 	});
 
 	const characterImageUrl = resolveCharacterImageUrl(
@@ -118,7 +118,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<Link
 				to="/sheets/$characterId"
 				params={{ characterId: character.id }}
-				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
+				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 h-full min-h-[420px]"
 			>
 				<EntityActions
 					onEdit={() =>
@@ -149,7 +149,6 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							<User className="h-12 w-12" strokeWidth={1.4} />
 						</div>
 					)}
-					<div className="absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
 					{/* Camera overlay button */}
 					<button
 						type="button"
@@ -167,6 +166,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					>
 						<Camera className="h-6 w-6 drop-shadow" />
 					</button>
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
 					{/* Persistent camera hint when no image */}
 					{!hasImage && (
 						<button
@@ -268,7 +268,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 					{/* Abilities row */}
 					<div
-						className={`mt-3 grid gap-1 border-t border-border/60 pt-3 ${abilities.length >= 8 ? "grid-cols-4 sm:grid-cols-4" : abilities.length === 9 ? "grid-cols-3" : "grid-cols-6"}`}
+						className={`mt-3 grid gap-1 border-t border-border/60 pt-3 min-h-[96px] content-start ${abilities.length >= 8 ? "grid-cols-4 sm:grid-cols-4" : abilities.length === 9 ? "grid-cols-3" : "grid-cols-6"}`}
 					>
 						{abilities.map((a) => {
 							const mod = abilityModifier(a.value);
@@ -292,10 +292,12 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						})}
 					</div>
 
-					{character.background && (
-						<p className="mt-3 line-clamp-2 border-t border-border/60 pt-2.5 text-[11px] italic text-muted-foreground">
+					{character.background ? (
+						<p className="mt-auto line-clamp-2 border-t border-border/60 pt-2.5 text-[11px] italic text-muted-foreground">
 							"{character.background}"
 						</p>
+					) : (
+						<div className="mt-auto" />
 					)}
 				</div>
 			</Link>

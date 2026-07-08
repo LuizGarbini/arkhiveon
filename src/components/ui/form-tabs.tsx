@@ -135,25 +135,30 @@ export function FormTabs({ tabs, value, onChange }: FormTabsProps) {
 interface FormSectionProps {
 	title: string;
 	description?: string;
+	action?: React.ReactNode;
 	children: React.ReactNode;
 }
 
 export function FormSection({
 	title,
 	description,
+	action,
 	children,
 }: FormSectionProps) {
 	return (
 		<section className="space-y-3">
-			<div>
-				<h4 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground heading-rule">
-					{title}
-				</h4>
-				{description && (
-					<p className="mt-2 text-[12px] text-muted-foreground">
-						{description}
-					</p>
-				)}
+			<div className="flex items-center justify-between gap-4">
+				<div className="flex-1 min-w-0">
+					<h4 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground heading-rule">
+						{title}
+					</h4>
+					{description && (
+						<p className="mt-2 text-[12px] text-muted-foreground">
+							{description}
+						</p>
+					)}
+				</div>
+				{action && <div className="shrink-0">{action}</div>}
 			</div>
 			<div className="space-y-3">{children}</div>
 		</section>

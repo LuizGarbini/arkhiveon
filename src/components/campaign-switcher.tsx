@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
-import type { Campaign } from "@/lib/store/types";
+import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { CampaignForm } from "./campaign-form";
 import { Button } from "./ui/button";
@@ -30,6 +30,28 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+
+function RoleBadge({ role }: { role: MembershipRole | undefined }) {
+	if (role === "owner") {
+		return (
+			<span className="inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-bold text-amber-500 border border-amber-500/20 shadow-xs">
+				Mestre
+			</span>
+		);
+	}
+	if (role === "editor") {
+		return (
+			<span className="inline-flex shrink-0 items-center rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[8px] font-bold text-blue-500 border border-blue-500/20 shadow-xs">
+				Co-Mestre
+			</span>
+		);
+	}
+	return (
+		<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-bold text-indigo-400 border border-indigo-500/20 shadow-xs">
+			Jogador
+		</span>
+	);
+}
 
 interface CampaignSwitcherProps {
 	isCollapsed: boolean;
@@ -116,11 +138,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							<span className="truncate text-[12px] font-bold text-foreground">
 								{activeCampaign?.name ?? "Sem campanha"}
 							</span>
-							{activeCampaign && activeCampaign.myRole !== "owner" && (
-								<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
-									Jogador
-								</span>
-							)}
+							{activeCampaign && <RoleBadge role={activeCampaign.myRole} />}
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeCampaign?.description || "Campanha ativa"}
@@ -176,11 +194,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 												<span className="truncate text-[12px] font-semibold">
 													{campaign.name}
 												</span>
-												{campaign.myRole !== "owner" && (
-													<span className="inline-flex shrink-0 items-center rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-semibold text-indigo-400 border border-indigo-500/10">
-														Jogador
-													</span>
-												)}
+												<RoleBadge role={campaign.myRole} />
 											</div>
 											{campaign.description && (
 												<span className="truncate text-[10px] text-muted-foreground">
@@ -249,7 +263,8 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 
 					<DropdownMenuItem
 						onClick={() => {
-							if (campaigns.length >= maxCampaigns) {
+							const ownedCampaignsCount = campaigns.filter((c) => c.myRole === "owner").length;
+							if (ownedCampaignsCount >= maxCampaigns) {
 								toast.error({
 									title: "Limite Atingido",
 									description: `Você atingiu o limite de ${maxCampaigns} campanhas no plano ${userPlan === "pro" ? "Pro" : "Free"}.`,

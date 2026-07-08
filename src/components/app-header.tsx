@@ -80,13 +80,8 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 		const lastSeenId = localStorage.getItem("arkhiveon_last_seen_update");
 		if (latestUpdateId && lastSeenId !== latestUpdateId) {
 			setHasUnreadUpdates(true);
-			if (user) {
-				setIsChangelogOpen(true);
-				localStorage.setItem("arkhiveon_last_seen_update", latestUpdateId);
-				setHasUnreadUpdates(false);
-			}
 		}
-	}, [user, latestUpdateId]);
+	}, [latestUpdateId]);
 
 	const lastNotificationRef = useRef<string | null>(null);
 
