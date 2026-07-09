@@ -72,36 +72,38 @@ function RouteComponent() {
 				}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout onSearch={setSearchQuery} />
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{isLoading
-						? loadingCardKeys.map((key, i) => (
-								<div
-									key={key}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<CharacterCard isLoading />
-								</div>
-							))
-						: filteredCharacters.map((character, i) => (
-								<div
-									key={character.id}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<CharacterCard character={character} />
-								</div>
-							))}
-					{!isLoading && filteredCharacters.length === 0 && (
-						<EmptyState
-							Icon={User}
-							title="Nenhum personagem encontrado"
-							description="Crie seu primeiro personagem para começar a organizar os dados de jogo."
-						/>
-					)}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{isLoading
+							? loadingCardKeys.map((key, i) => (
+									<div
+										key={key}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<CharacterCard isLoading />
+									</div>
+								))
+							: filteredCharacters.map((character, i) => (
+									<div
+										key={character.id}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<CharacterCard character={character} />
+									</div>
+								))}
+						{!isLoading && filteredCharacters.length === 0 && (
+							<EmptyState
+								Icon={User}
+								title="Nenhum personagem encontrado"
+								description="Crie seu primeiro personagem para começar a organizar os dados de jogo."
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
