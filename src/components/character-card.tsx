@@ -130,7 +130,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<Link
 				to="/sheets/$characterId"
 				params={{ characterId: character.id }}
-				className="group relative flex min-h-[340px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
+				className="group relative flex min-h-[340px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
 			>
 				{/* Imagem de Fundo (Full Bleed) */}
 				<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
