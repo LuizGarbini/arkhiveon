@@ -77,7 +77,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 	if (isLoading || !character) {
 		return (
-			<div className="relative flex h-[360px] flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-black/40 p-5 shadow-lg animate-pulse">
+			<div className="relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
 				{/* Top header skeleton */}
 				<div className="space-y-2.5 pt-1">
 					<div className="h-5 w-1/2 rounded-md bg-white/10" />
@@ -85,22 +85,22 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					<div className="h-4 w-1/4 rounded-md bg-white/5 mt-1" />
 				</div>
 				{/* Bottom stats skeleton */}
-				<div className="flex items-center justify-between border-t border-white/5 pt-4">
-					<div className="flex gap-4">
+				<div className="space-y-3 border-t border-white/5 pt-4">
+					<div className="grid grid-cols-3 gap-2 text-center">
 						<div className="space-y-1">
-							<div className="h-5 w-8 rounded bg-white/10" />
-							<div className="h-2 w-10 rounded bg-white/5" />
+							<div className="h-4 w-8 mx-auto rounded bg-white/10" />
+							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
 						</div>
 						<div className="space-y-1">
-							<div className="h-5 w-8 rounded bg-white/10" />
-							<div className="h-2 w-10 rounded bg-white/5" />
+							<div className="h-4 w-8 mx-auto rounded bg-white/10" />
+							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
 						</div>
 						<div className="space-y-1">
-							<div className="h-5 w-12 rounded bg-white/10" />
-							<div className="h-2 w-10 rounded bg-white/5" />
+							<div className="h-4 w-12 mx-auto rounded bg-white/10" />
+							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
 						</div>
 					</div>
-					<div className="h-7 w-20 rounded-full bg-white/15" />
+					<div className="h-8 w-full rounded-full bg-white/10" />
 				</div>
 			</div>
 		);
@@ -130,7 +130,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 			<Link
 				to="/sheets/$characterId"
 				params={{ characterId: character.id }}
-				className="group relative flex h-[360px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-purple-500/10 active:scale-[0.985]"
+				className="group relative flex min-h-[340px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
 			>
 				{/* Imagem de Fundo (Full Bleed) */}
 				<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
@@ -188,30 +188,30 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 				{/* Estatísticas e Botão na Base (Inspirado na imagem) */}
 				<div className="p-4 pb-5 space-y-4">
-					<div className="flex items-center justify-between gap-2 border-t border-white/10 pt-4">
+					<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
 						{/* Estatísticas */}
-						<div className="flex gap-4">
+						<div className="grid grid-cols-3 gap-2 text-center">
 							<div className="flex flex-col">
-								<span className="text-lg font-bold text-white leading-none">
+								<span className="text-base font-bold text-white leading-none">
 									{character.armorClass || 10}
 								</span>
-								<span className="text-[9px] text-white/50 uppercase tracking-wider mt-1">
+								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
 									Defesa (CA)
 								</span>
 							</div>
 							<div className="flex flex-col">
-								<span className="text-lg font-bold text-white leading-none">
+								<span className="text-base font-bold text-white leading-none">
 									{formatModifier(character.initiative)}
 								</span>
-								<span className="text-[9px] text-white/50 uppercase tracking-wider mt-1">
+								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
 									Iniciativa
 								</span>
 							</div>
 							<div className="flex flex-col">
-								<span className="text-lg font-bold text-white leading-none">
+								<span className="text-base font-bold text-white leading-none truncate">
 									{character.health}/{character.healthMax || 10}
 								</span>
-								<span className="text-[9px] text-white/50 uppercase tracking-wider mt-1">
+								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
 									Pontos Vida
 								</span>
 							</div>
@@ -220,7 +220,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						{/* Botão de Ação */}
 						<button
 							type="button"
-							className="rounded-full bg-white/85 px-4 py-1.5 text-xs font-semibold text-black shadow-md backdrop-blur-md transition-all hover:bg-white hover:shadow-lg active:scale-95 whitespace-nowrap"
+							className="w-full rounded-full bg-white/85 py-1.5 text-xs font-semibold text-black shadow-md backdrop-blur-md transition-all hover:bg-white hover:shadow-lg active:scale-95 whitespace-nowrap text-center"
 						>
 							Abrir Ficha
 						</button>
