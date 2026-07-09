@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Plus, User } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { CharacterCard } from "@/components/character-card";
 import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
@@ -20,9 +20,32 @@ const loadingCardKeys = [
 ];
 
 function RouteComponent() {
+	const search = useSearch({ strict: false });
+	const variant = ((search as any).variant as "A" | "B") || "A";
+	const navigate = useNavigate({ from: Route.fullPath });
 	const characters = useRPGStore((state) => state.characters);
 	const activeCampaignRole = useActiveCampaignRole();
 	const isViewer = activeCampaignRole === "viewer";
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+				const activeTag = document.activeElement?.tagName.toLowerCase();
+				if (activeTag === "input" || activeTag === "textarea") return;
+
+				e.preventDefault();
+				void navigate({
+					to: ".",
+					search: (prev: any) => ({
+						...prev,
+						variant: variant === "B" ? "A" : "B",
+					}),
+				});
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [variant, navigate]);
+
 	const [searchQuery, setSearchQuery] = useState("");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -82,7 +105,7 @@ function RouteComponent() {
 									className="t-stagger-item"
 									style={{ "--stagger-index": i } as React.CSSProperties}
 								>
-									<CharacterCard isLoading />
+									<CharacterCard isLoading variant={variant} />
 								</div>
 							))
 						: filteredCharacters.map((character, i) => (
@@ -91,7 +114,7 @@ function RouteComponent() {
 									className="t-stagger-item"
 									style={{ "--stagger-index": i } as React.CSSProperties}
 								>
-									<CharacterCard character={character} />
+									<CharacterCard character={character} variant={variant} />
 								</div>
 							))}
 					{!isLoading && filteredCharacters.length === 0 && (
@@ -103,6 +126,31 @@ function RouteComponent() {
 					)}
 				</div>
 			</div>
+
+			{/* Prototype Switcher - Ocultado em produção */}
+			{process.env.NODE_ENV !== "production" && (
+				<div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/10 bg-black/85 px-4 py-2.5 text-xs text-white shadow-xl backdrop-blur-md select-none">
+					<button
+						type="button"
+						onClick={() => void navigate({ to: ".", search: (prev: any) => ({ ...prev, variant: variant === "B" ? "A" : "B" }) })}
+						className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+						title="Anterior"
+					>
+						←
+					</button>
+					<span className="font-semibold px-1">
+						Protótipo: {variant === "A" ? "A — Clássico" : "B — Full Bleed Cover (Inspirado no Mockup)"}
+					</span>
+					<button
+						type="button"
+						onClick={() => void navigate({ to: ".", search: (prev: any) => ({ ...prev, variant: variant === "B" ? "A" : "B" }) })}
+						className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+						title="Próximo"
+					>
+						→
+					</button>
+				</div>
+			)}
 		</div>
 	);
 }
