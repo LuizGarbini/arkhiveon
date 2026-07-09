@@ -11,6 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.3.5-realtime-notifications",
+		version: "1.3.5",
+		date: "09/07/2026",
+		title: "Notificações em Tempo Real Otimizadas!",
+		description:
+			"Melhoramos a estabilidade da sincronização colaborativa. Agora os jogadores recebem alertas visuais e atualizações em tempo real instantaneamente assim que o mestre ou co-mestre cria algo na campanha.",
+		bullets: [
+			"Sincronização reativa inteligente do WebSocket que se adapta dinamicamente ao trocar de campanha.",
+			"Alertas de Toast e incremento visual instantâneo no sino de notificações quando novos itens são criados na campanha.",
+			"Correção de compatibilidade RLS com o mecanismo Realtime do Supabase, garantindo a entrega perfeita dos eventos para todos os membros.",
+			"Novo indicador visual (ícone de Brilhos roxo) no menu de notificações para sinalizar criações colaborativas.",
+		],
+	},
+	{
 		id: "v1.3.0-feats-dnd35",
 		version: "1.3.0",
 		date: "30/06/2026",
