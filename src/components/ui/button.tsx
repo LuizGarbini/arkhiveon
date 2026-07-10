@@ -103,7 +103,7 @@ function Button({
 
 	const hasTransition = loadingText !== undefined;
 	const content = hasTransition ? (
-		<span className={cn("t-text-swap inline-block", stateClass)}>
+		<span className={cn("t-text-swap inline-flex items-center justify-center gap-1.5", stateClass)}>
 			{text}
 		</span>
 	) : (

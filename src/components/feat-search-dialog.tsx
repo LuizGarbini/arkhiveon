@@ -1,4 +1,13 @@
-import { BookOpen, Check, Plus, Search, Sparkles } from "lucide-react";
+import {
+	BookOpen,
+	Check,
+	Compass,
+	Plus,
+	ScrollText,
+	Search,
+	Shield,
+	Sparkles,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -427,60 +436,76 @@ export function FeatSearchDialog({
 					</div>
 
 					{/* Right Column: Feat Details Preview */}
-					<div className="hidden md:flex w-80 flex-col p-6 overflow-y-auto bg-background/20">
+					<div className="hidden md:flex w-88 flex-col p-6 overflow-y-auto bg-card-elevated/40 border-l border-border/40 relative">
 						{selectedFeat ? (
-							<div className="space-y-4 text-xs">
-								<div>
-									<h4 className="text-sm font-bold text-foreground">
+							<div className="space-y-5 text-xs relative z-10">
+								{/* Card header */}
+								<div className="relative pb-4 border-b border-border/40">
+									<div className="absolute -left-3 top-0 h-8 w-1 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+									<h4 className="text-base font-extrabold tracking-wide text-foreground">
 										{selectedFeat.name}
 									</h4>
-									<div className="flex items-center gap-1.5 mt-1">
-										<span className="bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded text-[10px]">
+									<div className="flex flex-wrap items-center gap-1.5 mt-2">
+										<span className="bg-primary/15 text-primary font-bold px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
 											{selectedFeat.category || "Geral"}
 										</span>
 										{selectedFeat.source && (
-											<span className="text-muted-foreground text-[10px]">
+											<span className="text-[10px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
 												Fonte: {selectedFeat.source}
 											</span>
 										)}
 									</div>
 								</div>
 
-								{selectedFeat.ability_increase && (
-									<div className="bg-card-elevated border border-border/40 rounded-lg p-2.5">
-										<span className="font-bold text-foreground">Melhoria:</span>{" "}
-										<span className="text-muted-foreground">
-											{selectedFeat.ability_increase}
-										</span>
-									</div>
-								)}
-
+								{/* Prerequisites Section */}
 								{selectedFeat.prerequisites && (
-									<div>
-										<span className="font-bold text-foreground">
-											Pré-requisito:
+									<div className="rounded-xl border border-primary/10 bg-primary/5 p-3 space-y-1.5 shadow-sm">
+										<span className="font-bold text-primary flex items-center gap-1.5 uppercase text-[9px] tracking-wider">
+											<Shield className="h-3.5 w-3.5" />
+											Pré-requisitos
 										</span>
-										<p className="text-muted-foreground mt-0.5">
+										<p className="text-foreground leading-relaxed">
 											{selectedFeat.prerequisites}
 										</p>
 									</div>
 								)}
 
-								<div className="border-t border-border/30 pt-3">
-									<span className="font-bold text-foreground block mb-1">
-										Efeitos:
+								{/* Ability Increase Section */}
+								{selectedFeat.ability_increase && (
+									<div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5">
+										<span className="font-bold text-muted-foreground flex items-center gap-1.5 uppercase text-[9px] tracking-wider">
+											<Compass className="h-3.5 w-3.5 text-primary" />
+											Melhoria de Atributo
+										</span>
+										<p className="text-foreground leading-relaxed">
+											{selectedFeat.ability_increase}
+										</p>
+									</div>
+								)}
+
+								{/* Description/Effects Section */}
+								<div className="space-y-2">
+									<span className="font-bold text-foreground flex items-center gap-1.5 uppercase text-[9px] tracking-wider">
+										<ScrollText className="h-3.5 w-3.5 text-primary" />
+										Descrição do Efeito
 									</span>
-									<p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+									<div className="text-muted-foreground leading-relaxed whitespace-pre-line p-3 rounded-xl border border-border/30 bg-muted/5 max-h-[300px] overflow-y-auto">
 										{selectedFeat.description}
-									</p>
+									</div>
 								</div>
 							</div>
 						) : (
 							<div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-								<Sparkles className="h-8 w-8 text-muted-foreground/30 mb-2" />
-								<p className="text-xs text-muted-foreground">
-									Selecione um item da lista para visualizar os detalhes
-									completos das regras e efeitos.
+								<div className="relative mb-3">
+									<div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-150" />
+									<BookOpen className="h-10 w-10 text-muted-foreground/40 relative z-10 animate-pulse" />
+								</div>
+								<p className="text-[13px] font-bold text-foreground">
+									Nenhum {featsLabel.toLowerCase()} selecionado
+								</p>
+								<p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+									Selecione um item da lista para ver as estatísticas,
+									pré-requisitos e efeitos detalhados.
 								</p>
 							</div>
 						)}

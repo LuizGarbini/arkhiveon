@@ -72,6 +72,11 @@ export const createCampaignSlice: StateCreator<
 		const supabase = getSupabase();
 		if (!supabase) return;
 
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+		if (!user) return;
+
 		// Carregar campanhas das quais o usuário é membro, com role
 		const { data, error } = await supabase
 			.from(SUPABASE_TABLES.memberships)
@@ -86,6 +91,7 @@ export const createCampaignSlice: StateCreator<
 					updated_at
 				)
 			`)
+			.eq("user_id", user.id)
 			.order("created_at", { ascending: true });
 
 		if (error) {
@@ -144,7 +150,8 @@ export const createCampaignSlice: StateCreator<
 	createCampaign: async (name, description = "") => {
 		const state = get();
 		const maxCampaigns = state.userPlan === "pro" ? 5 : 1;
-		if (state.campaigns.length >= maxCampaigns) {
+		const ownedCampaignsCount = state.campaigns.filter((c) => c.myRole === "owner").length;
+		if (ownedCampaignsCount >= maxCampaigns) {
 			const errorMsg = `Limite de campanhas atingido (${maxCampaigns}). ${
 				state.userPlan === "pro"
 					? "Você atingiu o limite máximo de 5 campanhas do plano Pro."

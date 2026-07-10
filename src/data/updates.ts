@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.4.0-dynamic-dice",
+		version: "1.4.0",
+		date: "02/07/2026",
+		title: "Dados 3D e Correções Sólidas!",
+		description:
+			"Agora a sua mesa virtual ganhou vida! Adicionamos suporte para rolagens de dados 3D na tela, que se adaptam automaticamente ao sistema de RPG que você está jogando. Além disso, fizemos melhorias internas importantes na sincronização e nas fichas.",
+		bullets: [
+			"Novos dados 3D: D6, D10, D20 e D100! O sistema escolhe o dado certo dependendo se você joga D&D, Vampiro, Call of Cthulhu ou Ordem.",
+			"Fim das notificações duplicadas: O sistema de mensagens em tempo real ficou mais inteligente e não vai mais piscar notificações repetidas para edições que você mesmo acabou de fazer.",
+			"Status Universais: Os atributos das fichas agora se inicializam perfeitamente para todos os sistemas, consertando um problema onde jogos focados em D6 (números menores) apareciam bugados.",
+		],
+	},
+	{
 		id: "v1.3.6-character-card",
 		version: "1.3.6",
 		date: "10/07/2026",
