@@ -221,7 +221,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						{/* Botão de Ação */}
 						<Button
 							variant="secondary"
-							className="w-full h-8 text-xs backdrop-blur-md bg-secondary/80 hover:bg-secondary border-border/40"
+							className="w-full h-8 text-xs backdrop-blur-md bg-white/10 hover:bg-white/15 active:bg-white/20 text-white border-white/10 hover:border-white/15 transition-all duration-200"
 						>
 							Abrir Ficha
 						</Button>
