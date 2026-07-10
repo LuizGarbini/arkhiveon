@@ -11,6 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.3.6-character-card",
+		version: "1.3.6",
+		date: "10/07/2026",
+		title: "Novo card de personagem!",
+		description:
+			"Redesenhamos o card da lista de personagens com visual full-bleed inspirado em capa de livro, mantendo ações rápidas e edição de imagem.",
+		bullets: [
+			"Retrato em tela cheia com gradientes para leitura do nome e das estatísticas.",
+			"Fallback por classe com presets quando o personagem ainda não tem foto.",
+			"Ações de editar, excluir e trocar imagem acessíveis no próprio card.",
+			"Alinhamento da busca e do grid com as bordas do cabeçalho da página.",
+		],
+	},
+	{
 		id: "v1.3.5-realtime-notifications",
 		version: "1.3.5",
 		date: "09/07/2026",
