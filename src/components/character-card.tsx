@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { Camera } from "lucide-react";
+import { useState, type MouseEvent } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
-import { Button } from "@/components/ui/button";
+import { FramedImage } from "@/components/framed-image";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
+import { getCharacterPresetUrl } from "@/lib/character-presets";
 import {
 	type Character,
 	formatModifier,
@@ -19,54 +21,6 @@ interface CharacterCardProps {
 	isLoading?: boolean;
 }
 
-const getPresetUrl = (charClass: string) => {
-	const c = charClass.toLowerCase();
-	if (
-		c.includes("warrior") ||
-		c.includes("guerreiro") ||
-		c.includes("fighter") ||
-		c.includes("barbarian") ||
-		c.includes("paladin")
-	)
-		return "/presets/warrior.png";
-	if (
-		c.includes("mage") ||
-		c.includes("mago") ||
-		c.includes("wizard") ||
-		c.includes("sorcerer") ||
-		c.includes("warlock")
-	)
-		return "/presets/mage.png";
-	if (
-		c.includes("rogue") ||
-		c.includes("ladino") ||
-		c.includes("ranger") ||
-		c.includes("assassin")
-	)
-		return "/presets/rogue.png";
-	if (
-		c.includes("cleric") ||
-		c.includes("clérigo") ||
-		c.includes("priest") ||
-		c.includes("druid") ||
-		c.includes("monk")
-	)
-		return "/presets/cleric.png";
-	if (
-		c.includes("vampire") ||
-		c.includes("vampiro") ||
-		c.includes("necromancer")
-	)
-		return "/presets/vampire.png";
-	if (
-		c.includes("detective") ||
-		c.includes("detetive") ||
-		c.includes("investigator")
-	)
-		return "/presets/detective.png";
-	return "/presets/warrior.png"; // default fallback
-};
-
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
@@ -79,27 +33,19 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	if (isLoading || !character) {
 		return (
 			<div className="relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
-				{/* Top header skeleton */}
 				<div className="space-y-2.5 pt-1">
 					<div className="h-5 w-1/2 rounded-md bg-white/10" />
 					<div className="h-3 w-1/3 rounded-md bg-white/5" />
-					<div className="h-4 w-1/4 rounded-md bg-white/5 mt-1" />
+					<div className="mt-1 h-4 w-1/4 rounded-md bg-white/5" />
 				</div>
-				{/* Bottom stats skeleton */}
 				<div className="space-y-3 border-t border-white/5 pt-4">
 					<div className="grid grid-cols-3 gap-2 text-center">
-						<div className="space-y-1">
-							<div className="h-4 w-8 mx-auto rounded bg-white/10" />
-							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
-						</div>
-						<div className="space-y-1">
-							<div className="h-4 w-8 mx-auto rounded bg-white/10" />
-							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
-						</div>
-						<div className="space-y-1">
-							<div className="h-4 w-12 mx-auto rounded bg-white/10" />
-							<div className="h-2 w-10 mx-auto rounded bg-white/5" />
-						</div>
+						{["ca", "ini", "hp"].map((key) => (
+							<div key={key} className="space-y-1">
+								<div className="mx-auto h-4 w-8 rounded bg-white/10" />
+								<div className="mx-auto h-2 w-10 rounded bg-white/5" />
+							</div>
+						))}
 					</div>
 					<div className="h-8 w-full rounded-full bg-white/10" />
 				</div>
@@ -108,13 +54,16 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	}
 
 	const currentCharacter = character;
-
 	const characterImageUrl = resolveCharacterImageUrl(
 		currentCharacter,
 		imageAssetLookup,
 		activeCampaignRole,
 	);
+	const hasCustomImage = Boolean(characterImageUrl);
 	const characterName = currentCharacter.characterName || "Sem nome";
+	const imageUrl =
+		characterImageUrl ||
+		getCharacterPresetUrl(currentCharacter.class || "");
 
 	function handleDeleteCharacter() {
 		removeCharacter(currentCharacter.id);
@@ -124,107 +73,128 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 		});
 	}
 
-	const imageUrl = characterImageUrl || getPresetUrl(currentCharacter.class || "");
+	function openImageDialog(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		setIsImageDialogOpen(true);
+	}
 
 	return (
 		<>
 			<Link
 				to="/sheets/$characterId"
-				params={{ characterId: character.id }}
+				params={{ characterId: currentCharacter.id }}
 				className="group relative flex min-h-[340px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
 			>
-				{/* Imagem de Fundo (Full Bleed) */}
 				<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
-					<img
-						src={imageUrl}
-						alt={characterName}
-						loading="lazy"
-						className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-					/>
-					{/* Gradiente superior para o cabeçalho */}
-					<div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/80 via-black/40 to-transparent" />
-					{/* Gradiente inferior para as estatísticas */}
-					<div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/70 to-transparent" />
+					{hasCustomImage ? (
+						<FramedImage
+							src={imageUrl}
+							alt={characterName}
+							framing={currentCharacter}
+							loading="lazy"
+							decoding="async"
+							imgClassName="opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+						/>
+					) : (
+						<img
+							src={imageUrl}
+							alt=""
+							aria-hidden
+							loading="lazy"
+							decoding="async"
+							className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+						/>
+					)}
+					<div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/80 via-black/40 to-transparent" />
+					<div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black via-black/70 to-transparent" />
 				</div>
 
-				{/* Ações (Editar/Excluir) */}
-				<div className="absolute right-2 top-2 z-20">
-					<EntityActions
-						onEdit={() =>
-							void navigate({
-								to: "/sheets/$characterId",
-								params: { characterId: character.id },
-								search: { edit: true },
-							})
-						}
-						onDelete={handleDeleteCharacter}
-						entityName={characterName}
-						entityKindLabel="personagem"
-					/>
-				</div>
+				<EntityActions
+					onEdit={() =>
+						void navigate({
+							to: "/sheets/$characterId",
+							params: { characterId: currentCharacter.id },
+							search: { edit: true },
+						})
+					}
+					onDelete={handleDeleteCharacter}
+					entityName={characterName}
+					entityKindLabel="personagem"
+				/>
 
-				{/* Cabeçalho do Card */}
+				<button
+					type="button"
+					onClick={openImageDialog}
+					className="absolute bottom-36 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/45 text-white opacity-100 backdrop-blur transition hover:border-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+					aria-label={
+						hasCustomImage
+							? "Editar imagem do personagem"
+							: "Adicionar imagem do personagem"
+					}
+					title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
+				>
+					<Camera className="h-3.5 w-3.5" />
+				</button>
+
 				<div className="p-4 pt-5">
 					<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
 						{characterName}
 					</h3>
 					<div className="mt-1 flex items-center gap-1.5 text-xs text-white/70">
-						<span className="truncate">{currentCharacter.race || "Sem raça"}</span>
-						{currentCharacter.class && (
+						<span className="truncate">
+							{currentCharacter.race || "Sem raça"}
+						</span>
+						{currentCharacter.class ? (
 							<>
 								<span className="opacity-50">·</span>
 								<span className="truncate">{currentCharacter.class}</span>
 							</>
-						)}
+						) : null}
 					</div>
 					<div className="mt-2 flex items-center gap-2">
-						<span className="rounded bg-purple-500/25 border border-purple-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-200">
-							{systemLabel(character.system)}
+						<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+							{systemLabel(currentCharacter.system)}
 						</span>
 						<span className="text-[10px] text-white/50">
-							Lv {character.level}
+							Nv. {currentCharacter.level}
 						</span>
 					</div>
 				</div>
 
-				{/* Estatísticas e Botão na Base (Inspirado na imagem) */}
-				<div className="p-4 pb-5 space-y-4">
+				<div className="space-y-4 p-4 pb-5">
 					<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
-						{/* Estatísticas */}
 						<div className="grid grid-cols-3 gap-2 text-center">
 							<div className="flex flex-col">
-								<span className="text-base font-bold text-white leading-none">
-									{character.armorClass || 10}
+								<span className="text-base font-bold leading-none text-white">
+									{currentCharacter.armorClass || 10}
 								</span>
-								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
+								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
 									Defesa (CA)
 								</span>
 							</div>
 							<div className="flex flex-col">
-								<span className="text-base font-bold text-white leading-none">
-									{formatModifier(character.initiative)}
+								<span className="text-base font-bold leading-none text-white">
+									{formatModifier(currentCharacter.initiative)}
 								</span>
-								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
+								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
 									Iniciativa
 								</span>
 							</div>
 							<div className="flex flex-col">
-								<span className="text-base font-bold text-white leading-none truncate">
-									{character.health}/{character.healthMax || 10}
+								<span className="truncate text-base font-bold leading-none text-white">
+									{currentCharacter.health}/
+									{currentCharacter.healthMax || 10}
 								</span>
-								<span className="text-[8px] text-white/50 uppercase tracking-wider mt-1.5">
-									Pontos Vida
+								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
+									Pontos de Vida
 								</span>
 							</div>
 						</div>
 
-						{/* Botão de Ação */}
-						<Button
-							variant="secondary"
-							className="w-full h-8 text-xs backdrop-blur-md bg-white/10 hover:bg-white/15 active:bg-white/20 text-white border-white/10 hover:border-white/15 transition-all duration-200"
-						>
-							Abrir Ficha
-						</Button>
+						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition-colors duration-200 group-hover:border-white/15 group-hover:bg-white/15">
+							Abrir ficha
+						</span>
 					</div>
 				</div>
 			</Link>
