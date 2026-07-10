@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
 import {
@@ -218,12 +219,12 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						</div>
 
 						{/* Botão de Ação */}
-						<button
-							type="button"
-							className="w-full rounded-full bg-white/85 py-1.5 text-xs font-semibold text-black shadow-md backdrop-blur-md transition-all hover:bg-white hover:shadow-lg active:scale-95 whitespace-nowrap text-center"
+						<Button
+							variant="secondary"
+							className="w-full h-8 text-xs backdrop-blur-md bg-secondary/80 hover:bg-secondary border-border/40"
 						>
 							Abrir Ficha
-						</button>
+						</Button>
 					</div>
 				</div>
 			</Link>
