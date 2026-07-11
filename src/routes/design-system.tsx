@@ -159,12 +159,14 @@ function DesignSystem() {
 							</Button>
 						}
 					/>
-					<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-6 sm:px-8">
-						<ListLayout />
-						<div className="grid gap-4 md:grid-cols-3">
-							<EntityCard title="Aelyra Moonwhisper" meta="Elfa · Maga" />
-							<EntityCard title="Sessão #14" meta="Ruínas do Vale Cinzento" />
-							<EntityCard title="Orbe de Âmbar" meta="Item lendário" />
+					<div className="px-6 pb-6 sm:px-8">
+						<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+							<ListLayout />
+							<div className="grid gap-4 md:grid-cols-3">
+								<EntityCard title="Aelyra Moonwhisper" meta="Elfa · Maga" />
+								<EntityCard title="Sessão #14" meta="Ruínas do Vale Cinzento" />
+								<EntityCard title="Orbe de Âmbar" meta="Item lendário" />
+							</div>
 						</div>
 					</div>
 				</div>

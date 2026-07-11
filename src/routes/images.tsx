@@ -208,93 +208,95 @@ function ImagesRoute() {
 				}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<label
-					htmlFor={canUpload ? inputId : undefined}
-					onDragOver={handleDragOver}
-					onDragLeave={handleDragLeave}
-					onDrop={handleDrop}
-					aria-disabled={!canUpload || isUploading}
-					className={cn(
-						"grid min-h-36 place-items-center rounded-2xl border border-dashed border-border/80 bg-card/80 p-5 text-center shadow-sm shadow-black/5 transition-[border-color,background-color,box-shadow]",
-						canUpload && !isUploading && "cursor-pointer",
-						isDragging &&
-							"border-primary/60 bg-primary/10 shadow-lg shadow-primary/5",
-						!canUpload && "opacity-65",
-					)}
-				>
-					<input
-						ref={inputRef}
-						id={inputId}
-						type="file"
-						accept="image/*"
-						multiple
-						className="hidden"
-						onChange={handleInputChange}
-						disabled={!canUpload || isUploading}
-					/>
-					<span className="flex w-full max-w-xl flex-col items-center gap-3">
-						<span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-							{isUploading ? (
-								<Loader2 className="h-5 w-5 animate-spin" />
-							) : (
-								<UploadCloud className="h-5 w-5" />
-							)}
-						</span>
-						<span className="font-display text-lg font-bold text-foreground">
-							{isUploading ? "Enviando imagem" : "Soltar imagens"}
-						</span>
-						<span className="text-[12px] leading-relaxed text-muted-foreground">
-							{canUpload
-								? (uploadingName ?? "JPG, PNG ou WebP até 8MB.")
-								: "Apenas mestre e editores podem adicionar arquivos."}
-						</span>
-					</span>
-				</label>
-
-				<div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5">
-					<div className="relative flex-1">
-						<Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							type="search"
-							aria-label="Filtrar imagens"
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							placeholder="Buscar imagens..."
-							className="h-10 rounded-2xl bg-background/55 pl-9 text-[13px]"
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<label
+						htmlFor={canUpload ? inputId : undefined}
+						onDragOver={handleDragOver}
+						onDragLeave={handleDragLeave}
+						onDrop={handleDrop}
+						aria-disabled={!canUpload || isUploading}
+						className={cn(
+							"grid min-h-36 place-items-center rounded-2xl border border-dashed border-border/80 bg-card/80 p-5 text-center shadow-sm shadow-black/5 transition-[border-color,background-color,box-shadow]",
+							canUpload && !isUploading && "cursor-pointer",
+							isDragging &&
+								"border-primary/60 bg-primary/10 shadow-lg shadow-primary/5",
+							!canUpload && "opacity-65",
+						)}
+					>
+						<input
+							ref={inputRef}
+							id={inputId}
+							type="file"
+							accept="image/*"
+							multiple
+							className="hidden"
+							onChange={handleInputChange}
+							disabled={!canUpload || isUploading}
 						/>
+						<span className="flex w-full max-w-xl flex-col items-center gap-3">
+							<span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+								{isUploading ? (
+									<Loader2 className="h-5 w-5 animate-spin" />
+								) : (
+									<UploadCloud className="h-5 w-5" />
+								)}
+							</span>
+							<span className="font-display text-lg font-bold text-foreground">
+								{isUploading ? "Enviando imagem" : "Soltar imagens"}
+							</span>
+							<span className="text-[12px] leading-relaxed text-muted-foreground">
+								{canUpload
+									? (uploadingName ?? "JPG, PNG ou WebP até 8MB.")
+									: "Apenas mestre e editores podem adicionar arquivos."}
+							</span>
+						</span>
+					</label>
+
+					<div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5">
+						<div className="relative flex-1">
+							<Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								type="search"
+								aria-label="Filtrar imagens"
+								value={query}
+								onChange={(event) => setQuery(event.target.value)}
+								placeholder="Buscar imagens..."
+								className="h-10 rounded-2xl bg-background/55 pl-9 text-[13px]"
+							/>
+						</div>
 					</div>
-				</div>
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{visibleAssets.map((asset) => (
-						<ImageAssetCard
-							key={asset.id}
-							asset={asset}
-							isMaster={isMaster}
-							canDelete={
-								isMaster ||
-								(asset.createdBy === session?.user.id && !asset.isPrivate)
-							}
-							canRename={
-								isMaster ||
-								(asset.createdBy === session?.user.id && !asset.isPrivate)
-							}
-							onTogglePrivate={() =>
-								updateImageAsset(asset.id, { isPrivate: !asset.isPrivate })
-							}
-							onRename={(name) => updateImageAsset(asset.id, { name })}
-							onDelete={() => removeImageAsset(asset.id)}
-						/>
-					))}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{visibleAssets.map((asset) => (
+							<ImageAssetCard
+								key={asset.id}
+								asset={asset}
+								isMaster={isMaster}
+								canDelete={
+									isMaster ||
+									(asset.createdBy === session?.user.id && !asset.isPrivate)
+								}
+								canRename={
+									isMaster ||
+									(asset.createdBy === session?.user.id && !asset.isPrivate)
+								}
+								onTogglePrivate={() =>
+									updateImageAsset(asset.id, { isPrivate: !asset.isPrivate })
+								}
+								onRename={(name) => updateImageAsset(asset.id, { name })}
+								onDelete={() => removeImageAsset(asset.id)}
+							/>
+						))}
 
-					{visibleAssets.length === 0 && (
-						<EmptyState
-							Icon={ImageIcon}
-							title="Nenhuma imagem encontrada"
-							description="Envie uma imagem para montar a biblioteca visual da campanha."
-						/>
-					)}
+						{visibleAssets.length === 0 && (
+							<EmptyState
+								Icon={ImageIcon}
+								title="Nenhuma imagem encontrada"
+								description="Envie uma imagem para montar a biblioteca visual da campanha."
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

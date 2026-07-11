@@ -49,36 +49,38 @@ function RouteComponent() {
 				action={<NpcForm />}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout onSearch={setSearchQuery} />
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{isLoading
-						? loadingCardKeys.map((key, i) => (
-								<div
-									key={key}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<NpcCard isLoading />
-								</div>
-							))
-						: filteredNpcs.map((npc, i) => (
-								<div
-									key={npc.id}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<NpcCard npc={npc} />
-								</div>
-							))}
-					{!isLoading && filteredNpcs.length === 0 && (
-						<EmptyState
-							Icon={Users}
-							title="Nenhum NPC ou monstro encontrado"
-							description="Crie aliados, coadjuvantes ou criaturas para enriquecer o seu mundo."
-						/>
-					)}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{isLoading
+							? loadingCardKeys.map((key, i) => (
+									<div
+										key={key}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<NpcCard isLoading />
+									</div>
+								))
+							: filteredNpcs.map((npc, i) => (
+									<div
+										key={npc.id}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<NpcCard npc={npc} />
+									</div>
+								))}
+						{!isLoading && filteredNpcs.length === 0 && (
+							<EmptyState
+								Icon={Users}
+								title="Nenhum NPC ou monstro encontrado"
+								description="Crie aliados, coadjuvantes ou criaturas para enriquecer o seu mundo."
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

@@ -152,26 +152,28 @@ function FamilyTreePage() {
 				count={relationCount}
 			/>
 
-			<div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-8 sm:pb-10">
-				{characters.length === 0 ? (
-					<EmptyState
-						Icon={GitFork}
-						title="Nenhum personagem para montar árvore"
-						description="Crie fichas de personagens para começar a vincular laços familiares."
-					/>
-				) : (
-					<ReactFlowProvider>
-						<FamilyFlowCanvas
-							characters={characters}
-							graphModel={graphModel}
-							isEditMode={isEditMode}
-							onEditModeChange={setIsEditMode}
-							onUpdateCharacter={updateCharacter}
-							relationCount={relationCount}
-							isPlayer={isPlayer}
+			<div className="px-6 pb-8 sm:px-8 sm:pb-10">
+				<div className="mx-auto w-full max-w-7xl">
+					{characters.length === 0 ? (
+						<EmptyState
+							Icon={GitFork}
+							title="Nenhum personagem para montar árvore"
+							description="Crie fichas de personagens para começar a vincular laços familiares."
 						/>
-					</ReactFlowProvider>
-				)}
+					) : (
+						<ReactFlowProvider>
+							<FamilyFlowCanvas
+								characters={characters}
+								graphModel={graphModel}
+								isEditMode={isEditMode}
+								onEditModeChange={setIsEditMode}
+								onUpdateCharacter={updateCharacter}
+								relationCount={relationCount}
+								isPlayer={isPlayer}
+							/>
+						</ReactFlowProvider>
+					)}
+				</div>
 			</div>
 		</div>
 	);
