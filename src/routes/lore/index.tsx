@@ -39,38 +39,36 @@ function RouteComponent() {
 				action={<LoreForm />}
 			/>
 
-			<div className="px-6 pb-10 sm:px-8">
-				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-					<ListLayout onSearch={setSearchQuery} />
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
+				<ListLayout onSearch={setSearchQuery} />
 
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-						{isLoading
-							? loadingCardKeys.map((key, i) => (
-									<div
-										key={key}
-										className="t-stagger-item"
-										style={{ "--stagger-index": i } as React.CSSProperties}
-									>
-										<LoreCard isLoading />
-									</div>
-								))
-							: filteredLores.map((lore, i) => (
-									<div
-										key={lore.id}
-										className="t-stagger-item"
-										style={{ "--stagger-index": i } as React.CSSProperties}
-									>
-										<LoreCard lore={lore} />
-									</div>
-								))}
-						{!isLoading && filteredLores.length === 0 && (
-							<EmptyState
-								Icon={BookOpen}
-								title="Nenhum registro de lore"
-								description="Comece a escrever a história e a mitologia do seu mundo."
-							/>
-						)}
-					</div>
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{isLoading
+						? loadingCardKeys.map((key, i) => (
+								<div
+									key={key}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<LoreCard isLoading />
+								</div>
+							))
+						: filteredLores.map((lore, i) => (
+								<div
+									key={lore.id}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<LoreCard lore={lore} />
+								</div>
+							))}
+					{!isLoading && filteredLores.length === 0 && (
+						<EmptyState
+							Icon={BookOpen}
+							title="Nenhum registro de lore"
+							description="Comece a escrever a história e a mitologia do seu mundo."
+						/>
+					)}
 				</div>
 			</div>
 		</div>

@@ -43,40 +43,38 @@ function RouteComponent() {
 				action={<SessionForm />}
 			/>
 
-			<div className="px-6 pb-10 sm:px-8">
-				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-					<ListLayout onSearch={setSearchQuery} />
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
+				<ListLayout onSearch={setSearchQuery} />
 
-					<div
-						className={`${!isLoading && filteredSessions.length === 0 ? "" : "relative border-l border-border/70 pl-8 sm:pl-10 ml-4 sm:ml-8"} space-y-8 py-2`}
-					>
-						{isLoading
-							? loadingCardKeys.map((key, i) => (
-									<div
-										key={key}
-										className="t-stagger-item"
-										style={{ "--stagger-index": i } as React.CSSProperties}
-									>
-										<SessionCard isLoading />
-									</div>
-								))
-							: filteredSessions.map((session, i) => (
-									<div
-										key={session.id}
-										className="t-stagger-item"
-										style={{ "--stagger-index": i } as React.CSSProperties}
-									>
-										<SessionCard session={session} />
-									</div>
-								))}
-						{!isLoading && filteredSessions.length === 0 && (
-							<EmptyState
-								Icon={ScrollText}
-								title="Nenhuma sessão registrada"
-								description="Documente o que aconteceu na última partida."
-							/>
-						)}
-					</div>
+				<div
+					className={`${!isLoading && filteredSessions.length === 0 ? "" : "relative border-l border-border/70 pl-8 sm:pl-10 ml-4 sm:ml-8"} space-y-8 py-2`}
+				>
+					{isLoading
+						? loadingCardKeys.map((key, i) => (
+								<div
+									key={key}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<SessionCard isLoading />
+								</div>
+							))
+						: filteredSessions.map((session, i) => (
+								<div
+									key={session.id}
+									className="t-stagger-item"
+									style={{ "--stagger-index": i } as React.CSSProperties}
+								>
+									<SessionCard session={session} />
+								</div>
+							))}
+					{!isLoading && filteredSessions.length === 0 && (
+						<EmptyState
+							Icon={ScrollText}
+							title="Nenhuma sessão registrada"
+							description="Documente o que aconteceu na última partida."
+						/>
+					)}
 				</div>
 			</div>
 		</div>
