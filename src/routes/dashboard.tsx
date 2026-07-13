@@ -12,15 +12,16 @@ import {
 	UserPlus,
 	Users,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
 import { CampaignForm } from "@/components/campaign-form";
+import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { InviteBanner } from "@/components/invite-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -163,95 +164,6 @@ function Dashboard() {
 	);
 	const lastActivity = activityLog[0];
 
-	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const gradientRef = useRef<{ destroy: () => void } | null>(null);
-
-	useEffect(() => {
-		if (!canvasRef.current) return;
-
-		let cancelled = false;
-
-		void import("@firecms/neat").then(({ NeatGradient }) => {
-			if (cancelled || !canvasRef.current) return;
-
-			const gradient = new NeatGradient({
-				ref: canvasRef.current,
-				colors: [
-					{ color: "#130437", enabled: true },
-					{ color: "#B34BD0", enabled: true },
-					{ color: "#210751", enabled: true },
-					{ color: "#3511A5", enabled: true },
-					{ color: "#8F3E8D", enabled: false },
-					{ color: "#FF9A9E", enabled: false },
-				],
-				speed: 4,
-				horizontalPressure: 7,
-				verticalPressure: 3,
-				waveFrequencyX: 0,
-				waveFrequencyY: 0,
-				waveAmplitude: 0,
-				shadows: 4,
-				highlights: 0,
-				colorBrightness: 1.95,
-				colorSaturation: 2,
-				wireframe: false,
-				colorBlending: 9,
-				backgroundColor: "#003FFF",
-				backgroundAlpha: 1,
-				grainScale: 6,
-				grainSparsity: 0,
-				grainIntensity: 0.125,
-				grainSpeed: 0,
-				resolution: 1.15,
-				yOffset: 0,
-				yOffsetWaveMultiplier: 4.5,
-				yOffsetColorMultiplier: 4.8,
-				yOffsetFlowMultiplier: 5.2,
-				flowDistortionA: 0.4,
-				flowDistortionB: 10,
-				flowScale: 3.3,
-				flowEase: 0.37,
-				flowEnabled: true,
-				enableProceduralTexture: false,
-				textureVoidLikelihood: 0.06,
-				textureVoidWidthMin: 10,
-				textureVoidWidthMax: 500,
-				textureBandDensity: 0.8,
-				textureColorBlending: 0.06,
-				textureSeed: 333,
-				textureEase: 0.38,
-				proceduralBackgroundColor: "#003FFF",
-				textureShapeTriangles: 20,
-				textureShapeCircles: 15,
-				textureShapeBars: 15,
-				textureShapeSquiggles: 10,
-				domainWarpEnabled: false,
-				domainWarpIntensity: 0,
-				domainWarpScale: 3,
-				vignetteIntensity: 0,
-				vignetteRadius: 0.8,
-				fresnelEnabled: false,
-				fresnelPower: 2,
-				fresnelIntensity: 0.5,
-				fresnelColor: "#FFFFFF",
-				iridescenceEnabled: false,
-				iridescenceIntensity: 0.5,
-				iridescenceSpeed: 1,
-				bloomIntensity: 0,
-				bloomThreshold: 0.7,
-				chromaticAberration: 0,
-			});
-
-			gradientRef.current = gradient;
-		});
-
-		return () => {
-			cancelled = true;
-			gradientRef.current?.destroy();
-			gradientRef.current = null;
-		};
-	}, []);
-
 	if (!isLoading && campaigns.length === 0) {
 		return (
 			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full">
@@ -357,31 +269,7 @@ function Dashboard() {
 			</a>
 
 			<section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 p-7 shadow-xl shadow-black/5 sm:p-10">
-				{/* Neat gradient background */}
-				<canvas
-					ref={canvasRef}
-					style={{
-						position: "absolute",
-						top: 0,
-						left: 0,
-						width: "100%",
-						height: "100%",
-						zIndex: 0,
-					}}
-				/>
-				{/* Cover the Neat watermark in the bottom-right */}
-				<div
-					style={{
-						position: "absolute",
-						bottom: 0,
-						right: 0,
-						width: 120,
-						height: 32,
-						zIndex: 1,
-						background: "inherit",
-						borderRadius: "0 0 1.75rem 0",
-					}}
-				/>
+				<DashboardHeroBackground />
 				{/* Dark overlay for better text contrast */}
 				<div className="absolute inset-0 z-[1] bg-black/35 rounded-[1.75rem]" />
 				<div className="relative z-[2] grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
@@ -402,7 +290,10 @@ function Dashboard() {
 									<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
 										Apenas mestre ou co-mestre podem criar fichas
 									</div>
-									<Button disabled className="h-11 gap-2 px-5 font-bold cursor-not-allowed opacity-50">
+									<Button
+										disabled
+										className="h-11 gap-2 px-5 font-bold cursor-not-allowed opacity-50"
+									>
 										<User className="h-4 w-4" />
 										Criar ficha
 									</Button>

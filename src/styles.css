@@ -651,11 +651,6 @@
   }
 }
 
-/* Hide Neat gradient watermark */
-a[href*="neat.firecms.co"] {
-  display: none !important;
-}
-
 @keyframes glow-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 0.85; }
