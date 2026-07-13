@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useRPGStore } from "./store";
 
 describe("Zustand Store Persistence Partialization", () => {
@@ -58,5 +58,29 @@ describe("Zustand Store Persistence Partialization", () => {
 		// Verify both are cleared in memory
 		expect(useRPGStore.getState().spotifyToken).toBeNull();
 		expect(useRPGStore.getState().spotifyUser).toBeNull();
+	});
+
+	it("resets campaign bootstrap flag when clearing local data", () => {
+		useRPGStore.setState({
+			hasLoadedCampaigns: true,
+			campaigns: [
+				{
+					id: "c1",
+					name: "Campanha",
+					description: "",
+					ownerId: "u1",
+					myRole: "owner",
+					createdAt: Date.now(),
+				},
+			],
+			activeCampaignId: "c1",
+		});
+
+		useRPGStore.getState().clearLocalData();
+
+		const state = useRPGStore.getState();
+		expect(state.hasLoadedCampaigns).toBe(false);
+		expect(state.campaigns).toEqual([]);
+		expect(state.activeCampaignId).toBeNull();
 	});
 });

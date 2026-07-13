@@ -8,10 +8,10 @@ import {
 	CHARACTER_NAME_REQUIRED_MESSAGE,
 	type CharacterFormValues,
 	CombatFields,
+	FeatsFields,
 	IdentityFields,
 	InventoryFields,
 	MagicFields,
-	FeatsFields,
 	NotesFields,
 	PersonalityFields,
 	SanityFields,
@@ -26,7 +26,7 @@ import {
 } from "@/components/system-picker";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
-import { cn } from "@/lib/utils";
+import { shouldShowEmptyCampaignOnboarding } from "@/lib/campaign-bootstrap";
 import {
 	cloneSheetLayout,
 	createCustomSheetModule,
@@ -36,6 +36,7 @@ import {
 import type { RpgSystem, SheetModuleConfig } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { SYSTEM_CONFIG } from "@/lib/systems";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sheets/new")({
 	component: NewSheetPage,
@@ -78,20 +79,29 @@ function NewSheetPage() {
 	const customTemplates = useRPGStore((state) => state.customTemplates || []);
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+	const hasLoadedCampaigns = useRPGStore((state) => state.hasLoadedCampaigns);
 	const [activeStep, setActiveStep] = useState<WizardStep>("system");
 
 	useEffect(() => {
-		if (!isLoading && campaigns.length === 0) {
+		if (
+			shouldShowEmptyCampaignOnboarding({
+				hasLoadedCampaigns,
+				isLoadingRemote: isLoading,
+				campaignCount: campaigns.length,
+			})
+		) {
 			void navigate({ to: "/dashboard" });
 		}
-	}, [isLoading, campaigns, navigate]);
+	}, [hasLoadedCampaigns, isLoading, campaigns.length, navigate]);
 	const [stepError, setStepError] = useState<string | null>(null);
 	const [selectedLayoutTemplateId, setSelectedLayoutTemplateId] = useState<
 		string | undefined
 	>();
 	const [detailsTab, setDetailsTab] = useState("abilities");
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 
 	useEffect(() => {
 		const index = detailsTabs.findIndex((t) => t.id === detailsTab);
@@ -272,7 +282,7 @@ function NewSheetPage() {
 		const title = window.prompt(
 			kind === "customText"
 				? "Digite o título para o novo Bloco de Texto:"
-				: "Digite o título para o novo Bloco de Stats:"
+				: "Digite o título para o novo Bloco de Stats:",
 		);
 		if (title === null) return; // User cancelled
 		const trimmed = title.trim();
@@ -596,8 +606,8 @@ function NewSheetPage() {
 									com drag and drop e preencher módulo por módulo.
 								</p>
 							</div>
-							<Button 
-								type="submit" 
+							<Button
+								type="submit"
 								className="h-11 gap-2 px-5"
 								loading={isSubmitting}
 								loadingText="Criando ficha..."

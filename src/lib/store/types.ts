@@ -494,6 +494,7 @@ export interface RPGState {
 	// ----- Campanhas -----
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
+	hasLoadedCampaigns: boolean;
 	loadCampaigns: () => Promise<void>;
 	createCampaign: (name: string, description?: string) => Promise<Campaign>;
 	updateCampaign: (
@@ -615,7 +616,9 @@ export interface RPGState {
 
 	// ----- Notifications -----
 	notifications: AppNotification[];
-	addNotification: (notification: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+	addNotification: (
+		notification: Omit<AppNotification, "id" | "createdAt" | "read">,
+	) => void;
 	markAllNotificationsAsRead: () => void;
 	clearNotifications: () => void;
 }

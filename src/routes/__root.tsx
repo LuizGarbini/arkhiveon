@@ -111,6 +111,7 @@ function ProtectedLayout() {
 	}, [syncError]);
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
 
 	useEffect(() => {
 		if (loading) return;
@@ -160,6 +161,14 @@ function ProtectedLayout() {
 
 	if (!session) {
 		return null; // The useEffect handles the redirect without flickering the UI
+	}
+
+	if (!hasLoadedCampaigns) {
+		return (
+			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
+				Carregando campanhas...
+			</div>
+		);
 	}
 
 	return (
