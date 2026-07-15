@@ -6,7 +6,6 @@ describe("shouldShowEmptyCampaignOnboarding", () => {
 		expect(
 			shouldShowEmptyCampaignOnboarding({
 				hasLoadedCampaigns: false,
-				isLoadingRemote: false,
 				campaignCount: 0,
 			}),
 		).toBe(false);
@@ -16,27 +15,15 @@ describe("shouldShowEmptyCampaignOnboarding", () => {
 		expect(
 			shouldShowEmptyCampaignOnboarding({
 				hasLoadedCampaigns: true,
-				isLoadingRemote: false,
 				campaignCount: 0,
 			}),
 		).toBe(true);
-	});
-
-	it("hides onboarding while remote data is still loading", () => {
-		expect(
-			shouldShowEmptyCampaignOnboarding({
-				hasLoadedCampaigns: true,
-				isLoadingRemote: true,
-				campaignCount: 0,
-			}),
-		).toBe(false);
 	});
 
 	it("hides onboarding when the user already has campaigns", () => {
 		expect(
 			shouldShowEmptyCampaignOnboarding({
 				hasLoadedCampaigns: true,
-				isLoadingRemote: false,
 				campaignCount: 2,
 			}),
 		).toBe(false);

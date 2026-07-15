@@ -78,7 +78,6 @@ function NewSheetPage() {
 	const addCharacter = useRPGStore((state) => state.addCharacter);
 	const customTemplates = useRPGStore((state) => state.customTemplates || []);
 	const campaigns = useRPGStore((state) => state.campaigns);
-	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 	const hasLoadedCampaigns = useRPGStore((state) => state.hasLoadedCampaigns);
 	const [activeStep, setActiveStep] = useState<WizardStep>("system");
 
@@ -86,13 +85,12 @@ function NewSheetPage() {
 		if (
 			shouldShowEmptyCampaignOnboarding({
 				hasLoadedCampaigns,
-				isLoadingRemote: isLoading,
 				campaignCount: campaigns.length,
 			})
 		) {
 			void navigate({ to: "/dashboard" });
 		}
-	}, [hasLoadedCampaigns, isLoading, campaigns.length, navigate]);
+	}, [hasLoadedCampaigns, campaigns.length, navigate]);
 	const [stepError, setStepError] = useState<string | null>(null);
 	const [selectedLayoutTemplateId, setSelectedLayoutTemplateId] = useState<
 		string | undefined

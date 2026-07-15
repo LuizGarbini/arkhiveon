@@ -254,20 +254,17 @@ function Dashboard() {
 		};
 	}, []);
 
-	if (!hasLoadedCampaigns || isLoading) {
-		if (!hasLoadedCampaigns || campaigns.length === 0) {
-			return (
-				<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
-					Carregando...
-				</div>
-			);
-		}
+	if (!hasLoadedCampaigns) {
+		return (
+			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
+				Carregando...
+			</div>
+		);
 	}
 
 	if (
 		shouldShowEmptyCampaignOnboarding({
 			hasLoadedCampaigns,
-			isLoadingRemote: isLoading,
 			campaignCount: campaigns.length,
 		})
 	) {

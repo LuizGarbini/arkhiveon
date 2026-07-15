@@ -484,7 +484,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			}
 		};
 	},
-	clearLocalData: () =>
+	clearLocalData: () => {
 		set({
 			characters: [],
 			npcs: [],
@@ -496,11 +496,9 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			imageAssets: [],
 			activityLog: [],
 			notifications: [],
-			campaigns: [],
-			activeCampaignId: null,
-			hasLoadedCampaigns: false,
-			pendingInvites: [],
 			syncError: null,
-		}),
+		});
+		get().resetCampaigns();
+	},
 	clearActivity: () => set({ activityLog: [] }),
 });

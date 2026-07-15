@@ -57,6 +57,7 @@ export interface CampaignSlice {
 		}>;
 		invites: Invite[];
 	}>;
+	resetCampaigns: () => void;
 }
 
 export const createCampaignSlice: StateCreator<
@@ -70,6 +71,15 @@ export const createCampaignSlice: StateCreator<
 	activeCampaignOwnerPlan: "free",
 	hasLoadedCampaigns: false,
 	pendingInvites: [],
+
+	resetCampaigns: () =>
+		set({
+			campaigns: [],
+			activeCampaignId: null,
+			activeCampaignOwnerPlan: "free",
+			hasLoadedCampaigns: false,
+			pendingInvites: [],
+		}),
 
 	loadCampaigns: async () => {
 		const supabase = getSupabase();

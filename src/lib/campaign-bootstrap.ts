@@ -5,12 +5,10 @@
  */
 export function shouldShowEmptyCampaignOnboarding({
 	hasLoadedCampaigns,
-	isLoadingRemote,
 	campaignCount,
 }: {
 	hasLoadedCampaigns: boolean;
-	isLoadingRemote: boolean;
 	campaignCount: number;
 }): boolean {
-	return hasLoadedCampaigns && !isLoadingRemote && campaignCount === 0;
+	return hasLoadedCampaigns && campaignCount === 0;
 }

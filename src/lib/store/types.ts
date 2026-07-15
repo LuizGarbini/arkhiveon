@@ -525,6 +525,7 @@ export interface RPGState {
 		}>;
 		invites: Invite[];
 	}>;
+	resetCampaigns: () => void;
 
 	imageAssets: ImageAsset[];
 	loadImageAssets: () => Promise<void>;

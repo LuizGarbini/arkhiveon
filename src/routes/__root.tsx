@@ -112,6 +112,7 @@ function ProtectedLayout() {
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
+	const campaigns = useRPGStore((s) => s.campaigns);
 
 	useEffect(() => {
 		if (loading) return;
@@ -140,6 +141,37 @@ function ProtectedLayout() {
 		loading,
 		navigate,
 		session,
+	]);
+
+	useEffect(() => {
+		if (loading || !session || !hasLoadedCampaigns) return;
+
+		const campaignDependentPrefixes = [
+			"/characters",
+			"/npcs",
+			"/sessions",
+			"/sheets",
+			"/family-tree",
+			"/images",
+			"/items",
+			"/locations",
+			"/lore",
+			"/templates",
+		];
+		const isCampaignDependentRoute = campaignDependentPrefixes.some((prefix) =>
+			location.pathname.startsWith(prefix),
+		);
+
+		if (campaigns.length === 0 && isCampaignDependentRoute) {
+			void navigate({ to: "/dashboard", replace: true });
+		}
+	}, [
+		loading,
+		session,
+		hasLoadedCampaigns,
+		campaigns.length,
+		location.pathname,
+		navigate,
 	]);
 
 	useEffect(() => {

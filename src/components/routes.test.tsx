@@ -81,6 +81,22 @@ describe("Routes smoke tests", () => {
 	});
 
 	it("renders characters page without crashing", async () => {
+		const { useRPGStore } = await import("@/lib/store");
+		useRPGStore.setState({
+			campaigns: [
+				{
+					id: "test-campaign-id",
+					name: "Test Campaign",
+					description: "",
+					ownerId: "test-user-id",
+					myRole: "owner",
+					createdAt: Date.now(),
+				},
+			],
+			activeCampaignId: "test-campaign-id",
+			hasLoadedCampaigns: true,
+		});
+
 		const router = createRouter({
 			routeTree,
 		});
