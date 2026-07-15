@@ -111,6 +111,8 @@ function ProtectedLayout() {
 	}, [syncError]);
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
+	const campaigns = useRPGStore((s) => s.campaigns);
 
 	useEffect(() => {
 		if (loading) return;
@@ -142,6 +144,37 @@ function ProtectedLayout() {
 	]);
 
 	useEffect(() => {
+		if (loading || !session || !hasLoadedCampaigns) return;
+
+		const campaignDependentPrefixes = [
+			"/characters",
+			"/npcs",
+			"/sessions",
+			"/sheets",
+			"/family-tree",
+			"/images",
+			"/items",
+			"/locations",
+			"/lore",
+			"/templates",
+		];
+		const isCampaignDependentRoute = campaignDependentPrefixes.some((prefix) =>
+			location.pathname.startsWith(prefix),
+		);
+
+		if (campaigns.length === 0 && isCampaignDependentRoute) {
+			void navigate({ to: "/dashboard", replace: true });
+		}
+	}, [
+		loading,
+		session,
+		hasLoadedCampaigns,
+		campaigns.length,
+		location.pathname,
+		navigate,
+	]);
+
+	useEffect(() => {
 		if (loading || !session || !activeCampaignId) return;
 
 		const cleanup = setupRealtime();
@@ -160,6 +193,14 @@ function ProtectedLayout() {
 
 	if (!session) {
 		return null; // The useEffect handles the redirect without flickering the UI
+	}
+
+	if (!hasLoadedCampaigns) {
+		return (
+			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
+				Carregando campanhas...
+			</div>
+		);
 	}
 
 	return (

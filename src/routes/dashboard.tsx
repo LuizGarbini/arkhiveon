@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useRPGStore, useActiveCampaignRole } from "@/lib/store";
+import { shouldShowEmptyCampaignOnboarding } from "@/lib/campaign-bootstrap";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -89,6 +90,7 @@ function Dashboard() {
 	const lores = useRPGStore((s) => s.lores);
 	const activityLog = useRPGStore((s) => s.activityLog);
 	const isLoading = useRPGStore((s) => s.isLoadingRemote);
+	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
 	const loadInvites = useRPGStore((s) => s.loadInvites);
 
 	const campaigns = useRPGStore((s) => s.campaigns);
@@ -252,7 +254,20 @@ function Dashboard() {
 		};
 	}, []);
 
-	if (!isLoading && campaigns.length === 0) {
+	if (!hasLoadedCampaigns) {
+		return (
+			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
+				Carregando...
+			</div>
+		);
+	}
+
+	if (
+		shouldShowEmptyCampaignOnboarding({
+			hasLoadedCampaigns,
+			campaignCount: campaigns.length,
+		})
+	) {
 		return (
 			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full">
 				<div className="panel w-full max-w-md p-8 relative overflow-hidden shadow-2xl">
@@ -402,7 +417,10 @@ function Dashboard() {
 									<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
 										Apenas mestre ou co-mestre podem criar fichas
 									</div>
-									<Button disabled className="h-11 gap-2 px-5 font-bold cursor-not-allowed opacity-50">
+									<Button
+										disabled
+										className="h-11 gap-2 px-5 font-bold cursor-not-allowed opacity-50"
+									>
 										<User className="h-4 w-4" />
 										Criar ficha
 									</Button>
