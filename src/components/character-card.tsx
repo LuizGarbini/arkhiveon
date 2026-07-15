@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Camera } from "lucide-react";
-import { useState, type MouseEvent } from "react";
+import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
 import { useToast } from "@/components/ui/toast";
@@ -53,20 +53,20 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 		);
 	}
 
-	const currentCharacter = character;
 	const characterImageUrl = resolveCharacterImageUrl(
-		currentCharacter,
+		character,
 		imageAssetLookup,
 		activeCampaignRole,
 	);
 	const hasCustomImage = Boolean(characterImageUrl);
-	const characterName = currentCharacter.characterName || "Sem nome";
+	const characterName = character.characterName || "Sem nome";
 	const imageUrl =
-		characterImageUrl ||
-		getCharacterPresetUrl(currentCharacter.class || "");
+		characterImageUrl || getCharacterPresetUrl(character.class || "");
+	const isViewer = activeCampaignRole === "viewer";
 
 	function handleDeleteCharacter() {
-		removeCharacter(currentCharacter.id);
+		if (!character) return;
+		removeCharacter(character.id);
 		toast.success({
 			title: "Personagem excluído com sucesso",
 			description: `${characterName} foi removido da campanha.`,
@@ -81,17 +81,22 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 	return (
 		<>
-			<Link
-				to="/sheets/$characterId"
-				params={{ characterId: currentCharacter.id }}
-				className="group relative flex min-h-[340px] cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0"
-			>
+			<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0">
+				{/* Accessible anchor covering the entire card background */}
+				<Link
+					to="/sheets/$characterId"
+					params={{ characterId: character.id }}
+					className="absolute inset-0 z-0 cursor-pointer"
+					aria-label={`Abrir ficha de ${characterName}`}
+				/>
+
+				{/* Card Portrait / Preset Image */}
 				<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
 					{hasCustomImage ? (
 						<FramedImage
 							src={imageUrl}
 							alt={characterName}
-							framing={currentCharacter}
+							framing={character}
 							loading="lazy"
 							decoding="async"
 							imgClassName="opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
@@ -110,100 +115,105 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 					<div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black via-black/70 to-transparent" />
 				</div>
 
-				<EntityActions
-					onEdit={() =>
-						void navigate({
-							to: "/sheets/$characterId",
-							params: { characterId: currentCharacter.id },
-							search: { edit: true },
-						})
-					}
-					onDelete={handleDeleteCharacter}
-					entityName={characterName}
-					entityKindLabel="personagem"
-				/>
-
-				<button
-					type="button"
-					onClick={openImageDialog}
-					className="absolute bottom-36 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/45 text-white opacity-100 backdrop-blur transition hover:border-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
-					aria-label={
-						hasCustomImage
-							? "Editar imagem do personagem"
-							: "Adicionar imagem do personagem"
-					}
-					title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
-				>
-					<Camera className="h-3.5 w-3.5" />
-				</button>
-
-				<div className="p-4 pt-5">
-					<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
-						{characterName}
-					</h3>
-					<div className="mt-1 flex items-center gap-1.5 text-xs text-white/70">
-						<span className="truncate">
-							{currentCharacter.race || "Sem raça"}
-						</span>
-						{currentCharacter.class ? (
-							<>
-								<span className="opacity-50">·</span>
-								<span className="truncate">{currentCharacter.class}</span>
-							</>
-						) : null}
+				{/* Card Interactive Content Area */}
+				<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
+					<div className="pointer-events-auto">
+						<EntityActions
+							onEdit={() =>
+								void navigate({
+									to: "/sheets/$characterId",
+									params: { characterId: character.id },
+									search: { edit: true },
+								})
+							}
+							onDelete={handleDeleteCharacter}
+							entityName={characterName}
+							entityKindLabel="personagem"
+						/>
 					</div>
-					<div className="mt-2 flex items-center gap-2">
-						<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-							{systemLabel(currentCharacter.system)}
-						</span>
-						<span className="text-[10px] text-white/50">
-							Nv. {currentCharacter.level}
-						</span>
-					</div>
-				</div>
 
-				<div className="space-y-4 p-4 pb-5">
-					<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
-						<div className="grid grid-cols-3 gap-2 text-center">
-							<div className="flex flex-col">
-								<span className="text-base font-bold leading-none text-white">
-									{currentCharacter.armorClass || 10}
-								</span>
-								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
-									Defesa (CA)
-								</span>
+					{!isViewer && (
+						<button
+							type="button"
+							onClick={openImageDialog}
+							className="absolute bottom-36 right-3 z-20 flex h-8 w-8 pointer-events-auto items-center justify-center rounded-lg border border-white/15 bg-black/45 text-white opacity-100 backdrop-blur transition hover:border-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+							aria-label={
+								hasCustomImage
+									? "Editar imagem do personagem"
+									: "Adicionar imagem do personagem"
+							}
+							title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
+						>
+							<Camera className="h-3.5 w-3.5" />
+						</button>
+					)}
+
+					<div className="p-4 pt-5">
+						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
+							{characterName}
+						</h3>
+						<div className="mt-1 flex items-center gap-1.5 text-xs text-white/70">
+							<span className="truncate">{character.race || "Sem raça"}</span>
+							{character.class ? (
+								<>
+									<span className="opacity-50">·</span>
+									<span className="truncate">{character.class}</span>
+								</>
+							) : null}
+						</div>
+						<div className="mt-2 flex items-center gap-2">
+							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+								{systemLabel(character.system)}
+							</span>
+							<span className="text-[10px] text-white/50">
+								Nv. {character.level}
+							</span>
+						</div>
+					</div>
+
+					<div className="space-y-4 p-4 pb-5">
+						<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
+							<div className="grid grid-cols-3 gap-2 text-center">
+								{[
+									{
+										value: character.armorClass || 10,
+										label: "Defesa (CA)",
+									},
+									{
+										value: formatModifier(character.initiative),
+										label: "Iniciativa",
+									},
+									{
+										value: `${character.health}/${character.healthMax || 10}`,
+										label: "Pontos de Vida",
+									},
+								].map((stat) => (
+									<div key={stat.label} className="flex flex-col">
+										<span className="truncate text-base font-bold leading-none text-white">
+											{stat.value}
+										</span>
+										<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
+											{stat.label}
+										</span>
+									</div>
+								))}
 							</div>
-							<div className="flex flex-col">
-								<span className="text-base font-bold leading-none text-white">
-									{formatModifier(currentCharacter.initiative)}
-								</span>
-								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
-									Iniciativa
-								</span>
-							</div>
-							<div className="flex flex-col">
-								<span className="truncate text-base font-bold leading-none text-white">
-									{currentCharacter.health}/
-									{currentCharacter.healthMax || 10}
-								</span>
-								<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
-									Pontos de Vida
+
+							<div className="pointer-events-auto">
+								<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition-colors duration-200 group-hover:border-white/15 group-hover:bg-white/15">
+									Abrir ficha
 								</span>
 							</div>
 						</div>
-
-						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition-colors duration-200 group-hover:border-white/15 group-hover:bg-white/15">
-							Abrir ficha
-						</span>
 					</div>
 				</div>
-			</Link>
+			</div>
 
 			<CharacterImageDialog
-				character={currentCharacter}
+				character={character}
 				open={isImageDialogOpen}
 				onOpenChange={setIsImageDialogOpen}
-				onChange={(patch) => updateCharacter(currentCharacter.id, patch)}
+				onChange={(patch) => updateCharacter(character.id, patch)}
 			/>
 		</>
 	);

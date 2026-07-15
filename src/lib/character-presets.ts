@@ -1,7 +1,9 @@
+const WARRIOR_PRESET = "/presets/warrior.png";
+
 const CLASS_PRESET_RULES: Array<{ keywords: string[]; preset: string }> = [
 	{
 		keywords: ["warrior", "guerreiro", "fighter", "barbarian", "paladin"],
-		preset: "/presets/warrior.png",
+		preset: WARRIOR_PRESET,
 	},
 	{
 		keywords: ["mage", "mago", "wizard", "sorcerer", "warlock"],
@@ -25,7 +27,7 @@ const CLASS_PRESET_RULES: Array<{ keywords: string[]; preset: string }> = [
 	},
 ];
 
-const DEFAULT_PRESET = "/presets/warrior.png";
+const DEFAULT_PRESET = WARRIOR_PRESET;
 
 /** Resolve a class-based fallback portrait when the character has no uploaded image. */
 export function getCharacterPresetUrl(charClass: string): string {
