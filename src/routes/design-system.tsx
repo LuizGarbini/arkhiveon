@@ -1,22 +1,35 @@
-import { useState, useEffect, useRef } from "react";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import {
 	AlertTriangle,
 	Bell,
 	BookOpen,
+	Calendar,
 	CheckCircle2,
 	ChevronRight,
+	Clock,
+	Coins,
+	Compass,
 	CreditCard,
+	Eye,
+	Gem,
 	Info,
+	Link2,
+	Lock,
+	MapPin,
+	Mountain,
 	MousePointer2,
 	Music,
 	PanelLeft,
 	Plus,
+	ScrollText,
 	Search,
 	Sparkles,
 	User,
+	Users,
 	WandSparkles,
+	Weight,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
@@ -69,6 +82,7 @@ const surfaces = [
 ];
 
 function DesignSystem() {
+	const [showMockImages, setShowMockImages] = useState(false);
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 sm:px-8">
 			<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5 sm:p-8">
@@ -327,13 +341,19 @@ function DesignSystem() {
 				</div>
 			</SpecPanel>
 
-			<SpecPanel eyebrow="Motion Design" title="Showcase de Transições (transitions.dev)">
+			<SpecPanel
+				eyebrow="Motion Design"
+				title="Showcase de Transições (transitions.dev)"
+			>
 				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-4">
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">01 · Card Resize</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								01 · Card Resize
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								Redimensiona containers de forma fluida usando variáveis de transição e aceleração gráfica.
+								Redimensiona containers de forma fluida usando variáveis de
+								transição e aceleração gráfica.
 							</p>
 						</div>
 						<CardResizeShowcase />
@@ -341,9 +361,12 @@ function DesignSystem() {
 
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">02 · Number Pop-in</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								02 · Number Pop-in
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								Re-entrada de dígitos com desfoque e efeito staggered (escalonamento) nos decimais.
+								Re-entrada de dígitos com desfoque e efeito staggered
+								(escalonamento) nos decimais.
 							</p>
 						</div>
 						<NumberPopInShowcase />
@@ -351,9 +374,12 @@ function DesignSystem() {
 
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">03 · Notification Badge</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								03 · Notification Badge
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								O badge de notificação desliza em diagonal e o número expande com efeito elástico.
+								O badge de notificação desliza em diagonal e o número expande
+								com efeito elástico.
 							</p>
 						</div>
 						<NotificationBadgeShowcase />
@@ -361,9 +387,12 @@ function DesignSystem() {
 
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">04 · Text States Swap</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								04 · Text States Swap
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								Substitui textos com movimentação vertical e desfoque, ideal para botões de salvar/processar.
+								Substitui textos com movimentação vertical e desfoque, ideal
+								para botões de salvar/processar.
 							</p>
 						</div>
 						<TextStatesSwapShowcase />
@@ -371,9 +400,12 @@ function DesignSystem() {
 
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">05 · Menu Dropdown</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								05 · Menu Dropdown
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								Menus de opções crescem em escala a partir da origem do gatilho e fecham suavemente.
+								Menus de opções crescem em escala a partir da origem do gatilho
+								e fecham suavemente.
 							</p>
 						</div>
 						<MenuDropdownShowcase />
@@ -381,12 +413,334 @@ function DesignSystem() {
 
 					<div className="rounded-2xl border border-border/70 bg-card-elevated p-5 flex flex-col justify-between min-h-[220px]">
 						<div>
-							<h3 className="text-[14px] font-bold text-foreground mb-1">06 · Error State Shake</h3>
+							<h3 className="text-[14px] font-bold text-foreground mb-1">
+								06 · Error State Shake
+							</h3>
 							<p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-								Tremedeira com overshoot e auto-reversão no timer para feedbacks rápidos em formulários.
+								Tremedeira com overshoot e auto-reversão no timer para feedbacks
+								rápidos em formulários.
 							</p>
 						</div>
 						<ErrorStateShakeShowcase />
+					</div>
+				</div>
+			</SpecPanel>
+
+			<SpecPanel
+				eyebrow="Coleções"
+				title="Redesign dos Cards de Entidades (Mockup)"
+			>
+				<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
+					<p className="text-[12px] text-muted-foreground leading-relaxed">
+						Veja abaixo a proposta visual de redesenho dos cards. Use o botão ao
+						lado para alternar e ver a aparência com imagens carregadas.
+					</p>
+					<button
+						type="button"
+						onClick={() => setShowMockImages(!showMockImages)}
+						className={`inline-flex h-8 items-center gap-2 rounded-xl px-3.5 text-xs font-semibold border transition-all duration-205 cursor-pointer shrink-0 w-fit ${
+							showMockImages
+								? "bg-primary/10 border-primary/45 text-primary"
+								: "bg-background/45 border-border/75 text-muted-foreground hover:text-foreground"
+						}`}
+					>
+						<Sparkles className="h-3.5 w-3.5" />
+						{showMockImages
+							? "Ocultar Imagens Fictícias"
+							: "Mostrar Imagens Fictícias"}
+					</button>
+				</div>
+
+				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{/* 1. NPC Card Mockup */}
+					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-border/70 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.985]">
+						<div className="flex items-start gap-4">
+							<div className="relative h-15 w-15 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-fuchsia-500/10 to-transparent ring-1 ring-fuchsia-500/25">
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Alistair Vance"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<div className="flex h-full w-full items-center justify-center text-lg font-bold text-fuchsia-300">
+										AV
+									</div>
+								)}
+							</div>
+							<div className="min-w-0 flex-1">
+								<h3 className="font-display truncate text-[16px] font-bold text-rose-400">
+									Alistair Vance
+								</h3>
+								<p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+									<User className="h-3.5 w-3.5" /> Humano · Nobre
+								</p>
+								<div className="mt-2 flex flex-wrap items-center gap-1.5">
+									<span className="rounded bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+										NPC
+									</span>
+									<span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 text-emerald-300 bg-emerald-500/10 ring-emerald-500/25">
+										Amigável
+									</span>
+									<span className="rounded bg-muted/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+										Ordem da Estrela
+									</span>
+									<span className="font-mono rounded bg-background/50 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-muted-foreground ring-1 ring-border">
+										CR 5
+									</span>
+								</div>
+							</div>
+						</div>
+						<div className="mt-3.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+							<MapPin className="h-3.5 w-3.5 text-amber-300" />
+							<span className="truncate">Vale Cinzento</span>
+						</div>
+						<p className="mt-3.5 line-clamp-3 border-t border-border/60 pt-3 text-xs italic leading-relaxed text-muted-foreground">
+							“Um nobre caído que busca redenção a todo custo, mesmo que precise
+							se aliar a forças profanas.”
+						</p>
+					</div>
+
+					{/* 2. Session Card Mockup */}
+					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.985]">
+						<div className="flex items-start justify-between gap-4">
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-2">
+									<span className="rounded-md bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 text-[9px] font-mono font-bold text-amber-300">
+										SESSÃO #14
+									</span>
+									<span className="rounded-md bg-muted/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground border border-border">
+										Tenso
+									</span>
+								</div>
+								<h3 className="font-display mt-2.5 text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-250">
+									O Segredo do Vale Cinzento
+								</h3>
+								<div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+									<span className="flex items-center gap-1">
+										<Calendar className="h-3.5 w-3.5 text-primary" />
+										14 Jul 2026
+									</span>
+									<span>·</span>
+									<span className="flex items-center gap-1">
+										<Clock className="h-3.5 w-3.5 text-primary" />
+										4h 30m
+									</span>
+								</div>
+								<div className="mt-1.5">
+									<span className="inline-flex items-center gap-1 rounded bg-amber-500/5 px-2 py-0.5 border border-amber-500/20 text-[10px] text-amber-300">
+										13 de Outono, 1492 DR
+									</span>
+								</div>
+							</div>
+						</div>
+						<div className="mt-4 rounded-xl bg-background/30 p-3.5 ring-1 ring-border/50">
+							<div className="mb-1.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+								<ScrollText className="h-3.5 w-3.5 text-primary" />
+								Resumo da Crônica
+							</div>
+							<p className="font-display text-xs leading-relaxed text-foreground/80">
+								O grupo explorou as ruínas subterrâneas e enfrentou o guardião
+								de pedra. Encontraram o Orbe de Âmbar.
+							</p>
+						</div>
+						<div className="mt-3.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+							<Users className="h-3.5 w-3.5 text-primary" />
+							<span>
+								Participantes:{" "}
+								<span className="text-foreground">
+									Luiz, Gabriel, Pedro, Ana
+								</span>
+							</span>
+						</div>
+						<p className="mt-3.5 line-clamp-2 border-t border-border/60 pt-3 text-xs italic text-amber-300/80">
+							"A fenda começou a desabar e um rugido ecoou das profundezas..."
+						</p>
+					</div>
+
+					{/* 3. Item Card Mockup */}
+					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-amber-500/35 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/5 active:scale-[0.985]">
+						<div className="flex items-start gap-4">
+							<div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-amber-500/15 to-transparent ring-1 ring-amber-500/30 text-amber-300">
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Orbe de Âmbar"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<Gem className="h-5 w-5" strokeWidth={1.6} />
+								)}
+							</div>
+							<div className="min-w-0 flex-1">
+								<h3 className="font-display truncate text-[16px] font-bold text-foreground">
+									Orbe de Âmbar
+								</h3>
+								<div className="mt-1 flex flex-wrap items-center gap-1.5">
+									<span className="rounded bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-amber-500/35 text-amber-300">
+										Lendário
+									</span>
+									<span className="text-xs text-muted-foreground">
+										· Foco Arcano (Cristal)
+									</span>
+								</div>
+								<div className="mt-1.5 flex items-center gap-1 text-[9px] uppercase tracking-wider text-violet-300">
+									<Link2 className="h-3 w-3" /> requer sintonia
+								</div>
+							</div>
+						</div>
+						<p className="font-mono mt-3.5 line-clamp-2 rounded-xl bg-background/45 p-2 text-xs text-foreground/90 ring-1 ring-border/60">
+							+2 em testes de resistência de Magia
+						</p>
+						<div className="mt-3.5 grid grid-cols-3 gap-1.5 text-xs">
+							<div className="flex items-center gap-1 rounded-xl bg-background/45 px-1.5 py-1 ring-1 ring-border/60">
+								<Weight className="h-3 w-3 text-muted-foreground" />
+								<div>
+									<div className="text-[7px] uppercase tracking-wider text-muted-foreground">
+										Peso
+									</div>
+									<div className="text-[10px] font-bold text-foreground">
+										1.5 kg
+									</div>
+								</div>
+							</div>
+							<div className="flex items-center gap-1 rounded-xl bg-background/45 px-1.5 py-1 ring-1 ring-border/60">
+								<Coins className="h-3 w-3 text-muted-foreground" />
+								<div>
+									<div className="text-[7px] uppercase tracking-wider text-muted-foreground">
+										Valor
+									</div>
+									<div className="text-[10px] font-bold text-foreground">
+										15k PO
+									</div>
+								</div>
+							</div>
+							<div className="flex items-center gap-1 rounded-xl bg-background/45 px-1.5 py-1 ring-1 ring-border/60">
+								<Gem className="h-3 w-3 text-muted-foreground" />
+								<div>
+									<div className="text-[7px] uppercase tracking-wider text-muted-foreground">
+										Cargas
+									</div>
+									<div className="text-[10px] font-bold text-foreground">
+										3 / 3
+									</div>
+								</div>
+							</div>
+						</div>
+						<p className="mt-3.5 line-clamp-2 border-t border-border/60 pt-3 text-xs italic text-muted-foreground">
+							"Um cristal reluzente que pulsa com energia elemental de terra
+							aprisionada há milênios."
+						</p>
+					</div>
+
+					{/* 4. Location Card Mockup */}
+					<div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.985]">
+						<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-emerald-500/15 to-transparent transition-all duration-500">
+							{showMockImages ? (
+								<img
+									src="https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=450&h=150"
+									alt="Vale Cinzento"
+									className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+								/>
+							) : (
+								<div className="flex h-full w-full items-center justify-center text-emerald-400/30">
+									<Compass className="h-10 w-10" strokeWidth={1.4} />
+								</div>
+							)}
+							<div className="absolute inset-x-0 bottom-0 z-10 h-12 bg-linear-to-t from-card-elevated to-transparent" />
+						</div>
+						<div className="flex flex-1 flex-col p-4.5 pt-2">
+							<h3 className="font-display truncate text-[16px] font-bold text-foreground">
+								Vale Cinzento
+							</h3>
+							<p className="mt-0.5 text-xs text-muted-foreground">
+								Ruínas Antigas · Fronteiras do Leste
+							</p>
+							<div className="mt-2 flex flex-wrap items-center gap-1.5">
+								<span className="rounded bg-background/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-amber-500/35 text-amber-300 bg-amber-500/5">
+									Perigo Moderado
+								</span>
+								<span className="flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/20">
+									<Eye className="h-2.5 w-2.5" /> visitado
+								</span>
+							</div>
+							<div className="mt-3.5 grid grid-cols-2 gap-1.5 text-xs">
+								<div className="flex items-center gap-1.5 rounded-xl bg-background/45 px-1.5 py-1 ring-1 ring-border/60">
+									<Mountain className="h-3.5 w-3.5 text-muted-foreground" />
+									<div>
+										<div className="text-[7px] uppercase tracking-wider text-muted-foreground">
+											Clima
+										</div>
+										<div className="text-[10px] font-bold text-foreground">
+											Nevoeiro
+										</div>
+									</div>
+								</div>
+								<div className="flex items-center gap-1.5 rounded-xl bg-background/45 px-1.5 py-1 ring-1 ring-border/60">
+									<Users className="h-3.5 w-3.5 text-muted-foreground" />
+									<div>
+										<div className="text-[7px] uppercase tracking-wider text-muted-foreground">
+											Pop.
+										</div>
+										<div className="text-[10px] font-bold text-foreground">
+											Desabitado
+										</div>
+									</div>
+								</div>
+							</div>
+							<p className="mt-3.5 line-clamp-3 border-t border-border/60 pt-3 text-xs italic text-muted-foreground">
+								"Uma floresta outrora fértil, agora coberta por névoa perpétua e
+								ruínas esquecidas pela história."
+							</p>
+						</div>
+					</div>
+
+					{/* 5. Lore Card Mockup */}
+					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-amber-500/30 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-amber-500/45 hover:shadow-lg hover:shadow-amber-500/5 active:scale-[0.985]">
+						<div className="pointer-events-none absolute inset-y-3.5 left-0 w-[2px] rounded-full bg-linear-to-b from-transparent via-amber-500/45 to-transparent" />
+						<div className="flex items-start gap-4 pl-1.5">
+							<div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background/45 ring-1 ring-amber-500/25 text-amber-300">
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Declínio de Netheril"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<BookOpen className="h-4.5 w-4.5" strokeWidth={1.6} />
+								)}
+							</div>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-1.5">
+									<h3 className="font-display truncate text-[16px] font-bold text-foreground">
+										Declínio de Netheril
+									</h3>
+									<Lock className="h-3 w-3 shrink-0 text-rose-400" />
+								</div>
+								<p className="mt-0.5 text-xs text-muted-foreground">
+									História · Segunda Era
+								</p>
+								<div className="mt-2">
+									<span className="rounded bg-background/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-amber-500/30 text-amber-300">
+										Pilar
+									</span>
+								</div>
+							</div>
+						</div>
+						<p className="font-display mt-3.5 line-clamp-5 border-t border-border/60 pt-3 text-xs italic leading-relaxed text-foreground/80 pl-1.5">
+							A queda das cidades flutuantes marcou o fim da magia arcana sem
+							limites e a ascensão do atual Panteão de divindades.
+						</p>
+						<div className="mt-3.5 flex flex-wrap gap-1.5 pl-1.5">
+							{["#magia", "#queda", "#imperio", "#netheril"].map((tag) => (
+								<span
+									key={tag}
+									className="rounded bg-muted/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground ring-1 ring-border"
+								>
+									{tag}
+								</span>
+							))}
+						</div>
 					</div>
 				</div>
 			</SpecPanel>
@@ -489,21 +843,30 @@ function CardResizeShowcase() {
 	const [isExpanded, setIsExpanded] = useState(false);
 	return (
 		<div className="flex flex-col gap-3">
-			<Button onClick={() => setIsExpanded(!isExpanded)} className="w-fit h-9 text-[12px] rounded-xl px-4">
+			<Button
+				onClick={() => setIsExpanded(!isExpanded)}
+				className="w-fit h-9 text-[12px] rounded-xl px-4"
+			>
 				{isExpanded ? "Contrair Card" : "Expandir Card"}
 			</Button>
-			<div 
+			<div
 				className="t-resize overflow-hidden border border-border bg-background rounded-2xl p-4"
 				style={{
 					width: isExpanded ? "100%" : "230px",
 					height: isExpanded ? "150px" : "80px",
 				}}
 			>
-				<h4 className="font-display font-bold text-[13px] text-foreground">Aelyra Moonwhisper</h4>
-				<p className="text-[11px] text-muted-foreground mt-0.5">Elfa · Maga Nível 5</p>
+				<h4 className="font-display font-bold text-[13px] text-foreground">
+					Aelyra Moonwhisper
+				</h4>
+				<p className="text-[11px] text-muted-foreground mt-0.5">
+					Elfa · Maga Nível 5
+				</p>
 				{isExpanded && (
 					<div className="mt-3 pt-3 border-t border-border/50 text-[11px] leading-relaxed text-muted-foreground">
-						<p><strong>PV:</strong> 28/28 | <strong>PM:</strong> 15/15</p>
+						<p>
+							<strong>PV:</strong> 28/28 | <strong>PM:</strong> 15/15
+						</p>
 						<p className="mt-1">Equipada com o Orbe de Âmbar e Cajado.</p>
 					</div>
 				)}
@@ -521,23 +884,39 @@ function NumberPopInShowcase() {
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex gap-1.5">
-				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev + 1.2)}>
+				<Button
+					size="sm"
+					variant="outline"
+					className="h-8 text-[11px] rounded-xl px-3"
+					onClick={() => setCount((prev) => prev + 1.2)}
+				>
 					+1.2
 				</Button>
-				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev - 0.7)}>
+				<Button
+					size="sm"
+					variant="outline"
+					className="h-8 text-[11px] rounded-xl px-3"
+					onClick={() => setCount((prev) => prev - 0.7)}
+				>
 					-0.7
 				</Button>
-				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(100.0)}>
+				<Button
+					size="sm"
+					variant="outline"
+					className="h-8 text-[11px] rounded-xl px-3"
+					onClick={() => setCount(100.0)}
+				>
 					Reset
 				</Button>
 			</div>
 			<div className="text-2xl font-bold text-primary">
 				<span key={count} className="t-digit-group is-animating">
 					{digits.map((digit, i) => {
-						let staggerVal = undefined;
+						let staggerVal: string | undefined;
 						if (i === digits.length - 2) staggerVal = "1";
 						else if (i === digits.length - 1) staggerVal = "2";
 						return (
+							// biome-ignore lint/suspicious/noArrayIndexKey: static digits mapping
 							<span key={i} className="t-digit" data-stagger={staggerVal}>
 								{digit}
 							</span>
@@ -555,16 +934,24 @@ function NotificationBadgeShowcase() {
 	return (
 		<div className="flex flex-col gap-3 items-start">
 			<div className="flex gap-1.5">
-				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(prev => prev + 1)}>
+				<Button
+					size="sm"
+					variant="outline"
+					className="h-8 text-[11px] rounded-xl px-3"
+					onClick={() => setCount((prev) => prev + 1)}
+				>
 					Notificar
 				</Button>
-				<Button size="sm" variant="outline" className="h-8 text-[11px] rounded-xl px-3" onClick={() => setCount(0)}>
+				<Button
+					size="sm"
+					variant="outline"
+					className="h-8 text-[11px] rounded-xl px-3"
+					onClick={() => setCount(0)}
+				>
 					Limpar
 				</Button>
 			</div>
-			<div 
-				className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary cursor-pointer hover:bg-primary/15 transition-colors"
-			>
+			<div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary cursor-pointer hover:bg-primary/15 transition-colors">
 				<Bell className="h-5 w-5" />
 				<span className="t-badge" data-open={count > 0 ? "true" : "false"}>
 					<span className="t-badge-dot flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[9px] font-bold text-white leading-none">
@@ -586,13 +973,13 @@ function TextStatesSwapShowcase() {
 	const handleTrigger = () => {
 		const nextStep = (step + 1) % 3;
 		setStep(nextStep);
-		
+
 		setStateClass("is-exit");
-		
+
 		setTimeout(() => {
 			setText(texts[nextStep]);
 			setStateClass("is-enter-start");
-			
+
 			setTimeout(() => {
 				setStateClass("");
 			}, 20);
@@ -601,14 +988,12 @@ function TextStatesSwapShowcase() {
 
 	return (
 		<div className="flex flex-col gap-2">
-			<Button 
-				onClick={handleTrigger} 
+			<Button
+				onClick={handleTrigger}
 				variant={step === 2 ? "outline" : "default"}
 				className="w-36 h-9 text-[12px] rounded-xl"
 			>
-				<span className={`t-text-swap ${stateClass}`}>
-					{text}
-				</span>
+				<span className={`t-text-swap ${stateClass}`}>{text}</span>
 			</Button>
 			<p className="text-[10px] text-muted-foreground">
 				Transição vertical suave e desfoque ao trocar.
@@ -634,7 +1019,10 @@ function MenuDropdownShowcase() {
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+			if (
+				containerRef.current &&
+				!containerRef.current.contains(event.target as Node)
+			) {
 				if (isOpen) {
 					setIsClosing(true);
 					setIsOpen(false);
@@ -648,24 +1036,39 @@ function MenuDropdownShowcase() {
 
 	return (
 		<div className="relative inline-block text-left" ref={containerRef}>
-			<Button onClick={toggleDropdown} variant="outline" className="gap-2 h-9 text-[12px] rounded-xl px-4">
+			<Button
+				onClick={toggleDropdown}
+				variant="outline"
+				className="gap-2 h-9 text-[12px] rounded-xl px-4"
+			>
 				Menu de Opções
-				<ChevronRight className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
+				<ChevronRight
+					className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+				/>
 			</Button>
-			
-			<div 
+
+			<div
 				data-origin="top-left"
 				className={`t-dropdown absolute left-0 mt-2 w-48 rounded-2xl border border-border/75 bg-card-elevated p-1.5 shadow-xl shadow-black/15 z-50 ${isOpen ? "is-open" : ""} ${isClosing ? "is-closing" : ""}`}
 			>
 				<div className="flex flex-col gap-0.5">
-					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors">
+					<button
+						type="button"
+						className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors"
+					>
 						Visualizar Perfil
 					</button>
-					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors">
+					<button
+						type="button"
+						className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-muted text-foreground text-left transition-colors"
+					>
 						Configurações
 					</button>
 					<hr className="border-border/50 my-1" />
-					<button className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-destructive/10 text-destructive text-left transition-colors">
+					<button
+						type="button"
+						className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] hover:bg-destructive/10 text-destructive text-left transition-colors"
+					>
 						Excluir
 					</button>
 				</div>
@@ -683,7 +1086,7 @@ function ErrorStateShakeShowcase() {
 	const triggerError = () => {
 		setIsError(true);
 		setIsShaking(false);
-		
+
 		setTimeout(() => {
 			setIsShaking(true);
 		}, 10);
@@ -716,18 +1119,25 @@ function ErrorStateShakeShowcase() {
 	}, []);
 
 	return (
-		<div className={`t-input-wrap flex flex-col gap-1.5 w-full ${isError ? "is-error" : ""}`}>
+		<div
+			className={`t-input-wrap flex flex-col gap-1.5 w-full ${isError ? "is-error" : ""}`}
+		>
 			<div className="flex gap-2 w-full">
-				<div className={`t-input flex-1 rounded-2xl border ${isError ? "border-destructive is-error" : "border-border/70"} ${isShaking ? "is-shaking" : ""} overflow-hidden bg-background`}>
-					<input 
-						type="text" 
-						placeholder="Digite seu e-mail" 
+				<div
+					className={`t-input flex-1 rounded-2xl border ${isError ? "border-destructive is-error" : "border-border/70"} ${isShaking ? "is-shaking" : ""} overflow-hidden bg-background`}
+				>
+					<input
+						type="text"
+						placeholder="Digite seu e-mail"
 						value={value}
 						onChange={handleInputChange}
 						className="w-full h-9 px-3 bg-transparent text-[12px] border-none outline-none focus:ring-0"
 					/>
 				</div>
-				<Button onClick={triggerError} className="h-9 text-[12px] rounded-xl px-4">
+				<Button
+					onClick={triggerError}
+					className="h-9 text-[12px] rounded-xl px-4"
+				>
 					Validar
 				</Button>
 			</div>
