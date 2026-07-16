@@ -4,8 +4,9 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { routeTree } from "../routeTree.gen";
+import { useRPGStore } from "@/lib/store";
 
 // Mock matchMedia for jsdom environment
 window.matchMedia =
@@ -52,6 +53,13 @@ vi.mock("@/lib/auth", () => {
 });
 
 describe("Routes smoke tests", () => {
+	beforeEach(() => {
+		useRPGStore.setState({
+			loadCampaigns: vi.fn().mockResolvedValue(undefined),
+			loadRemoteData: vi.fn().mockResolvedValue(undefined),
+			setupRealtime: vi.fn().mockReturnValue(() => {}),
+		});
+	});
 	it("renders auth page or redirects without crashing", async () => {
 		const router = createRouter({
 			routeTree,
@@ -81,7 +89,6 @@ describe("Routes smoke tests", () => {
 	});
 
 	it("renders characters page without crashing", async () => {
-		const { useRPGStore } = await import("@/lib/store");
 		useRPGStore.setState({
 			campaigns: [
 				{

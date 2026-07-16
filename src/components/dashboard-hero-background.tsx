@@ -38,6 +38,19 @@ function scheduleIdle(callback: () => void) {
 	return () => window.clearTimeout(id);
 }
 
+function isWebGLSupported(): boolean {
+	if (typeof window === "undefined") return false;
+	try {
+		const canvas = document.createElement("canvas");
+		return !!(
+			window.WebGLRenderingContext &&
+			(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+		);
+	} catch (e) {
+		return false;
+	}
+}
+
 /**
  * Dashboard hero background: CSS paints immediately; WebGL loads idle when
  * the device is not in lite/performance mode.
@@ -52,7 +65,7 @@ export function DashboardHeroBackground() {
 			cancelIdle?.();
 			cancelIdle = undefined;
 
-			if (isLitePerformanceMode()) {
+			if (isLitePerformanceMode() || !isWebGLSupported()) {
 				setEnableShader(false);
 				return;
 			}

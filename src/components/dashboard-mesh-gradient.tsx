@@ -43,6 +43,22 @@ function DashboardMeshGradientComponent() {
 			setActive(inView && pageVisible);
 		}
 
+		if (typeof window.IntersectionObserver === "undefined") {
+			inView = true;
+			sync();
+			
+			function onVisibility() {
+				pageVisible = document.visibilityState === "visible";
+				sync();
+			}
+
+			document.addEventListener("visibilitychange", onVisibility);
+
+			return () => {
+				document.removeEventListener("visibilitychange", onVisibility);
+			};
+		}
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				inView = entries.some((entry) => entry.isIntersecting);
