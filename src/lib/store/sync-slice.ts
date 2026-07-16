@@ -49,7 +49,9 @@ export interface SyncSlice {
 	clearLocalData: () => void;
 	clearActivity: () => void;
 	notifications: AppNotification[];
-	addNotification: (notification: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+	addNotification: (
+		notification: Omit<AppNotification, "id" | "createdAt" | "read">,
+	) => void;
 	markAllNotificationsAsRead: () => void;
 	clearNotifications: () => void;
 }
@@ -146,7 +148,9 @@ function isRealtimeEchoOfLocalMutation(
 		const localItem = currentArray.find((item) => item.id === newRow.id);
 		if (!localItem) return false;
 		const incoming = newRow.data as Record<string, unknown>;
-		return Object.keys(incoming).every((key) => localItem[key] === incoming[key]);
+		return Object.keys(incoming).every(
+			(key) => localItem[key] === incoming[key],
+		);
 	}
 	if (eventType === "DELETE" && oldRow?.id) {
 		const currentArray = get()[storeKey] as Array<{ id: string }>;
@@ -349,7 +353,6 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					const newRowCasted = newRow as SupabasePayloadRow | null;
 					const oldRowCasted = oldRow as SupabasePayloadRow | null;
 
-
 					if (
 						belongsToActiveCampaign &&
 						!isOwnAction &&
@@ -380,89 +383,91 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					}
 
 					set((state) => {
-					const currentArray = state[storeKey] as Array<
-						{ id: string } & Record<string, unknown>
-					>;
+						const currentArray = state[storeKey] as Array<
+							{ id: string } & Record<string, unknown>
+						>;
 
-					if (eventType === "INSERT") {
-						// Evita duplicata se já foi adicionado localmente
-						if (currentArray.some((item) => item.id === newRow.id))
-							return state;
+						if (eventType === "INSERT") {
+							// Evita duplicata se já foi adicionado localmente
+							if (currentArray.some((item) => item.id === newRow.id))
+								return state;
 
-						let processed = newRow.data || newRow;
-						if (table === "activity_log") {
-							processed = {
-								id: newRow.id,
-								action: newRow.action,
-								entityKind: newRow.entity_kind,
-								entityId: newRow.entity_id,
-								entityName: newRow.entity_name,
-								timestamp: new Date(newRow.created_at).getTime(),
-							};
-						} else if (table === "image_assets") {
-							processed = {
-								id: newRow.id,
-								campaignId: newRow.campaign_id,
-								createdBy: newRow.created_by,
-								name: newRow.name,
-								url: newRow.url,
-								storageKey: newRow.storage_key ?? undefined,
-								mimeType: newRow.mime_type,
-								sizeBytes: newRow.size_bytes ?? 0,
-								width: newRow.width ?? undefined,
-								height: newRow.height ?? undefined,
-								isPrivate: newRow.is_private ?? false,
-								createdAt: new Date(newRow.created_at).getTime(),
-								updatedAt: newRow.updated_at
-									? new Date(newRow.updated_at).getTime()
-									: undefined,
-							};
-						} else {
-							processed = { id: newRow.id, ...newRow.data };
-						}
+							let processed = newRow.data || newRow;
+							if (table === "activity_log") {
+								processed = {
+									id: newRow.id,
+									action: newRow.action,
+									entityKind: newRow.entity_kind,
+									entityId: newRow.entity_id,
+									entityName: newRow.entity_name,
+									timestamp: new Date(newRow.created_at).getTime(),
+								};
+							} else if (table === "image_assets") {
+								processed = {
+									id: newRow.id,
+									campaignId: newRow.campaign_id,
+									createdBy: newRow.created_by,
+									name: newRow.name,
+									url: newRow.url,
+									storageKey: newRow.storage_key ?? undefined,
+									mimeType: newRow.mime_type,
+									sizeBytes: newRow.size_bytes ?? 0,
+									width: newRow.width ?? undefined,
+									height: newRow.height ?? undefined,
+									isPrivate: newRow.is_private ?? false,
+									createdAt: new Date(newRow.created_at).getTime(),
+									updatedAt: newRow.updated_at
+										? new Date(newRow.updated_at).getTime()
+										: undefined,
+								};
+							} else {
+								processed = { id: newRow.id, ...newRow.data };
+							}
 
-						return {
-							[storeKey]: [processed, ...currentArray].slice(
-								0,
-								table === "activity_log" ? 200 : 1000,
-							),
-						};
-					}
-
-					if (eventType === "UPDATE") {
-						if (table === "image_assets") {
 							return {
-								[storeKey]: currentArray.map((item) =>
-									item.id === newRow.id
-										? {
-												...item,
-												name: newRow.name,
-												isPrivate: newRow.is_private,
-												updatedAt: newRow.updated_at
-													? new Date(newRow.updated_at).getTime()
-													: Date.now(),
-											}
-										: item,
+								[storeKey]: [processed, ...currentArray].slice(
+									0,
+									table === "activity_log" ? 200 : 1000,
 								),
 							};
 						}
 
-						return {
-							[storeKey]: currentArray.map((item) =>
-								item.id === newRow.id ? { ...item, ...newRow.data } : item,
-							),
-						};
-					}
+						if (eventType === "UPDATE") {
+							if (table === "image_assets") {
+								return {
+									[storeKey]: currentArray.map((item) =>
+										item.id === newRow.id
+											? {
+													...item,
+													name: newRow.name,
+													isPrivate: newRow.is_private,
+													updatedAt: newRow.updated_at
+														? new Date(newRow.updated_at).getTime()
+														: Date.now(),
+												}
+											: item,
+									),
+								};
+							}
 
-					if (eventType === "DELETE") {
-						return {
-							[storeKey]: currentArray.filter((item) => item.id !== oldRow.id),
-						};
-					}
+							return {
+								[storeKey]: currentArray.map((item) =>
+									item.id === newRow.id ? { ...item, ...newRow.data } : item,
+								),
+							};
+						}
 
-					return state;
+						if (eventType === "DELETE") {
+							return {
+								[storeKey]: currentArray.filter(
+									(item) => item.id !== oldRow.id,
+								),
+							};
+						}
+
+						return state;
+					});
 				});
-			});
 
 			channel.subscribe((status, err) => {
 				console.log("[Realtime subscription status]", status, err);
@@ -479,7 +484,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			}
 		};
 	},
-	clearLocalData: () =>
+	clearLocalData: () => {
 		set({
 			characters: [],
 			npcs: [],
@@ -492,6 +497,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			activityLog: [],
 			notifications: [],
 			syncError: null,
-		}),
+		});
+		get().resetCampaigns();
+	},
 	clearActivity: () => set({ activityLog: [] }),
 });

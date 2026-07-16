@@ -25,6 +25,8 @@ export interface CampaignSlice {
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
 	activeCampaignOwnerPlan: UserPlan;
+	/** False until the first loadCampaigns() for this session finishes. */
+	hasLoadedCampaigns: boolean;
 	pendingInvites: Invite[];
 
 	loadCampaigns: () => Promise<void>;
@@ -55,6 +57,7 @@ export interface CampaignSlice {
 		}>;
 		invites: Invite[];
 	}>;
+	resetCampaigns: () => void;
 }
 
 export const createCampaignSlice: StateCreator<
@@ -66,16 +69,32 @@ export const createCampaignSlice: StateCreator<
 	campaigns: [],
 	activeCampaignId: null,
 	activeCampaignOwnerPlan: "free",
+	hasLoadedCampaigns: false,
 	pendingInvites: [],
+
+	resetCampaigns: () =>
+		set({
+			campaigns: [],
+			activeCampaignId: null,
+			activeCampaignOwnerPlan: "free",
+			hasLoadedCampaigns: false,
+			pendingInvites: [],
+		}),
 
 	loadCampaigns: async () => {
 		const supabase = getSupabase();
-		if (!supabase) return;
+		if (!supabase) {
+			set({ hasLoadedCampaigns: true });
+			return;
+		}
 
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
-		if (!user) return;
+		if (!user) {
+			set({ hasLoadedCampaigns: true });
+			return;
+		}
 
 		// Carregar campanhas das quais o usuário é membro, com role
 		const { data, error } = await supabase
@@ -95,7 +114,10 @@ export const createCampaignSlice: StateCreator<
 			.order("created_at", { ascending: true });
 
 		if (error) {
-			set({ syncError: `Erro ao carregar campanhas: ${error.message}` });
+			set({
+				syncError: `Erro ao carregar campanhas: ${error.message}`,
+				hasLoadedCampaigns: true,
+			});
 			return;
 		}
 
@@ -119,7 +141,7 @@ export const createCampaignSlice: StateCreator<
 				};
 			});
 
-		set({ campaigns, syncError: null });
+		set({ campaigns, syncError: null, hasLoadedCampaigns: true });
 
 		// Se não há campanha ativa, ou a ativa não existe mais, selecionar a primeira
 		const state = get();
@@ -150,7 +172,9 @@ export const createCampaignSlice: StateCreator<
 	createCampaign: async (name, description = "") => {
 		const state = get();
 		const maxCampaigns = state.userPlan === "pro" ? 5 : 1;
-		const ownedCampaignsCount = state.campaigns.filter((c) => c.myRole === "owner").length;
+		const ownedCampaignsCount = state.campaigns.filter(
+			(c) => c.myRole === "owner",
+		).length;
 		if (ownedCampaignsCount >= maxCampaigns) {
 			const errorMsg = `Limite de campanhas atingido (${maxCampaigns}). ${
 				state.userPlan === "pro"

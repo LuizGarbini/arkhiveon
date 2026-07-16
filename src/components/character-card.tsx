@@ -1,13 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Camera, Heart, Shield, Sparkles, User, Zap } from "lucide-react";
-import { useState } from "react";
+import { Camera } from "lucide-react";
+import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
+import { getCharacterPresetUrl } from "@/lib/character-presets";
 import {
-	abilityModifier,
 	type Character,
 	formatModifier,
 	systemLabel,
@@ -15,15 +14,12 @@ import {
 	useImageAssetLookup,
 	useRPGStore,
 } from "@/lib/store";
-import { SYSTEM_CONFIG } from "@/lib/systems";
 import { EntityActions } from "./entity-actions";
 
 interface CharacterCardProps {
 	character?: Character;
 	isLoading?: boolean;
 }
-
-const abilitySkeletonKeys = ["str", "dex", "con", "int", "wis", "cha"];
 
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
@@ -36,271 +32,183 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 	if (isLoading || !character) {
 		return (
-			<div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card-elevated p-0">
-				<Skeleton className="h-28 w-full rounded-none" />
-				<div className="flex flex-1 flex-col p-4 space-y-4">
-					<div className="space-y-2">
-						<Skeleton className="h-5 w-3/4" />
-						<Skeleton className="h-3 w-1/2" />
-					</div>
-					<div className="space-y-2">
-						<Skeleton className="h-3 w-full" />
-						<Skeleton className="h-1.5 w-full rounded-full" />
-					</div>
-					<div className="grid grid-cols-3 gap-1.5">
-						<Skeleton className="h-10 w-full rounded-md" />
-						<Skeleton className="h-10 w-full rounded-md" />
-						<Skeleton className="h-10 w-full rounded-md" />
-					</div>
-					<div className="grid grid-cols-6 gap-1 border-t border-border/60 pt-3">
-						{abilitySkeletonKeys.map((key) => (
-							<div key={key} className="flex flex-col items-center gap-1">
-								<Skeleton className="h-2 w-4" />
-								<Skeleton className="h-3 w-6" />
+			<div className="relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
+				<div className="space-y-2.5 pt-1">
+					<div className="h-5 w-1/2 rounded-md bg-white/10" />
+					<div className="h-3 w-1/3 rounded-md bg-white/5" />
+					<div className="mt-1 h-4 w-1/4 rounded-md bg-white/5" />
+				</div>
+				<div className="space-y-3 border-t border-white/5 pt-4">
+					<div className="grid grid-cols-3 gap-2 text-center">
+						{["ca", "ini", "hp"].map((key) => (
+							<div key={key} className="space-y-1">
+								<div className="mx-auto h-4 w-8 rounded bg-white/10" />
+								<div className="mx-auto h-2 w-10 rounded bg-white/5" />
 							</div>
 						))}
 					</div>
+					<div className="h-8 w-full rounded-full bg-white/10" />
 				</div>
 			</div>
 		);
 	}
 
-	const currentCharacter = character;
-	const hpPercent = currentCharacter.healthMax
-		? Math.min(
-				100,
-				Math.round(
-					(currentCharacter.health / currentCharacter.healthMax) * 100,
-				),
-			)
-		: 0;
-
-	const sysConfig =
-		SYSTEM_CONFIG[currentCharacter.system] ?? SYSTEM_CONFIG.dnd5e;
-	const isStandardKey = (key: string) =>
-		[
-			"strength",
-			"dexterity",
-			"constitution",
-			"intelligence",
-			"wisdom",
-			"charisma",
-			"power",
-			"size",
-			"education",
-		].includes(key);
-
-	const abilities = (sysConfig.attributes || []).map((attr) => {
-		const val = isStandardKey(attr.key)
-			? (currentCharacter as any)[attr.key]
-			: (currentCharacter.systemAttributes?.[attr.key] ?? 0);
-		return { label: attr.label, value: Number(val) || 0 };
-	});
-
 	const characterImageUrl = resolveCharacterImageUrl(
-		currentCharacter,
+		character,
 		imageAssetLookup,
 		activeCampaignRole,
 	);
-	const hasImage = !!characterImageUrl;
-	const characterName = currentCharacter.characterName || "Sem nome";
+	const hasCustomImage = Boolean(characterImageUrl);
+	const characterName = character.characterName || "Sem nome";
+	const imageUrl =
+		characterImageUrl || getCharacterPresetUrl(character.class || "");
+	const isViewer = activeCampaignRole === "viewer";
 
 	function handleDeleteCharacter() {
-		removeCharacter(currentCharacter.id);
+		if (!character) return;
+		removeCharacter(character.id);
 		toast.success({
 			title: "Personagem excluído com sucesso",
 			description: `${characterName} foi removido da campanha.`,
 		});
 	}
 
+	function openImageDialog(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		setIsImageDialogOpen(true);
+	}
+
 	return (
 		<>
-			<Link
-				to="/sheets/$characterId"
-				params={{ characterId: character.id }}
-				className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 h-full min-h-[420px]"
-			>
-				<EntityActions
-					onEdit={() =>
-						void navigate({
-							to: "/sheets/$characterId",
-							params: { characterId: character.id },
-							search: { edit: true },
-						})
-					}
-					onDelete={handleDeleteCharacter}
-					entityName={characterName}
-					entityKindLabel="personagem"
+			<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0">
+				{/* Accessible anchor covering the entire card background */}
+				<Link
+					to="/sheets/$characterId"
+					params={{ characterId: character.id }}
+					className="absolute inset-0 z-0 cursor-pointer"
+					aria-label={`Abrir ficha de ${characterName}`}
 				/>
 
-				{/* Banner com imagem ou padrão */}
-				<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-primary/15 via-fuchsia-500/10 to-transparent">
-					{hasImage ? (
+				{/* Card Portrait / Preset Image */}
+				<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
+					{hasCustomImage ? (
 						<FramedImage
-							src={characterImageUrl}
-							alt={character.characterName}
-							framing={currentCharacter}
+							src={imageUrl}
+							alt={characterName}
+							framing={character}
 							loading="lazy"
 							decoding="async"
-							imgClassName="opacity-90 transition-transform duration-500 group-hover:scale-105"
+							imgClassName="opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
 						/>
 					) : (
-						<div className="flex h-full w-full items-center justify-center text-primary/30">
-							<User className="h-12 w-12" strokeWidth={1.4} />
-						</div>
+						<img
+							src={imageUrl}
+							alt=""
+							aria-hidden
+							loading="lazy"
+							decoding="async"
+							className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+						/>
 					)}
-					{/* Camera overlay button */}
-					<button
-						type="button"
-						onClick={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							setIsImageDialogOpen(true);
-						}}
-						className={`absolute inset-0 flex items-center justify-center text-white transition focus:outline-none ${
-							hasImage
-								? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100"
-								: "bg-black/0 opacity-0 hover:bg-black/40 hover:opacity-100 focus:bg-black/40 focus:opacity-100"
-						}`}
-						aria-label="Editar imagem do personagem"
-					>
-						<Camera className="h-6 w-6 drop-shadow" />
-					</button>
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />
-					{/* Persistent camera hint when no image */}
-					{!hasImage && (
+					<div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/80 via-black/40 to-transparent" />
+					<div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black via-black/70 to-transparent" />
+				</div>
+
+				{/* Card Interactive Content Area */}
+				<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
+					<div className="pointer-events-auto">
+						<EntityActions
+							onEdit={() =>
+								void navigate({
+									to: "/sheets/$characterId",
+									params: { characterId: character.id },
+									search: { edit: true },
+								})
+							}
+							onDelete={handleDeleteCharacter}
+							entityName={characterName}
+							entityKindLabel="personagem"
+						/>
+					</div>
+
+					{!isViewer && (
 						<button
 							type="button"
-							onClick={(e) => {
-								e.preventDefault();
-								e.stopPropagation();
-								setIsImageDialogOpen(true);
-							}}
-							className="absolute bottom-8 right-2 flex items-center gap-1 rounded-lg border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground backdrop-blur transition hover:border-primary/40 hover:text-primary"
-							aria-label="Adicionar imagem"
+							onClick={openImageDialog}
+							className="absolute bottom-36 right-3 z-20 flex h-8 w-8 pointer-events-auto items-center justify-center rounded-lg border border-white/15 bg-black/45 text-white opacity-100 backdrop-blur transition hover:border-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+							aria-label={
+								hasCustomImage
+									? "Editar imagem do personagem"
+									: "Adicionar imagem do personagem"
+							}
+							title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
 						>
-							<Camera className="h-3 w-3" />
-							Adicionar foto
+							<Camera className="h-3.5 w-3.5" />
 						</button>
 					)}
-					<div className="absolute right-2 bottom-2 flex h-8 min-w-8 items-center justify-center rounded-xl bg-background/85 px-1.5 backdrop-blur ring-1 ring-border/70">
-						<span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Lv
-						</span>
-						<span className="ml-1 font-display text-[13px] font-extrabold leading-none text-foreground">
-							{character.level}
-						</span>
-					</div>
-				</div>
 
-				<div className="flex flex-1 flex-col p-4">
-					<div className="min-w-0">
-						<h3 className="font-display truncate text-[15px] font-bold leading-tight text-foreground">
-							{character.characterName || "Sem nome"}
+					<div className="p-4 pt-5">
+						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
+							{characterName}
 						</h3>
-						<div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
-							{character.race && <span>{character.race}</span>}
-							{character.class && (
+						<div className="mt-1 flex items-center gap-1.5 text-xs text-white/70">
+							<span className="truncate">{character.race || "Sem raça"}</span>
+							{character.class ? (
 								<>
-									<span className="text-primary/40">·</span>
-									<span>{character.class}</span>
+									<span className="opacity-50">·</span>
+									<span className="truncate">{character.class}</span>
 								</>
-							)}
-							{character.subclass && (
-								<>
-									<span className="text-primary/40">·</span>
-									<span className="truncate">{character.subclass}</span>
-								</>
-							)}
+							) : null}
 						</div>
-						<div className="mt-1.5 flex items-center gap-1.5">
-							<span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary ring-1 ring-primary/15">
+						<div className="mt-2 flex items-center gap-2">
+							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
 								{systemLabel(character.system)}
 							</span>
-							{character.alignment && (
-								<span className="text-[10px] text-muted-foreground/80">
-									{character.alignment}
+							<span className="text-[10px] text-white/50">
+								Nv. {character.level}
+							</span>
+						</div>
+					</div>
+
+					<div className="space-y-4 p-4 pb-5">
+						<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
+							<div className="grid grid-cols-3 gap-2 text-center">
+								{[
+									{
+										value: character.armorClass || 10,
+										label: "Defesa (CA)",
+									},
+									{
+										value: formatModifier(character.initiative),
+										label: "Iniciativa",
+									},
+									{
+										value: `${character.health}/${character.healthMax || 10}`,
+										label: "Pontos de Vida",
+									},
+								].map((stat) => (
+									<div key={stat.label} className="flex flex-col">
+										<span className="truncate text-base font-bold leading-none text-white">
+											{stat.value}
+										</span>
+										<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
+											{stat.label}
+										</span>
+									</div>
+								))}
+							</div>
+
+							<div className="pointer-events-auto">
+								<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition-colors duration-200 group-hover:border-white/15 group-hover:bg-white/15">
+									Abrir ficha
 								</span>
-							)}
+							</div>
 						</div>
 					</div>
-
-					{/* HP */}
-					<div className="mt-3">
-						<div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-							<span className="flex items-center gap-1">
-								<Heart className="h-2.5 w-2.5 text-rose-400" />
-								HP
-							</span>
-							<span className="font-mono tabular-nums text-foreground/80">
-								{character.health}/{character.healthMax}
-							</span>
-						</div>
-						<div className="relative h-1.5 overflow-hidden rounded-full bg-muted">
-							<div
-								className="absolute inset-y-0 left-0 rounded-full bg-rose-400 transition-all duration-500"
-								style={{ width: `${hpPercent}%` }}
-							/>
-						</div>
-					</div>
-
-					{/* Quick stats */}
-					<div className="mt-3 grid grid-cols-3 gap-1.5 text-center">
-						<MiniStat
-							Icon={Shield}
-							color="text-blue-300"
-							label="CA"
-							value={character.armorClass}
-						/>
-						<MiniStat
-							Icon={Zap}
-							color="text-amber-300"
-							label="INI"
-							value={formatModifier(character.initiative)}
-						/>
-						<MiniStat
-							Icon={Sparkles}
-							color="text-violet-300"
-							label="XP"
-							value={character.xp}
-						/>
-					</div>
-
-					{/* Abilities row */}
-					<div
-						className={`mt-3 grid gap-1 border-t border-border/60 pt-3 min-h-[96px] content-start ${abilities.length >= 8 ? "grid-cols-4 sm:grid-cols-4" : abilities.length === 9 ? "grid-cols-3" : "grid-cols-6"}`}
-					>
-						{abilities.map((a) => {
-							const mod = abilityModifier(a.value);
-							return (
-								<div
-									key={a.label}
-									className="flex flex-col items-center"
-									title={`${a.label} ${a.value}`}
-								>
-									<span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
-										{a.label}
-									</span>
-									<span className="font-mono text-[11px] font-bold tabular-nums text-foreground">
-										{a.value}
-									</span>
-									<span className="font-mono text-[9px] tabular-nums text-primary">
-										{formatModifier(mod)}
-									</span>
-								</div>
-							);
-						})}
-					</div>
-
-					{character.background ? (
-						<p className="mt-auto line-clamp-2 border-t border-border/60 pt-2.5 text-[11px] italic text-muted-foreground">
-							"{character.background}"
-						</p>
-					) : (
-						<div className="mt-auto" />
-					)}
 				</div>
-			</Link>
+			</div>
+
 			<CharacterImageDialog
 				character={character}
 				open={isImageDialogOpen}
@@ -308,26 +216,5 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 				onChange={(patch) => updateCharacter(character.id, patch)}
 			/>
 		</>
-	);
-}
-
-interface MiniStatProps {
-	Icon: React.ComponentType<{ className?: string }>;
-	color: string;
-	label: string;
-	value: string | number;
-}
-
-function MiniStat({ Icon, color, label, value }: MiniStatProps) {
-	return (
-		<div className="flex flex-col items-center gap-0.5 rounded-xl bg-background/45 py-1.5 ring-1 ring-border/60">
-			<Icon className={`h-3 w-3 ${color}`} />
-			<span className="text-[8px] uppercase tracking-wider text-muted-foreground">
-				{label}
-			</span>
-			<span className="font-mono text-[11px] font-bold tabular-nums leading-none">
-				{value}
-			</span>
-		</div>
 	);
 }
