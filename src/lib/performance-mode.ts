@@ -28,7 +28,7 @@ export function setPerformanceModePreference(
 	window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-function shouldUseLiteMode() {
+export function isLitePerformanceMode() {
 	const nav = navigator as NavigatorWithHints;
 	const preference = getPerformanceModePreference();
 
@@ -64,7 +64,7 @@ export function usePerformanceMode() {
 		const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 		function updateMode() {
-			root.classList.toggle("perf-lite", shouldUseLiteMode());
+			root.classList.toggle("perf-lite", isLitePerformanceMode());
 		}
 
 		updateMode();
