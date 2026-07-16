@@ -82,6 +82,7 @@ const surfaces = [
 ];
 
 function DesignSystem() {
+	const [showMockImages, setShowMockImages] = useState(false);
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 sm:px-8">
 			<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5 sm:p-8">
@@ -429,14 +430,43 @@ function DesignSystem() {
 				eyebrow="Coleções"
 				title="Redesign dos Cards de Entidades (Mockup)"
 			>
+				<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
+					<p className="text-[12px] text-muted-foreground leading-relaxed">
+						Veja abaixo a proposta visual de redesenho dos cards. Use o botão ao
+						lado para alternar e ver a aparência com imagens carregadas.
+					</p>
+					<button
+						type="button"
+						onClick={() => setShowMockImages(!showMockImages)}
+						className={`inline-flex h-8 items-center gap-2 rounded-xl px-3.5 text-xs font-semibold border transition-all duration-205 cursor-pointer shrink-0 w-fit ${
+							showMockImages
+								? "bg-primary/10 border-primary/45 text-primary"
+								: "bg-background/45 border-border/75 text-muted-foreground hover:text-foreground"
+						}`}
+					>
+						<Sparkles className="h-3.5 w-3.5" />
+						{showMockImages
+							? "Ocultar Imagens Fictícias"
+							: "Mostrar Imagens Fictícias"}
+					</button>
+				</div>
+
 				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{/* 1. NPC Card Mockup */}
 					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-border/70 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.985]">
 						<div className="flex items-start gap-4">
 							<div className="relative h-15 w-15 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-fuchsia-500/10 to-transparent ring-1 ring-fuchsia-500/25">
-								<div className="flex h-full w-full items-center justify-center text-lg font-bold text-fuchsia-300">
-									AV
-								</div>
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Alistair Vance"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<div className="flex h-full w-full items-center justify-center text-lg font-bold text-fuchsia-300">
+										AV
+									</div>
+								)}
 							</div>
 							<div className="min-w-0 flex-1">
 								<h3 className="font-display truncate text-[16px] font-bold text-rose-400">
@@ -532,7 +562,15 @@ function DesignSystem() {
 					<div className="group relative flex cursor-pointer flex-col rounded-2xl border border-amber-500/35 bg-card-elevated p-4.5 shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/5 active:scale-[0.985]">
 						<div className="flex items-start gap-4">
 							<div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-amber-500/15 to-transparent ring-1 ring-amber-500/30 text-amber-300">
-								<Gem className="h-5 w-5" strokeWidth={1.6} />
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Orbe de Âmbar"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<Gem className="h-5 w-5" strokeWidth={1.6} />
+								)}
 							</div>
 							<div className="min-w-0 flex-1">
 								<h3 className="font-display truncate text-[16px] font-bold text-foreground">
@@ -597,10 +635,18 @@ function DesignSystem() {
 
 					{/* 4. Location Card Mockup */}
 					<div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.985]">
-						<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-emerald-500/15 to-transparent">
-							<div className="flex h-full w-full items-center justify-center text-emerald-400/30">
-								<Compass className="h-10 w-10" strokeWidth={1.4} />
-							</div>
+						<div className="relative h-28 w-full shrink-0 overflow-hidden bg-linear-to-br from-emerald-500/15 to-transparent transition-all duration-500">
+							{showMockImages ? (
+								<img
+									src="https://images.unsplash.com/photo-1508849789987-4e5333c12b78?auto=format&fit=crop&q=80&w=450&h=150"
+									alt="Vale Cinzento"
+									className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+								/>
+							) : (
+								<div className="flex h-full w-full items-center justify-center text-emerald-400/30">
+									<Compass className="h-10 w-10" strokeWidth={1.4} />
+								</div>
+							)}
 							<div className="absolute inset-x-0 bottom-0 z-10 h-12 bg-linear-to-t from-card-elevated to-transparent" />
 						</div>
 						<div className="flex flex-1 flex-col p-4.5 pt-2">
@@ -654,7 +700,15 @@ function DesignSystem() {
 						<div className="pointer-events-none absolute inset-y-3.5 left-0 w-[2px] rounded-full bg-linear-to-b from-transparent via-amber-500/45 to-transparent" />
 						<div className="flex items-start gap-4 pl-1.5">
 							<div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background/45 ring-1 ring-amber-500/25 text-amber-300">
-								<BookOpen className="h-4.5 w-4.5" strokeWidth={1.6} />
+								{showMockImages ? (
+									<img
+										src="https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&q=80&w=150&h=150"
+										alt="Declínio de Netheril"
+										className="h-full w-full object-cover"
+									/>
+								) : (
+									<BookOpen className="h-4.5 w-4.5" strokeWidth={1.6} />
+								)}
 							</div>
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-1.5">
