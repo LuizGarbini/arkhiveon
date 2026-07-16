@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { BookOpen, Lock } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { Lore } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
@@ -12,26 +11,30 @@ interface LoreCardProps {
 
 const importanceStyles: Record<
 	string,
-	{ tone: string; ring: string; label: string }
+	{ tone: string; border: string; accent: string; label: string }
 > = {
 	minor: {
 		tone: "text-muted-foreground",
-		ring: "ring-border",
+		border: "border-border/70",
+		accent: "via-muted-foreground/30",
 		label: "Curiosidade",
 	},
 	supporting: {
 		tone: "text-foreground/80",
-		ring: "ring-border",
+		border: "border-border/70",
+		accent: "via-foreground/20",
 		label: "Coadjuvante",
 	},
 	major: {
 		tone: "text-primary",
-		ring: "ring-primary/30",
+		border: "border-primary/30",
+		accent: "via-primary/40",
 		label: "Importante",
 	},
 	core: {
 		tone: "text-amber-300",
-		ring: "ring-amber-500/40",
+		border: "border-amber-500/40",
+		accent: "via-amber-500/45",
 		label: "Pilar",
 	},
 };
@@ -42,27 +45,14 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 
 	if (isLoading || !lore) {
 		return (
-			<div className="flex flex-col rounded-xl border border-border bg-card-elevated p-4 space-y-4">
-				<div className="flex items-start gap-3 pl-2">
-					<Skeleton className="h-12 w-12 rounded-lg shrink-0" />
-					<div className="min-w-0 flex-1 space-y-2">
-						<div className="flex items-center gap-1.5">
-							<Skeleton className="h-5 w-3/4" />
-						</div>
-						<div className="flex gap-2">
-							<Skeleton className="h-3 w-16" />
-							<Skeleton className="h-3 w-12" />
-						</div>
-					</div>
+			<div className="relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
+				<div className="space-y-2.5 pt-1">
+					<div className="h-5 w-1/2 rounded-md bg-white/10" />
+					<div className="h-3 w-1/3 rounded-md bg-white/5" />
 				</div>
-				<div className="border-t border-border/60 pt-2.5 pl-2 space-y-2">
-					<Skeleton className="h-3 w-full" />
-					<Skeleton className="h-3 w-full" />
-					<Skeleton className="h-3 w-2/3" />
-				</div>
-				<div className="flex gap-1 pl-2">
-					<Skeleton className="h-4 w-10 rounded" />
-					<Skeleton className="h-4 w-10 rounded" />
+				<div className="space-y-3 border-t border-white/5 pt-4">
+					<div className="h-4 w-1/4 rounded bg-white/10" />
+					<div className="h-8 w-full rounded-full bg-white/10" />
 				</div>
 			</div>
 		);
@@ -76,99 +66,116 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 				.map((tag) => tag.trim())
 				.filter(Boolean)
 		: [];
+	const hasCustomImage = Boolean(lore.imageUrl);
 
 	return (
-		<Link
-			to="/lore/$loreId"
-			params={{ loreId: lore.id }}
-			search={{ edit: false }}
-			className={`group relative flex cursor-pointer flex-col rounded-2xl border border-border/70 bg-card-elevated p-4 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none ${importance.ring}`}
+		<div
+			className={`group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 ${importance.border} hover:border-primary/45`}
 		>
-			<EntityActions
-				onEdit={() =>
-					void navigate({
-						to: "/lore/$loreId",
-						params: { loreId: lore.id },
-						search: { edit: true },
-					})
-				}
-				onDelete={() => removeLore(lore.id)}
-				entityName={lore.title || "Sem titulo"}
-				entityKindLabel="lore"
+			{/* Accessible anchor covering the entire card background */}
+			<Link
+				to="/lore/$loreId"
+				params={{ loreId: lore.id }}
+				search={{ edit: false }}
+				className="absolute inset-0 z-0 cursor-pointer"
+				aria-label={`Abrir lore ${lore.title}`}
 			/>
 
-			<div className="pointer-events-none absolute inset-y-3 left-0 w-[2px] rounded-full bg-linear-to-b from-transparent via-primary/40 to-transparent" />
+			{/* Left border accent representing importance */}
+			<div
+				className={`pointer-events-none absolute inset-y-3.5 left-0 w-[2px] rounded-full bg-linear-to-b from-transparent ${importance.accent} to-transparent`}
+			/>
 
-			<div className="flex items-start gap-3 pl-2">
-				<div
-					className={`relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background/45 ring-1 ${importance.ring} ${importance.tone}`}
-				>
-					{lore.imageUrl ? (
-						<img
-							src={lore.imageUrl}
-							alt={lore.title}
-							loading="lazy"
-							decoding="async"
-							className="h-full w-full object-cover"
-						/>
-					) : (
-						<BookOpen className="h-4 w-4" strokeWidth={1.6} />
-					)}
+			{/* Card Background / Icon / Fallback */}
+			<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br from-amber-500/10 to-transparent">
+				{hasCustomImage ? (
+					<img
+						src={lore.imageUrl}
+						alt={lore.title}
+						loading="lazy"
+						decoding="async"
+						className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+					/>
+				) : (
+					<div className="flex h-full w-full items-center justify-center bg-card-elevated text-amber-300/20 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
+						<BookOpen className="h-16 w-16 opacity-15" strokeWidth={1.2} />
+					</div>
+				)}
+				<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
+				<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
+			</div>
+
+			{/* Card Content */}
+			<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between pl-1.5">
+				<div className="pointer-events-auto">
+					<EntityActions
+						onEdit={() =>
+							void navigate({
+								to: "/lore/$loreId",
+								params: { loreId: lore.id },
+								search: { edit: true },
+							})
+						}
+						onDelete={() => removeLore(lore.id)}
+						entityName={lore.title || "Sem título"}
+						entityKindLabel="lore"
+					/>
 				</div>
-				<div className="min-w-0 flex-1">
+
+				<div className="p-4.5 pt-5">
 					<div className="flex items-center gap-1.5">
-						<h3 className="font-display truncate text-[15px] font-bold text-foreground">
-							{lore.title || "Sem titulo"}
+						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
+							{lore.title || "Sem título"}
 						</h3>
 						{lore.isSecret && (
-							<Lock className="h-3 w-3 shrink-0 text-rose-400" />
+							<Lock className="h-4.5 w-4.5 shrink-0 text-rose-400" />
 						)}
 					</div>
-					<div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+					<div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-white/70 font-medium">
 						{lore.category && <span>{lore.category}</span>}
 						{lore.era && (
 							<>
-								<span className="text-primary/40">·</span>
+								<span className="opacity-55">·</span>
 								<span>{lore.era}</span>
 							</>
 						)}
 					</div>
-					<div className="mt-1.5 flex flex-wrap items-center gap-1">
+					<div className="mt-2.5">
 						<span
-							className={`rounded bg-background/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ${importance.ring} ${importance.tone}`}
+							className={`rounded bg-background/50 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${importance.border} ${importance.tone}`}
 						>
 							{importance.label}
 						</span>
 					</div>
 				</div>
-			</div>
 
-			{lore.content && (
-				<p className="font-display mt-3 line-clamp-5 border-t border-border/60 pt-2.5 text-[12px] italic leading-relaxed text-foreground/85 pl-2">
-					{lore.content}
-				</p>
-			)}
+				<div className="space-y-3.5 p-4.5 pb-5">
+					{lore.content && (
+						<p className="line-clamp-4 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60">
+							“{lore.content}”
+						</p>
+					)}
 
-			{tags.length > 0 && (
-				<div className="mt-3 flex flex-wrap gap-1 pl-2">
-					{tags.slice(0, 5).map((tag) => (
-						<span
-							key={tag}
-							className="rounded bg-muted/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground ring-1 ring-border"
-						>
-							#{tag}
+					{tags.length > 0 && (
+						<div className="flex flex-wrap gap-1">
+							{tags.slice(0, 4).map((tag) => (
+								<span
+									key={tag}
+									className="rounded bg-black/45 border border-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/70"
+								>
+									#{tag}
+								</span>
+							))}
+						</div>
+					)}
+
+					<div className="pointer-events-auto pt-1">
+						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition hover:border-white/15 hover:bg-white/15">
+							Abrir ficha
 						</span>
-					))}
+					</div>
 				</div>
-			)}
-			{lore.entityLinks?.length > 0 && (
-				<div className="mt-3 border-t border-border/60 pt-3 pl-2">
-					<span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-						{lore.entityLinks.length} conexao
-						{lore.entityLinks.length === 1 ? "" : "es"}
-					</span>
-				</div>
-			)}
-		</Link>
+			</div>
+		</div>
 	);
 }
