@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { getCharacterPresetUrl } from "@/lib/character-presets";
 import type {
 	Character,
 	FamilyRelation,
@@ -98,6 +99,7 @@ interface FamilyNodeData extends Record<string, unknown> {
 	character: Character;
 	directRelationCount: number;
 	isEditMode: boolean;
+	isDimmed?: boolean;
 }
 
 interface FamilyEdgeData extends Record<string, unknown> {
@@ -206,7 +208,45 @@ function FamilyFlowCanvas({
 	const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 	const [pendingConnection, setPendingConnection] =
 		useState<PendingConnection | null>(null);
+	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const { fitView } = useReactFlow<FamilyNode, FamilyEdge>();
+
+	const activeNodeIds = useMemo(() => {
+		if (!hoveredNodeId) return null;
+		const set = new Set<string>([hoveredNodeId]);
+		for (const edge of edges) {
+			if (edge.source === hoveredNodeId) set.add(edge.target);
+			if (edge.target === hoveredNodeId) set.add(edge.source);
+		}
+		return set;
+	}, [hoveredNodeId, edges]);
+
+	const mappedNodes = useMemo(() => {
+		if (!activeNodeIds) return nodes;
+		return nodes.map((node) => ({
+			...node,
+			data: {
+				...node.data,
+				isDimmed: !activeNodeIds.has(node.id),
+			},
+		}));
+	}, [nodes, activeNodeIds]);
+
+	const mappedEdges = useMemo(() => {
+		if (!hoveredNodeId) return edges;
+		return edges.map((edge) => {
+			const isRelated =
+				edge.source === hoveredNodeId || edge.target === hoveredNodeId;
+			return {
+				...edge,
+				animated: edge.data?.isSecret ? true : isRelated,
+				style: {
+					...edge.style,
+					opacity: isRelated ? 1 : 0.15,
+				},
+			};
+		});
+	}, [edges, hoveredNodeId]);
 
 	const characterById = useMemo(
 		() => new Map(characters.map((character) => [character.id, character])),
@@ -350,12 +390,19 @@ function FamilyFlowCanvas({
 
 			<div className="h-[min(72vh,680px)] min-h-[430px] sm:h-[640px] lg:h-[680px]">
 				<ReactFlow<FamilyNode, FamilyEdge>
-					nodes={nodes}
-					edges={edges}
+					nodes={mappedNodes}
+					edges={mappedEdges}
 					nodeTypes={nodeTypes}
 					onNodesChange={onNodesChange}
 					onEdgesChange={onEdgesChange}
 					onConnect={onConnect}
+					onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+					onNodeMouseLeave={() => setHoveredNodeId(null)}
+					connectionLineStyle={{
+						stroke: "oklch(0.68 0.13 150)",
+						strokeWidth: 2,
+						strokeDasharray: "5 5",
+					}}
 					onNodeClick={(_, node) => {
 						setSelectedCharacterId(node.id);
 						setSelectedEdgeId(null);
@@ -618,14 +665,18 @@ function relationStorageForConnection(connection: PendingConnection) {
 }
 
 function FamilyCharacterNode({ data, selected }: NodeProps<FamilyNode>) {
-	const { character, directRelationCount, isEditMode } = data;
+	const { character, directRelationCount, isEditMode, isDimmed } = data;
 
 	return (
 		<div
-			className={`group relative w-[244px] overflow-hidden rounded-2xl border bg-card/95 p-3 shadow-lg shadow-black/10 backdrop-blur transition duration-200 ${
+			className={`group relative w-[244px] overflow-hidden rounded-2xl border bg-card/95 p-3 shadow-lg shadow-black/10 backdrop-blur transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
 				selected
 					? "border-primary/70 ring-4 ring-primary/15"
 					: "border-border/70 hover:border-primary/40"
+			} ${
+				isDimmed
+					? "opacity-30 blur-[0.5px] scale-[0.97] pointer-events-none"
+					: ""
 			}`}
 		>
 			<Handle
@@ -652,7 +703,11 @@ function FamilyCharacterNode({ data, selected }: NodeProps<FamilyNode>) {
 							className="h-full w-full object-cover"
 						/>
 					) : (
-						<User className="h-5 w-5" />
+						<img
+							src={getCharacterPresetUrl(character.class || "")}
+							alt={character.class || "Preset"}
+							className="h-full w-full object-cover"
+						/>
 					)}
 				</div>
 
