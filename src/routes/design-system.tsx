@@ -1042,133 +1042,146 @@ function DesignSystem() {
 							{announcements.map((ann) => (
 								<div
 									key={ann.id}
-									className="rounded-2xl border border-border/70 bg-card-elevated p-4 sm:p-5 shadow-sm"
+									className="overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm"
 								>
-									<div className="flex items-start justify-between gap-3">
-										<div>
-											<div className="flex flex-wrap items-center gap-2">
-												<span
-													className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${ann.categoryColor}`}
-												>
-													{ann.category}
-												</span>
-												{ann.isSecret && (
-													<span className="flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
-														<Lock className="h-2.5 w-2.5" /> Segredo do Mestre
-													</span>
-												)}
-											</div>
-											<h3 className="font-display mt-2 text-[17px] font-bold text-foreground">
-												{ann.title}
-											</h3>
-											<p className="text-[11px] text-muted-foreground mt-0.5">
-												Publicado em {ann.date}
-											</p>
+									{showMockImages && ann.id === "a1" && (
+										<div className="h-40 w-full overflow-hidden border-b border-border/50">
+											<img
+												src="https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&q=80&w=600&h=200"
+												alt="Fenda Vermelha"
+												className="h-full w-full object-cover opacity-80"
+											/>
 										</div>
-									</div>
-
-									<p className="text-xs leading-relaxed text-foreground/90 mt-3 whitespace-pre-line border-t border-border/50 pt-3">
-										{ann.content}
-									</p>
-
-									{/* Expandable Comments Drawer */}
-									<div className="mt-4 border-t border-border/50 pt-3">
-										<button
-											type="button"
-											onClick={() =>
-												setExpandedComments((prev) => ({
-													...prev,
-													[ann.id]: !prev[ann.id],
-												}))
-											}
-											className="flex items-center gap-1.5 text-xs font-bold text-primary transition hover:text-primary-foreground cursor-pointer"
-										>
-											<MessageSquare className="h-3.5 w-3.5" />
-											{comments[ann.id]?.length || 0} comentário(s)
-											<span className="text-[10px] text-muted-foreground font-medium">
-												{expandedComments[ann.id] ? " (ocultar)" : " (exibir)"}
-											</span>
-										</button>
-
-										{expandedComments[ann.id] && (
-											<div className="mt-3 space-y-3 rounded-xl bg-background/45 p-3.5 border border-border/50">
-												<div className="space-y-2.5 max-h-48 overflow-y-auto">
-													{comments[ann.id]?.length === 0 ? (
-														<p className="text-xs italic text-muted-foreground">
-															Nenhum comentário ainda. Seja o primeiro!
-														</p>
-													) : (
-														comments[ann.id].map((comment, idx) => (
-															<div
-																key={`${comment.author}-${idx}`}
-																className="flex items-start gap-2.5 text-xs"
-															>
-																<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[10px] font-bold text-primary border border-primary/20">
-																	{comment.author.split(" ")[0][0]}
-																</div>
-																<div className="min-w-0 flex-1">
-																	<div className="flex items-baseline gap-2">
-																		<span className="font-bold text-foreground">
-																			{comment.author}
-																		</span>
-																		<span className="text-[9px] text-muted-foreground">
-																			{comment.time}
-																		</span>
-																	</div>
-																	<p className="text-muted-foreground mt-0.5 leading-relaxed">
-																		{comment.text}
-																	</p>
-																</div>
-															</div>
-														))
+									)}
+									<div className="p-4 sm:p-5">
+										<div className="flex items-start justify-between gap-3">
+											<div>
+												<div className="flex flex-wrap items-center gap-2">
+													<span
+														className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${ann.categoryColor}`}
+													>
+														{ann.category}
+													</span>
+													{ann.isSecret && (
+														<span className="flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
+															<Lock className="h-2.5 w-2.5" /> Segredo do Mestre
+														</span>
 													)}
 												</div>
+												<h3 className="font-display mt-2 text-[17px] font-bold text-foreground">
+													{ann.title}
+												</h3>
+												<p className="text-[11px] text-muted-foreground mt-0.5">
+													Publicado em {ann.date}
+												</p>
+											</div>
+										</div>
 
-												{/* Comment input form */}
-												<form
-													onSubmit={(e) => {
-														e.preventDefault();
-														const text = newCommentText[ann.id]?.trim();
-														if (!text) return;
-														setComments((prev) => ({
-															...prev,
-															[ann.id]: [
-																...prev[ann.id],
-																{
-																	author: "Você (Luiz)",
-																	text,
-																	time: "Agora mesmo",
-																},
-															],
-														}));
-														setNewCommentText((prev) => ({
-															...prev,
-															[ann.id]: "",
-														}));
-													}}
-													className="flex items-center gap-2 border-t border-border/40 pt-2.5 mt-2"
-												>
-													<Input
-														placeholder="Adicione um comentário..."
-														value={newCommentText[ann.id] || ""}
-														onChange={(e) =>
+										<p className="text-xs leading-relaxed text-foreground/90 mt-3 whitespace-pre-line border-t border-border/50 pt-3">
+											{ann.content}
+										</p>
+
+										{/* Expandable Comments Drawer */}
+										<div className="mt-4 border-t border-border/50 pt-3">
+											<button
+												type="button"
+												onClick={() =>
+													setExpandedComments((prev) => ({
+														...prev,
+														[ann.id]: !prev[ann.id],
+													}))
+												}
+												className="flex items-center gap-1.5 text-xs font-bold text-primary transition hover:text-primary-foreground cursor-pointer"
+											>
+												<MessageSquare className="h-3.5 w-3.5" />
+												{comments[ann.id]?.length || 0} comentário(s)
+												<span className="text-[10px] text-muted-foreground font-medium">
+													{expandedComments[ann.id]
+														? " (ocultar)"
+														: " (exibir)"}
+												</span>
+											</button>
+
+											{expandedComments[ann.id] && (
+												<div className="mt-3 space-y-3 rounded-xl bg-background/45 p-3.5 border border-border/50">
+													<div className="space-y-2.5 max-h-48 overflow-y-auto">
+														{comments[ann.id]?.length === 0 ? (
+															<p className="text-xs italic text-muted-foreground">
+																Nenhum comentário ainda. Seja o primeiro!
+															</p>
+														) : (
+															comments[ann.id].map((comment, idx) => (
+																<div
+																	key={`${comment.author}-${idx}`}
+																	className="flex items-start gap-2.5 text-xs"
+																>
+																	<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[10px] font-bold text-primary border border-primary/20">
+																		{comment.author.split(" ")[0][0]}
+																	</div>
+																	<div className="min-w-0 flex-1">
+																		<div className="flex items-baseline gap-2">
+																			<span className="font-bold text-foreground">
+																				{comment.author}
+																			</span>
+																			<span className="text-[9px] text-muted-foreground">
+																				{comment.time}
+																			</span>
+																		</div>
+																		<p className="text-muted-foreground mt-0.5 leading-relaxed">
+																			{comment.text}
+																		</p>
+																	</div>
+																</div>
+															))
+														)}
+													</div>
+
+													{/* Comment input form */}
+													<form
+														onSubmit={(e) => {
+															e.preventDefault();
+															const text = newCommentText[ann.id]?.trim();
+															if (!text) return;
+															setComments((prev) => ({
+																...prev,
+																[ann.id]: [
+																	...prev[ann.id],
+																	{
+																		author: "Você (Luiz)",
+																		text,
+																		time: "Agora mesmo",
+																	},
+																],
+															}));
 															setNewCommentText((prev) => ({
 																...prev,
-																[ann.id]: e.target.value,
-															}))
-														}
-														className="h-8 text-[11px] rounded-lg px-2.5 flex-1"
-													/>
-													<Button
-														type="submit"
-														size="sm"
-														className="h-8 w-8 p-0 rounded-lg flex items-center justify-center shrink-0"
+																[ann.id]: "",
+															}));
+														}}
+														className="flex items-center gap-2 border-t border-border/40 pt-2.5 mt-2"
 													>
-														<Send className="h-3.5 w-3.5" />
-													</Button>
-												</form>
-											</div>
-										)}
+														<Input
+															placeholder="Adicione um comentário..."
+															value={newCommentText[ann.id] || ""}
+															onChange={(e) =>
+																setNewCommentText((prev) => ({
+																	...prev,
+																	[ann.id]: e.target.value,
+																}))
+															}
+															className="h-8 text-[11px] rounded-lg px-2.5 flex-1"
+														/>
+														<Button
+															type="submit"
+															size="sm"
+															className="h-8 w-8 p-0 rounded-lg flex items-center justify-center shrink-0"
+														>
+															<Send className="h-3.5 w-3.5" />
+														</Button>
+													</form>
+												</div>
+											)}
+										</div>
 									</div>
 								</div>
 							))}
