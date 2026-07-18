@@ -11,11 +11,13 @@ import {
 	Compass,
 	CreditCard,
 	Eye,
+	Flag,
 	Gem,
 	Info,
 	Link2,
 	Lock,
 	MapPin,
+	MessageSquare,
 	Mountain,
 	MousePointer2,
 	Music,
@@ -23,6 +25,7 @@ import {
 	Plus,
 	ScrollText,
 	Search,
+	Send,
 	Sparkles,
 	User,
 	Users,
@@ -83,6 +86,56 @@ const surfaces = [
 
 function DesignSystem() {
 	const [showMockImages, setShowMockImages] = useState(false);
+	const [activeWorld, setActiveWorld] = useState("Eldoria");
+	const [announcements, _setAnnouncements] = useState([
+		{
+			id: "a1",
+			title: "O Despertar da Fenda Vermelha",
+			category: "Evento Global",
+			categoryColor: "text-rose-300 bg-rose-500/20 border-rose-500/30",
+			date: "16 Jul 2026",
+			content:
+				"Uma explosão arcana abriu uma fenda no solo das Colinas Orientais. Monstros de magma estão atacando as vilas vizinhas. Mestres de todas as campanhas podem incorporar esse perigo em suas sessões atuais.",
+			isSecret: false,
+		},
+		{
+			id: "a2",
+			title: "Rumores sobre a Morte do Barão",
+			category: "Rumor",
+			categoryColor: "text-amber-300 bg-amber-500/20 border-amber-500/30",
+			date: "15 Jul 2026",
+			content:
+				"Dizem na Taverna do Javali que o Barão de Valecinza não morreu de causas naturais, mas sim envenenado por um membro da Guilda das Sombras. Essa informação é secreta por enquanto.",
+			isSecret: true,
+		},
+	]);
+	const [comments, setComments] = useState<
+		Record<string, Array<{ author: string; text: string; time: string }>>
+	>({
+		a1: [
+			{
+				author: "Luiz (Mestre)",
+				text: "Mesa de Sábado, vocês estão bem perto desse local! Preparem-se.",
+				time: "Há 12 min",
+			},
+			{
+				author: "Gabriel (Mesa B)",
+				text: "Se a gente for até lá pra fechar a fenda, ganhamos recompensa da corte?",
+				time: "Há 5 min",
+			},
+		],
+		a2: [],
+	});
+	const [newCommentText, setNewCommentText] = useState<Record<string, string>>({
+		a1: "",
+		a2: "",
+	});
+	const [expandedComments, setExpandedComments] = useState<
+		Record<string, boolean>
+	>({
+		a1: false,
+		a2: false,
+	});
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 sm:px-8">
 			<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5 sm:p-8">
@@ -739,6 +792,398 @@ function DesignSystem() {
 								>
 									{tag}
 								</span>
+							))}
+						</div>
+					</div>
+				</div>
+			</SpecPanel>
+
+			<SpecPanel
+				eyebrow="Worldbuilding"
+				title="Mundo, Mural de Notícias e Facções (Protótipo)"
+			>
+				<div className="space-y-6">
+					{/* World Selector Simulation */}
+					<div className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-background/45 p-4 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<h3 className="text-sm font-bold text-foreground">
+								Seletor de Mundo (Simulação)
+							</h3>
+							<p className="text-xs text-muted-foreground mt-0.5">
+								Define qual universo está ativo no painel lateral e mural.
+							</p>
+						</div>
+						<div className="flex flex-wrap items-center gap-2">
+							{["Eldoria", "Cyberpunk RED", "Pântano Negro"].map(
+								(worldName) => (
+									<button
+										key={worldName}
+										type="button"
+										onClick={() => setActiveWorld(worldName)}
+										className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
+											activeWorld === worldName
+												? "bg-primary/20 border-primary text-primary"
+												: "bg-black/30 border-border/60 text-muted-foreground hover:text-foreground"
+										}`}
+									>
+										{worldName}
+									</button>
+								),
+							)}
+						</div>
+					</div>
+
+					{/* Factions Section */}
+					<div>
+						<div className="mb-3">
+							<h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+								Facções do Mundo ({activeWorld})
+							</h4>
+							<p className="text-xs text-muted-foreground mt-0.5">
+								Cards unificados no padrão full-bleed que exibem influências e
+								status por campanha.
+							</p>
+						</div>
+						<div className="grid gap-4 md:grid-cols-2">
+							{/* Faction Card 1 */}
+							<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-emerald-500/35 bg-black/40 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg active:scale-[0.985]">
+								{/* Image Background / Fallback */}
+								<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br from-emerald-500/10 to-transparent">
+									{showMockImages ? (
+										<img
+											src="https://images.unsplash.com/photo-1599740831146-569302789412?auto=format&fit=crop&q=80&w=450&h=340"
+											alt="Ordem do Sol"
+											className="h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105"
+										/>
+									) : (
+										<div className="flex h-full w-full items-center justify-center bg-card-elevated text-emerald-400/20">
+											<Flag
+												className="h-16 w-16 opacity-15"
+												strokeWidth={1.2}
+											/>
+										</div>
+									)}
+									<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
+									<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
+								</div>
+
+								{/* Faction Header */}
+								<div className="p-4.5 pt-5 relative z-10">
+									<h3 className="font-display truncate text-xl font-bold tracking-tight text-white">
+										Ordem do Sol Nascente
+									</h3>
+									<div className="mt-1 flex flex-wrap items-center gap-1.5">
+										<span className="rounded bg-background/50 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+											Leal e Bom
+										</span>
+										<span className="text-xs text-white/70 font-medium">
+											· Cavalaria e Clericato
+										</span>
+									</div>
+									<div className="mt-2.5 flex items-center gap-1.5">
+										<span className="rounded bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+											Aliado (Mesa A)
+										</span>
+										<span className="rounded bg-muted/40 border border-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/60">
+											Neutro (Mesa B)
+										</span>
+									</div>
+								</div>
+
+								{/* Faction Footer */}
+								<div className="space-y-3.5 p-4.5 pb-5 relative z-10">
+									<div className="grid grid-cols-3 gap-1.5 text-xs">
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<Users className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Membros
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													~1,200
+												</div>
+											</div>
+										</div>
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<Sparkles className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Influência
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													Alta
+												</div>
+											</div>
+										</div>
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<MapPin className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Sede
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													Alvorada
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60">
+										“Uma antiga irmandade de paladinos que protege as fronteiras
+										contra a escuridão.”
+									</p>
+								</div>
+							</div>
+
+							{/* Faction Card 2 */}
+							<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-fuchsia-500/35 bg-black/40 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg active:scale-[0.985]">
+								{/* Image Background / Fallback */}
+								<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br from-fuchsia-500/10 to-transparent">
+									{showMockImages ? (
+										<img
+											src="https://images.unsplash.com/photo-1519074069444-1ba4e2663143?auto=format&fit=crop&q=80&w=450&h=340"
+											alt="Sindicato das Sombras"
+											className="h-full w-full object-cover opacity-70 transition-transform duration-500 group-hover:scale-105"
+										/>
+									) : (
+										<div className="flex h-full w-full items-center justify-center bg-card-elevated text-fuchsia-400/20">
+											<Flag
+												className="h-16 w-16 opacity-15"
+												strokeWidth={1.2}
+											/>
+										</div>
+									)}
+									<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
+									<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
+								</div>
+
+								{/* Faction Header */}
+								<div className="p-4.5 pt-5 relative z-10">
+									<h3 className="font-display truncate text-xl font-bold tracking-tight text-white">
+										Sindicato das Sombras
+									</h3>
+									<div className="mt-1 flex flex-wrap items-center gap-1.5">
+										<span className="rounded bg-background/50 border border-fuchsia-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-fuchsia-300">
+											Caótico e Neutro
+										</span>
+										<span className="text-xs text-white/70 font-medium">
+											· Espionagem e Contrabando
+										</span>
+									</div>
+									<div className="mt-2.5 flex items-center gap-1.5">
+										<span className="rounded bg-rose-500/25 border border-rose-500/35 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
+											Hostil (Mesa A)
+										</span>
+										<span className="rounded bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+											Antipático (Mesa B)
+										</span>
+									</div>
+								</div>
+
+								{/* Faction Footer */}
+								<div className="space-y-3.5 p-4.5 pb-5 relative z-10">
+									<div className="grid grid-cols-3 gap-1.5 text-xs">
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<Users className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Membros
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													Oculto
+												</div>
+											</div>
+										</div>
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<Sparkles className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Influência
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													Oculta
+												</div>
+											</div>
+										</div>
+										<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
+											<MapPin className="h-3.5 w-3.5 text-white/50" />
+											<div className="min-w-0">
+												<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+													Sede
+												</div>
+												<div className="text-[10px] font-bold text-white leading-tight mt-0.5 truncate">
+													Subterrâneo
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60">
+										“Uma rede clandestina de criminosos que controla os segredos
+										das docas de Valecinza.”
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Mural / Announcements Section */}
+					<div>
+						<div className="mb-3">
+							<h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+								Mural de Notícias do Mundo
+							</h4>
+							<p className="text-xs text-muted-foreground mt-0.5">
+								Notícias gerais e rumores interativos onde os jogadores podem
+								ler e comentar.
+							</p>
+						</div>
+						<div className="space-y-4">
+							{announcements.map((ann) => (
+								<div
+									key={ann.id}
+									className="overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm"
+								>
+									{showMockImages && ann.id === "a1" && (
+										<div className="h-40 w-full overflow-hidden border-b border-border/50">
+											<img
+												src="https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&q=80&w=600&h=200"
+												alt="Fenda Vermelha"
+												className="h-full w-full object-cover opacity-80"
+											/>
+										</div>
+									)}
+									<div className="p-4 sm:p-5">
+										<div className="flex items-start justify-between gap-3">
+											<div>
+												<div className="flex flex-wrap items-center gap-2">
+													<span
+														className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${ann.categoryColor}`}
+													>
+														{ann.category}
+													</span>
+													{ann.isSecret && (
+														<span className="flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
+															<Lock className="h-2.5 w-2.5" /> Segredo do Mestre
+														</span>
+													)}
+												</div>
+												<h3 className="font-display mt-2 text-[17px] font-bold text-foreground">
+													{ann.title}
+												</h3>
+												<p className="text-[11px] text-muted-foreground mt-0.5">
+													Publicado em {ann.date}
+												</p>
+											</div>
+										</div>
+
+										<p className="text-xs leading-relaxed text-foreground/90 mt-3 whitespace-pre-line border-t border-border/50 pt-3">
+											{ann.content}
+										</p>
+
+										{/* Expandable Comments Drawer */}
+										<div className="mt-4 border-t border-border/50 pt-3">
+											<button
+												type="button"
+												onClick={() =>
+													setExpandedComments((prev) => ({
+														...prev,
+														[ann.id]: !prev[ann.id],
+													}))
+												}
+												className="flex items-center gap-1.5 text-xs font-bold text-primary transition hover:text-primary-foreground cursor-pointer"
+											>
+												<MessageSquare className="h-3.5 w-3.5" />
+												{comments[ann.id]?.length || 0} comentário(s)
+												<span className="text-[10px] text-muted-foreground font-medium">
+													{expandedComments[ann.id]
+														? " (ocultar)"
+														: " (exibir)"}
+												</span>
+											</button>
+
+											{expandedComments[ann.id] && (
+												<div className="mt-3 space-y-3 rounded-xl bg-background/45 p-3.5 border border-border/50">
+													<div className="space-y-2.5 max-h-48 overflow-y-auto">
+														{comments[ann.id]?.length === 0 ? (
+															<p className="text-xs italic text-muted-foreground">
+																Nenhum comentário ainda. Seja o primeiro!
+															</p>
+														) : (
+															comments[ann.id].map((comment, idx) => (
+																<div
+																	key={`${comment.author}-${idx}`}
+																	className="flex items-start gap-2.5 text-xs"
+																>
+																	<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[10px] font-bold text-primary border border-primary/20">
+																		{comment.author.split(" ")[0][0]}
+																	</div>
+																	<div className="min-w-0 flex-1">
+																		<div className="flex items-baseline gap-2">
+																			<span className="font-bold text-foreground">
+																				{comment.author}
+																			</span>
+																			<span className="text-[9px] text-muted-foreground">
+																				{comment.time}
+																			</span>
+																		</div>
+																		<p className="text-muted-foreground mt-0.5 leading-relaxed">
+																			{comment.text}
+																		</p>
+																	</div>
+																</div>
+															))
+														)}
+													</div>
+
+													{/* Comment input form */}
+													<form
+														onSubmit={(e) => {
+															e.preventDefault();
+															const text = newCommentText[ann.id]?.trim();
+															if (!text) return;
+															setComments((prev) => ({
+																...prev,
+																[ann.id]: [
+																	...prev[ann.id],
+																	{
+																		author: "Você (Luiz)",
+																		text,
+																		time: "Agora mesmo",
+																	},
+																],
+															}));
+															setNewCommentText((prev) => ({
+																...prev,
+																[ann.id]: "",
+															}));
+														}}
+														className="flex items-center gap-2 border-t border-border/40 pt-2.5 mt-2"
+													>
+														<Input
+															placeholder="Adicione um comentário..."
+															value={newCommentText[ann.id] || ""}
+															onChange={(e) =>
+																setNewCommentText((prev) => ({
+																	...prev,
+																	[ann.id]: e.target.value,
+																}))
+															}
+															className="h-8 text-[11px] rounded-lg px-2.5 flex-1"
+														/>
+														<Button
+															type="submit"
+															size="sm"
+															className="h-8 w-8 p-0 rounded-lg flex items-center justify-center shrink-0"
+														>
+															<Send className="h-3.5 w-3.5" />
+														</Button>
+													</form>
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
 							))}
 						</div>
 					</div>
