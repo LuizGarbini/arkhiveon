@@ -134,6 +134,7 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 						onDelete={() => removeItem(item.id)}
 						entityName={item.name || "Sem nome"}
 						entityKindLabel="item"
+						worldStaffOnly
 					/>
 				</div>
 

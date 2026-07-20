@@ -29,9 +29,9 @@ export const Route = createFileRoute("/billing")({
 });
 
 const benefits = [
-	"Mais espaço para personagens, NPCs e locais",
-	"Histórico avançado de sessões e alterações",
-	"Recursos premium para mestre e jogadores",
+	"Até 5 Mundos e 5 campanhas por Mundo",
+	"Criações ilimitadas e mais espaço para arquivos",
+	"Jogadores convidados usam o plano do mestre — um Pro cobre a mesa",
 ];
 
 function BillingPage() {
@@ -141,9 +141,13 @@ function BillingPage() {
 				title: "Checkout cancelado",
 				description: "Você pode tentar novamente quando quiser.",
 			});
-			void navigate({ to: "/billing", search: { success: undefined, canceled: undefined, mock: undefined }, replace: true });
+			void navigate({
+				to: "/billing",
+				search: { success: undefined, canceled: undefined, mock: undefined },
+				replace: true,
+			});
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [canceled]);
 
 	// ── Success celebration screen ───────────────────────────────────
@@ -242,8 +246,8 @@ function BillingPage() {
 						</h1>
 						<p className="mt-3 max-w-2xl text-[14px] leading-6 text-muted-foreground">
 							{isPro
-								? "Seu grimório está liberado para crescer sem limite de criações."
-								: "Acompanhe o uso atual do seu grimório e veja o que entra quando o upgrade estiver disponível."}
+								? "Até 5 Mundos, 5 campanhas por Mundo e criações ilimitadas. Convidados usam o seu plano."
+								: "Free: 1 Mundo e 1 campanha própria. Em mesa de um mestre Pro, você usa os limites dele."}
 						</p>
 					</div>
 					<Button

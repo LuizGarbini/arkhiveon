@@ -10,6 +10,7 @@ import { createSessionSlice } from "./store/session-slice";
 import { createSpotifySlice } from "./store/spotify-slice";
 import { createSyncSlice } from "./store/sync-slice";
 import type { ImageAsset, MembershipRole, RPGState } from "./store/types";
+import { createWorldbuildingSlice } from "./store/worldbuilding-slice";
 
 export { characterDefaults } from "./store/character-slice";
 export {
@@ -71,6 +72,7 @@ export const useRPGStore = create<RPGState>()(
 			...createCollectionSlice(...a),
 			...createImageLibrarySlice(...a),
 			...createSpotifySlice(...a),
+			...createWorldbuildingSlice(...a),
 			...createSyncSlice(...a),
 		}),
 		{
@@ -79,10 +81,12 @@ export const useRPGStore = create<RPGState>()(
 			migrate: (persistedState) => stripPersistedDataImages(persistedState),
 			partialize: (state) => ({
 				activeCampaignId: state.activeCampaignId,
+				activeWorldId: state.activeWorldId,
 				campaigns: state.campaigns.map((c) => ({
 					id: c.id,
 					name: c.name,
 					description: c.description,
+					worldId: c.worldId,
 					myRole: c.myRole,
 				})),
 				spotifyJamLink: state.spotifyJamLink,
@@ -107,6 +111,24 @@ export function useActiveCampaignRole(): MembershipRole | undefined {
 export function useIsCampaignMaster() {
 	const role = useActiveCampaignRole();
 	return role === "owner";
+}
+
+export function useIsWorldStaff() {
+	return useRPGStore((s) => {
+		const active = s.campaigns.find((c) => c.id === s.activeCampaignId);
+		if (!active?.worldId) return false;
+		return s.campaigns.some(
+			(c) =>
+				c.worldId === active.worldId &&
+				(c.myRole === "owner" || c.myRole === "editor"),
+		);
+	});
+}
+
+export function useActiveCampaign() {
+	return useRPGStore((s) =>
+		s.campaigns.find((campaign) => campaign.id === s.activeCampaignId),
+	);
 }
 
 export function useImageAssetLookup(): Map<string, ImageAsset> {

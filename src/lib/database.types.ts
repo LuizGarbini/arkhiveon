@@ -68,6 +68,7 @@ export type Database = {
 					owner_id: string;
 					spotify_jam_link: string | null;
 					updated_at: string;
+					world_id: string;
 				};
 				Insert: {
 					created_at?: string;
@@ -78,6 +79,7 @@ export type Database = {
 					owner_id?: string;
 					spotify_jam_link?: string | null;
 					updated_at?: string;
+					world_id: string;
 				};
 				Update: {
 					created_at?: string;
@@ -88,8 +90,17 @@ export type Database = {
 					owner_id?: string;
 					spotify_jam_link?: string | null;
 					updated_at?: string;
+					world_id?: string;
 				};
-				Relationships: [];
+				Relationships: [
+					{
+						foreignKeyName: "campaigns_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 			characters: {
 				Row: {
@@ -175,6 +186,104 @@ export type Database = {
 						columns: ["campaign_id"];
 						isOneToOne: false;
 						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			faction_reputations: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+					faction_id: string;
+					id: string;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+					faction_id: string;
+					id?: string;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+					faction_id?: string;
+					id?: string;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "faction_reputations_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "faction_reputations_faction_id_fkey";
+						columns: ["faction_id"];
+						isOneToOne: false;
+						referencedRelation: "factions";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			factions: {
+				Row: {
+					alignment: string;
+					created_at: string;
+					data: Json;
+					description: string;
+					goals: string;
+					id: string;
+					image_url: string;
+					influence: string;
+					leader: string;
+					name: string;
+					seat: string;
+					updated_at: string;
+					world_id: string;
+				};
+				Insert: {
+					alignment?: string;
+					created_at?: string;
+					data?: Json;
+					description?: string;
+					goals?: string;
+					id?: string;
+					image_url?: string;
+					influence?: string;
+					leader?: string;
+					name?: string;
+					seat?: string;
+					updated_at?: string;
+					world_id: string;
+				};
+				Update: {
+					alignment?: string;
+					created_at?: string;
+					data?: Json;
+					description?: string;
+					goals?: string;
+					id?: string;
+					image_url?: string;
+					influence?: string;
+					leader?: string;
+					name?: string;
+					seat?: string;
+					updated_at?: string;
+					world_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "factions_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
 						referencedColumns: ["id"];
 					},
 				];
@@ -275,40 +384,52 @@ export type Database = {
 			};
 			items: {
 				Row: {
-					campaign_id: string;
+					campaign_id: string | null;
+					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
 					data: Json;
 					id: string;
 					item_type: string;
 					name: string;
+					publication_scope: string;
 					rarity: string;
 					updated_at: string;
 					user_id: string;
+					visibility: string;
+					world_id: string;
 				};
 				Insert: {
-					campaign_id: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					item_type?: string;
 					name?: string;
+					publication_scope?: string;
 					rarity?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id: string;
 				};
 				Update: {
-					campaign_id?: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					item_type?: string;
 					name?: string;
+					publication_scope?: string;
 					rarity?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id?: string;
 				};
 				Relationships: [
 					{
@@ -318,44 +439,63 @@ export type Database = {
 						referencedRelation: "campaigns";
 						referencedColumns: ["id"];
 					},
+					{
+						foreignKeyName: "items_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
+						referencedColumns: ["id"];
+					},
 				];
 			};
 			locations: {
 				Row: {
-					campaign_id: string;
+					campaign_id: string | null;
+					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
 					data: Json;
 					id: string;
 					location_type: string;
 					name: string;
+					publication_scope: string;
 					region: string;
 					updated_at: string;
 					user_id: string;
+					visibility: string;
+					world_id: string;
 				};
 				Insert: {
-					campaign_id: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					location_type?: string;
 					name?: string;
+					publication_scope?: string;
 					region?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id: string;
 				};
 				Update: {
-					campaign_id?: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					location_type?: string;
 					name?: string;
+					publication_scope?: string;
 					region?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id?: string;
 				};
 				Relationships: [
 					{
@@ -365,11 +505,19 @@ export type Database = {
 						referencedRelation: "campaigns";
 						referencedColumns: ["id"];
 					},
+					{
+						foreignKeyName: "locations_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
+						referencedColumns: ["id"];
+					},
 				];
 			};
 			lores: {
 				Row: {
-					campaign_id: string;
+					campaign_id: string | null;
+					campaign_ids: string[];
 					category: string;
 					created_at: string;
 					created_by: string;
@@ -377,12 +525,16 @@ export type Database = {
 					id: string;
 					importance: string;
 					is_secret: boolean;
+					publication_scope: string;
 					title: string;
 					updated_at: string;
 					user_id: string;
+					visibility: string;
+					world_id: string;
 				};
 				Insert: {
-					campaign_id: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					category?: string;
 					created_at?: string;
 					created_by?: string;
@@ -390,12 +542,16 @@ export type Database = {
 					id?: string;
 					importance?: string;
 					is_secret?: boolean;
+					publication_scope?: string;
 					title?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id: string;
 				};
 				Update: {
-					campaign_id?: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					category?: string;
 					created_at?: string;
 					created_by?: string;
@@ -403,9 +559,12 @@ export type Database = {
 					id?: string;
 					importance?: string;
 					is_secret?: boolean;
+					publication_scope?: string;
 					title?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id?: string;
 				};
 				Relationships: [
 					{
@@ -413,6 +572,13 @@ export type Database = {
 						columns: ["campaign_id"];
 						isOneToOne: false;
 						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "lores_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
 						referencedColumns: ["id"];
 					},
 				];
@@ -449,39 +615,96 @@ export type Database = {
 					},
 				];
 			};
+			news_comments: {
+				Row: {
+					author_id: string | null;
+					body: string;
+					created_at: string;
+					id: string;
+					news_id: string;
+					parent_id: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					author_id?: string | null;
+					body?: string;
+					created_at?: string;
+					id?: string;
+					news_id: string;
+					parent_id?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					author_id?: string | null;
+					body?: string;
+					created_at?: string;
+					id?: string;
+					news_id?: string;
+					parent_id?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "news_comments_news_id_fkey";
+						columns: ["news_id"];
+						isOneToOne: false;
+						referencedRelation: "world_news";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "news_comments_parent_id_fkey";
+						columns: ["parent_id"];
+						isOneToOne: false;
+						referencedRelation: "news_comments";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			npcs: {
 				Row: {
-					campaign_id: string;
+					campaign_id: string | null;
+					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
 					data: Json;
 					id: string;
 					importance: string;
 					name: string;
+					publication_scope: string;
 					updated_at: string;
 					user_id: string;
+					visibility: string;
+					world_id: string;
 				};
 				Insert: {
-					campaign_id: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					importance?: string;
 					name?: string;
+					publication_scope?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id: string;
 				};
 				Update: {
-					campaign_id?: string;
+					campaign_id?: string | null;
+					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
 					data?: Json;
 					id?: string;
 					importance?: string;
 					name?: string;
+					publication_scope?: string;
 					updated_at?: string;
 					user_id?: string;
+					visibility?: string;
+					world_id?: string;
 				};
 				Relationships: [
 					{
@@ -489,6 +712,13 @@ export type Database = {
 						columns: ["campaign_id"];
 						isOneToOne: false;
 						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "npcs_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
 						referencedColumns: ["id"];
 					},
 				];
@@ -539,6 +769,86 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 				];
+			};
+			world_news: {
+				Row: {
+					audience: string;
+					author_id: string | null;
+					body: string;
+					campaign_ids: string[];
+					category: string;
+					comments_locked: boolean;
+					created_at: string;
+					id: string;
+					title: string;
+					updated_at: string;
+					visibility: string;
+					world_id: string;
+				};
+				Insert: {
+					audience?: string;
+					author_id?: string | null;
+					body?: string;
+					campaign_ids?: string[];
+					category?: string;
+					comments_locked?: boolean;
+					created_at?: string;
+					id?: string;
+					title?: string;
+					updated_at?: string;
+					visibility?: string;
+					world_id: string;
+				};
+				Update: {
+					audience?: string;
+					author_id?: string | null;
+					body?: string;
+					campaign_ids?: string[];
+					category?: string;
+					comments_locked?: boolean;
+					created_at?: string;
+					id?: string;
+					title?: string;
+					updated_at?: string;
+					visibility?: string;
+					world_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "world_news_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			worlds: {
+				Row: {
+					created_at: string;
+					id: string;
+					is_default: boolean;
+					name: string;
+					owner_user_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					id?: string;
+					is_default?: boolean;
+					name?: string;
+					owner_user_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					id?: string;
+					is_default?: boolean;
+					name?: string;
+					owner_user_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
 			};
 			user_plans: {
 				Row: {

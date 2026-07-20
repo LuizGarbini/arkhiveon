@@ -1,8 +1,4 @@
-import {
-	ArrowUpRight,
-	BookOpen,
-	Mail,
-} from "lucide-react";
+import { ArrowUpRight, BookOpen, Mail } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -77,7 +73,7 @@ export function EfferdStickyFooter() {
 			const rect = interaction.getBoundingClientRect();
 			const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
 			const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
-			
+
 			overlay.style.opacity = "1";
 			const mask = `radial-gradient(circle 180px at ${xPercent}% ${yPercent}%, black 10%, transparent 80%)`;
 			overlay.style.maskImage = mask;
@@ -121,7 +117,10 @@ export function EfferdStickyFooter() {
 					{/* Links */}
 					<div className="grid grid-cols-2 gap-8 w-full max-w-sm">
 						{footerLinkGroups.map((group) => (
-							<div key={group.label} className="flex flex-col items-center gap-3">
+							<div
+								key={group.label}
+								className="flex flex-col items-center gap-3"
+							>
 								<h2 className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground heading-rule">
 									{group.label}
 								</h2>
@@ -173,7 +172,8 @@ export function EfferdStickyFooter() {
 						<a
 							href="/dashboard"
 							className={buttonVariants({
-								className: "h-10 w-full gap-2 px-4 text-[12px] font-black justify-center",
+								className:
+									"h-10 w-full gap-2 px-4 text-[12px] font-black justify-center",
 							})}
 						>
 							Abrir arquivo
@@ -183,7 +183,8 @@ export function EfferdStickyFooter() {
 							href="/characters"
 							className={buttonVariants({
 								variant: "outline",
-								className: "h-10 w-full px-4 text-[12px] font-black justify-center",
+								className:
+									"h-10 w-full px-4 text-[12px] font-black justify-center",
 							})}
 						>
 							Ver personagens
@@ -357,8 +358,10 @@ export function EfferdStickyFooter() {
 								ref={overlayRef}
 								className="absolute inset-0 transition-opacity duration-300 pointer-events-none opacity-0"
 								style={{
-									maskImage: "radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
-									WebkitMaskImage: "radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
+									maskImage:
+										"radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
+									WebkitMaskImage:
+										"radial-gradient(circle 180px at 0px 0px, black 10%, transparent 80%)",
 								}}
 							>
 								<svg

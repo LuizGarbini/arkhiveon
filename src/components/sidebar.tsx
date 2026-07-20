@@ -2,10 +2,13 @@ import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
 	Crown,
+	Flag,
 	GitFork,
+	Globe2,
 	House,
 	Images,
 	Map as MapIcon,
+	Newspaper,
 	Package,
 	Palette,
 	ScrollText,
@@ -20,15 +23,18 @@ import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
-const grimoireItems = [
+const mesaItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
 	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
 	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
-	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+4" },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+5" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+4" },
 ];
 
 const worldItems = [
+	{ to: "/world", label: "Visão geral", Icon: Globe2 },
+	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
+	{ to: "/factions", label: "Facções", Icon: Flag },
+	{ to: "/news", label: "Mural", Icon: Newspaper },
 	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
 	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
 	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
@@ -108,9 +114,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 				{/* Nav Sections */}
 				<div className="flex-1 space-y-7 overflow-y-auto px-4 py-2 scrollbar-none">
 					<SidebarNav
-						title="Arkhiveon"
+						title="Mesa"
 						isCollapsed={isCollapsed}
-						items={grimoireItems}
+						items={mesaItems}
 						onItemClick={onItemClick}
 					/>
 					<SidebarNav

@@ -14,15 +14,14 @@ import {
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useState } from "react";
 import { EfferdStickyFooter } from "@/components/efferd-sticky-footer";
-import { Button } from "@/components/ui/button";
-import { useDocumentMetadata } from "@/hooks/use-document-metadata";
-import { useAuth } from "@/lib/auth";
-
 import {
 	freePlanFeatures,
 	pillars,
 	proPlanFeatures,
 } from "@/components/landing/landing-shared";
+import { Button } from "@/components/ui/button";
+import { useDocumentMetadata } from "@/hooks/use-document-metadata";
+import { useAuth } from "@/lib/auth";
 
 // Lazy-load the heavy Three.js component so it doesn't block initial render
 const D20Canvas = lazy(() =>
@@ -358,7 +357,7 @@ function PlanCardDark({
 			<div className="relative p-[1.5px] rounded-2xl overflow-hidden transition-all duration-300 ease-out bg-purple-500/10 shadow-[0_0_60px_-20px_rgba(139,92,246,0.4)] hover:shadow-[0_0_60px_rgba(139,92,246,0.5)] h-full">
 				{/* The Spinning Spark Background */}
 				<div className="absolute inset-[-400%] z-0 animate-[spin_4s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_90%,rgba(168,85,247,0.85)_97%,#ffffff_100%)]" />
-				
+
 				{/* Inner Card content */}
 				<article className="relative z-10 rounded-[15px] bg-[#0d091a] p-7 h-full w-full flex flex-col justify-between">
 					<div>
@@ -380,9 +379,13 @@ function PlanCardDark({
 							<span className="font-display text-4xl font-black text-white">
 								{price}
 							</span>
-							<span className="pb-1 text-[12px] font-bold text-white/30">/mês</span>
+							<span className="pb-1 text-[12px] font-bold text-white/30">
+								/mês
+							</span>
 						</div>
-						<p className="mt-2 text-[13px] leading-6 text-white/40">{description}</p>
+						<p className="mt-2 text-[13px] leading-6 text-white/40">
+							{description}
+						</p>
 
 						<ul className="mt-6 space-y-2.5">
 							{features.map((f) => (
@@ -390,7 +393,10 @@ function PlanCardDark({
 									key={f}
 									className="flex items-center gap-3 text-[13px] font-semibold text-white/70"
 								>
-									<Check className="h-3.5 w-3.5 shrink-0 text-violet-400" strokeWidth={2.5} />
+									<Check
+										className="h-3.5 w-3.5 shrink-0 text-violet-400"
+										strokeWidth={2.5}
+									/>
 									{f}
 								</li>
 							))}
@@ -402,9 +408,7 @@ function PlanCardDark({
 						search={{ mode: "register" }}
 						className="mt-8 block w-full"
 					>
-						<Button
-							className="w-full gap-2 rounded-xl text-[13px] font-black h-10 transition-all duration-300 border border-purple-500/30 bg-[linear-gradient(to_bottom,rgba(35,20,70,0.4),rgba(15,8,30,0.6))] text-white hover:border-purple-500 hover:bg-[linear-gradient(to_bottom,rgba(50,30,95,0.5),rgba(25,12,50,0.7))] hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] shadow-sm"
-						>
+						<Button className="w-full gap-2 rounded-xl text-[13px] font-black h-10 transition-all duration-300 border border-purple-500/30 bg-[linear-gradient(to_bottom,rgba(35,20,70,0.4),rgba(15,8,30,0.6))] text-white hover:border-purple-500 hover:bg-[linear-gradient(to_bottom,rgba(50,30,95,0.5),rgba(25,12,50,0.7))] hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] shadow-sm">
 							Começar com Pro
 							<ArrowUpRight className="h-3.5 w-3.5" />
 						</Button>
@@ -415,9 +419,7 @@ function PlanCardDark({
 	}
 
 	return (
-		<article
-			className="relative rounded-2xl border border-white/8 bg-white/2 p-7 transition-all duration-300 ease-out hover:border-purple-500/35 hover:bg-purple-500/5 hover:shadow-[0_12px_30px_rgba(139,92,246,0.1)] h-full flex flex-col justify-between"
-		>
+		<article className="relative rounded-2xl border border-white/8 bg-white/2 p-7 transition-all duration-300 ease-out hover:border-purple-500/35 hover:bg-purple-500/5 hover:shadow-[0_12px_30px_rgba(139,92,246,0.1)] h-full flex flex-col justify-between">
 			<div>
 				<div className="flex items-start justify-between">
 					<div>
@@ -439,7 +441,9 @@ function PlanCardDark({
 					</span>
 					<span className="pb-1 text-[12px] font-bold text-white/30">/mês</span>
 				</div>
-				<p className="mt-2 text-[13px] leading-6 text-white/40">{description}</p>
+				<p className="mt-2 text-[13px] leading-6 text-white/40">
+					{description}
+				</p>
 
 				<ul className="mt-6 space-y-2.5">
 					{features.map((f) => (
@@ -447,20 +451,18 @@ function PlanCardDark({
 							key={f}
 							className="flex items-center gap-3 text-[13px] font-semibold text-white/70"
 						>
-							<Check className="h-3.5 w-3.5 shrink-0 text-white/30" strokeWidth={2.5} />
+							<Check
+								className="h-3.5 w-3.5 shrink-0 text-white/30"
+								strokeWidth={2.5}
+							/>
 							{f}
 						</li>
 					))}
 				</ul>
 			</div>
 
-			<Link
-				to="/billing"
-				className="mt-8 block w-full"
-			>
-				<Button
-					className="w-full gap-2 rounded-xl text-[13px] font-black h-10 transition-all duration-300 border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
-				>
+			<Link to="/billing" className="mt-8 block w-full">
+				<Button className="w-full gap-2 rounded-xl text-[13px] font-black h-10 transition-all duration-300 border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white">
 					Começar gratuitamente
 					<ArrowUpRight className="h-3.5 w-3.5" />
 				</Button>

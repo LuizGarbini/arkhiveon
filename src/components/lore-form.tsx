@@ -3,7 +3,7 @@ import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Lore } from "@/lib/store";
-import { loreDefaults, useRPGStore } from "@/lib/store";
+import { loreDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
 import { EntityLinkManager } from "./entity-links";
 import { ImageUploader } from "./image-uploader";
 import { Button } from "./ui/button";
@@ -19,10 +19,13 @@ import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 type LoreFormValues = Omit<Lore, "id" | "createdAt" | "updatedAt">;
 
 export function LoreForm() {
+	const isStaff = useIsWorldStaff();
+	if (!isStaff) return null;
 	return (
 		<LoreFormDialog
 			trigger={
@@ -95,10 +98,16 @@ function LoreFormDialog({
 	const updateLore = useRPGStore((state) => state.updateLore);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
-		useForm<LoreFormValues>({
-			defaultValues: { ...loreDefaults, ...(lore ?? {}) },
-		});
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<LoreFormValues>({
+		defaultValues: { ...loreDefaults, ...(lore ?? {}) },
+	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedValues = useWatch({ control });
@@ -108,10 +117,14 @@ function LoreFormDialog({
 	}, [open, lore, reset]);
 
 	function onSubmit(data: LoreFormValues) {
+		const payload: LoreFormValues = {
+			...data,
+			isSecret: data.visibility === "master_secret",
+		};
 		let createdId: string | null = null;
-		if (isEdit && lore) updateLore(lore.id, data);
+		if (isEdit && lore) updateLore(lore.id, payload);
 		else {
-			const created = addLore(data);
+			const created = addLore(payload);
 			if (created.id) createdId = created.id;
 		}
 		setOpen(false);
@@ -200,6 +213,11 @@ function LoreFormDialog({
 							</Field>
 						</FormSection>
 
+						<WorldEntityPublicationFields
+							control={control}
+							setValue={setValue}
+						/>
+
 						<FormSection title="Conteúdo">
 							<Field label="Conteúdo principal">
 								<Textarea
@@ -227,14 +245,6 @@ function LoreFormDialog({
 									{...register("notes")}
 								/>
 							</Field>
-							<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-								<input
-									type="checkbox"
-									className="h-3.5 w-3.5 rounded border-border accent-primary"
-									{...register("isSecret")}
-								/>
-								Conhecimento secreto (não revelado aos jogadores)
-							</label>
 						</FormSection>
 						<EntityLinkManager
 							value={watchedValues.entityLinks ?? []}

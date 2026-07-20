@@ -31,6 +31,8 @@ import {
 	useImageAssetLookup,
 	useRPGStore,
 } from "@/lib/store";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/items/$itemId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -50,14 +52,20 @@ function ItemDetailPage() {
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
 	const activeCampaignId = useActiveCampaignId();
+	const activeCampaign = useActiveCampaignContext();
+	const campaigns = useRPGStore((state) => state.campaigns);
 	const updateItem = useRPGStore((state) => state.updateItem);
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 
+	const canView =
+		!!item &&
+		canViewScopedContent(item, activeCampaign, activeCampaignRole, campaigns);
+
 	if (isLoading) return <DetailSkeleton />;
 
-	if (!item) {
+	if (!item || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<Package className="h-16 w-16 text-muted-foreground/30" />

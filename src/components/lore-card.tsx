@@ -119,6 +119,7 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 						onDelete={() => removeLore(lore.id)}
 						entityName={lore.title || "Sem título"}
 						entityKindLabel="lore"
+						worldStaffOnly
 					/>
 				</div>
 

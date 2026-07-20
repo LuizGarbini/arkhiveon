@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Session } from "@/lib/store";
 import { sessionDefaults, useRPGStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { EntityLinkManager } from "./entity-links";
 import { Button } from "./ui/button";
 import {
@@ -17,7 +18,6 @@ import {
 import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { cn } from "@/lib/utils";
 
 const TABS = [
 	{ id: "basic", label: "Visão Geral" },
@@ -105,15 +105,23 @@ function SessionFormDialog({
 
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 	const addSession = useRPGStore((state) => state.addSession);
 	const updateSession = useRPGStore((state) => state.updateSession);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
-		useForm<SessionFormValues>({
-			defaultValues: { ...sessionDefaults, ...(session ?? {}) },
-		});
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<SessionFormValues>({
+		defaultValues: { ...sessionDefaults, ...(session ?? {}) },
+	});
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
@@ -205,7 +213,10 @@ function SessionFormDialog({
 											/>
 										</Field>
 										<Field label="Data real">
-											<Input placeholder="Ex: 12/04/2026" {...register("date")} />
+											<Input
+												placeholder="Ex: 12/04/2026"
+												{...register("date")}
+											/>
 										</Field>
 										<Field label="Data in-game">
 											<Input

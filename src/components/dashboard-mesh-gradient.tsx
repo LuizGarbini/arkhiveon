@@ -46,7 +46,7 @@ function DashboardMeshGradientComponent() {
 		if (typeof window.IntersectionObserver === "undefined") {
 			inView = true;
 			sync();
-			
+
 			function onVisibility() {
 				pageVisible = document.visibilityState === "visible";
 				sync();

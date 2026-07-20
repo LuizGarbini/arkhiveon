@@ -301,7 +301,22 @@ export interface SheetLayoutConfig {
 	modules: SheetModuleConfig[];
 }
 
-export interface Npc {
+export type PublicationScope = "global" | "restricted";
+export type EntityVisibility = "public" | "master_secret";
+export type FactionReputationStatus =
+	| "ally"
+	| "neutral"
+	| "hostile"
+	| "unfriendly";
+
+export interface WorldEntityFields {
+	worldId: string;
+	publicationScope: PublicationScope;
+	campaignIds: string[];
+	visibility: EntityVisibility;
+}
+
+export interface Npc extends WorldEntityFields {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
@@ -352,7 +367,7 @@ export interface Session {
 	entityLinks: EntityLink[];
 }
 
-export interface Item {
+export interface Item extends WorldEntityFields {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
@@ -379,7 +394,7 @@ export interface Item {
 	entityLinks: EntityLink[];
 }
 
-export interface GameLocation {
+export interface GameLocation extends WorldEntityFields {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
@@ -404,7 +419,7 @@ export interface GameLocation {
 	entityLinks: EntityLink[];
 }
 
-export interface Lore {
+export interface Lore extends WorldEntityFields {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
@@ -449,12 +464,72 @@ export interface Invite {
 	campaignName?: string;
 }
 
+export interface World {
+	id: string;
+	name: string;
+	isDefault: boolean;
+	ownerUserId: string;
+	createdAt: number;
+	updatedAt?: number;
+}
+
 export interface Campaign {
 	id: string;
 	name: string;
 	description: string;
 	ownerId: string;
+	worldId: string;
 	myRole?: MembershipRole;
+	createdAt: number;
+	updatedAt?: number;
+}
+
+export interface Faction {
+	id: string;
+	worldId: string;
+	name: string;
+	leader: string;
+	seat: string;
+	goals: string;
+	alignment: string;
+	influence: string;
+	description: string;
+	imageUrl: string;
+	createdAt: number;
+	updatedAt?: number;
+}
+
+export interface FactionReputation {
+	id: string;
+	factionId: string;
+	campaignId: string;
+	status: FactionReputationStatus;
+	createdAt: number;
+	updatedAt?: number;
+}
+
+export interface WorldNews {
+	id: string;
+	worldId: string;
+	authorId: string;
+	title: string;
+	body: string;
+	category: string;
+	audience: PublicationScope;
+	campaignIds: string[];
+	visibility: EntityVisibility;
+	commentsLocked: boolean;
+	createdAt: number;
+	updatedAt?: number;
+	commentCount?: number;
+}
+
+export interface NewsComment {
+	id: string;
+	newsId: string;
+	authorId: string;
+	parentId: string | null;
+	body: string;
 	createdAt: number;
 	updatedAt?: number;
 }
@@ -494,15 +569,27 @@ export interface RPGState {
 	// ----- Campanhas -----
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
+	activeWorldId: string | null;
 	hasLoadedCampaigns: boolean;
 	loadCampaigns: () => Promise<void>;
-	createCampaign: (name: string, description?: string) => Promise<Campaign>;
+	createCampaign: (
+		name: string,
+		description?: string,
+		options?: { worldId?: string; newWorldName?: string },
+	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
 		data: Partial<Pick<Campaign, "name" | "description">>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
+	switchWorld: (worldId: string) => Promise<void>;
+
+	// ----- Mundos -----
+	worlds: World[];
+	loadWorlds: () => Promise<void>;
+	createWorld: (name: string) => Promise<World>;
+	updateWorld: (id: string, data: Partial<Pick<World, "name">>) => void;
 
 	// ----- Convites & Membros -----
 	pendingInvites: Invite[];
@@ -580,6 +667,35 @@ export interface RPGState {
 	addLore: (lore: Partial<Omit<Lore, "id" | "createdAt">>) => Lore;
 	updateLore: (id: string, lore: Partial<Lore>) => void;
 	removeLore: (id: string) => void;
+
+	factions: Faction[];
+	factionReputations: FactionReputation[];
+	addFaction: (
+		faction: Partial<Omit<Faction, "id" | "createdAt" | "worldId">>,
+	) => Faction | null;
+	updateFaction: (id: string, faction: Partial<Faction>) => void;
+	removeFaction: (id: string) => void;
+	updateFactionReputation: (
+		factionId: string,
+		campaignId: string,
+		status: FactionReputationStatus,
+	) => void;
+
+	worldNews: WorldNews[];
+	newsComments: NewsComment[];
+	addWorldNews: (
+		news: Partial<Omit<WorldNews, "id" | "createdAt" | "worldId" | "authorId">>,
+	) => Promise<WorldNews | null>;
+	updateWorldNews: (id: string, news: Partial<WorldNews>) => void;
+	removeWorldNews: (id: string) => void;
+	loadNewsComments: (newsId: string) => Promise<void>;
+	addNewsComment: (
+		newsId: string,
+		body: string,
+		parentId?: string | null,
+	) => Promise<NewsComment | null>;
+	updateNewsComment: (id: string, body: string) => void;
+	removeNewsComment: (id: string) => void;
 
 	activityLog: ActivityEntry[];
 	clearActivity: () => void;

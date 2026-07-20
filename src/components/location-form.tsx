@@ -3,7 +3,8 @@ import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { GameLocation } from "@/lib/store";
-import { locationDefaults, useRPGStore } from "@/lib/store";
+import { locationDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { EntityLinkManager } from "./entity-links";
 import { ImageUploader } from "./image-uploader";
 import { Button } from "./ui/button";
@@ -19,7 +20,7 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import { cn } from "@/lib/utils";
+import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 const TABS = [
 	{ id: "basic", label: "Básico" },
@@ -30,6 +31,8 @@ const TABS = [
 type LocationFormValues = Omit<GameLocation, "id" | "createdAt" | "updatedAt">;
 
 export function LocationForm() {
+	const isStaff = useIsWorldStaff();
+	if (!isStaff) return null;
 	return (
 		<LocationFormDialog
 			trigger={
@@ -105,15 +108,23 @@ function LocationFormDialog({
 
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 	const addLocation = useRPGStore((state) => state.addLocation);
 	const updateLocation = useRPGStore((state) => state.updateLocation);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
-		useForm<LocationFormValues>({
-			defaultValues: { ...locationDefaults, ...(location ?? {}) },
-		});
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<LocationFormValues>({
+		defaultValues: { ...locationDefaults, ...(location ?? {}) },
+	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedValues = useWatch({ control });
@@ -185,152 +196,158 @@ function LocationFormDialog({
 									: "t-tab-slide-right",
 							)}
 						>
-						{tab === "basic" && (
-							<FormSection title="Identificação">
-								<ImageUploader
-									value={imageUrl ?? ""}
-									onChange={(url) =>
-										setValue("imageUrl", url, { shouldDirty: true })
+							{tab === "basic" && (
+								<>
+									<FormSection title="Identificação">
+										<ImageUploader
+											value={imageUrl ?? ""}
+											onChange={(url) =>
+												setValue("imageUrl", url, { shouldDirty: true })
+											}
+											label="Imagem"
+											folder="locations"
+											libraryName={watchedValues.name}
+											size="md"
+										/>
+										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+											<Field
+												label="Nome"
+												htmlFor={nameId}
+												className="sm:col-span-2"
+											>
+												<Input
+													id={nameId}
+													placeholder="Ex: Cidade Livre de Greyhawk"
+													{...register("name", { required: true })}
+												/>
+											</Field>
+											<Field label="Tipo">
+												<Input
+													placeholder="Ex: Cidade, Caverna..."
+													{...register("type")}
+												/>
+											</Field>
+											<Field label="Região">
+												<Input
+													placeholder="Ex: Reino de Tethyr"
+													{...register("region")}
+												/>
+											</Field>
+											<Field label="Local pai" hint="Sub-localidade?">
+												<Input
+													placeholder="Ex: dentro de Cidade Livre"
+													{...register("parentLocation")}
+												/>
+											</Field>
+											<Field label="Nível de perigo">
+												<Select {...register("dangerLevel")}>
+													<option value="seguro">Seguro</option>
+													<option value="baixo">Baixo</option>
+													<option value="moderado">Moderado</option>
+													<option value="alto">Alto</option>
+													<option value="mortal">Mortal</option>
+												</Select>
+											</Field>
+											<Field label="Clima">
+												<Input
+													placeholder="Ex: Temperado"
+													{...register("climate")}
+												/>
+											</Field>
+											<Field label="Terreno">
+												<Input
+													placeholder="Ex: Floresta densa"
+													{...register("terrain")}
+												/>
+											</Field>
+										</div>
+										<Field label="Descrição">
+											<Textarea
+												rows={3}
+												placeholder="Como o local se parece à primeira vista?"
+												{...register("description")}
+											/>
+										</Field>
+									</FormSection>
+									<WorldEntityPublicationFields
+										control={control}
+										setValue={setValue}
+									/>
+								</>
+							)}
+
+							{tab === "society" && (
+								<FormSection title="Sociedade & Política">
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+										<Field label="População">
+											<Input
+												placeholder="Ex: ~5.000"
+												{...register("population")}
+											/>
+										</Field>
+										<Field label="Governo">
+											<Input
+												placeholder="Conselho, Rei..."
+												{...register("government")}
+											/>
+										</Field>
+										<Field label="Economia">
+											<Input
+												placeholder="Comércio, mineração..."
+												{...register("economy")}
+											/>
+										</Field>
+										<Field label="Habitantes notáveis">
+											<Input
+												placeholder="Personalidades importantes"
+												{...register("notableInhabitants")}
+											/>
+										</Field>
+									</div>
+									<Field label="Pontos de interesse">
+										<Textarea
+											rows={4}
+											placeholder="Templos, mercados, masmorras..."
+											{...register("keyFeatures")}
+										/>
+									</Field>
+									<Field label="Ganchos de aventura">
+										<Textarea
+											rows={3}
+											placeholder="Quests que podem surgir aqui."
+											{...register("hooks")}
+										/>
+									</Field>
+								</FormSection>
+							)}
+
+							{tab === "history" && (
+								<FormSection title="História & Mapa">
+									<Field label="História do local">
+										<Textarea
+											rows={6}
+											placeholder="Origens, eventos marcantes..."
+											{...register("history")}
+										/>
+									</Field>
+									<Field label="URL do mapa (opcional)">
+										<Input placeholder="https://..." {...register("mapUrl")} />
+									</Field>
+								</FormSection>
+							)}
+							{tab === "history" && (
+								<EntityLinkManager
+									value={watchedValues.entityLinks ?? []}
+									onChange={(links) =>
+										setValue("entityLinks", links, { shouldDirty: true })
 									}
-									label="Imagem"
-									folder="locations"
-									libraryName={watchedValues.name}
-									size="md"
+									sourceValues={watchedValues as Record<string, unknown>}
+									currentEntity={{
+										entityKind: "location",
+										entityId: location?.id,
+									}}
 								/>
-								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-									<Field
-										label="Nome"
-										htmlFor={nameId}
-										className="sm:col-span-2"
-									>
-										<Input
-											id={nameId}
-											placeholder="Ex: Cidade Livre de Greyhawk"
-											{...register("name", { required: true })}
-										/>
-									</Field>
-									<Field label="Tipo">
-										<Input
-											placeholder="Ex: Cidade, Caverna..."
-											{...register("type")}
-										/>
-									</Field>
-									<Field label="Região">
-										<Input
-											placeholder="Ex: Reino de Tethyr"
-											{...register("region")}
-										/>
-									</Field>
-									<Field label="Local pai" hint="Sub-localidade?">
-										<Input
-											placeholder="Ex: dentro de Cidade Livre"
-											{...register("parentLocation")}
-										/>
-									</Field>
-									<Field label="Nível de perigo">
-										<Select {...register("dangerLevel")}>
-											<option value="seguro">Seguro</option>
-											<option value="baixo">Baixo</option>
-											<option value="moderado">Moderado</option>
-											<option value="alto">Alto</option>
-											<option value="mortal">Mortal</option>
-										</Select>
-									</Field>
-									<Field label="Clima">
-										<Input
-											placeholder="Ex: Temperado"
-											{...register("climate")}
-										/>
-									</Field>
-									<Field label="Terreno">
-										<Input
-											placeholder="Ex: Floresta densa"
-											{...register("terrain")}
-										/>
-									</Field>
-								</div>
-								<Field label="Descrição">
-									<Textarea
-										rows={3}
-										placeholder="Como o local se parece à primeira vista?"
-										{...register("description")}
-									/>
-								</Field>
-							</FormSection>
-						)}
-
-						{tab === "society" && (
-							<FormSection title="Sociedade & Política">
-								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-									<Field label="População">
-										<Input
-											placeholder="Ex: ~5.000"
-											{...register("population")}
-										/>
-									</Field>
-									<Field label="Governo">
-										<Input
-											placeholder="Conselho, Rei..."
-											{...register("government")}
-										/>
-									</Field>
-									<Field label="Economia">
-										<Input
-											placeholder="Comércio, mineração..."
-											{...register("economy")}
-										/>
-									</Field>
-									<Field label="Habitantes notáveis">
-										<Input
-											placeholder="Personalidades importantes"
-											{...register("notableInhabitants")}
-										/>
-									</Field>
-								</div>
-								<Field label="Pontos de interesse">
-									<Textarea
-										rows={4}
-										placeholder="Templos, mercados, masmorras..."
-										{...register("keyFeatures")}
-									/>
-								</Field>
-								<Field label="Ganchos de aventura">
-									<Textarea
-										rows={3}
-										placeholder="Quests que podem surgir aqui."
-										{...register("hooks")}
-									/>
-								</Field>
-							</FormSection>
-						)}
-
-						{tab === "history" && (
-							<FormSection title="História & Mapa">
-								<Field label="História do local">
-									<Textarea
-										rows={6}
-										placeholder="Origens, eventos marcantes..."
-										{...register("history")}
-									/>
-								</Field>
-								<Field label="URL do mapa (opcional)">
-									<Input placeholder="https://..." {...register("mapUrl")} />
-								</Field>
-							</FormSection>
-						)}
-						{tab === "history" && (
-							<EntityLinkManager
-								value={watchedValues.entityLinks ?? []}
-								onChange={(links) =>
-									setValue("entityLinks", links, { shouldDirty: true })
-								}
-								sourceValues={watchedValues as Record<string, unknown>}
-								currentEntity={{
-									entityKind: "location",
-									entityId: location?.id,
-								}}
-							/>
-						)}
+							)}
 						</div>
 					</div>
 

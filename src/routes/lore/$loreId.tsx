@@ -20,7 +20,9 @@ import {
 import { EntityLinkChips } from "@/components/entity-links";
 import { LoreEditButton } from "@/components/lore-form";
 import { Button } from "@/components/ui/button";
-import { useRPGStore } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/lore/$loreId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -44,6 +46,9 @@ function LoreDetailPage() {
 		state.lores.find((entry) => entry.id === loreId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+	const role = useActiveCampaignRole();
+	const activeCampaign = useActiveCampaignContext();
+	const campaigns = useRPGStore((state) => state.campaigns);
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -56,9 +61,12 @@ function LoreDetailPage() {
 		[lore?.tags],
 	);
 
+	const canView =
+		!!lore && canViewScopedContent(lore, activeCampaign, role, campaigns);
+
 	if (isLoading) return <DetailSkeleton />;
 
-	if (!lore) {
+	if (!lore || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<BookOpen className="h-16 w-16 text-muted-foreground/30" />

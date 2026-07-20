@@ -89,6 +89,7 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 						onDelete={() => removeLocation(location.id)}
 						entityName={location.name || "Sem nome"}
 						entityKindLabel="local"
+						worldStaffOnly
 					/>
 				</div>
 

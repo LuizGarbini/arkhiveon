@@ -28,7 +28,11 @@ import {
 	normalizeModuleOrders,
 	SHEET_MODULE_LABELS,
 } from "@/lib/sheet-modules";
-import { useActiveCampaignRole, type SheetModuleConfig, type SheetModuleKind } from "@/lib/store";
+import {
+	type SheetModuleConfig,
+	type SheetModuleKind,
+	useActiveCampaignRole,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const MODULE_HINTS: Partial<Record<SheetModuleKind, string>> = {
@@ -389,7 +393,9 @@ function SheetBlock({
 						{SHEET_MODULE_LABELS[module.kind]}
 					</p>
 					<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-						{isCustomSheetModule(module) ? module.title : SHEET_MODULE_LABELS[module.kind]}
+						{isCustomSheetModule(module)
+							? module.title
+							: SHEET_MODULE_LABELS[module.kind]}
 					</h2>
 					{isLayoutMode && hint ? (
 						<p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>

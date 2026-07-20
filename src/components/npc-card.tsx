@@ -116,6 +116,7 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 						onDelete={() => removeNpc(npc.id)}
 						entityName={npc.name || "Sem nome"}
 						entityKindLabel={kindLabel}
+						worldStaffOnly
 					/>
 				</div>
 

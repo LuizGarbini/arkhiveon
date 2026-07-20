@@ -13,8 +13,17 @@ import {
 } from "./helpers";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { GameLocation, Item, Lore, RPGState } from "./types";
+import {
+	denyUnlessWorldStaff,
+	validateEntityScopeForActiveWorld,
+} from "./world-entity-guards";
+import { worldEntityDefaultsForCampaign } from "./worldbuilding-slice";
 
 export const itemDefaults: Omit<Item, "id" | "createdAt"> = {
+	worldId: "",
+	publicationScope: "restricted",
+	campaignIds: [],
+	visibility: "public",
 	name: "",
 	type: "",
 	rarity: "comum",
@@ -35,6 +44,10 @@ export const itemDefaults: Omit<Item, "id" | "createdAt"> = {
 };
 
 export const locationDefaults: Omit<GameLocation, "id" | "createdAt"> = {
+	worldId: "",
+	publicationScope: "restricted",
+	campaignIds: [],
+	visibility: "public",
 	name: "",
 	type: "",
 	region: "",
@@ -57,6 +70,10 @@ export const locationDefaults: Omit<GameLocation, "id" | "createdAt"> = {
 };
 
 export const loreDefaults: Omit<Lore, "id" | "createdAt"> = {
+	worldId: "",
+	publicationScope: "restricted",
+	campaignIds: [],
+	visibility: "public",
 	title: "",
 	category: "",
 	era: "",
@@ -99,9 +116,15 @@ export const createCollectionSlice: StateCreator<
 > = (set, get) => ({
 	items: [],
 	addItem: (item) => {
+		if (!denyUnlessWorldStaff(get, set)) return {} as Item;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para adicionar item." });
+			return {} as Item;
+		}
+		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
+		if (!activeCampaign?.worldId) {
+			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as Item;
 		}
 		if (isCreationLimitReached(get())) {
@@ -110,7 +133,22 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as Item;
 		}
-		const created = generateEntry(itemDefaults, item) as Item;
+		const created = generateEntry(
+			{
+				...itemDefaults,
+				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+			},
+			item,
+		) as Item;
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			created.publicationScope,
+			created.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return {} as Item;
+		}
 		const log = {
 			action: "create" as const,
 			entityKind: "item" as const,
@@ -139,6 +177,7 @@ export const createCollectionSlice: StateCreator<
 		return created;
 	},
 	updateItem: (id, item) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para atualizar item." });
@@ -148,6 +187,15 @@ export const createCollectionSlice: StateCreator<
 		const existing = originalItems.find((i) => i.id === id);
 		if (!existing) return;
 		const updated = { ...existing, ...item, updatedAt: Date.now() };
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			updated.publicationScope,
+			updated.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return;
+		}
 		const log = {
 			action: "update" as const,
 			entityKind: "item" as const,
@@ -173,6 +221,7 @@ export const createCollectionSlice: StateCreator<
 		});
 	},
 	removeItem: (id) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para remover item." });
@@ -211,9 +260,15 @@ export const createCollectionSlice: StateCreator<
 
 	locations: [],
 	addLocation: (location) => {
+		if (!denyUnlessWorldStaff(get, set)) return {} as GameLocation;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para adicionar localização." });
+			return {} as GameLocation;
+		}
+		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
+		if (!activeCampaign?.worldId) {
+			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as GameLocation;
 		}
 		if (isCreationLimitReached(get())) {
@@ -222,7 +277,22 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as GameLocation;
 		}
-		const created = generateEntry(locationDefaults, location) as GameLocation;
+		const created = generateEntry(
+			{
+				...locationDefaults,
+				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+			},
+			location,
+		) as GameLocation;
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			created.publicationScope,
+			created.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return {} as GameLocation;
+		}
 		const log = {
 			action: "create" as const,
 			entityKind: "location" as const,
@@ -251,6 +321,7 @@ export const createCollectionSlice: StateCreator<
 		return created;
 	},
 	updateLocation: (id, location) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para atualizar localização." });
@@ -260,6 +331,15 @@ export const createCollectionSlice: StateCreator<
 		const existing = originalLocations.find((l) => l.id === id);
 		if (!existing) return;
 		const updated = { ...existing, ...location, updatedAt: Date.now() };
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			updated.publicationScope,
+			updated.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return;
+		}
 		const log = {
 			action: "update" as const,
 			entityKind: "location" as const,
@@ -285,6 +365,7 @@ export const createCollectionSlice: StateCreator<
 		});
 	},
 	removeLocation: (id) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para remover localização." });
@@ -323,9 +404,15 @@ export const createCollectionSlice: StateCreator<
 
 	lores: [],
 	addLore: (lore) => {
+		if (!denyUnlessWorldStaff(get, set)) return {} as Lore;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para adicionar lore." });
+			return {} as Lore;
+		}
+		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
+		if (!activeCampaign?.worldId) {
+			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as Lore;
 		}
 		if (isCreationLimitReached(get())) {
@@ -334,7 +421,23 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as Lore;
 		}
-		const created = generateEntry(loreDefaults, lore) as Lore;
+		const created = generateEntry(
+			{
+				...loreDefaults,
+				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+				...(lore.isSecret ? { visibility: "master_secret" as const } : {}),
+			},
+			lore,
+		) as Lore;
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			created.publicationScope,
+			created.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return {} as Lore;
+		}
 		const log = {
 			action: "create" as const,
 			entityKind: "lore" as const,
@@ -363,6 +466,7 @@ export const createCollectionSlice: StateCreator<
 		return created;
 	},
 	updateLore: (id, lore) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para atualizar lore." });
@@ -371,7 +475,25 @@ export const createCollectionSlice: StateCreator<
 		const originalLores = get().lores;
 		const existing = originalLores.find((l) => l.id === id);
 		if (!existing) return;
-		const updated = { ...existing, ...lore, updatedAt: Date.now() };
+		const updated = {
+			...existing,
+			...lore,
+			updatedAt: Date.now(),
+		};
+		if (typeof lore.isSecret === "boolean") {
+			updated.visibility = lore.isSecret ? "master_secret" : "public";
+		} else if (lore.visibility) {
+			updated.isSecret = lore.visibility === "master_secret";
+		}
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			updated.publicationScope,
+			updated.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return;
+		}
 		const log = {
 			action: "update" as const,
 			entityKind: "lore" as const,
@@ -397,6 +519,7 @@ export const createCollectionSlice: StateCreator<
 		});
 	},
 	removeLore: (id) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para remover lore." });

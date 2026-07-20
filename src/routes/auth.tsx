@@ -82,7 +82,9 @@ function AuthPage() {
 	const { mode: initialMode } = Route.useSearch();
 	const [mode, setMode] = useState<AuthMode>(initialMode);
 	const [prevIndex, setPrevIndex] = useState(-1);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 	const { session, loading } = useAuth();
 	const navigate = useNavigate();
 
@@ -270,7 +272,9 @@ function AuthPage() {
 								: "t-tab-slide-right",
 						)}
 					>
-						{mode === "login" && <LoginForm onForgot={() => setMode("forgot")} />}
+						{mode === "login" && (
+							<LoginForm onForgot={() => setMode("forgot")} />
+						)}
 						{mode === "register" && <RegisterForm />}
 						{mode === "forgot" && <ForgotPasswordForm />}
 						{mode === "reset" && <ResetPasswordForm />}
@@ -283,12 +287,19 @@ function AuthPage() {
 
 /* ─── Submit Button with Text State Swap (transitions.dev) ─── */
 
-interface SubmitButtonWithSwapProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface SubmitButtonWithSwapProps
+	extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 	isSubmitting: boolean;
 	defaultText: string;
 	submittingText: string;
 	size?: "default" | "sm" | "lg" | "icon";
-	variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+	variant?:
+		| "default"
+		| "destructive"
+		| "outline"
+		| "secondary"
+		| "ghost"
+		| "link";
 }
 
 function SubmitButtonWithSwap({
@@ -305,7 +316,7 @@ function SubmitButtonWithSwap({
 
 	useEffect(() => {
 		const targetText = isSubmitting ? submittingText : defaultText;
-		
+
 		setStateClass("is-exit");
 		const timer1 = setTimeout(() => {
 			setText(targetText);
@@ -326,15 +337,16 @@ function SubmitButtonWithSwap({
 	return (
 		<Button
 			type="submit"
-			className={cn("w-full transition-transform active:scale-[0.985]", className)}
+			className={cn(
+				"w-full transition-transform active:scale-[0.985]",
+				className,
+			)}
 			disabled={isSubmitting}
 			size={size}
 			variant={variant}
 			{...(props as any)}
 		>
-			<span className={cn("t-text-swap inline-block", stateClass)}>
-				{text}
-			</span>
+			<span className={cn("t-text-swap inline-block", stateClass)}>{text}</span>
 		</Button>
 	);
 }

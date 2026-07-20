@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
 import { Dices } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 interface DiceRollOverlayProps {
@@ -13,10 +13,10 @@ interface DiceRollOverlayProps {
 // ============================================================
 // Constantes de Timing (milissegundos)
 // ============================================================
-const ROLL_DURATION = 4200;       // Duração total da rolagem
-const RESULT_HOLD = 2200;         // Tempo mostrando resultado antes de fechar
-const RESULT_HOLD_CRIT = 3000;    // Tempo extra para críticos (Nat 20 / Nat 1)
-const PARTICLE_COUNT = 40;        // Partículas na explosão do resultado
+const ROLL_DURATION = 4200; // Duração total da rolagem
+const RESULT_HOLD = 2200; // Tempo mostrando resultado antes de fechar
+const RESULT_HOLD_CRIT = 3000; // Tempo extra para críticos (Nat 20 / Nat 1)
+const PARTICLE_COUNT = 40; // Partículas na explosão do resultado
 
 // ============================================================
 // Helpers de Canvas / Textura
@@ -65,7 +65,9 @@ function disposeHierarchy(node: THREE.Object3D) {
 			mesh.geometry.dispose();
 		}
 		if (mesh.material) {
-			const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+			const materials = Array.isArray(mesh.material)
+				? mesh.material
+				: [mesh.material];
 			for (const mat of materials) {
 				const m = mat as THREE.Material & { map?: THREE.Texture };
 				if (m.map) m.map.dispose();
@@ -104,17 +106,27 @@ function getUnitsList(targetUnits: number) {
 }
 
 /** Calcula centro e normal de uma face triangular a partir dos vértices */
-function computeFaceGeometry(pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, faceIndex: number) {
+function computeFaceGeometry(
+	pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+	faceIndex: number,
+) {
 	const i = faceIndex * 3;
 	const a = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
-	const b = new THREE.Vector3(pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1));
-	const c = new THREE.Vector3(pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+	const b = new THREE.Vector3(
+		pos.getX(i + 1),
+		pos.getY(i + 1),
+		pos.getZ(i + 1),
+	);
+	const c = new THREE.Vector3(
+		pos.getX(i + 2),
+		pos.getY(i + 2),
+		pos.getZ(i + 2),
+	);
 
 	const center = a.clone().add(b).add(c).divideScalar(3);
-	const normal = new THREE.Vector3().crossVectors(
-		c.clone().sub(b),
-		a.clone().sub(b),
-	).normalize();
+	const normal = new THREE.Vector3()
+		.crossVectors(c.clone().sub(b), a.clone().sub(b))
+		.normalize();
 
 	return { center, normal };
 }
@@ -124,13 +136,15 @@ function createD10GeometryData() {
 	const R = 1.35; // Raio
 	const H = 1.15; // Altura
 	const cos36 = Math.cos(Math.PI / 5);
-	const h = H * (1 - cos36) / (1 + cos36); // Altura exata para as faces (kites) serem perfeitamente planas
+	const h = (H * (1 - cos36)) / (1 + cos36); // Altura exata para as faces (kites) serem perfeitamente planas
 
 	const equator: THREE.Vector3[] = [];
 	for (let i = 0; i < 10; i++) {
-		const angle = i * Math.PI / 5;
-		const y = (i % 2 === 0) ? -h : h;
-		equator.push(new THREE.Vector3(R * Math.cos(angle), y, R * Math.sin(angle)));
+		const angle = (i * Math.PI) / 5;
+		const y = i % 2 === 0 ? -h : h;
+		equator.push(
+			new THREE.Vector3(R * Math.cos(angle), y, R * Math.sin(angle)),
+		);
 	}
 	const top = new THREE.Vector3(0, H, 0);
 	const bot = new THREE.Vector3(0, -H, 0);
@@ -196,13 +210,18 @@ function getD10FaceData(f: number, isTop: boolean) {
 	}
 
 	// Centro da face kite (média exata dos 4 vértices coplanares)
-	const center = new THREE.Vector3().add(tip).add(eLeft).add(eMid).add(eRight).multiplyScalar(0.25);
+	const center = new THREE.Vector3()
+		.add(tip)
+		.add(eLeft)
+		.add(eMid)
+		.add(eRight)
+		.multiplyScalar(0.25);
 
 	// Normal (produto vetorial das diagonais do kite aponta sempre para fora, com ajuste de sinal)
 	const diag1 = new THREE.Vector3().subVectors(eRight, eLeft);
 	const diag2 = new THREE.Vector3().subVectors(eMid, tip);
 	const normal = new THREE.Vector3().crossVectors(diag1, diag2).normalize();
-	
+
 	if (isTop && normal.y < 0) normal.negate();
 	if (!isTop && normal.y > 0) normal.negate();
 
@@ -249,7 +268,8 @@ export function DiceRollOverlay({
 		// ========================================================
 		// THREE.JS — Cena, Câmera, Renderer
 		// ========================================================
-		const W = 320, H = 320;
+		const W = 320,
+			H = 320;
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
 		camera.position.z = 5.5;
@@ -368,7 +388,9 @@ export function DiceRollOverlay({
 		} else if (diceType === "d100" || diceType === "d10") {
 			// D100 (dois D10s) ou D10 Simples
 			const isD100 = diceType === "d100";
-			const tensList = isD100 ? getTensList(Math.floor(finalVal / 10) * 10) : [];
+			const tensList = isD100
+				? getTensList(Math.floor(finalVal / 10) * 10)
+				: [];
 			const unitsList = getUnitsList(finalVal % 10);
 
 			const createD10 = (isLeft: boolean) => {
@@ -376,7 +398,9 @@ export function DiceRollOverlay({
 
 				const grp = new THREE.Group();
 				const mesh = new THREE.Mesh(geom, faceMat);
-				mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geom), edgeMat));
+				mesh.add(
+					new THREE.LineSegments(new THREE.EdgesGeometry(geom), edgeMat),
+				);
 				grp.add(mesh);
 
 				const list = isLeft ? tensList : unitsList;
@@ -397,15 +421,28 @@ export function DiceRollOverlay({
 						side: THREE.DoubleSide,
 					});
 
-					const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), mat);
+					const plane = new THREE.Mesh(
+						new THREE.PlaneGeometry(0.58, 0.58),
+						mat,
+					);
 					// Desloca sutilmente para fora da face para evitar z-fighting
 					plane.position.copy(center).add(normal.clone().multiplyScalar(0.005));
 
-					const upVector = new THREE.Vector3().subVectors(tip, plane.position).normalize();
-					const rightVector = new THREE.Vector3().crossVectors(upVector, normal).normalize();
-					const orthoUp = new THREE.Vector3().crossVectors(normal, rightVector).normalize();
+					const upVector = new THREE.Vector3()
+						.subVectors(tip, plane.position)
+						.normalize();
+					const rightVector = new THREE.Vector3()
+						.crossVectors(upVector, normal)
+						.normalize();
+					const orthoUp = new THREE.Vector3()
+						.crossVectors(normal, rightVector)
+						.normalize();
 
-					const matrix = new THREE.Matrix4().makeBasis(rightVector, orthoUp, normal);
+					const matrix = new THREE.Matrix4().makeBasis(
+						rightVector,
+						orthoUp,
+						normal,
+					);
 					plane.quaternion.setFromRotationMatrix(matrix);
 
 					mesh.add(plane);
@@ -424,15 +461,28 @@ export function DiceRollOverlay({
 						side: THREE.DoubleSide,
 					});
 
-					const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), mat);
+					const plane = new THREE.Mesh(
+						new THREE.PlaneGeometry(0.58, 0.58),
+						mat,
+					);
 					// Desloca sutilmente para fora da face para evitar z-fighting
 					plane.position.copy(center).add(normal.clone().multiplyScalar(0.005));
 
-					const upVector = new THREE.Vector3().subVectors(tip, plane.position).normalize();
-					const rightVector = new THREE.Vector3().crossVectors(upVector, normal).normalize();
-					const orthoUp = new THREE.Vector3().crossVectors(normal, rightVector).normalize();
+					const upVector = new THREE.Vector3()
+						.subVectors(tip, plane.position)
+						.normalize();
+					const rightVector = new THREE.Vector3()
+						.crossVectors(upVector, normal)
+						.normalize();
+					const orthoUp = new THREE.Vector3()
+						.crossVectors(normal, rightVector)
+						.normalize();
 
-					const matrix = new THREE.Matrix4().makeBasis(rightVector, orthoUp, normal);
+					const matrix = new THREE.Matrix4().makeBasis(
+						rightVector,
+						orthoUp,
+						normal,
+					);
 					plane.quaternion.setFromRotationMatrix(matrix);
 
 					mesh.add(plane);
@@ -445,7 +495,7 @@ export function DiceRollOverlay({
 			};
 
 			const { grp: d1, tq: tq1 } = createD10(false); // Die das unidades (ou único)
-			
+
 			if (isD100) {
 				const { grp: d2, tq: tq2 } = createD10(true); // Die das dezenas
 				d2.position.x = -1.0;
@@ -471,12 +521,12 @@ export function DiceRollOverlay({
 			mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat));
 
 			const facesData = [
-				{ num: 1, pos: [0, 0, 0.81], rot: [0, 0, 0] },                // Frente (Face 0)
-				{ num: 6, pos: [0, 0, -0.81], rot: [Math.PI, 0, 0] },         // Costas
-				{ num: 2, pos: [0.81, 0, 0], rot: [0, Math.PI / 2, 0] },      // Direita
-				{ num: 5, pos: [-0.81, 0, 0], rot: [0, -Math.PI / 2, 0] },    // Esquerda
-				{ num: 3, pos: [0, 0.81, 0], rot: [-Math.PI / 2, 0, 0] },     // Topo
-				{ num: 4, pos: [0, -0.81, 0], rot: [Math.PI / 2, 0, 0] },     // Fundo
+				{ num: 1, pos: [0, 0, 0.81], rot: [0, 0, 0] }, // Frente (Face 0)
+				{ num: 6, pos: [0, 0, -0.81], rot: [Math.PI, 0, 0] }, // Costas
+				{ num: 2, pos: [0.81, 0, 0], rot: [0, Math.PI / 2, 0] }, // Direita
+				{ num: 5, pos: [-0.81, 0, 0], rot: [0, -Math.PI / 2, 0] }, // Esquerda
+				{ num: 3, pos: [0, 0.81, 0], rot: [-Math.PI / 2, 0, 0] }, // Topo
+				{ num: 4, pos: [0, -0.81, 0], rot: [Math.PI / 2, 0, 0] }, // Fundo
 			];
 
 			const list = [1, 2, 3, 4, 5, 6];
@@ -505,7 +555,10 @@ export function DiceRollOverlay({
 			diceMeshes.push(mesh);
 
 			const tq = new THREE.Quaternion();
-			tq.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 1));
+			tq.setFromUnitVectors(
+				new THREE.Vector3(0, 0, 1),
+				new THREE.Vector3(0, 0, 1),
+			);
 			targetQuats.push(tq);
 		}
 
@@ -521,8 +574,8 @@ export function DiceRollOverlay({
 				new THREE.Euler(
 					Math.random() * Math.PI * 2,
 					Math.random() * Math.PI * 2,
-					Math.random() * Math.PI * 2
-				)
+					Math.random() * Math.PI * 2,
+				),
 			);
 			currentQuats.push(q);
 			diceMeshes[i].quaternion.copy(q);
@@ -531,7 +584,7 @@ export function DiceRollOverlay({
 			const vel = new THREE.Vector3(
 				(Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15),
 				(Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 15),
-				(Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 10)
+				(Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 10),
 			);
 			angularVelocities.push(vel);
 		}
@@ -565,7 +618,7 @@ export function DiceRollOverlay({
 
 					// Aplica delta rotação do frame ao quaternion físico
 					const deltaRot = new THREE.Quaternion().setFromEuler(
-						new THREE.Euler(vel.x * dt, vel.y * dt, vel.z * dt)
+						new THREE.Euler(vel.x * dt, vel.y * dt, vel.z * dt),
 					);
 					q.multiplyQuaternions(deltaRot, q);
 				}
@@ -582,8 +635,8 @@ export function DiceRollOverlay({
 					} else {
 						// Blend suave usando ease-in-out para pousar na face correta
 						const blendProgress = (progress - 0.65) / 0.35;
-						const blendFactor = Math.pow(blendProgress, 2.5);
-						
+						const blendFactor = blendProgress ** 2.5;
+
 						const blendedQuat = physQ.clone().slerp(targetQ, blendFactor);
 						mesh.quaternion.copy(blendedQuat);
 					}
@@ -617,11 +670,18 @@ export function DiceRollOverlay({
 					}
 
 					const particleGeo = new THREE.BufferGeometry();
-					particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+					particleGeo.setAttribute(
+						"position",
+						new THREE.BufferAttribute(particlePositions, 3),
+					);
 
 					const isCrit20 = diceType === "d20" && finalVal === 20;
 					const isCrit1 = diceType === "d20" && finalVal === 1;
-					const particleColor = isCrit20 ? 0xfbbf24 : isCrit1 ? 0xef4444 : 0xa855f7;
+					const particleColor = isCrit20
+						? 0xfbbf24
+						: isCrit1
+							? 0xef4444
+							: 0xa855f7;
 
 					const particleMat = new THREE.PointsMaterial({
 						color: particleColor,
@@ -646,7 +706,8 @@ export function DiceRollOverlay({
 							return;
 						}
 
-						const posArr = particleGeo.attributes.position.array as Float32Array;
+						const posArr = particleGeo.attributes.position
+							.array as Float32Array;
 						for (let p = 0; p < PARTICLE_COUNT; p++) {
 							const vel = particleVelocities[p];
 							posArr[p * 3] += vel.x * 0.016;
@@ -661,7 +722,7 @@ export function DiceRollOverlay({
 					};
 					requestAnimationFrame(animateParticles);
 
-					const holdTime = (isCrit20 || isCrit1) ? RESULT_HOLD_CRIT : RESULT_HOLD;
+					const holdTime = isCrit20 || isCrit1 ? RESULT_HOLD_CRIT : RESULT_HOLD;
 
 					closeTimeout = setTimeout(() => {
 						setOpacity(0);

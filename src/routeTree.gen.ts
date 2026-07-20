@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorldRouteImport } from './routes/world'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SpotifyCallbackRouteImport } from './routes/spotify-callback'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -25,9 +26,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
 import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
 import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
+import { Route as NewsIndexRouteImport } from './routes/news/index'
 import { Route as LoreIndexRouteImport } from './routes/lore/index'
 import { Route as LocationsIndexRouteImport } from './routes/locations/index'
 import { Route as ItemsIndexRouteImport } from './routes/items/index'
+import { Route as FactionsIndexRouteImport } from './routes/factions/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as SheetsNewRouteImport } from './routes/sheets/new'
 import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
@@ -36,7 +39,13 @@ import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
 import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
 import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
 import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
+import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
 
+const WorldRoute = WorldRouteImport.update({
+  id: '/world',
+  path: '/world',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -117,6 +126,11 @@ const NpcsIndexRoute = NpcsIndexRouteImport.update({
   path: '/npcs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsIndexRoute = NewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoreIndexRoute = LoreIndexRouteImport.update({
   id: '/lore/',
   path: '/lore/',
@@ -130,6 +144,11 @@ const LocationsIndexRoute = LocationsIndexRouteImport.update({
 const ItemsIndexRoute = ItemsIndexRouteImport.update({
   id: '/items/',
   path: '/items/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FactionsIndexRoute = FactionsIndexRouteImport.update({
+  id: '/factions/',
+  path: '/factions/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
@@ -172,6 +191,11 @@ const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
   path: '/items/$itemId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FactionsFactionIdRoute = FactionsFactionIdRouteImport.update({
+  id: '/factions/$factionId',
+  path: '/factions/$factionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -187,6 +211,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
   '/terms': typeof TermsRoute
+  '/world': typeof WorldRoute
+  '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -195,9 +221,11 @@ export interface FileRoutesByFullPath {
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters': typeof CharactersIndexRoute
+  '/factions': typeof FactionsIndexRoute
   '/items': typeof ItemsIndexRoute
   '/locations': typeof LocationsIndexRoute
   '/lore': typeof LoreIndexRoute
+  '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
@@ -216,6 +244,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
   '/terms': typeof TermsRoute
+  '/world': typeof WorldRoute
+  '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -224,9 +254,11 @@ export interface FileRoutesByTo {
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters': typeof CharactersIndexRoute
+  '/factions': typeof FactionsIndexRoute
   '/items': typeof ItemsIndexRoute
   '/locations': typeof LocationsIndexRoute
   '/lore': typeof LoreIndexRoute
+  '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
@@ -246,6 +278,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
   '/terms': typeof TermsRoute
+  '/world': typeof WorldRoute
+  '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
@@ -254,9 +288,11 @@ export interface FileRoutesById {
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
   '/characters/': typeof CharactersIndexRoute
+  '/factions/': typeof FactionsIndexRoute
   '/items/': typeof ItemsIndexRoute
   '/locations/': typeof LocationsIndexRoute
   '/lore/': typeof LoreIndexRoute
+  '/news/': typeof NewsIndexRoute
   '/npcs/': typeof NpcsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/sheets/': typeof SheetsIndexRoute
@@ -277,6 +313,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/spotify-callback'
     | '/terms'
+    | '/world'
+    | '/factions/$factionId'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -285,9 +323,11 @@ export interface FileRouteTypes {
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters'
+    | '/factions'
     | '/items'
     | '/locations'
     | '/lore'
+    | '/news'
     | '/npcs'
     | '/sessions'
     | '/sheets'
@@ -306,6 +346,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/spotify-callback'
     | '/terms'
+    | '/world'
+    | '/factions/$factionId'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -314,9 +356,11 @@ export interface FileRouteTypes {
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters'
+    | '/factions'
     | '/items'
     | '/locations'
     | '/lore'
+    | '/news'
     | '/npcs'
     | '/sessions'
     | '/sheets'
@@ -335,6 +379,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/spotify-callback'
     | '/terms'
+    | '/world'
+    | '/factions/$factionId'
     | '/items/$itemId'
     | '/locations/$locationId'
     | '/lore/$loreId'
@@ -343,9 +389,11 @@ export interface FileRouteTypes {
     | '/sheets/$characterId'
     | '/sheets/new'
     | '/characters/'
+    | '/factions/'
     | '/items/'
     | '/locations/'
     | '/lore/'
+    | '/news/'
     | '/npcs/'
     | '/sessions/'
     | '/sheets/'
@@ -365,6 +413,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SpotifyCallbackRoute: typeof SpotifyCallbackRoute
   TermsRoute: typeof TermsRoute
+  WorldRoute: typeof WorldRoute
+  FactionsFactionIdRoute: typeof FactionsFactionIdRoute
   ItemsItemIdRoute: typeof ItemsItemIdRoute
   LocationsLocationIdRoute: typeof LocationsLocationIdRoute
   LoreLoreIdRoute: typeof LoreLoreIdRoute
@@ -373,9 +423,11 @@ export interface RootRouteChildren {
   SheetsCharacterIdRoute: typeof SheetsCharacterIdRoute
   SheetsNewRoute: typeof SheetsNewRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
+  FactionsIndexRoute: typeof FactionsIndexRoute
   ItemsIndexRoute: typeof ItemsIndexRoute
   LocationsIndexRoute: typeof LocationsIndexRoute
   LoreIndexRoute: typeof LoreIndexRoute
+  NewsIndexRoute: typeof NewsIndexRoute
   NpcsIndexRoute: typeof NpcsIndexRoute
   SessionsIndexRoute: typeof SessionsIndexRoute
   SheetsIndexRoute: typeof SheetsIndexRoute
@@ -383,6 +435,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/world': {
+      id: '/world'
+      path: '/world'
+      fullPath: '/world'
+      preLoaderRoute: typeof WorldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -495,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NpcsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/': {
+      id: '/news/'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lore/': {
       id: '/lore/'
       path: '/lore'
@@ -514,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/items'
       fullPath: '/items'
       preLoaderRoute: typeof ItemsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/factions/': {
+      id: '/factions/'
+      path: '/factions'
+      fullPath: '/factions'
+      preLoaderRoute: typeof FactionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters/': {
@@ -572,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItemsItemIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/factions/$factionId': {
+      id: '/factions/$factionId'
+      path: '/factions/$factionId'
+      fullPath: '/factions/$factionId'
+      preLoaderRoute: typeof FactionsFactionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -589,6 +669,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SpotifyCallbackRoute: SpotifyCallbackRoute,
   TermsRoute: TermsRoute,
+  WorldRoute: WorldRoute,
+  FactionsFactionIdRoute: FactionsFactionIdRoute,
   ItemsItemIdRoute: ItemsItemIdRoute,
   LocationsLocationIdRoute: LocationsLocationIdRoute,
   LoreLoreIdRoute: LoreLoreIdRoute,
@@ -597,9 +679,11 @@ const rootRouteChildren: RootRouteChildren = {
   SheetsCharacterIdRoute: SheetsCharacterIdRoute,
   SheetsNewRoute: SheetsNewRoute,
   CharactersIndexRoute: CharactersIndexRoute,
+  FactionsIndexRoute: FactionsIndexRoute,
   ItemsIndexRoute: ItemsIndexRoute,
   LocationsIndexRoute: LocationsIndexRoute,
   LoreIndexRoute: LoreIndexRoute,
+  NewsIndexRoute: NewsIndexRoute,
   NpcsIndexRoute: NpcsIndexRoute,
   SessionsIndexRoute: SessionsIndexRoute,
   SheetsIndexRoute: SheetsIndexRoute,

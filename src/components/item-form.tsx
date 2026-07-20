@@ -3,7 +3,7 @@ import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Item } from "@/lib/store";
-import { itemDefaults, useRPGStore } from "@/lib/store";
+import { itemDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
 import { EntityImagePicker } from "./entity-image-picker";
 import { EntityLinkManager } from "./entity-links";
 import { Button } from "./ui/button";
@@ -19,10 +19,13 @@ import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 type ItemFormValues = Omit<Item, "id" | "createdAt" | "updatedAt">;
 
 export function ItemForm() {
+	const isStaff = useIsWorldStaff();
+	if (!isStaff) return null;
 	return (
 		<ItemFormDialog
 			trigger={
@@ -95,10 +98,16 @@ function ItemFormDialog({
 	const updateItem = useRPGStore((state) => state.updateItem);
 	const navigate = useNavigate();
 
-	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
-		useForm<ItemFormValues>({
-			defaultValues: { ...itemDefaults, ...(item ?? {}) },
-		});
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<ItemFormValues>({
+		defaultValues: { ...itemDefaults, ...(item ?? {}) },
+	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const imageAssetId = useWatch({ control, name: "imageAssetId" });
@@ -199,6 +208,11 @@ function ItemFormDialog({
 								</Field>
 							</div>
 						</FormSection>
+
+						<WorldEntityPublicationFields
+							control={control}
+							setValue={setValue}
+						/>
 
 						<FormSection title="Mecânica">
 							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -54,9 +54,7 @@ const TONE_BY_VARIANT = {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const [toasts, setToasts] = useState<Toast[]>([]);
-	const timersRef = useRef<Map<string, number>>(
-		new Map(),
-	);
+	const timersRef = useRef<Map<string, number>>(new Map());
 
 	/** Remove efetivamente o toast do array (pós-animação de saída) */
 	const remove = useCallback((id: string) => {
@@ -68,9 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const dismiss = useCallback(
 		(id: string) => {
 			setToasts((current) =>
-				current.map((t) =>
-					t.id === id ? { ...t, dismissing: true } : t,
-				),
+				current.map((t) => (t.id === id ? { ...t, dismissing: true } : t)),
 			);
 			// Limpa timer de auto-dismiss se existir
 			const existing = timersRef.current.get(id);
@@ -85,14 +81,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const push = useCallback(
 		(variant: ToastVariant, toast: ToastInput) => {
 			const id = crypto.randomUUID();
-			setToasts((current) => [
-				...current.slice(-3),
-				{ id, variant, ...toast },
-			]);
-			const timer = window.setTimeout(
-				() => dismiss(id),
-				AUTO_DISMISS_MS,
-			);
+			setToasts((current) => [...current.slice(-3), { id, variant, ...toast }]);
+			const timer = window.setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
 			timersRef.current.set(id, timer);
 		},
 		[dismiss],

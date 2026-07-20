@@ -69,6 +69,7 @@ describe("Zustand Store Persistence Partialization", () => {
 					name: "Campanha",
 					description: "",
 					ownerId: "u1",
+					worldId: "w1",
 					myRole: "owner",
 					createdAt: Date.now(),
 				},

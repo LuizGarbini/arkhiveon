@@ -258,17 +258,45 @@ const LAST_NAMES: Record<string, string[]> = {
 };
 
 const MODERN_NICKNAMES: Record<string, string[]> = {
-	ocultista: ["Profano", "Sombra", "Enigma", "Cinzas", "Cético", "Vazio", "Oculto"],
+	ocultista: [
+		"Profano",
+		"Sombra",
+		"Enigma",
+		"Cinzas",
+		"Cético",
+		"Vazio",
+		"Oculto",
+	],
 	mago: ["Místico", "Grimório", "Enigma", "Arcano"],
-	combatente: ["Kaiser", "Bruto", "Escudo", "Fera", "Tanque", "Cão de Fila", "Garras"],
+	combatente: [
+		"Kaiser",
+		"Bruto",
+		"Escudo",
+		"Fera",
+		"Tanque",
+		"Cão de Fila",
+		"Garras",
+	],
 	guerreiro: ["Destemido", "Lâmina", "Bárbaro", "Aço", "Muralha"],
-	especialista: ["Fritz", "Olho Clínico", "Gatilho", "Sombra", "Lince", "Arqueiro"],
+	especialista: [
+		"Fritz",
+		"Olho Clínico",
+		"Gatilho",
+		"Sombra",
+		"Lince",
+		"Arqueiro",
+	],
 	ladino: ["Fantasma", "Gato", "Sombra", "Silêncio", "Trapaceiro", "Ladino"],
 	general: ["Corvo", "Lobo", "Raposa", "Anjo", "Cético", "Espirito", "Fênix"],
 };
 
 const FANTASY_EPITHETS: Record<string, string[]> = {
-	strength: ["o Brutal", "o Rústico", "o Quebrador de Escudos", "o Punho de Aço"],
+	strength: [
+		"o Brutal",
+		"o Rústico",
+		"o Quebrador de Escudos",
+		"o Punho de Aço",
+	],
 	intelligence: ["o Sábio", "o Astuto", "o Tecelão de Runas", "o Erudito"],
 	dexterity: ["o Ágil", "o Pés Leves", "o Silencioso", "o Sombra"],
 	wisdom: ["o Observador", "o Místico", "o Guardião", "o Guia"],
@@ -299,16 +327,24 @@ export function generateThematicName({
 		let raceKey = "fantasy_human";
 
 		if (rc.includes("elf") || rc.includes("elfo")) raceKey = "elf";
-		else if (rc.includes("anão") || rc.includes("dwarf") || rc.includes("anao")) raceKey = "dwarf";
-		else if (rc.includes("halfling") || rc.includes("hobbit")) raceKey = "halfling";
+		else if (rc.includes("anão") || rc.includes("dwarf") || rc.includes("anao"))
+			raceKey = "dwarf";
+		else if (rc.includes("halfling") || rc.includes("hobbit"))
+			raceKey = "halfling";
 		else if (rc.includes("orc") || rc.includes("goblin")) raceKey = "orc";
-		else if (rc.includes("tiefling") || rc.includes("demônio") || rc.includes("demon")) raceKey = "tiefling";
+		else if (
+			rc.includes("tiefling") ||
+			rc.includes("demônio") ||
+			rc.includes("demon")
+		)
+			raceKey = "tiefling";
 
 		firstNamesList = FIRST_NAMES[raceKey] || FIRST_NAMES.fantasy_human;
 		lastNamesList = LAST_NAMES[raceKey] || LAST_NAMES.fantasy_human;
 	}
 
-	const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+	const getRandom = (arr: string[]) =>
+		arr[Math.floor(Math.random() * arr.length)];
 
 	const firstName = getRandom(firstNamesList);
 	const lastName = getRandom(lastNamesList);
@@ -320,10 +356,14 @@ export function generateThematicName({
 			let nickKey = "general";
 
 			if (cls.includes("ocult") || cls.includes("mago")) nickKey = "ocultista";
-			else if (cls.includes("combat") || cls.includes("guer")) nickKey = "combatente";
-			else if (cls.includes("espec") || cls.includes("lad")) nickKey = "especialista";
+			else if (cls.includes("combat") || cls.includes("guer"))
+				nickKey = "combatente";
+			else if (cls.includes("espec") || cls.includes("lad"))
+				nickKey = "especialista";
 
-			const nick = getRandom(MODERN_NICKNAMES[nickKey] || MODERN_NICKNAMES.general);
+			const nick = getRandom(
+				MODERN_NICKNAMES[nickKey] || MODERN_NICKNAMES.general,
+			);
 			return `${firstName} "${nick}" ${lastName}`;
 		}
 		return `${firstName} ${lastName}`;
@@ -346,10 +386,22 @@ export function generateThematicName({
 		// Se não tiver atributo de destaque, tenta associar pela classe
 		if (bestAttr === "general" && className) {
 			const cls = className.toLowerCase();
-			if (cls.includes("barb") || cls.includes("guer") || cls.includes("pal")) bestAttr = "strength";
-			else if (cls.includes("mag") || cls.includes("bru") || cls.includes("dru")) bestAttr = "intelligence";
-			else if (cls.includes("lad") || cls.includes("mon") || cls.includes("pat")) bestAttr = "dexterity";
-			else if (cls.includes("cler") || cls.includes("bardo")) bestAttr = "charisma";
+			if (cls.includes("barb") || cls.includes("guer") || cls.includes("pal"))
+				bestAttr = "strength";
+			else if (
+				cls.includes("mag") ||
+				cls.includes("bru") ||
+				cls.includes("dru")
+			)
+				bestAttr = "intelligence";
+			else if (
+				cls.includes("lad") ||
+				cls.includes("mon") ||
+				cls.includes("pat")
+			)
+				bestAttr = "dexterity";
+			else if (cls.includes("cler") || cls.includes("bardo"))
+				bestAttr = "charisma";
 		}
 
 		// Se mesmo assim não achou nada, escolhe um aleatório dos atributos

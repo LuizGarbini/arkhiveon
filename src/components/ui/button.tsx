@@ -1,7 +1,7 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-import { useEffect, useState, useRef } from "react";
+import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,9 @@ function Button({
 	disabled,
 	...props
 }: ButtonProps) {
-	const [text, setText] = useState<React.ReactNode>(() => (loading && loadingText ? loadingText : children));
+	const [text, setText] = useState<React.ReactNode>(() =>
+		loading && loadingText ? loadingText : children,
+	);
 	const [stateClass, setStateClass] = useState("");
 	const isFirstRender = useRef(true);
 
@@ -103,7 +105,12 @@ function Button({
 
 	const hasTransition = loadingText !== undefined;
 	const content = hasTransition ? (
-		<span className={cn("t-text-swap inline-flex items-center justify-center gap-1.5", stateClass)}>
+		<span
+			className={cn(
+				"t-text-swap inline-flex items-center justify-center gap-1.5",
+				stateClass,
+			)}
+		>
 			{text}
 		</span>
 	) : (

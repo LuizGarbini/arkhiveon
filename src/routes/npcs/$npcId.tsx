@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/npcs/$npcId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -67,6 +69,8 @@ function NpcDetailPage() {
 	const navigate = useNavigate();
 	const myRole = useActiveCampaignRole();
 	const isPlayer = myRole === "viewer";
+	const activeCampaign = useActiveCampaignContext();
+	const campaigns = useRPGStore((state) => state.campaigns);
 
 	const npc = useRPGStore((state) =>
 		state.npcs.find((item) => item.id === npcId),
@@ -83,9 +87,12 @@ function NpcDetailPage() {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
+	const canView =
+		!!npc && canViewScopedContent(npc, activeCampaign, myRole, campaigns);
+
 	if (isLoading) return <NpcDetailSkeleton />;
 
-	if (!npc) {
+	if (!npc || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<Users className="h-16 w-16 text-muted-foreground/30" />

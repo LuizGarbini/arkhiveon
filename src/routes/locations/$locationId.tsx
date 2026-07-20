@@ -22,7 +22,9 @@ import {
 import { EntityLinkChips } from "@/components/entity-links";
 import { LocationEditButton } from "@/components/location-form";
 import { Button } from "@/components/ui/button";
-import { useRPGStore } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/locations/$locationId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -39,13 +41,20 @@ function LocationDetailPage() {
 		state.locations.find((entry) => entry.id === locationId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+	const role = useActiveCampaignRole();
+	const activeCampaign = useActiveCampaignContext();
+	const campaigns = useRPGStore((state) => state.campaigns);
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
+	const canView =
+		!!location &&
+		canViewScopedContent(location, activeCampaign, role, campaigns);
+
 	if (isLoading) return <DetailSkeleton />;
 
-	if (!location) {
+	if (!location || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<MapIcon className="h-16 w-16 text-muted-foreground/30" />

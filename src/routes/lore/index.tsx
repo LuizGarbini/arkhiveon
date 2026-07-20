@@ -7,6 +7,7 @@ import { LoreCard } from "@/components/lore-card";
 import { LoreForm } from "@/components/lore-form";
 import { PageHeader } from "@/components/page-header";
 import { useRPGStore } from "@/lib/store";
+import { useVisibleWorldEntities } from "@/lib/worldbuilding/hooks";
 
 export const Route = createFileRoute("/lore/")({
 	component: RouteComponent,
@@ -16,14 +17,17 @@ const loadingCardKeys = ["lore-1", "lore-2", "lore-3", "lore-4"];
 
 function RouteComponent() {
 	const lores = useRPGStore((state) => state.lores);
+	const visibleLores = useVisibleWorldEntities(lores);
 	const [searchQuery, setSearchQuery] = useState("");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
 	const filteredLores = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return lores;
-		return lores.filter((lore) => lore.title.toLowerCase().includes(query));
-	}, [lores, deferredSearchQuery]);
+		if (!query) return visibleLores;
+		return visibleLores.filter((lore) =>
+			lore.title.toLowerCase().includes(query),
+		);
+	}, [visibleLores, deferredSearchQuery]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -35,7 +39,7 @@ function RouteComponent() {
 				Icon={BookOpen}
 				iconColor="text-indigo-300"
 				eyebrow="Arkhiveon"
-				count={lores.length}
+				count={visibleLores.length}
 				action={<LoreForm />}
 			/>
 
