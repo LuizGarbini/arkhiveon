@@ -3,6 +3,7 @@ import { BookOpen, Lock } from "lucide-react";
 import type { Lore } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
+import { cardInitials, EntityCardMedia } from "./entity-card-media";
 
 interface LoreCardProps {
 	lore?: Lore;
@@ -86,24 +87,13 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 				className={`pointer-events-none absolute inset-y-3.5 left-0 w-[2px] rounded-full bg-linear-to-b from-transparent ${importance.accent} to-transparent`}
 			/>
 
-			{/* Card Background / Icon / Fallback */}
-			<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br from-amber-500/10 to-transparent">
-				{hasCustomImage ? (
-					<img
-						src={lore.imageUrl}
-						alt={lore.title}
-						loading="lazy"
-						decoding="async"
-						className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-					/>
-				) : (
-					<div className="flex h-full w-full items-center justify-center bg-card-elevated text-amber-300/20 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
-						<BookOpen className="h-16 w-16 opacity-15" strokeWidth={1.2} />
-					</div>
-				)}
-				<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
-				<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
-			</div>
+			<EntityCardMedia
+				src={hasCustomImage ? lore.imageUrl : undefined}
+				alt={lore.title}
+				icon={BookOpen}
+				accentClassName="from-amber-500/15 text-amber-300/40"
+				initials={cardInitials(lore.title || "L")}
+			/>
 
 			{/* Card Content */}
 			<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between pl-1.5">
@@ -169,12 +159,6 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 							))}
 						</div>
 					)}
-
-					<div className="pointer-events-auto pt-1">
-						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition hover:border-white/15 hover:bg-white/15">
-							Abrir ficha
-						</span>
-					</div>
 				</div>
 			</div>
 		</div>

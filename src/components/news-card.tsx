@@ -1,5 +1,5 @@
 import { ChevronDown, Lock, MessageSquare, Pencil, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -52,8 +52,10 @@ export function NewsCard({ news }: NewsCardProps) {
 	const removeWorldNews = useRPGStore((s) => s.removeWorldNews);
 	const updateNewsComment = useRPGStore((s) => s.updateNewsComment);
 	const removeNewsComment = useRPGStore((s) => s.removeNewsComment);
-	const newsComments = useRPGStore((s) =>
-		s.newsComments.filter((c) => c.newsId === news.id),
+	const allNewsComments = useRPGStore((s) => s.newsComments);
+	const newsComments = useMemo(
+		() => allNewsComments.filter((c) => c.newsId === news.id),
+		[allNewsComments, news.id],
 	);
 
 	useEffect(() => {

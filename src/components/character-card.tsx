@@ -198,12 +198,6 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 									</div>
 								))}
 							</div>
-
-							<div className="pointer-events-auto">
-								<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition-colors duration-200 group-hover:border-white/15 group-hover:bg-white/15">
-									Abrir ficha
-								</span>
-							</div>
 						</div>
 					</div>
 				</div>

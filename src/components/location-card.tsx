@@ -3,6 +3,7 @@ import { Compass, Eye, Mountain, Users } from "lucide-react";
 import type { GameLocation } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
+import { cardInitials, EntityCardMedia } from "./entity-card-media";
 
 interface LocationCardProps {
 	location?: GameLocation;
@@ -43,7 +44,6 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 		.normalize("NFD")
 		.replace(/[\u0300-\u036f]/g, "");
 	const danger = dangerStyles[dangerKey] ?? dangerStyles.baixo;
-	const hasCustomImage = Boolean(location.imageUrl);
 
 	return (
 		<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 border-border/70 hover:border-primary/35">
@@ -56,24 +56,13 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 				aria-label={`Abrir local ${location.name}`}
 			/>
 
-			{/* Card Background Image / Fallback Gradient */}
-			<div className="absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br from-emerald-500/10 to-transparent">
-				{hasCustomImage ? (
-					<img
-						src={location.imageUrl}
-						alt={location.name}
-						loading="lazy"
-						decoding="async"
-						className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-					/>
-				) : (
-					<div className="flex h-full w-full items-center justify-center bg-card-elevated text-emerald-400/20 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
-						<Compass className="h-16 w-16 opacity-15" strokeWidth={1.2} />
-					</div>
-				)}
-				<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
-				<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
-			</div>
+			<EntityCardMedia
+				src={location.imageUrl}
+				alt={location.name}
+				icon={Compass}
+				accentClassName="from-emerald-500/15 text-emerald-400/40"
+				initials={cardInitials(location.name || "L")}
+			/>
 
 			{/* Card Content */}
 			<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
@@ -143,12 +132,6 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 							“{location.description}”
 						</p>
 					)}
-
-					<div className="pointer-events-auto pt-1">
-						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition hover:border-white/15 hover:bg-white/15">
-							Abrir ficha
-						</span>
-					</div>
 				</div>
 			</div>
 		</div>

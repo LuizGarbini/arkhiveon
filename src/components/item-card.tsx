@@ -8,6 +8,7 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
+import { cardInitials, EntityCardMedia } from "./entity-card-media";
 
 interface ItemCardProps {
 	item?: Item;
@@ -81,7 +82,6 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 		imageAssetLookup,
 		activeCampaignRole,
 	);
-	const hasCustomImage = Boolean(itemImageUrl);
 
 	return (
 		<div
@@ -97,28 +97,13 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 			/>
 
 			{/* Card Image / Icon Background */}
-			<div
-				className={`absolute inset-0 -z-10 h-full w-full overflow-hidden bg-linear-to-br ${rarity.glow} to-transparent`}
-			>
-				{hasCustomImage ? (
-					<img
-						src={itemImageUrl}
-						alt={item.name}
-						loading="lazy"
-						decoding="async"
-						className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-					/>
-				) : (
-					<div className="flex h-full w-full items-center justify-center bg-card-elevated text-white/5 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
-						<Gem
-							className={`h-16 w-16 ${rarity.tone} opacity-15`}
-							strokeWidth={1.2}
-						/>
-					</div>
-				)}
-				<div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-black/80 via-black/30 to-transparent" />
-				<div className="absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-black via-black/75 to-transparent" />
-			</div>
+			<EntityCardMedia
+				src={itemImageUrl}
+				alt={item.name}
+				icon={Gem}
+				accentClassName={`${rarity.glow} ${rarity.tone}`}
+				initials={cardInitials(item.name || "I")}
+			/>
 
 			{/* Card Content */}
 			<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
@@ -193,12 +178,6 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 							“{item.description}”
 						</p>
 					)}
-
-					<div className="pointer-events-auto pt-1">
-						<span className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-white/10 bg-white/10 text-xs font-medium text-white backdrop-blur-md transition hover:border-white/15 hover:bg-white/15">
-							Abrir ficha
-						</span>
-					</div>
 				</div>
 			</div>
 		</div>

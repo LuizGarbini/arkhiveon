@@ -42,9 +42,11 @@ function RouteComponent() {
 			/>
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
 				<ListLayout onSearch={setSearchQuery} />
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading
-						? ["f1", "f2"].map((key) => <FactionCard key={key} isLoading />)
+						? ["f1", "f2", "f3", "f4"].map((key) => (
+								<FactionCard key={key} isLoading />
+							))
 						: filtered.map((faction) => (
 								<FactionCard key={faction.id} faction={faction} />
 							))}
