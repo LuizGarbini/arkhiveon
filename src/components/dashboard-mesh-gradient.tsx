@@ -1,13 +1,22 @@
 import { MeshGradient } from "@paper-design/shaders-react";
 import { memo, useEffect, useRef, useState } from "react";
 
+/** Matches ArkhiveonGradientBackground blob / base tones. */
 export const DASHBOARD_MESH_COLORS: string[] = [
-	"#130437",
-	"#210751",
-	"#3511A5",
-	"#B34BD0",
-	"#003FFF",
+	"#10081f",
+	"#140923",
+	"#4b1f8a",
+	"#7e4aff",
+	"#b258ff",
 ];
+
+export const DASHBOARD_FALLBACK_COLORS = {
+	topBlob: DASHBOARD_MESH_COLORS[4],
+	rightBlob: DASHBOARD_MESH_COLORS[3],
+	bottomBlob: "#5626b4",
+	bgStart: DASHBOARD_MESH_COLORS[0],
+	bgMid: "#211045",
+} as const;
 
 const ANIMATION_SPEED = 0.35;
 
@@ -46,7 +55,7 @@ function DashboardMeshGradientComponent() {
 		if (typeof window.IntersectionObserver === "undefined") {
 			inView = true;
 			sync();
-			
+
 			function onVisibility() {
 				pageVisible = document.visibilityState === "visible";
 				sync();
@@ -89,10 +98,10 @@ function DashboardMeshGradientComponent() {
 		>
 			<MeshGradient
 				colors={DASHBOARD_MESH_COLORS}
-				distortion={0.85}
-				swirl={0.35}
-				grainMixer={0.15}
-				grainOverlay={0.12}
+				distortion={0.78}
+				swirl={0.28}
+				grainMixer={0}
+				grainOverlay={0}
 				speed={active ? ANIMATION_SPEED : 0}
 				minPixelRatio={1}
 				maxPixelCount={MAX_PIXEL_COUNT}
