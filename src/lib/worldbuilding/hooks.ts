@@ -59,10 +59,10 @@ export function useWorldCampaigns() {
 }
 
 export function useFactionReputationForActiveCampaign(factionId: string) {
-	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	return useRPGStore((s) =>
 		s.factionReputations.find(
-			(r) => r.factionId === factionId && r.campaignId === activeCampaignId,
+			(r) =>
+				r.factionId === factionId && r.campaignId === s.activeCampaignId,
 		),
 	);
 }
