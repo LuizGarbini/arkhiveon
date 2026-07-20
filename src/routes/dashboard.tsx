@@ -29,6 +29,8 @@ export const Route = createFileRoute("/dashboard")({
 	component: Dashboard,
 });
 
+const PRIMARY_CHROME_CLASSES = "border-primary/15 bg-primary/10 text-primary";
+
 const sections = [
 	{
 		to: "/characters",
@@ -487,7 +489,9 @@ function StatPill({ to, label, value, Icon, isLoading }: StatPillProps) {
 					{value}
 				</span>
 			</div>
-			<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+			<div
+				className={`flex h-8 w-8 items-center justify-center rounded-lg ${PRIMARY_CHROME_CLASSES}`}
+			>
 				<Icon className="h-4 w-4" strokeWidth={1.7} />
 			</div>
 		</Link>
@@ -540,7 +544,9 @@ function DashboardCard({
 		>
 			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 			<div className="flex items-start justify-between gap-4">
-				<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+				<div
+					className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${PRIMARY_CHROME_CLASSES}`}
+				>
 					<Icon className="h-6 w-6" strokeWidth={1.5} />
 				</div>
 				<div className="text-right">

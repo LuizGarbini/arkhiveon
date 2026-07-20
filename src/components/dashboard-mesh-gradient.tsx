@@ -10,6 +10,14 @@ export const DASHBOARD_MESH_COLORS: string[] = [
 	"#b258ff",
 ];
 
+export const DASHBOARD_FALLBACK_COLORS = {
+	topBlob: DASHBOARD_MESH_COLORS[4],
+	rightBlob: DASHBOARD_MESH_COLORS[3],
+	bottomBlob: "#5626b4",
+	bgStart: DASHBOARD_MESH_COLORS[0],
+	bgMid: "#211045",
+} as const;
+
 const ANIMATION_SPEED = 0.35;
 
 /** Cap GPU work: ~720p worth of fragments max. */

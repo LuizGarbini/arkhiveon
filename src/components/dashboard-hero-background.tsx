@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { isLitePerformanceMode } from "@/lib/performance-mode";
+import { DASHBOARD_FALLBACK_COLORS } from "./dashboard-mesh-gradient";
 
 const LazyDashboardMeshGradient = lazy(() =>
 	import("@/components/dashboard-mesh-gradient").then((m) => ({
@@ -18,10 +19,10 @@ function DashboardGradientFallback() {
 			className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
 			style={{
 				background: `
-					radial-gradient(ellipse 80% 70% at 20% 30%, #b258ff 0%, transparent 55%),
-					radial-gradient(ellipse 70% 80% at 80% 20%, #7e4aff 0%, transparent 50%),
-					radial-gradient(ellipse 60% 50% at 60% 80%, #5626b4 0%, transparent 55%),
-					linear-gradient(135deg, #10081f 0%, #211045 45%, #10081f 100%)
+					radial-gradient(ellipse 80% 70% at 20% 30%, ${DASHBOARD_FALLBACK_COLORS.topBlob} 0%, transparent 55%),
+					radial-gradient(ellipse 70% 80% at 80% 20%, ${DASHBOARD_FALLBACK_COLORS.rightBlob} 0%, transparent 50%),
+					radial-gradient(ellipse 60% 50% at 60% 80%, ${DASHBOARD_FALLBACK_COLORS.bottomBlob} 0%, transparent 55%),
+					linear-gradient(135deg, ${DASHBOARD_FALLBACK_COLORS.bgStart} 0%, ${DASHBOARD_FALLBACK_COLORS.bgMid} 45%, ${DASHBOARD_FALLBACK_COLORS.bgStart} 100%)
 				`,
 			}}
 		/>
