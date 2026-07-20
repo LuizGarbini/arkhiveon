@@ -13,11 +13,9 @@ import {
 	updateRemoteWorldNews,
 } from "../remote-worldbuilding";
 import { getSupabase } from "../supabase";
-import { WORLD_GRIMOIRE_FORBIDDEN } from "../worldbuilding/campaign-content";
 import {
 	canCommentOnNews,
 	defaultWorldEntityFields,
-	isWorldStaffInWorld,
 	validateRestrictedScope,
 } from "../worldbuilding/visibility";
 import { generateEntry, remoteErrorMessage } from "./helpers";
@@ -28,6 +26,7 @@ import type {
 	RPGState,
 	WorldNews,
 } from "./types";
+import { denyUnlessWorldStaff } from "./world-entity-guards";
 
 export const factionDefaults: Omit<Faction, "id" | "createdAt" | "worldId"> = {
 	name: "",
@@ -63,23 +62,6 @@ function activeWorldContext(get: () => RPGState) {
 			.campaigns.filter((c) => c.worldId === activeCampaign.worldId)
 			.map((c) => c.id),
 	};
-}
-
-function assertWorldStaff(
-	get: () => RPGState,
-	set: Parameters<StateCreator<RPGState, [], [], WorldbuildingSlice>>[0],
-	message: string = WORLD_GRIMOIRE_FORBIDDEN,
-): boolean {
-	const activeCampaignId = get().activeCampaignId;
-	const activeCampaign = get().campaigns.find((c) => c.id === activeCampaignId);
-	if (
-		!activeCampaign?.worldId ||
-		!isWorldStaffInWorld(get().campaigns, activeCampaign.worldId)
-	) {
-		set({ syncError: message });
-		return false;
-	}
-	return true;
 }
 
 export interface WorldbuildingSlice {
@@ -132,7 +114,7 @@ export const createWorldbuildingSlice: StateCreator<
 			return null;
 		}
 		if (
-			!assertWorldStaff(
+			!denyUnlessWorldStaff(
 				get,
 				set,
 				"Sem permissão para gerenciar facções do Mundo.",
@@ -173,7 +155,7 @@ export const createWorldbuildingSlice: StateCreator<
 
 	updateFaction: (id, faction) => {
 		if (
-			!assertWorldStaff(
+			!denyUnlessWorldStaff(
 				get,
 				set,
 				"Sem permissão para gerenciar facções do Mundo.",
@@ -195,7 +177,7 @@ export const createWorldbuildingSlice: StateCreator<
 
 	removeFaction: (id) => {
 		if (
-			!assertWorldStaff(
+			!denyUnlessWorldStaff(
 				get,
 				set,
 				"Sem permissão para gerenciar facções do Mundo.",
@@ -222,7 +204,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	updateFactionReputation: (factionId, campaignId, status) => {
-		if (!assertWorldStaff(get, set, "Sem permissão para editar reputação.")) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para editar reputação.")) {
 			return;
 		}
 		const original = get().factionReputations;
@@ -270,7 +252,7 @@ export const createWorldbuildingSlice: StateCreator<
 			});
 			return null;
 		}
-		if (!assertWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return null;
 		}
 
@@ -330,7 +312,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	updateWorldNews: (id, news) => {
-		if (!assertWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return;
 		}
 		const ctx = activeWorldContext(get);
@@ -362,7 +344,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	removeWorldNews: (id) => {
-		if (!assertWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return;
 		}
 		const originalNews = get().worldNews;

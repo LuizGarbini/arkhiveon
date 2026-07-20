@@ -87,7 +87,7 @@ export function LegacyWorldNamingGate() {
 	}
 
 	return (
-		<div className="fixed inset-0 z-[220] flex items-center justify-center overflow-y-auto bg-[#130437] px-4 py-8 text-white">
+		<div className="fixed inset-0 z-[220] flex items-center justify-center overflow-y-auto bg-dashboard-deep px-4 py-8 text-white">
 			<div className="absolute inset-0">
 				<DashboardHeroBackground />
 			</div>

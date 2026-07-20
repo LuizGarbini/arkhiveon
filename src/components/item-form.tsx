@@ -2,8 +2,18 @@ import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useAuth } from "@/lib/auth";
 import type { Item } from "@/lib/store";
-import { itemDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
+import {
+	itemDefaults,
+	useActiveCampaignRole,
+	useIsWorldStaff,
+	useRPGStore,
+} from "@/lib/store";
+import {
+	canCreateCampaignItem,
+	canManageOwnItem,
+} from "@/lib/worldbuilding/item-ownership";
 import { EntityImagePicker } from "./entity-image-picker";
 import { EntityLinkManager } from "./entity-links";
 import { Button } from "./ui/button";
@@ -24,8 +34,8 @@ import { WorldEntityPublicationFields } from "./world-entity-publication-fields"
 type ItemFormValues = Omit<Item, "id" | "createdAt" | "updatedAt">;
 
 export function ItemForm() {
-	const isStaff = useIsWorldStaff();
-	if (!isStaff) return null;
+	const role = useActiveCampaignRole();
+	if (!canCreateCampaignItem(role)) return null;
 	return (
 		<ItemFormDialog
 			trigger={
@@ -56,6 +66,9 @@ export function ItemEditButton({
 	onOpenChange,
 	trigger,
 }: ItemEditButtonProps) {
+	const { user } = useAuth();
+	const isStaff = useIsWorldStaff();
+	if (!canManageOwnItem(item, user?.id, isStaff)) return null;
 	return (
 		<ItemFormDialog
 			item={item}
@@ -97,6 +110,7 @@ function ItemFormDialog({
 	const addItem = useRPGStore((state) => state.addItem);
 	const updateItem = useRPGStore((state) => state.updateItem);
 	const navigate = useNavigate();
+	const { user } = useAuth();
 
 	const {
 		register,
@@ -123,9 +137,9 @@ function ItemFormDialog({
 
 	function onSubmit(data: ItemFormValues) {
 		let createdId: string | null = null;
-		if (isEdit && item) updateItem(item.id, data);
+		if (isEdit && item) updateItem(item.id, data, user?.id);
 		else {
-			const created = addItem(data);
+			const created = addItem(data, user?.id);
 			if (created.id) createdId = created.id;
 		}
 		setOpen(false);

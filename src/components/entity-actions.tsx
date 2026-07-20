@@ -17,6 +17,8 @@ interface EntityActionsProps {
 	entityKindLabel: string;
 	/** Grimório do Mundo: exige staff em qualquer campanha do mesmo worldId. */
 	worldStaffOnly?: boolean;
+	/** Quando definido, substitui a checagem de role/staff. */
+	canManage?: boolean;
 }
 
 /**
@@ -30,13 +32,16 @@ export function EntityActions({
 	entityName,
 	entityKindLabel,
 	worldStaffOnly = false,
+	canManage: canManageProp,
 }: EntityActionsProps) {
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const role = useActiveCampaignRole();
 	const isWorldStaff = useIsWorldStaff();
-	const canManage = worldStaffOnly
-		? isWorldStaff
-		: role === "owner" || role === "editor";
+	const canManage =
+		canManageProp ??
+		(worldStaffOnly
+			? isWorldStaff
+			: role === "owner" || role === "editor");
 
 	function handleConfirmDelete() {
 		onDelete();

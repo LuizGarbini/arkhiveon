@@ -371,6 +371,8 @@ export interface Item extends WorldEntityFields {
 	id: string;
 	createdAt: number;
 	updatedAt?: number;
+	/** Dono do registro (auth user) — viewers só editam o próprio. */
+	createdBy?: string;
 	name: string;
 	type: string;
 	rarity: string;
@@ -653,9 +655,16 @@ export interface RPGState {
 	removeSession: (id: string) => void;
 
 	items: Item[];
-	addItem: (item: Partial<Omit<Item, "id" | "createdAt">>) => Item;
-	updateItem: (id: string, item: Partial<Item>) => void;
-	removeItem: (id: string) => void;
+	addItem: (
+		item: Partial<Omit<Item, "id" | "createdAt">>,
+		actingUserId?: string,
+	) => Item;
+	updateItem: (
+		id: string,
+		item: Partial<Item>,
+		actingUserId?: string,
+	) => void;
+	removeItem: (id: string, actingUserId?: string) => void;
 
 	locations: GameLocation[];
 	addLocation: (

@@ -14,6 +14,8 @@ import {
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { GameLocation, Item, Lore, RPGState } from "./types";
 import {
+	allowItemWrite,
+	constrainItemPayloadForViewer,
 	denyUnlessWorldStaff,
 	validateEntityScopeForActiveWorld,
 } from "./world-entity-guards";
@@ -91,9 +93,16 @@ export const loreDefaults: Omit<Lore, "id" | "createdAt"> = {
 
 export interface CollectionSlice {
 	items: Item[];
-	addItem: (item: Partial<Omit<Item, "id" | "createdAt">>) => Item;
-	updateItem: (id: string, item: Partial<Item>) => void;
-	removeItem: (id: string) => void;
+	addItem: (
+		item: Partial<Omit<Item, "id" | "createdAt">>,
+		actingUserId?: string,
+	) => Item;
+	updateItem: (
+		id: string,
+		item: Partial<Item>,
+		actingUserId?: string,
+	) => void;
+	removeItem: (id: string, actingUserId?: string) => void;
 
 	locations: GameLocation[];
 	addLocation: (
@@ -115,8 +124,9 @@ export const createCollectionSlice: StateCreator<
 	CollectionSlice
 > = (set, get) => ({
 	items: [],
-	addItem: (item) => {
-		if (!denyUnlessWorldStaff(get, set)) return {} as Item;
+	addItem: (item, actingUserId) => {
+		const access = allowItemWrite(get, set, actingUserId);
+		if (!access) return {} as Item;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para adicionar item." });
@@ -133,12 +143,19 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as Item;
 		}
+		const payload =
+			access === "owner"
+				? constrainItemPayloadForViewer(campaignId, {
+						...item,
+						createdBy: actingUserId,
+					})
+				: { ...item, createdBy: item.createdBy ?? actingUserId };
 		const created = generateEntry(
 			{
 				...itemDefaults,
 				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
 			},
-			item,
+			payload as Partial<Omit<Item, "id" | "createdAt">>,
 		) as Item;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
@@ -176,8 +193,7 @@ export const createCollectionSlice: StateCreator<
 		});
 		return created;
 	},
-	updateItem: (id, item) => {
-		if (!denyUnlessWorldStaff(get, set)) return;
+	updateItem: (id, item, actingUserId) => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para atualizar item." });
@@ -186,7 +202,18 @@ export const createCollectionSlice: StateCreator<
 		const originalItems = get().items;
 		const existing = originalItems.find((i) => i.id === id);
 		if (!existing) return;
-		const updated = { ...existing, ...item, updatedAt: Date.now() };
+		const access = allowItemWrite(get, set, actingUserId, existing);
+		if (!access) return;
+		const patch =
+			access === "owner"
+				? constrainItemPayloadForViewer(campaignId, item)
+				: item;
+		const updated = {
+			...existing,
+			...patch,
+			createdBy: existing.createdBy,
+			updatedAt: Date.now(),
+		};
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
 			updated.publicationScope,
@@ -220,8 +247,7 @@ export const createCollectionSlice: StateCreator<
 			}));
 		});
 	},
-	removeItem: (id) => {
-		if (!denyUnlessWorldStaff(get, set)) return;
+	removeItem: (id, actingUserId) => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para remover item." });
@@ -230,6 +256,7 @@ export const createCollectionSlice: StateCreator<
 		const originalItems = get().items;
 		const existing = originalItems.find((i) => i.id === id);
 		if (!existing) return;
+		if (!allowItemWrite(get, set, actingUserId, existing)) return;
 		const log = {
 			action: "delete" as const,
 			entityKind: "item" as const,

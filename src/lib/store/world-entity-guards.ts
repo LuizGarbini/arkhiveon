@@ -1,10 +1,17 @@
 import type { StateCreator } from "zustand";
 import { WORLD_GRIMOIRE_FORBIDDEN } from "../worldbuilding/campaign-content";
 import {
+	canCreateCampaignItem,
+	canManageOwnItem,
+	viewerSafeItemPublication,
+} from "../worldbuilding/item-ownership";
+import {
 	isWorldStaffInWorld,
 	validateRestrictedScope,
 } from "../worldbuilding/visibility";
-import type { PublicationScope, RPGState } from "./types";
+import type { Item, PublicationScope, RPGState } from "./types";
+
+type SetState = Parameters<StateCreator<RPGState, [], [], unknown>>[0];
 
 export function activeCampaignRole(
 	get: () => RPGState,
@@ -15,7 +22,8 @@ export function activeCampaignRole(
 
 export function denyUnlessWorldStaff(
 	get: () => RPGState,
-	set: Parameters<StateCreator<RPGState, [], [], unknown>>[0],
+	set: SetState,
+	message: string = WORLD_GRIMOIRE_FORBIDDEN,
 ): boolean {
 	const activeCampaignId = get().activeCampaignId;
 	const activeCampaign = get().campaigns.find((c) => c.id === activeCampaignId);
@@ -23,10 +31,58 @@ export function denyUnlessWorldStaff(
 		!activeCampaign?.worldId ||
 		!isWorldStaffInWorld(get().campaigns, activeCampaign.worldId)
 	) {
-		set({ syncError: WORLD_GRIMOIRE_FORBIDDEN });
+		set({ syncError: message });
 		return false;
 	}
 	return true;
+}
+
+/**
+ * Staff do Mundo OU jogador com item próprio (§5.3).
+ * `actingUserId` é obrigatório para o caminho de viewer.
+ */
+export function allowItemWrite(
+	get: () => RPGState,
+	set: SetState,
+	actingUserId: string | undefined,
+	existing?: Item,
+): "staff" | "owner" | false {
+	const activeCampaignId = get().activeCampaignId;
+	const activeCampaign = get().campaigns.find((c) => c.id === activeCampaignId);
+	if (!activeCampaign?.worldId) {
+		set({ syncError: WORLD_GRIMOIRE_FORBIDDEN });
+		return false;
+	}
+
+	if (isWorldStaffInWorld(get().campaigns, activeCampaign.worldId)) {
+		return "staff";
+	}
+
+	const role = activeCampaign.myRole;
+	if (!existing) {
+		if (!canCreateCampaignItem(role) || !actingUserId) {
+			set({ syncError: WORLD_GRIMOIRE_FORBIDDEN });
+			return false;
+		}
+		return "owner";
+	}
+
+	if (canManageOwnItem(existing, actingUserId, false)) {
+		return "owner";
+	}
+
+	set({ syncError: WORLD_GRIMOIRE_FORBIDDEN });
+	return false;
+}
+
+export function constrainItemPayloadForViewer(
+	campaignId: string,
+	payload: Partial<Item>,
+): Partial<Item> {
+	return {
+		...payload,
+		...viewerSafeItemPublication(campaignId),
+	};
 }
 
 export function validateEntityScopeForActiveWorld(

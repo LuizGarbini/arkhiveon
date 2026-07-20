@@ -160,14 +160,14 @@ function OnboardingPage() {
 
 	if (hasLoadedCampaigns && !needsOnboarding) {
 		return (
-			<div className="flex min-h-dvh items-center justify-center bg-[#130437] text-[13px] text-white/60">
+			<div className="flex min-h-dvh items-center justify-center bg-dashboard-deep text-[13px] text-white/60">
 				Redirecionando...
 			</div>
 		);
 	}
 
 	return (
-		<div className="relative flex min-h-dvh flex-col overflow-x-hidden overflow-y-auto bg-[#130437] text-white">
+		<div className="relative flex min-h-dvh flex-col overflow-x-hidden overflow-y-auto bg-dashboard-deep text-white">
 			<div className="absolute inset-0">
 				<DashboardHeroBackground />
 			</div>

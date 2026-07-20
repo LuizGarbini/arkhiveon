@@ -1,12 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Coins, Gem, Link2, Weight } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import { resolveItemImageUrl } from "@/lib/character-images";
 import type { Item } from "@/lib/store";
 import {
 	useActiveCampaignRole,
 	useImageAssetLookup,
+	useIsWorldStaff,
 	useRPGStore,
 } from "@/lib/store";
+import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
 
@@ -55,7 +58,12 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 	const removeItem = useRPGStore((s) => s.removeItem);
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
+	const isStaff = useIsWorldStaff();
+	const { user } = useAuth();
 	const navigate = useNavigate();
+	const canManage = item
+		? canManageOwnItem(item, user?.id, isStaff)
+		: false;
 
 	if (isLoading || !item) {
 		return (
@@ -116,10 +124,10 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 								search: { edit: true },
 							})
 						}
-						onDelete={() => removeItem(item.id)}
+						onDelete={() => removeItem(item.id, user?.id)}
 						entityName={item.name || "Sem nome"}
 						entityKindLabel="item"
-						worldStaffOnly
+						canManage={canManage}
 					/>
 				</div>
 

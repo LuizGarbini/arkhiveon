@@ -24,13 +24,16 @@ import { EntityLinkChips } from "@/components/entity-links";
 import { FramedImage } from "@/components/framed-image";
 import { ItemEditButton } from "@/components/item-form";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { resolveItemImageUrl } from "@/lib/character-images";
 import {
 	useActiveCampaignId,
 	useActiveCampaignRole,
 	useImageAssetLookup,
+	useIsWorldStaff,
 	useRPGStore,
 } from "@/lib/store";
+import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
 import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
@@ -55,6 +58,8 @@ function ItemDetailPage() {
 	const activeCampaign = useActiveCampaignContext();
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const updateItem = useRPGStore((state) => state.updateItem);
+	const isStaff = useIsWorldStaff();
+	const { user } = useAuth();
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -62,6 +67,9 @@ function ItemDetailPage() {
 	const canView =
 		!!item &&
 		canViewScopedContent(item, activeCampaign, activeCampaignRole, campaigns);
+	const canManage = item
+		? canManageOwnItem(item, user?.id, isStaff)
+		: false;
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -137,14 +145,16 @@ function ItemDetailPage() {
 								) : (
 									<Gem className="h-7 w-7" strokeWidth={1.5} />
 								)}
-								<button
-									type="button"
-									onClick={() => setIsImageDialogOpen(true)}
-									className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
-									aria-label="Editar imagem do item"
-								>
-									<Camera className="h-5 w-5" />
-								</button>
+								{canManage && (
+									<button
+										type="button"
+										onClick={() => setIsImageDialogOpen(true)}
+										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+										aria-label="Editar imagem do item"
+									>
+										<Camera className="h-5 w-5" />
+									</button>
+								)}
 							</div>
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -161,25 +171,27 @@ function ItemDetailPage() {
 						</div>
 					</div>
 
-					<div className="flex shrink-0 flex-wrap items-center gap-2">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setIsImageDialogOpen(true)}
-							className="gap-2"
-						>
-							<Camera className="h-4 w-4" />
-							Imagem
-						</Button>
-						<Button
-							type="button"
-							onClick={() => setIsEditing((current) => !current)}
-							className="gap-2"
-						>
-							<Pencil className="h-4 w-4" />
-							{isEditing ? "Concluir edição" : "Editar"}
-						</Button>
-					</div>
+					{canManage && (
+						<div className="flex shrink-0 flex-wrap items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setIsImageDialogOpen(true)}
+								className="gap-2"
+							>
+								<Camera className="h-4 w-4" />
+								Imagem
+							</Button>
+							<Button
+								type="button"
+								onClick={() => setIsEditing((current) => !current)}
+								className="gap-2"
+							>
+								<Pencil className="h-4 w-4" />
+								{isEditing ? "Concluir edição" : "Editar"}
+							</Button>
+						</div>
+					)}
 				</div>
 
 				<div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -282,29 +294,35 @@ function ItemDetailPage() {
 				</aside>
 			</div>
 
-			<ItemEditButton
-				item={currentItem}
-				open={dialogOpen}
-				onOpenChange={handleDialogOpenChange}
-				trigger={null}
-			/>
-			<EntityImageDialog
-				open={isImageDialogOpen}
-				onOpenChange={setIsImageDialogOpen}
-				title="Editar imagem do item"
-				description="Escolha da biblioteca, envie uma nova imagem ou ajuste o recorte."
-				value={{
-					imageUrl: currentItem.imageUrl ?? "",
-					imageAssetId: currentItem.imageAssetId,
-					imageFocusX: currentItem.imageFocusX,
-					imageFocusY: currentItem.imageFocusY,
-					imageZoom: currentItem.imageZoom,
-				}}
-				onChange={(patch) => updateItem(currentItem.id, patch)}
-				folder="items"
-				campaignId={activeCampaignId ?? undefined}
-				libraryName={currentItem.name}
-			/>
+			{canManage && (
+				<>
+					<ItemEditButton
+						item={currentItem}
+						open={dialogOpen}
+						onOpenChange={handleDialogOpenChange}
+						trigger={null}
+					/>
+					<EntityImageDialog
+						open={isImageDialogOpen}
+						onOpenChange={setIsImageDialogOpen}
+						title="Editar imagem do item"
+						description="Escolha da biblioteca, envie uma nova imagem ou ajuste o recorte."
+						value={{
+							imageUrl: currentItem.imageUrl ?? "",
+							imageAssetId: currentItem.imageAssetId,
+							imageFocusX: currentItem.imageFocusX,
+							imageFocusY: currentItem.imageFocusY,
+							imageZoom: currentItem.imageZoom,
+						}}
+						onChange={(patch) =>
+							updateItem(currentItem.id, patch, user?.id)
+						}
+						folder="items"
+						campaignId={activeCampaignId ?? undefined}
+						libraryName={currentItem.name}
+					/>
+				</>
+			)}
 		</div>
 	);
 }

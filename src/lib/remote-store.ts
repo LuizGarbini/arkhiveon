@@ -126,6 +126,7 @@ type WorldEntityTable = "npcs" | "items" | "locations" | "lores";
 
 type WorldEntityRow = Tables<WorldEntityTable> & {
 	is_secret?: boolean;
+	created_by?: string | null;
 };
 
 function worldEntityRowFields(
@@ -146,7 +147,7 @@ function worldEntityRowFields(
 }
 
 const WORLD_ENTITY_COLUMNS =
-	"id,data,created_at,updated_at,world_id,publication_scope,visibility,campaign_ids";
+	"id,data,created_at,updated_at,created_by,world_id,publication_scope,visibility,campaign_ids";
 
 const LORE_WORLD_ENTITY_COLUMNS = `${WORLD_ENTITY_COLUMNS},is_secret`;
 
@@ -164,6 +165,7 @@ function fromWorldEntityRow(
 		publicationScope: row.publication_scope ?? "restricted",
 		visibility,
 		campaignIds: row.campaign_ids ?? [],
+		...(row.created_by ? { createdBy: row.created_by } : {}),
 		...(table === "lores"
 			? { isSecret: row.is_secret ?? visibility === "master_secret" }
 			: {}),

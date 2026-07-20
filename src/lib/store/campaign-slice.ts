@@ -8,6 +8,7 @@ import {
 	maxOwnedWorlds,
 	worldLimitError,
 } from "../worldbuilding/plan-limits";
+import { isWorldStaffInWorld } from "../worldbuilding/visibility";
 import {
 	createRemoteWorld,
 	loadAccessibleWorlds,
@@ -299,11 +300,7 @@ export const createCampaignSlice: StateCreator<
 
 				if (options?.worldId) {
 					const known = get().worlds.some((w) => w.id === options.worldId);
-					const staffOnWorld = get().campaigns.some(
-						(c) =>
-							c.worldId === options.worldId &&
-							(c.myRole === "owner" || c.myRole === "editor"),
-					);
+					const staffOnWorld = isWorldStaffInWorld(get().campaigns, options.worldId);
 					const ownsWorld = get().worlds.some(
 						(w) => w.id === options.worldId && w.ownerUserId === user.id,
 					);

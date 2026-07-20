@@ -98,7 +98,7 @@ function WorldHubPage() {
 		if (!next || next === activeWorld.name) {
 			setIsEditingName(false);
 			setDraftName(activeWorld.name);
-			return
+			return;
 		}
 		updateWorld(activeWorld.id, { name: next });
 		setIsEditingName(false);
@@ -122,7 +122,7 @@ function WorldHubPage() {
 					/>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -144,8 +144,8 @@ function WorldHubPage() {
 							<form
 								className="flex items-center gap-2"
 								onSubmit={(e) => {
-									e.preventDefault()
-									handleSaveName()
+									e.preventDefault();
+									handleSaveName();
 								}}
 							>
 								<label htmlFor={nameInputId} className="sr-only">
@@ -166,7 +166,7 @@ function WorldHubPage() {
 									size="sm"
 									variant="ghost"
 									onClick={() => {
-										setIsEditingName(false)
+										setIsEditingName(false);
 										setDraftName(activeWorld.name);
 									}}
 								>
@@ -231,7 +231,7 @@ function WorldHubPage() {
 										</p>
 									) : null}
 								</button>
-							)
+							);
 						})}
 					</div>
 					{worldCampaigns.length === 0 && (
@@ -274,5 +274,5 @@ function WorldHubPage() {
 				</section>
 			</div>
 		</div>
-	)
+	);
 }

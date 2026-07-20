@@ -26,7 +26,7 @@ function RouteComponent() {
 				.join(" ")
 				.toLowerCase()
 				.includes(query),
-		)
+		);
 	}, [factions, deferredSearchQuery]);
 
 	return (
@@ -60,5 +60,5 @@ function RouteComponent() {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

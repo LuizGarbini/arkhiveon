@@ -1,9 +1,11 @@
 import type { MembershipRole } from "../store/types";
+import { isWorldStaff } from "./visibility";
 
+/** @deprecated Prefer `isWorldStaff` from visibility — mesmo critério. */
 export function isWorldGrimoireStaff(
 	role: MembershipRole | undefined,
 ): boolean {
-	return role === "owner" || role === "editor";
+	return isWorldStaff(role);
 }
 
 export const WORLD_GRIMOIRE_FORBIDDEN =
