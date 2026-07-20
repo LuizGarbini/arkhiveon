@@ -169,15 +169,15 @@ Mesmos eixos (`audience` ≡ `publicationScope`, mesma `visibility`).
 | Ação | `owner` | `editor` | `viewer` |
 |------|---------|----------|----------|
 | Ver entidades/notícias conforme matriz §4 | Sim | Sim | Sim (só o permitido) |
-| Criar / editar / excluir Entidade de Mundo | Sim | Sim | **Não** |
+| Criar / editar / excluir Entidade de Mundo | Sim | Sim | **Não** (itens próprios: §5.3) |
 | Alternar `publicationScope` / `visibility` / `campaignIds` | Sim | Sim | **Não** |
 | Criar / editar / excluir Facção | Sim | Sim | **Não** |
 | Editar Reputação de qualquer campanha do Mundo | Sim | Sim | **Não** (só lê reputação da campanha ativa) |
 | Publicar / editar / excluir Notícia; trancar comentários | Sim | Sim | **Não** |
 | Comentar no mural (se vê a notícia e não trancado) | Sim | Sim | Sim |
-| Deletar Mundo | Sim\* | Não | Não |
+| Deletar Mundo | **Não** (v1) | Não | Não |
 
-\*Somente se o Mundo não tiver campanhas (ver §6). Preferência: só o `owner` de pelo menos uma campanha do Mundo (ou o criador do Mundo) pode deletar Mundo vazio — na v1: **qualquer `owner` de campanha do Mundo** pode deletar Mundo **vazio**.
+Na v1 **não há exclusão de Mundo** (nem vazio): mundos só se renomeiam. Remoção futura, se existir, será decisão de produto explícita — fora deste escopo.
 
 ### 5.2 Gestão de membros da Campanha (exceção do co-mestre)
 
@@ -191,13 +191,13 @@ Mesmos eixos (`audience` ≡ `publicationScope`, mesma `visibility`).
 
 ### 5.3 Conteúdo próprio da Campanha (fora do grimório do Mundo)
 
-**Estado atual do app:** `viewer` é majoritariamente leitura; criar ficha/item exige `owner`/`editor`.
+**Estado atual do app:** `viewer` é majoritariamente leitura para grimório; **itens próprios** seguem §5.3 (criar/editar/excluir com `created_by`).
 
 **Requisito desta spec (autorização de campanha, não flag de worldbuilding):**
 
 Jogadores (`viewer`) **devem poder** criar, editar e excluir **conteúdo próprio da campanha**, no mínimo:
-- Ficha de personagem vinculada a eles (`created_by` / ownership do personagem)
-- Itens atribuídos a eles (ou criados por eles na campanha)
+- Ficha de personagem vinculada a eles (`created_by` / ownership do personagem) — follow-up se ainda bloqueado no app
+- Itens criados por eles (`created_by`) na campanha/Mundo
 
 Sem acesso a Segredo do Mestre (`master_secret`) nem a CRUD de Entidades de Mundo / Facções / Notícias do mural.
 
@@ -285,15 +285,15 @@ Enum:
 | **Deletar Campanha** | 1) Cascade atual do DB para memberships, invites, personagens, sessões, activity, etc. da campanha. 2) Apagar todas as **reputações** com esse `campaignId`. 3) Em entidades/notícias `restricted`, remover esse id de `campaignIds`. 4) Se `campaignIds` ficar **vazio**: converter para `publicationScope/audience = global` e **manter** `visibility` (não apagar o conteúdo). |
 | **Deletar Facção** | Apagar todas as reputações `(factionId, *)`. NPCs com campo texto `faction` legado: **não** apagar NPC; texto fica órfão até migração futura para FK. |
 | **Deletar Entidade de Mundo** | Sem cascade em `entityLinks` (refs quebram como hoje). |
-| **Deletar Mundo** | **Bloquear** se existir ≥1 campanha. Mundo sem campanhas pode ser deletado. **Mundo Padrão** do owner: não deletável enquanto for o único Mundo dele **ou** enquanto tiver campanhas (mesma regra). |
+| **Deletar Mundo** | **Não permitido na v1** (UI, action e erro inexistentes). Mundos permanecem; só renomeação. |
 | **Deletar Notícia** | Apagar em cascata todos os comentários/threads filhos. |
 | **Deletar Comentário** | **Hard delete** + cascata nos filhos (replies) daquele nó. |
 
 ### Validações de exclusão (rejeitar com erro claro)
 
-- Tentar deletar Mundo com campanhas → erro `WORLD_HAS_CAMPAIGNS`.  
+- Qualquer tentativa de deletar Mundo → fora de escopo / não implementado na v1.  
 - `editor` tentar remover/`demote` o `owner` → erro `CANNOT_MODIFY_OWNER`.  
-- `viewer` tentar CRUD de grimório/facção/notícia → erro `FORBIDDEN`.  
+- `viewer` tentar CRUD de grimório/facção/notícia → erro `FORBIDDEN` (itens próprios: ver §5.3).  
 - `restricted` com `campaignIds` de outro Mundo → erro de validação na escrita (não só na exclusão).
 
 ---
@@ -368,7 +368,7 @@ Não existem facções persistidas hoje (apenas string em NPC). Migração de fa
 - [ ] `restricted` aceita 1..N campanhas do mesmo Mundo.  
 - [ ] Deletar campanha promove entidades órfãs restritas → `global` (mantém `visibility`).  
 - [ ] Deletar facção remove reputações; não apaga NPCs.  
-- [ ] Deletar mundo com campanhas é rejeitado.  
+- [ ] Mundo **não** é deletável na v1 (doc e produto alinhados).  
 - [ ] Comentários: gaveta colapsada, 1 nível de reply, `commentsLocked` bloqueia viewers.  
 - [ ] Migração: entidades antigas = restritas à campanha original; lore secreta = `master_secret`.  
-- [ ] Viewers não CRUD grimório do Mundo; regra de “conteúdo próprio da campanha” tratada à parte.
+- [ ] Viewers não CRUD grimório do Mundo; **podem** criar/editar/excluir itens próprios (`created_by`).
