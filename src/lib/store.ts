@@ -27,6 +27,7 @@ export {
 } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
 export { sessionDefaults } from "./store/session-slice";
+export { factionDefaults } from "./store/worldbuilding-slice";
 export {
 	FREE_CREATION_LIMIT,
 	isCreationLimitReached,
