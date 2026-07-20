@@ -147,12 +147,18 @@ function NpcFormDialog({
 	}, [tab, prevIndex]);
 
 	useEffect(() => {
-		if (open) {
-			reset({ ...npcDefaults, ...(npc ?? {}) });
-			setTab(defaultTab || TABS[0].id);
-			setPrevIndex(-1);
-		}
-	}, [open, npc, reset, defaultTab]);
+		if (!open) return;
+		// Só reseta ao abrir / trocar de NPC. Dependência em `npc` inteiro
+		// apagava imageUrl após upload (store recria a referência do objeto).
+		reset({ ...npcDefaults, ...(npc ?? {}) });
+		setPrevIndex(-1);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- npc fields intentionally omitted
+	}, [open, npc?.id, reset]);
+
+	useEffect(() => {
+		if (!open) return;
+		setTab(defaultTab || TABS[0].id);
+	}, [open, defaultTab]);
 
 	function onSubmit(data: NpcFormValues) {
 		const normalized = {

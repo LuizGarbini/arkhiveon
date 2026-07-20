@@ -113,8 +113,10 @@ function LoreFormDialog({
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
-		if (open) reset({ ...loreDefaults, ...(lore ?? {}) });
-	}, [open, lore, reset]);
+		if (!open) return;
+		reset({ ...loreDefaults, ...(lore ?? {}) });
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- lore fields intentionally omitted
+	}, [open, lore?.id, reset]);
 
 	function onSubmit(data: LoreFormValues) {
 		const payload: LoreFormValues = {

@@ -137,12 +137,16 @@ function SessionFormDialog({
 	}, [tab, prevIndex]);
 
 	useEffect(() => {
-		if (open) {
-			reset({ ...sessionDefaults, ...(session ?? {}) });
-			setTab(defaultTab || TABS[0].id);
-			setPrevIndex(-1);
-		}
-	}, [open, session, reset, defaultTab]);
+		if (!open) return;
+		reset({ ...sessionDefaults, ...(session ?? {}) });
+		setPrevIndex(-1);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- session fields intentionally omitted
+	}, [open, session?.id, reset]);
+
+	useEffect(() => {
+		if (!open) return;
+		setTab(defaultTab || TABS[0].id);
+	}, [open, defaultTab]);
 
 	function onSubmit(data: SessionFormValues) {
 		let createdId: string | null = null;

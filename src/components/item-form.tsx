@@ -116,8 +116,10 @@ function ItemFormDialog({
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
-		if (open) reset({ ...itemDefaults, ...(item ?? {}) });
-	}, [open, item, reset]);
+		if (!open) return;
+		reset({ ...itemDefaults, ...(item ?? {}) });
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- item fields intentionally omitted
+	}, [open, item?.id, reset]);
 
 	function onSubmit(data: ItemFormValues) {
 		let createdId: string | null = null;

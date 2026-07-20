@@ -142,12 +142,16 @@ function LocationFormDialog({
 	}, [tab, prevIndex]);
 
 	useEffect(() => {
-		if (open) {
-			reset({ ...locationDefaults, ...(location ?? {}) });
-			setTab(defaultTab || TABS[0].id);
-			setPrevIndex(-1);
-		}
-	}, [open, location, reset, defaultTab]);
+		if (!open) return;
+		reset({ ...locationDefaults, ...(location ?? {}) });
+		setPrevIndex(-1);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- location fields intentionally omitted
+	}, [open, location?.id, reset]);
+
+	useEffect(() => {
+		if (!open) return;
+		setTab(defaultTab || TABS[0].id);
+	}, [open, defaultTab]);
 
 	function onSubmit(data: LocationFormValues) {
 		let createdId: string | null = null;
