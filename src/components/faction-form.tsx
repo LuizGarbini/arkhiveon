@@ -1,74 +1,147 @@
-import { Plus } from "lucide-react";
-import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "@tanstack/react-router";
+import { Pencil, Plus } from "lucide-react";
+import { type ReactNode, useEffect, useId, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import type { Faction } from "@/lib/store";
+import { factionDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
+import { ImageUploader } from "./image-uploader";
+import { Button } from "./ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FormSection } from "@/components/ui/form-tabs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/toast";
-import { useIsWorldStaff, useRPGStore } from "@/lib/store";
-import { ImageUploader } from "./image-uploader";
+	DialogTrigger,
+} from "./ui/dialog";
+import { Field, FormSection } from "./ui/form-tabs";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { useToast } from "./ui/toast";
 
-function emptyFactionForm() {
-	return {
-		name: "",
-		leader: "",
-		seat: "",
-		goals: "",
-		alignment: "",
-		influence: "",
-		description: "",
-		imageUrl: "",
-	};
-}
+type FactionFormValues = Omit<Faction, "id" | "createdAt" | "updatedAt" | "worldId">;
 
 export function FactionForm() {
-	const addFaction = useRPGStore((s) => s.addFaction);
 	const isStaff = useIsWorldStaff();
-	const toast = useToast();
-	const [open, setOpen] = useState(false);
-	const [submitting, setSubmitting] = useState(false);
-	const [form, setForm] = useState(emptyFactionForm);
-	const nameId = useId();
-
 	if (!isStaff) return null;
+	return (
+		<FactionFormDialog
+			trigger={
+				<Button size="sm" type="button">
+					<Plus className="h-3.5 w-3.5" />
+					Nova facção
+				</Button>
+			}
+		/>
+	);
+}
 
-	function updateField<K extends keyof ReturnType<typeof emptyFactionForm>>(
-		key: K,
-		value: ReturnType<typeof emptyFactionForm>[K],
-	) {
-		setForm((prev) => ({ ...prev, [key]: value }));
-	}
+interface FactionEditButtonProps {
+	faction: Faction;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	trigger?: ReactNode;
+}
 
-	function handleOpenChange(next: boolean) {
-		setOpen(next);
-		if (!next) {
-			setForm(emptyFactionForm());
-			setSubmitting(false);
+export function FactionEditButton({
+	faction,
+	open,
+	onOpenChange,
+	trigger,
+}: FactionEditButtonProps) {
+	return (
+		<FactionFormDialog
+			faction={faction}
+			open={open}
+			onOpenChange={onOpenChange}
+			trigger={
+				trigger === undefined ? (
+					<Button variant="ghost" size="sm">
+						<Pencil className="h-3.5 w-3.5" />
+						Editar
+					</Button>
+				) : (
+					trigger
+				)
+			}
+		/>
+	);
+}
+
+interface FactionFormDialogProps {
+	faction?: Faction;
+	trigger?: ReactNode;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+}
+
+function FactionFormDialog({
+	faction,
+	trigger,
+	open: openProp,
+	onOpenChange,
+}: FactionFormDialogProps) {
+	const isEdit = !!faction;
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = openProp ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
+	const nameId = useId();
+	const toast = useToast();
+	const navigate = useNavigate();
+	const addFaction = useRPGStore((s) => s.addFaction);
+	const updateFaction = useRPGStore((s) => s.updateFaction);
+
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<FactionFormValues>({
+		defaultValues: { ...factionDefaults, ...(faction ?? {}) },
+	});
+
+	const imageUrl = useWatch({ control, name: "imageUrl" });
+	const watchedName = useWatch({ control, name: "name" });
+
+	useEffect(() => {
+		if (!open) return;
+		reset({ ...factionDefaults, ...(faction ?? {}) });
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- faction fields intentionally omitted
+	}, [open, faction?.id, reset]);
+
+	function onSubmit(data: FactionFormValues) {
+		const normalized = {
+			name: data.name.trim(),
+			leader: data.leader.trim(),
+			seat: data.seat.trim(),
+			goals: data.goals.trim(),
+			alignment: data.alignment.trim(),
+			influence: data.influence.trim(),
+			description: data.description.trim(),
+			imageUrl: data.imageUrl.trim(),
+		};
+
+		if (!normalized.name) {
+			toast.error({
+				title: "Nome obrigatório",
+				description: "Informe um nome antes de salvar a facção.",
+			});
+			return;
 		}
-	}
 
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (!form.name.trim() || submitting) return;
+		if (isEdit && faction) {
+			updateFaction(faction.id, normalized);
+			toast.success({
+				title: "Facção atualizada",
+				description: "As alterações foram salvas.",
+			});
+			setOpen(false);
+			return;
+		}
 
-		setSubmitting(true);
-		const created = addFaction({
-			name: form.name.trim(),
-			leader: form.leader.trim(),
-			seat: form.seat.trim(),
-			goals: form.goals.trim(),
-			alignment: form.alignment.trim(),
-			influence: form.influence.trim(),
-			description: form.description.trim(),
-			imageUrl: form.imageUrl.trim(),
-		});
+		const created = addFaction(normalized);
 		if (!created) {
 			const errorMessage = useRPGStore.getState().syncError;
 			toast.error({
@@ -77,143 +150,129 @@ export function FactionForm() {
 					errorMessage ??
 					"Verifique permissões e conexão, e tente novamente.",
 			});
-			setSubmitting(false);
 			return;
 		}
-		setForm(emptyFactionForm());
+
 		setOpen(false);
-		setSubmitting(false);
 		toast.success({
 			title: "Facção criada",
 			description: "A organização foi adicionada ao Mundo.",
 		});
+		void navigate({
+			to: "/factions/$factionId",
+			params: { factionId: created.id },
+			search: { edit: true },
+		});
 	}
 
 	return (
-		<>
-			<Button size="sm" type="button" onClick={() => setOpen(true)}>
-				<Plus className="h-3.5 w-3.5" />
-				Nova facção
-			</Button>
-			<Dialog open={open} onOpenChange={handleOpenChange}>
-				<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-					<form
-						onSubmit={handleSubmit}
-						className="flex h-full min-h-0 flex-col"
-					>
-						<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
-							<DialogTitle className="font-display text-lg">
-								Nova facção
-							</DialogTitle>
-							<DialogDescription>
-								Organizações, guildas e poderes que moldam o Mundo.
-							</DialogDescription>
-						</DialogHeader>
+		<Dialog open={open} onOpenChange={setOpen}>
+			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
+			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+				<form
+					onSubmit={handleSubmit(onSubmit)}
+					className="flex h-full min-h-0 flex-col"
+				>
+					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+						<DialogTitle className="font-display text-lg">
+							{isEdit
+								? `Editar: ${faction?.name || "Facção"}`
+								: "Nova facção"}
+						</DialogTitle>
+						<DialogDescription>
+							Organizações, guildas e poderes que moldam o Mundo.
+						</DialogDescription>
+					</DialogHeader>
 
-						<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-							<FormSection title="Identidade">
-								<ImageUploader
-									value={form.imageUrl}
-									onChange={(url) => updateField("imageUrl", url)}
-									folder="factions"
-									libraryName={form.name || "Facção"}
-									label="Brasão / imagem"
-									size="md"
+					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+						<FormSection title="Identidade">
+							<ImageUploader
+								value={imageUrl ?? ""}
+								onChange={(url) =>
+									setValue("imageUrl", url, { shouldDirty: true })
+								}
+								folder="factions"
+								libraryName={watchedName || "Facção"}
+								label="Brasão / imagem"
+								size="md"
+							/>
+							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<Field
+									label="Nome"
+									htmlFor={nameId}
+									className="sm:col-span-2"
+								>
+									<Input
+										id={nameId}
+										placeholder="Ex: Guilda dos Ladrões de Waterdeep"
+										{...register("name", { required: true })}
+									/>
+								</Field>
+								<Field label="Líder">
+									<Input
+										placeholder="Ex: Xanathar"
+										{...register("leader")}
+									/>
+								</Field>
+								<Field label="Sede">
+									<Input
+										placeholder="Ex: Esgotos de Waterdeep"
+										{...register("seat")}
+									/>
+								</Field>
+								<Field label="Alinhamento">
+									<Input
+										placeholder="Ex: Caótico e Neutro"
+										{...register("alignment")}
+									/>
+								</Field>
+								<Field label="Influência">
+									<Input
+										placeholder="Ex: Regional, continental..."
+										{...register("influence")}
+									/>
+								</Field>
+							</div>
+						</FormSection>
+
+						<FormSection title="Agenda">
+							<Field label="Objetivos">
+								<Textarea
+									rows={3}
+									placeholder="O que a facção busca? Quais são seus planos?"
+									{...register("goals")}
 								/>
-								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-									<Field
-										label="Nome"
-										htmlFor={nameId}
-										className="sm:col-span-2"
-									>
-										<Input
-											id={nameId}
-											placeholder="Ex: Guilda dos Ladrões de Waterdeep"
-											value={form.name}
-											onChange={(e) => updateField("name", e.target.value)}
-											required
-										/>
-									</Field>
-									<Field label="Líder">
-										<Input
-											placeholder="Ex: Xanathar"
-											value={form.leader}
-											onChange={(e) =>
-												updateField("leader", e.target.value)
-											}
-										/>
-									</Field>
-									<Field label="Sede">
-										<Input
-											placeholder="Ex: Esgotos de Waterdeep"
-											value={form.seat}
-											onChange={(e) => updateField("seat", e.target.value)}
-										/>
-									</Field>
-									<Field label="Alinhamento">
-										<Input
-											placeholder="Ex: Caótico e Neutro"
-											value={form.alignment}
-											onChange={(e) =>
-												updateField("alignment", e.target.value)
-											}
-										/>
-									</Field>
-									<Field label="Influência">
-										<Input
-											placeholder="Ex: Regional, continental..."
-											value={form.influence}
-											onChange={(e) =>
-												updateField("influence", e.target.value)
-											}
-										/>
-									</Field>
-								</div>
-							</FormSection>
+							</Field>
+							<Field label="Descrição">
+								<Textarea
+									rows={4}
+									placeholder="História, estrutura, reputação pública e segredos..."
+									{...register("description")}
+								/>
+							</Field>
+						</FormSection>
+					</div>
 
-							<FormSection title="Agenda">
-								<Field label="Objetivos">
-									<Textarea
-										rows={3}
-										placeholder="O que a facção busca? Quais são seus planos?"
-										value={form.goals}
-										onChange={(e) => updateField("goals", e.target.value)}
-									/>
-								</Field>
-								<Field label="Descrição">
-									<Textarea
-										rows={4}
-										placeholder="História, estrutura, reputação pública e segredos..."
-										value={form.description}
-										onChange={(e) =>
-											updateField("description", e.target.value)
-										}
-									/>
-								</Field>
-							</FormSection>
-						</div>
-
-						<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => handleOpenChange(false)}
-							>
-								Cancelar
-							</Button>
-							<Button
-								type="submit"
-								size="sm"
-								loading={submitting}
-								loadingText="Criando..."
-							>
-								Criar facção
-							</Button>
-						</div>
-					</form>
-				</DialogContent>
-			</Dialog>
-		</>
+					<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setOpen(false)}
+						>
+							Cancelar
+						</Button>
+						<Button
+							type="submit"
+							size="sm"
+							loading={isSubmitting}
+							loadingText={isEdit ? "Salvando..." : "Criando..."}
+						>
+							{isEdit ? "Salvar" : "Criar facção"}
+						</Button>
+					</div>
+				</form>
+			</DialogContent>
+		</Dialog>
 	);
 }
