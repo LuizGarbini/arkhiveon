@@ -84,4 +84,36 @@ describe("Zustand Store Persistence Partialization", () => {
 		expect(state.campaigns).toEqual([]);
 		expect(state.activeCampaignId).toBeNull();
 	});
+
+	it("clearActiveCampaignEntities keeps campaigns and bootstrap flag", () => {
+		useRPGStore.setState({
+			hasLoadedCampaigns: true,
+			campaigns: [
+				{
+					id: "c1",
+					name: "Campanha",
+					description: "",
+					ownerId: "u1",
+					worldId: "w1",
+					myRole: "owner",
+					createdAt: Date.now(),
+				},
+			],
+			activeCampaignId: "c1",
+			characters: [
+				{
+					id: "ch1",
+					characterName: "A",
+					createdAt: Date.now(),
+				} as never,
+			],
+		});
+
+		useRPGStore.getState().clearActiveCampaignEntities();
+
+		const state = useRPGStore.getState();
+		expect(state.hasLoadedCampaigns).toBe(true);
+		expect(state.campaigns).toHaveLength(1);
+		expect(state.characters).toEqual([]);
+	});
 });

@@ -52,6 +52,7 @@ export interface SyncSlice {
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
+	clearActiveCampaignEntities: () => void;
 	clearActivity: () => void;
 	notifications: AppNotification[];
 	addNotification: (
@@ -548,6 +549,26 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 								: null;
 							if (flatMapped) {
 								processed = flatMapped;
+								// Reputações locais usam UUID próprio; o trigger do DB
+								// gera outro id. Deduplica pela chave natural.
+								if (table === "faction_reputations") {
+									const factionId = processed.factionId as string;
+									const campaignId = processed.campaignId as string;
+									const withoutLocalSeed = currentArray.filter(
+										(item) =>
+											!(
+												"factionId" in item &&
+												item.factionId === factionId &&
+												item.campaignId === campaignId
+											),
+									);
+									return {
+										[storeKey]: [processed, ...withoutLocalSeed].slice(
+											0,
+											1000,
+										),
+									};
+								}
 							} else if (table === "activity_log") {
 								processed = {
 									id: newRow.id,
@@ -669,6 +690,26 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			syncError: null,
 		});
 		get().resetCampaigns();
+	},
+	/** Limpa entidades da mesa ativa sem derrubar campanhas/mundos/bootstrap. */
+	clearActiveCampaignEntities: () => {
+		set({
+			characters: [],
+			npcs: [],
+			sessions: [],
+			items: [],
+			locations: [],
+			lores: [],
+			customTemplates: [],
+			imageAssets: [],
+			activityLog: [],
+			factions: [],
+			factionReputations: [],
+			worldNews: [],
+			newsComments: [],
+			notifications: [],
+			syncError: null,
+		});
 	},
 	clearActivity: () => set({ activityLog: [] }),
 });

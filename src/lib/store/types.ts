@@ -559,6 +559,7 @@ export interface RPGState {
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
+	clearActiveCampaignEntities: () => void;
 
 	// ----- Plan Limits -----
 	userPlan: UserPlan;

@@ -150,7 +150,7 @@ export const createCampaignSlice: StateCreator<
 		const created = await createRemoteWorld({
 			ownerUserId: user.id,
 			name,
-			isDefault: false,
+			isDefault: countOwnedWorlds(state.worlds, user.id) === 0,
 		});
 		set((state) => ({
 			worlds: [...state.worlds, created],
@@ -497,8 +497,8 @@ export const createCampaignSlice: StateCreator<
 			return;
 		}
 
-		// Limpar dados locais e setar nova campanha
-		state.clearLocalData();
+		// Limpar entidades da mesa anterior sem derrubar bootstrap/campanhas
+		state.clearActiveCampaignEntities();
 		set({
 			activeCampaignId: id,
 			activeWorldId: activeCamp?.worldId ?? state.activeWorldId,
@@ -536,7 +536,7 @@ export const createCampaignSlice: StateCreator<
 			return;
 		}
 		if (state.activeCampaignId) {
-			state.clearLocalData();
+			state.clearActiveCampaignEntities();
 		}
 		set({ activeCampaignId: null, activeWorldId: worldId });
 	},
