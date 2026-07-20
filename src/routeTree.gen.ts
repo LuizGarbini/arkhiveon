@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SpotifyCallbackRouteImport } from './routes/spotify-callback'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as FamilyTreeRouteImport } from './routes/family-tree'
 import { Route as ErrorPreviewRouteImport } from './routes/error-preview'
@@ -64,6 +65,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImagesRoute = ImagesRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/error-preview': typeof ErrorPreviewRoute
   '/family-tree': typeof FamilyTreeRoute
   '/images': typeof ImagesRoute
+  '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/spotify-callback': typeof SpotifyCallbackRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/onboarding'
     | '/privacy'
     | '/settings'
     | '/spotify-callback'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/onboarding'
     | '/privacy'
     | '/settings'
     | '/spotify-callback'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/error-preview'
     | '/family-tree'
     | '/images'
+    | '/onboarding'
     | '/privacy'
     | '/settings'
     | '/spotify-callback'
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   ErrorPreviewRoute: typeof ErrorPreviewRoute
   FamilyTreeRoute: typeof FamilyTreeRoute
   ImagesRoute: typeof ImagesRoute
+  OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SpotifyCallbackRoute: typeof SpotifyCallbackRoute
@@ -468,6 +481,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/images': {
@@ -665,6 +685,7 @@ const rootRouteChildren: RootRouteChildren = {
   ErrorPreviewRoute: ErrorPreviewRoute,
   FamilyTreeRoute: FamilyTreeRoute,
   ImagesRoute: ImagesRoute,
+  OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SpotifyCallbackRoute: SpotifyCallbackRoute,
