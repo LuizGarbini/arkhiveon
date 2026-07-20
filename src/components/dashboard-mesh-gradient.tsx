@@ -2,7 +2,7 @@ import { MeshGradient } from "@paper-design/shaders-react";
 import { memo, useEffect, useRef, useState } from "react";
 
 export const DASHBOARD_MESH_COLORS: string[] = [
-	"#130437",
+	"#130437", // --dashboard-deep / bg-dashboard-deep
 	"#210751",
 	"#3511A5",
 	"#B34BD0",
