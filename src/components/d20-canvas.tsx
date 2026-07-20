@@ -255,7 +255,7 @@ export function D20Canvas({ className }: D20CanvasProps) {
 					isVisible = entry.isIntersecting;
 				}
 			},
-			{ threshold: 0.05 }
+			{ threshold: 0.05 },
 		);
 		observer.observe(mount);
 
@@ -288,9 +288,12 @@ export function D20Canvas({ className }: D20CanvasProps) {
 				mesh.rotation.x += dragVelocity.y;
 				dragVelocity.x *= 0.95;
 				dragVelocity.y *= 0.95;
-				
+
 				// Idle spin when drag momentum is nearly zero
-				if (Math.abs(dragVelocity.x) < 0.001 && Math.abs(dragVelocity.y) < 0.001) {
+				if (
+					Math.abs(dragVelocity.x) < 0.001 &&
+					Math.abs(dragVelocity.y) < 0.001
+				) {
 					mesh.rotation.y += 0.003;
 					mesh.rotation.x += Math.sin(t * 0.4) * 0.001;
 				}
@@ -387,7 +390,11 @@ export function D20Canvas({ className }: D20CanvasProps) {
 						{lastFace}
 					</span>
 					<span className="mt-1 text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
-						{lastFace === 20 ? "✦ Crítico!" : lastFace === 1 ? "✦ Falha!" : "d20"}
+						{lastFace === 20
+							? "✦ Crítico!"
+							: lastFace === 1
+								? "✦ Falha!"
+								: "d20"}
 					</span>
 				</div>
 			)}

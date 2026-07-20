@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowLeft,
+	Camera,
 	CloudSun,
 	Compass,
 	Eye,
@@ -19,10 +20,18 @@ import {
 	DetailSkeleton,
 	DetailText,
 } from "@/components/entity-detail";
+import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { EntityLinkChips } from "@/components/entity-links";
 import { LocationEditButton } from "@/components/location-form";
 import { Button } from "@/components/ui/button";
-import { useRPGStore } from "@/lib/store";
+import {
+	useActiveCampaignId,
+	useActiveCampaignRole,
+	useIsWorldStaff,
+	useRPGStore,
+} from "@/lib/store";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/locations/$locationId")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -39,13 +48,24 @@ function LocationDetailPage() {
 		state.locations.find((entry) => entry.id === locationId),
 	);
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+	const updateLocation = useRPGStore((state) => state.updateLocation);
+	const role = useActiveCampaignRole();
+	const isStaff = useIsWorldStaff();
+	const activeCampaign = useActiveCampaignContext();
+	const activeCampaignId = useActiveCampaignId();
+	const campaigns = useRPGStore((state) => state.campaigns);
 	const [isEditing, setIsEditing] = useState(edit || false);
 	const [dialogOpen, setDialogOpen] = useState(false);
+	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
+
+	const canView =
+		!!location &&
+		canViewScopedContent(location, activeCampaign, role, campaigns);
 
 	if (isLoading) return <DetailSkeleton />;
 
-	if (!location) {
+	if (!location || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<MapIcon className="h-16 w-16 text-muted-foreground/30" />
@@ -108,6 +128,16 @@ function LocationDetailPage() {
 								) : (
 									<Compass className="h-7 w-7" strokeWidth={1.5} />
 								)}
+								{isStaff && (
+									<button
+										type="button"
+										onClick={() => setIsImageDialogOpen(true)}
+										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+										aria-label="Editar imagem do local"
+									>
+										<Camera className="h-5 w-5" />
+									</button>
+								)}
 							</div>
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -133,14 +163,27 @@ function LocationDetailPage() {
 								</Button>
 							</a>
 						)}
-						<Button
-							type="button"
-							onClick={() => setIsEditing((current) => !current)}
-							className="gap-2"
-						>
-							<Pencil className="h-4 w-4" />
-							{isEditing ? "Concluir edição" : "Editar"}
-						</Button>
+						{isStaff && (
+							<>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => setIsImageDialogOpen(true)}
+									className="gap-2"
+								>
+									<Camera className="h-4 w-4" />
+									Imagem
+								</Button>
+								<Button
+									type="button"
+									onClick={() => setIsEditing((current) => !current)}
+									className="gap-2"
+								>
+									<Pencil className="h-4 w-4" />
+									{isEditing ? "Concluir edição" : "Editar"}
+								</Button>
+							</>
+						)}
 					</div>
 				</div>
 
@@ -308,6 +351,23 @@ function LocationDetailPage() {
 				defaultTab={activeTab}
 				trigger={null}
 			/>
+			{isStaff && (
+				<EntityImageDialog
+					open={isImageDialogOpen}
+					onOpenChange={setIsImageDialogOpen}
+					title="Editar imagem do local"
+					description="Escolha da biblioteca, envie uma nova imagem ou ajuste o recorte."
+					value={{ imageUrl: currentLocation.imageUrl ?? "" }}
+					onChange={(patch) =>
+						updateLocation(currentLocation.id, {
+							imageUrl: patch.imageUrl ?? "",
+						})
+					}
+					folder="locations"
+					campaignId={activeCampaignId ?? undefined}
+					libraryName={currentLocation.name}
+				/>
+			)}
 		</div>
 	);
 }

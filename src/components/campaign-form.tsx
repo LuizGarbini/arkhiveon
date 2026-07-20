@@ -1,4 +1,4 @@
-import { Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
+import { Globe2, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useRPGStore } from "@/lib/store";
 import type { Campaign, Invite, MembershipRole } from "@/lib/store/types";
@@ -20,6 +20,7 @@ interface CampaignFormProps {
 	onOpenChange: (open: boolean) => void;
 	campaign?: Campaign | null;
 	defaultTab?: "general" | "members";
+	defaultWorldId?: string;
 }
 
 export function CampaignForm({
@@ -27,10 +28,12 @@ export function CampaignForm({
 	onOpenChange,
 	campaign,
 	defaultTab = "general",
+	defaultWorldId,
 }: CampaignFormProps) {
 	const createCampaign = useRPGStore((s) => s.createCampaign);
 	const updateCampaign = useRPGStore((s) => s.updateCampaign);
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
+	const worlds = useRPGStore((s) => s.worlds);
 	const loadCampaignMembersAndInvites = useRPGStore(
 		(s) => s.loadCampaignMembersAndInvites,
 	);
@@ -41,9 +44,13 @@ export function CampaignForm({
 	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [formError, setFormError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const nameInputId = useId();
 	const descInputId = useId();
+	const selectedWorld = worlds.find(
+		(world) => world.id === (campaign?.worldId ?? defaultWorldId),
+	);
 
 	// Membros e Convites
 	const [members, setMembers] = useState<
@@ -56,7 +63,9 @@ export function CampaignForm({
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"left",
+	);
 
 	const handleTabChange = (newTab: "general" | "members") => {
 		if (newTab === activeTab) return;
@@ -72,6 +81,7 @@ export function CampaignForm({
 		if (open) {
 			setName(campaign?.name ?? "");
 			setDescription(campaign?.description ?? "");
+			setFormError(null);
 			setInviteEmail("");
 			setInviteRole("viewer");
 			setInviteError(null);
@@ -105,6 +115,7 @@ export function CampaignForm({
 		e.preventDefault();
 		if (!name.trim() || isSaving) return;
 
+		setFormError(null);
 		setIsSaving(true);
 		try {
 			if (campaign) {
@@ -113,7 +124,11 @@ export function CampaignForm({
 					description: description.trim(),
 				});
 			} else {
-				const created = await createCampaign(name.trim(), description.trim());
+				const created = await createCampaign(
+					name.trim(),
+					description.trim(),
+					defaultWorldId ? { worldId: defaultWorldId } : undefined,
+				);
 				await switchCampaign(created.id);
 			}
 			setName("");
@@ -121,6 +136,9 @@ export function CampaignForm({
 			onOpenChange(false);
 		} catch (error) {
 			console.error("Erro ao salvar campanha:", error);
+			setFormError(
+				error instanceof Error ? error.message : "Erro ao salvar campanha.",
+			);
 		} finally {
 			setIsSaving(false);
 		}
@@ -213,7 +231,9 @@ export function CampaignForm({
 						key={activeTab}
 						className={cn(
 							"flex-1 min-h-0 overflow-y-auto",
-							slideDirection === "left" ? "t-tab-slide-left" : "t-tab-slide-right"
+							slideDirection === "left"
+								? "t-tab-slide-left"
+								: "t-tab-slide-right",
 						)}
 					>
 						{activeTab === "general" ? (
@@ -317,8 +337,8 @@ export function CampaignForm({
 									</form>
 								) : (
 									<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-										Limite de 6 participantes atingido. Remova um membro ou cancele
-										um convite pendente antes de enviar outro.
+										Limite de 6 participantes atingido. Remova um membro ou
+										cancele um convite pendente antes de enviar outro.
 									</p>
 								)}
 
@@ -391,7 +411,9 @@ export function CampaignForm({
 															</span>
 															<span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1">
 																Pendente •{" "}
-																{invite.role === "editor" ? "Co-Mestre" : "Jogador"}
+																{invite.role === "editor"
+																	? "Co-Mestre"
+																	: "Jogador"}
 															</span>
 														</div>
 													</div>
@@ -454,6 +476,24 @@ export function CampaignForm({
 								/>
 							</div>
 
+							<div className="space-y-3 rounded-xl border border-border/40 bg-muted/15 p-3.5">
+								<div className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
+									<Globe2 className="h-3.5 w-3.5 text-sky-300" />
+									Mundo da campanha
+								</div>
+								<p className="text-[11px] leading-relaxed text-muted-foreground">
+									{selectedWorld?.name ?? "Mundo ativo"}
+									{" — "}campanhas no mesmo Mundo compartilham grimório, facções
+									e mural.
+								</p>
+							</div>
+
+							{formError && (
+								<p className="text-[11px] font-medium text-destructive">
+									{formError}
+								</p>
+							)}
+
 							<DialogFooter className="pt-2">
 								<Button
 									type="button"
@@ -468,7 +508,7 @@ export function CampaignForm({
 									loadingText="Salvando..."
 									disabled={!name.trim()}
 								>
-									{campaign ? "Salvar Alterações" : "Criar Campanha"}
+									Criar Campanha
 								</Button>
 							</DialogFooter>
 						</form>

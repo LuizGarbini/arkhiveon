@@ -4,6 +4,10 @@ import type {
 	TablesInsert,
 	TablesUpdate,
 } from "./database.types";
+import {
+	fetchCampaignWorldId,
+	loadWorldbuildingState,
+} from "./remote-worldbuilding";
 import { getSupabase, SUPABASE_TABLES } from "./supabase";
 
 export type RemoteEntityKind =
@@ -52,6 +56,9 @@ export interface RemoteStateSnapshot {
 	customTemplates: unknown[];
 	imageAssets: RemoteImageAsset[];
 	activityLog: RemoteActivityEntry[];
+	factions: unknown[];
+	factionReputations: unknown[];
+	worldNews: unknown[];
 }
 
 type EntityTable =
@@ -115,15 +122,54 @@ function toTimestamp(value?: string | null): number | undefined {
 	return Number.isNaN(timestamp) ? undefined : timestamp;
 }
 
-function fromEntityRow(row: EntityRow): unknown {
-	const data = isRecord(row.data) ? row.data : {};
-	const fallback: Record<string, unknown> = {
-		id: row.id,
-		createdAt: toTimestamp(row.created_at) ?? Date.now(),
+type WorldEntityTable = "npcs" | "items" | "locations" | "lores";
+
+type WorldEntityRow = Tables<WorldEntityTable> & {
+	is_secret?: boolean;
+	created_by?: string | null;
+};
+
+function worldEntityRowFields(
+	entity: Record<string, unknown>,
+): Record<string, unknown> {
+	const fields: Record<string, unknown> = {};
+	if (typeof entity.worldId === "string") fields.world_id = entity.worldId;
+	if (typeof entity.publicationScope === "string") {
+		fields.publication_scope = entity.publicationScope;
+	}
+	if (typeof entity.visibility === "string") {
+		fields.visibility = entity.visibility;
+	}
+	if (Array.isArray(entity.campaignIds)) {
+		fields.campaign_ids = entity.campaignIds;
+	}
+	return fields;
+}
+
+const WORLD_ENTITY_COLUMNS =
+	"id,data,created_at,updated_at,created_by,world_id,publication_scope,visibility,campaign_ids";
+
+const LORE_WORLD_ENTITY_COLUMNS = `${WORLD_ENTITY_COLUMNS},is_secret`;
+
+function fromWorldEntityRow(
+	row: WorldEntityRow,
+	table: WorldEntityTable,
+): unknown {
+	const entity = fromEntityRow(row) as Record<string, unknown>;
+	const visibility =
+		row.visibility ??
+		(table === "lores" && row.is_secret ? "master_secret" : "public");
+	return {
+		...entity,
+		worldId: row.world_id ?? "",
+		publicationScope: row.publication_scope ?? "restricted",
+		visibility,
+		campaignIds: row.campaign_ids ?? [],
+		...(row.created_by ? { createdBy: row.created_by } : {}),
+		...(table === "lores"
+			? { isSecret: row.is_secret ?? visibility === "master_secret" }
+			: {}),
 	};
-	const updatedAt = toTimestamp(row.updated_at);
-	if (updatedAt) fallback.updatedAt = updatedAt;
-	return { ...fallback, ...data };
 }
 
 function fromActivityRow(row: ActivityRow): RemoteActivityEntry {
@@ -209,6 +255,7 @@ function rowFor(
 		case "npc":
 			return {
 				...base,
+				...worldEntityRowFields(entity),
 				name: entityName(kind, entity),
 				importance: stringValue(entity.importance, "supporting"),
 			};
@@ -222,6 +269,7 @@ function rowFor(
 		case "item":
 			return {
 				...base,
+				...worldEntityRowFields(entity),
 				name: entityName(kind, entity),
 				item_type: stringValue(entity.type, ""),
 				rarity: stringValue(entity.rarity, "comum"),
@@ -229,6 +277,7 @@ function rowFor(
 		case "location":
 			return {
 				...base,
+				...worldEntityRowFields(entity),
 				name: entityName(kind, entity),
 				location_type: stringValue(entity.type, ""),
 				region: stringValue(entity.region, ""),
@@ -236,10 +285,14 @@ function rowFor(
 		case "lore":
 			return {
 				...base,
+				...worldEntityRowFields(entity),
 				title: entityName(kind, entity),
 				category: stringValue(entity.category, ""),
 				importance: stringValue(entity.importance, "supporting"),
-				is_secret: booleanValue(entity.isSecret, false),
+				is_secret: booleanValue(
+					entity.isSecret,
+					entity.visibility === "master_secret",
+				),
 			};
 		case "customTemplate":
 			return {
@@ -376,6 +429,17 @@ async function updateEntityRow(
 	}
 }
 
+function fromEntityRow(row: EntityRow): unknown {
+	const data = isRecord(row.data) ? row.data : {};
+	const fallback: Record<string, unknown> = {
+		id: row.id,
+		createdAt: toTimestamp(row.created_at) ?? Date.now(),
+	};
+	const updatedAt = toTimestamp(row.updated_at);
+	if (updatedAt) fallback.updatedAt = updatedAt;
+	return { ...fallback, ...data };
+}
+
 async function selectEntities(
 	table: EntityTable,
 	campaignId: string,
@@ -388,6 +452,24 @@ async function selectEntities(
 		.order("updated_at", { ascending: false });
 	if (error) throw error;
 	return ((data ?? []) as EntityRow[]).map(fromEntityRow);
+}
+
+async function selectWorldEntities(
+	table: WorldEntityTable,
+	worldId: string,
+): Promise<unknown[]> {
+	const supabase = requireSupabase();
+	const columns =
+		table === "lores" ? LORE_WORLD_ENTITY_COLUMNS : WORLD_ENTITY_COLUMNS;
+	const { data, error } = await supabase
+		.from(table)
+		.select(columns)
+		.eq("world_id", worldId)
+		.order("updated_at", { ascending: false });
+	if (error) throw error;
+	return ((data ?? []) as unknown as WorldEntityRow[]).map((row) =>
+		fromWorldEntityRow(row, table),
+	);
 }
 
 export async function loadRemoteImageAssets(
@@ -412,33 +494,43 @@ export async function loadRemoteImageAssets(
 export async function loadRemoteState(
 	campaignId: string,
 ): Promise<RemoteStateSnapshot> {
-	const supabase = requireSupabase();
+	const worldId = await fetchCampaignWorldId(campaignId);
 
-	const activityQuery = supabase
+	const activityQuery = requireSupabase()
 		.from(SUPABASE_TABLES.activity)
 		.select("id,action,entity_kind,entity_id,entity_name,created_at")
 		.eq("campaign_id", campaignId);
 
 	const [
 		characters,
-		npcs,
 		sessions,
-		items,
-		locations,
-		lores,
 		customTemplates,
 		imageAssets,
 		activityRows,
+		npcs,
+		items,
+		locations,
+		lores,
+		worldbuilding,
 	] = await Promise.all([
 		selectEntities(SUPABASE_TABLES.characters, campaignId),
-		selectEntities(SUPABASE_TABLES.npcs, campaignId),
 		selectEntities(SUPABASE_TABLES.sessions, campaignId),
-		selectEntities(SUPABASE_TABLES.items, campaignId),
-		selectEntities(SUPABASE_TABLES.locations, campaignId),
-		selectEntities(SUPABASE_TABLES.lores, campaignId),
 		selectEntities(SUPABASE_TABLES.customTemplates, campaignId),
 		loadRemoteImageAssets(campaignId),
 		activityQuery.order("created_at", { ascending: false }).limit(200),
+		worldId
+			? selectWorldEntities(SUPABASE_TABLES.npcs, worldId)
+			: Promise.resolve([]),
+		worldId
+			? selectWorldEntities(SUPABASE_TABLES.items, worldId)
+			: Promise.resolve([]),
+		worldId
+			? selectWorldEntities(SUPABASE_TABLES.locations, worldId)
+			: Promise.resolve([]),
+		worldId
+			? selectWorldEntities(SUPABASE_TABLES.lores, worldId)
+			: Promise.resolve([]),
+		worldId ? loadWorldbuildingState(worldId) : Promise.resolve(null),
 	]);
 
 	if (activityRows.error) throw activityRows.error;
@@ -455,6 +547,9 @@ export async function loadRemoteState(
 		activityLog: ((activityRows.data ?? []) as ActivityRow[]).map(
 			fromActivityRow,
 		),
+		factions: worldbuilding?.factions ?? [],
+		factionReputations: worldbuilding?.factionReputations ?? [],
+		worldNews: worldbuilding?.worldNews ?? [],
 	};
 }
 

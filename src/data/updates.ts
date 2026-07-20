@@ -11,6 +11,24 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.5.0-worldbuilding",
+		version: "1.5.0",
+		date: "20/07/2026",
+		title: "Mundos, Facções e Mural!",
+		description:
+			"O Arkhiveon agora organiza a sua mesa em Mundos: a ambientação onde vivem NPCs, locais, lore, facções e notícias. Campanhas ficam dentro do Mundo, e você troca de Mundo e de campanha pelo seletor no topo. Contas novas começam criando o Mundo e a primeira campanha; se o seu ainda se chama “Mundo Padrão”, pedimos um nome de verdade na primeira vez.",
+		bullets: [
+			"Mundos: um lugar só para a ambientação — NPCs, locais, itens, lore, facções e o mural ficam no Mundo e podem ser usados em várias campanhas.",
+			"Seletor de Mundo e campanha: troque de ambientação ou de mesa sem perder o fio, direto pelo cabeçalho.",
+			"Facções: crie grupos, guildas e organizações com reputação e vínculos com a campanha.",
+			"Mural de notícias: publique avisos e acontecimentos do Mundo para a mesa acompanhar.",
+			"Primeiros passos: contas novas criam o Mundo com o nome que quiserem e depois a primeira campanha.",
+			"Contas antigas: se o Mundo ainda se chama “Mundo Padrão”, pedimos para você escolher um nome de verdade (só uma vez).",
+			"Fotos nas fichas: dá para trocar a imagem de NPCs, locais e lore direto pelo cabeçalho da ficha.",
+			"Listas mais claras: cards de NPCs, locais, itens, lore e facções com o mesmo visual e espaço para a arte.",
+		],
+	},
+	{
 		id: "v1.4.0-dynamic-dice",
 		version: "1.4.0",
 		date: "02/07/2026",

@@ -2,8 +2,18 @@ import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useAuth } from "@/lib/auth";
 import type { Item } from "@/lib/store";
-import { itemDefaults, useRPGStore } from "@/lib/store";
+import {
+	itemDefaults,
+	useActiveCampaignRole,
+	useIsWorldStaff,
+	useRPGStore,
+} from "@/lib/store";
+import {
+	canCreateCampaignItem,
+	canManageOwnItem,
+} from "@/lib/worldbuilding/item-ownership";
 import { EntityImagePicker } from "./entity-image-picker";
 import { EntityLinkManager } from "./entity-links";
 import { Button } from "./ui/button";
@@ -19,10 +29,13 @@ import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 type ItemFormValues = Omit<Item, "id" | "createdAt" | "updatedAt">;
 
 export function ItemForm() {
+	const role = useActiveCampaignRole();
+	if (!canCreateCampaignItem(role)) return null;
 	return (
 		<ItemFormDialog
 			trigger={
@@ -53,6 +66,9 @@ export function ItemEditButton({
 	onOpenChange,
 	trigger,
 }: ItemEditButtonProps) {
+	const { user } = useAuth();
+	const isStaff = useIsWorldStaff();
+	if (!canManageOwnItem(item, user?.id, isStaff)) return null;
 	return (
 		<ItemFormDialog
 			item={item}
@@ -94,11 +110,18 @@ function ItemFormDialog({
 	const addItem = useRPGStore((state) => state.addItem);
 	const updateItem = useRPGStore((state) => state.updateItem);
 	const navigate = useNavigate();
+	const { user } = useAuth();
 
-	const { register, handleSubmit, reset, control, setValue, formState: { isSubmitting } } =
-		useForm<ItemFormValues>({
-			defaultValues: { ...itemDefaults, ...(item ?? {}) },
-		});
+	const {
+		register,
+		handleSubmit,
+		reset,
+		control,
+		setValue,
+		formState: { isSubmitting },
+	} = useForm<ItemFormValues>({
+		defaultValues: { ...itemDefaults, ...(item ?? {}) },
+	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const imageAssetId = useWatch({ control, name: "imageAssetId" });
@@ -107,14 +130,16 @@ function ItemFormDialog({
 	const watchedValues = useWatch({ control });
 
 	useEffect(() => {
-		if (open) reset({ ...itemDefaults, ...(item ?? {}) });
-	}, [open, item, reset]);
+		if (!open) return;
+		reset({ ...itemDefaults, ...(item ?? {}) });
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- item fields intentionally omitted
+	}, [open, item?.id, reset]);
 
 	function onSubmit(data: ItemFormValues) {
 		let createdId: string | null = null;
-		if (isEdit && item) updateItem(item.id, data);
+		if (isEdit && item) updateItem(item.id, data, user?.id);
 		else {
-			const created = addItem(data);
+			const created = addItem(data, user?.id);
 			if (created.id) createdId = created.id;
 		}
 		setOpen(false);
@@ -199,6 +224,11 @@ function ItemFormDialog({
 								</Field>
 							</div>
 						</FormSection>
+
+						<WorldEntityPublicationFields
+							control={control}
+							setValue={setValue}
+						/>
 
 						<FormSection title="Mecânica">
 							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

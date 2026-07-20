@@ -16,14 +16,19 @@ import type {
 	AppNotification,
 	Character,
 	CustomTemplate,
+	Faction,
+	FactionReputation,
 	GameLocation,
 	ImageAsset,
 	Item,
 	Lore,
+	NewsComment,
 	Npc,
 	RPGState,
 	Session,
+	WorldNews,
 } from "./types";
+import { factionDefaults, worldNewsDefaults } from "./worldbuilding-slice";
 
 export const FREE_CREATION_LIMIT = 20;
 
@@ -47,6 +52,7 @@ export interface SyncSlice {
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
+	clearActiveCampaignEntities: () => void;
 	clearActivity: () => void;
 	notifications: AppNotification[];
 	addNotification: (
@@ -138,7 +144,7 @@ function isRealtimeEchoOfLocalMutation(
 ): boolean {
 	if (eventType === "INSERT") {
 		if (currentUserId == null || !newRow) return false;
-		const creatorId = newRow.created_by ?? newRow.user_id;
+		const creatorId = newRow.created_by ?? newRow.user_id ?? newRow.author_id;
 		return creatorId === currentUserId;
 	}
 	if (eventType === "UPDATE" && newRow?.id && newRow.data) {
@@ -158,6 +164,79 @@ function isRealtimeEchoOfLocalMutation(
 	}
 	return false;
 }
+
+function toMillis(value: unknown): number | undefined {
+	if (typeof value !== "string" || !value) return undefined;
+	const timestamp = Date.parse(value);
+	return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function mapFlatWorldbuildingRow(
+	table: string,
+	row: Record<string, unknown>,
+): Record<string, unknown> | null {
+	if (table === "world_news") {
+		return {
+			id: row.id,
+			worldId: row.world_id,
+			authorId: row.author_id ?? "",
+			title: row.title,
+			body: row.body,
+			category: row.category,
+			audience: row.audience,
+			campaignIds: row.campaign_ids ?? [],
+			visibility: row.visibility,
+			commentsLocked: row.comments_locked ?? false,
+			createdAt: toMillis(row.created_at) ?? Date.now(),
+			updatedAt: toMillis(row.updated_at),
+		};
+	}
+	if (table === "news_comments") {
+		return {
+			id: row.id,
+			newsId: row.news_id,
+			authorId: row.author_id ?? "",
+			parentId: row.parent_id ?? null,
+			body: row.body,
+			createdAt: toMillis(row.created_at) ?? Date.now(),
+			updatedAt: toMillis(row.updated_at),
+		};
+	}
+	if (table === "factions") {
+		return {
+			id: row.id,
+			worldId: row.world_id,
+			name: row.name,
+			leader: row.leader,
+			seat: row.seat,
+			goals: row.goals,
+			alignment: row.alignment,
+			influence: row.influence,
+			description: row.description,
+			imageUrl: row.image_url ?? "",
+			createdAt: toMillis(row.created_at) ?? Date.now(),
+			updatedAt: toMillis(row.updated_at),
+		};
+	}
+	if (table === "faction_reputations") {
+		return {
+			id: row.id,
+			factionId: row.faction_id,
+			campaignId: row.campaign_id,
+			status: row.status,
+			createdAt: toMillis(row.created_at) ?? Date.now(),
+			updatedAt: toMillis(row.updated_at),
+		};
+	}
+	return null;
+}
+
+const FLAT_WORLDBUILDING_TABLES = new Set([
+	"world_news",
+	"news_comments",
+	"factions",
+	"faction_reputations",
+]);
 
 export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	set,
@@ -258,6 +337,21 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				) as CustomTemplate[],
 				imageAssets: ensureArray(remote.imageAssets) as ImageAsset[],
 				activityLog: ensureArray(remote.activityLog) as ActivityEntry[],
+				factions: ensureArray(remote.factions).map((f) => ({
+					...factionDefaults,
+					worldId: "",
+					...(f as Partial<Faction>),
+				})) as Faction[],
+				factionReputations: ensureArray(
+					remote.factionReputations,
+				) as FactionReputation[],
+				worldNews: ensureArray(remote.worldNews).map((n) => ({
+					...worldNewsDefaults,
+					worldId: "",
+					authorId: "",
+					...(n as Partial<WorldNews>),
+				})) as WorldNews[],
+				newsComments: [] as NewsComment[],
 				isLoadingRemote: false,
 			});
 		} catch (error) {
@@ -296,6 +390,10 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						custom_templates: "customTemplates",
 						image_assets: "imageAssets",
 						activity_log: "activityLog",
+						factions: "factions",
+						faction_reputations: "factionReputations",
+						world_news: "worldNews",
+						news_comments: "newsComments",
 					};
 
 					const storeKey = tableToKey[table];
@@ -303,6 +401,20 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 					const activeCampaignId = get().activeCampaignId;
 					if (!activeCampaignId) return;
+
+					const activeCamp = get().campaigns.find(
+						(c) => c.id === activeCampaignId,
+					);
+					const activeWorldId = activeCamp?.worldId;
+
+					const worldEntityTables = new Set([
+						"npcs",
+						"items",
+						"locations",
+						"lores",
+						"factions",
+						"world_news",
+					]);
 
 					const rowCampaignId =
 						eventType === "DELETE"
@@ -313,7 +425,43 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 								? (newRow as { campaign_id: string }).campaign_id
 								: null;
 
+					const rowWorldId =
+						eventType === "DELETE"
+							? oldRow && "world_id" in oldRow
+								? (oldRow as { world_id: string }).world_id
+								: null
+							: newRow && "world_id" in newRow
+								? (newRow as { world_id: string }).world_id
+								: null;
+
+					const rowNewsId =
+						eventType === "DELETE"
+							? oldRow && "news_id" in oldRow
+								? (oldRow as { news_id: string }).news_id
+								: null
+							: newRow && "news_id" in newRow
+								? (newRow as { news_id: string }).news_id
+								: null;
+
 					const belongsToActiveCampaign = rowCampaignId === activeCampaignId;
+					const belongsToActiveWorld =
+						worldEntityTables.has(table) &&
+						rowWorldId != null &&
+						rowWorldId === activeWorldId;
+
+					const belongsToActiveWorldNews =
+						table === "news_comments" &&
+						rowNewsId != null &&
+						get().worldNews.some(
+							(n) => n.id === rowNewsId && n.worldId === activeWorldId,
+						);
+
+					const belongsToWorldCampaignReputation =
+						table === "faction_reputations" &&
+						rowCampaignId != null &&
+						get().campaigns.some(
+							(c) => c.id === rowCampaignId && c.worldId === activeWorldId,
+						);
 
 					const countTables = [
 						"characters",
@@ -325,9 +473,6 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					];
 					const isCountTable = countTables.includes(table);
 
-					const activeCamp = get().campaigns.find(
-						(c) => c.id === activeCampaignId,
-					);
 					const activeOwnerId = activeCamp?.ownerId;
 
 					const ownerCampaignIds = activeOwnerId
@@ -340,6 +485,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 					const belongsToOwnerCampaigns =
 						rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+
+					const isRelevant =
+						belongsToActiveCampaign ||
+						belongsToActiveWorld ||
+						belongsToActiveWorldNews ||
+						belongsToWorldCampaignReputation;
 
 					const isOwnAction = isRealtimeEchoOfLocalMutation(
 						get,
@@ -354,7 +505,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					const oldRowCasted = oldRow as SupabasePayloadRow | null;
 
 					if (
-						belongsToActiveCampaign &&
+						isRelevant &&
 						!isOwnAction &&
 						currentUserId != null &&
 						table in ENTITY_KIND_LABELS
@@ -371,7 +522,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						}
 					}
 
-					if (!belongsToActiveCampaign) {
+					if (!isRelevant) {
 						if (isCountTable && belongsToOwnerCampaigns) {
 							applyGlobalRecordsCountChange(set, eventType);
 						}
@@ -392,8 +543,33 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 							if (currentArray.some((item) => item.id === newRow.id))
 								return state;
 
-							let processed = newRow.data || newRow;
-							if (table === "activity_log") {
+							let processed: Record<string, unknown>;
+							const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
+								? mapFlatWorldbuildingRow(table, newRow)
+								: null;
+							if (flatMapped) {
+								processed = flatMapped;
+								// Reputações locais usam UUID próprio; o trigger do DB
+								// gera outro id. Deduplica pela chave natural.
+								if (table === "faction_reputations") {
+									const factionId = processed.factionId as string;
+									const campaignId = processed.campaignId as string;
+									const withoutLocalSeed = currentArray.filter(
+										(item) =>
+											!(
+												"factionId" in item &&
+												item.factionId === factionId &&
+												item.campaignId === campaignId
+											),
+									);
+									return {
+										[storeKey]: [processed, ...withoutLocalSeed].slice(
+											0,
+											1000,
+										),
+									};
+								}
+							} else if (table === "activity_log") {
 								processed = {
 									id: newRow.id,
 									action: newRow.action,
@@ -450,6 +626,17 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 								};
 							}
 
+							const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
+								? mapFlatWorldbuildingRow(table, newRow)
+								: null;
+							if (flatMapped) {
+								return {
+									[storeKey]: currentArray.map((item) =>
+										item.id === newRow.id ? { ...item, ...flatMapped } : item,
+									),
+								};
+							}
+
 							return {
 								[storeKey]: currentArray.map((item) =>
 									item.id === newRow.id ? { ...item, ...newRow.data } : item,
@@ -495,10 +682,34 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			customTemplates: [],
 			imageAssets: [],
 			activityLog: [],
+			factions: [],
+			factionReputations: [],
+			worldNews: [],
+			newsComments: [],
 			notifications: [],
 			syncError: null,
 		});
 		get().resetCampaigns();
+	},
+	/** Limpa entidades da mesa ativa sem derrubar campanhas/mundos/bootstrap. */
+	clearActiveCampaignEntities: () => {
+		set({
+			characters: [],
+			npcs: [],
+			sessions: [],
+			items: [],
+			locations: [],
+			lores: [],
+			customTemplates: [],
+			imageAssets: [],
+			activityLog: [],
+			factions: [],
+			factionReputations: [],
+			worldNews: [],
+			newsComments: [],
+			notifications: [],
+			syncError: null,
+		});
 	},
 	clearActivity: () => set({ activityLog: [] }),
 });

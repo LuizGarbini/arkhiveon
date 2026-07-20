@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 function PrivacyPolicyPage() {
 	useDocumentMetadata(
 		"Política de Privacidade — Arkhiveon",
-		"Como coletamos, usamos e protegemos suas informações pessoais."
+		"Como coletamos, usamos e protegemos suas informações pessoais.",
 	);
 
 	return (
@@ -73,10 +73,17 @@ function PrivacyPolicyPage() {
 							1. Coleta de Informações
 						</h2>
 						<p>
-							O Arkhiveon coleta informações essenciais para o funcionamento do seu grimório digital. Isso inclui dados fornecidos diretamente por você, como seu e-mail, nome de exibição e senha (criptografada) no momento de registro da sua conta.
+							O Arkhiveon coleta informações essenciais para o funcionamento do
+							seu grimório digital. Isso inclui dados fornecidos diretamente por
+							você, como seu e-mail, nome de exibição e senha (criptografada) no
+							momento de registro da sua conta.
 						</p>
 						<p>
-							Além disso, dados referentes às suas campanhas de RPG de Mesa, incluindo fichas de personagens, anotações de lore, logs de sessões e uploads de imagens de entidades, são armazenados de forma segura em nossos servidores para permitir a sincronização em tempo real entre seus dispositivos.
+							Além disso, dados referentes às suas campanhas de RPG de Mesa,
+							incluindo fichas de personagens, anotações de lore, logs de
+							sessões e uploads de imagens de entidades, são armazenados de
+							forma segura em nossos servidores para permitir a sincronização em
+							tempo real entre seus dispositivos.
 						</p>
 					</section>
 
@@ -84,14 +91,21 @@ function PrivacyPolicyPage() {
 						<h2 className="font-display text-xl font-bold text-white tracking-wide">
 							2. Uso de Dados
 						</h2>
-						<p>
-							Utilizamos seus dados exclusivamente para:
-						</p>
+						<p>Utilizamos seus dados exclusivamente para:</p>
 						<ul className="list-disc list-inside pl-4 space-y-2">
-							<li>Manter e sincronizar o conteúdo das suas campanhas em tempo real;</li>
+							<li>
+								Manter e sincronizar o conteúdo das suas campanhas em tempo
+								real;
+							</li>
 							<li>Autenticar seu acesso com segurança à plataforma;</li>
-							<li>Processar pagamentos e gerenciar assinaturas ativas do plano Pro;</li>
-							<li>Prevenir abusos e garantir a estabilidade operacional dos nossos sistemas de banco de dados.</li>
+							<li>
+								Processar pagamentos e gerenciar assinaturas ativas do plano
+								Pro;
+							</li>
+							<li>
+								Prevenir abusos e garantir a estabilidade operacional dos nossos
+								sistemas de banco de dados.
+							</li>
 						</ul>
 					</section>
 
@@ -100,10 +114,17 @@ function PrivacyPolicyPage() {
 							3. Armazenamento e Segurança
 						</h2>
 						<p>
-							Empregamos práticas de segurança de ponta para proteger as informações da sua conta e campanhas. A comunicação entre o seu navegador e a plataforma é totalmente criptografada via protocolo HTTPS/SSL.
+							Empregamos práticas de segurança de ponta para proteger as
+							informações da sua conta e campanhas. A comunicação entre o seu
+							navegador e a plataforma é totalmente criptografada via protocolo
+							HTTPS/SSL.
 						</p>
 						<p>
-							Nossos bancos de dados e sistemas de armazenamento de arquivos (imagens de personagens e NPCs) são protegidos por rigorosas regras de segurança em nível de linha (RLS) no Supabase, garantindo que apenas membros autorizados de uma campanha possam visualizar ou modificar os dados correspondentes.
+							Nossos bancos de dados e sistemas de armazenamento de arquivos
+							(imagens de personagens e NPCs) são protegidos por rigorosas
+							regras de segurança em nível de linha (RLS) no Supabase,
+							garantindo que apenas membros autorizados de uma campanha possam
+							visualizar ou modificar os dados correspondentes.
 						</p>
 					</section>
 
@@ -112,10 +133,17 @@ function PrivacyPolicyPage() {
 							4. Compartilhamento de Informações
 						</h2>
 						<p>
-							O Arkhiveon **nunca** comercializa, vende ou aluga seus dados pessoais para terceiros.
+							O Arkhiveon **nunca** comercializa, vende ou aluga seus dados
+							pessoais para terceiros.
 						</p>
 						<p>
-							Seus dados de campanha podem ser compartilhados com outros jogadores apenas através de links de convite explícitos gerados por você dentro da ferramenta de colaboração em tempo real. Serviços terceiros (como Stripe para pagamentos) recebem apenas as informações estritamente necessárias para a execução de suas respectivas funções financeiras sob termos estritos de confidencialidade.
+							Seus dados de campanha podem ser compartilhados com outros
+							jogadores apenas através de links de convite explícitos gerados
+							por você dentro da ferramenta de colaboração em tempo real.
+							Serviços terceiros (como Stripe para pagamentos) recebem apenas as
+							informações estritamente necessárias para a execução de suas
+							respectivas funções financeiras sob termos estritos de
+							confidencialidade.
 						</p>
 					</section>
 
@@ -124,12 +152,23 @@ function PrivacyPolicyPage() {
 							5. Seus Direitos (LGPD)
 						</h2>
 						<p>
-							Conforme os preceitos da Lei Geral de Proteção de Dados (LGPD), você tem total controle sobre seus dados pessoais armazenados na nossa plataforma. Você pode, a qualquer momento:
+							Conforme os preceitos da Lei Geral de Proteção de Dados (LGPD),
+							você tem total controle sobre seus dados pessoais armazenados na
+							nossa plataforma. Você pode, a qualquer momento:
 						</p>
 						<ul className="list-disc list-inside pl-4 space-y-2">
-							<li>Acessar, exportar ou editar as informações de suas campanhas e fichas;</li>
-							<li>Solicitar a exclusão definitiva dos seus dados e encerramento da sua conta diretamente no painel de configurações;</li>
-							<li>Retirar o consentimento para recebimento de e-mails informativos ou notificações de atualização.</li>
+							<li>
+								Acessar, exportar ou editar as informações de suas campanhas e
+								fichas;
+							</li>
+							<li>
+								Solicitar a exclusão definitiva dos seus dados e encerramento da
+								sua conta diretamente no painel de configurações;
+							</li>
+							<li>
+								Retirar o consentimento para recebimento de e-mails informativos
+								ou notificações de atualização.
+							</li>
 						</ul>
 					</section>
 
@@ -138,13 +177,16 @@ function PrivacyPolicyPage() {
 							6. Contato
 						</h2>
 						<p>
-							Se você tiver qualquer dúvida ou solicitação sobre as práticas de privacidade de dados adotadas pelo Arkhiveon, entre em contato diretamente pelo e-mail:{" "}
+							Se você tiver qualquer dúvida ou solicitação sobre as práticas de
+							privacidade de dados adotadas pelo Arkhiveon, entre em contato
+							diretamente pelo e-mail:{" "}
 							<a
 								href="mailto:contato@arkhiveon.com"
 								className="text-purple-400 hover:text-purple-300 underline font-semibold"
 							>
 								contato@arkhiveon.com
-							</a>.
+							</a>
+							.
 						</p>
 					</section>
 				</div>

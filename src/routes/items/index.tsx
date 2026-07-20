@@ -7,6 +7,7 @@ import { ItemForm } from "@/components/item-form";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { useRPGStore } from "@/lib/store";
+import { useVisibleWorldEntities } from "@/lib/worldbuilding/hooks";
 
 export const Route = createFileRoute("/items/")({
 	component: RouteComponent,
@@ -16,14 +17,17 @@ const loadingCardKeys = ["item-1", "item-2", "item-3", "item-4"];
 
 function RouteComponent() {
 	const items = useRPGStore((state) => state.items);
+	const visibleItems = useVisibleWorldEntities(items);
 	const [searchQuery, setSearchQuery] = useState("");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
 	const filteredItems = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return items;
-		return items.filter((item) => item.name.toLowerCase().includes(query));
-	}, [items, deferredSearchQuery]);
+		if (!query) return visibleItems;
+		return visibleItems.filter((item) =>
+			item.name.toLowerCase().includes(query),
+		);
+	}, [visibleItems, deferredSearchQuery]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -35,7 +39,7 @@ function RouteComponent() {
 				Icon={Package}
 				iconColor="text-emerald-300"
 				eyebrow="Tesouro"
-				count={items.length}
+				count={visibleItems.length}
 				action={<ItemForm />}
 			/>
 

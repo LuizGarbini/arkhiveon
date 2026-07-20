@@ -7,6 +7,7 @@ import { LocationCard } from "@/components/location-card";
 import { LocationForm } from "@/components/location-form";
 import { PageHeader } from "@/components/page-header";
 import { useRPGStore } from "@/lib/store";
+import { useVisibleWorldEntities } from "@/lib/worldbuilding/hooks";
 
 export const Route = createFileRoute("/locations/")({
 	component: RouteComponent,
@@ -21,16 +22,17 @@ const loadingCardKeys = [
 
 function RouteComponent() {
 	const locations = useRPGStore((state) => state.locations);
+	const visibleLocations = useVisibleWorldEntities(locations);
 	const [searchQuery, setSearchQuery] = useState("");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
 	const filteredLocations = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return locations;
-		return locations.filter((location) =>
+		if (!query) return visibleLocations;
+		return visibleLocations.filter((location) =>
 			location.name.toLowerCase().includes(query),
 		);
-	}, [locations, deferredSearchQuery]);
+	}, [visibleLocations, deferredSearchQuery]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -42,7 +44,7 @@ function RouteComponent() {
 				Icon={MapIcon}
 				iconColor="text-rose-300"
 				eyebrow="Cartografia"
-				count={locations.length}
+				count={visibleLocations.length}
 				action={<LocationForm />}
 			/>
 

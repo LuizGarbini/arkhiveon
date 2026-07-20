@@ -4,9 +4,9 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { routeTree } from "../routeTree.gen";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
+import { routeTree } from "../routeTree.gen";
 
 // Mock matchMedia for jsdom environment
 window.matchMedia =
@@ -96,6 +96,7 @@ describe("Routes smoke tests", () => {
 					name: "Test Campaign",
 					description: "",
 					ownerId: "test-user-id",
+					worldId: "test-world-id",
 					myRole: "owner",
 					createdAt: Date.now(),
 				},

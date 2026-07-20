@@ -3,7 +3,7 @@ import { memo, useEffect, useRef, useState } from "react";
 
 /** Matches ArkhiveonGradientBackground blob / base tones. */
 export const DASHBOARD_MESH_COLORS: string[] = [
-	"#10081f",
+	"#10081f", // --dashboard-deep / bg-dashboard-deep
 	"#140923",
 	"#4b1f8a",
 	"#7e4aff",

@@ -14,7 +14,7 @@ import {
 	Sparkles,
 	User,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
@@ -62,7 +62,9 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const spotifyJamLink = useRPGStore((state) => state.spotifyJamLink);
 	const spotifyUser = useRPGStore((state) => state.spotifyUser);
 	const notifications = useRPGStore((state) => state.notifications);
-	const markAllNotificationsAsRead = useRPGStore((state) => state.markAllNotificationsAsRead);
+	const markAllNotificationsAsRead = useRPGStore(
+		(state) => state.markAllNotificationsAsRead,
+	);
 	const clearNotifications = useRPGStore((state) => state.clearNotifications);
 	const unreadCount = useMemo(
 		() => notifications.filter((n) => !n.read).length,
@@ -92,11 +94,20 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 				lastNotificationRef.current = latest.id;
 				if (!latest.read && Date.now() - latest.createdAt < 10000) {
 					if (latest.variant === "success") {
-						toast.success({ title: latest.title, description: latest.description });
+						toast.success({
+							title: latest.title,
+							description: latest.description,
+						});
 					} else if (latest.variant === "error") {
-						toast.error({ title: latest.title, description: latest.description });
+						toast.error({
+							title: latest.title,
+							description: latest.description,
+						});
 					} else {
-						toast.info({ title: latest.title, description: latest.description });
+						toast.info({
+							title: latest.title,
+							description: latest.description,
+						});
 					}
 				}
 			}
@@ -373,8 +384,12 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 								{notifications.length === 0 ? (
 									<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
 										<Bell className="h-8 w-8 opacity-25" />
-										<span className="mt-2 text-xs font-semibold">Tudo calmo por aqui</span>
-										<span className="text-[10px] opacity-60">Você não tem novas notificações</span>
+										<span className="mt-2 text-xs font-semibold">
+											Tudo calmo por aqui
+										</span>
+										<span className="text-[10px] opacity-60">
+											Você não tem novas notificações
+										</span>
 									</div>
 								) : (
 									notifications.map((n) => (
@@ -554,7 +569,9 @@ function NotificationItem({
 					<span
 						className={cn(
 							"text-[11px] font-bold truncate",
-							read ? "text-foreground/80 font-semibold" : "text-foreground font-extrabold",
+							read
+								? "text-foreground/80 font-semibold"
+								: "text-foreground font-extrabold",
 						)}
 					>
 						{title}

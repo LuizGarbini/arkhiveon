@@ -15,12 +15,14 @@ import {
 import { useEffect, useId, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { GlobalError } from "@/components/global-error";
+import { LegacyWorldNamingGate } from "@/components/legacy-world-naming-gate";
 import { NotFound } from "@/components/not-found";
 import { Sidebar } from "@/components/sidebar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ToastProvider } from "@/components/ui/toast";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { needsAppOnboarding } from "@/lib/campaign-bootstrap";
 import { usePerformanceMode } from "@/lib/performance-mode";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
@@ -91,6 +93,7 @@ function ProtectedLayout() {
 		if (pathname.startsWith("/settings")) return "Configurações - Arkhiveon";
 		if (pathname.startsWith("/account")) return "Minha Conta - Arkhiveon";
 		if (pathname.startsWith("/billing")) return "Assinatura - Arkhiveon";
+		if (pathname.startsWith("/onboarding")) return "Começar - Arkhiveon";
 		if (pathname.startsWith("/family-tree"))
 			return "Árvore Genealógica - Arkhiveon";
 		if (pathname.startsWith("/images")) return "Galeria de Imagens - Arkhiveon";
@@ -146,6 +149,22 @@ function ProtectedLayout() {
 	useEffect(() => {
 		if (loading || !session || !hasLoadedCampaigns) return;
 
+		const onboarding = needsAppOnboarding({
+			hasLoadedCampaigns,
+			campaignCount: campaigns.length,
+		});
+		const onOnboardingRoute = location.pathname.startsWith("/onboarding");
+
+		if (onboarding && !onOnboardingRoute) {
+			void navigate({ to: "/onboarding", replace: true });
+			return;
+		}
+
+		if (!onboarding && onOnboardingRoute) {
+			void navigate({ to: "/dashboard", replace: true });
+			return;
+		}
+
 		const campaignDependentPrefixes = [
 			"/characters",
 			"/npcs",
@@ -157,13 +176,19 @@ function ProtectedLayout() {
 			"/locations",
 			"/lore",
 			"/templates",
+			"/factions",
+			"/news",
+			"/world",
 		];
 		const isCampaignDependentRoute = campaignDependentPrefixes.some((prefix) =>
 			location.pathname.startsWith(prefix),
 		);
 
 		if (campaigns.length === 0 && isCampaignDependentRoute) {
-			void navigate({ to: "/dashboard", replace: true });
+			void navigate({
+				to: onboarding ? "/onboarding" : "/dashboard",
+				replace: true,
+			});
 		}
 	}, [
 		loading,
@@ -201,6 +226,15 @@ function ProtectedLayout() {
 				Carregando campanhas...
 			</div>
 		);
+	}
+
+	const onboarding = needsAppOnboarding({
+		hasLoadedCampaigns,
+		campaignCount: campaigns.length,
+	});
+
+	if (onboarding || location.pathname.startsWith("/onboarding")) {
+		return <Outlet />;
 	}
 
 	return (
@@ -255,6 +289,7 @@ function ProtectedLayout() {
 					<Outlet />
 				</main>
 			</div>
+			<LegacyWorldNamingGate />
 			{showLimitDialog && (
 				<UpgradeLimitDialog
 					onDismiss={() => {

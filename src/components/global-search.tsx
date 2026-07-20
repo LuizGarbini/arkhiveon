@@ -17,8 +17,10 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { useRPGStore } from "@/lib/store";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { filterVisibleContent } from "@/lib/worldbuilding/visibility";
 import {
 	Dialog,
 	DialogContent,
@@ -51,12 +53,40 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 	const items = useRPGStore((s) => s.items);
 	const locations = useRPGStore((s) => s.locations);
 	const lores = useRPGStore((s) => s.lores);
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const activeCampaign = useActiveCampaignContext();
+	const role = useActiveCampaignRole();
 
 	const results = useMemo(() => {
 		if (!open) return [];
 
 		const q = deferredQuery.trim().toLowerCase();
 		if (!q) return [];
+
+		const visibleNpcs = filterVisibleContent(
+			npcs,
+			activeCampaign,
+			role,
+			campaigns,
+		);
+		const visibleItems = filterVisibleContent(
+			items,
+			activeCampaign,
+			role,
+			campaigns,
+		);
+		const visibleLocations = filterVisibleContent(
+			locations,
+			activeCampaign,
+			role,
+			campaigns,
+		);
+		const visibleLores = filterVisibleContent(
+			lores,
+			activeCampaign,
+			role,
+			campaigns,
+		);
 
 		const allResults: SearchResult[] = [
 			...characters.map((c) => ({
@@ -65,7 +95,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 				subtitle: c.class || c.race || "Personagem",
 				type: "character" as const,
 			})),
-			...npcs.map((n) => ({
+			...visibleNpcs.map((n) => ({
 				id: n.id,
 				title: n.name || "Sem nome",
 				subtitle:
@@ -78,19 +108,19 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 				subtitle: s.date || "Sessão",
 				type: "session" as const,
 			})),
-			...items.map((i) => ({
+			...visibleItems.map((i) => ({
 				id: i.id,
 				title: i.name || "Item sem nome",
 				subtitle: i.rarity || "Item",
 				type: "item" as const,
 			})),
-			...locations.map((l) => ({
+			...visibleLocations.map((l) => ({
 				id: l.id,
 				title: l.name || "Local sem nome",
 				subtitle: l.type || "Local",
 				type: "location" as const,
 			})),
-			...lores.map((l) => ({
+			...visibleLores.map((l) => ({
 				id: l.id,
 				title: l.title || "Lore sem título",
 				subtitle: "História",
@@ -114,6 +144,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 		items,
 		locations,
 		lores,
+		campaigns,
+		activeCampaign,
+		role,
 	]);
 
 	const handleSelect = useCallback(

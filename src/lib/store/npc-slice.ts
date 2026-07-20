@@ -13,8 +13,17 @@ import {
 } from "./helpers";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Npc, RPGState } from "./types";
+import {
+	denyUnlessWorldStaff,
+	validateEntityScopeForActiveWorld,
+} from "./world-entity-guards";
+import { worldEntityDefaultsForCampaign } from "./worldbuilding-slice";
 
 export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
+	worldId: "",
+	publicationScope: "restricted",
+	campaignIds: [],
+	visibility: "public",
 	kind: "npc",
 	name: "",
 	race: "",
@@ -51,18 +60,39 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 ) => ({
 	npcs: [],
 	addNpc: (npc) => {
+		if (!denyUnlessWorldStaff(get, set)) return null;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para adicionar NPC." });
+			return null;
+		}
+		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
+		if (!activeCampaign?.worldId) {
+			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return null;
 		}
 		if (isCreationLimitReached(get())) {
 			set({
 				syncError: `Limite de registros atingido (${FREE_CREATION_LIMIT}). Faça upgrade para o plano Pro.`,
 			});
-			return {} as Npc;
+			return null;
 		}
-		const created = generateEntry(npcDefaults, npc) as Npc;
+		const created = generateEntry(
+			{
+				...npcDefaults,
+				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+			},
+			npc,
+		) as Npc;
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			created.publicationScope,
+			created.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return null;
+		}
 		const log = {
 			action: "create" as const,
 			entityKind: "npc" as const,
@@ -91,6 +121,7 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 		return created;
 	},
 	updateNpc: (id, npc) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para atualizar NPC." });
@@ -100,6 +131,15 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 		const existing = originalNpcs.find((n) => n.id === id);
 		if (!existing) return;
 		const updated = { ...existing, ...npc, updatedAt: Date.now() };
+		const scopeError = validateEntityScopeForActiveWorld(
+			get,
+			updated.publicationScope,
+			updated.campaignIds,
+		);
+		if (scopeError) {
+			set({ syncError: scopeError });
+			return;
+		}
 		const log = {
 			action: "update" as const,
 			entityKind: "npc" as const,
@@ -125,6 +165,7 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 		});
 	},
 	removeNpc: (id) => {
+		if (!denyUnlessWorldStaff(get, set)) return;
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
 			set({ syncError: "Nenhuma campanha ativa para remover NPC." });

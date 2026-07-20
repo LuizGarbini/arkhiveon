@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { getAttributeFullName } from "@/lib/store";
 import { cn } from "@/lib/utils";
 

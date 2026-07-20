@@ -223,10 +223,10 @@ function CharacterFormDialog({
 
 	// Resetar valores do formulário (react-hook-form) quando abrir o dialog ou trocar a entidade
 	useEffect(() => {
-		if (open) {
-			reset(buildDefaults(character ?? undefined));
-		}
-	}, [open, character, reset]);
+		if (!open) return;
+		reset(buildDefaults(character ?? undefined));
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- character fields intentionally omitted
+	}, [open, character?.id, reset]);
 
 	const tabs = useMemo(
 		() =>

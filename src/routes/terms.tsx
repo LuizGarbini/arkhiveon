@@ -9,7 +9,7 @@ export const Route = createFileRoute("/terms")({
 function TermsOfServicePage() {
 	useDocumentMetadata(
 		"Termos de Uso — Arkhiveon",
-		"Os termos e condições de uso da plataforma Arkhiveon."
+		"Os termos e condições de uso da plataforma Arkhiveon.",
 	);
 
 	return (
@@ -73,7 +73,11 @@ function TermsOfServicePage() {
 							1. Aceitação dos Termos
 						</h2>
 						<p>
-							Ao se cadastrar ou utilizar de qualquer forma a plataforma Arkhiveon, você concorda em cumprir e estar legalmente vinculado a estes Termos de Uso. Caso discorde de qualquer cláusula ou termo estabelecido aqui, solicitamos que não acesse ou utilize os nossos serviços.
+							Ao se cadastrar ou utilizar de qualquer forma a plataforma
+							Arkhiveon, você concorda em cumprir e estar legalmente vinculado a
+							estes Termos de Uso. Caso discorde de qualquer cláusula ou termo
+							estabelecido aqui, solicitamos que não acesse ou utilize os nossos
+							serviços.
 						</p>
 					</section>
 
@@ -82,7 +86,13 @@ function TermsOfServicePage() {
 							2. Contas de Usuário
 						</h2>
 						<p>
-							Para utilizar os recursos colaborativos e de armazenamento do Arkhiveon, você deve criar uma conta de acesso. Você é inteiramente responsável por manter o sigilo de suas credenciais de acesso, bem como por qualquer atividade que ocorra sob sua conta. Contas utilizadas de forma fraudulenta ou violando direitos autorais de sistemas de RPG patenteados podem ser suspensas ou encerradas imediatamente.
+							Para utilizar os recursos colaborativos e de armazenamento do
+							Arkhiveon, você deve criar uma conta de acesso. Você é
+							inteiramente responsável por manter o sigilo de suas credenciais
+							de acesso, bem como por qualquer atividade que ocorra sob sua
+							conta. Contas utilizadas de forma fraudulenta ou violando direitos
+							autorais de sistemas de RPG patenteados podem ser suspensas ou
+							encerradas imediatamente.
 						</p>
 					</section>
 
@@ -91,10 +101,17 @@ function TermsOfServicePage() {
 							3. Conduta Aceitável de Uso
 						</h2>
 						<p>
-							Ao criar fichas e campanhas no Arkhiveon, você concorda em não postar ou carregar materiais que infrinjam direitos de propriedade intelectual alheios, contenham vírus ou códigos maliciosos, ou configurem discurso de ódio, assédio, ou pornografia ilegal.
+							Ao criar fichas e campanhas no Arkhiveon, você concorda em não
+							postar ou carregar materiais que infrinjam direitos de propriedade
+							intelectual alheios, contenham vírus ou códigos maliciosos, ou
+							configurem discurso de ódio, assédio, ou pornografia ilegal.
 						</p>
 						<p>
-							O Arkhiveon é destinado à organização privada ou colaborativa amigável de sessões de RPG de Mesa. O abuso de recursos computacionais (incluindo sobrecarga de banco de dados ou requisições automatizadas abusivas via scripts) resultará no bloqueio imediato do IP e suspensão da conta correspondente.
+							O Arkhiveon é destinado à organização privada ou colaborativa
+							amigável de sessões de RPG de Mesa. O abuso de recursos
+							computacionais (incluindo sobrecarga de banco de dados ou
+							requisições automatizadas abusivas via scripts) resultará no
+							bloqueio imediato do IP e suspensão da conta correspondente.
 						</p>
 					</section>
 
@@ -103,10 +120,17 @@ function TermsOfServicePage() {
 							4. Assinaturas, Pagamento e Cancelamentos (Plano Pro)
 						</h2>
 						<p>
-							Oferecemos um plano Pro que amplia o limite de campanhas ativas, espaço para imagens e recursos exclusivos. Os pagamentos são processados em moeda nacional através de parceiros terceiros autorizados (como Stripe).
+							Oferecemos um plano Pro que amplia o limite de campanhas ativas,
+							espaço para imagens e recursos exclusivos. Os pagamentos são
+							processados em moeda nacional através de parceiros terceiros
+							autorizados (como Stripe).
 						</p>
 						<p>
-							Você pode cancelar a renovação da sua assinatura Pro a qualquer momento através do seu painel de cobrança. O cancelamento interrompe a cobrança automática no próximo ciclo mensal de faturamento, mantendo seus benefícios ativos até o final do período contratual corrente.
+							Você pode cancelar a renovação da sua assinatura Pro a qualquer
+							momento através do seu painel de cobrança. O cancelamento
+							interrompe a cobrança automática no próximo ciclo mensal de
+							faturamento, mantendo seus benefícios ativos até o final do
+							período contratual corrente.
 						</p>
 					</section>
 
@@ -115,7 +139,10 @@ function TermsOfServicePage() {
 							5. Propriedade dos Dados de Campanhas
 						</h2>
 						<p>
-							Você retém todos os direitos e a propriedade intelectual sobre todo o conteúdo original que carrega no Arkhiveon (histórias, NPCs criados, imagens originais e anotações de lore). O Arkhiveon não reivindica direitos ou licenciamento sobre suas histórias de jogo.
+							Você retém todos os direitos e a propriedade intelectual sobre
+							todo o conteúdo original que carrega no Arkhiveon (histórias, NPCs
+							criados, imagens originais e anotações de lore). O Arkhiveon não
+							reivindica direitos ou licenciamento sobre suas histórias de jogo.
 						</p>
 					</section>
 
@@ -124,7 +151,12 @@ function TermsOfServicePage() {
 							6. Limitação de Responsabilidade
 						</h2>
 						<p>
-							A plataforma é oferecida "como está" e "conforme a disponibilidade". Embora nos esforcemos para garantir a segurança dos seus dados de campanha com backups constantes e replicação na nuvem, o Arkhiveon não se responsabiliza por eventuais perdas acidentais de dados de jogo ou indisponibilidade temporária de serviço durante campanhas ativas.
+							A plataforma é oferecida "como está" e "conforme a
+							disponibilidade". Embora nos esforcemos para garantir a segurança
+							dos seus dados de campanha com backups constantes e replicação na
+							nuvem, o Arkhiveon não se responsabiliza por eventuais perdas
+							acidentais de dados de jogo ou indisponibilidade temporária de
+							serviço durante campanhas ativas.
 						</p>
 					</section>
 
@@ -133,7 +165,10 @@ function TermsOfServicePage() {
 							7. Alterações nos Termos
 						</h2>
 						<p>
-							Reservamo-nos o direito de atualizar ou modificar estes Termos a qualquer momento. Modificações substanciais que afetem os direitos dos usuários serão comunicadas diretamente por e-mail ou via alerta proeminente na página inicial do Arkhiveon.
+							Reservamo-nos o direito de atualizar ou modificar estes Termos a
+							qualquer momento. Modificações substanciais que afetem os direitos
+							dos usuários serão comunicadas diretamente por e-mail ou via
+							alerta proeminente na página inicial do Arkhiveon.
 						</p>
 					</section>
 				</div>
