@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { isLitePerformanceMode } from "@/lib/performance-mode";
+import { DASHBOARD_FALLBACK_COLORS } from "./dashboard-mesh-gradient";
 
 const LazyDashboardMeshGradient = lazy(() =>
 	import("@/components/dashboard-mesh-gradient").then((m) => ({
@@ -18,10 +19,10 @@ function DashboardGradientFallback() {
 			className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
 			style={{
 				background: `
-					radial-gradient(ellipse 80% 70% at 20% 30%, #B34BD0 0%, transparent 55%),
-					radial-gradient(ellipse 70% 80% at 80% 20%, #003FFF 0%, transparent 50%),
-					radial-gradient(ellipse 60% 50% at 60% 80%, #3511A5 0%, transparent 55%),
-					linear-gradient(135deg, #130437 0%, #210751 45%, #130437 100%)
+					radial-gradient(ellipse 80% 70% at 20% 30%, ${DASHBOARD_FALLBACK_COLORS.topBlob} 0%, transparent 55%),
+					radial-gradient(ellipse 70% 80% at 80% 20%, ${DASHBOARD_FALLBACK_COLORS.rightBlob} 0%, transparent 50%),
+					radial-gradient(ellipse 60% 50% at 60% 80%, ${DASHBOARD_FALLBACK_COLORS.bottomBlob} 0%, transparent 55%),
+					linear-gradient(135deg, ${DASHBOARD_FALLBACK_COLORS.bgStart} 0%, ${DASHBOARD_FALLBACK_COLORS.bgMid} 45%, ${DASHBOARD_FALLBACK_COLORS.bgStart} 100%)
 				`,
 			}}
 		/>
@@ -46,7 +47,7 @@ function isWebGLSupported(): boolean {
 			window.WebGLRenderingContext &&
 			(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
 		);
-	} catch (e) {
+	} catch (_e) {
 		return false;
 	}
 }

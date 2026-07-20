@@ -27,13 +27,14 @@ export const Route = createFileRoute("/dashboard")({
 	component: Dashboard,
 });
 
+const PRIMARY_CHROME_CLASSES = "border-primary/15 bg-primary/10 text-primary";
+
 const sections = [
 	{
 		to: "/characters",
 		title: "Personagens",
 		description: "Visão narrativa",
 		Icon: User,
-		accent: "text-violet-300",
 		key: "characters" as const,
 	},
 	{
@@ -41,7 +42,6 @@ const sections = [
 		title: "NPCs",
 		description: "Aliados, inimigos e mistérios",
 		Icon: Users,
-		accent: "text-fuchsia-300",
 		key: "npcs" as const,
 	},
 	{
@@ -49,7 +49,6 @@ const sections = [
 		title: "Sessões",
 		description: "Crônicas das aventuras",
 		Icon: ScrollText,
-		accent: "text-amber-300",
 		key: "sessions" as const,
 	},
 	{
@@ -57,7 +56,6 @@ const sections = [
 		title: "Itens",
 		description: "Tesouros e relíquias",
 		Icon: Package,
-		accent: "text-emerald-300",
 		key: "items" as const,
 	},
 	{
@@ -65,7 +63,6 @@ const sections = [
 		title: "Locais",
 		description: "Reinos e fronteiras",
 		Icon: MapIcon,
-		accent: "text-rose-300",
 		key: "locations" as const,
 	},
 	{
@@ -73,7 +70,6 @@ const sections = [
 		title: "Lore",
 		description: "História e conhecimento",
 		Icon: BookOpen,
-		accent: "text-indigo-300",
 		key: "lores" as const,
 	},
 ];
@@ -204,8 +200,8 @@ function Dashboard() {
 
 			<section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 p-7 shadow-xl shadow-black/5 sm:p-10">
 				<DashboardHeroBackground />
-				{/* Dark overlay for better text contrast */}
-				<div className="absolute inset-0 z-[1] bg-black/35 rounded-[1.75rem]" />
+				{/* Soft vignette for text contrast without flattening the gradient */}
+				<div className="absolute inset-0 z-[1] rounded-[1.75rem] bg-gradient-to-br from-black/25 via-transparent to-black/20" />
 				<div className="relative z-[2] grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
 					<div className="max-w-3xl">
 						<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">
@@ -329,7 +325,6 @@ function Dashboard() {
 							label={section.title}
 							value={counts[section.key]}
 							Icon={section.Icon}
-							iconColor={section.accent}
 							isLoading={isLoading}
 						/>
 					</div>
@@ -354,7 +349,6 @@ function Dashboard() {
 								title={section.title}
 								description={section.description}
 								Icon={section.Icon}
-								iconColor={section.accent}
 								count={counts[section.key]}
 								isLoading={isLoading}
 							/>
@@ -385,18 +379,10 @@ interface StatPillProps {
 	label: string;
 	value: number;
 	Icon: LucideIcon;
-	iconColor: string;
 	isLoading?: boolean;
 }
 
-function StatPill({
-	to,
-	label,
-	value,
-	Icon,
-	iconColor,
-	isLoading,
-}: StatPillProps) {
+function StatPill({ to, label, value, Icon, isLoading }: StatPillProps) {
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-between rounded-2xl border border-border/70 bg-card-elevated px-4 py-4 shadow-sm shadow-black/5">
@@ -422,8 +408,10 @@ function StatPill({
 					{value}
 				</span>
 			</div>
-			<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-background/60">
-				<Icon className={`h-4 w-4 ${iconColor}`} strokeWidth={1.7} />
+			<div
+				className={`flex h-8 w-8 items-center justify-center rounded-lg ${PRIMARY_CHROME_CLASSES}`}
+			>
+				<Icon className="h-4 w-4" strokeWidth={1.7} />
 			</div>
 		</Link>
 	);
@@ -434,7 +422,6 @@ interface DashboardCardProps {
 	title: string;
 	description: string;
 	Icon: LucideIcon;
-	iconColor: string;
 	count: number;
 	isLoading?: boolean;
 }
@@ -444,7 +431,6 @@ function DashboardCard({
 	title,
 	description,
 	Icon,
-	iconColor,
 	count,
 	isLoading,
 }: DashboardCardProps) {
@@ -452,7 +438,7 @@ function DashboardCard({
 		return (
 			<div className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5">
 				<div className="flex items-start justify-between gap-4">
-					<Skeleton className="h-11 w-11 rounded-xl" />
+					<Skeleton className="h-11 w-11 rounded-2xl" />
 					<div className="flex flex-col items-end gap-2">
 						<Skeleton className="h-8 w-12" />
 						<Skeleton className="h-3 w-16" />
@@ -478,7 +464,7 @@ function DashboardCard({
 			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 			<div className="flex items-start justify-between gap-4">
 				<div
-					className={`flex h-11 w-11 shrink-0 items-center justify-center ${iconColor}`}
+					className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${PRIMARY_CHROME_CLASSES}`}
 				>
 					<Icon className="h-6 w-6" strokeWidth={1.5} />
 				</div>
@@ -524,7 +510,7 @@ function MetricCard({
 }) {
 	if (isLoading) {
 		return (
-			<div className="rounded-2xl border border-border/70 bg-background/80 md:bg-background/45 p-5 shadow-sm shadow-black/5 md:backdrop-blur-sm">
+			<div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-sm shadow-black/5 backdrop-blur-sm">
 				<div className="flex items-center justify-between gap-3">
 					<Skeleton className="h-3 w-16" />
 					<Skeleton className="h-4 w-4 rounded" />
@@ -536,19 +522,17 @@ function MetricCard({
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-background/80 md:bg-background/45 p-5 shadow-sm shadow-black/5 md:backdrop-blur-sm">
+		<div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-sm shadow-black/5 backdrop-blur-sm">
 			<div className="flex items-center justify-between gap-3">
-				<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+				<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
 					{label}
 				</p>
-				<Icon className="h-4 w-4 text-primary" strokeWidth={1.7} />
+				<Icon className="h-4 w-4 text-white" strokeWidth={1.7} />
 			</div>
-			<p className="font-display mt-3 text-3xl font-bold leading-none text-foreground">
+			<p className="font-display mt-3 text-3xl font-bold leading-none text-white">
 				{value}
 			</p>
-			<p className="mt-2 truncate text-[12px] text-muted-foreground">
-				{description}
-			</p>
+			<p className="mt-2 truncate text-[12px] text-white/80">{description}</p>
 		</div>
 	);
 }

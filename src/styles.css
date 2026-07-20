@@ -57,7 +57,7 @@
     --sidebar-ring: oklch(0.50 0.22 285 / 50%);
 
     /* Hero / onboarding deep purple (matches DASHBOARD_MESH_COLORS[0]) */
-    --dashboard-deep: #130437;
+    --dashboard-deep: #10081f;
 
     /* ─── transitions-dev tokens ─── */
     /* Card resize */
@@ -156,7 +156,7 @@
     --sidebar-border: oklch(0.65 0.05 290 / 10%);
     --sidebar-ring: oklch(0.66 0.20 290 / 45%);
 
-    --dashboard-deep: #130437;
+    --dashboard-deep: #10081f;
 }
 
 @theme inline {
