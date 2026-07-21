@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { useActiveWorld } from "@/lib/worldbuilding/hooks";
 import {
 	campaignPerWorldLimitError,
 	countOwnedCampaignsInWorld,
@@ -21,7 +22,6 @@ import {
 	maxOwnedWorlds,
 	worldLimitError,
 } from "@/lib/worldbuilding/plan-limits";
-import { useActiveWorld } from "@/lib/worldbuilding/hooks";
 import { CampaignForm } from "./campaign-form";
 import { Button } from "./ui/button";
 import {
@@ -147,9 +147,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	}
 
 	function openWorldForm() {
-		if (
-			countOwnedWorlds(worlds, user?.id) >= maxOwnedWorlds(userPlan)
-		) {
+		if (countOwnedWorlds(worlds, user?.id) >= maxOwnedWorlds(userPlan)) {
 			toast.error({
 				title: "Limite atingido",
 				description: worldLimitError(userPlan),
@@ -233,29 +231,31 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							</span>
 						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent className="w-56">
-							<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.16em]">
-								Mundos
-							</DropdownMenuLabel>
-							{worlds.map((world) => (
-								<DropdownMenuItem
-									key={world.id}
-									onClick={() => void switchWorld(world.id)}
-									className="gap-2.5"
-								>
-									<Globe2 className="h-3.5 w-3.5 text-sky-300" />
-									<span className="min-w-0 flex-1 truncate text-[12px]">
-										{world.name}
-									</span>
-									{world.id === activeWorld?.id && (
-										<Check className="h-3.5 w-3.5 text-primary" />
-									)}
-								</DropdownMenuItem>
-							))}
-							{worlds.length === 0 && (
-								<p className="px-2.5 py-2 text-[11px] text-muted-foreground">
-									Nenhum Mundo acessível.
-								</p>
-							)}
+							<DropdownMenuGroup>
+								<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.16em]">
+									Mundos
+								</DropdownMenuLabel>
+								{worlds.map((world) => (
+									<DropdownMenuItem
+										key={world.id}
+										onClick={() => void switchWorld(world.id)}
+										className="gap-2.5"
+									>
+										<Globe2 className="h-3.5 w-3.5 text-sky-300" />
+										<span className="min-w-0 flex-1 truncate text-[12px]">
+											{world.name}
+										</span>
+										{world.id === activeWorld?.id && (
+											<Check className="h-3.5 w-3.5 text-primary" />
+										)}
+									</DropdownMenuItem>
+								))}
+								{worlds.length === 0 && (
+									<p className="px-2.5 py-2 text-[11px] text-muted-foreground">
+										Nenhum Mundo acessível.
+									</p>
+								)}
+							</DropdownMenuGroup>
 						</DropdownMenuSubContent>
 					</DropdownMenuSub>
 
