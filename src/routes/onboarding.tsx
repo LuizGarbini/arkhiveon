@@ -19,6 +19,7 @@ import {
 	validateOnboardingName,
 } from "@/lib/onboarding-validation";
 import { useRPGStore } from "@/lib/store";
+import { remoteErrorMessage } from "@/lib/store/helpers";
 import { cn } from "@/lib/utils";
 import { countOwnedWorlds } from "@/lib/worldbuilding/plan-limits";
 
@@ -106,7 +107,7 @@ function OnboardingPage() {
 		try {
 			await createWorld(normalizeOnboardingName(worldName));
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Erro ao criar o Mundo.");
+			setError(remoteErrorMessage(err) || "Erro ao criar o Mundo.");
 		} finally {
 			setBusy(false);
 		}
@@ -150,9 +151,7 @@ function OnboardingPage() {
 			});
 			void navigate({ to: "/dashboard", replace: true });
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Erro ao criar a campanha.",
-			);
+			setError(remoteErrorMessage(err) || "Erro ao criar a campanha.");
 		} finally {
 			setBusy(false);
 		}

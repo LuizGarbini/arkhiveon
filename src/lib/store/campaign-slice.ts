@@ -15,6 +15,7 @@ import {
 	resolveWorldIdForNewCampaign,
 	updateRemoteWorld,
 } from "../worldbuilding/world-service";
+import { remoteErrorMessage } from "./helpers";
 import type {
 	Campaign,
 	Invite,
@@ -335,15 +336,8 @@ export const createCampaignSlice: StateCreator<
 					createdAt: Date.now(),
 				};
 
-				set((state) => ({
-					campaigns: [...state.campaigns, campaign],
-					activeWorldId: worldId,
-					worlds: createdWorld
-						? [...state.worlds.filter((w) => w.id !== createdWorld.id), createdWorld]
-						: state.worlds,
-					syncError: null,
-				}));
-
+				// Não atualizar o store antes do remoto: evita flash do onboarding
+				// (campanhaCount > 0) e rollback quando o insert falha.
 				const { error: campaignError } = await supabase
 					.from(SUPABASE_TABLES.campaigns)
 					.insert({
@@ -354,10 +348,12 @@ export const createCampaignSlice: StateCreator<
 						world_id: worldId,
 					});
 				if (campaignError) {
-					throw campaignError;
+					throw new Error(
+						`falha ao salvar campanha: ${remoteErrorMessage(campaignError)}`,
+						{ cause: campaignError },
+					);
 				}
 
-				// Criar membership 'owner' para o criador
 				const { error: membershipError } = await supabase
 					.from(SUPABASE_TABLES.memberships)
 					.insert({
@@ -366,21 +362,36 @@ export const createCampaignSlice: StateCreator<
 						user_id: user.id,
 					});
 				if (membershipError) {
-					// Rollback remote campaign insertion
 					await supabase.from(SUPABASE_TABLES.campaigns).delete().eq("id", id);
-					throw membershipError;
+					throw new Error(
+						`falha ao criar membership do owner: ${remoteErrorMessage(membershipError)}`,
+						{ cause: membershipError },
+					);
 				}
+
+				set((state) => ({
+					campaigns: [...state.campaigns, campaign],
+					activeWorldId: worldId,
+					worlds: createdWorld
+						? [
+								...state.worlds.filter((w) => w.id !== createdWorld.id),
+								createdWorld,
+							]
+						: state.worlds,
+					syncError: null,
+				}));
 
 				// Garante Mundo Padrão recém-criado na lista local
 				await get().loadWorlds();
 
 				return campaign;
 			} catch (error) {
-				const errMsg = error instanceof Error ? error.message : String(error);
+				const detail = remoteErrorMessage(error);
 				set({
 					campaigns: originalCampaigns,
-					syncError: `Erro ao criar campanha: ${errMsg}`,
+					syncError: `Erro ao criar campanha: ${detail}`,
 				});
+				console.error("[createCampaign]", detail, error);
 				throw error;
 			}
 		} else {
