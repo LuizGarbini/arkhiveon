@@ -186,10 +186,41 @@ export function systemLabel(value: string): string {
 	return RPG_SYSTEMS.find((s) => s.value === value)?.label || value;
 }
 
+function appendPostgrestContext(
+	message: string,
+	error: Record<string, unknown>,
+): string {
+	const parts = [message];
+	const code = error.code;
+	const details = error.details;
+	const hint = error.hint;
+	if (typeof code === "string" && code.trim()) parts.push(`[${code}]`);
+	if (typeof details === "string" && details.trim()) parts.push(details);
+	if (typeof hint === "string" && hint.trim()) parts.push(`hint: ${hint}`);
+	return parts.join(" — ");
+}
+
+/** Human-readable sync error; never returns "[object Object]". */
 export function remoteErrorMessage(error: unknown): string {
-	if (error instanceof Error) return error.message;
-	if (typeof error === "object" && error && "message" in error) {
-		return String((error as { message: unknown }).message);
+	if (typeof error === "string" && error.trim()) return error;
+	if (error instanceof Error) {
+		return error.message || error.name || "Erro desconhecido";
+	}
+	if (typeof error === "object" && error !== null) {
+		const record = error as Record<string, unknown>;
+		if (
+			"message" in record &&
+			record.message != null &&
+			record.message !== ""
+		) {
+			return appendPostgrestContext(String(record.message), record);
+		}
+		try {
+			const json = JSON.stringify(error);
+			if (json && json !== "{}") return json;
+		} catch {
+			// ignore circular / non-serializable
+		}
 	}
 	return "Falha ao sincronizar com o Supabase.";
 }
