@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Globe2, Swords } from "lucide-react";
+import { ArrowRight, Globe2, LogOut, Swords } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { InviteBanner } from "@/components/invite-banner";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingPage() {
 	const navigate = useNavigate();
 	const toast = useToast();
-	const { user } = useAuth();
+	const { user, signOut } = useAuth();
 	const worldNameId = useId();
 	const campaignNameId = useId();
 	const campaignDescId = useId();
@@ -43,6 +43,7 @@ function OnboardingPage() {
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
 	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
 	const loadInvites = useRPGStore((s) => s.loadInvites);
+	const clearLocalData = useRPGStore((s) => s.clearLocalData);
 
 	const ownedWorldCount = useMemo(
 		() => countOwnedWorlds(worlds, user?.id),
@@ -55,6 +56,7 @@ function OnboardingPage() {
 	const [campaignDesc, setCampaignDesc] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [isSigningOut, setIsSigningOut] = useState(false);
 
 	const ownedWorld = useMemo(
 		() => worlds.find((w) => w.ownerUserId === user?.id) ?? null,
@@ -155,6 +157,28 @@ function OnboardingPage() {
 		} finally {
 			setBusy(false);
 		}
+	}
+
+	async function handleSignOut() {
+		if (isSigningOut || busy) return;
+		setIsSigningOut(true);
+		const signOutError = await signOut();
+		setIsSigningOut(false);
+
+		if (signOutError) {
+			toast.error({
+				title: "Não foi possível sair",
+				description: signOutError,
+			});
+			return;
+		}
+
+		clearLocalData();
+		toast.success({
+			title: "Sessão encerrada",
+			description: "Entre de novo com a conta certa quando quiser.",
+		});
+		void navigate({ to: "/auth", search: { mode: "login" }, replace: true });
 	}
 
 	if (hasLoadedCampaigns && !needsOnboarding) {
@@ -330,6 +354,28 @@ function OnboardingPage() {
 							</form>
 						)}
 					</div>
+				</div>
+
+				<div className="flex flex-col items-center gap-2 text-center">
+					{user?.email ? (
+						<p className="max-w-sm truncate text-[12px] text-white/45">
+							Conectado como{" "}
+							<span className="text-white/70">{user.email}</span>
+						</p>
+					) : null}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						loading={isSigningOut}
+						loadingText="Saindo..."
+						disabled={busy || isSigningOut}
+						onClick={() => void handleSignOut()}
+						className="h-9 gap-2 text-white/60 hover:bg-white/10 hover:text-white"
+					>
+						<LogOut className="h-3.5 w-3.5" />
+						Sair desta conta
+					</Button>
 				</div>
 			</div>
 		</div>
