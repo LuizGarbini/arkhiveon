@@ -129,7 +129,13 @@ function ProtectedLayout() {
 			await loadCampaigns();
 
 			const state = useRPGStore.getState();
-			if (state.campaigns.length > 0 && !state.activeCampaignId) {
+			// loadCampaigns já resolve campanha/mundo respeitando activeWorldId.
+			// Só auto-escolhe a primeira mesa global se ainda não há contexto.
+			if (
+				state.campaigns.length > 0 &&
+				!state.activeCampaignId &&
+				!state.activeWorldId
+			) {
 				await useRPGStore.getState().switchCampaign(state.campaigns[0].id);
 			}
 

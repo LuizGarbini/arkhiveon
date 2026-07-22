@@ -8,6 +8,7 @@ import {
 	maxOwnedWorlds,
 	worldLimitError,
 } from "../worldbuilding/plan-limits";
+import { resolveActiveContextAfterCampaignLoad } from "../worldbuilding/resolve-active-context";
 import { isWorldStaffInWorld } from "../worldbuilding/visibility";
 import {
 	createRemoteWorld,
@@ -253,20 +254,20 @@ export const createCampaignSlice: StateCreator<
 			// Campanhas já carregaram; mundos podem falhar sem bloquear a sessão
 		}
 
-		// Se não há campanha ativa, ou a ativa não existe mais, selecionar a primeira
 		const state = get();
-		const activeId =
-			state.activeCampaignId &&
-			campaigns.some((campaign) => campaign.id === state.activeCampaignId)
-				? state.activeCampaignId
-				: (campaigns[0]?.id ?? null);
-		if (activeId) {
-			if (activeId !== state.activeCampaignId) {
-				set({ activeCampaignId: activeId });
-			}
+		const resolved = resolveActiveContextAfterCampaignLoad({
+			campaigns,
+			activeCampaignId: state.activeCampaignId,
+			activeWorldId: state.activeWorldId,
+		});
 
-			// Carregar o plano do dono da campanha ativa
-			const activeCamp = campaigns.find((c) => c.id === activeId);
+		set({
+			activeCampaignId: resolved.campaignId,
+			activeWorldId: resolved.worldId,
+		});
+
+		if (resolved.campaignId) {
+			const activeCamp = campaigns.find((c) => c.id === resolved.campaignId);
 			if (activeCamp) {
 				const { data: planData } = await supabase
 					.from(SUPABASE_TABLES.userPlans)
@@ -276,12 +277,8 @@ export const createCampaignSlice: StateCreator<
 				const ownerPlan = (planData as any)?.plan || "free";
 				set({
 					activeCampaignOwnerPlan: ownerPlan as UserPlan,
-					activeWorldId: activeCamp.worldId,
 				});
 			}
-		} else {
-			const firstWorld = get().worlds[0];
-			if (firstWorld) set({ activeWorldId: firstWorld.id });
 		}
 	},
 
@@ -289,6 +286,8 @@ export const createCampaignSlice: StateCreator<
 		const supabase = getSupabase();
 		const id = crypto.randomUUID();
 		const originalCampaigns = get().campaigns;
+		const originalActiveCampaignId = get().activeCampaignId;
+		const originalActiveWorldId = get().activeWorldId;
 
 		if (supabase) {
 			try {
@@ -371,6 +370,7 @@ export const createCampaignSlice: StateCreator<
 
 				set((state) => ({
 					campaigns: [...state.campaigns, campaign],
+					activeCampaignId: id,
 					activeWorldId: worldId,
 					worlds: createdWorld
 						? [
@@ -389,6 +389,8 @@ export const createCampaignSlice: StateCreator<
 				const detail = remoteErrorMessage(error);
 				set({
 					campaigns: originalCampaigns,
+					activeCampaignId: originalActiveCampaignId,
+					activeWorldId: originalActiveWorldId,
 					syncError: `Erro ao criar campanha: ${detail}`,
 				});
 				console.error("[createCampaign]", detail, error);
