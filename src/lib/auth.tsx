@@ -144,8 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = false;
+				const cleanEmail = email.trim().toLowerCase();
 				const { error } = await supabase.auth.signInWithPassword({
-					email,
+					email: cleanEmail,
 					password,
 				});
 				return error?.message ?? null;
@@ -153,11 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			signUp: async (name, email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = true;
+				const cleanEmail = email.trim().toLowerCase();
 				const { data, error } = await supabase.auth.signUp({
-					email,
+					email: cleanEmail,
 					password,
 					options: {
-						data: { name },
+						data: { name: name.trim() },
 					},
 				});
 				if (error) {
@@ -187,9 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			},
 			resetPassword: async (email) => {
 				if (!supabase) return "Supabase não está configurado.";
-				const { error } = await supabase.auth.resetPasswordForEmail(email, {
-					redirectTo: `${window.location.origin}/auth?mode=reset`,
-				});
+				const cleanEmail = email.trim().toLowerCase();
+				const { error } = await supabase.auth.resetPasswordForEmail(
+					cleanEmail,
+					{
+						redirectTo: `${window.location.origin}/auth?mode=reset`,
+					},
+				);
 				return error?.message ?? null;
 			},
 			updatePassword: async (password) => {

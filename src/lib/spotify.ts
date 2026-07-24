@@ -12,14 +12,6 @@ function getSpotifyRedirectUri() {
 	}
 
 	const currentOriginRedirect = `${window.location.origin}/spotify-callback`;
-	const isLocalDev =
-		window.location.hostname === "localhost" ||
-		window.location.hostname === "127.0.0.1";
-
-	if (isLocalDev) {
-		return currentOriginRedirect;
-	}
-
 	return CONFIGURED_REDIRECT_URI || currentOriginRedirect;
 }
 

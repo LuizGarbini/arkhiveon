@@ -43,9 +43,37 @@ serve(async (req) => {
 		const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
 		const stripePriceId = Deno.env.get("STRIPE_PRO_PRICE_ID");
 
-		// Parse origin from request for redirect URLs
+		// Parse and validate origin from request against allowlist
 		const body = await req.json().catch(() => ({}));
-		const origin = body.origin || "http://localhost:3000";
+		const rawOrigin = (body.origin || req.headers.get("origin") || "").trim();
+
+		const ALLOWED_ORIGINS = [
+			"https://www.arkhiveon.com.br",
+			"https://arkhiveon.com.br",
+			"https://arkhiveon.vercel.app",
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://127.0.0.1:5173",
+		];
+
+		const isAllowedOrigin = (urlStr: string) => {
+			if (!urlStr) return false;
+			if (ALLOWED_ORIGINS.includes(urlStr)) return true;
+			try {
+				const parsed = new URL(urlStr);
+				return (
+					parsed.hostname.endsWith(".vercel.app") ||
+					parsed.hostname === "localhost" ||
+					parsed.hostname === "127.0.0.1"
+				);
+			} catch {
+				return false;
+			}
+		};
+
+		const origin = isAllowedOrigin(rawOrigin)
+			? rawOrigin
+			: "https://www.arkhiveon.com.br";
 
 		// ── Developer mock mode ──────────────────────────────────────────
 		// When STRIPE_SECRET_KEY is not configured, skip Stripe entirely

@@ -300,7 +300,10 @@ export const createCampaignSlice: StateCreator<
 
 				if (options?.worldId) {
 					const known = get().worlds.some((w) => w.id === options.worldId);
-					const staffOnWorld = isWorldStaffInWorld(get().campaigns, options.worldId);
+					const staffOnWorld = isWorldStaffInWorld(
+						get().campaigns,
+						options.worldId,
+					);
 					const ownsWorld = get().worlds.some(
 						(w) => w.id === options.worldId && w.ownerUserId === user.id,
 					);
@@ -643,7 +646,7 @@ export const createCampaignSlice: StateCreator<
 
 		const { error } = await supabase.from(SUPABASE_TABLES.invites).insert({
 			campaign_id: campaignId,
-			email: email.trim(),
+			email: email.trim().toLowerCase(),
 			role: role,
 			status: "pending",
 			invited_by: user.id,
