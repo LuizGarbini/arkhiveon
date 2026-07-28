@@ -20,6 +20,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
+	Check,
 	EyeOff,
 	GitFork,
 	Layers,
@@ -454,7 +455,7 @@ function FamilyFlowCanvas({
 							pannable
 							zoomable
 							nodeColor="var(--primary)"
-							maskColor="rgba(10, 8, 20, 0.78)"
+							maskColor="color-mix(in oklch, var(--card) 85%, transparent)"
 							className="family-flow-minimap"
 						/>
 						<Panel position="top-left" className="hidden sm:block">
@@ -475,120 +476,18 @@ function FamilyFlowCanvas({
 					</ReactFlow>
 				</div>
 
-				{/* Right Column: Persistent Inspector & Directory (4 Cols) */}
-				<aside className="lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]">
-					<div>
-						<h3 className="font-display text-base font-bold text-foreground flex items-center justify-between">
-							<span>Diretório da Linhagem</span>
-							<span className="text-xs font-normal text-muted-foreground">
-								{characters.length} fichas
-							</span>
-						</h3>
-						<p className="mt-0.5 text-xs text-muted-foreground">
-							Selecione um personagem para destacar vínculos.
-						</p>
-
-						<div className="mt-3 relative">
-							<Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-							<Input
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								placeholder="Buscar por nome ou raça..."
-								className="pl-9 text-xs"
-							/>
-						</div>
-					</div>
-
-					{selectedCharacter && (
-						<div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 transition-all">
-							<div className="flex items-center gap-3">
-								<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-primary/30 bg-primary/10">
-									{selectedCharacter.imageUrl ? (
-										<img
-											src={selectedCharacter.imageUrl}
-											alt={selectedCharacter.characterName}
-											className="h-full w-full object-cover"
-										/>
-									) : (
-										<User className="h-full w-full p-2 text-primary" />
-									)}
-								</div>
-								<div className="min-w-0">
-									<h4 className="font-display font-bold text-sm text-foreground truncate">
-										{selectedCharacter.characterName}
-									</h4>
-									<p className="text-[11px] text-muted-foreground truncate">
-										{[selectedCharacter.race, selectedCharacter.class]
-											.filter(Boolean)
-											.join(" · ") || "Sem classe/raça"}
-									</p>
-								</div>
-							</div>
-							<div className="mt-2.5 flex items-center justify-between text-xs pt-2.5 border-t border-border/60">
-								<span className="text-muted-foreground">Vínculos Diretos:</span>
-								<span className="font-bold text-primary">
-									{selectedCharacter.familyRelations?.length ?? 0}
-								</span>
-							</div>
-							<Link
-								to="/sheets/$characterId"
-								params={{ characterId: selectedCharacter.id }}
-								className="mt-2.5 block text-center rounded-lg bg-primary text-primary-foreground py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
-							>
-								Abrir Ficha do Personagem
-							</Link>
-						</div>
-					)}
-
-					<div className="flex flex-col gap-1.5">
-						<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-							Lista de Integrantes
-						</span>
-						{filteredCharacters.map((char) => {
-							const isSelected = char.id === selectedCharacterId;
-							return (
-								<button
-									type="button"
-									key={char.id}
-									onClick={() => {
-										setSelectedCharacterId(char.id);
-										setSelectedEdgeId(null);
-									}}
-									className={`flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
-										isSelected
-											? "border-primary bg-primary/10"
-											: "border-border/60 bg-background/50 hover:border-primary/40"
-									}`}
-								>
-									<div className="flex items-center gap-2.5 min-w-0">
-										<div className="h-7 w-7 rounded-lg overflow-hidden border border-border/70 shrink-0">
-											{char.imageUrl ? (
-												<img
-													src={char.imageUrl}
-													alt={char.characterName}
-													className="h-full w-full object-cover"
-												/>
-											) : (
-												<User className="h-full w-full p-1.5 text-muted-foreground" />
-											)}
-										</div>
-										<div className="min-w-0">
-											<p className="truncate text-xs font-bold text-foreground">
-												{char.characterName}
-											</p>
-											<p className="truncate text-[10px] text-muted-foreground">
-												{char.race || "Sem raça"}
-											</p>
-										</div>
-									</div>
-									<span className="text-[10px] px-2 py-0.5 rounded-full border border-border/60 bg-background text-muted-foreground shrink-0">
-										{char.familyRelations?.length ?? 0} laços
-									</span>
-								</button>
-							);
-						})}
-					</div>
-				</aside>
+				<LineageSidebar
+					characters={characters}
+					filteredCharacters={filteredCharacters}
+					searchQuery={searchQuery}
+					onSearchQueryChange={setSearchQuery}
+					selectedCharacter={selectedCharacter}
+					selectedCharacterId={selectedCharacterId}
+					onSelectCharacter={(id) => {
+						setSelectedCharacterId(id);
+						setSelectedEdgeId(null);
+					}}
+				/>
 			</div>
 
 			<GraphSidePanel
@@ -889,17 +788,12 @@ function GraphSidePanel({
 							Personagem Selecionado
 						</p>
 						<div className="mt-3 flex items-center gap-3">
-							<div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-								{character.imageUrl ? (
-									<img
-										src={character.imageUrl}
-										alt={character.characterName}
-										className="h-full w-full object-cover"
-									/>
-								) : (
-									<User className="h-5 w-5" />
-								)}
-							</div>
+							<CharacterAvatar
+								imageUrl={character.imageUrl}
+								characterName={character.characterName}
+								className="h-12 w-12 rounded-2xl border-primary/20 bg-primary/10"
+								fallbackIconClassName="h-5 w-5 text-primary"
+							/>
 							<div className="min-w-0">
 								<h3 className="font-display truncate text-lg font-bold text-foreground">
 									{character.characterName || "Ficha sem nome"}
@@ -1057,21 +951,28 @@ function ConnectionEditor({
 			</div>
 
 			<div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<label className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs font-medium text-foreground cursor-pointer hover:bg-background/80 transition-colors">
-					<input
-						type="checkbox"
-						checked={connection.isSecret}
-						onChange={(event) =>
-							onChange({
-								...connection,
-								isSecret: event.target.checked,
-								error: undefined,
-							})
-						}
-						className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 accent-primary"
-					/>
+				<button
+					type="button"
+					onClick={() =>
+						onChange({
+							...connection,
+							isSecret: !connection.isSecret,
+							error: undefined,
+						})
+					}
+					className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-background/80"
+				>
+					<span
+						className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+							connection.isSecret
+								? "border-primary bg-primary text-primary-foreground"
+								: "border-border/70 bg-background"
+						}`}
+					>
+						{connection.isSecret && <Check className="h-3 w-3 stroke-[3]" />}
+					</span>
 					<span>Segredo do Mestre</span>
-				</label>
+				</button>
 
 				<div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
 					<Button
@@ -1106,5 +1007,153 @@ function ConnectionEditor({
 function relationLabel(kind: FamilyRelationKind) {
 	return (
 		relationOptions.find((option) => option.value === kind)?.label ?? "Parente"
+	);
+}
+
+function CharacterAvatar({
+	imageUrl,
+	characterName,
+	className = "h-7 w-7 rounded-lg",
+	fallbackIconClassName = "h-full w-full p-1.5 text-muted-foreground",
+}: {
+	imageUrl?: string;
+	characterName?: string;
+	className?: string;
+	fallbackIconClassName?: string;
+}) {
+	return (
+		<div
+			className={`shrink-0 overflow-hidden border border-border/70 ${className}`}
+		>
+			{imageUrl ? (
+				<img
+					src={imageUrl}
+					alt={characterName || "Avatar do personagem"}
+					className="h-full w-full object-cover"
+				/>
+			) : (
+				<User className={fallbackIconClassName} />
+			)}
+		</div>
+	);
+}
+
+function LineageSidebar({
+	characters,
+	filteredCharacters,
+	searchQuery,
+	onSearchQueryChange,
+	selectedCharacter,
+	selectedCharacterId,
+	onSelectCharacter,
+}: {
+	characters: Character[];
+	filteredCharacters: Character[];
+	searchQuery: string;
+	onSearchQueryChange: (query: string) => void;
+	selectedCharacter?: Character;
+	selectedCharacterId: string | null;
+	onSelectCharacter: (id: string | null) => void;
+}) {
+	return (
+		<aside className="lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]">
+			<div>
+				<h3 className="font-display text-base font-bold text-foreground flex items-center justify-between">
+					<span>Diretório da Linhagem</span>
+					<span className="text-xs font-normal text-muted-foreground">
+						{characters.length} fichas
+					</span>
+				</h3>
+				<p className="mt-0.5 text-xs text-muted-foreground">
+					Selecione um personagem para destacar vínculos.
+				</p>
+
+				<div className="mt-3 relative">
+					<Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Input
+						value={searchQuery}
+						onChange={(e) => onSearchQueryChange(e.target.value)}
+						placeholder="Buscar por nome ou raça..."
+						className="pl-9 text-xs"
+					/>
+				</div>
+			</div>
+
+			{selectedCharacter && (
+				<div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 transition-all">
+					<div className="flex items-center gap-3">
+						<CharacterAvatar
+							imageUrl={selectedCharacter.imageUrl}
+							characterName={selectedCharacter.characterName}
+							className="h-10 w-10 rounded-xl border-primary/30 bg-primary/10"
+							fallbackIconClassName="h-full w-full p-2 text-primary"
+						/>
+						<div className="min-w-0">
+							<h4 className="font-display font-bold text-sm text-foreground truncate">
+								{selectedCharacter.characterName}
+							</h4>
+							<p className="text-[11px] text-muted-foreground truncate">
+								{[selectedCharacter.race, selectedCharacter.class]
+									.filter(Boolean)
+									.join(" · ") || "Sem classe/raça"}
+							</p>
+						</div>
+					</div>
+					<div className="mt-2.5 flex items-center justify-between text-xs pt-2.5 border-t border-border/60">
+						<span className="text-muted-foreground">Vínculos Diretos:</span>
+						<span className="font-bold text-primary">
+							{selectedCharacter.familyRelations?.length ?? 0}
+						</span>
+					</div>
+					<Link
+						to="/sheets/$characterId"
+						params={{ characterId: selectedCharacter.id }}
+						className="mt-2.5 block text-center rounded-lg bg-primary text-primary-foreground py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+					>
+						Abrir Ficha do Personagem
+					</Link>
+				</div>
+			)}
+
+			<div className="flex flex-col gap-1.5">
+				<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+					Lista de Integrantes
+				</span>
+				{filteredCharacters.map((char) => {
+					const isSelected = char.id === selectedCharacterId;
+					return (
+						<button
+							type="button"
+							key={char.id}
+							onClick={() => onSelectCharacter(char.id)}
+							className={`flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+								isSelected
+									? "border-primary bg-primary/10"
+									: "border-border/60 bg-background/50 hover:border-primary/40"
+							}`}
+						>
+							<div className="flex items-center gap-2.5 min-w-0">
+								<CharacterAvatar
+									imageUrl={char.imageUrl}
+									characterName={char.characterName}
+									className="h-7 w-7 rounded-lg"
+								/>
+								<div className="min-w-0">
+									<p className="truncate text-xs font-bold text-foreground">
+										{char.characterName}
+									</p>
+									<p className="truncate text-[10px] text-muted-foreground">
+										{char.race || "Sem raça"}
+									</p>
+								</div>
+							</div>
+							<span className="text-[10px] px-2 py-0.5 rounded-full border border-border/60 bg-background text-muted-foreground shrink-0">
+								{char.familyRelations?.length ?? 0} laços
+							</span>
+						</button>
+					);
+				})}
+			</div>
+		</aside>
 	);
 }

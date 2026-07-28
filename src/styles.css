@@ -512,8 +512,8 @@
     border-radius: 0.9rem !important;
     background: var(--card) !important;
     box-shadow:
-      0 18px 45px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+      0 18px 45px color-mix(in oklch, black 50%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 5%, transparent) !important;
   }
 
   .family-flow-controls .react-flow__controls-button {
@@ -556,11 +556,11 @@
     border: 1px solid color-mix(in oklch, var(--primary) 35%, var(--border)) !important;
     border-radius: 1rem !important;
     background: var(--card) !important;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 18px 45px color-mix(in oklch, black 50%, transparent) !important;
   }
 
   .family-flow-minimap .react-flow__minimap-mask {
-    fill: rgba(10, 8, 20, 0.78) !important;
+    fill: color-mix(in oklch, var(--card) 85%, transparent) !important;
     stroke: var(--border) !important;
     stroke-width: 1px;
   }
