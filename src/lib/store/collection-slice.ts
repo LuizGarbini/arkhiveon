@@ -155,15 +155,21 @@ export const createCollectionSlice: StateCreator<
 				? [campaignId]
 				: (rawPayload.campaignIds ?? []);
 
+		const effectiveWorldId =
+			typeof rawPayload.worldId === "string" && rawPayload.worldId.trim() !== ""
+				? rawPayload.worldId.trim()
+				: worldId;
+
 		const payload = {
 			...rawPayload,
+			worldId: effectiveWorldId,
 			campaignIds: effectiveCampaignIds,
 		};
 
 		const created = generateEntry(
 			{
 				...itemDefaults,
-				...worldEntityDefaultsForCampaign(worldId, campaignId),
+				...worldEntityDefaultsForCampaign(effectiveWorldId, campaignId),
 			},
 			payload as Partial<Omit<Item, "id" | "createdAt">>,
 		) as Item;
@@ -331,14 +337,21 @@ export const createCollectionSlice: StateCreator<
 				? [campaignId]
 				: (location.campaignIds ?? []);
 
+		const effectiveWorldId =
+			typeof location.worldId === "string" && location.worldId.trim() !== ""
+				? location.worldId.trim()
+				: worldId;
+
 		const created = generateEntry(
 			{
 				...locationDefaults,
-				...worldEntityDefaultsForCampaign(worldId, campaignId),
+				...worldEntityDefaultsForCampaign(effectiveWorldId, campaignId),
 			},
-			{ ...location, campaignIds: effectiveCampaignIds } as Partial<
-				Omit<GameLocation, "id" | "createdAt">
-			>,
+			{
+				...location,
+				worldId: effectiveWorldId,
+				campaignIds: effectiveCampaignIds,
+			} as Partial<Omit<GameLocation, "id" | "createdAt">>,
 		) as GameLocation;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
@@ -499,15 +512,22 @@ export const createCollectionSlice: StateCreator<
 				? [campaignId]
 				: (lore.campaignIds ?? []);
 
+		const effectiveWorldId =
+			typeof lore.worldId === "string" && lore.worldId.trim() !== ""
+				? lore.worldId.trim()
+				: worldId;
+
 		const created = generateEntry(
 			{
 				...loreDefaults,
-				...worldEntityDefaultsForCampaign(worldId, campaignId),
+				...worldEntityDefaultsForCampaign(effectiveWorldId, campaignId),
 				...(lore.isSecret ? { visibility: "master_secret" as const } : {}),
 			},
-			{ ...lore, campaignIds: effectiveCampaignIds } as Partial<
-				Omit<Lore, "id" | "createdAt">
-			>,
+			{
+				...lore,
+				worldId: effectiveWorldId,
+				campaignIds: effectiveCampaignIds,
+			} as Partial<Omit<Lore, "id" | "createdAt">>,
 		) as Lore;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
