@@ -136,7 +136,9 @@ function LocationFormContent({
 	const isEdit = Boolean(location);
 	const nameId = useId();
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
+		"right",
+	);
 	const toast = useToast();
 
 	const addLocation = useRPGStore((state) => state.addLocation);
@@ -198,6 +200,9 @@ function LocationFormContent({
 						syncError ||
 						"Não foi possível salvar a localização. Verifique se você possui permissão para alterar o grimório.",
 				});
+				return;
+			}
+		}
 		setOpen(false);
 		if (createdId) {
 			void navigate({
@@ -236,188 +241,185 @@ function LocationFormContent({
 					)}
 				>
 					{tab === "basic" && (
-								<>
-									<FormSection title="Identificação">
-										<ImageUploader
-											value={imageUrl ?? ""}
-											onChange={(url) =>
-												setValue("imageUrl", url, { shouldDirty: true })
-											}
-											label="Imagem"
-											folder="locations"
-											libraryName={watchedValues.name}
-											size="md"
-										/>
-										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-											<Field
-												label="Nome"
-												htmlFor={nameId}
-												className="sm:col-span-2"
-											>
-												<Input
-													id={nameId}
-													placeholder="Ex: Cidade Livre de Greyhawk"
-													{...register("name", { required: true })}
-												/>
-											</Field>
-											<Field label="Tipo">
-												<Input
-													placeholder="Ex: Cidade, Caverna..."
-													{...register("type")}
-												/>
-											</Field>
-											<Field label="Região">
-												<Input
-													placeholder="Ex: Reino de Tethyr"
-													{...register("region")}
-												/>
-											</Field>
-											<Field label="Local pai" hint="Sub-localidade?">
-												<Input
-													placeholder="Ex: dentro de Cidade Livre"
-													{...register("parentLocation")}
-												/>
-											</Field>
-											<Field label="Nível de perigo">
-												<Select {...register("dangerLevel")}>
-													<option value="seguro">Seguro</option>
-													<option value="baixo">Baixo</option>
-													<option value="moderado">Moderado</option>
-													<option value="alto">Alto</option>
-													<option value="mortal">Mortal</option>
-												</Select>
-											</Field>
-											<Field label="Clima">
-												<Input
-													placeholder="Ex: Temperado"
-													{...register("climate")}
-												/>
-											</Field>
-											<Field label="Terreno">
-												<Input
-													placeholder="Ex: Floresta densa"
-													{...register("terrain")}
-												/>
-											</Field>
-										</div>
-										<Field label="Descrição">
-											<Textarea
-												rows={3}
-												placeholder="Como o local se parece à primeira vista?"
-												{...register("description")}
-											/>
-										</Field>
-									</FormSection>
-									<WorldEntityPublicationFields
-										control={control}
-										setValue={setValue}
-									/>
-								</>
-							)}
-
-							{tab === "society" && (
-								<FormSection title="Sociedade & Política">
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-										<Field label="População">
-											<Input
-												placeholder="Ex: ~5.000"
-												{...register("population")}
-											/>
-										</Field>
-										<Field label="Governo">
-											<Input
-												placeholder="Conselho, Rei..."
-												{...register("government")}
-											/>
-										</Field>
-										<Field label="Economia">
-											<Input
-												placeholder="Comércio, mineração..."
-												{...register("economy")}
-											/>
-										</Field>
-										<Field label="Habitantes notáveis">
-											<Input
-												placeholder="Personalidades importantes"
-												{...register("notableInhabitants")}
-											/>
-										</Field>
-									</div>
-									<Field label="Pontos de interesse">
-										<Textarea
-											rows={4}
-											placeholder="Templos, mercados, masmorras..."
-											{...register("keyFeatures")}
-										/>
-									</Field>
-									<Field label="Ganchos de aventura">
-										<Textarea
-											rows={3}
-											placeholder="Quests que podem surgir aqui."
-											{...register("hooks")}
-										/>
-									</Field>
-								</FormSection>
-							)}
-
-							{tab === "history" && (
-								<FormSection title="História & Mapa">
-									<Field label="História do local">
-										<Textarea
-											rows={6}
-											placeholder="Origens, eventos marcantes..."
-											{...register("history")}
-										/>
-									</Field>
-									<Field label="URL do mapa (opcional)">
-										<Input placeholder="https://..." {...register("mapUrl")} />
-									</Field>
-								</FormSection>
-							)}
-							{tab === "history" && (
-								<EntityLinkManager
-									value={watchedValues.entityLinks ?? []}
-									onChange={(links) =>
-										setValue("entityLinks", links, { shouldDirty: true })
+						<>
+							<FormSection title="Identificação">
+								<ImageUploader
+									value={imageUrl ?? ""}
+									onChange={(url) =>
+										setValue("imageUrl", url, { shouldDirty: true })
 									}
-									sourceValues={watchedValues as Record<string, unknown>}
-									currentEntity={{
-										entityKind: "location",
-										entityId: location?.id,
-									}}
+									label="Imagem"
+									folder="locations"
+									libraryName={watchedValues.name}
+									size="md"
 								/>
-							)}
-						</div>
-					</div>
-
-					<div className="flex items-center justify-between gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
-						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-							<input
-								type="checkbox"
-								className="h-3.5 w-3.5 rounded border-border accent-primary"
-								{...register("visited")}
+								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+									<Field
+										label="Nome"
+										htmlFor={nameId}
+										className="sm:col-span-2"
+									>
+										<Input
+											id={nameId}
+											placeholder="Ex: Cidade Livre de Greyhawk"
+											{...register("name", { required: true })}
+										/>
+									</Field>
+									<Field label="Tipo">
+										<Input
+											placeholder="Ex: Cidade, Caverna..."
+											{...register("type")}
+										/>
+									</Field>
+									<Field label="Região">
+										<Input
+											placeholder="Ex: Reino de Tethyr"
+											{...register("region")}
+										/>
+									</Field>
+									<Field label="Local pai" hint="Sub-localidade?">
+										<Input
+											placeholder="Ex: dentro de Cidade Livre"
+											{...register("parentLocation")}
+										/>
+									</Field>
+									<Field label="Nível de perigo">
+										<Select {...register("dangerLevel")}>
+											<option value="seguro">Seguro</option>
+											<option value="baixo">Baixo</option>
+											<option value="moderado">Moderado</option>
+											<option value="alto">Alto</option>
+											<option value="mortal">Mortal</option>
+										</Select>
+									</Field>
+									<Field label="Clima">
+										<Input
+											placeholder="Ex: Temperado"
+											{...register("climate")}
+										/>
+									</Field>
+									<Field label="Terreno">
+										<Input
+											placeholder="Ex: Floresta densa"
+											{...register("terrain")}
+										/>
+									</Field>
+								</div>
+								<Field label="Descrição">
+									<Textarea
+										rows={3}
+										placeholder="Como o local se parece à primeira vista?"
+										{...register("description")}
+									/>
+								</Field>
+							</FormSection>
+							<WorldEntityPublicationFields
+								control={control}
+								setValue={setValue}
 							/>
-							O grupo já visitou
-						</label>
-						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => setOpen(false)}
-							>
-								Cancelar
-							</Button>
-							<Button
-								type="submit"
-								size="sm"
-								loading={isSubmitting}
-								loadingText="Salvando..."
-							>
-								{isEdit ? "Salvar alterações" : "Criar Local"}
-							</Button>
-						</div>
-					</div>
-				</form>
+						</>
+					)}
+
+					{tab === "society" && (
+						<FormSection title="Sociedade & Política">
+							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<Field label="População">
+									<Input placeholder="Ex: ~5.000" {...register("population")} />
+								</Field>
+								<Field label="Governo">
+									<Input
+										placeholder="Conselho, Rei..."
+										{...register("government")}
+									/>
+								</Field>
+								<Field label="Economia">
+									<Input
+										placeholder="Comércio, mineração..."
+										{...register("economy")}
+									/>
+								</Field>
+								<Field label="Habitantes notáveis">
+									<Input
+										placeholder="Personalidades importantes"
+										{...register("notableInhabitants")}
+									/>
+								</Field>
+							</div>
+							<Field label="Pontos de interesse">
+								<Textarea
+									rows={4}
+									placeholder="Templos, mercados, masmorras..."
+									{...register("keyFeatures")}
+								/>
+							</Field>
+							<Field label="Ganchos de aventura">
+								<Textarea
+									rows={3}
+									placeholder="Quests que podem surgir aqui."
+									{...register("hooks")}
+								/>
+							</Field>
+						</FormSection>
+					)}
+
+					{tab === "history" && (
+						<FormSection title="História & Mapa">
+							<Field label="História do local">
+								<Textarea
+									rows={6}
+									placeholder="Origens, eventos marcantes..."
+									{...register("history")}
+								/>
+							</Field>
+							<Field label="URL do mapa (opcional)">
+								<Input placeholder="https://..." {...register("mapUrl")} />
+							</Field>
+						</FormSection>
+					)}
+					{tab === "history" && (
+						<EntityLinkManager
+							value={watchedValues.entityLinks ?? []}
+							onChange={(links) =>
+								setValue("entityLinks", links, { shouldDirty: true })
+							}
+							sourceValues={watchedValues as Record<string, unknown>}
+							currentEntity={{
+								entityKind: "location",
+								entityId: location?.id,
+							}}
+						/>
+					)}
+				</div>
+			</div>
+
+			<div className="flex items-center justify-between gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
+				<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+					<input
+						type="checkbox"
+						className="h-3.5 w-3.5 rounded border-border accent-primary"
+						{...register("visited")}
+					/>
+					O grupo já visitou
+				</label>
+				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => setOpen(false)}
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="submit"
+						size="sm"
+						loading={isSubmitting}
+						loadingText="Salvando..."
+					>
+						{isEdit ? "Salvar alterações" : "Criar Local"}
+					</Button>
+				</div>
+			</div>
+		</form>
 	);
 }
