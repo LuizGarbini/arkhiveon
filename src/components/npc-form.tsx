@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Npc } from "@/lib/store";
 import { npcDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
@@ -102,36 +102,61 @@ function NpcFormDialog({
 	onOpenChange,
 	defaultTab,
 }: NpcFormDialogProps) {
-	const isEdit = !!npc;
 	const [internalOpen, setInternalOpen] = useState(false);
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
 
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
+			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+				{open && (
+					<NpcFormContent
+						key={npc?.id ?? "new"}
+						npc={npc}
+						setOpen={setOpen}
+						defaultTab={defaultTab}
+					/>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+interface NpcFormContentProps {
+	npc?: Npc;
+	setOpen: (open: boolean) => void;
+	defaultTab?: string;
+}
+
+function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
+	const isEdit = Boolean(npc);
+	const nameId = useId();
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
-	const [prevIndex, setPrevIndex] = useState(-1);
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
-		"left",
+		"right",
 	);
 	const addNpc = useRPGStore((state) => state.addNpc);
 	const updateNpc = useRPGStore((state) => state.updateNpc);
 	const characters = useRPGStore((state) => state.characters);
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const toast = useToast();
 	const navigate = useNavigate();
 
-	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
 
 	const {
 		register,
 		handleSubmit,
-		reset,
 		control,
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<NpcFormValues>({
 		defaultValues: {
 			...npcDefaults,
-			campaignIds: initialCampaignIds,
+			campaignIds: npc?.campaignIds?.length
+				? npc.campaignIds
+				: initialCampaignIds,
 			...(npc ?? {}),
 		},
 	});
@@ -141,37 +166,14 @@ function NpcFormDialog({
 	const watchedKind = useWatch({ control, name: "kind" }) ?? "npc";
 	const isMonster = watchedKind === "monster";
 
-	useEffect(() => {
-		const index = TABS.findIndex((t) => t.id === tab);
-		if (index !== -1) {
-			if (prevIndex !== -1 && index < prevIndex) {
-				setSlideDirection("right");
-			} else if (prevIndex !== -1 && index > prevIndex) {
-				setSlideDirection("left");
-			}
-			setPrevIndex(index);
+	function handleTabChange(nextTab: string) {
+		const currentIndex = TABS.findIndex((t) => t.id === tab);
+		const nextIndex = TABS.findIndex((t) => t.id === nextTab);
+		if (nextIndex !== -1 && currentIndex !== -1) {
+			setSlideDirection(nextIndex > currentIndex ? "left" : "right");
 		}
-	}, [tab, prevIndex]);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: npc fields intentionally omitted
-	useEffect(() => {
-		if (!open) return;
-		// Só reseta ao abrir / trocar de NPC. Dependência em `npc` inteiro
-		// apagava imageUrl após upload (store recria a referência do objeto).
-		reset({
-			...npcDefaults,
-			campaignIds: npc?.campaignIds?.length
-				? npc.campaignIds
-				: initialCampaignIds,
-			...(npc ?? {}),
-		});
-		setPrevIndex(-1);
-	}, [open, npc?.id, reset]);
-
-	useEffect(() => {
-		if (!open) return;
-		setTab(defaultTab || TABS[0].id);
-	}, [open, defaultTab]);
+		setTab(nextTab);
+	}
 
 	function onSubmit(data: NpcFormValues) {
 		const normalized = {
@@ -201,16 +203,19 @@ function NpcFormDialog({
 		else {
 			const created = addNpc(normalized);
 			if (!created) {
+				const syncError = useRPGStore.getState().syncError;
 				toast.error({
-					title: "Limite de registros atingido",
+					title: isMonster ? "Erro ao salvar monstro" : "Erro ao salvar NPC",
 					description:
-						"Remova algum registro ou faça upgrade antes de criar outro.",
+						syncError ||
+						"Verifique se você possui permissão para alterar o grimório.",
 				});
 				return;
 			}
 			createdId = created.id;
 		}
 		setOpen(false);
+
 		if (createdId) {
 			void navigate({
 				to: "/npcs/$npcId",
@@ -221,308 +226,304 @@ function NpcFormDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-				<form
-					onSubmit={handleSubmit(onSubmit)}
-					className="flex h-full min-h-0 flex-col"
-				>
-					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className="flex h-full min-h-0 flex-col"
+		>
+			<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+				<div className="flex items-center justify-between gap-3">
+					<div>
 						<DialogTitle className="font-display text-lg">
 							{isEdit
 								? `Editar: ${npc?.name || (isMonster ? "Monstro" : "NPC")}`
 								: isMonster
-									? "Novo Monstro"
+									? "Novo Monstro / Ameaça"
 									: "Novo NPC"}
 						</DialogTitle>
 						<DialogDescription>
 							{isMonster
-								? "Criaturas, encontros e ameaças prontas para entrar em cena."
-								: "Aliados, inimigos e mercadores que dão vida ao mundo."}
+								? "Cadastre estáticas, resistências e habilidades de combate."
+								: "Guarde motivações, segredos e conexões com os personagens."}
 						</DialogDescription>
-						<div className="mt-3">
-							<FormTabs tabs={TABS} value={tab} onChange={setTab} />
-						</div>
-					</DialogHeader>
+					</div>
+				</div>
 
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
-						<div
-							key={tab}
-							className={cn(
-								"space-y-6",
-								slideDirection === "left"
-									? "t-tab-slide-left"
-									: "t-tab-slide-right",
-							)}
-						>
-							{tab === "basic" && (
-								<>
-									<FormSection title="Identidade">
-										<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/70 bg-background/45 p-1">
-											<button
-												type="button"
-												onClick={() =>
-													setValue("kind", "npc", {
-														shouldDirty: true,
-														shouldValidate: true,
-													})
-												}
-												className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
-													!isMonster
-														? "bg-card text-foreground shadow-sm"
-														: "text-muted-foreground hover:text-foreground"
-												}`}
-											>
-												NPC
-											</button>
-											<button
-												type="button"
-												onClick={() =>
-													setValue("kind", "monster", {
-														shouldDirty: true,
-														shouldValidate: true,
-													})
-												}
-												className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
-													isMonster
-														? "bg-card text-foreground shadow-sm"
-														: "text-muted-foreground hover:text-foreground"
-												}`}
-											>
-												Monstro
-											</button>
-										</div>
-										<ImageUploader
-											value={imageUrl ?? ""}
-											onChange={(url) =>
-												setValue("imageUrl", url, { shouldDirty: true })
-											}
-											label="Retrato"
-											folder="npcs"
-											libraryName={watchedValues.name}
-											size="md"
-										/>
-										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-											<Field label="Nome">
-												<Input
-													placeholder={
-														isMonster
-															? "Ex: Hidra de Cinzas"
-															: "Ex: Bob, o Taberneiro"
-													}
-													{...register("name", { required: true })}
-												/>
-											</Field>
-											<Field label="Raça">
-												<Input
-													placeholder={
-														isMonster ? "Ex: Aberração" : "Ex: Humano"
-													}
-													{...register("race")}
-												/>
-											</Field>
-											<Field label="Papel / Ocupação">
-												<Input
-													placeholder={
-														isMonster
-															? "Ex: Elite, solo, enxame"
-															: "Ex: Mercador"
-													}
-													{...register("role")}
-												/>
-											</Field>
-											<Field label="Localização">
-												<Input
-													placeholder="Ex: Vila de Vallaki"
-													{...register("location")}
-												/>
-											</Field>
-											<Field label="Facção / Organização">
-												<Input
-													placeholder="Ex: Guarda da Cidade"
-													{...register("faction")}
-												/>
-											</Field>
-											<Field label="Tendência">
-												<Input
-													placeholder="Ex: Neutro"
-													{...register("alignment")}
-												/>
-											</Field>
-											<Field label="Disposição">
-												<Select {...register("disposition")}>
-													<option value="hostile">Hostil</option>
-													<option value="unfriendly">Antipático</option>
-													<option value="neutral">Neutro</option>
-													<option value="friendly">Amigável</option>
-													<option value="ally">Aliado</option>
-												</Select>
-											</Field>
-											<Field label="Importância">
-												<Select {...register("importance")}>
-													<option value="minor">Figurante</option>
-													<option value="supporting">Coadjuvante</option>
-													<option value="major">Importante</option>
-													<option value="boss">Vilão / Chefe</option>
-													<option value="unknown">Desconhecida</option>
-												</Select>
-											</Field>
-											<Field label="CR / Nível">
-												<Input placeholder="Ex: 1/4 ou 5" {...register("cr")} />
-											</Field>
-											<Field label="Ficha vinculada">
-												<Select {...register("linkedCharacterId")}>
-													<option value="">Nenhuma ficha vinculada</option>
-													{characters.map((character) => (
-														<option key={character.id} value={character.id}>
-															{character.characterName || "Ficha sem nome"}
-														</option>
-													))}
-												</Select>
-											</Field>
-										</div>
-										<Field label="Descrição">
-											<Textarea
-												rows={3}
-												placeholder={
-													isMonster
-														? "Que tipo de ameaça ele representa? Onde aparece?"
-														: "Quem é este NPC? Como o grupo o conheceu?"
-												}
-												{...register("description")}
-											/>
-										</Field>
-									</FormSection>
-									<WorldEntityPublicationFields
-										control={control}
-										setValue={setValue}
-									/>
-								</>
-							)}
+				<div className="pt-2">
+					<FormTabs tabs={TABS} activeTab={tab} onTabChange={handleTabChange} />
+				</div>
+			</DialogHeader>
 
-							{tab === "personality" && (
-								<FormSection title="Personalidade & Aparência">
-									<Field label="Aparência">
-										<Textarea
-											rows={3}
-											placeholder="Como ele se parece?"
-											{...register("appearance")}
-										/>
-									</Field>
-									<Field
-										label="Tiques / Maneirismos"
-										hint="Voz, sotaque, gestos..."
+			<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+				<div
+					key={tab}
+					className={cn(
+						"space-y-6",
+						slideDirection === "left"
+							? "t-tab-slide-left"
+							: "t-tab-slide-right",
+					)}
+				>
+					{tab === "basic" && (
+						<>
+							<FormSection title="Identidade">
+								<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/70 bg-background/45 p-1">
+									<button
+										type="button"
+										onClick={() =>
+											setValue("kind", "npc", {
+												shouldDirty: true,
+												shouldValidate: true,
+											})
+										}
+										className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
+											!isMonster
+												? "bg-card text-foreground shadow-sm"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
 									>
-										<Textarea
-											rows={2}
-											placeholder="Sempre coça o queixo antes de mentir."
-											{...register("mannerisms")}
-										/>
-									</Field>
-									<Field label="Motivações">
-										<Textarea
-											rows={2}
-											placeholder="O que ele quer? Por quê?"
-											{...register("motivations")}
-										/>
-									</Field>
-									<Field label="Relacionamentos">
-										<Textarea
-											rows={2}
-											placeholder="Quem ele conhece?"
-											{...register("relationships")}
-										/>
-									</Field>
-								</FormSection>
-							)}
-
-							{tab === "secrets" && (
-								<FormSection
-									title="Segredos do Mestre"
-									description="Apenas o Mestre vê — informações reveladas conforme a campanha."
-								>
-									<Field label="Segredos">
-										<Textarea
-											rows={6}
-											placeholder="Verdades ocultas, traições, planos..."
-											{...register("secrets")}
-										/>
-									</Field>
-								</FormSection>
-							)}
-
-							{tab === "stats" && (
-								<FormSection
-									title="Bloco de Stats"
-									description={
-										isMonster
-											? "Cole ou descreva o stat block do monstro para usar em combate."
-											: "Cole ou descreva o stat block do NPC se for relevante para combate."
+										NPC
+									</button>
+									<button
+										type="button"
+										onClick={() =>
+											setValue("kind", "monster", {
+												shouldDirty: true,
+												shouldValidate: true,
+											})
+										}
+										className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-colors ${
+											isMonster
+												? "bg-card text-foreground shadow-sm"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
+									>
+										Monstro
+									</button>
+								</div>
+								<ImageUploader
+									value={imageUrl ?? ""}
+									onChange={(url) =>
+										setValue("imageUrl", url, { shouldDirty: true })
 									}
-								>
-									<Field label="Stats / Atributos">
-										<Textarea
-											rows={8}
-											placeholder={
-												"FOR 14 (+2)  DES 12 (+1)  CON 14 (+2)\nINT 10 (+0)  SAB 11 (+0)  CAR 16 (+3)\nCA 15 — HP 27 — Ataques: ..."
-											}
-											{...register("stats")}
-											className="font-mono text-[12px]"
-										/>
-									</Field>
-								</FormSection>
-							)}
-							{tab === "basic" && (
-								<EntityLinkManager
-									value={watchedValues.entityLinks ?? []}
-									onChange={(links) =>
-										setValue("entityLinks", links, { shouldDirty: true })
-									}
-									sourceValues={watchedValues as Record<string, unknown>}
-									currentEntity={{
-										entityKind: "npc",
-										entityId: npc?.id,
-									}}
+									label="Retrato"
+									folder="npcs"
+									libraryName={watchedValues.name}
+									size="md"
 								/>
-							)}
-						</div>
-					</div>
-
-					<div className="flex items-center justify-between gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
-						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-							<input
-								type="checkbox"
-								className="h-3.5 w-3.5 rounded border-border accent-primary"
-								{...register("isAlive")}
+								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+									<Field label="Nome">
+										<Input
+											placeholder={
+												isMonster
+													? "Ex: Hidra de Cinzas"
+													: "Ex: Bob, o Taberneiro"
+											}
+											{...register("name", { required: true })}
+										/>
+									</Field>
+									<Field label="Raça">
+										<Input
+											placeholder={isMonster ? "Ex: Aberração" : "Ex: Humano"}
+											{...register("race")}
+										/>
+									</Field>
+									<Field label="Papel / Ocupação">
+										<Input
+											placeholder={
+												isMonster ? "Ex: Elite, solo, enxame" : "Ex: Mercador"
+											}
+											{...register("role")}
+										/>
+									</Field>
+									<Field label="Localização">
+										<Input
+											placeholder="Ex: Vila de Vallaki"
+											{...register("location")}
+										/>
+									</Field>
+									<Field label="Facção / Organização">
+										<Input
+											placeholder="Ex: Guarda da Cidade"
+											{...register("faction")}
+										/>
+									</Field>
+									<Field label="Tendência">
+										<Input
+											placeholder="Ex: Neutro"
+											{...register("alignment")}
+										/>
+									</Field>
+									<Field label="Disposição">
+										<Select {...register("disposition")}>
+											<option value="hostile">Hostil</option>
+											<option value="unfriendly">Antipático</option>
+											<option value="neutral">Neutro</option>
+											<option value="friendly">Amigável</option>
+											<option value="ally">Aliado</option>
+										</Select>
+									</Field>
+									<Field label="Importância">
+										<Select {...register("importance")}>
+											<option value="minor">Figurante</option>
+											<option value="supporting">Coadjuvante</option>
+											<option value="major">Importante</option>
+											<option value="boss">Vilão / Chefe</option>
+											<option value="unknown">Desconhecida</option>
+										</Select>
+									</Field>
+									<Field label="CR / Nível">
+										<Input placeholder="Ex: 1/4 ou 5" {...register("cr")} />
+									</Field>
+									<Field label="Ficha vinculada">
+										<Select {...register("linkedCharacterId")}>
+											<option value="">Nenhuma ficha vinculada</option>
+											{characters.map((character) => (
+												<option key={character.id} value={character.id}>
+													{character.characterName || "Ficha sem nome"}
+												</option>
+											))}
+										</Select>
+									</Field>
+								</div>
+								<Field label="Descrição">
+									<Textarea
+										rows={3}
+										placeholder={
+											isMonster
+												? "Que tipo de ameaça ele representa? Onde aparece?"
+												: "Quem é este NPC? Como o grupo o conheceu?"
+										}
+										{...register("description")}
+									/>
+								</Field>
+							</FormSection>
+							<WorldEntityPublicationFields
+								control={control}
+								setValue={setValue}
 							/>
-							{isMonster ? "Monstro está vivo" : "NPC está vivo"}
-						</label>
-						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => setOpen(false)}
+						</>
+					)}
+
+					{tab === "personality" && (
+						<FormSection title="Personalidade & Aparência">
+							<Field label="Aparência">
+								<Textarea
+									rows={3}
+									placeholder="Como ele se parece?"
+									{...register("appearance")}
+								/>
+							</Field>
+							<Field
+								label="Tiques / Maneirismos"
+								hint="Voz, sotaque, gestos..."
 							>
-								Cancelar
-							</Button>
-							<Button
-								type="submit"
-								size="sm"
-								loading={isSubmitting}
-								loadingText="Salvando..."
-							>
-								{isEdit
-									? "Salvar alterações"
-									: isMonster
-										? "Salvar monstro"
-										: "Salvar NPC"}
-							</Button>
-						</div>
-					</div>
-				</form>
-			</DialogContent>
-		</Dialog>
+								<Textarea
+									rows={2}
+									placeholder="Sempre coça o queixo antes de mentir."
+									{...register("mannerisms")}
+								/>
+							</Field>
+							<Field label="Motivações">
+								<Textarea
+									rows={2}
+									placeholder="O que ele quer? Por quê?"
+									{...register("motivations")}
+								/>
+							</Field>
+							<Field label="Relacionamentos">
+								<Textarea
+									rows={2}
+									placeholder="Quem ele conhece?"
+									{...register("relationships")}
+								/>
+							</Field>
+						</FormSection>
+					)}
+
+					{tab === "secrets" && (
+						<FormSection
+							title="Segredos do Mestre"
+							description="Apenas o Mestre vê — informações reveladas conforme a campanha."
+						>
+							<Field label="Segredos">
+								<Textarea
+									rows={6}
+									placeholder="Verdades ocultas, traições, planos..."
+									{...register("secrets")}
+								/>
+							</Field>
+						</FormSection>
+					)}
+
+					{tab === "stats" && (
+						<FormSection
+							title="Bloco de Stats"
+							description={
+								isMonster
+									? "Cole ou descreva o stat block do monstro para usar em combate."
+									: "Cole ou descreva o stat block do NPC se for relevante para combate."
+							}
+						>
+							<Field label="Stats / Atributos">
+								<Textarea
+									rows={8}
+									placeholder={
+										"FOR 14 (+2)  DES 12 (+1)  CON 14 (+2)\nINT 10 (+0)  SAB 11 (+0)  CAR 16 (+3)\nCA 15 — HP 27 — Ataques: ..."
+									}
+									{...register("stats")}
+									className="font-mono text-[12px]"
+								/>
+							</Field>
+						</FormSection>
+					)}
+					{tab === "basic" && (
+						<EntityLinkManager
+							value={watchedValues.entityLinks ?? []}
+							onChange={(links) =>
+								setValue("entityLinks", links, { shouldDirty: true })
+							}
+							sourceValues={watchedValues as Record<string, unknown>}
+							currentEntity={{
+								entityKind: "npc",
+								entityId: npc?.id,
+							}}
+						/>
+					)}
+				</div>
+			</div>
+
+			<div className="flex items-center justify-between gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
+				<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+					<input
+						type="checkbox"
+						className="h-3.5 w-3.5 rounded border-border accent-primary"
+						{...register("isAlive")}
+					/>
+					{isMonster ? "Monstro está vivo" : "NPC está vivo"}
+				</label>
+				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => setOpen(false)}
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="submit"
+						size="sm"
+						loading={isSubmitting}
+						loadingText="Salvando..."
+					>
+						{isEdit
+							? "Salvar alterações"
+							: isMonster
+								? "Salvar monstro"
+								: "Salvar NPC"}
+					</Button>
+				</div>
+			</div>
+		</form>
 	);
 }
