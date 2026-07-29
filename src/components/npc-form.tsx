@@ -118,6 +118,9 @@ function NpcFormDialog({
 	const toast = useToast();
 	const navigate = useNavigate();
 
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
+
 	const {
 		register,
 		handleSubmit,
@@ -126,7 +129,11 @@ function NpcFormDialog({
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<NpcFormValues>({
-		defaultValues: { ...npcDefaults, ...(npc ?? {}) },
+		defaultValues: {
+			...npcDefaults,
+			campaignIds: initialCampaignIds,
+			...(npc ?? {}),
+		},
 	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
@@ -146,13 +153,19 @@ function NpcFormDialog({
 		}
 	}, [tab, prevIndex]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: npc fields intentionally omitted
 	useEffect(() => {
 		if (!open) return;
 		// Só reseta ao abrir / trocar de NPC. Dependência em `npc` inteiro
 		// apagava imageUrl após upload (store recria a referência do objeto).
-		reset({ ...npcDefaults, ...(npc ?? {}) });
+		reset({
+			...npcDefaults,
+			campaignIds: npc?.campaignIds?.length
+				? npc.campaignIds
+				: initialCampaignIds,
+			...(npc ?? {}),
+		});
 		setPrevIndex(-1);
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- npc fields intentionally omitted
 	}, [open, npc?.id, reset]);
 
 	useEffect(() => {

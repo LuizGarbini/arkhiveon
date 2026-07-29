@@ -19,6 +19,7 @@ import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "./ui/toast";
 import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 type LoreFormValues = Omit<Lore, "id" | "createdAt" | "updatedAt">;
@@ -93,10 +94,14 @@ function LoreFormDialog({
 	const titleId = useId();
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
+	const toast = useToast();
 
 	const addLore = useRPGStore((state) => state.addLore);
 	const updateLore = useRPGStore((state) => state.updateLore);
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const navigate = useNavigate();
+
+	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
 
 	const {
 		register,
@@ -106,16 +111,26 @@ function LoreFormDialog({
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<LoreFormValues>({
-		defaultValues: { ...loreDefaults, ...(lore ?? {}) },
+		defaultValues: {
+			...loreDefaults,
+			campaignIds: initialCampaignIds,
+			...(lore ?? {}),
+		},
 	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedValues = useWatch({ control });
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: lore fields intentionally omitted
 	useEffect(() => {
 		if (!open) return;
-		reset({ ...loreDefaults, ...(lore ?? {}) });
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- lore fields intentionally omitted
+		reset({
+			...loreDefaults,
+			campaignIds: lore?.campaignIds?.length
+				? lore.campaignIds
+				: initialCampaignIds,
+			...(lore ?? {}),
+		});
 	}, [open, lore?.id, reset]);
 
 	function onSubmit(data: LoreFormValues) {
@@ -124,10 +139,30 @@ function LoreFormDialog({
 			isSecret: data.visibility === "master_secret",
 		};
 		let createdId: string | null = null;
-		if (isEdit && lore) updateLore(lore.id, payload);
-		else {
+		if (isEdit && lore) {
+			updateLore(lore.id, payload);
+			const syncError = useRPGStore.getState().syncError;
+			if (syncError) {
+				toast.error({
+					title: "Erro ao atualizar lore",
+					description: syncError,
+				});
+				return;
+			}
+		} else {
 			const created = addLore(payload);
-			if (created.id) createdId = created.id;
+			if (created?.id) {
+				createdId = created.id;
+			} else {
+				const syncError = useRPGStore.getState().syncError;
+				toast.error({
+					title: "Erro ao criar lore",
+					description:
+						syncError ||
+						"Não foi possível salvar o conhecimento. Verifique se você possui permissão para alterar o grimório.",
+				});
+				return;
+			}
 		}
 		setOpen(false);
 		if (createdId) {

@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import type { Item } from "@/lib/store";
 import {
@@ -106,11 +107,15 @@ function ItemFormDialog({
 	const nameId = useId();
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
+	const toast = useToast();
 
 	const addItem = useRPGStore((state) => state.addItem);
 	const updateItem = useRPGStore((state) => state.updateItem);
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const navigate = useNavigate();
 	const { user } = useAuth();
+
+	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
 
 	const {
 		register,
@@ -120,7 +125,11 @@ function ItemFormDialog({
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<ItemFormValues>({
-		defaultValues: { ...itemDefaults, ...(item ?? {}) },
+		defaultValues: {
+			...itemDefaults,
+			campaignIds: initialCampaignIds,
+			...(item ?? {}),
+		},
 	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
@@ -129,18 +138,44 @@ function ItemFormDialog({
 	const imageZoom = useWatch({ control, name: "imageZoom" });
 	const watchedValues = useWatch({ control });
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset form fields when dialog opens
 	useEffect(() => {
 		if (!open) return;
-		reset({ ...itemDefaults, ...(item ?? {}) });
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- item fields intentionally omitted
+		reset({
+			...itemDefaults,
+			campaignIds: item?.campaignIds?.length
+				? item.campaignIds
+				: initialCampaignIds,
+			...(item ?? {}),
+		});
 	}, [open, item?.id, reset]);
 
 	function onSubmit(data: ItemFormValues) {
 		let createdId: string | null = null;
-		if (isEdit && item) updateItem(item.id, data, user?.id);
-		else {
+		if (isEdit && item) {
+			updateItem(item.id, data, user?.id);
+			const syncError = useRPGStore.getState().syncError;
+			if (syncError) {
+				toast.error({
+					title: "Erro ao atualizar item",
+					description: syncError,
+				});
+				return;
+			}
+		} else {
 			const created = addItem(data, user?.id);
-			if (created.id) createdId = created.id;
+			if (created?.id) {
+				createdId = created.id;
+			} else {
+				const syncError = useRPGStore.getState().syncError;
+				toast.error({
+					title: "Erro ao criar item",
+					description:
+						syncError ||
+						"Não foi possível salvar o item. Verifique se você possui uma campanha ativa vinculada a um Mundo.",
+				});
+				return;
+			}
 		}
 		setOpen(false);
 		if (createdId) {

@@ -20,6 +20,7 @@ import { Field, FormSection, FormTabs } from "./ui/form-tabs";
 import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "./ui/toast";
 import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 const TABS = [
@@ -85,7 +86,7 @@ export function LocationEditButton({
 	);
 }
 
-interface LocationFormDialogProps {
+interface LocationFormProps {
 	location?: GameLocation;
 	trigger?: ReactNode;
 	open?: boolean;
@@ -93,27 +94,31 @@ interface LocationFormDialogProps {
 	defaultTab?: string;
 }
 
-function LocationFormDialog({
+export function LocationFormDialog({
 	location,
 	trigger,
 	open: openProp,
 	onOpenChange,
 	defaultTab,
-}: LocationFormDialogProps) {
-	const isEdit = !!location;
+}: LocationFormProps) {
+	const isEdit = Boolean(location);
 	const [internalOpen, setInternalOpen] = useState(false);
 	const nameId = useId();
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
-
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
-	const [prevIndex, setPrevIndex] = useState(-1);
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
-		"left",
+		"right",
 	);
+	const [prevIndex, setPrevIndex] = useState(-1);
+	const toast = useToast();
+
 	const addLocation = useRPGStore((state) => state.addLocation);
 	const updateLocation = useRPGStore((state) => state.updateLocation);
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const navigate = useNavigate();
+
+	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
 
 	const {
 		register,
@@ -123,7 +128,11 @@ function LocationFormDialog({
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<LocationFormValues>({
-		defaultValues: { ...locationDefaults, ...(location ?? {}) },
+		defaultValues: {
+			...locationDefaults,
+			campaignIds: initialCampaignIds,
+			...(location ?? {}),
+		},
 	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
@@ -141,11 +150,17 @@ function LocationFormDialog({
 		}
 	}, [tab, prevIndex]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset form fields when dialog opens
 	useEffect(() => {
 		if (!open) return;
-		reset({ ...locationDefaults, ...(location ?? {}) });
+		reset({
+			...locationDefaults,
+			campaignIds: location?.campaignIds?.length
+				? location.campaignIds
+				: initialCampaignIds,
+			...(location ?? {}),
+		});
 		setPrevIndex(-1);
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- location fields intentionally omitted
 	}, [open, location?.id, reset]);
 
 	useEffect(() => {
@@ -155,10 +170,30 @@ function LocationFormDialog({
 
 	function onSubmit(data: LocationFormValues) {
 		let createdId: string | null = null;
-		if (isEdit && location) updateLocation(location.id, data);
-		else {
+		if (isEdit && location) {
+			updateLocation(location.id, data);
+			const syncError = useRPGStore.getState().syncError;
+			if (syncError) {
+				toast.error({
+					title: "Erro ao atualizar localização",
+					description: syncError,
+				});
+				return;
+			}
+		} else {
 			const created = addLocation(data);
-			if (created.id) createdId = created.id;
+			if (created?.id) {
+				createdId = created.id;
+			} else {
+				const syncError = useRPGStore.getState().syncError;
+				toast.error({
+					title: "Erro ao criar localização",
+					description:
+						syncError ||
+						"Não foi possível salvar a localização. Verifique se você possui permissão para alterar o grimório.",
+				});
+				return;
+			}
 		}
 		setOpen(false);
 		if (createdId) {

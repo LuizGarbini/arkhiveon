@@ -17,6 +17,7 @@ import {
 	allowItemWrite,
 	constrainItemPayloadForViewer,
 	denyUnlessWorldStaff,
+	resolveWorldIdForCampaign,
 	validateEntityScopeForActiveWorld,
 } from "./world-entity-guards";
 import { worldEntityDefaultsForCampaign } from "./worldbuilding-slice";
@@ -97,11 +98,7 @@ export interface CollectionSlice {
 		item: Partial<Omit<Item, "id" | "createdAt">>,
 		actingUserId?: string,
 	) => Item;
-	updateItem: (
-		id: string,
-		item: Partial<Item>,
-		actingUserId?: string,
-	) => void;
+	updateItem: (id: string, item: Partial<Item>, actingUserId?: string) => void;
 	removeItem: (id: string, actingUserId?: string) => void;
 
 	locations: GameLocation[];
@@ -133,7 +130,8 @@ export const createCollectionSlice: StateCreator<
 			return {} as Item;
 		}
 		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
-		if (!activeCampaign?.worldId) {
+		const worldId = resolveWorldIdForCampaign(activeCampaign, get().worlds);
+		if (!worldId) {
 			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as Item;
 		}
@@ -143,17 +141,29 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as Item;
 		}
-		const payload =
+		const rawPayload =
 			access === "owner"
 				? constrainItemPayloadForViewer(campaignId, {
 						...item,
 						createdBy: actingUserId,
 					})
 				: { ...item, createdBy: item.createdBy ?? actingUserId };
+
+		const effectiveCampaignIds: string[] =
+			(rawPayload.publicationScope ?? "restricted") === "restricted" &&
+			(!rawPayload.campaignIds || rawPayload.campaignIds.length === 0)
+				? [campaignId]
+				: (rawPayload.campaignIds ?? []);
+
+		const payload = {
+			...rawPayload,
+			campaignIds: effectiveCampaignIds,
+		};
+
 		const created = generateEntry(
 			{
 				...itemDefaults,
-				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+				...worldEntityDefaultsForCampaign(worldId, campaignId),
 			},
 			payload as Partial<Omit<Item, "id" | "createdAt">>,
 		) as Item;
@@ -208,9 +218,19 @@ export const createCollectionSlice: StateCreator<
 			access === "owner"
 				? constrainItemPayloadForViewer(campaignId, item)
 				: item;
+		const effectiveCampaignIds: string[] =
+			(patch.publicationScope ?? existing.publicationScope ?? "restricted") ===
+				"restricted" &&
+			(!patch.campaignIds || patch.campaignIds.length === 0)
+				? existing.campaignIds && existing.campaignIds.length > 0
+					? existing.campaignIds
+					: [campaignId]
+				: (patch.campaignIds ?? existing.campaignIds ?? []);
+
 		const updated = {
 			...existing,
 			...patch,
+			campaignIds: effectiveCampaignIds,
 			createdBy: existing.createdBy,
 			updatedAt: Date.now(),
 		};
@@ -294,7 +314,8 @@ export const createCollectionSlice: StateCreator<
 			return {} as GameLocation;
 		}
 		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
-		if (!activeCampaign?.worldId) {
+		const worldId = resolveWorldIdForCampaign(activeCampaign, get().worlds);
+		if (!worldId) {
 			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as GameLocation;
 		}
@@ -304,12 +325,20 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as GameLocation;
 		}
+		const effectiveCampaignIds: string[] =
+			(location.publicationScope ?? "restricted") === "restricted" &&
+			(!location.campaignIds || location.campaignIds.length === 0)
+				? [campaignId]
+				: (location.campaignIds ?? []);
+
 		const created = generateEntry(
 			{
 				...locationDefaults,
-				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+				...worldEntityDefaultsForCampaign(worldId, campaignId),
 			},
-			location,
+			{ ...location, campaignIds: effectiveCampaignIds } as Partial<
+				Omit<GameLocation, "id" | "createdAt">
+			>,
 		) as GameLocation;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
@@ -357,7 +386,22 @@ export const createCollectionSlice: StateCreator<
 		const originalLocations = get().locations;
 		const existing = originalLocations.find((l) => l.id === id);
 		if (!existing) return;
-		const updated = { ...existing, ...location, updatedAt: Date.now() };
+		const effectiveCampaignIds: string[] =
+			(location.publicationScope ??
+				existing.publicationScope ??
+				"restricted") === "restricted" &&
+			(!location.campaignIds || location.campaignIds.length === 0)
+				? existing.campaignIds && existing.campaignIds.length > 0
+					? existing.campaignIds
+					: [campaignId]
+				: (location.campaignIds ?? existing.campaignIds ?? []);
+
+		const updated = {
+			...existing,
+			...location,
+			campaignIds: effectiveCampaignIds,
+			updatedAt: Date.now(),
+		};
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
 			updated.publicationScope,
@@ -438,7 +482,8 @@ export const createCollectionSlice: StateCreator<
 			return {} as Lore;
 		}
 		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
-		if (!activeCampaign?.worldId) {
+		const worldId = resolveWorldIdForCampaign(activeCampaign, get().worlds);
+		if (!worldId) {
 			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return {} as Lore;
 		}
@@ -448,13 +493,21 @@ export const createCollectionSlice: StateCreator<
 			});
 			return {} as Lore;
 		}
+		const effectiveCampaignIds: string[] =
+			(lore.publicationScope ?? "restricted") === "restricted" &&
+			(!lore.campaignIds || lore.campaignIds.length === 0)
+				? [campaignId]
+				: (lore.campaignIds ?? []);
+
 		const created = generateEntry(
 			{
 				...loreDefaults,
-				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+				...worldEntityDefaultsForCampaign(worldId, campaignId),
 				...(lore.isSecret ? { visibility: "master_secret" as const } : {}),
 			},
-			lore,
+			{ ...lore, campaignIds: effectiveCampaignIds } as Partial<
+				Omit<Lore, "id" | "createdAt">
+			>,
 		) as Lore;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
@@ -502,9 +555,19 @@ export const createCollectionSlice: StateCreator<
 		const originalLores = get().lores;
 		const existing = originalLores.find((l) => l.id === id);
 		if (!existing) return;
+		const effectiveCampaignIds: string[] =
+			(lore.publicationScope ?? existing.publicationScope ?? "restricted") ===
+				"restricted" &&
+			(!lore.campaignIds || lore.campaignIds.length === 0)
+				? existing.campaignIds && existing.campaignIds.length > 0
+					? existing.campaignIds
+					: [campaignId]
+				: (lore.campaignIds ?? existing.campaignIds ?? []);
+
 		const updated = {
 			...existing,
 			...lore,
+			campaignIds: effectiveCampaignIds,
 			updatedAt: Date.now(),
 		};
 		if (typeof lore.isSecret === "boolean") {

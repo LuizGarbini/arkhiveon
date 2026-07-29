@@ -15,6 +15,7 @@ import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Npc, RPGState } from "./types";
 import {
 	denyUnlessWorldStaff,
+	resolveWorldIdForCampaign,
 	validateEntityScopeForActiveWorld,
 } from "./world-entity-guards";
 import { worldEntityDefaultsForCampaign } from "./worldbuilding-slice";
@@ -67,7 +68,8 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 			return null;
 		}
 		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
-		if (!activeCampaign?.worldId) {
+		const worldId = resolveWorldIdForCampaign(activeCampaign, get().worlds);
+		if (!worldId) {
 			set({ syncError: "Campanha ativa sem Mundo associado." });
 			return null;
 		}
@@ -77,12 +79,20 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 			});
 			return null;
 		}
+		const effectiveCampaignIds: string[] =
+			(npc.publicationScope ?? "restricted") === "restricted" &&
+			(!npc.campaignIds || npc.campaignIds.length === 0)
+				? [campaignId]
+				: (npc.campaignIds ?? []);
+
 		const created = generateEntry(
 			{
 				...npcDefaults,
-				...worldEntityDefaultsForCampaign(activeCampaign.worldId, campaignId),
+				...worldEntityDefaultsForCampaign(worldId, campaignId),
 			},
-			npc,
+			{ ...npc, campaignIds: effectiveCampaignIds } as Partial<
+				Omit<Npc, "id" | "createdAt">
+			>,
 		) as Npc;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
@@ -130,7 +140,21 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 		const originalNpcs = get().npcs;
 		const existing = originalNpcs.find((n) => n.id === id);
 		if (!existing) return;
-		const updated = { ...existing, ...npc, updatedAt: Date.now() };
+		const effectiveCampaignIds: string[] =
+			(npc.publicationScope ?? existing.publicationScope ?? "restricted") ===
+				"restricted" &&
+			(!npc.campaignIds || npc.campaignIds.length === 0)
+				? existing.campaignIds && existing.campaignIds.length > 0
+					? existing.campaignIds
+					: [campaignId]
+				: (npc.campaignIds ?? existing.campaignIds ?? []);
+
+		const updated = {
+			...existing,
+			...npc,
+			campaignIds: effectiveCampaignIds,
+			updatedAt: Date.now(),
+		};
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
 			updated.publicationScope,
