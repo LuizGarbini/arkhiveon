@@ -248,7 +248,7 @@ function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
 				</div>
 
 				<div className="pt-2">
-					<FormTabs tabs={TABS} activeTab={tab} onTabChange={handleTabChange} />
+					<FormTabs tabs={TABS} value={tab} onChange={handleTabChange} />
 				</div>
 			</DialogHeader>
 
