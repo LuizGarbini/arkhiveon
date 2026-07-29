@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { GameLocation } from "@/lib/store";
 import { locationDefaults, useIsWorldStaff, useRPGStore } from "@/lib/store";
@@ -101,16 +101,42 @@ export function LocationFormDialog({
 	onOpenChange,
 	defaultTab,
 }: LocationFormProps) {
-	const isEdit = Boolean(location);
 	const [internalOpen, setInternalOpen] = useState(false);
-	const nameId = useId();
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
-	const [tab, setTab] = useState(defaultTab || TABS[0].id);
-	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
-		"right",
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
+			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+				{open && (
+					<LocationFormContent
+						key={location?.id ?? "new"}
+						location={location}
+						setOpen={setOpen}
+						defaultTab={defaultTab}
+					/>
+				)}
+			</DialogContent>
+		</Dialog>
 	);
-	const [prevIndex, setPrevIndex] = useState(-1);
+}
+
+interface LocationFormContentProps {
+	location?: GameLocation;
+	setOpen: (open: boolean) => void;
+	defaultTab?: string;
+}
+
+function LocationFormContent({
+	location,
+	setOpen,
+	defaultTab,
+}: LocationFormContentProps) {
+	const isEdit = Boolean(location);
+	const nameId = useId();
+	const [tab, setTab] = useState(defaultTab || TABS[0].id);
+	const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
 	const toast = useToast();
 
 	const addLocation = useRPGStore((state) => state.addLocation);
@@ -123,14 +149,15 @@ export function LocationFormDialog({
 	const {
 		register,
 		handleSubmit,
-		reset,
 		control,
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<LocationFormValues>({
 		defaultValues: {
 			...locationDefaults,
-			campaignIds: initialCampaignIds,
+			campaignIds: location?.campaignIds?.length
+				? location.campaignIds
+				: initialCampaignIds,
 			...(location ?? {}),
 		},
 	});
@@ -138,35 +165,14 @@ export function LocationFormDialog({
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedValues = useWatch({ control });
 
-	useEffect(() => {
-		const index = TABS.findIndex((t) => t.id === tab);
-		if (index !== -1) {
-			if (prevIndex !== -1 && index < prevIndex) {
-				setSlideDirection("right");
-			} else if (prevIndex !== -1 && index > prevIndex) {
-				setSlideDirection("left");
-			}
-			setPrevIndex(index);
+	function handleTabChange(nextTab: string) {
+		const currentIndex = TABS.findIndex((t) => t.id === tab);
+		const nextIndex = TABS.findIndex((t) => t.id === nextTab);
+		if (nextIndex !== -1 && currentIndex !== -1) {
+			setSlideDirection(nextIndex > currentIndex ? "left" : "right");
 		}
-	}, [tab, prevIndex]);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset form fields when dialog opens
-	useEffect(() => {
-		if (!open) return;
-		reset({
-			...locationDefaults,
-			campaignIds: location?.campaignIds?.length
-				? location.campaignIds
-				: initialCampaignIds,
-			...(location ?? {}),
-		});
-		setPrevIndex(-1);
-	}, [open, location?.id, reset]);
-
-	useEffect(() => {
-		if (!open) return;
-		setTab(defaultTab || TABS[0].id);
-	}, [open, defaultTab]);
+		setTab(nextTab);
+	}
 
 	function onSubmit(data: LocationFormValues) {
 		let createdId: string | null = null;
@@ -206,30 +212,6 @@ export function LocationFormDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-				<form
-					onSubmit={handleSubmit(onSubmit)}
-					className="flex h-full min-h-0 flex-col"
-				>
-					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
-						<DialogTitle className="font-display text-lg">
-							{isEdit ? `Editar: ${location?.name || "Local"}` : "Novo Local"}
-						</DialogTitle>
-						<DialogDescription>
-							Cidades, masmorras, regiões — locais visitados pelo grupo.
-						</DialogDescription>
-						<div className="mt-3">
-							<FormTabs tabs={TABS} value={tab} onChange={setTab} />
-						</div>
-					</DialogHeader>
-
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
-						<div
-							key={tab}
-							className={cn(
-								"space-y-6",
 								slideDirection === "left"
 									? "t-tab-slide-left"
 									: "t-tab-slide-right",
@@ -419,7 +401,5 @@ export function LocationFormDialog({
 						</div>
 					</div>
 				</form>
-			</DialogContent>
-		</Dialog>
 	);
 }
