@@ -131,7 +131,6 @@ interface NpcFormContentProps {
 
 function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
 	const isEdit = Boolean(npc);
-	const nameId = useId();
 	const [tab, setTab] = useState(defaultTab || TABS[0].id);
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
 		"right",
