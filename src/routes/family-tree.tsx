@@ -20,10 +20,14 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
+	Check,
 	EyeOff,
 	GitFork,
+	Layers,
+	Maximize2,
 	MousePointer2,
 	PencilLine,
+	Search,
 	Trash2,
 	User,
 	X,
@@ -138,42 +142,45 @@ function FamilyTreePage() {
 				.length ?? 0),
 		0,
 	);
+
 	const graphModel = useMemo(
 		() => buildFamilyGraph(characters, isEditMode, isPlayer),
 		[characters, isEditMode, isPlayer],
 	);
 
 	return (
-		<div className="w-full">
+		<div className="w-full relative">
 			<PageHeader
 				title="Árvore Genealógica"
-				description="Explore toda a linhagem da campanha em um canvas com zoom, arraste e edição visual de vínculos."
+				description="Explore toda a linhagem da campanha em um canvas com zoom, arraste, diretório de integrantes e edição visual de vínculos."
 				Icon={GitFork}
 				iconColor="text-emerald-300"
 				eyebrow="Linhagens"
 				count={relationCount}
 			/>
 
-			<div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-8 sm:pb-10">
-				{characters.length === 0 ? (
-					<EmptyState
-						Icon={GitFork}
-						title="Nenhum personagem para montar árvore"
-						description="Crie fichas de personagens para começar a vincular laços familiares."
-					/>
-				) : (
-					<ReactFlowProvider>
-						<FamilyFlowCanvas
-							characters={characters}
-							graphModel={graphModel}
-							isEditMode={isEditMode}
-							onEditModeChange={setIsEditMode}
-							onUpdateCharacter={updateCharacter}
-							relationCount={relationCount}
-							isPlayer={isPlayer}
+			<div className="px-6 pb-16 sm:px-8">
+				<div className="mx-auto w-full max-w-7xl">
+					{characters.length === 0 ? (
+						<EmptyState
+							Icon={GitFork}
+							title="Nenhum personagem para montar árvore"
+							description="Crie fichas de personagens para começar a vincular laços familiares."
 						/>
-					</ReactFlowProvider>
-				)}
+					) : (
+						<ReactFlowProvider>
+							<FamilyFlowCanvas
+								characters={characters}
+								graphModel={graphModel}
+								isEditMode={isEditMode}
+								onEditModeChange={setIsEditMode}
+								onUpdateCharacter={updateCharacter}
+								relationCount={relationCount}
+								isPlayer={isPlayer}
+							/>
+						</ReactFlowProvider>
+					)}
+				</div>
 			</div>
 		</div>
 	);
@@ -185,7 +192,6 @@ function FamilyFlowCanvas({
 	isEditMode,
 	onEditModeChange,
 	onUpdateCharacter,
-	relationCount,
 	isPlayer,
 }: {
 	characters: Character[];
@@ -202,6 +208,7 @@ function FamilyFlowCanvas({
 	const [edges, setEdges, onEdgesChange] = useEdgesState<FamilyEdge>(
 		graphModel.edges,
 	);
+	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
 		null,
 	);
@@ -248,15 +255,27 @@ function FamilyFlowCanvas({
 		});
 	}, [edges, hoveredNodeId]);
 
+	const filteredCharacters = useMemo(() => {
+		if (!searchQuery.trim()) return characters;
+		const query = searchQuery.toLowerCase();
+		return characters.filter(
+			(c) =>
+				c.characterName.toLowerCase().includes(query) ||
+				c.race?.toLowerCase().includes(query) ||
+				c.class?.toLowerCase().includes(query),
+		);
+	}, [characters, searchQuery]);
+
 	const characterById = useMemo(
 		() => new Map(characters.map((character) => [character.id, character])),
 		[characters],
 	);
+
 	const selectedCharacter = selectedCharacterId
 		? characterById.get(selectedCharacterId)
 		: undefined;
 	const selectedEdge = selectedEdgeId
-		? edges.find((edge) => edge.id === selectedEdgeId)
+		? edges.find((e) => e.id === selectedEdgeId)
 		: undefined;
 
 	useEffect(() => {
@@ -345,134 +364,130 @@ function FamilyFlowCanvas({
 		? characterById.get(pendingConnection.targetId)
 		: undefined;
 
-	const canvas = (
-		<section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/80 shadow-sm shadow-black/5 sm:rounded-[1.75rem]">
-			<div className="flex flex-col gap-3 border-b border-border/60 bg-card/90 p-3 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-4">
-				<div className="min-w-0">
-					<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-						Grafo da campanha
-					</p>
-					<h2 className="font-display mt-1 text-xl font-bold text-foreground sm:text-2xl">
-						Conexões familiares
-					</h2>
-					<p className="mt-1 text-[13px] text-muted-foreground">
-						{characters.length} personagem(ns), {relationCount} vínculo(s)
-						direto(s). Arraste o canvas, use zoom e conecte nós no modo edição.
-					</p>
+	return (
+		<section className="relative isolate overflow-hidden rounded-[1.75rem] border border-border/70 bg-card-elevated shadow-xl shadow-black/10 transition-all duration-300">
+			{/* Top Header Controls Bar */}
+			<div className="flex flex-col gap-3 rounded-t-[1.75rem] border-b border-border/70 bg-card-elevated px-6 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+						<Layers className="h-3.5 w-3.5" />
+						Diretório e Grafo Interativo
+					</div>
+					<h3 className="font-display mt-1 text-xl font-bold text-foreground sm:text-2xl">
+						Conexões Familiares da Campanha
+					</h3>
 				</div>
 
-				<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+				<div className="flex items-center gap-2">
 					{!isPlayer && (
 						<Button
 							type="button"
 							variant={isEditMode ? "default" : "outline"}
+							size="sm"
 							onClick={() => {
 								onEditModeChange(!isEditMode);
 								setPendingConnection(null);
 							}}
-							className="min-w-0 gap-2"
+							className="gap-2"
 						>
 							<PencilLine className="h-4 w-4" />
-							{isEditMode ? "Editando" : "Modo edição"}
+							{isEditMode ? "Editando Vínculos" : "Modo Edição"}
 						</Button>
 					)}
 					<Button
 						type="button"
 						variant="outline"
+						size="sm"
 						onClick={focusGraph}
-						className="min-w-0 gap-2"
+						className="gap-2"
 					>
-						<MousePointer2 className="h-4 w-4" />
+						<Maximize2 className="h-4 w-4" />
 						Recentralizar
 					</Button>
 				</div>
 			</div>
 
-			<div className="h-[min(72vh,680px)] min-h-[430px] sm:h-[640px] lg:h-[680px]">
-				<ReactFlow<FamilyNode, FamilyEdge>
-					nodes={mappedNodes}
-					edges={mappedEdges}
-					nodeTypes={nodeTypes}
-					onNodesChange={onNodesChange}
-					onEdgesChange={onEdgesChange}
-					onConnect={onConnect}
-					onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
-					onNodeMouseLeave={() => setHoveredNodeId(null)}
-					connectionLineStyle={{
-						stroke: "oklch(0.68 0.13 150)",
-						strokeWidth: 2,
-						strokeDasharray: "5 5",
-					}}
-					onNodeClick={(_, node) => {
-						setSelectedCharacterId(node.id);
-						setSelectedEdgeId(null);
-					}}
-					onEdgeClick={(_, edge) => {
-						setSelectedEdgeId(edge.id);
-						setSelectedCharacterId(null);
-					}}
-					onPaneClick={() => {
-						setSelectedCharacterId(null);
-						setSelectedEdgeId(null);
-					}}
-					onSelectionChange={({
-						nodes: selectedNodes,
-						edges: selectedEdges,
-					}) => {
-						setSelectedCharacterId(selectedNodes[0]?.id ?? null);
-						setSelectedEdgeId(selectedEdges[0]?.id ?? null);
-					}}
-					nodesConnectable={isEditMode}
-					nodesDraggable
-					elementsSelectable
-					deleteKeyCode={null}
-					fitView
-					fitViewOptions={{ padding: 0.18 }}
-					minZoom={0.18}
-					maxZoom={1.7}
-					proOptions={{ hideAttribution: true }}
-					className="bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_38%),linear-gradient(135deg,rgba(74,222,128,0.08),transparent_34%),linear-gradient(225deg,rgba(168,85,247,0.07),transparent_34%)]"
-				>
-					<Background color="oklch(0.55 0.03 285 / 0.35)" gap={28} size={1.1} />
-					<Controls className="family-flow-controls" />
-					<MiniMap
-						pannable
-						zoomable
-						nodeColor="oklch(0.42 0.12 290)"
-						maskColor="oklch(0.1 0.01 285 / 0.62)"
-						className="family-flow-minimap"
-					/>
-					<Panel position="top-left" className="hidden sm:block">
-						<div className="max-w-[320px] rounded-2xl border border-border/70 bg-card/90 px-3 py-2 text-[11px] font-medium text-muted-foreground shadow-lg shadow-black/10 backdrop-blur-xl">
-							{isEditMode
-								? "Arraste de um ponto do card até outro para criar vínculo."
-								: "Use o mouse ou trackpad para mover e aproximar a árvore."}
-						</div>
-					</Panel>
-					{isEditMode && (
-						<Panel position="top-right" className="family-flow-edit-panel">
-							<div className="rounded-2xl border border-border/70 bg-card/90 p-3 shadow-lg shadow-black/10 backdrop-blur-xl">
-								{selectedEdge ? (
-									<Button
-										type="button"
-										variant="destructive"
-										size="sm"
-										className="gap-2"
-										onClick={() => removeEdge(selectedEdge)}
-									>
-										<Trash2 className="h-3.5 w-3.5" />
-										Remover vínculo selecionado
-									</Button>
-								) : (
-									<p className="max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
-										Para remover um vínculo, clique em uma linha da árvore e use
-										o botão de remoção.
+			{/* Split Layout: 65% Interactive Canvas / 35% Persistent Inspector */}
+			<div className="grid grid-cols-1 lg:grid-cols-12 h-[600px] w-full divide-y lg:divide-y-0 lg:divide-x divide-border/70 rounded-b-[1.75rem] overflow-hidden">
+				{/* Left Column: Canvas (8 Cols) */}
+				<div className="lg:col-span-8 h-full relative overflow-hidden rounded-bl-[1.75rem]">
+					<ReactFlow<FamilyNode, FamilyEdge>
+						nodes={mappedNodes}
+						edges={mappedEdges}
+						nodeTypes={nodeTypes}
+						onNodesChange={onNodesChange}
+						onEdgesChange={onEdgesChange}
+						onConnect={onConnect}
+						onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+						onNodeMouseLeave={() => setHoveredNodeId(null)}
+						colorMode="dark"
+						connectionLineStyle={{
+							stroke: "var(--primary)",
+							strokeWidth: 2,
+							strokeDasharray: "5 5",
+						}}
+						onNodeClick={(_, node) => {
+							setSelectedCharacterId(node.id);
+							setSelectedEdgeId(null);
+						}}
+						onEdgeClick={(_, edge) => {
+							setSelectedEdgeId(edge.id);
+							setSelectedCharacterId(null);
+						}}
+						onPaneClick={() => {
+							setSelectedCharacterId(null);
+							setSelectedEdgeId(null);
+						}}
+						nodesConnectable={isEditMode}
+						nodesDraggable
+						elementsSelectable
+						deleteKeyCode={null}
+						fitView
+						fitViewOptions={{ padding: 0.18 }}
+						minZoom={0.18}
+						maxZoom={1.7}
+						proOptions={{ hideAttribution: true }}
+						className="bg-background rounded-bl-[1.75rem]"
+					>
+						<Background color="var(--primary)" gap={24} size={1.2} />
+						<Controls className="family-flow-controls" />
+						<MiniMap
+							pannable
+							zoomable
+							nodeColor="var(--primary)"
+							maskColor="color-mix(in oklch, var(--card) 85%, transparent)"
+							className="family-flow-minimap"
+						/>
+						<Panel position="top-left" className="hidden sm:block">
+							<div className="max-w-[300px] rounded-xl border border-border/70 bg-card-elevated/95 px-3 py-2 text-[11px] font-medium text-muted-foreground shadow-lg backdrop-blur-xl flex items-start gap-2">
+								<MousePointer2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+								<div>
+									<p className="font-semibold text-foreground">
+										Navegação da Árvore:
 									</p>
-								)}
+									<p className="mt-0.5 text-[10px] leading-relaxed">
+										{isEditMode
+											? "Arraste a partir dos pontos dos cards para vincular personagens."
+											: "Clique e arraste pelo canvas para mover. Use a roda do mouse ou trackpad para dar zoom."}
+									</p>
+								</div>
 							</div>
 						</Panel>
-					)}
-				</ReactFlow>
+					</ReactFlow>
+				</div>
+
+				<LineageSidebar
+					characters={characters}
+					filteredCharacters={filteredCharacters}
+					searchQuery={searchQuery}
+					onSearchQueryChange={setSearchQuery}
+					selectedCharacter={selectedCharacter}
+					selectedCharacterId={selectedCharacterId}
+					onSelectCharacter={(id) => {
+						setSelectedCharacterId(id);
+						setSelectedEdgeId(null);
+					}}
+				/>
 			</div>
 
 			<GraphSidePanel
@@ -500,8 +515,6 @@ function FamilyFlowCanvas({
 			)}
 		</section>
 	);
-
-	return canvas;
 }
 
 function buildFamilyGraph(
@@ -557,26 +570,28 @@ function buildFamilyGraph(
 							type: MarkerType.ArrowClosed,
 							width: 18,
 							height: 18,
-							color: "oklch(0.68 0.13 150)",
+							color: "var(--primary)",
 						}
 					: undefined,
 				style: {
 					stroke: relation.isSecret
-						? "oklch(0.76 0.14 80)"
+						? "var(--muted-foreground)"
 						: visual.isDirectional
-							? "oklch(0.68 0.13 150)"
-							: "oklch(0.72 0.12 310)",
+							? "var(--primary)"
+							: "var(--border)",
 					strokeWidth: 2,
 				},
 				labelBgBorderRadius: 10,
 				labelBgPadding: [8, 4],
 				labelStyle: {
-					fill: "oklch(0.92 0.01 285)",
+					fill: "var(--foreground)",
 					fontSize: 11,
 					fontWeight: 700,
 				},
 				labelBgStyle: {
-					fill: "oklch(0.18 0.015 285 / 0.88)",
+					fill: "var(--card)",
+					stroke: "var(--border)",
+					strokeWidth: 1,
 				},
 			});
 		}
@@ -669,9 +684,9 @@ function FamilyCharacterNode({ data, selected }: NodeProps<FamilyNode>) {
 
 	return (
 		<div
-			className={`group relative w-[244px] overflow-hidden rounded-2xl border bg-card/95 p-3 shadow-lg shadow-black/10 backdrop-blur transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+			className={`group relative w-[244px] overflow-hidden rounded-2xl border bg-card-elevated p-3 shadow-lg backdrop-blur transition-all duration-300 ${
 				selected
-					? "border-primary/70 ring-4 ring-primary/15"
+					? "border-primary ring-4 ring-primary/15"
 					: "border-border/70 hover:border-primary/40"
 			} ${
 				isDimmed
@@ -765,25 +780,20 @@ function GraphSidePanel({
 	const edgeData = edge?.data;
 
 	return (
-		<div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-[116px] sm:w-[min(330px,calc(100%-2rem))]">
-			<div className="pointer-events-auto rounded-2xl border border-border/70 bg-card/95 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
+		<div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-[80px] sm:w-[min(330px,calc(100%-2rem))]">
+			<div className="pointer-events-auto rounded-2xl border border-border/70 bg-card-elevated p-4 shadow-2xl backdrop-blur-xl">
 				{character && (
 					<div>
 						<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-							Personagem
+							Personagem Selecionado
 						</p>
 						<div className="mt-3 flex items-center gap-3">
-							<div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-								{character.imageUrl ? (
-									<img
-										src={character.imageUrl}
-										alt={character.characterName}
-										className="h-full w-full object-cover"
-									/>
-								) : (
-									<User className="h-5 w-5" />
-								)}
-							</div>
+							<CharacterAvatar
+								imageUrl={character.imageUrl}
+								characterName={character.characterName}
+								className="h-12 w-12 rounded-2xl border-primary/20 bg-primary/10"
+								fallbackIconClassName="h-5 w-5 text-primary"
+							/>
 							<div className="min-w-0">
 								<h3 className="font-display truncate text-lg font-bold text-foreground">
 									{character.characterName || "Ficha sem nome"}
@@ -797,7 +807,7 @@ function GraphSidePanel({
 						</div>
 						<div className="mt-4 flex items-center justify-between rounded-xl border border-border/70 bg-background/45 px-3 py-2">
 							<span className="text-[11px] font-medium text-muted-foreground">
-								Vínculos diretos
+								Vínculos Diretos
 							</span>
 							<span className="font-display text-lg font-bold text-foreground">
 								{character.familyRelations?.filter(
@@ -810,7 +820,7 @@ function GraphSidePanel({
 							params={{ characterId: character.id }}
 							className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-border/80 bg-background/65 px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
 						>
-							Abrir ficha
+							Abrir Ficha
 						</Link>
 					</div>
 				)}
@@ -818,7 +828,7 @@ function GraphSidePanel({
 				{edge && edgeData && (
 					<div>
 						<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-							Vínculo
+							Vínculo Familiar
 						</p>
 						<h3 className="font-display mt-2 text-lg font-bold text-foreground">
 							{relationLabel(edgeData.kind)}
@@ -830,7 +840,7 @@ function GraphSidePanel({
 						{edgeData.isSecret && (
 							<div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-amber-200">
 								<EyeOff className="h-3.5 w-3.5" />
-								Segredo do mestre
+								Segredo do Mestre
 							</div>
 						)}
 						{edgeData.note && (
@@ -846,7 +856,7 @@ function GraphSidePanel({
 								onClick={onRemoveEdge}
 							>
 								<Trash2 className="h-4 w-4" />
-								Remover vínculo
+								Remover Vínculo
 							</Button>
 						)}
 					</div>
@@ -882,11 +892,11 @@ function ConnectionEditor({
 			: targetCharacter.characterName;
 
 	return (
-		<div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-h-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl sm:inset-x-4 sm:bottom-4">
+		<div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-h-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl border border-border/70 bg-card-elevated p-4 shadow-2xl backdrop-blur-xl sm:inset-x-4 sm:bottom-4">
 			<div className="flex items-start justify-between gap-3">
 				<div>
 					<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-						Novo vínculo visual
+						Novo Vínculo Visual
 					</p>
 					<h3 className="font-display mt-1 text-lg font-bold text-foreground">
 						{sourceCharacter.characterName || "Ficha sem nome"} →{" "}
@@ -907,7 +917,7 @@ function ConnectionEditor({
 			</div>
 
 			<div className="mt-4 grid gap-3 sm:grid-cols-[220px_1fr]">
-				<Field label="Tipo de relação">
+				<Field label="Tipo de Relação">
 					<Select
 						value={connection.kind}
 						onChange={(event) =>
@@ -925,7 +935,7 @@ function ConnectionEditor({
 						))}
 					</Select>
 				</Field>
-				<Field label="Nota opcional">
+				<Field label="Nota Opcional">
 					<Input
 						value={connection.note}
 						onChange={(event) =>
@@ -940,22 +950,29 @@ function ConnectionEditor({
 				</Field>
 			</div>
 
-			<div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<label className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/45 px-3 py-2 text-[12px] font-medium text-muted-foreground">
-					<input
-						type="checkbox"
-						checked={connection.isSecret}
-						onChange={(event) =>
-							onChange({
-								...connection,
-								isSecret: event.target.checked,
-								error: undefined,
-							})
-						}
-						className="h-3.5 w-3.5 rounded border-border accent-primary"
-					/>
-					Segredo do mestre
-				</label>
+			<div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<button
+					type="button"
+					onClick={() =>
+						onChange({
+							...connection,
+							isSecret: !connection.isSecret,
+							error: undefined,
+						})
+					}
+					className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-background/80"
+				>
+					<span
+						className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+							connection.isSecret
+								? "border-primary bg-primary text-primary-foreground"
+								: "border-border/70 bg-background"
+						}`}
+					>
+						{connection.isSecret && <Check className="h-3 w-3 stroke-[3]" />}
+					</span>
+					<span>Segredo do Mestre</span>
+				</button>
 
 				<div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
 					<Button
@@ -970,10 +987,10 @@ function ConnectionEditor({
 							})
 						}
 					>
-						Inverter direção
+						Inverter Direção
 					</Button>
 					<Button type="button" onClick={onSave}>
-						Salvar vínculo
+						Salvar Vínculo
 					</Button>
 				</div>
 			</div>
@@ -990,5 +1007,153 @@ function ConnectionEditor({
 function relationLabel(kind: FamilyRelationKind) {
 	return (
 		relationOptions.find((option) => option.value === kind)?.label ?? "Parente"
+	);
+}
+
+function CharacterAvatar({
+	imageUrl,
+	characterName,
+	className = "h-7 w-7 rounded-lg",
+	fallbackIconClassName = "h-full w-full p-1.5 text-muted-foreground",
+}: {
+	imageUrl?: string;
+	characterName?: string;
+	className?: string;
+	fallbackIconClassName?: string;
+}) {
+	return (
+		<div
+			className={`shrink-0 overflow-hidden border border-border/70 ${className}`}
+		>
+			{imageUrl ? (
+				<img
+					src={imageUrl}
+					alt={characterName || "Avatar do personagem"}
+					className="h-full w-full object-cover"
+				/>
+			) : (
+				<User className={fallbackIconClassName} />
+			)}
+		</div>
+	);
+}
+
+function LineageSidebar({
+	characters,
+	filteredCharacters,
+	searchQuery,
+	onSearchQueryChange,
+	selectedCharacter,
+	selectedCharacterId,
+	onSelectCharacter,
+}: {
+	characters: Character[];
+	filteredCharacters: Character[];
+	searchQuery: string;
+	onSearchQueryChange: (query: string) => void;
+	selectedCharacter?: Character;
+	selectedCharacterId: string | null;
+	onSelectCharacter: (id: string | null) => void;
+}) {
+	return (
+		<aside className="lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]">
+			<div>
+				<h3 className="font-display text-base font-bold text-foreground flex items-center justify-between">
+					<span>Diretório da Linhagem</span>
+					<span className="text-xs font-normal text-muted-foreground">
+						{characters.length} fichas
+					</span>
+				</h3>
+				<p className="mt-0.5 text-xs text-muted-foreground">
+					Selecione um personagem para destacar vínculos.
+				</p>
+
+				<div className="mt-3 relative">
+					<Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Input
+						value={searchQuery}
+						onChange={(e) => onSearchQueryChange(e.target.value)}
+						placeholder="Buscar por nome ou raça..."
+						className="pl-9 text-xs"
+					/>
+				</div>
+			</div>
+
+			{selectedCharacter && (
+				<div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5 transition-all">
+					<div className="flex items-center gap-3">
+						<CharacterAvatar
+							imageUrl={selectedCharacter.imageUrl}
+							characterName={selectedCharacter.characterName}
+							className="h-10 w-10 rounded-xl border-primary/30 bg-primary/10"
+							fallbackIconClassName="h-full w-full p-2 text-primary"
+						/>
+						<div className="min-w-0">
+							<h4 className="font-display font-bold text-sm text-foreground truncate">
+								{selectedCharacter.characterName}
+							</h4>
+							<p className="text-[11px] text-muted-foreground truncate">
+								{[selectedCharacter.race, selectedCharacter.class]
+									.filter(Boolean)
+									.join(" · ") || "Sem classe/raça"}
+							</p>
+						</div>
+					</div>
+					<div className="mt-2.5 flex items-center justify-between text-xs pt-2.5 border-t border-border/60">
+						<span className="text-muted-foreground">Vínculos Diretos:</span>
+						<span className="font-bold text-primary">
+							{selectedCharacter.familyRelations?.length ?? 0}
+						</span>
+					</div>
+					<Link
+						to="/sheets/$characterId"
+						params={{ characterId: selectedCharacter.id }}
+						className="mt-2.5 block text-center rounded-lg bg-primary text-primary-foreground py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+					>
+						Abrir Ficha do Personagem
+					</Link>
+				</div>
+			)}
+
+			<div className="flex flex-col gap-1.5">
+				<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+					Lista de Integrantes
+				</span>
+				{filteredCharacters.map((char) => {
+					const isSelected = char.id === selectedCharacterId;
+					return (
+						<button
+							type="button"
+							key={char.id}
+							onClick={() => onSelectCharacter(char.id)}
+							className={`flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+								isSelected
+									? "border-primary bg-primary/10"
+									: "border-border/60 bg-background/50 hover:border-primary/40"
+							}`}
+						>
+							<div className="flex items-center gap-2.5 min-w-0">
+								<CharacterAvatar
+									imageUrl={char.imageUrl}
+									characterName={char.characterName}
+									className="h-7 w-7 rounded-lg"
+								/>
+								<div className="min-w-0">
+									<p className="truncate text-xs font-bold text-foreground">
+										{char.characterName}
+									</p>
+									<p className="truncate text-[10px] text-muted-foreground">
+										{char.race || "Sem raça"}
+									</p>
+								</div>
+							</div>
+							<span className="text-[10px] px-2 py-0.5 rounded-full border border-border/60 bg-background text-muted-foreground shrink-0">
+								{char.familyRelations?.length ?? 0} laços
+							</span>
+						</button>
+					);
+				})}
+			</div>
+		</aside>
 	);
 }
