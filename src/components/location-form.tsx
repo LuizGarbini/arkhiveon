@@ -198,10 +198,16 @@ function LocationFormContent({
 						syncError ||
 						"Não foi possível salvar a localização. Verifique se você possui permissão para alterar o grimório.",
 				});
-				return;
-			}
-		}
 		setOpen(false);
+		if (createdId) {
+			void navigate({
+				to: "/locations/$locationId",
+				params: { locationId: createdId },
+				search: { edit: true },
+			});
+		}
+	}
+
 	return (
 		<form
 			onSubmit={handleSubmit(onSubmit)}
