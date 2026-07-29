@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Pencil, Plus } from "lucide-react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
@@ -102,11 +102,34 @@ function ItemFormDialog({
 	open: openProp,
 	onOpenChange,
 }: ItemFormDialogProps) {
-	const isEdit = !!item;
 	const [internalOpen, setInternalOpen] = useState(false);
-	const nameId = useId();
 	const open = openProp ?? internalOpen;
 	const setOpen = onOpenChange ?? setInternalOpen;
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
+			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+				{open && (
+					<ItemFormContent
+						key={item?.id ?? "new"}
+						item={item}
+						setOpen={setOpen}
+					/>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+interface ItemFormContentProps {
+	item?: Item;
+	setOpen: (open: boolean) => void;
+}
+
+function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
+	const isEdit = Boolean(item);
+	const nameId = useId();
 	const toast = useToast();
 
 	const addItem = useRPGStore((state) => state.addItem);
@@ -120,14 +143,15 @@ function ItemFormDialog({
 	const {
 		register,
 		handleSubmit,
-		reset,
 		control,
 		setValue,
 		formState: { isSubmitting },
 	} = useForm<ItemFormValues>({
 		defaultValues: {
 			...itemDefaults,
-			campaignIds: initialCampaignIds,
+			campaignIds: item?.campaignIds?.length
+				? item.campaignIds
+				: initialCampaignIds,
 			...(item ?? {}),
 		},
 	});
@@ -137,18 +161,6 @@ function ItemFormDialog({
 	const imageFocusY = useWatch({ control, name: "imageFocusY" });
 	const imageZoom = useWatch({ control, name: "imageZoom" });
 	const watchedValues = useWatch({ control });
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset form fields when dialog opens
-	useEffect(() => {
-		if (!open) return;
-		reset({
-			...itemDefaults,
-			campaignIds: item?.campaignIds?.length
-				? item.campaignIds
-				: initialCampaignIds,
-			...(item ?? {}),
-		});
-	}, [open, item?.id, reset]);
 
 	function onSubmit(data: ItemFormValues) {
 		let createdId: string | null = null;
@@ -188,21 +200,18 @@ function ItemFormDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-				<form
-					onSubmit={handleSubmit(onSubmit)}
-					className="flex h-full min-h-0 flex-col"
-				>
-					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
-						<DialogTitle className="font-display text-lg">
-							{isEdit ? `Editar: ${item?.name || "Item"}` : "Novo Item"}
-						</DialogTitle>
-						<DialogDescription>
-							Registre uma arma, armadura, poção ou relíquia.
-						</DialogDescription>
-					</DialogHeader>
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className="flex h-full min-h-0 flex-col"
+		>
+			<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+				<DialogTitle className="font-display text-lg">
+					{isEdit ? `Editar: ${item?.name || "Item"}` : "Novo Item"}
+				</DialogTitle>
+				<DialogDescription>
+					Registre uma arma, armadura, poção ou relíquia.
+				</DialogDescription>
+			</DialogHeader>
 
 					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
 						<FormSection title="Identificação">
