@@ -213,171 +213,163 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 				</DialogDescription>
 			</DialogHeader>
 
-					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-						<FormSection title="Identificação">
-							<EntityImagePicker
-								value={{
-									imageUrl: imageUrl ?? "",
-									imageAssetId,
-									imageFocusY,
-									imageZoom,
-								}}
-								onChange={(patch) => {
-									for (const [key, val] of Object.entries(patch)) {
-										setValue(key as keyof ItemFormValues, val as never, {
-											shouldDirty: true,
-										});
-									}
-								}}
-								uploadLabel="Ilustração"
-								folder="items"
-								libraryName={watchedValues.name}
-							/>
-							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-								<Field label="Nome" htmlFor={nameId} className="sm:col-span-2">
-									<Input
-										id={nameId}
-										placeholder="Ex: Espada Longa Flamejante"
-										{...register("name", { required: true })}
-									/>
-								</Field>
-								<Field label="Tipo">
-									<Input
-										placeholder="Arma, Armadura, Poção..."
-										{...register("type")}
-									/>
-								</Field>
-								<Field label="Subtipo">
-									<Input
-										placeholder="Ex: espada longa, escudo..."
-										{...register("subtype")}
-									/>
-								</Field>
-								<Field label="Raridade">
-									<Select {...register("rarity")}>
-										<option value="comum">Comum</option>
-										<option value="incomum">Incomum</option>
-										<option value="raro">Raro</option>
-										<option value="muito raro">Muito Raro</option>
-										<option value="lendário">Lendário</option>
-										<option value="artefato">Artefato</option>
-									</Select>
-								</Field>
-								<Field label="Fonte / Livro">
-									<Input placeholder="Ex: PHB pg.150" {...register("source")} />
-								</Field>
-							</div>
-						</FormSection>
-
-						<WorldEntityPublicationFields
-							control={control}
-							setValue={setValue}
-						/>
-
-						<FormSection title="Mecânica">
-							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-								<Field label="Peso">
-									<Input placeholder="Ex: 1,5 kg" {...register("weight")} />
-								</Field>
-								<Field label="Valor">
-									<Input placeholder="Ex: 50 PO" {...register("value")} />
-								</Field>
-								<Field label="Cargas">
-									<Input placeholder="Ex: 3/7" {...register("charges")} />
-								</Field>
-							</div>
-							<Field label="Atributos / Efeitos mecânicos">
-								<Textarea
-									rows={3}
-									placeholder="1d8 cortante + 1d6 fogo, +1 em Persuasão..."
-									{...register("stats")}
-								/>
-							</Field>
-							<Field label="Propriedades" hint="Ex: Versátil (1d10), Alcance">
-								<Input
-									placeholder="Versátil, Alcance..."
-									{...register("properties")}
-								/>
-							</Field>
-						</FormSection>
-
-						<FormSection title="Posse & Sintonização">
-							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-								<Field label="Pertence a">
-									<Input
-										placeholder="Personagem ou local"
-										{...register("owner")}
-									/>
-								</Field>
-								<Field label="Sintonizado com">
-									<Input
-										placeholder="Quem está sintonizado"
-										{...register("attunedTo")}
-									/>
-								</Field>
-							</div>
-							<div className="flex flex-wrap items-center gap-4">
-								<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-									<input
-										type="checkbox"
-										className="h-3.5 w-3.5 rounded border-border accent-primary"
-										{...register("requiresAttunement")}
-									/>
-									Requer sintonização
-								</label>
-								<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-									<input
-										type="checkbox"
-										className="h-3.5 w-3.5 rounded border-border accent-primary"
-										{...register("equipped")}
-									/>
-									Equipado
-								</label>
-							</div>
-						</FormSection>
-
-						<FormSection title="Descrição">
-							<Field label="Descrição / Lore">
-								<Textarea
-									rows={4}
-									placeholder="Forjada nas profundezas de..."
-									{...register("description")}
-								/>
-							</Field>
-						</FormSection>
-						<EntityLinkManager
-							value={watchedValues.entityLinks ?? []}
-							onChange={(links) =>
-								setValue("entityLinks", links, { shouldDirty: true })
+			<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+				<FormSection title="Identificação">
+					<EntityImagePicker
+						value={{
+							imageUrl: imageUrl ?? "",
+							imageAssetId,
+							imageFocusY,
+							imageZoom,
+						}}
+						onChange={(patch) => {
+							for (const [key, val] of Object.entries(patch)) {
+								setValue(key as keyof ItemFormValues, val as never, {
+									shouldDirty: true,
+								});
 							}
-							sourceValues={watchedValues as Record<string, unknown>}
-							currentEntity={{
-								entityKind: "item",
-								entityId: item?.id,
-							}}
-						/>
+						}}
+						uploadLabel="Ilustração"
+						folder="items"
+						libraryName={watchedValues.name}
+					/>
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<Field label="Nome" htmlFor={nameId} className="sm:col-span-2">
+							<Input
+								id={nameId}
+								placeholder="Ex: Espada Longa Flamejante"
+								{...register("name", { required: true })}
+							/>
+						</Field>
+						<Field label="Tipo">
+							<Input
+								placeholder="Arma, Armadura, Poção..."
+								{...register("type")}
+							/>
+						</Field>
+						<Field label="Subtipo">
+							<Input
+								placeholder="Ex: espada longa, escudo..."
+								{...register("subtype")}
+							/>
+						</Field>
+						<Field label="Raridade">
+							<Select {...register("rarity")}>
+								<option value="comum">Comum</option>
+								<option value="incomum">Incomum</option>
+								<option value="raro">Raro</option>
+								<option value="muito raro">Muito Raro</option>
+								<option value="lendário">Lendário</option>
+								<option value="artefato">Artefato</option>
+							</Select>
+						</Field>
+						<Field label="Fonte / Livro">
+							<Input placeholder="Ex: PHB pg.150" {...register("source")} />
+						</Field>
 					</div>
+				</FormSection>
 
-					<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => setOpen(false)}
-						>
-							Cancelar
-						</Button>
-						<Button
-							type="submit"
-							size="sm"
-							loading={isSubmitting}
-							loadingText="Salvando..."
-						>
-							{isEdit ? "Salvar alterações" : "Criar Item"}
-						</Button>
+				<WorldEntityPublicationFields control={control} setValue={setValue} />
+
+				<FormSection title="Mecânica">
+					<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+						<Field label="Peso">
+							<Input placeholder="Ex: 1,5 kg" {...register("weight")} />
+						</Field>
+						<Field label="Valor">
+							<Input placeholder="Ex: 50 PO" {...register("value")} />
+						</Field>
+						<Field label="Cargas">
+							<Input placeholder="Ex: 3/7" {...register("charges")} />
+						</Field>
 					</div>
-				</form>
-			</DialogContent>
-		</Dialog>
+					<Field label="Atributos / Efeitos mecânicos">
+						<Textarea
+							rows={3}
+							placeholder="1d8 cortante + 1d6 fogo, +1 em Persuasão..."
+							{...register("stats")}
+						/>
+					</Field>
+					<Field label="Propriedades" hint="Ex: Versátil (1d10), Alcance">
+						<Input
+							placeholder="Versátil, Alcance..."
+							{...register("properties")}
+						/>
+					</Field>
+				</FormSection>
+
+				<FormSection title="Posse & Sintonização">
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<Field label="Pertence a">
+							<Input placeholder="Personagem ou local" {...register("owner")} />
+						</Field>
+						<Field label="Sintonizado com">
+							<Input
+								placeholder="Quem está sintonizado"
+								{...register("attunedTo")}
+							/>
+						</Field>
+					</div>
+					<div className="flex flex-wrap items-center gap-4">
+						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+							<input
+								type="checkbox"
+								className="h-3.5 w-3.5 rounded border-border accent-primary"
+								{...register("requiresAttunement")}
+							/>
+							Requer sintonização
+						</label>
+						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+							<input
+								type="checkbox"
+								className="h-3.5 w-3.5 rounded border-border accent-primary"
+								{...register("equipped")}
+							/>
+							Equipado
+						</label>
+					</div>
+				</FormSection>
+
+				<FormSection title="Descrição">
+					<Field label="Descrição / Lore">
+						<Textarea
+							rows={4}
+							placeholder="Forjada nas profundezas de..."
+							{...register("description")}
+						/>
+					</Field>
+				</FormSection>
+				<EntityLinkManager
+					value={watchedValues.entityLinks ?? []}
+					onChange={(links) =>
+						setValue("entityLinks", links, { shouldDirty: true })
+					}
+					sourceValues={watchedValues as Record<string, unknown>}
+					currentEntity={{
+						entityKind: "item",
+						entityId: item?.id,
+					}}
+				/>
+			</div>
+
+			<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onClick={() => setOpen(false)}
+				>
+					Cancelar
+				</Button>
+				<Button
+					type="submit"
+					size="sm"
+					loading={isSubmitting}
+					loadingText="Salvando..."
+				>
+					{isEdit ? "Salvar alterações" : "Criar Item"}
+				</Button>
+			</div>
+		</form>
 	);
 }
