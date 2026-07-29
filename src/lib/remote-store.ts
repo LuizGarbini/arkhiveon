@@ -133,15 +133,19 @@ function worldEntityRowFields(
 	entity: Record<string, unknown>,
 ): Record<string, unknown> {
 	const fields: Record<string, unknown> = {};
-	if (typeof entity.worldId === "string") fields.world_id = entity.worldId;
-	if (typeof entity.publicationScope === "string") {
+	if (typeof entity.worldId === "string" && entity.worldId.trim() !== "") {
+		fields.world_id = entity.worldId.trim();
+	}
+	if (typeof entity.publicationScope === "string" && entity.publicationScope) {
 		fields.publication_scope = entity.publicationScope;
 	}
-	if (typeof entity.visibility === "string") {
+	if (typeof entity.visibility === "string" && entity.visibility) {
 		fields.visibility = entity.visibility;
 	}
 	if (Array.isArray(entity.campaignIds)) {
-		fields.campaign_ids = entity.campaignIds;
+		fields.campaign_ids = entity.campaignIds.filter(
+			(id) => typeof id === "string" && id.trim() !== "",
+		);
 	}
 	return fields;
 }
@@ -161,10 +165,12 @@ function fromWorldEntityRow(
 		(table === "lores" && row.is_secret ? "master_secret" : "public");
 	return {
 		...entity,
-		worldId: row.world_id ?? "",
+		worldId: row.world_id ?? undefined,
 		publicationScope: row.publication_scope ?? "restricted",
 		visibility,
-		campaignIds: row.campaign_ids ?? [],
+		campaignIds: (row.campaign_ids ?? []).filter(
+			(id): id is string => typeof id === "string" && id.trim() !== "",
+		),
 		...(row.created_by ? { createdBy: row.created_by } : {}),
 		...(table === "lores"
 			? { isSecret: row.is_secret ?? visibility === "master_secret" }

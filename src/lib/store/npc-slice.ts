@@ -85,14 +85,21 @@ export const createNpcSlice: StateCreator<RPGState, [], [], NpcSlice> = (
 				? [campaignId]
 				: (npc.campaignIds ?? []);
 
+		const effectiveWorldId =
+			typeof npc.worldId === "string" && npc.worldId.trim() !== ""
+				? npc.worldId.trim()
+				: worldId;
+
 		const created = generateEntry(
 			{
 				...npcDefaults,
-				...worldEntityDefaultsForCampaign(worldId, campaignId),
+				...worldEntityDefaultsForCampaign(effectiveWorldId, campaignId),
 			},
-			{ ...npc, campaignIds: effectiveCampaignIds } as Partial<
-				Omit<Npc, "id" | "createdAt">
-			>,
+			{
+				...npc,
+				worldId: effectiveWorldId,
+				campaignIds: effectiveCampaignIds,
+			} as Partial<Omit<Npc, "id" | "createdAt">>,
 		) as Npc;
 		const scopeError = validateEntityScopeForActiveWorld(
 			get,
