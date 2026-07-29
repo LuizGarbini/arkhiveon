@@ -202,22 +202,34 @@ function LocationFormContent({
 			}
 		}
 		setOpen(false);
-		if (createdId) {
-			void navigate({
-				to: "/locations/$locationId",
-				params: { locationId: createdId },
-				search: { edit: true },
-			});
-		}
-	}
-
 	return (
-								slideDirection === "left"
-									? "t-tab-slide-left"
-									: "t-tab-slide-right",
-							)}
-						>
-							{tab === "basic" && (
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className="flex h-full min-h-0 flex-col"
+		>
+			<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+				<DialogTitle className="font-display text-lg">
+					{isEdit ? `Editar: ${location?.name || "Local"}` : "Novo Local"}
+				</DialogTitle>
+				<DialogDescription>
+					Registre reinos, cidades, masmorras e pontos de interesse.
+				</DialogDescription>
+				<div className="pt-2">
+					<FormTabs tabs={TABS} activeTab={tab} onTabChange={handleTabChange} />
+				</div>
+			</DialogHeader>
+
+			<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+				<div
+					key={tab}
+					className={cn(
+						"space-y-6",
+						slideDirection === "left"
+							? "t-tab-slide-left"
+							: "t-tab-slide-right",
+					)}
+				>
+					{tab === "basic" && (
 								<>
 									<FormSection title="Identificação">
 										<ImageUploader
