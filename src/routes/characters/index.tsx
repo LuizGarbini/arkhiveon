@@ -80,12 +80,12 @@ function RouteComponent() {
 				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
 					<ListLayout onSearch={setSearchQuery} />
 
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					<div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 						{isLoading
 							? loadingCardKeys.map((key, i) => (
 									<div
 										key={key}
-										className="t-stagger-item"
+										className="t-stagger-item h-full"
 										style={{ "--stagger-index": i } as React.CSSProperties}
 									>
 										<CharacterCard isLoading />
@@ -94,7 +94,7 @@ function RouteComponent() {
 							: filteredCharacters.map((character, i) => (
 									<div
 										key={character.id}
-										className="t-stagger-item"
+										className="t-stagger-item h-full"
 										style={{ "--stagger-index": i } as React.CSSProperties}
 									>
 										<CharacterCard character={character} />
