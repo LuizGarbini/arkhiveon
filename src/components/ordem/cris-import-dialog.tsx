@@ -69,7 +69,7 @@ export function CrisImportDialog({
 					description: "Não foi possível registrar a ficha no banco.",
 				});
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast.error({
 				title: "JSON inválido",
 				description:
