@@ -67,6 +67,7 @@ export type Database = {
 					name: string;
 					owner_id: string;
 					spotify_jam_link: string | null;
+					system: string;
 					updated_at: string;
 					world_id: string;
 				};
@@ -78,6 +79,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
+					system?: string;
 					updated_at?: string;
 					world_id: string;
 				};
@@ -89,6 +91,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
+					system?: string;
 					updated_at?: string;
 					world_id?: string;
 				};

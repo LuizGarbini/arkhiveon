@@ -482,9 +482,9 @@ export interface Campaign {
 	id: string;
 	name: string;
 	description: string;
+	system: RpgSystem;
 	ownerId: string;
 	worldId: string;
-	system?: RpgSystem;
 	myRole?: MembershipRole;
 	createdAt: number;
 	updatedAt?: number;

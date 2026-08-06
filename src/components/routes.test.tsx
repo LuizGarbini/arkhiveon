@@ -95,6 +95,7 @@ describe("Routes smoke tests", () => {
 					id: "test-campaign-id",
 					name: "Test Campaign",
 					description: "",
+					system: "dnd5e",
 					ownerId: "test-user-id",
 					worldId: "test-world-id",
 					myRole: "owner",

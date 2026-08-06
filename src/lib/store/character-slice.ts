@@ -223,11 +223,16 @@ export const createCharacterSlice: StateCreator<
 			});
 			return {} as Character;
 		}
+		const activeCampaign = get().campaigns.find(
+			(campaign) => campaign.id === campaignId,
+		);
+		const inheritedSystem =
+			character.system ?? activeCampaign?.system ?? characterDefaults.system;
 		const created = generateEntry(characterDefaults, {
 			...character,
+			system: inheritedSystem,
 			sheetLayout:
-				character.sheetLayout ??
-				createDefaultSheetLayout(character.system ?? characterDefaults.system),
+				character.sheetLayout ?? createDefaultSheetLayout(inheritedSystem),
 		}) as Character;
 		const log = {
 			action: "create" as const,

@@ -1,8 +1,27 @@
-import { Globe2, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
+import {
+	CheckCircle2,
+	Globe2,
+	Loader2,
+	Shield,
+	Trash2,
+	User,
+	UserPlus,
+} from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import {
+	DEDICATED_CAMPAIGN_SYSTEMS,
+	DEFAULT_CAMPAIGN_SYSTEM,
+} from "@/lib/campaign-systems";
 import { useRPGStore } from "@/lib/store";
-import type { Campaign, Invite, MembershipRole, RpgSystem } from "@/lib/store/types";
+import type {
+	Campaign,
+	Invite,
+	MembershipRole,
+	RpgSystem,
+} from "@/lib/store/types";
+import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import { OrdemCampaignSystemCard } from "./ordem/ordem-campaign-system-card";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -22,6 +41,44 @@ interface CampaignFormProps {
 	defaultTab?: "general" | "members";
 	defaultWorldId?: string;
 }
+
+type DedicatedCampaignSystem = (typeof DEDICATED_CAMPAIGN_SYSTEMS)[number];
+
+const CAMPAIGN_SYSTEM_COPY: Record<
+	DedicatedCampaignSystem,
+	{ title: string; badge: string; description: string }
+> = {
+	dnd5e: {
+		title: "D&D 5e",
+		badge: "Fantasia clássica",
+		description: "Atributos, classes, perícias, magias e progressão 2014.",
+	},
+	dnd2024: {
+		title: "D&D 2024",
+		badge: "Nova geração",
+		description: "Heroic Inspiration, Species e Weapon Mastery.",
+	},
+	ordem: {
+		title: "Ordem Paranormal",
+		badge: "Mesa dedicada",
+		description: "NEX, agentes, sanidade, PE e identidade própria da Ordem.",
+	},
+	coc: {
+		title: "Call of Cthulhu",
+		badge: "Horror cósmico",
+		description: "Investigação, sanidade e rolagens d100.",
+	},
+	tormenta20: {
+		title: "Tormenta 20",
+		badge: "Arton",
+		description: "Poderes, perícias e fantasia brasileira de alto impacto.",
+	},
+	vampire: {
+		title: "Vampiro V5",
+		badge: "World of Darkness",
+		description: "Fome, disciplinas e personagens sociais da noite.",
+	},
+};
 
 export function CampaignForm({
 	open,
@@ -44,7 +101,7 @@ export function CampaignForm({
 	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [system, setSystem] = useState<RpgSystem>("dnd5e");
+	const [system, setSystem] = useState<RpgSystem>(DEFAULT_CAMPAIGN_SYSTEM);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const nameInputId = useId();
@@ -82,7 +139,7 @@ export function CampaignForm({
 		if (open) {
 			setName(campaign?.name ?? "");
 			setDescription(campaign?.description ?? "");
-			setSystem(campaign?.system ?? "dnd5e");
+			setSystem(campaign?.system ?? DEFAULT_CAMPAIGN_SYSTEM);
 			setFormError(null);
 			setInviteEmail("");
 			setInviteRole("viewer");
@@ -134,7 +191,7 @@ export function CampaignForm({
 				});
 			} else {
 				const created = await createCampaign(name.trim(), description.trim(), {
-					worldId: defaultWorldId,
+					...(defaultWorldId ? { worldId: defaultWorldId } : {}),
 					system,
 				});
 				await switchCampaign(created.id);
@@ -162,8 +219,10 @@ export function CampaignForm({
 			await createInvite(campaign.id, inviteEmail.trim(), inviteRole);
 			setInviteEmail("");
 			await fetchMembersAndInvites();
-		} catch (error: any) {
-			setInviteError(error.message || "Erro ao enviar convite.");
+		} catch (error) {
+			setInviteError(
+				error instanceof Error ? error.message : "Erro ao enviar convite.",
+			);
 		} finally {
 			setIsSendingInvite(false);
 		}
@@ -193,7 +252,7 @@ export function CampaignForm({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className={cn("sm:max-w-md", campaign && "sm:max-w-lg")}>
+			<DialogContent className={cn("sm:max-w-2xl", campaign && "sm:max-w-2xl")}>
 				<DialogHeader>
 					<DialogTitle className="font-display">
 						{campaign ? "Configurações da Campanha" : "Nova Campanha"}
@@ -395,6 +454,14 @@ export function CampaignForm({
 										rows={2}
 									/>
 								</div>
+
+								<CampaignSystemSelector value={system} onChange={setSystem} />
+
+								{formError && (
+									<p className="text-[11px] font-medium text-destructive">
+										{formError}
+									</p>
+								)}
 
 								<DialogFooter className="pt-2">
 									<Button
@@ -602,6 +669,8 @@ export function CampaignForm({
 								/>
 							</div>
 
+							<CampaignSystemSelector value={system} onChange={setSystem} />
+
 							<div className="space-y-3 rounded-xl border border-border/40 bg-muted/15 p-3.5">
 								<div className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
 									<Globe2 className="h-3.5 w-3.5 text-sky-300" />
@@ -642,5 +711,96 @@ export function CampaignForm({
 				)}
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function CampaignSystemSelector({
+	value,
+	onChange,
+}: {
+	value: RpgSystem;
+	onChange: (system: RpgSystem) => void;
+}) {
+	return (
+		<section className="space-y-3">
+			<div className="flex flex-col gap-1">
+				<div className="flex items-center gap-2 text-[12px] font-bold text-foreground">
+					<Shield className="h-3.5 w-3.5 text-primary" />
+					Sistema RPG da campanha
+				</div>
+				<p className="text-[11px] leading-relaxed text-muted-foreground">
+					Este sistema passa a ser o padrão da mesa, das novas fichas e dos
+					atalhos temáticos.
+				</p>
+			</div>
+
+			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+				{DEDICATED_CAMPAIGN_SYSTEMS.map((systemValue) => {
+					const config = SYSTEM_CONFIG[systemValue] ?? SYSTEM_CONFIG.generic;
+					const copy = CAMPAIGN_SYSTEM_COPY[systemValue];
+					const Icon = config.Icon;
+					const isSelected = value === systemValue;
+
+					if (systemValue === "ordem") {
+						return (
+							<OrdemCampaignSystemCard
+								key={systemValue}
+								title={copy.title}
+								badge={copy.badge}
+								description={copy.description}
+								Icon={Icon}
+								isSelected={isSelected}
+								onSelect={() => onChange(systemValue)}
+							/>
+						);
+					}
+
+					return (
+						<button
+							key={systemValue}
+							type="button"
+							aria-pressed={isSelected}
+							onClick={() => onChange(systemValue)}
+							className={cn(
+								"group relative overflow-hidden rounded-xl border p-3 text-left shadow-sm transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 active:scale-[0.985]",
+								isSelected
+									? "border-primary/60 bg-primary/12 shadow-primary/10"
+									: "border-border/60 bg-card-elevated/45 hover:border-primary/35 hover:bg-card-elevated/80",
+							)}
+						>
+							<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/45 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+							<div className="flex items-start justify-between gap-3">
+								<div className="flex min-w-0 gap-3">
+									<div
+										className={cn(
+											"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary",
+										)}
+									>
+										<Icon className="h-4.5 w-4.5" strokeWidth={1.7} />
+									</div>
+									<div className="min-w-0">
+										<div className="flex flex-wrap items-center gap-2">
+											<h3 className="font-display text-[13px] font-bold text-foreground">
+												{copy.title}
+											</h3>
+											<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-primary">
+												{copy.badge}
+											</span>
+										</div>
+										<p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+											{copy.description}
+										</p>
+									</div>
+								</div>
+
+								{isSelected ? (
+									<CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+								) : null}
+							</div>
+						</button>
+					);
+				})}
+			</div>
+		</section>
 	);
 }

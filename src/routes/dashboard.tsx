@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
+	Archive,
 	ArrowUpRight,
 	BookOpen,
 	CalendarDays,
 	Clock3,
+	Grid3X3,
 	type LucideIcon,
 	MapIcon,
 	Package,
 	ScrollText,
+	Skull,
 	User,
 	UserPlus,
 	Users,
@@ -96,6 +99,7 @@ function Dashboard() {
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
 	const activeCampaignRole = useActiveCampaignRole();
 	const isViewer = activeCampaignRole === "viewer";
+	const isOrdemCampaign = activeCampaign?.system === "ordem";
 
 	useEffect(() => {
 		void loadInvites();
@@ -204,20 +208,18 @@ function Dashboard() {
 				<div className="absolute inset-0 z-[1] rounded-[1.75rem] bg-gradient-to-br from-black/25 via-transparent to-black/20" />
 				<div className="relative z-[2] grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
 					<div className="max-w-3xl">
-						<div className="flex items-center gap-2">
+						<div className="flex flex-wrap items-center gap-2">
 							<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">
 								Visão geral
 							</p>
-							{activeCampaign?.system && (
-								<span className="rounded-full border border-primary/30 bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-md">
-									Mesa •{" "}
-									{activeCampaign.system === "ordem"
-										? "Ordem Paranormal 👁️"
-										: activeCampaign.system.toUpperCase()}
+							{isOrdemCampaign ? (
+								<span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/25 bg-rose-500/18 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-50 backdrop-blur-md">
+									<Skull className="h-3.5 w-3.5" />
+									Ordem Paranormal
 								</span>
-							)}
+							) : null}
 						</div>
-						<h1 className="font-display mt-3 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
+						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
 							{activeCampaign ? activeCampaign.name : "Sua campanha em foco"}
 						</h1>
 						<p className="mt-4 max-w-2xl text-[15px] leading-7 text-white/80">
@@ -323,40 +325,7 @@ function Dashboard() {
 				</div>
 			</section>
 
-			{/* Banner Especial de Ordem Paranormal */}
-			{activeCampaign?.system === "ordem" && (
-				<section className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/70 via-purple-900/40 to-black/90 p-5 shadow-lg shadow-purple-950/30 backdrop-blur-md">
-					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-						<div className="flex items-center gap-4">
-							<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 text-2xl shadow-inner">
-								👁️
-							</div>
-							<div>
-								<div className="flex items-center gap-2">
-									<h3 className="font-display text-base font-bold text-white">
-										Central de Investigação Paranormal
-									</h3>
-									<span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/30">
-										AS1 - AS7
-									</span>
-								</div>
-								<p className="text-xs text-white/70 mt-0.5">
-									Acesse os suplementos oficiais, mapas de combate com grid,
-									bestiário de ameaças e trilhas sonoras.
-								</p>
-							</div>
-						</div>
-						<div className="flex items-center gap-2 w-full sm:w-auto">
-							<Link to="/arquivos-secretos" className="w-full sm:w-auto">
-								<Button className="w-full sm:w-auto h-9 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs gap-2 shadow-md shadow-purple-950/50">
-									<BookOpen className="h-4 w-4" />
-									Abrir Arquivos Secretos
-								</Button>
-							</Link>
-						</div>
-					</div>
-				</section>
-			)}
+			{isOrdemCampaign ? <OrdemDashboardBanner /> : null}
 
 			<section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
 				{sections.map((section, index) => (
@@ -416,6 +385,76 @@ function Dashboard() {
 				/>
 			)}
 		</div>
+	);
+}
+
+const ordemShortcuts: Array<{
+	tab: "suplementos" | "mapas" | "bestiario";
+	title: string;
+	description: string;
+	Icon: LucideIcon;
+}> = [
+	{
+		tab: "suplementos",
+		title: "Suplementos AS1 - AS7",
+		description: "PDFs e HQs para consulta rápida durante a mesa.",
+		Icon: BookOpen,
+	},
+	{
+		tab: "mapas",
+		title: "Mapas com grid",
+		description: "Cenas de combate prontas para abrir e ampliar.",
+		Icon: Grid3X3,
+	},
+	{
+		tab: "bestiario",
+		title: "Bestiário",
+		description: "Criaturas e ameaças dos Arquivos Secretos.",
+		Icon: Skull,
+	},
+];
+
+function OrdemDashboardBanner() {
+	return (
+		<section className="relative overflow-hidden rounded-[1.75rem] border border-rose-500/25 bg-[radial-gradient(circle_at_top_right,rgba(225,29,72,0.2),transparent_34%),linear-gradient(135deg,rgba(24,24,27,0.96),rgba(76,5,25,0.72))] p-5 shadow-xl shadow-rose-950/10 sm:p-6">
+			<div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-rose-200/70 to-transparent" />
+			<div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+				<div className="max-w-2xl">
+					<div className="inline-flex items-center gap-2 rounded-full border border-rose-200/25 bg-rose-500/14 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-50">
+						<Archive className="h-3.5 w-3.5" />
+						Central de Arquivos Secretos
+					</div>
+					<h2 className="font-display mt-3 text-xl font-bold tracking-tight text-white">
+						AS1 - AS7 disponível para esta campanha de Ordem Paranormal
+					</h2>
+					<p className="mt-2 text-[13px] leading-6 text-rose-50/72">
+						Acesse os materiais temáticos da mesa sem misturar esse fluxo com
+						campanhas de outros sistemas.
+					</p>
+				</div>
+
+				<div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3 lg:max-w-2xl">
+					{ordemShortcuts.map((shortcut) => (
+						<Link
+							key={shortcut.tab}
+							to="/arquivos-secretos"
+							search={{ tab: shortcut.tab }}
+							className="group rounded-2xl border border-white/10 bg-white/7 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200/35 hover:bg-white/12 active:scale-[0.985]"
+						>
+							<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200/20 bg-rose-500/14 text-rose-50">
+								<shortcut.Icon className="h-4 w-4" />
+							</div>
+							<h3 className="mt-3 text-[12px] font-bold text-white transition-colors group-hover:text-rose-100">
+								{shortcut.title}
+							</h3>
+							<p className="mt-1 text-[11px] leading-relaxed text-rose-50/62">
+								{shortcut.description}
+							</p>
+						</Link>
+					))}
+				</div>
+			</div>
+		</section>
 	);
 }
 

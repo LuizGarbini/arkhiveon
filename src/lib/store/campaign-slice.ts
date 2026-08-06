@@ -1,4 +1,5 @@
 import type { StateCreator } from "zustand";
+import { normalizeCampaignSystem } from "../campaign-systems";
 import { getSupabase, SUPABASE_TABLES } from "../supabase";
 import {
 	campaignPerWorldLimitError,
@@ -35,9 +36,9 @@ interface MembershipCampaignRow {
 		id: string;
 		name?: string | null;
 		description?: string | null;
+		system?: string | null;
 		owner_id?: string | null;
 		world_id?: string | null;
-		system?: string | null;
 		created_at?: string | null;
 		updated_at?: string | null;
 	} | null;
@@ -195,8 +196,7 @@ export const createCampaignSlice: StateCreator<
 
 		set((prev) => {
 			const nextWorlds = prev.worlds.filter((w) => w.id !== id);
-			const defaultWorld =
-				nextWorlds.find((w) => w.isDefault) ?? nextWorlds[0];
+			const defaultWorld = nextWorlds.find((w) => w.isDefault) ?? nextWorlds[0];
 			const nextActiveWorldId =
 				prev.activeWorldId === id
 					? (defaultWorld?.id ?? null)
@@ -211,7 +211,6 @@ export const createCampaignSlice: StateCreator<
 
 		await get().loadCampaigns();
 	},
-
 
 	loadCampaigns: async () => {
 		const supabase = getSupabase();
@@ -237,6 +236,7 @@ export const createCampaignSlice: StateCreator<
 					id,
 					name,
 					description,
+					system,
 					owner_id,
 					world_id,
 					system,
@@ -266,9 +266,9 @@ export const createCampaignSlice: StateCreator<
 					id: c.id,
 					name: c.name ?? "Sem nome",
 					description: c.description ?? "",
+					system: normalizeCampaignSystem(c.system),
 					ownerId: c.owner_id ?? "",
 					worldId: c.world_id ?? "",
-					system: (c.system as RpgSystem) ?? "dnd5e",
 					myRole: row.role as MembershipRole,
 					createdAt: c.created_at
 						? new Date(c.created_at).getTime()
@@ -322,6 +322,7 @@ export const createCampaignSlice: StateCreator<
 	createCampaign: async (name, description = "", options) => {
 		const supabase = getSupabase();
 		const id = crypto.randomUUID();
+		const system = normalizeCampaignSystem(options?.system);
 		const originalCampaigns = get().campaigns;
 		const originalActiveCampaignId = get().activeCampaignId;
 		const originalActiveWorldId = get().activeWorldId;
@@ -369,9 +370,9 @@ export const createCampaignSlice: StateCreator<
 					id,
 					name,
 					description,
+					system,
 					ownerId: user.id,
 					worldId,
-					system: options?.system ?? "dnd5e",
 					myRole: "owner",
 					createdAt: Date.now(),
 				};
@@ -384,9 +385,9 @@ export const createCampaignSlice: StateCreator<
 						id,
 						name,
 						description,
+						system,
 						owner_id: user.id,
 						world_id: worldId,
-						system: options?.system ?? "dnd5e",
 					} as any);
 				if (campaignError) {
 					throw new Error(
@@ -451,24 +452,38 @@ export const createCampaignSlice: StateCreator<
 
 	updateCampaign: (id, data) => {
 		const originalCampaigns = get().campaigns;
+		const patch: Partial<Pick<Campaign, "name" | "description" | "system">> = {
+			...data,
+		};
+		if (data.system !== undefined) {
+			patch.system = normalizeCampaignSystem(data.system);
+		}
 		set((state) => ({
 			campaigns: state.campaigns.map((c) =>
-				c.id === id ? { ...c, ...data, updatedAt: Date.now() } : c,
+				c.id === id ? { ...c, ...patch, updatedAt: Date.now() } : c,
 			),
 			syncError: null,
 		}));
 
 		const supabase = getSupabase();
 		if (supabase) {
-			const updatePayload: Record<string, unknown> = {};
-			if (data.name !== undefined) updatePayload.name = data.name;
-			if (data.description !== undefined)
-				updatePayload.description = data.description;
-			if (data.system !== undefined) updatePayload.system = data.system;
+			const remotePatch: {
+				name?: string;
+				description?: string;
+				system?: string;
+			} = {};
+			if (data.name !== undefined) remotePatch.name = data.name;
+			if (data.description !== undefined) {
+				remotePatch.description = data.description;
+			}
+			if (data.system !== undefined) {
+				remotePatch.system = normalizeCampaignSystem(data.system);
+			}
+			if (Object.keys(remotePatch).length === 0) return;
 
 			void supabase
 				.from(SUPABASE_TABLES.campaigns)
-				.update(updatePayload as any)
+				.update(remotePatch)
 				.eq("id", id)
 				.then(({ error }) => {
 					if (error) {

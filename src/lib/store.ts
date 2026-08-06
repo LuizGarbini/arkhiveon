@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { normalizeCampaignSystem } from "./campaign-systems";
 import { createCampaignSlice } from "./store/campaign-slice";
 import { createCharacterSlice } from "./store/character-slice";
 import { createCollectionSlice } from "./store/collection-slice";
@@ -27,13 +28,13 @@ export {
 } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
 export { sessionDefaults } from "./store/session-slice";
-export { factionDefaults } from "./store/worldbuilding-slice";
 export {
 	FREE_CREATION_LIMIT,
 	isCreationLimitReached,
 } from "./store/sync-slice";
 // Re-export types for convenience
 export * from "./store/types";
+export { factionDefaults } from "./store/worldbuilding-slice";
 
 const IMAGE_FIELDS = new Set(["imageUrl", "mapUrl"]);
 
@@ -63,6 +64,21 @@ function stripPersistedDataImages<T>(value: T): T {
 	return next as T;
 }
 
+function migratePersistedState(persistedState: unknown) {
+	const migrated = stripPersistedDataImages(persistedState);
+	if (!migrated || typeof migrated !== "object") return migrated;
+
+	const state = migrated as { campaigns?: Array<Record<string, unknown>> };
+	if (Array.isArray(state.campaigns)) {
+		state.campaigns = state.campaigns.map((campaign) => ({
+			...campaign,
+			system: normalizeCampaignSystem(campaign.system),
+		}));
+	}
+
+	return migrated;
+}
+
 export const useRPGStore = create<RPGState>()(
 	persist(
 		(...a) => ({
@@ -78,8 +94,8 @@ export const useRPGStore = create<RPGState>()(
 		}),
 		{
 			name: "arkhiveon-storage",
-			version: 2,
-			migrate: (persistedState) => stripPersistedDataImages(persistedState),
+			version: 3,
+			migrate: migratePersistedState,
 			partialize: (state) => ({
 				activeCampaignId: state.activeCampaignId,
 				activeWorldId: state.activeWorldId,
@@ -87,6 +103,7 @@ export const useRPGStore = create<RPGState>()(
 					id: c.id,
 					name: c.name,
 					description: c.description,
+					system: c.system,
 					worldId: c.worldId,
 					myRole: c.myRole,
 				})),

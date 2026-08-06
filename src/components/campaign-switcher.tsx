@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
-import { useRPGStore } from "@/lib/store";
+import { systemLabel, useRPGStore } from "@/lib/store";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { useActiveWorld } from "@/lib/worldbuilding/hooks";
@@ -226,6 +226,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeWorld?.name ?? "Selecione um Mundo"}
+							{activeCampaign ? ` - ${systemLabel(activeCampaign.system)}` : ""}
 						</span>
 					</div>
 					<ChevronDown
@@ -350,6 +351,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 												</span>
 												<RoleBadge role={campaign.myRole} />
 											</div>
+											<span className="block truncate text-[10px] text-muted-foreground">
+												{systemLabel(campaign.system)}
+											</span>
 										</div>
 										{campaign.id === activeCampaignId && (
 											<Check className="h-3.5 w-3.5 text-primary" />

@@ -1,9 +1,15 @@
 import { FileUp, Upload } from "lucide-react";
-import { type ChangeEvent, useState } from "react";
+import {
+	type ChangeEvent,
+	isValidElement,
+	type ReactNode,
+	useState,
+} from "react";
 import { useToast } from "@/components/ui/toast";
 import { parseCrisCharacterJson } from "@/lib/ordem/cris-importer";
 import { useRPGStore } from "@/lib/store";
-import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "../ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,7 +22,7 @@ import { Textarea } from "../ui/textarea";
 
 interface CrisImportDialogProps {
 	onImportSuccess?: (characterId: string) => void;
-	trigger?: React.ReactNode;
+	trigger?: ReactNode;
 }
 
 export function CrisImportDialog({
@@ -28,6 +34,15 @@ export function CrisImportDialog({
 	const [loading, setLoading] = useState(false);
 	const toast = useToast();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const triggerRender = isValidElement(trigger) ? (
+		trigger
+	) : (
+		<Button variant="outline" size="sm" className="gap-2">
+			<FileUp className="h-4 w-4 text-primary" />
+			Importar Ficha do C.R.I.S. (.json)
+		</Button>
+	);
 
 	function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
 		const file = e.target.files?.[0];
@@ -48,7 +63,10 @@ export function CrisImportDialog({
 		try {
 			setLoading(true);
 			const parsedData = JSON.parse(textToParse);
-			const characterPayload = parseCrisCharacterJson(parsedData);
+			const characterPayload = parseCrisCharacterJson(
+				parsedData,
+				activeCampaignId ?? "",
+			);
 
 			const created = addCharacter(characterPayload);
 			if (created?.id) {
@@ -78,17 +96,9 @@ export function CrisImportDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			{trigger ? (
-				<DialogTrigger onClick={() => setOpen(true)}>{trigger}</DialogTrigger>
-			) : (
-				<DialogTrigger
-					onClick={() => setOpen(true)}
-					className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-background/65 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-				>
-					<FileUp className="h-4 w-4 text-primary" />
-					Importar Ficha C.R.I.S. (.json)
-				</DialogTrigger>
-			)}
+			<DialogTrigger render={triggerRender}>
+				{!isValidElement(trigger) && trigger ? trigger : null}
+			</DialogTrigger>
 			<DialogContent className="max-w-lg border-border/80 bg-background/95 backdrop-blur-xl">
 				<DialogHeader>
 					<DialogTitle className="font-display text-lg flex items-center gap-2">
@@ -111,10 +121,13 @@ export function CrisImportDialog({
 						<p className="text-[11px] text-muted-foreground mt-1 mb-4">
 							Suporta Agentes de Combatente, Especialista e Ocultista
 						</p>
-						<label className="cursor-pointer">
-							<Button variant="secondary" size="sm" type="button">
-								Carregar Arquivo
-							</Button>
+						<label
+							className={cn(
+								buttonVariants({ variant: "secondary", size: "sm" }),
+								"cursor-pointer",
+							)}
+						>
+							Carregar Arquivo
 							<input
 								type="file"
 								accept=".json,application/json"

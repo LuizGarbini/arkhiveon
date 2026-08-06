@@ -61,7 +61,10 @@ export interface CrisExportJson {
 /**
  * Converte um arquivo JSON do C.R.I.S. para a estrutura de Character do RPG Notes
  */
-export function parseCrisCharacterJson(jsonInput: unknown): Partial<Character> {
+export function parseCrisCharacterJson(
+	jsonInput: unknown,
+	_fallbackCampaignId = "",
+): Partial<Omit<Character, "id" | "createdAt">> {
 	const raw = (jsonInput ?? {}) as CrisExportJson;
 
 	const characterName = raw.nome || raw.agentName || raw.name || "Novo Agente";
@@ -92,15 +95,52 @@ export function parseCrisCharacterJson(jsonInput: unknown): Partial<Character> {
 
 	const defesa = calculateDefesa(agi);
 
-	const customFields: Record<string, unknown> = {
+	const systemAttributes: Record<string, number> = {
 		nex,
+		agi,
+		for: forca,
+		int,
+		pre,
+		vig,
+		agility: agi,
+		strength: forca,
+		intellect: int,
+		presence: pre,
+		vigor: vig,
+		defesa,
+		peCurrent: peAtual,
+		peMax,
+	};
+
+	const systemFields: Record<string, string> = {
 		origem: raw.origem || "",
 		patente: raw.patente || "recruta",
-		atributos: { agi, for: forca, int, pre, vig },
-		defesa,
-		pericias: raw.pericias || {},
-		rituais: raw.rituais || [],
-		inventario: raw.inventario || [],
+		defesa: String(defesa),
+		pe: String(peAtual),
+		peMax: String(peMax),
+		pericias: JSON.stringify(raw.pericias || {}, null, 2),
+		rituais: (raw.rituais || [])
+			.map((ritual) => {
+				const title = ritual.nome || ritual.name || "Ritual sem nome";
+				const circle = ritual.circulo ? `${ritual.circulo}º círculo` : "";
+				const details = [
+					ritual.elemento,
+					circle,
+					ritual.execucao,
+					ritual.alcance,
+					ritual.duracao,
+				].filter(Boolean);
+				return `${title}${details.length ? ` - ${details.join(" | ")}` : ""}\n${ritual.efeito || ""}`.trim();
+			})
+			.join("\n\n"),
+		inventario: (raw.inventario || [])
+			.map((item) => {
+				const title = item.nome || item.name || "Item sem nome";
+				const spaces = item.espacos ?? item.espaco;
+				const suffix = spaces ? ` (${spaces} espaços)` : "";
+				return `${title}${suffix}${item.descricao ? ` - ${item.descricao}` : ""}`;
+			})
+			.join("\n"),
 	};
 
 	return {
@@ -108,17 +148,25 @@ export function parseCrisCharacterJson(jsonInput: unknown): Partial<Character> {
 		playerName,
 		system: "ordem",
 		race: raw.origem || "Agente da Ordem",
+		background: raw.origem || "",
 		class: classe,
 		subclass: raw.trilha || "",
 		level: Math.max(1, Math.floor(nex / 5)),
+		strength: forca,
+		dexterity: agi,
+		constitution: vig,
+		intelligence: int,
+		wisdom: pre,
+		charisma: pre,
+		power: pre,
 		health: pvAtual,
 		healthMax: pvMax,
 		sanity: sanAtual,
 		sanityMax: sanMax,
-		effort: peAtual,
-		effortMax: peMax,
+		armorClass: defesa,
 		imageUrl: raw.fotoUrl || raw.imageUrl || "",
 		notes: `Ficha importada do C.R.I.S.\nPatente: ${raw.patente || "Recruta"}\nNEX: ${nex}%`,
-		customFields,
+		systemAttributes,
+		systemFields,
 	};
 }

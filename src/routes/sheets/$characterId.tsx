@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+	AlertTriangle,
 	ArrowLeft,
 	ArrowRightLeft,
 	BookOpen,
@@ -27,7 +28,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useForm } from "react-hook-form";
+import { type UseFormRegister, useForm } from "react-hook-form";
 
 const CharacterExportDialog = lazy(() =>
 	import("@/components/character-export-dialog").then((module) => ({
@@ -85,6 +86,7 @@ import {
 	type SheetModuleKind,
 	type Spell,
 	systemLabel,
+	useActiveCampaign,
 	useActiveCampaignId,
 	useActiveCampaignRole,
 	useImageAssetLookup,
@@ -112,6 +114,13 @@ const moduleSkeletonKeys = [
 	"module-6",
 ];
 
+const readOnlyRegister: UseFormRegister<CharacterFormValues> = (name) => ({
+	name,
+	onBlur: async () => undefined,
+	onChange: async () => undefined,
+	ref: () => undefined,
+});
+
 function CharacterSheetPage() {
 	const { characterId } = Route.useParams();
 	const { edit } = Route.useSearch();
@@ -129,6 +138,7 @@ function CharacterSheetPage() {
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
 	const activeCampaignId = useActiveCampaignId();
+	const activeCampaign = useActiveCampaign();
 	const isViewer = activeCampaignRole === "viewer";
 	const [isEditingLayout, setIsEditingLayout] = useState(edit || false);
 	const [editingModule, setEditingModule] = useState<SheetModuleConfig | null>(
@@ -201,6 +211,9 @@ function CharacterSheetPage() {
 	}
 
 	const currentCharacter = character;
+	const hasSystemMismatch = Boolean(
+		activeCampaign?.system && activeCampaign.system !== currentCharacter.system,
+	);
 	const hasTough = currentCharacter.featsList?.some(
 		(f) =>
 			f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
@@ -325,6 +338,19 @@ function CharacterSheetPage() {
 										<FileText className="h-3.5 w-3.5" />
 										{systemLabel(currentCharacter.system)}
 									</div>
+									{hasSystemMismatch && activeCampaign ? (
+										<div className="group/tooltip relative inline-flex shrink-0">
+											<div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-500">
+												<AlertTriangle className="h-3.5 w-3.5" />
+												Sistema diferente
+											</div>
+											<div className="pointer-events-none absolute left-1/2 top-7 z-30 w-64 -translate-x-1/2 scale-95 rounded-lg border border-amber-400/25 bg-card-elevated px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-foreground opacity-0 shadow-xl backdrop-blur-md transition-all duration-150 group-hover/tooltip:top-8 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100">
+												Ficha em {systemLabel(currentCharacter.system)}; mesa
+												dedicada a {systemLabel(activeCampaign.system)}. O uso
+												continua liberado.
+											</div>
+										</div>
+									) : null}
 									{isEditingLayout && (
 										<div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500 animate-pulse">
 											<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -384,6 +410,7 @@ function CharacterSheetPage() {
 								<CrisImportDialog />
 								<Link
 									to="/arquivos-secretos"
+									search={{ tab: "suplementos" }}
 									className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-background/65 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
 								>
 									<BookOpen className="h-4 w-4 text-primary" />
@@ -768,7 +795,7 @@ function ModuleContent({
 		return (
 			<CustomSheetRenderer
 				templateId={character.customTemplateId || character.system}
-				register={() => ({}) as any}
+				register={readOnlyRegister}
 				viewMode
 				character={character}
 			/>
@@ -819,8 +846,9 @@ function ModuleContent({
 			].includes(key);
 
 		const abilities = (config.attributes || []).map((attr) => {
+			const characterRecord = character as unknown as Record<string, unknown>;
 			const val = isStandardKey(attr.key)
-				? Number((character as any)[attr.key]) || 10
+				? Number(characterRecord[attr.key]) || 10
 				: Number(character.systemAttributes?.[attr.key]) || 10;
 			return { label: attr.label, value: val };
 		});

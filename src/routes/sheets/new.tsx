@@ -35,7 +35,7 @@ import {
 	normalizeModuleOrders,
 } from "@/lib/sheet-modules";
 import type { RpgSystem, SheetModuleConfig } from "@/lib/store";
-import { useRPGStore } from "@/lib/store";
+import { systemLabel, useRPGStore } from "@/lib/store";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +74,14 @@ const detailsTabs = [
 	{ id: "extra", label: "Inventário & notas" },
 ];
 
+function createInitialLayoutForSystem(system: RpgSystem) {
+	const config = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.generic;
+	return createDefaultSheetLayout(system, {
+		showSanity: config.showSanity,
+		showSpells: config.showSpells,
+	});
+}
+
 function NewSheetPage() {
 	const navigate = useNavigate();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
@@ -81,7 +89,11 @@ function NewSheetPage() {
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const hasLoadedCampaigns = useRPGStore((state) => state.hasLoadedCampaigns);
-	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
+	const activeCampaign = useMemo(
+		() => campaigns.find((campaign) => campaign.id === activeCampaignId),
+		[campaigns, activeCampaignId],
+	);
+	const campaignSystem = activeCampaign?.system ?? "dnd5e";
 	const [activeStep, setActiveStep] = useState<WizardStep>("system");
 
 	useEffect(() => {
@@ -104,6 +116,7 @@ function NewSheetPage() {
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
 		"left",
 	);
+	const [didApplyCampaignSystem, setDidApplyCampaignSystem] = useState(false);
 
 	useEffect(() => {
 		const index = detailsTabs.findIndex((t) => t.id === detailsTab);
@@ -118,12 +131,13 @@ function NewSheetPage() {
 	}, [detailsTab, prevIndex]);
 
 	const [modules, setModules] = useState<SheetModuleConfig[]>(
-		() => createDefaultSheetLayout("dnd5e").modules,
+		() => createInitialLayoutForSystem(campaignSystem).modules,
 	);
 	const form = useForm<CharacterFormValues>({
 		defaultValues: buildCharacterFormDefaults(
 			{
-				sheetLayout: createDefaultSheetLayout("dnd5e"),
+				system: campaignSystem,
+				sheetLayout: createInitialLayoutForSystem(campaignSystem),
 			},
 			{ forCreation: true },
 		),
@@ -174,13 +188,24 @@ function NewSheetPage() {
 	);
 
 	useEffect(() => {
+		if (didApplyCampaignSystem || !activeCampaign?.system) return;
+		const currentSystem = form.getValues("system");
+		if (currentSystem !== "dnd5e" && currentSystem !== activeCampaign.system) {
+			setDidApplyCampaignSystem(true);
+			return;
+		}
+		const nextLayout = createInitialLayoutForSystem(activeCampaign.system);
+		setValue("system", activeCampaign.system, { shouldDirty: false });
+		setValue("sheetLayout", nextLayout, { shouldDirty: false });
+		setValue("systemAttributes", {}, { shouldDirty: false });
+		setModules(nextLayout.modules);
+		setDidApplyCampaignSystem(true);
+	}, [activeCampaign?.system, didApplyCampaignSystem, form, setValue]);
+
+	useEffect(() => {
 		const currentTemplate = form.getValues("sheetLayout")?.template;
 		if (currentTemplate === system || selectedLayoutTemplateId) return;
-		const nextConfig = SYSTEM_CONFIG[system] ?? SYSTEM_CONFIG.generic;
-		const nextLayout = createDefaultSheetLayout(system, {
-			showSanity: nextConfig.showSanity,
-			showSpells: nextConfig.showSpells,
-		});
+		const nextLayout = createInitialLayoutForSystem(system);
 		setModules(nextLayout.modules);
 		setValue("sheetLayout", nextLayout, { shouldDirty: true });
 	}, [form, selectedLayoutTemplateId, setValue, system]);
@@ -275,11 +300,7 @@ function NewSheetPage() {
 			return;
 		}
 
-		const nextConfig = SYSTEM_CONFIG[selection.system] ?? SYSTEM_CONFIG.generic;
-		const nextLayout = createDefaultSheetLayout(selection.system, {
-			showSanity: nextConfig.showSanity,
-			showSpells: nextConfig.showSpells,
-		});
+		const nextLayout = createInitialLayoutForSystem(selection.system);
 		setValue("system", selection.system, { shouldDirty: true });
 		setValue("sheetLayout", nextLayout, { shouldDirty: true });
 		setValue("systemAttributes", {}, { shouldDirty: true });
@@ -453,7 +474,11 @@ function NewSheetPage() {
 							<SectionIntro
 								eyebrow="Template"
 								title="Escolha o sistema da ficha"
-								description="O template define os módulos iniciais, rótulos de atributos e campos específicos."
+								description={
+									activeCampaign
+										? `Esta mesa é dedicada a ${systemLabel(campaignSystem)}. Você ainda pode escolher outro sistema se a ficha for uma exceção.`
+										: "O template define os módulos iniciais, rótulos de atributos e campos específicos."
+								}
 							/>
 							<SystemPicker
 								value={system}

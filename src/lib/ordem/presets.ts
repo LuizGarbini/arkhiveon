@@ -18,6 +18,16 @@ export interface ArquivosSecretosMedia {
 	variant?: "dia" | "noite" | "master" | "mobile";
 }
 
+export interface ArquivosSecretosBestiaryEntry {
+	id: string;
+	name: string;
+	edition: string;
+	element: "Sangue" | "Morte" | "Conhecimento" | "Energia" | "Medo";
+	role: string;
+	description: string;
+	tokenId?: string;
+}
+
 /**
  * Catálogo de Tokens e Mídias extraídos das pastas oficiais em public/Arquivos secretos/
  */
@@ -1056,5 +1066,38 @@ export const ORDEM_ITEMS_SEED: OrdemEquipamento[] = [
 		description: "Ampola de combate utilizada pelos seguranças da Panacea.",
 		efeito:
 			"Concede +1d6 em rolagens de testes de Vigor e Fortitude por 3 rodadas.",
+	},
+];
+
+export const ARQUIVOS_SECRETOS_BESTIARY: ArquivosSecretosBestiaryEntry[] = [
+	{
+		id: "transtornado-apostolo-sangue",
+		name: "Transtornado Apóstolo do Sangue",
+		edition: "AS1",
+		element: "Sangue",
+		role: "Ameaça ritualística",
+		description:
+			"Criatura voltada a pressão de combate, presença brutal e manifestação de Sangue.",
+		tokenId: "as1-transtornado-apostolo",
+	},
+	{
+		id: "transtornado-assecla",
+		name: "Transtornado Assecla",
+		edition: "AS1",
+		element: "Sangue",
+		role: "Lacaio de encontro",
+		description:
+			"Ameaça de apoio para cenas de perseguição, contenção e combate em grupo.",
+		tokenId: "as1-transtornado-assecla",
+	},
+	{
+		id: "transtornado-investido",
+		name: "Transtornado Investido",
+		edition: "AS1",
+		element: "Sangue",
+		role: "Executor",
+		description:
+			"Presença física mais agressiva para escalar uma cena de investigação para combate.",
+		tokenId: "as1-transtornado-investido",
 	},
 ];

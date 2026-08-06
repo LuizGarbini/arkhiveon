@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Camera } from "lucide-react";
+import { AlertTriangle, Camera } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
@@ -10,6 +10,7 @@ import {
 	type Character,
 	formatModifier,
 	systemLabel,
+	useActiveCampaign,
 	useActiveCampaignRole,
 	useImageAssetLookup,
 	useRPGStore,
@@ -24,19 +25,12 @@ interface CharacterCardProps {
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
-	const campaigns = useRPGStore((s) => s.campaigns);
-	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
-	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
+	const activeCampaign = useActiveCampaign();
 	const navigate = useNavigate();
 	const toast = useToast();
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
-	const isSystemMismatch = Boolean(
-		activeCampaign?.system &&
-			character &&
-			character.system !== activeCampaign.system,
-	);
 
 	if (isLoading || !character) {
 		return (
@@ -71,6 +65,9 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const imageUrl =
 		characterImageUrl || getCharacterPresetUrl(character.class || "");
 	const isViewer = activeCampaignRole === "viewer";
+	const hasSystemMismatch = Boolean(
+		activeCampaign?.system && activeCampaign.system !== character.system,
+	);
 
 	function handleDeleteCharacter() {
 		if (!character) return;
@@ -173,14 +170,19 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
 								{systemLabel(character.system)}
 							</span>
-							{isSystemMismatch && (
-								<span
-									className="rounded border border-amber-500/40 bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 flex items-center gap-1 shadow-xs"
-									title={`Mesa configurada para ${systemLabel(activeCampaign?.system ?? "dnd5e")}`}
-								>
-									⚠️ Sistema diferente
+							{hasSystemMismatch && activeCampaign ? (
+								<span className="group/tooltip pointer-events-auto relative inline-flex">
+									<span className="inline-flex items-center gap-1 rounded border border-amber-400/40 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-100">
+										<AlertTriangle className="h-3 w-3" />
+										Sistema diferente
+									</span>
+									<span className="pointer-events-none absolute left-1/2 top-6 z-30 w-56 -translate-x-1/2 scale-95 rounded-lg border border-amber-400/25 bg-card-elevated px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-foreground opacity-0 shadow-xl backdrop-blur-md transition-all duration-150 group-hover/tooltip:top-7 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100">
+										Ficha em {systemLabel(character.system)}; mesa dedicada a{" "}
+										{systemLabel(activeCampaign.system)}. O uso continua
+										liberado.
+									</span>
 								</span>
-							)}
+							) : null}
 							<span className="text-[10px] text-white/50">
 								Nv. {character.level}
 							</span>
