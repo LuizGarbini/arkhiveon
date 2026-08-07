@@ -1,7 +1,7 @@
 import { Globe2, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useRPGStore } from "@/lib/store";
-import type { Campaign, Invite, MembershipRole } from "@/lib/store/types";
+import type { Campaign, Invite, MembershipRole, RpgSystem } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -44,6 +44,7 @@ export function CampaignForm({
 	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [system, setSystem] = useState<RpgSystem>("dnd5e");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const nameInputId = useId();
@@ -81,6 +82,7 @@ export function CampaignForm({
 		if (open) {
 			setName(campaign?.name ?? "");
 			setDescription(campaign?.description ?? "");
+			setSystem(campaign?.system ?? "dnd5e");
 			setFormError(null);
 			setInviteEmail("");
 			setInviteRole("viewer");
@@ -89,7 +91,13 @@ export function CampaignForm({
 			setMembers([]);
 			setInvites([]);
 		}
-	}, [open, campaign?.name, campaign?.description, defaultTab]);
+	}, [
+		open,
+		campaign?.name,
+		campaign?.description,
+		campaign?.system,
+		defaultTab,
+	]);
 
 	const fetchMembersAndInvites = useCallback(async () => {
 		if (!campaign) return;
@@ -122,13 +130,13 @@ export function CampaignForm({
 				updateCampaign(campaign.id, {
 					name: name.trim(),
 					description: description.trim(),
+					system,
 				});
 			} else {
-				const created = await createCampaign(
-					name.trim(),
-					description.trim(),
-					defaultWorldId ? { worldId: defaultWorldId } : undefined,
-				);
+				const created = await createCampaign(name.trim(), description.trim(), {
+					worldId: defaultWorldId,
+					system,
+				});
 				await switchCampaign(created.id);
 			}
 			setName("");
@@ -241,17 +249,135 @@ export function CampaignForm({
 								<div className="space-y-2">
 									<label
 										htmlFor={nameInputId}
-										className="text-[12px] font-semibold text-foreground"
+										className="text-[12px] font-semibold text-foreground flex items-center justify-between"
 									>
-										Nome da Campanha *
+										<span>Nome da Campanha *</span>
+										<span className="text-[10px] text-muted-foreground">
+											Obrigatório
+										</span>
 									</label>
 									<Input
 										id={nameInputId}
 										value={name}
 										onChange={(e) => setName(e.target.value)}
-										placeholder="Ex: A Maldição de Strahd"
+										placeholder="Ex: Operação Hexatombe, A Maldição de Strahd..."
 										autoFocus
 									/>
+								</div>
+
+								{/* Seletor de Sistema RPG da Campanha */}
+								<div className="space-y-2.5 pt-1">
+									<div className="flex items-center justify-between">
+										<span className="text-[12px] font-semibold text-foreground">
+											Sistema RPG da Mesa
+										</span>
+										<span className="text-[10px] text-primary font-bold">
+											Mesa Dedicada
+										</span>
+									</div>
+
+									<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+										{[
+											{
+												id: "ordem",
+												name: "Ordem Paranormal",
+												icon: "👁️",
+												tag: "Investigação & Rituais",
+												color:
+													"border-purple-500/50 bg-purple-950/20 text-purple-200",
+												activeBorder:
+													"border-purple-500 ring-2 ring-purple-500/30",
+											},
+											{
+												id: "dnd5e",
+												name: "D&D 5ª Edição",
+												icon: "🎲",
+												tag: "Fantasia 2014",
+												color: "border-red-500/50 bg-red-950/20 text-red-200",
+												activeBorder: "border-red-500 ring-2 ring-red-500/30",
+											},
+											{
+												id: "dnd2024",
+												name: "D&D 2024",
+												icon: "✨",
+												tag: "Fantasia 2024",
+												color:
+													"border-amber-500/50 bg-amber-950/20 text-amber-200",
+												activeBorder:
+													"border-amber-500 ring-2 ring-amber-500/30",
+											},
+											{
+												id: "coc",
+												name: "Call of Cthulhu",
+												icon: "🐙",
+												tag: "Terror & Sanidade",
+												color:
+													"border-emerald-500/50 bg-emerald-950/20 text-emerald-200",
+												activeBorder:
+													"border-emerald-500 ring-2 ring-emerald-500/30",
+											},
+											{
+												id: "tormenta20",
+												name: "Tormenta 20",
+												icon: "⚡",
+												tag: "Fantasia BR",
+												color:
+													"border-cyan-500/50 bg-cyan-950/20 text-cyan-200",
+												activeBorder: "border-cyan-500 ring-2 ring-cyan-500/30",
+											},
+											{
+												id: "vampire",
+												name: "Vampiro (V5)",
+												icon: "🦇",
+												tag: "Gótico & Sangue",
+												color:
+													"border-rose-500/50 bg-rose-950/20 text-rose-200",
+												activeBorder: "border-rose-500 ring-2 ring-rose-500/30",
+											},
+										].map((sys) => {
+											const isSelected = system === sys.id;
+											return (
+												<button
+													key={sys.id}
+													type="button"
+													onClick={() => setSystem(sys.id as RpgSystem)}
+													className={cn(
+														"group relative flex flex-col justify-between p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer",
+														sys.color,
+														isSelected
+															? `${sys.activeBorder} bg-opacity-40`
+															: "opacity-75 hover:opacity-100 hover:border-border/80 border-border/40 bg-card/40",
+													)}
+												>
+													<div className="flex items-center justify-between w-full mb-1">
+														<span className="text-base">{sys.icon}</span>
+														{isSelected && (
+															<span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+														)}
+													</div>
+													<div>
+														<div className="font-bold text-[11px] leading-tight text-foreground">
+															{sys.name}
+														</div>
+														<div className="text-[9px] text-muted-foreground">
+															{sys.tag}
+														</div>
+													</div>
+												</button>
+											);
+										})}
+									</div>
+
+									{system === "ordem" && (
+										<div className="rounded-xl border border-purple-500/30 bg-purple-950/20 p-2.5 text-[11px] text-purple-200 flex items-center gap-2">
+											<span className="text-base">👁️</span>
+											<span>
+												<strong>Mesa de Ordem Paranormal:</strong> Habilita a
+												Central Arquivos Secretos (AS1-AS7), Bestiário de
+												Ameaças e Leitor de Fichas C.R.I.S.
+											</span>
+										</div>
+									)}
 								</div>
 
 								<div className="space-y-2">
@@ -266,7 +392,7 @@ export function CampaignForm({
 										value={description}
 										onChange={(e) => setDescription(e.target.value)}
 										placeholder="Uma breve descrição da campanha..."
-										rows={3}
+										rows={2}
 									/>
 								</div>
 

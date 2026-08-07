@@ -24,11 +24,19 @@ interface CharacterCardProps {
 export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const removeCharacter = useRPGStore((s) => s.removeCharacter);
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
 	const navigate = useNavigate();
 	const toast = useToast();
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+	const isSystemMismatch = Boolean(
+		activeCampaign?.system &&
+			character &&
+			character.system !== activeCampaign.system,
+	);
 
 	if (isLoading || !character) {
 		return (
@@ -161,10 +169,18 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 								</>
 							) : null}
 						</div>
-						<div className="mt-2 flex items-center gap-2">
+						<div className="mt-2 flex flex-wrap items-center gap-1.5">
 							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
 								{systemLabel(character.system)}
 							</span>
+							{isSystemMismatch && (
+								<span
+									className="rounded border border-amber-500/40 bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 flex items-center gap-1 shadow-xs"
+									title={`Mesa configurada para ${systemLabel(activeCampaign?.system ?? "dnd5e")}`}
+								>
+									⚠️ Sistema diferente
+								</span>
+							)}
 							<span className="text-[10px] text-white/50">
 								Nv. {character.level}
 							</span>

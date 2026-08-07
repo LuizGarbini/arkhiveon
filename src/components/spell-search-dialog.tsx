@@ -65,16 +65,26 @@ export function SpellSearchDialog({
 					return [sys];
 				};
 
-				const { data, error } = await client
+				const { data } = await client
 					.from("spells")
 					.select("*")
 					.in("system", getCompatibleSystems(system))
 					.order("name", { ascending: true });
 
-				if (error) throw error;
-				setAllSpells((data as Spell[]) || []);
+				let fetched = (data as Spell[]) || [];
+				if (system === "ordem" || fetched.length === 0) {
+					const { ORDEM_SPELLS_SEED } = await import("@/lib/ordem/presets");
+					if (system === "ordem") {
+						fetched = [...ORDEM_SPELLS_SEED, ...fetched];
+					}
+				}
+				setAllSpells(fetched);
 			} catch (err) {
 				console.error("Erro ao carregar magias:", err);
+				if (system === "ordem") {
+					const { ORDEM_SPELLS_SEED } = await import("@/lib/ordem/presets");
+					setAllSpells(ORDEM_SPELLS_SEED);
+				}
 			} finally {
 				setLoading(false);
 			}

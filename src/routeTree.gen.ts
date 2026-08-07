@@ -22,6 +22,7 @@ import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ArquivosSecretosRouteImport } from './routes/arquivos-secretos'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
@@ -105,6 +106,11 @@ const BillingRoute = BillingRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArquivosSecretosRoute = ArquivosSecretosRouteImport.update({
+  id: '/arquivos-secretos',
+  path: '/arquivos-secretos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -206,6 +212,7 @@ const FactionsFactionIdRoute = FactionsFactionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
   '/dashboard': typeof DashboardRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
   '/dashboard': typeof DashboardRoute
@@ -275,6 +283,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
   '/dashboard': typeof DashboardRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/arquivos-secretos'
     | '/auth'
     | '/billing'
     | '/dashboard'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/arquivos-secretos'
     | '/auth'
     | '/billing'
     | '/dashboard'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/arquivos-secretos'
     | '/auth'
     | '/billing'
     | '/dashboard'
@@ -414,6 +426,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  ArquivosSecretosRoute: typeof ArquivosSecretosRoute
   AuthRoute: typeof AuthRoute
   BillingRoute: typeof BillingRoute
   DashboardRoute: typeof DashboardRoute
@@ -537,6 +550,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/arquivos-secretos': {
+      id: '/arquivos-secretos'
+      path: '/arquivos-secretos'
+      fullPath: '/arquivos-secretos'
+      preLoaderRoute: typeof ArquivosSecretosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -678,6 +698,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  ArquivosSecretosRoute: ArquivosSecretosRoute,
   AuthRoute: AuthRoute,
   BillingRoute: BillingRoute,
   DashboardRoute: DashboardRoute,

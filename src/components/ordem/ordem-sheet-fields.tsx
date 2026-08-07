@@ -1,15 +1,4 @@
-import {
-	Activity,
-	Brain,
-	Dices,
-	Heart,
-	Minus,
-	Plus,
-	Shield,
-	Sparkles,
-	Zap,
-} from "lucide-react";
-import { useState } from "react";
+import { Brain, Dices, Heart, Minus, Plus, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import {
 	calculateDefesa,
@@ -19,12 +8,8 @@ import {
 	calculatePE,
 	calculatePV,
 	calculateSAN,
-	getMaxRitualCircle,
-	getMaxSkillTrainingDegree,
 	type OrdemClasse,
-	type OrdemElemento,
 	rollOrdemD20,
-	trainingDegreeToBonus,
 } from "@/lib/ordem/calculations";
 import type { Character } from "@/lib/store/types";
 import { Button } from "../ui/button";
@@ -37,37 +22,6 @@ interface OrdemSheetFieldsProps {
 	onChange: (updated: Partial<Character>) => void;
 	isEditMode?: boolean;
 }
-
-const ELEMENT_COLORS: Record<
-	OrdemElemento,
-	{ bg: string; text: string; border: string }
-> = {
-	sangue: {
-		bg: "bg-red-500/10",
-		text: "text-red-400",
-		border: "border-red-500/30",
-	},
-	morte: {
-		bg: "bg-neutral-800/60",
-		text: "text-neutral-300",
-		border: "border-neutral-700",
-	},
-	conhecimento: {
-		bg: "bg-amber-500/10",
-		text: "text-amber-400",
-		border: "border-amber-500/30",
-	},
-	energia: {
-		bg: "bg-purple-500/10",
-		text: "text-purple-400",
-		border: "border-purple-500/30",
-	},
-	medo: {
-		bg: "bg-slate-100/10",
-		text: "text-slate-200",
-		border: "border-slate-300/30",
-	},
-};
 
 export function OrdemSheetFields({
 	character,
@@ -95,15 +49,6 @@ export function OrdemSheetFields({
 		vig: 1,
 	};
 
-	const [rollResult, setRollResult] = useState<{
-		label: string;
-		dice: number[];
-		selectedDie: number;
-		total: number;
-		isZeroRule: boolean;
-	} | null>(null);
-
-	// Atualiza e recalcula dinamicamente quando NEX%, Classe ou Atributos mudam
 	function updateOrdemField(patch: Partial<Record<string, unknown>>) {
 		const updatedCustom = { ...custom, ...patch };
 
@@ -121,7 +66,7 @@ export function OrdemSheetFields({
 			...character,
 			class: newClasse,
 			level: Math.max(1, Math.floor(newNex / 5)),
-			hpMax: calculatedPvMax,
+			healthMax: calculatedPvMax,
 			sanityMax: calculatedSanMax,
 			effortMax: calculatedPeMax,
 			customFields: {
@@ -133,13 +78,6 @@ export function OrdemSheetFields({
 
 	function handleRoll(label: string, attributeScore: number, bonus = 0) {
 		const result = rollOrdemD20(attributeScore, bonus);
-		setRollResult({
-			label,
-			dice: result.dice,
-			selectedDie: result.selectedDie,
-			total: result.total,
-			isZeroRule: result.isZeroAttributeRule,
-		});
 
 		toast.info({
 			title: `Rolagem de ${label}`,
@@ -149,8 +87,6 @@ export function OrdemSheetFields({
 		});
 	}
 
-	const maxCircle = getMaxRitualCircle(nex);
-	const maxDegree = getMaxSkillTrainingDegree(nex);
 	const limiteCarga = calculateLimiteCarga(atributos.for);
 	const dtRitual = calculateDTRitual(1, atributos.int);
 
@@ -201,42 +137,41 @@ export function OrdemSheetFields({
 						</Select>
 					</Field>
 
-					<Field label="Trilha">
+					<Field label="Origem">
 						<Input
-							value={character.subclass ?? ""}
+							value={String(custom.origem ?? character.race ?? "")}
 							onChange={(e) =>
-								onChange({ ...character, subclass: e.target.value })
+								updateOrdemField({ origem: e.target.value })
 							}
-							placeholder="Ex: Aniquilador, Conduíte..."
+							placeholder="Ex: Agente de Saúde, Acadêmico..."
 							disabled={!isEditMode}
 						/>
 					</Field>
 				</div>
 			</FormSection>
 
-			{/* Atributos com Rolagem Integrada */}
-			<FormSection title="Atributos (AGI, FOR, INT, PRE, VIG)">
+			{/* Atributos Básicos de Ordem (AGI, FOR, INT, PRE, VIG) com dados d20 */}
+			<FormSection title="Atributos Paranormais (AGI, FOR, INT, PRE, VIG)">
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-					{[
-						{ key: "agi", label: "AGI (Agilidade)" },
-						{ key: "for", label: "FOR (Força)" },
-						{ key: "int", label: "INT (Intelecto)" },
-						{ key: "pre", label: "PRE (Presença)" },
-						{ key: "vig", label: "VIG (Vigor)" },
-					].map(({ key, label }) => {
-						const val = atributos[key as keyof typeof atributos] ?? 1;
+					{(
+						[
+							{ key: "agi", label: "Agilidade (AGI)" },
+							{ key: "for", label: "Força (FOR)" },
+							{ key: "int", label: "Intelecto (INT)" },
+							{ key: "pre", label: "Presença (PRE)" },
+							{ key: "vig", label: "Vigor (VIG)" },
+						] as const
+					).map(({ key, label }) => {
+						const val = atributos[key] ?? 1;
 						return (
 							<div
 								key={key}
-								className="flex flex-col items-center justify-between rounded-xl border border-border/80 bg-card-elevated/40 p-3 text-center"
+								className="rounded-xl border border-border/80 bg-card p-3 text-center space-y-2 hover:border-primary/50 transition-colors"
 							>
-								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-									{key}
+								<span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+									{label}
 								</span>
-								<div className="my-1 text-2xl font-extrabold text-primary font-display">
-									{val}
-								</div>
-								<div className="flex w-full items-center gap-1 pt-1">
+								<div className="flex flex-col items-center gap-2">
 									{isEditMode && (
 										<Input
 											type="number"
@@ -280,7 +215,7 @@ export function OrdemSheetFields({
 								<Heart className="h-4 w-4" /> Pontos de Vida (PV)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{character.hpCurrent ?? character.hpMax}/{character.hpMax}
+								{(character as any).health ?? (character as any).healthMax}/{(character as any).healthMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -291,9 +226,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										hpCurrent: Math.max(
+										health: Math.max(
 											0,
-											(character.hpCurrent ?? character.hpMax ?? 0) - 1,
+											((character as any).health ?? (character as any).healthMax ?? 0) - 1,
 										),
 									})
 								}
@@ -308,8 +243,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												((character.hpCurrent ?? character.hpMax ?? 1) /
-													(character.hpMax ?? 1)) *
+												(((character as any).health ?? (character as any).healthMax ?? 1) /
+													((character as any).healthMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -323,9 +258,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										hpCurrent: Math.min(
-											character.hpMax ?? 100,
-											(character.hpCurrent ?? 0) + 1,
+										health: Math.min(
+											(character as any).healthMax ?? 100,
+											((character as any).health ?? 0) + 1,
 										),
 									})
 								}
@@ -342,8 +277,7 @@ export function OrdemSheetFields({
 								<Brain className="h-4 w-4" /> Sanidade (SAN)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{character.sanityCurrent ?? character.sanityMax}/
-								{character.sanityMax}
+								{(character as any).sanity ?? (character as any).sanityMax}/{(character as any).sanityMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -354,9 +288,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										sanityCurrent: Math.max(
+										sanity: Math.max(
 											0,
-											(character.sanityCurrent ?? character.sanityMax ?? 0) - 1,
+											((character as any).sanity ?? (character as any).sanityMax ?? 0) - 1,
 										),
 									})
 								}
@@ -371,8 +305,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												((character.sanityCurrent ?? character.sanityMax ?? 1) /
-													(character.sanityMax ?? 1)) *
+												(((character as any).sanity ?? (character as any).sanityMax ?? 1) /
+													((character as any).sanityMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -386,9 +320,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										sanityCurrent: Math.min(
-											character.sanityMax ?? 100,
-											(character.sanityCurrent ?? 0) + 1,
+										sanity: Math.min(
+											(character as any).sanityMax ?? 100,
+											((character as any).sanity ?? 0) + 1,
 										),
 									})
 								}
@@ -405,8 +339,7 @@ export function OrdemSheetFields({
 								<Zap className="h-4 w-4" /> Esforço (PE)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{character.effortCurrent ?? character.effortMax}/
-								{character.effortMax}
+								{(character as any).effort ?? (character as any).effortMax}/{(character as any).effortMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -417,9 +350,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										effortCurrent: Math.max(
+										effort: Math.max(
 											0,
-											(character.effortCurrent ?? character.effortMax ?? 0) - 1,
+											((character as any).effort ?? (character as any).effortMax ?? 0) - 1,
 										),
 									})
 								}
@@ -434,8 +367,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												((character.effortCurrent ?? character.effortMax ?? 1) /
-													(character.effortMax ?? 1)) *
+												(((character as any).effort ?? (character as any).effortMax ?? 1) /
+													((character as any).effortMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -449,9 +382,9 @@ export function OrdemSheetFields({
 								onClick={() =>
 									onChange({
 										...character,
-										effortCurrent: Math.min(
-											character.effortMax ?? 100,
-											(character.effortCurrent ?? 0) + 1,
+										effort: Math.min(
+											(character as any).effortMax ?? 100,
+											((character as any).effort ?? 0) + 1,
 										),
 									})
 								}

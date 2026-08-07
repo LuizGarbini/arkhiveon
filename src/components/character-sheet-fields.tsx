@@ -518,74 +518,255 @@ export function IdentityFields({
 	return (
 		<>
 			<FormSection title="Identidade Básica">
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<Field
-						label="Nome do personagem"
-						required
-						error={errors?.characterName?.message}
-					>
-						<div className="relative flex items-center">
-							<Input
-								placeholder="Ex: Aragorn, Lyra Cinzal..."
-								className="pr-10"
-								{...register("characterName", {
-									required: CHARACTER_NAME_REQUIRED_MESSAGE,
-									validate: (value) =>
-										value.trim().length > 0 || CHARACTER_NAME_REQUIRED_MESSAGE,
-								})}
-							/>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-sm"
-								onClick={handleGenerateName}
-								className="absolute right-1 text-muted-foreground/80 hover:text-primary hover:bg-primary/10 rounded-md h-8 w-8"
-								title="Gerar nome temático"
+				{system === "ordem" ? (
+					<>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<Field
+								label="Nome do agente"
+								required
+								error={errors?.characterName?.message}
 							>
-								<Wand2 className="h-4 w-4" />
-							</Button>
+								<div className="relative flex items-center">
+									<Input
+										placeholder="Ex: Agatha, Giovanni Opspor..."
+										className="pr-10"
+										{...register("characterName", {
+											required: CHARACTER_NAME_REQUIRED_MESSAGE,
+											validate: (value) =>
+												value.trim().length > 0 ||
+												CHARACTER_NAME_REQUIRED_MESSAGE,
+										})}
+									/>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										onClick={handleGenerateName}
+										className="absolute right-1 text-muted-foreground/80 hover:text-primary hover:bg-primary/10 rounded-md h-8 w-8"
+										title="Gerar nome temático"
+									>
+										<Wand2 className="h-4 w-4" />
+									</Button>
+								</div>
+							</Field>
+							<Field label="Prestígio / Limite de Crédito">
+								<Input
+									placeholder="Ex: Baixo, Médio, Alto, Ilimitado"
+									{...register("alignment")}
+								/>
+							</Field>
 						</div>
-					</Field>
-					<Field label="Tendência / Alinhamento">
-						<Input placeholder="Ex: Caótico Bom" {...register("alignment")} />
-					</Field>
-				</div>
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-					<Field label="Raça">
-						<Input placeholder="Elfo, Humano..." {...register("race")} />
-					</Field>
-					<Field label="Classe">
-						<Input placeholder="Guerreiro, Mago..." {...register("class")} />
-					</Field>
-					<Field label="Subclasse / Caminho">
-						<Input placeholder="Domínio da Vida..." {...register("subclass")} />
-					</Field>
-				</div>
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-					<Field label="Antecedente / Background">
-						<Input
-							placeholder="Charlatão, Sábio..."
-							{...register("background")}
-						/>
-					</Field>
-					<Field label="Nível">
-						<Input
-							type="number"
-							min={1}
-							max={30}
-							placeholder="1"
-							{...register("level", { valueAsNumber: true })}
-						/>
-					</Field>
-					<Field label="Experiência (XP)">
-						<Input
-							type="number"
-							min={0}
-							placeholder="0"
-							{...register("xp", { valueAsNumber: true })}
-						/>
-					</Field>
-				</div>
+
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<Field label="Origem">
+								<Select {...register("race")}>
+									<option value="">Selecione uma Origem...</option>
+									<option value="Acadêmico">Acadêmico</option>
+									<option value="Agente de Saúde">Agente de Saúde</option>
+									<option value="Amnésico">Amnésico</option>
+									<option value="Artista">Artista</option>
+									<option value="Atleta">Atleta</option>
+									<option value="Chef">Chef</option>
+									<option value="Criminoso">Criminoso</option>
+									<option value="Cultista Arrependido">
+										Cultista Arrependido
+									</option>
+									<option value="Desgarrado">Desgarrado</option>
+									<option value="Engenheiro">Engenheiro</option>
+									<option value="Executivo">Executivo</option>
+									<option value="Experimento">Experimento</option>
+									<option value="Investigador">Investigador</option>
+									<option value="Lutador">Lutador</option>
+									<option value="Magnata">Magnata</option>
+									<option value="Mercenário">Mercenário</option>
+									<option value="Médico">Médico</option>
+									<option value="Policial">Policial</option>
+									<option value="Religioso">Religioso</option>
+									<option value="Servidor Público">Servidor Público</option>
+									<option value="T.I.">T.I.</option>
+									<option value="Trabalhador de Equipe">
+										Trabalhador de Equipe
+									</option>
+									<option value="Vítima">Vítima</option>
+									<option value="Outra">Outra / Personalizada</option>
+								</Select>
+							</Field>
+							<Field label="Classe da Ordem">
+								<Select {...register("class")}>
+									<option value="combatente">Combatente</option>
+									<option value="especialista">Especialista</option>
+									<option value="ocultista">Ocultista</option>
+								</Select>
+							</Field>
+							<Field label="Trilha">
+								{className === "combatente" ? (
+									<Select {...register("subclass")}>
+										<option value="">Selecione a Trilha...</option>
+										<option value="Aniquilador">Aniquilador</option>
+										<option value="Comandante de Campo">
+											Comandante de Campo
+										</option>
+										<option value="Guerreiro">Guerreiro</option>
+										<option value="Operador de Armas">Operador de Armas</option>
+										<option value="Tropa de Choque">Tropa de Choque</option>
+									</Select>
+								) : className === "especialista" ? (
+									<Select {...register("subclass")}>
+										<option value="">Selecione a Trilha...</option>
+										<option value="Atirador de Elite">Atirador de Elite</option>
+										<option value="Infiltrador">Infiltrador</option>
+										<option value="Médico de Campo">Médico de Campo</option>
+										<option value="Especialista em Elementos">
+											Especialista em Elementos
+										</option>
+										<option value="Técnico">Técnico</option>
+									</Select>
+								) : className === "ocultista" ? (
+									<Select {...register("subclass")}>
+										<option value="">Selecione a Trilha...</option>
+										<option value="Conduíte">Conduíte</option>
+										<option value="Graduado">Graduado</option>
+										<option value="Intuitivo">Intuitivo</option>
+										<option value="Lâmina Paranormal">Lâmina Paranormal</option>
+										<option value="Flagelador">Flagelador</option>
+									</Select>
+								) : (
+									<Input
+										placeholder="Ex: Aniquilador, Conduíte, Médico de Campo..."
+										{...register("subclass")}
+									/>
+								)}
+							</Field>
+						</div>
+
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<Field label="Patente da Ordem">
+								<Select
+									{...register(
+										"systemFields.patente" as Path<CharacterFormValues>,
+									)}
+								>
+									<option value="recruta">Recruta</option>
+									<option value="operador">Operador</option>
+									<option value="agente_especial">Agente Especial</option>
+									<option value="oficial_operacoes">
+										Oficial de Operações
+									</option>
+									<option value="agente_elite">Agente de Elite</option>
+								</Select>
+							</Field>
+							<Field label="NEX% (Exposição Paranormal)">
+								<Select
+									{...register("level", {
+										valueAsNumber: true,
+										onChange: (e) => {
+											const nexVal = Number.parseInt(e.target.value, 10);
+											if (setValue) {
+												setValue("level", Math.max(1, Math.floor(nexVal / 5)), {
+													shouldDirty: true,
+												});
+												setValue(
+													"systemFields.nex" as Path<CharacterFormValues>,
+													String(nexVal),
+													{ shouldDirty: true },
+												);
+											}
+										},
+									})}
+								>
+									{Array.from({ length: 20 }, (_, i) => (i + 1) * 5).map(
+										(val) => (
+											<option key={val} value={val}>
+												NEX {val}%
+											</option>
+										),
+									)}
+								</Select>
+							</Field>
+						</div>
+					</>
+				) : (
+					<>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<Field
+								label="Nome do personagem"
+								required
+								error={errors?.characterName?.message}
+							>
+								<div className="relative flex items-center">
+									<Input
+										placeholder="Ex: Aragorn, Lyra Cinzal..."
+										className="pr-10"
+										{...register("characterName", {
+											required: CHARACTER_NAME_REQUIRED_MESSAGE,
+											validate: (value) =>
+												value.trim().length > 0 ||
+												CHARACTER_NAME_REQUIRED_MESSAGE,
+										})}
+									/>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										onClick={handleGenerateName}
+										className="absolute right-1 text-muted-foreground/80 hover:text-primary hover:bg-primary/10 rounded-md h-8 w-8"
+										title="Gerar nome temático"
+									>
+										<Wand2 className="h-4 w-4" />
+									</Button>
+								</div>
+							</Field>
+							<Field label="Tendência / Alinhamento">
+								<Input
+									placeholder="Ex: Caótico Bom"
+									{...register("alignment")}
+								/>
+							</Field>
+						</div>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<Field label="Raça">
+								<Input placeholder="Elfo, Humano..." {...register("race")} />
+							</Field>
+							<Field label="Classe">
+								<Input
+									placeholder="Guerreiro, Mago..."
+									{...register("class")}
+								/>
+							</Field>
+							<Field label="Subclasse / Caminho">
+								<Input
+									placeholder="Domínio da Vida..."
+									{...register("subclass")}
+								/>
+							</Field>
+						</div>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<Field label="Antecedente / Background">
+								<Input
+									placeholder="Charlatão, Sábio..."
+									{...register("background")}
+								/>
+							</Field>
+							<Field label="Nível">
+								<Input
+									type="number"
+									min={1}
+									max={30}
+									placeholder="1"
+									{...register("level", { valueAsNumber: true })}
+								/>
+							</Field>
+							<Field label="Experiência (XP)">
+								<Input
+									type="number"
+									min={0}
+									placeholder="0"
+									{...register("xp", { valueAsNumber: true })}
+								/>
+							</Field>
+						</div>
+					</>
+				)}
 			</FormSection>
 
 			<FormSection title="Aparência">

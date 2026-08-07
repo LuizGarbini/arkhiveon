@@ -75,16 +75,26 @@ export function FeatSearchDialog({
 					return [sys];
 				};
 
-				const { data, error } = await client
+				const { data } = await client
 					.from("feats")
 					.select("*")
 					.in("system", getCompatibleSystems(system))
 					.order("name", { ascending: true });
 
-				if (error) throw error;
-				setAllFeats((data as Feat[]) || []);
+				let fetched = (data as Feat[]) || [];
+				if (system === "ordem" || fetched.length === 0) {
+					const { ORDEM_FEATS_SEED } = await import("@/lib/ordem/presets");
+					if (system === "ordem") {
+						fetched = [...ORDEM_FEATS_SEED, ...fetched];
+					}
+				}
+				setAllFeats(fetched);
 			} catch (err) {
 				console.error("Erro ao carregar talentos/poderes:", err);
+				if (system === "ordem") {
+					const { ORDEM_FEATS_SEED } = await import("@/lib/ordem/presets");
+					setAllFeats(ORDEM_FEATS_SEED);
+				}
 			} finally {
 				setLoading(false);
 			}

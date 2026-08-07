@@ -61,10 +61,7 @@ export interface CrisExportJson {
 /**
  * Converte um arquivo JSON do C.R.I.S. para a estrutura de Character do RPG Notes
  */
-export function parseCrisCharacterJson(
-	jsonInput: unknown,
-	fallbackCampaignId = "",
-): Omit<Character, "id" | "createdAt"> {
+export function parseCrisCharacterJson(jsonInput: unknown): Partial<Character> {
 	const raw = (jsonInput ?? {}) as CrisExportJson;
 
 	const characterName = raw.nome || raw.agentName || raw.name || "Novo Agente";
@@ -107,19 +104,18 @@ export function parseCrisCharacterJson(
 	};
 
 	return {
-		campaignId: fallbackCampaignId,
 		characterName,
 		playerName,
-		system: "ordem_paranormal",
+		system: "ordem",
 		race: raw.origem || "Agente da Ordem",
 		class: classe,
 		subclass: raw.trilha || "",
 		level: Math.max(1, Math.floor(nex / 5)),
-		hpCurrent: pvAtual,
-		hpMax: pvMax,
-		sanityCurrent: sanAtual,
+		health: pvAtual,
+		healthMax: pvMax,
+		sanity: sanAtual,
 		sanityMax: sanMax,
-		effortCurrent: peAtual,
+		effort: peAtual,
 		effortMax: peMax,
 		imageUrl: raw.fotoUrl || raw.imageUrl || "",
 		notes: `Ficha importada do C.R.I.S.\nPatente: ${raw.patente || "Recruta"}\nNEX: ${nex}%`,

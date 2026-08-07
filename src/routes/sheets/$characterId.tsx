@@ -45,6 +45,7 @@ import { CharacterTransferDialog } from "@/components/character-transfer-dialog"
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { FramedImage } from "@/components/framed-image";
+import { CrisImportDialog } from "@/components/ordem/cris-import-dialog";
 import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
 import { SheetModuleEditor } from "@/components/sheet-module-editor";
 import { Button } from "@/components/ui/button";
@@ -378,6 +379,18 @@ function CharacterSheetPage() {
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
+						{currentCharacter.system === "ordem" && (
+							<>
+								<CrisImportDialog />
+								<Link
+									to="/arquivos-secretos"
+									className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-background/65 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+								>
+									<BookOpen className="h-4 w-4 text-primary" />
+									Arquivos Secretos
+								</Link>
+							</>
+						)}
 						<Button
 							type="button"
 							variant="outline"

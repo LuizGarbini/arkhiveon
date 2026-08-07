@@ -218,6 +218,9 @@ export interface Character {
 	entityLinks: EntityLink[];
 	systemAttributes?: Record<string, number>;
 	systemFields?: Record<string, string>;
+	customFields?: Record<string, unknown>;
+	effort?: number;
+	effortMax?: number;
 	customTemplateId?: string;
 	spellsList?: Spell[];
 	featsList?: Feat[];
@@ -481,6 +484,7 @@ export interface Campaign {
 	description: string;
 	ownerId: string;
 	worldId: string;
+	system?: RpgSystem;
 	myRole?: MembershipRole;
 	createdAt: number;
 	updatedAt?: number;
@@ -578,11 +582,11 @@ export interface RPGState {
 	createCampaign: (
 		name: string,
 		description?: string,
-		options?: { worldId?: string; newWorldName?: string },
+		options?: { worldId?: string; newWorldName?: string; system?: RpgSystem },
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description">>,
+		data: Partial<Pick<Campaign, "name" | "description" | "system">>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
@@ -659,11 +663,7 @@ export interface RPGState {
 		item: Partial<Omit<Item, "id" | "createdAt">>,
 		actingUserId?: string,
 	) => Item;
-	updateItem: (
-		id: string,
-		item: Partial<Item>,
-		actingUserId?: string,
-	) => void;
+	updateItem: (id: string, item: Partial<Item>, actingUserId?: string) => void;
 	removeItem: (id: string, actingUserId?: string) => void;
 
 	locations: GameLocation[];

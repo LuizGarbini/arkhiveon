@@ -28,7 +28,6 @@ export function CrisImportDialog({
 	const [loading, setLoading] = useState(false);
 	const toast = useToast();
 	const addCharacter = useRPGStore((state) => state.addCharacter);
-	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 
 	function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
 		const file = e.target.files?.[0];
@@ -49,10 +48,7 @@ export function CrisImportDialog({
 		try {
 			setLoading(true);
 			const parsedData = JSON.parse(textToParse);
-			const characterPayload = parseCrisCharacterJson(
-				parsedData,
-				activeCampaignId ?? "",
-			);
+			const characterPayload = parseCrisCharacterJson(parsedData);
 
 			const created = addCharacter(characterPayload);
 			if (created?.id) {
@@ -82,16 +78,17 @@ export function CrisImportDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				{trigger ? (
-					trigger
-				) : (
-					<Button variant="outline" size="sm" className="gap-2">
-						<FileUp className="h-4 w-4 text-primary" />
-						Importar Ficha do C.R.I.S. (.json)
-					</Button>
-				)}
-			</DialogTrigger>
+			{trigger ? (
+				<DialogTrigger onClick={() => setOpen(true)}>{trigger}</DialogTrigger>
+			) : (
+				<DialogTrigger
+					onClick={() => setOpen(true)}
+					className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-background/65 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+				>
+					<FileUp className="h-4 w-4 text-primary" />
+					Importar Ficha C.R.I.S. (.json)
+				</DialogTrigger>
+			)}
 			<DialogContent className="max-w-lg border-border/80 bg-background/95 backdrop-blur-xl">
 				<DialogHeader>
 					<DialogTitle className="font-display text-lg flex items-center gap-2">
@@ -115,8 +112,8 @@ export function CrisImportDialog({
 							Suporta Agentes de Combatente, Especialista e Ocultista
 						</p>
 						<label className="cursor-pointer">
-							<Button variant="secondary" size="sm" type="button" asChild>
-								<span>Carregar Arquivo</span>
+							<Button variant="secondary" size="sm" type="button">
+								Carregar Arquivo
 							</Button>
 							<input
 								type="file"

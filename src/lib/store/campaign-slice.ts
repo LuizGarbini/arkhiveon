@@ -23,6 +23,7 @@ import type {
 	InviteStatus,
 	MembershipRole,
 	RPGState,
+	RpgSystem,
 	UserPlan,
 	World,
 } from "./types";
@@ -35,6 +36,7 @@ interface MembershipCampaignRow {
 		description?: string | null;
 		owner_id?: string | null;
 		world_id?: string | null;
+		system?: string | null;
 		created_at?: string | null;
 		updated_at?: string | null;
 	} | null;
@@ -54,11 +56,11 @@ export interface CampaignSlice {
 	createCampaign: (
 		name: string,
 		description?: string,
-		options?: { worldId?: string; newWorldName?: string },
+		options?: { worldId?: string; newWorldName?: string; system?: RpgSystem },
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description">>,
+		data: Partial<Pick<Campaign, "name" | "description" | "system">>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
@@ -206,6 +208,7 @@ export const createCampaignSlice: StateCreator<
 					description,
 					owner_id,
 					world_id,
+					system,
 					created_at,
 					updated_at
 				)
@@ -234,6 +237,7 @@ export const createCampaignSlice: StateCreator<
 					description: c.description ?? "",
 					ownerId: c.owner_id ?? "",
 					worldId: c.world_id ?? "",
+					system: (c.system as RpgSystem) ?? "dnd5e",
 					myRole: row.role as MembershipRole,
 					createdAt: c.created_at
 						? new Date(c.created_at).getTime()
@@ -300,7 +304,10 @@ export const createCampaignSlice: StateCreator<
 
 				if (options?.worldId) {
 					const known = get().worlds.some((w) => w.id === options.worldId);
-					const staffOnWorld = isWorldStaffInWorld(get().campaigns, options.worldId);
+					const staffOnWorld = isWorldStaffInWorld(
+						get().campaigns,
+						options.worldId,
+					);
 					const ownsWorld = get().worlds.some(
 						(w) => w.id === options.worldId && w.ownerUserId === user.id,
 					);
@@ -331,6 +338,7 @@ export const createCampaignSlice: StateCreator<
 					description,
 					ownerId: user.id,
 					worldId,
+					system: options?.system ?? "dnd5e",
 					myRole: "owner",
 					createdAt: Date.now(),
 				};
@@ -345,7 +353,8 @@ export const createCampaignSlice: StateCreator<
 						description,
 						owner_id: user.id,
 						world_id: worldId,
-					});
+						system: options?.system ?? "dnd5e",
+					} as any);
 				if (campaignError) {
 					throw new Error(
 						`falha ao salvar campanha: ${remoteErrorMessage(campaignError)}`,
@@ -418,9 +427,15 @@ export const createCampaignSlice: StateCreator<
 
 		const supabase = getSupabase();
 		if (supabase) {
+			const updatePayload: Record<string, unknown> = {};
+			if (data.name !== undefined) updatePayload.name = data.name;
+			if (data.description !== undefined)
+				updatePayload.description = data.description;
+			if (data.system !== undefined) updatePayload.system = data.system;
+
 			void supabase
 				.from(SUPABASE_TABLES.campaigns)
-				.update({ name: data.name, description: data.description })
+				.update(updatePayload as any)
 				.eq("id", id)
 				.then(({ error }) => {
 					if (error) {

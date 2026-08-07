@@ -8,6 +8,7 @@ import {
 	Music,
 	Pause,
 	Play,
+	ShieldAlert,
 	Volume2,
 } from "lucide-react";
 import { useState } from "react";
@@ -15,13 +16,14 @@ import {
 	ARQUIVOS_SECRETOS_MEDIA,
 	ARQUIVOS_SECRETOS_TOKENS,
 	type ArquivosSecretosMedia,
+	ORDEM_AMEACAS_SEED,
 } from "@/lib/ordem/presets";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 
 export function ArquivosSecretosHub() {
 	const [activeTab, setActiveTab] = useState<
-		"suplementos" | "tokens" | "mapas" | "audio"
+		"suplementos" | "tokens" | "mapas" | "audio" | "ameacas"
 	>("suplementos");
 	const [selectedPdf, setSelectedPdf] = useState<ArquivosSecretosMedia | null>(
 		null,
@@ -72,8 +74,8 @@ export function ArquivosSecretosHub() {
 							Central Arquivos Secretos (AS1 - AS7)
 						</h2>
 						<p className="text-xs text-muted-foreground">
-							Suplementos oficiais, HQs, mapas de combate, trilhas sonoras e
-							tokens de Ordem Paranormal.
+							Suplementos oficiais, HQs, mapas de combate, trilhas sonoras,
+							ameaças paranormais e tokens de Ordem Paranormal.
 						</p>
 					</div>
 				</div>
@@ -88,6 +90,15 @@ export function ArquivosSecretosHub() {
 					>
 						<FileText className="h-3.5 w-3.5" />
 						Suplementos & HQs ({pdfs.length})
+					</Button>
+					<Button
+						variant={activeTab === "ameacas" ? "default" : "outline"}
+						size="sm"
+						onClick={() => setActiveTab("ameacas")}
+						className="gap-2 text-xs"
+					>
+						<ShieldAlert className="h-3.5 w-3.5 text-red-400" />
+						Bestiário & Ameaças ({ORDEM_AMEACAS_SEED.length})
 					</Button>
 					<Button
 						variant={activeTab === "tokens" ? "default" : "outline"}
@@ -151,16 +162,80 @@ export function ArquivosSecretosHub() {
 									<Eye className="h-3.5 w-3.5" />
 									Ler PDF
 								</Button>
-								<Button variant="outline" size="sm" className="text-xs" asChild>
-									<a
-										href={encodeURI(pdf.path)}
-										download
-										target="_blank"
-										rel="noreferrer"
-									>
-										<Download className="h-3.5 w-3.5" />
-									</a>
-								</Button>
+								<a
+									href={encodeURI(pdf.path)}
+									download
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex items-center justify-center rounded-lg border border-border/80 bg-background/65 px-2.5 py-1 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+								>
+									<Download className="h-3.5 w-3.5" />
+								</a>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* Conteúdo: Bestiário & Ameaças */}
+			{activeTab === "ameacas" && (
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{ORDEM_AMEACAS_SEED.map((ameaca) => (
+						<div
+							key={ameaca.id}
+							className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-red-500/30 bg-card p-4 transition-all hover:border-red-500/60 hover:shadow-lg hover:shadow-red-950/20"
+						>
+							<div className="flex gap-3">
+								<div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-red-500/40 bg-black/60">
+									<img
+										src={encodeURI(ameaca.imageUrl)}
+										alt={ameaca.name}
+										className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+										loading="lazy"
+									/>
+								</div>
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center justify-between">
+										<span className="rounded-md bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-300 border border-red-500/30">
+											VD {ameaca.vd}
+										</span>
+										<span className="text-[10px] font-semibold text-muted-foreground uppercase">
+											{ameaca.elemento}
+										</span>
+									</div>
+									<h4 className="font-display text-sm font-bold text-foreground truncate mt-1">
+										{ameaca.name}
+									</h4>
+									<p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+										{ameaca.description}
+									</p>
+								</div>
+							</div>
+
+							<div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-3 gap-1 text-center text-[10px] rounded-lg bg-black/40 p-2">
+								<div>
+									<span className="block text-white/50">PV</span>
+									<span className="font-bold text-red-400">{ameaca.pv}</span>
+								</div>
+								<div>
+									<span className="block text-white/50">DEFESA</span>
+									<span className="font-bold text-amber-300">
+										{ameaca.defesa}
+									</span>
+								</div>
+								<div>
+									<span className="block text-white/50">RD</span>
+									<span className="font-bold text-cyan-300">{ameaca.rd}</span>
+								</div>
+							</div>
+
+							<div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+								<span className="font-semibold text-foreground/80">
+									Ataques Principais:
+								</span>
+								<span className="text-red-300 truncate max-w-[170px]">
+									{ameaca.ataques.join(", ")}
+								</span>
 							</div>
 						</div>
 					))}
@@ -298,16 +373,15 @@ export function ArquivosSecretosHub() {
 					<DialogHeader className="border-b border-border px-6 py-4">
 						<DialogTitle className="font-display text-base flex items-center justify-between">
 							<span>{selectedPdf?.title}</span>
-							<Button variant="ghost" size="sm" asChild>
-								<a
-									href={encodeURI(selectedPdf?.path || "")}
-									download
-									target="_blank"
-									rel="noreferrer"
-								>
-									<Download className="h-4 w-4 mr-1.5" /> Download PDF
-								</a>
-							</Button>
+							<a
+								href={encodeURI(selectedPdf?.path || "")}
+								download
+								target="_blank"
+								rel="noreferrer"
+								className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background/65 px-3 py-1 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+							>
+								<Download className="h-4 w-4" /> Download PDF
+							</a>
 						</DialogTitle>
 					</DialogHeader>
 					<div className="flex-1 bg-background/95">
