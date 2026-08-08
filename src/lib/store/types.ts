@@ -597,6 +597,7 @@ export interface RPGState {
 	loadWorlds: () => Promise<void>;
 	createWorld: (name: string) => Promise<World>;
 	updateWorld: (id: string, data: Partial<Pick<World, "name">>) => void;
+	deleteWorld: (id: string) => Promise<void>;
 
 	// ----- Convites & Membros -----
 	pendingInvites: Invite[];

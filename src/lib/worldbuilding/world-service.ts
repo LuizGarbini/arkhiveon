@@ -120,6 +120,23 @@ export async function updateRemoteWorld(
 	if (error) throw error;
 }
 
+export async function deleteRemoteWorld(id: string): Promise<void> {
+	const db = requireSupabase();
+	const { data: world } = await db
+		.from("worlds")
+		.select("is_default")
+		.eq("id", id)
+		.maybeSingle();
+
+	if (world?.is_default) {
+		throw new Error("Não é possível excluir o Mundo Padrão.");
+	}
+
+	const { error } = await db.from("worlds").delete().eq("id", id);
+	if (error) throw error;
+}
+
+
 /**
  * Resolve o world_id para uma nova campanha (§9.1).
  * - worldId informado → usa

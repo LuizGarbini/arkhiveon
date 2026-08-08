@@ -12,6 +12,7 @@ import { resolveActiveContextAfterCampaignLoad } from "../worldbuilding/resolve-
 import { isWorldStaffInWorld } from "../worldbuilding/visibility";
 import {
 	createRemoteWorld,
+	deleteRemoteWorld,
 	loadAccessibleWorlds,
 	resolveWorldIdForNewCampaign,
 	updateRemoteWorld,
@@ -69,6 +70,7 @@ export interface CampaignSlice {
 	loadWorlds: () => Promise<void>;
 	createWorld: (name: string) => Promise<World>;
 	updateWorld: (id: string, data: Partial<Pick<World, "name">>) => void;
+	deleteWorld: (id: string) => Promise<void>;
 
 	loadInvites: () => Promise<void>;
 	createInvite: (
@@ -181,6 +183,35 @@ export const createCampaignSlice: StateCreator<
 			});
 		});
 	},
+
+	deleteWorld: async (id) => {
+		const state = get();
+		const targetWorld = state.worlds.find((w) => w.id === id);
+		if (targetWorld?.isDefault) {
+			throw new Error("Não é possível excluir o Mundo Padrão.");
+		}
+
+		await deleteRemoteWorld(id);
+
+		set((prev) => {
+			const nextWorlds = prev.worlds.filter((w) => w.id !== id);
+			const defaultWorld =
+				nextWorlds.find((w) => w.isDefault) ?? nextWorlds[0];
+			const nextActiveWorldId =
+				prev.activeWorldId === id
+					? (defaultWorld?.id ?? null)
+					: prev.activeWorldId;
+
+			return {
+				worlds: nextWorlds,
+				activeWorldId: nextActiveWorldId,
+				syncError: null,
+			};
+		});
+
+		await get().loadCampaigns();
+	},
+
 
 	loadCampaigns: async () => {
 		const supabase = getSupabase();

@@ -101,12 +101,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const switchCampaign = useRPGStore((state) => state.switchCampaign);
 	const switchWorld = useRPGStore((state) => state.switchWorld);
 	const deleteCampaign = useRPGStore((state) => state.deleteCampaign);
+	const deleteWorld = useRPGStore((state) => state.deleteWorld);
 	const userPlan = useRPGStore((state) => state.userPlan);
 	const activeWorld = useActiveWorld();
 	const toast = useToast();
 	const [isOpen, setIsOpen] = useState(false);
 	const [showCampaignForm, setShowCampaignForm] = useState(false);
 	const [showWorldForm, setShowWorldForm] = useState(false);
+	const [worldToEdit, setWorldToEdit] = useState<typeof worlds[number] | null>(null);
+	const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
+	const [isDeletingWorld, setIsDeletingWorld] = useState(false);
 	const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
 	const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
 	const [campaignEditTab, setCampaignEditTab] = useState<"general" | "members">(
@@ -162,6 +166,26 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 		if (!campaignToDelete) return;
 		await deleteCampaign(campaignToDelete);
 		setCampaignToDelete(null);
+	}
+
+	async function handleDeleteWorld() {
+		if (!worldToDelete || isDeletingWorld) return;
+		setIsDeletingWorld(true);
+		try {
+			await deleteWorld(worldToDelete);
+			setWorldToDelete(null);
+			toast.success({
+				title: "Mundo excluído",
+				description: "O Mundo foi removido com sucesso.",
+			});
+		} catch (err) {
+			toast.error({
+				title: "Erro ao excluir Mundo",
+				description: err instanceof Error ? err.message : "Não foi possível excluir o Mundo.",
+			});
+		} finally {
+			setIsDeletingWorld(false);
+		}
 	}
 
 	return (
@@ -230,25 +254,59 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 								{activeWorld?.name ?? "Selecionar Mundo"}
 							</span>
 						</DropdownMenuSubTrigger>
-						<DropdownMenuSubContent className="w-56">
+						<DropdownMenuSubContent className="w-64">
 							<DropdownMenuGroup>
 								<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.16em]">
 									Mundos
 								</DropdownMenuLabel>
 								{worlds.map((world) => (
-									<DropdownMenuItem
+									<div
 										key={world.id}
-										onClick={() => void switchWorld(world.id)}
-										className="gap-2.5"
+										className="group/item flex items-center gap-1 rounded-xl p-1 hover:bg-muted/10"
 									>
-										<Globe2 className="h-3.5 w-3.5 text-sky-300" />
-										<span className="min-w-0 flex-1 truncate text-[12px]">
-											{world.name}
-										</span>
-										{world.id === activeWorld?.id && (
-											<Check className="h-3.5 w-3.5 text-primary" />
+										<DropdownMenuItem
+											onClick={() => void switchWorld(world.id)}
+											className="min-w-0 flex-1 gap-2.5 px-2 py-1.5"
+										>
+											<Globe2 className="h-3.5 w-3.5 text-sky-300 shrink-0" />
+											<span className="min-w-0 flex-1 truncate text-[12px]">
+												{world.name}
+											</span>
+											{world.id === activeWorld?.id && (
+												<Check className="h-3.5 w-3.5 text-primary shrink-0" />
+											)}
+										</DropdownMenuItem>
+										{world.ownerUserId === user?.id && (
+											<div className="flex items-center pr-1 gap-0.5">
+												<button
+													type="button"
+													onClick={(event) => {
+														event.preventDefault();
+														event.stopPropagation();
+														setWorldToEdit(world);
+													}}
+													aria-label={`Editar nome do Mundo ${world.name}`}
+													className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
+												>
+													<Pencil className="h-3 w-3" />
+												</button>
+												{!world.isDefault && (
+													<button
+														type="button"
+														onClick={(event) => {
+															event.preventDefault();
+															event.stopPropagation();
+															setWorldToDelete(world.id);
+														}}
+														aria-label={`Excluir Mundo ${world.name}`}
+														className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+													>
+														<Trash2 className="h-3 w-3" />
+													</button>
+												)}
+											</div>
 										)}
-									</DropdownMenuItem>
+									</div>
 								))}
 								{worlds.length === 0 && (
 									<p className="px-2.5 py-2 text-[11px] text-muted-foreground">
@@ -389,6 +447,11 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 				onOpenChange={setShowWorldForm}
 				onCreated={() => setShowCampaignForm(true)}
 			/>
+			<WorldForm
+				open={!!worldToEdit}
+				onOpenChange={(open) => !open && setWorldToEdit(null)}
+				world={worldToEdit}
+			/>
 			<CampaignForm
 				open={!!campaignToEdit}
 				onOpenChange={(open) => !open && setCampaignToEdit(null)}
@@ -414,6 +477,33 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						</Button>
 						<Button onClick={handleDelete} variant="destructive">
 							Excluir
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={!!worldToDelete}
+				onOpenChange={(open) => !open && setWorldToDelete(null)}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Excluir Mundo?</DialogTitle>
+						<DialogDescription>
+							Isso removerá a ambientação do Mundo. As campanhas pertencentes a ele continuarão acessíveis no seu Mundo Padrão. Esta ação não pode ser desfeita.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="ghost" onClick={() => setWorldToDelete(null)}>
+							Cancelar
+						</Button>
+						<Button
+							onClick={handleDeleteWorld}
+							variant="destructive"
+							loading={isDeletingWorld}
+							loadingText="Excluindo..."
+						>
+							Excluir Mundo
 						</Button>
 					</DialogFooter>
 				</DialogContent>
