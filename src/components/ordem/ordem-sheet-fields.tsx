@@ -1,4 +1,4 @@
-import { Brain, Dices, Heart, Minus, Plus, Zap } from "lucide-react";
+import { Brain, Dices, Heart, Minus, Plus, Sparkles, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import {
 	calculateDefesa,
@@ -6,8 +6,12 @@ import {
 	calculateEsquiva,
 	calculateLimiteCarga,
 	calculatePE,
+	calculatePETurno,
 	calculatePV,
 	calculateSAN,
+	getBonusAttributePointsFromNex,
+	getMaxRitualCircle,
+	getMaxSkillTrainingDegree,
 	type OrdemClasse,
 	rollOrdemD20,
 } from "@/lib/ordem/calculations";
@@ -62,6 +66,10 @@ export function OrdemSheetFields({
 		const calculatedPeMax = calculatePE(newClasse, newAtributos.pre, newNex);
 		const calculatedDefesa = calculateDefesa(newAtributos.agi);
 
+		const currentHealth = character.health ?? calculatedPvMax;
+		const currentSanity = character.sanity ?? calculatedSanMax;
+		const currentEffort = character.effort ?? calculatedPeMax;
+
 		onChange({
 			...character,
 			class: newClasse,
@@ -69,6 +77,9 @@ export function OrdemSheetFields({
 			healthMax: calculatedPvMax,
 			sanityMax: calculatedSanMax,
 			effortMax: calculatedPeMax,
+			health: Math.min(currentHealth, calculatedPvMax),
+			sanity: Math.min(currentSanity, calculatedSanMax),
+			effort: Math.min(currentEffort, calculatedPeMax),
 			customFields: {
 				...updatedCustom,
 				defesa: calculatedDefesa,
@@ -89,6 +100,17 @@ export function OrdemSheetFields({
 
 	const limiteCarga = calculateLimiteCarga(atributos.for);
 	const dtRitual = calculateDTRitual(1, atributos.int);
+	const pePorTurno = calculatePETurno(nex);
+	const bonusAttributePoints = getBonusAttributePointsFromNex(nex);
+	const maxCircle = getMaxRitualCircle(nex);
+	const maxDegree = getMaxSkillTrainingDegree(nex);
+
+	const degreeLabels: Record<string, string> = {
+		nao_treinado: "Não Treinado (+0)",
+		treinado: "Treinado (+5)",
+		veterano: "Veterano (+10)",
+		expert: "Expert (+15)",
+	};
 
 	return (
 		<div className="space-y-6">
@@ -148,6 +170,7 @@ export function OrdemSheetFields({
 						/>
 					</Field>
 				</div>
+
 			</FormSection>
 
 			{/* Atributos Básicos de Ordem (AGI, FOR, INT, PRE, VIG) com dados d20 */}
@@ -395,42 +418,87 @@ export function OrdemSheetFields({
 					</div>
 				</div>
 
-				{/* Cards Rápidos de Defesa, Carga e DT */}
+				{/* Cards Rápidos de Defesa, Carga, PE por Turno, Rituais e NEX */}
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-3">
 					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
-						<span className="text-[10px] uppercase font-bold text-muted-foreground">
+						<span className="text-[10px] uppercase font-bold text-muted-foreground block">
 							Defesa Base
 						</span>
-						<div className="text-lg font-bold text-foreground font-display">
+						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{calculateDefesa(atributos.agi)}
 						</div>
+						<span className="text-[9px] text-muted-foreground">10 + AGI ({atributos.agi})</span>
 					</div>
 
 					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
-						<span className="text-[10px] uppercase font-bold text-muted-foreground">
+						<span className="text-[10px] uppercase font-bold text-muted-foreground block">
 							Esquiva
 						</span>
-						<div className="text-lg font-bold text-foreground font-display">
+						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{calculateEsquiva(calculateDefesa(atributos.agi), 5)}
 						</div>
+						<span className="text-[9px] text-muted-foreground">Defesa + Reflexos</span>
+					</div>
+
+					<div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-center">
+						<span className="text-[10px] uppercase font-bold text-amber-400 block">
+							PE / Turno (Limite)
+						</span>
+						<div className="text-lg font-bold text-amber-300 font-display mt-0.5">
+							{pePorTurno} PE
+						</div>
+						<span className="text-[9px] text-amber-400/80">NEX {nex}% / 5%</span>
 					</div>
 
 					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
-						<span className="text-[10px] uppercase font-bold text-muted-foreground">
+						<span className="text-[10px] uppercase font-bold text-muted-foreground block">
 							Limite de Carga
 						</span>
-						<div className="text-lg font-bold text-foreground font-display">
+						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{limiteCarga} Espaços
 						</div>
+						<span className="text-[9px] text-muted-foreground">5 + FOR ({atributos.for})</span>
 					</div>
 
-					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
-						<span className="text-[10px] uppercase font-bold text-muted-foreground">
+					<div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-center">
+						<span className="text-[10px] uppercase font-bold text-purple-400 block">
 							DT de Rituais
 						</span>
-						<div className="text-lg font-bold text-primary font-display">
+						<div className="text-lg font-bold text-purple-300 font-display mt-0.5">
 							{dtRitual}
 						</div>
+						<span className="text-[9px] text-purple-400/80">10 + PE + INT ({atributos.int})</span>
+					</div>
+
+					<div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-center">
+						<span className="text-[10px] uppercase font-bold text-purple-400 block">
+							Círculo Máx. Ritual
+						</span>
+						<div className="text-lg font-bold text-purple-300 font-display mt-0.5">
+							{maxCircle > 0 ? `${maxCircle}º Círculo` : "Nenhum"}
+						</div>
+						<span className="text-[9px] text-purple-400/80">Liberado pelo NEX {nex}%</span>
+					</div>
+
+					<div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 text-center">
+						<span className="text-[10px] uppercase font-bold text-cyan-400 block">
+							Grau Máx. Perícia
+						</span>
+						<div className="text-sm font-bold text-cyan-300 font-display mt-1">
+							{degreeLabels[maxDegree]}
+						</div>
+						<span className="text-[9px] text-cyan-400/80">Limite por NEX {nex}%</span>
+					</div>
+
+					<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-center flex flex-col justify-center">
+						<span className="text-[10px] uppercase font-bold text-emerald-400 block">
+							Aumentos de Atributo
+						</span>
+						<div className="text-sm font-bold text-emerald-300 font-display mt-1 flex items-center justify-center gap-1">
+							<Sparkles className="h-3.5 w-3.5" />
+							{bonusAttributePoints > 0 ? `+${bonusAttributePoints} Ponto(s)` : "Disponível a partir de 20%"}
+						</div>
+						<span className="text-[9px] text-emerald-400/80">Marcos: 20%, 50%, 80%, 95%</span>
 					</div>
 				</div>
 			</FormSection>

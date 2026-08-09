@@ -396,6 +396,15 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						news_comments: "newsComments",
 					};
 
+					if (table === "invites") {
+						void get().loadInvites();
+						return;
+					}
+					if (table === "memberships") {
+						void get().loadCampaigns();
+						return;
+					}
+
 					const storeKey = tableToKey[table];
 					if (!storeKey) return;
 
