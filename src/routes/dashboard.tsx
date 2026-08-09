@@ -204,13 +204,23 @@ function Dashboard() {
 				<div className="absolute inset-0 z-[1] rounded-[1.75rem] bg-gradient-to-br from-black/25 via-transparent to-black/20" />
 				<div className="relative z-[2] grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-center">
 					<div className="max-w-3xl">
-						<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">
-							Visão geral
-						</p>
-						<h1 className="font-display mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
+						<div className="flex items-center gap-2">
+							<p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">
+								Visão geral
+							</p>
+							{activeCampaign?.system && (
+								<span className="rounded-full border border-primary/30 bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-md">
+									Mesa •{" "}
+									{activeCampaign.system === "ordem"
+										? "Ordem Paranormal 👁️"
+										: activeCampaign.system.toUpperCase()}
+								</span>
+							)}
+						</div>
+						<h1 className="font-display mt-3 text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
 							{activeCampaign ? activeCampaign.name : "Sua campanha em foco"}
 						</h1>
-						<p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/80">
+						<p className="mt-4 max-w-2xl text-[15px] leading-7 text-white/80">
 							Acompanhe os registros principais, retome a última sessão e acesse
 							as coleções que mantêm o mundo organizado.
 						</p>
@@ -312,6 +322,41 @@ function Dashboard() {
 					</div>
 				</div>
 			</section>
+
+			{/* Banner Especial de Ordem Paranormal */}
+			{activeCampaign?.system === "ordem" && (
+				<section className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/70 via-purple-900/40 to-black/90 p-5 shadow-lg shadow-purple-950/30 backdrop-blur-md">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+						<div className="flex items-center gap-4">
+							<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 text-2xl shadow-inner">
+								👁️
+							</div>
+							<div>
+								<div className="flex items-center gap-2">
+									<h3 className="font-display text-base font-bold text-white">
+										Central de Investigação Paranormal
+									</h3>
+									<span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/30">
+										AS1 - AS7
+									</span>
+								</div>
+								<p className="text-xs text-white/70 mt-0.5">
+									Acesse os suplementos oficiais, mapas de combate com grid,
+									bestiário de ameaças e trilhas sonoras.
+								</p>
+							</div>
+						</div>
+						<div className="flex items-center gap-2 w-full sm:w-auto">
+							<Link to="/arquivos-secretos" className="w-full sm:w-auto">
+								<Button className="w-full sm:w-auto h-9 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs gap-2 shadow-md shadow-purple-950/50">
+									<BookOpen className="h-4 w-4" />
+									Abrir Arquivos Secretos
+								</Button>
+							</Link>
+						</div>
+					</div>
+				</section>
+			)}
 
 			<section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
 				{sections.map((section, index) => (

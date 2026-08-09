@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useRPGStore } from "@/lib/store";
+import type { World } from "@/lib/store/types";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -14,24 +15,33 @@ import { Input } from "./ui/input";
 interface WorldFormProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	world?: World | null;
 	/** Called after the world is created and set as active. */
 	onCreated?: (worldId: string) => void;
 }
 
-export function WorldForm({ open, onOpenChange, onCreated }: WorldFormProps) {
+export function WorldForm({
+	open,
+	onOpenChange,
+	world,
+	onCreated,
+}: WorldFormProps) {
 	const createWorld = useRPGStore((s) => s.createWorld);
+	const updateWorld = useRPGStore((s) => s.updateWorld);
 	const switchWorld = useRPGStore((s) => s.switchWorld);
 	const [name, setName] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const nameId = useId();
 
+	const isEditing = !!world;
+
 	useEffect(() => {
 		if (open) {
-			setName("");
+			setName(world?.name ?? "");
 			setError(null);
 		}
-	}, [open]);
+	}, [open, world?.name]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -39,12 +49,22 @@ export function WorldForm({ open, onOpenChange, onCreated }: WorldFormProps) {
 		setError(null);
 		setIsSaving(true);
 		try {
-			const world = await createWorld(name.trim());
-			await switchWorld(world.id);
+			if (isEditing && world) {
+				updateWorld(world.id, { name: name.trim() });
+			} else {
+				const createdWorld = await createWorld(name.trim());
+				await switchWorld(createdWorld.id);
+				onCreated?.(createdWorld.id);
+			}
 			onOpenChange(false);
-			onCreated?.(world.id);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Erro ao criar Mundo.");
+			setError(
+				err instanceof Error
+					? err.message
+					: isEditing
+						? "Erro ao atualizar Mundo."
+						: "Erro ao criar Mundo.",
+			);
 		} finally {
 			setIsSaving(false);
 		}
@@ -54,10 +74,13 @@ export function WorldForm({ open, onOpenChange, onCreated }: WorldFormProps) {
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle className="font-display">Novo Mundo</DialogTitle>
+					<DialogTitle className="font-display">
+						{isEditing ? "Editar Mundo" : "Novo Mundo"}
+					</DialogTitle>
 					<DialogDescription>
-						Uma ambientação compartilhada entre campanhas (grimório, facções e
-						mural).
+						{isEditing
+							? "Altere o nome da ambientação do seu grupo."
+							: "Uma ambientação compartilhada entre campanhas (grimório, facções e mural)."}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className="space-y-4">
@@ -90,10 +113,10 @@ export function WorldForm({ open, onOpenChange, onCreated }: WorldFormProps) {
 						<Button
 							type="submit"
 							loading={isSaving}
-							loadingText="Criando..."
+							loadingText={isEditing ? "Salvando..." : "Criando..."}
 							disabled={!name.trim()}
 						>
-							Criar Mundo
+							{isEditing ? "Salvar" : "Criar Mundo"}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -101,3 +124,4 @@ export function WorldForm({ open, onOpenChange, onCreated }: WorldFormProps) {
 		</Dialog>
 	);
 }
+
