@@ -13,6 +13,8 @@ export const generateEntry = <T extends object>(
 	createdAt: Date.now(),
 });
 
+import { getSupabase } from "../supabase";
+
 export function pushLog(
 	log: ActivityEntry[],
 	entry: Omit<ActivityEntry, "id" | "timestamp"> & {
@@ -20,10 +22,28 @@ export function pushLog(
 		timestamp?: number;
 	},
 ): ActivityEntry[] {
+	let actorEmail = entry.actorEmail;
+	let actorName = entry.actorName;
+
+	if (!actorEmail && !actorName) {
+		const supabase = getSupabase();
+		if (supabase) {
+			void supabase.auth.getSession().then(({ data }) => {
+				const u = data.session?.user;
+				if (u) {
+					entry.actorEmail = u.email || undefined;
+					entry.actorName = u.user_metadata?.full_name || u.user_metadata?.name || undefined;
+				}
+			});
+		}
+	}
+
 	const next: ActivityEntry = {
 		...entry,
 		id: entry.id || crypto.randomUUID(),
 		timestamp: entry.timestamp || Date.now(),
+		actorEmail: actorEmail || entry.actorEmail,
+		actorName: actorName || entry.actorName,
 	} as ActivityEntry;
 	return [next, ...log].slice(0, MAX_ACTIVITY);
 }

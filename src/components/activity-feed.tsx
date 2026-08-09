@@ -151,7 +151,7 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 									</div>
 
 									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-1.5 text-[12px] text-muted-foreground/80">
+										<div className="flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground/80">
 											<span className="font-semibold text-foreground/90 lowercase">
 												{action.label}
 											</span>
@@ -161,6 +161,11 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 													className={`h-2.5 w-2.5 ${ENTITY_COLORS[entry.entityKind]}`}
 												/>
 											</span>
+											{(entry.actorName || entry.actorEmail) && (
+												<span className="text-[11px] text-muted-foreground font-normal border-l border-border/40 pl-1.5">
+													por <strong className="text-foreground/80 font-medium">{entry.actorName || entry.actorEmail}</strong>
+												</span>
+											)}
 										</div>
 										<h4 className="mt-1 text-[14px] font-bold text-foreground truncate group-hover:text-primary transition-colors">
 											{entry.entityName || "Sem nome"}

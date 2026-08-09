@@ -496,8 +496,51 @@ export function CampaignForm({
 											}}
 											className="w-full gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
 										>
-											<Copy className="h-3.5 w-3.5" /> Copiar Link da Mesa
 										</Button>
+									</div>
+								)}
+
+								{/* Ajustar Limite de Participantes (Proprietário/Mestre) */}
+								{campaign?.myRole === "owner" && (
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5">
+										<div>
+											<h4 className="text-[12px] font-bold text-foreground">
+												Limite de Participantes na Mesa
+											</h4>
+											<p className="text-[11px] text-muted-foreground">
+												Altere o limite máximo de jogadores (máx 100).
+											</p>
+										</div>
+										<div className="flex items-center gap-2 shrink-0">
+											<Input
+												type="number"
+												min={1}
+												max={100}
+												value={memberLimit}
+												onChange={(e) => setMemberLimit(Number(e.target.value))}
+												className="w-20 h-8 text-xs font-mono"
+											/>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												disabled={isSavingMemberLimit}
+												onClick={async () => {
+													setIsSavingMemberLimit(true);
+													try {
+														updateCampaign(campaign.id, { memberLimit });
+														toast.success(`Limite alterado para ${memberLimit} participantes!`);
+													} catch (err: any) {
+														toast.error(err?.message || "Erro ao atualizar limite.");
+													} finally {
+														setIsSavingMemberLimit(false);
+													}
+												}}
+												className="h-8 text-xs gap-1"
+											>
+												Salvar Limite
+											</Button>
+										</div>
 									</div>
 								)}
 

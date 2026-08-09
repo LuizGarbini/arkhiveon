@@ -132,6 +132,8 @@ export interface ActivityEntry {
 	entityKind: EntityKind;
 	entityId: string;
 	entityName: string;
+	actorName?: string;
+	actorEmail?: string;
 }
 
 export interface AppNotification {
