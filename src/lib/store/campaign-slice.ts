@@ -315,6 +315,8 @@ export const createCampaignSlice: StateCreator<
 				});
 			}
 		}
+
+		void get().loadInvites();
 	},
 
 	createCampaign: async (name, description = "", options) => {
@@ -606,6 +608,8 @@ export const createCampaignSlice: StateCreator<
 		} = await supabase.auth.getUser();
 		if (!user || !user.email) return;
 
+		const userEmailClean = user.email.trim().toLowerCase();
+
 		const { data, error } = await supabase
 			.from(SUPABASE_TABLES.invites)
 			.select(`
@@ -618,7 +622,7 @@ export const createCampaignSlice: StateCreator<
 				created_at,
 				campaign:campaigns ( name )
 			`)
-			.eq("email", user.email)
+			.ilike("email", userEmailClean)
 			.eq("status", "pending")
 			.order("created_at", { ascending: false });
 
@@ -644,6 +648,8 @@ export const createCampaignSlice: StateCreator<
 	createInvite: async (campaignId, email, role) => {
 		const supabase = getSupabase();
 		if (!supabase) return;
+
+		const targetEmail = email.trim().toLowerCase();
 
 		// 1. Contar membros (excluindo owner)
 		const { data: memberCountData, error: memberError } = await supabase
@@ -689,7 +695,7 @@ export const createCampaignSlice: StateCreator<
 
 		const { error } = await supabase.from(SUPABASE_TABLES.invites).insert({
 			campaign_id: campaignId,
-			email: email.trim(),
+			email: targetEmail,
 			role: role,
 			status: "pending",
 			invited_by: user.id,
@@ -746,6 +752,20 @@ export const createCampaignSlice: StateCreator<
 		const supabase = getSupabase();
 		if (!supabase) return;
 
+		// 1. Obter dados do convite antes de aceitar
+		const { data: invite, error: fetchError } = await supabase
+			.from(SUPABASE_TABLES.invites)
+			.select("campaign_id, role, email")
+			.eq("id", inviteId)
+			.maybeSingle();
+
+		if (fetchError || !invite) {
+			const errorMsg = "Convite não encontrado ou já expirado.";
+			set({ syncError: errorMsg });
+			throw new Error(errorMsg);
+		}
+
+		// 2. Atualizar status do convite para 'accepted'
 		const { error } = await supabase
 			.from(SUPABASE_TABLES.invites)
 			.update({ status: "accepted" })
@@ -756,11 +776,42 @@ export const createCampaignSlice: StateCreator<
 			throw error;
 		}
 
+		// 3. Garantir a inserção do usuário na tabela de memberships
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+
+		if (user && invite.campaign_id) {
+			const { error: memberError } = await supabase
+				.from(SUPABASE_TABLES.memberships)
+				.upsert(
+					{
+						campaign_id: invite.campaign_id,
+						user_id: user.id,
+						role: invite.role as MembershipRole,
+					},
+					{ onConflict: "campaign_id, user_id" },
+				);
+
+			if (memberError) {
+				console.warn(
+					"Aviso ao registrar pertencimento no banco:",
+					memberError.message,
+				);
+			}
+		}
+
 		set((state) => ({
 			pendingInvites: state.pendingInvites.filter((i) => i.id !== inviteId),
 		}));
 
+		// 4. Recarregar campanhas e mundos acessíveis
 		await get().loadCampaigns();
+
+		// 5. Trocar ativamente o contexto para a nova campanha aceita!
+		if (invite.campaign_id) {
+			await get().switchCampaign(invite.campaign_id);
+		}
 	},
 
 	declineInvite: async (inviteId) => {

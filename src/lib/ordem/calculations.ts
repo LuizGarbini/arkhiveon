@@ -166,6 +166,25 @@ export function calculateDTRitual(peGastos: number, int: number): number {
 }
 
 /**
+ * Retorna o limite de PE por turno = NEX / 5% (Mínimo 1)
+ */
+export function calculatePETurno(nex: number): number {
+	return Math.max(1, Math.floor(Math.max(5, nex) / 5));
+}
+
+/**
+ * Retorna a quantidade de Pontos de Aumento de Atributo ganhos por NEX (NEX 20%, 50%, 80%, 95%)
+ */
+export function getBonusAttributePointsFromNex(nex: number): number {
+	let points = 0;
+	if (nex >= 20) points += 1;
+	if (nex >= 50) points += 1;
+	if (nex >= 80) points += 1;
+	if (nex >= 95) points += 1;
+	return points;
+}
+
+/**
  * Retorna o Círculo Máximo de Rituais acessível pelo NEX%
  */
 export function getMaxRitualCircle(nex: number): number {
