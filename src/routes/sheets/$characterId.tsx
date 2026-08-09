@@ -367,6 +367,8 @@ function CharacterSheetPage() {
 								</div>
 								<p className="mt-2 text-[13px] text-muted-foreground">
 									{[
+										currentCharacter.title,
+										currentCharacter.nickname ? `"${currentCharacter.nickname}"` : undefined,
 										currentCharacter.race,
 										currentCharacter.class,
 										currentCharacter.subclass,

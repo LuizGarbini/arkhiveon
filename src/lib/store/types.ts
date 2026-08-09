@@ -191,8 +191,12 @@ export interface Character {
 	proficiencyBonus: number;
 	hitDice: string;
 	deathSaves: { successes: number; failures: number };
+	title?: string;
+	nickname?: string;
 	savingThrows: string;
+	savingThrowProficiencies?: Record<string, boolean>;
 	skills: string;
+	skillProficiencies?: Record<string, "none" | "proficient" | "expertise">;
 	languages: string;
 	proficiencies: string;
 	spellcastingClass: string;
