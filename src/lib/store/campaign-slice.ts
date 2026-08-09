@@ -631,7 +631,27 @@ export const createCampaignSlice: StateCreator<
 			return;
 		}
 
-		const pendingInvites: Invite[] = (data ?? []).map((row: any) => ({
+		// Se o RLS omitiu o nome da campanha no join, buscar nomes diretamente
+		const rawRows = data ?? [];
+		const missingNameCampaignIds = rawRows
+			.filter((row: any) => !row.campaign?.name && row.campaign_id)
+			.map((row: any) => row.campaign_id as string);
+
+		let campaignNamesMap: Record<string, string> = {};
+		if (missingNameCampaignIds.length > 0) {
+			const { data: fetchedCamps } = await supabase
+				.from(SUPABASE_TABLES.campaigns)
+				.select("id, name")
+				.in("id", missingNameCampaignIds);
+
+			if (fetchedCamps) {
+				campaignNamesMap = Object.fromEntries(
+					fetchedCamps.map((c: any) => [c.id, c.name]),
+				);
+			}
+		}
+
+		const pendingInvites: Invite[] = rawRows.map((row: any) => ({
 			id: row.id,
 			campaignId: row.campaign_id,
 			email: row.email,
@@ -639,10 +659,34 @@ export const createCampaignSlice: StateCreator<
 			status: row.status,
 			invitedBy: row.invited_by,
 			createdAt: new Date(row.created_at).getTime(),
-			campaignName: row.campaign?.name || "Campanha sem nome",
+			campaignName:
+				row.campaign?.name ||
+				campaignNamesMap[row.campaign_id] ||
+				"Mesa de RPG",
 		}));
 
 		set({ pendingInvites, syncError: null });
+
+		// Adicionar convites pendentes às Notificações do sino no topo
+		if (pendingInvites.length > 0) {
+			const currentNotifications = get().notifications;
+			pendingInvites.forEach((invite) => {
+				const notifTitle = "Convite para Campanha ✉️";
+				const notifDesc = `Você foi convidado para a mesa "${invite.campaignName}" como ${invite.role === "editor" ? "Co-Mestre" : "Jogador"}.`;
+
+				const alreadyExists = currentNotifications.some(
+					(n) => n.description === notifDesc,
+				);
+
+				if (!alreadyExists) {
+					get().addNotification({
+						title: notifTitle,
+						description: notifDesc,
+						variant: "info",
+					});
+				}
+			});
+		}
 	},
 
 	createInvite: async (campaignId, email, role) => {
