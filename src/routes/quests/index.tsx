@@ -82,7 +82,7 @@ function QuestsPage() {
 			<PageHeader
 				title="Diário de Missões & Objetivos"
 				description="Acompanhe missões principais, tarefas de facção, recompensas e pistas investigativas do grupo."
-				icon={Scroll}
+				Icon={Scroll}
 				action={
 					<Button onClick={() => setIsCreateOpen(true)} className="gap-2">
 						<Plus className="h-4 w-4" /> Nova Missão
@@ -90,6 +90,7 @@ function QuestsPage() {
 				}
 			/>
 		<ListLayout
+			onSearch={setSearchQuery}
 			searchPlaceholder="Buscar missões, contratante ou localização..."
 			filterGroups={filterGroups}
 			activeFilters={activeFilters}

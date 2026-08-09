@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Clock, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Character, TempBonus, TrainingActivity } from "@/lib/store/types";
-import { cn } from "@/lib/utils";
 
 interface CharacterTrainingFieldsProps {
 	character: Character;

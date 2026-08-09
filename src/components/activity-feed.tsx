@@ -29,6 +29,8 @@ const ENTITY_ICONS: Record<EntityKind, LucideIcon> = {
 	item: Package,
 	location: MapIcon,
 	lore: BookOpen,
+	quest: Scroll,
+	partyLoot: Package,
 	customTemplate: LayoutTemplate,
 };
 
@@ -39,6 +41,8 @@ const ENTITY_COLORS: Record<EntityKind, string> = {
 	item: "text-emerald-300",
 	location: "text-rose-300",
 	lore: "text-indigo-300",
+	quest: "text-amber-400",
+	partyLoot: "text-amber-300",
 	customTemplate: "text-violet-300",
 };
 

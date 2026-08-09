@@ -7,6 +7,7 @@ import {
 	type LucideIcon,
 	MapIcon,
 	Package,
+	Scroll,
 	ScrollText,
 	User,
 	UserPlus,
