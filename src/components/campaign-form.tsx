@@ -529,9 +529,15 @@ export function CampaignForm({
 													setIsSavingMemberLimit(true);
 													try {
 														updateCampaign(campaign.id, { memberLimit });
-														toast.success(`Limite alterado para ${memberLimit} participantes!`);
+														toast.success({
+															title: "Limite Atualizado!",
+															description: `Limite alterado para ${memberLimit} participantes.`,
+														});
 													} catch (err: any) {
-														toast.error(err?.message || "Erro ao atualizar limite.");
+														toast.error({
+															title: "Erro ao Atualizar Limite",
+															description: err?.message || "Erro ao atualizar limite.",
+														});
 													} finally {
 														setIsSavingMemberLimit(false);
 													}
