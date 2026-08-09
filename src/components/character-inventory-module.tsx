@@ -1,11 +1,7 @@
 import {
-	AlertTriangle,
-	ArrowRightLeft,
 	Coins,
-	Feather,
 	Package,
 	Plus,
-	Shield,
 	Sparkles,
 	Sword,
 	Trash2,
