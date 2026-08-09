@@ -10,6 +10,7 @@ import {
 	Newspaper,
 	Package,
 	Palette,
+	Scroll,
 	ScrollText,
 	Sparkles,
 	User,
@@ -26,8 +27,9 @@ import { SidebarNav } from "./sidebar-nav";
 const mesaItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
 	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
-	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+4" },
+	{ to: "/quests", label: "Missões", Icon: Scroll, shortcut: "Alt+3" },
+	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+4" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+5" },
 ];
 
 const systemItems = isDesignSystemEnabled()

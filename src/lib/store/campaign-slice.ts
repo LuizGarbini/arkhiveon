@@ -235,6 +235,8 @@ export const createCampaignSlice: StateCreator<
 					worldId: row.world_id ?? "",
 					system: (row.system as RpgSystem) ?? "dnd5e",
 					myRole: (row.my_role as MembershipRole) ?? "viewer",
+					memberLimit:
+						typeof row.member_limit === "number" ? row.member_limit : 6,
 					createdAt: row.created_at
 						? new Date(row.created_at).getTime()
 						: Date.now(),
@@ -257,6 +259,7 @@ export const createCampaignSlice: StateCreator<
 						owner_id,
 						world_id,
 						system,
+						member_limit,
 						created_at,
 						updated_at
 					)
@@ -286,7 +289,7 @@ export const createCampaignSlice: StateCreator<
 				const missingIds = missingFromMemberships.map((inv: any) => inv.campaign_id);
 				const { data: extraCamps } = await supabase
 					.from(SUPABASE_TABLES.campaigns)
-					.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+					.select("id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at")
 					.in("id", missingIds);
 
 				if (extraCamps) {
@@ -302,7 +305,7 @@ export const createCampaignSlice: StateCreator<
 
 			const { data: ownedCampaignsData } = await supabase
 				.from(SUPABASE_TABLES.campaigns)
-				.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+				.select("id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at")
 				.eq("owner_id", user.id);
 
 			const ownedCampaignRows = (ownedCampaignsData ?? []).map((c: any) => ({
@@ -323,6 +326,8 @@ export const createCampaignSlice: StateCreator<
 						worldId: c.world_id ?? "",
 						system: (c.system as RpgSystem) ?? "dnd5e",
 						myRole: (row.role as MembershipRole) ?? "viewer",
+						memberLimit:
+							typeof c.member_limit === "number" ? c.member_limit : 6,
 						createdAt: c.created_at
 							? new Date(c.created_at).getTime()
 							: Date.now(),
@@ -455,6 +460,7 @@ export const createCampaignSlice: StateCreator<
 					worldId,
 					system: options?.system ?? "dnd5e",
 					myRole: "owner",
+					memberLimit: 6,
 					createdAt: Date.now(),
 				};
 
@@ -547,6 +553,8 @@ export const createCampaignSlice: StateCreator<
 			if (data.description !== undefined)
 				updatePayload.description = data.description;
 			if (data.system !== undefined) updatePayload.system = data.system;
+if (data.memberLimit !== undefined)
+	updatePayload.member_limit = data.memberLimit;
 
 			void supabase
 				.from(SUPABASE_TABLES.campaigns)
@@ -807,13 +815,15 @@ export const createCampaignSlice: StateCreator<
 
 		const totalParticipants =
 			(memberCountData?.length || 0) + (inviteCountData?.length || 0);
-		if (totalParticipants >= 6) {
+		const memberLimit =
+			get().campaigns.find((campaign) => campaign.id === campaignId)
+				?.memberLimit ?? 6;
+		if (totalParticipants >= memberLimit) {
 			const errorMsg =
-				"Limite de participantes atingido (máximo de 6 por mesa).";
+				`Limite de participantes atingido (maximo de ${memberLimit} por mesa).`;
 			set({ syncError: errorMsg });
 			throw new Error(errorMsg);
 		}
-
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();

@@ -17,6 +17,8 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { CampaignForm } from "@/components/campaign-form";
 import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { InviteBanner } from "@/components/invite-banner";
+import { PartyLootDialog } from "@/components/party-loot-dialog";
+import { PartyStatsMatrix } from "@/components/party-stats-matrix";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { needsAppOnboarding } from "@/lib/campaign-bootstrap";
@@ -36,6 +38,13 @@ const sections = [
 		description: "Visão narrativa",
 		Icon: User,
 		key: "characters" as const,
+	},
+	{
+		to: "/quests",
+		title: "Missões",
+		description: "Diário de quests e objetivos",
+		Icon: Scroll,
+		key: "quests" as const,
 	},
 	{
 		to: "/npcs",
@@ -112,6 +121,8 @@ function Dashboard() {
 		}
 	}, [hasLoadedCampaigns, campaigns.length, navigate]);
 
+	const quests = useRPGStore((s) => s.quests || []);
+
 	const counts = useMemo(
 		() => ({
 			characters: characters.length,
@@ -120,6 +131,7 @@ function Dashboard() {
 			items: items.length,
 			locations: locations.length,
 			lores: lores.length,
+			quests: quests.length,
 		}),
 		[
 			characters.length,
@@ -128,6 +140,7 @@ function Dashboard() {
 			lores.length,
 			npcs.length,
 			sessions.length,
+			quests.length,
 		],
 	);
 
@@ -286,6 +299,7 @@ function Dashboard() {
 									Convidar Jogadores
 								</Button>
 							)}
+							<PartyLootDialog />
 						</div>
 					</div>
 
@@ -368,13 +382,16 @@ function Dashboard() {
 						<StatPill
 							to={section.to}
 							label={section.title}
-							value={counts[section.key]}
+							value={counts[section.key as keyof typeof counts]}
 							Icon={section.Icon}
 							isLoading={isLoading}
 						/>
 					</div>
 				))}
 			</section>
+
+			{/* Matriz Comparativa do Grupo */}
+			<PartyStatsMatrix />
 
 			<section className="space-y-5">
 				<SectionHeading

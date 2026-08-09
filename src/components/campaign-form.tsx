@@ -65,6 +65,8 @@ export function CampaignForm({
 	const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
+	const [memberLimit, setMemberLimit] = useState(6);
+	const [isSavingMemberLimit, setIsSavingMemberLimit] = useState(false);
 
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
 		"left",
@@ -89,6 +91,7 @@ export function CampaignForm({
 			setInviteEmail("");
 			setInviteRole("viewer");
 			setInviteError(null);
+			setMemberLimit(campaign?.memberLimit ?? 6);
 			setActiveTab(defaultTab);
 			setMembers([]);
 			setInvites([]);
@@ -190,8 +193,26 @@ export function CampaignForm({
 		}
 	}
 
+	function handleMemberLimitChange(value: string) {
+		const parsed = Number.parseInt(value, 10);
+		if (Number.isNaN(parsed)) return;
+		setMemberLimit(Math.min(100, Math.max(1, parsed)));
+	}
+
+	function handleSaveMemberLimit() {
+		if (!campaign || campaign.myRole !== "owner" || isSavingMemberLimit) return;
+		setIsSavingMemberLimit(true);
+		updateCampaign(campaign.id, { memberLimit });
+		toast.success({
+			title: "Limite atualizado",
+			description: `A campanha agora aceita ate ${memberLimit} jogadores.`,
+		});
+		setIsSavingMemberLimit(false);
+	}
 	const invitedCount =
 		members.filter((m) => m.role !== "owner").length + invites.length;
+	const effectiveMemberLimit = campaign?.memberLimit ?? 6;
+	const isCampaignOwner = campaign?.myRole === "owner";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -231,7 +252,7 @@ export function CampaignForm({
 									: "border-transparent text-muted-foreground hover:text-foreground",
 							)}
 						>
-							Jogadores Convocados ({invitedCount}/6)
+							Jogadores Convocados ({invitedCount}/{effectiveMemberLimit})
 						</button>
 					</div>
 				)}
@@ -418,6 +439,35 @@ export function CampaignForm({
 							</form>
 						) : (
 							<div className="space-y-4">
+								{isCampaignOwner && (
+									<div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:flex-row sm:items-end">
+										<div className="flex-1 space-y-1.5">
+											<label className="text-[12px] font-bold text-foreground" htmlFor="campaign-member-limit">
+												Limite de jogadores
+											</label>
+											<p className="text-[10px] text-muted-foreground">
+												Inclui membros e convites pendentes; o mestre nao ocupa vaga.
+											</p>
+											<Input
+												id="campaign-member-limit"
+												type="number"
+												min={1}
+												max={100}
+												value={memberLimit}
+												onChange={(event) => handleMemberLimitChange(event.target.value)}
+											/>
+										</div>
+										<Button
+											type="button"
+											size="sm"
+											onClick={handleSaveMemberLimit}
+											loading={isSavingMemberLimit}
+											disabled={memberLimit === effectiveMemberLimit}
+										>
+											Salvar limite
+										</Button>
+									</div>
+								)}
 								{/* Link de Convite Direto */}
 								{campaign && (
 									<div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
@@ -452,7 +502,7 @@ export function CampaignForm({
 								)}
 
 								{/* Enviar Convite por E-mail */}
-								{invitedCount < 6 ? (
+								{invitedCount < effectiveMemberLimit ? (
 									<form
 										onSubmit={handleSendInvite}
 										className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20"
@@ -498,7 +548,7 @@ export function CampaignForm({
 									</form>
 								) : (
 									<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-										Limite de 6 participantes atingido. Remova um membro ou
+										Limite de {effectiveMemberLimit} participantes atingido. Remova um membro ou
 										cancele um convite pendente antes de enviar outro.
 									</p>
 								)}

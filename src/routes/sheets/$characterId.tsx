@@ -35,6 +35,8 @@ const CharacterExportDialog = lazy(() =>
 	})),
 );
 
+import { CharacterTrainingFields } from "@/components/character-training-fields";
+
 import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
@@ -1104,7 +1106,7 @@ function ModuleContent({
 
 	if (module.kind === "notes") {
 		return (
-			<div className="grid gap-3">
+			<div className="grid gap-4">
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
@@ -1113,6 +1115,10 @@ function ModuleContent({
 					/>
 				))}
 				<TextBlock title="Anotações" value={character.notes} />
+				<CharacterTrainingFields
+					character={character}
+					onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
+				/>
 			</div>
 		);
 	}

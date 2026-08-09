@@ -64,6 +64,7 @@ export type Database = {
 					data: Json;
 					description: string;
 					id: string;
+					member_limit: number;
 					name: string;
 					owner_id: string;
 					spotify_jam_link: string | null;
@@ -75,6 +76,7 @@ export type Database = {
 					data?: Json;
 					description?: string;
 					id?: string;
+					member_limit?: number;
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
@@ -86,6 +88,7 @@ export type Database = {
 					data?: Json;
 					description?: string;
 					id?: string;
+					member_limit?: number;
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;

@@ -101,6 +101,8 @@ export type EntityKind =
 	| "item"
 	| "location"
 	| "lore"
+	| "quest"
+	| "partyLoot"
 	| "customTemplate";
 
 export const ENTITY_LABELS: Record<
@@ -113,6 +115,8 @@ export const ENTITY_LABELS: Record<
 	item: { singular: "Item", plural: "Itens" },
 	location: { singular: "Local", plural: "Locais" },
 	lore: { singular: "Lore", plural: "Lore" },
+	quest: { singular: "Missão", plural: "Missões" },
+	partyLoot: { singular: "Saque do Grupo", plural: "Saques do Grupo" },
 	customTemplate: { singular: "Layout salvo", plural: "Layouts salvos" },
 };
 
@@ -228,6 +232,26 @@ export interface Character {
 	customTemplateId?: string;
 	spellsList?: Spell[];
 	featsList?: Feat[];
+	trainingList?: TrainingActivity[];
+	tempBonusesList?: TempBonus[];
+}
+
+export interface TrainingActivity {
+	id: string;
+	title: string;
+	category?: "language" | "skill" | "tool" | "custom";
+	hoursInvested: number;
+	targetHours: number;
+	note?: string;
+}
+
+export interface TempBonus {
+	id: string;
+	title: string;
+	description: string;
+	durationDaysOrSessions: number;
+	remainingDaysOrSessions: number;
+	isExpired?: boolean;
 }
 
 export interface Spell {
@@ -448,9 +472,32 @@ export interface Lore extends WorldEntityFields {
 	entityLinks: EntityLink[];
 }
 
-// =====================================================
-//  Campanha + Memberships
-// =====================================================
+export interface Quest extends WorldEntityFields {
+	id: string;
+	createdAt: number;
+	updatedAt?: number;
+	title: string;
+	description: string;
+	status: "active" | "completed" | "failed";
+	category: "main" | "side";
+	giverNpcName?: string;
+	locationName?: string;
+	reward?: string;
+	notes?: string;
+}
+
+export interface PartyLootItem {
+	id: string;
+	createdAt: number;
+	name: string;
+	quantity: number;
+	category?: string;
+	description?: string;
+	properties?: string;
+	isClaimed?: boolean;
+	claimedByCharacterId?: string;
+	claimedByCharacterName?: string;
+}
 export type MembershipRole = "owner" | "editor" | "viewer";
 
 export interface Membership {
@@ -491,6 +538,7 @@ export interface Campaign {
 	worldId: string;
 	system?: RpgSystem;
 	myRole?: MembershipRole;
+	memberLimit?: number;
 	createdAt: number;
 	updatedAt?: number;
 }
@@ -604,7 +652,9 @@ export interface RPGState {
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description" | "system">>,
+		data: Partial<
+			Pick<Campaign, "name" | "description" | "system" | "memberLimit">
+		>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
@@ -710,6 +760,23 @@ export interface RPGState {
 		status: FactionReputationStatus,
 	) => void;
 
+	quests: Quest[];
+	addQuest: (quest: Partial<Omit<Quest, "id" | "createdAt">>) => Quest;
+	updateQuest: (id: string, quest: Partial<Quest>) => void;
+	removeQuest: (id: string) => void;
+
+	partyLoot: PartyLootItem[];
+	addPartyLootItem: (
+		item: Partial<Omit<PartyLootItem, "id" | "createdAt">>,
+	) => PartyLootItem;
+	updatePartyLootItem: (id: string, item: Partial<PartyLootItem>) => void;
+	removePartyLootItem: (id: string) => void;
+	claimPartyLootItem: (
+		id: string,
+		characterId: string,
+		characterName: string,
+	) => void;
+
 	worldNews: WorldNews[];
 	newsComments: NewsComment[];
 	addWorldNews: (
@@ -729,7 +796,6 @@ export interface RPGState {
 	activityLog: ActivityEntry[];
 	clearActivity: () => void;
 
-	// ----- Spotify Jam -----
 	spotifyJamLink: string | null;
 	spotifyJamActive: boolean;
 	spotifyToken: string | null;

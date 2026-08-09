@@ -27,6 +27,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
 import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
+import { Route as QuestsIndexRouteImport } from './routes/quests/index'
 import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
 import { Route as NewsIndexRouteImport } from './routes/news/index'
 import { Route as LoreIndexRouteImport } from './routes/lore/index'
@@ -132,6 +133,11 @@ const SheetsIndexRoute = SheetsIndexRouteImport.update({
 const SessionsIndexRoute = SessionsIndexRouteImport.update({
   id: '/sessions/',
   path: '/sessions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuestsIndexRoute = QuestsIndexRouteImport.update({
+  id: '/quests/',
+  path: '/quests/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NpcsIndexRoute = NpcsIndexRouteImport.update({
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
+  '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
 }
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
+  '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
 }
@@ -321,6 +329,7 @@ export interface FileRoutesById {
   '/lore/': typeof LoreIndexRoute
   '/news/': typeof NewsIndexRoute
   '/npcs/': typeof NpcsIndexRoute
+  '/quests/': typeof QuestsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/sheets/': typeof SheetsIndexRoute
 }
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/lore'
     | '/news'
     | '/npcs'
+    | '/quests'
     | '/sessions'
     | '/sheets'
   fileRoutesByTo: FileRoutesByTo
@@ -395,6 +405,7 @@ export interface FileRouteTypes {
     | '/lore'
     | '/news'
     | '/npcs'
+    | '/quests'
     | '/sessions'
     | '/sheets'
   id:
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/lore/'
     | '/news/'
     | '/npcs/'
+    | '/quests/'
     | '/sessions/'
     | '/sheets/'
   fileRoutesById: FileRoutesById
@@ -468,6 +480,7 @@ export interface RootRouteChildren {
   LoreIndexRoute: typeof LoreIndexRoute
   NewsIndexRoute: typeof NewsIndexRoute
   NpcsIndexRoute: typeof NpcsIndexRoute
+  QuestsIndexRoute: typeof QuestsIndexRoute
   SessionsIndexRoute: typeof SessionsIndexRoute
   SheetsIndexRoute: typeof SheetsIndexRoute
 }
@@ -598,6 +611,13 @@ declare module '@tanstack/react-router' {
       path: '/sessions'
       fullPath: '/sessions'
       preLoaderRoute: typeof SessionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quests/': {
+      id: '/quests/'
+      path: '/quests'
+      fullPath: '/quests'
+      preLoaderRoute: typeof QuestsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/npcs/': {
@@ -748,6 +768,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoreIndexRoute: LoreIndexRoute,
   NewsIndexRoute: NewsIndexRoute,
   NpcsIndexRoute: NpcsIndexRoute,
+  QuestsIndexRoute: QuestsIndexRoute,
   SessionsIndexRoute: SessionsIndexRoute,
   SheetsIndexRoute: SheetsIndexRoute,
 }
