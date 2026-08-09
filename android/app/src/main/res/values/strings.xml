@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Arkhiveon</string>
+    <string name="title_activity_main">Arkhiveon</string>
+    <string name="package_name">com.arkhiveon.app</string>
+    <string name="custom_url_scheme">com.arkhiveon.app</string>
+</resources>

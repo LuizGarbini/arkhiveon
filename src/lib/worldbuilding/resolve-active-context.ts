@@ -32,13 +32,18 @@ export function resolveActiveContextAfterCampaignLoad({
 		if (inWorld) {
 			return { campaignId: inWorld.id, worldId: activeWorldId };
 		}
-		// Mundo selecionado ainda sem campanhas — não forçar a primeira mesa global.
-		return { campaignId: null, worldId: activeWorldId };
 	}
 
 	const first = campaigns[0];
+	if (first) {
+		return {
+			campaignId: first.id,
+			worldId: first.worldId,
+		};
+	}
+
 	return {
-		campaignId: first?.id ?? null,
-		worldId: first?.worldId ?? null,
+		campaignId: null,
+		worldId: activeWorldId,
 	};
 }
