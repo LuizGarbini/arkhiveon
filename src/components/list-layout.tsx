@@ -1,4 +1,4 @@
-import { ChevronDown, Filter, RotateCcw, Search, X } from "lucide-react";
+import { ChevronDown, Filter, RotateCcw, Search } from "lucide-react";
 import { useState } from "react";
 import { PAGE_SEARCH_SHORTCUT_ARIA } from "@/lib/keyboard-shortcuts";
 import { useShortcutViewport } from "@/lib/use-shortcut-viewport";

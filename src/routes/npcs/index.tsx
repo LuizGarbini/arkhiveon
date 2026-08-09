@@ -47,7 +47,6 @@ function RouteComponent() {
 					npc.name,
 					npc.race,
 					npc.role,
-					npc.occupation,
 					npc.location,
 					npc.alignment,
 				]

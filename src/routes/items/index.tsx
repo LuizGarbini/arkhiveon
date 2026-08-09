@@ -61,7 +61,7 @@ function RouteComponent() {
 		return visibleItems.filter((item) => {
 			const matchesQuery =
 				!query ||
-				[item.name, item.category, item.rarity, item.description]
+				[item.name, item.type, item.rarity, item.description]
 					.filter(Boolean)
 					.join(" ")
 					.toLowerCase()
@@ -70,7 +70,7 @@ function RouteComponent() {
 			const matchesCategory =
 				!activeFilters.category ||
 				activeFilters.category === "all" ||
-				item.category === activeFilters.category;
+				item.type === activeFilters.category;
 
 			const matchesRarity =
 				!activeFilters.rarity ||

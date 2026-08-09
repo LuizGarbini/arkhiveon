@@ -46,7 +46,7 @@ function RouteComponent() {
 		return visibleLores.filter((lore) => {
 			const matchesQuery =
 				!query ||
-				[lore.title, lore.category, lore.summary, lore.content]
+				[lore.title, lore.category, lore.content]
 					.filter(Boolean)
 					.join(" ")
 					.toLowerCase()
