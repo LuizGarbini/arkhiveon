@@ -36,12 +36,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { WorldForm } from "./world-form";
@@ -124,9 +119,6 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const activeIndex = campaigns.findIndex(
 		(campaign) => campaign.id === activeCampaignId,
 	);
-	const campaignsInWorld = activeWorld
-		? campaigns.filter((campaign) => campaign.worldId === activeWorld.id)
-		: [];
 
 	function openCampaignForm() {
 		if (!activeWorld) {
@@ -236,48 +228,61 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						)}
 					/>
 				</DropdownMenuTrigger>
-
 				<DropdownMenuContent
 					side={isMobile ? "bottom" : "right"}
 					align="start"
 					sideOffset={8}
 					positionerClassName={isMobile ? "z-[160]" : undefined}
 					className={cn(
-						"max-h-[min(420px,calc(100vh-8rem))] w-72",
-						isMobile && "w-[224px] max-w-[calc(100vw-2rem)]",
+						"max-h-[min(520px,calc(100vh-6rem))] w-80 overflow-y-auto p-1.5 shadow-2xl",
+						isMobile && "w-[calc(100vw-1.5rem)] max-w-sm",
 					)}
 				>
-					<DropdownMenuSub>
-						<DropdownMenuSubTrigger className="rounded-lg px-2.5 py-2">
-							<Globe2 className="h-4 w-4 text-sky-300" />
-							<span className="min-w-0 flex-1 truncate text-[12px] font-semibold">
-								{activeWorld?.name ?? "Selecionar Mundo"}
+					{/* Seção de Mundos */}
+					<DropdownMenuGroup>
+						<div className="flex items-center justify-between px-2 py-1.5">
+							<span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+								Mundos ({worlds.length})
 							</span>
-						</DropdownMenuSubTrigger>
-						<DropdownMenuSubContent className="w-64">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.16em]">
-									Mundos
-								</DropdownMenuLabel>
-								{worlds.map((world) => (
+							<button
+								type="button"
+								onClick={(event) => {
+									event.preventDefault();
+									openWorldForm();
+								}}
+								className="flex items-center gap-1 text-[10px] font-bold text-sky-400 hover:underline"
+							>
+								<Plus className="h-3 w-3" /> Novo
+							</button>
+						</div>
+						<div className="space-y-0.5">
+							{worlds.map((world) => {
+								const isSelected = world.id === activeWorld?.id;
+								return (
 									<div
 										key={world.id}
-										className="group/item flex items-center gap-1 rounded-xl p-1 hover:bg-muted/10"
+										className={cn(
+											"group/item flex items-center justify-between rounded-xl px-2 py-1.5 transition-colors",
+											isSelected ? "bg-sky-500/15 border border-sky-500/30 text-sky-200" : "hover:bg-muted/40 text-muted-foreground hover:text-foreground",
+										)}
 									>
-										<DropdownMenuItem
-											onClick={() => void switchWorld(world.id)}
-											className="min-w-0 flex-1 gap-2.5 px-2 py-1.5"
+										<button
+											type="button"
+											onClick={() => {
+												void switchWorld(world.id);
+												setIsOpen(false);
+											}}
+											className="flex min-w-0 flex-1 items-center gap-2 text-left"
 										>
-											<Globe2 className="h-3.5 w-3.5 text-sky-300 shrink-0" />
-											<span className="min-w-0 flex-1 truncate text-[12px]">
+											<Globe2 className={cn("h-3.5 w-3.5 shrink-0", isSelected ? "text-sky-300" : "text-muted-foreground")} />
+											<span className="min-w-0 flex-1 truncate text-[12px] font-medium">
 												{world.name}
 											</span>
-											{world.id === activeWorld?.id && (
-												<Check className="h-3.5 w-3.5 text-primary shrink-0" />
-											)}
-										</DropdownMenuItem>
+											{isSelected && <Check className="h-3.5 w-3.5 text-sky-400 shrink-0" />}
+										</button>
+
 										{world.ownerUserId === user?.id && (
-											<div className="flex items-center pr-1 gap-0.5">
+											<div className="flex items-center gap-0.5 pl-1">
 												<button
 													type="button"
 													onClick={(event) => {
@@ -307,133 +312,132 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 											</div>
 										)}
 									</div>
-								))}
-								{worlds.length === 0 && (
-									<p className="px-2.5 py-2 text-[11px] text-muted-foreground">
-										Nenhum Mundo acessível.
-									</p>
-								)}
-							</DropdownMenuGroup>
-						</DropdownMenuSubContent>
-					</DropdownMenuSub>
+								);
+							})}
+						</div>
+					</DropdownMenuGroup>
 
-					<DropdownMenuSeparator />
+					<DropdownMenuSeparator className="my-1.5" />
+
+					{/* Seção de Campanhas */}
 					<DropdownMenuGroup>
-						<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.16em]">
-							Campanhas
-						</DropdownMenuLabel>
-						{campaignsInWorld.map((campaign) => {
-							const index = campaigns.findIndex(
-								(item) => item.id === campaign.id,
-							);
-							return (
-								<div
-									key={campaign.id}
-									className="group/item flex items-center gap-1 rounded-xl p-1 hover:bg-muted/10"
-								>
-									<DropdownMenuItem
-										onClick={() => void switchCampaign(campaign.id)}
-										className="min-w-0 flex-1 gap-3 px-2.5 py-1.5"
-									>
-										<div
-											className={cn(
-												"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-[9px] font-bold text-white",
-												colorForIndex(index),
-											)}
-										>
-											{campaignInitials(campaign.name)}
-										</div>
-										<div className="min-w-0 flex-1">
-											<div className="flex min-w-0 items-center gap-1.5">
-												<span className="truncate text-[12px] font-semibold">
-													{campaign.name}
-												</span>
-												<RoleBadge role={campaign.myRole} />
-											</div>
-										</div>
-										{campaign.id === activeCampaignId && (
-											<Check className="h-3.5 w-3.5 text-primary" />
+						<div className="flex items-center justify-between px-2 py-1.5">
+							<span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+								Minhas Campanhas ({campaigns.length})
+							</span>
+							<button
+								type="button"
+								onClick={(event) => {
+									event.preventDefault();
+									openCampaignForm();
+								}}
+								className="flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+							>
+								<Plus className="h-3 w-3" /> Nova
+							</button>
+						</div>
+
+						<div className="space-y-1">
+							{campaigns.map((campaign) => {
+								const isSelected = campaign.id === activeCampaignId;
+								const index = campaigns.findIndex((c) => c.id === campaign.id);
+								const campaignWorld = worlds.find((w) => w.id === campaign.worldId);
+
+								return (
+									<div
+										key={campaign.id}
+										className={cn(
+											"group/item flex items-center justify-between rounded-xl p-1.5 transition-colors",
+											isSelected ? "bg-primary/15 border border-primary/30" : "hover:bg-muted/40",
 										)}
-									</DropdownMenuItem>
-									{campaign.myRole === "owner" && (
-										<div className="flex items-center pr-1">
-											<button
-												type="button"
-												onClick={(event) => {
-													event.preventDefault();
-													event.stopPropagation();
-													setCampaignToEdit(campaign);
-													setCampaignEditTab("members");
-												}}
-												aria-label={`Gerenciar jogadores de ${campaign.name}`}
-												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
+									>
+										<button
+											type="button"
+											onClick={() => {
+												void switchCampaign(campaign.id);
+												setIsOpen(false);
+											}}
+											className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+										>
+											<div
+												className={cn(
+													"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-[9px] font-bold text-white shadow-xs",
+													colorForIndex(index),
+												)}
 											>
-												<UserPlus className="h-3.5 w-3.5" />
-											</button>
-											<button
-												type="button"
-												onClick={(event) => {
-													event.preventDefault();
-													event.stopPropagation();
-													setCampaignToEdit(campaign);
-													setCampaignEditTab("general");
-												}}
-												aria-label={`Editar campanha ${campaign.name}`}
-												className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
-											>
-												<Pencil className="h-3.5 w-3.5" />
-											</button>
-											{campaigns.length > 1 && (
+												{campaignInitials(campaign.name)}
+											</div>
+											<div className="min-w-0 flex-1">
+												<div className="flex min-w-0 items-center gap-1.5">
+													<span className="truncate text-[12px] font-semibold text-foreground">
+														{campaign.name}
+													</span>
+													<RoleBadge role={campaign.myRole} />
+												</div>
+												{campaignWorld && (
+													<span className="block truncate text-[10px] text-muted-foreground">
+														{campaignWorld.name}
+													</span>
+												)}
+											</div>
+											{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+										</button>
+
+										{campaign.myRole === "owner" && (
+											<div className="flex items-center pr-0.5">
 												<button
 													type="button"
 													onClick={(event) => {
 														event.preventDefault();
 														event.stopPropagation();
-														setCampaignToDelete(campaign.id);
+														setCampaignToEdit(campaign);
+														setCampaignEditTab("members");
 													}}
-													aria-label={`Excluir campanha ${campaign.name}`}
-													className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+													aria-label={`Gerenciar jogadores de ${campaign.name}`}
+													className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
 												>
-													<Trash2 className="h-3.5 w-3.5" />
+													<UserPlus className="h-3.5 w-3.5" />
 												</button>
-											)}
-										</div>
-									)}
-								</div>
-							);
-						})}
-						{activeWorld && campaignsInWorld.length === 0 && (
-							<p className="px-2.5 py-2 text-[11px] text-muted-foreground">
-								Nenhuma campanha neste Mundo.
-							</p>
-						)}
-					</DropdownMenuGroup>
+												<button
+													type="button"
+													onClick={(event) => {
+														event.preventDefault();
+														event.stopPropagation();
+														setCampaignToEdit(campaign);
+														setCampaignEditTab("general");
+													}}
+													aria-label={`Editar campanha ${campaign.name}`}
+													className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary"
+												>
+													<Pencil className="h-3.5 w-3.5" />
+												</button>
+												{campaigns.length > 1 && (
+													<button
+														type="button"
+														onClick={(event) => {
+															event.preventDefault();
+															event.stopPropagation();
+															setCampaignToDelete(campaign.id);
+														}}
+														aria-label={`Excluir campanha ${campaign.name}`}
+														className="flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</button>
+												)}
+											</div>
+										)}
+									</div>
+								);
+							})}
 
-					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						onClick={(event) => {
-							event.preventDefault();
-							openCampaignForm();
-						}}
-						className="gap-3 py-2.5 text-primary"
-					>
-						<div className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-primary/40 bg-primary/8">
-							<Plus className="h-3.5 w-3.5" />
+							{campaigns.length === 0 && (
+								<p className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+									Nenhuma campanha encontrada.
+								</p>
+							)}
 						</div>
-						<span className="text-[12px] font-semibold">Nova Campanha</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onClick={(event) => {
-							event.preventDefault();
-							openWorldForm();
-						}}
-						className="gap-3 py-2.5"
-					>
-						<div className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-sky-400/40 bg-sky-400/8">
-							<Globe2 className="h-3.5 w-3.5 text-sky-300" />
-						</div>
-						<span className="text-[12px] font-semibold">Novo Mundo</span>
-					</DropdownMenuItem>
+					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 
