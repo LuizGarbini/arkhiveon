@@ -93,6 +93,8 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const worlds = useRPGStore((state) => state.worlds);
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const pendingInvites = useRPGStore((state) => state.pendingInvites);
+	const acceptInvite = useRPGStore((state) => state.acceptInvite);
 	const switchCampaign = useRPGStore((state) => state.switchCampaign);
 	const switchWorld = useRPGStore((state) => state.switchWorld);
 	const deleteCampaign = useRPGStore((state) => state.deleteCampaign);
@@ -238,6 +240,45 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						isMobile && "w-[calc(100vw-1.5rem)] max-w-sm",
 					)}
 				>
+					{/* Convites Pendentes */}
+					{pendingInvites && pendingInvites.length > 0 && (
+						<DropdownMenuGroup className="mb-2">
+							<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 space-y-2">
+								<span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1">
+									✉️ Convites Pendentes ({pendingInvites.length})
+								</span>
+								{pendingInvites.map((inv) => (
+									<div key={inv.id} className="flex items-center justify-between gap-2">
+										<div className="min-w-0 flex-1">
+											<p className="text-[11px] font-bold text-foreground truncate">
+												{inv.campaignName}
+											</p>
+											<span className="text-[9px] text-muted-foreground">
+												Função: {inv.role === "editor" ? "Co-Mestre" : "Jogador"}
+											</span>
+										</div>
+										<Button
+											type="button"
+											size="xs"
+											onClick={async () => {
+												await acceptInvite(inv.id);
+												setIsOpen(false);
+												toast.success({
+													title: "Convite Aceito!",
+													description: `Você entrou na campanha "${inv.campaignName}".`,
+												});
+											}}
+											className="bg-amber-500 text-black hover:bg-amber-400 text-[10px] font-bold h-6 px-2 shrink-0"
+										>
+											Aceitar
+										</Button>
+									</div>
+								))}
+							</div>
+							<DropdownMenuSeparator className="my-1.5" />
+						</DropdownMenuGroup>
+					)}
+
 					{/* Seção de Mundos */}
 					<DropdownMenuGroup>
 						<div className="flex items-center justify-between px-2 py-1.5">

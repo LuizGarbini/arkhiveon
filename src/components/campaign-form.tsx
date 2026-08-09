@@ -1,5 +1,6 @@
-import { Globe2, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
+import { Copy, Globe2, Link as LinkIcon, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
 import type { Campaign, Invite, MembershipRole, RpgSystem } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ export function CampaignForm({
 	const createInvite = useRPGStore((s) => s.createInvite);
 	const revokeInvite = useRPGStore((s) => s.revokeInvite);
 	const removeMember = useRPGStore((s) => s.removeMember);
+	const toast = useToast();
 
 	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
 	const [name, setName] = useState("");
@@ -415,8 +417,41 @@ export function CampaignForm({
 								</DialogFooter>
 							</form>
 						) : (
-							<div className="space-y-6">
-								{/* Enviar Convite */}
+							<div className="space-y-4">
+								{/* Link de Convite Direto */}
+								{campaign && (
+									<div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
+										<div className="flex items-center justify-between">
+											<h4 className="text-[12px] font-bold text-sky-300 flex items-center gap-1.5">
+												<LinkIcon className="h-3.5 w-3.5 text-sky-400" /> Link de Convite Direto
+											</h4>
+											<span className="text-[9px] font-bold text-sky-400/90 uppercase tracking-wider bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+												Entrada Rápida
+											</span>
+										</div>
+										<p className="text-[11px] text-muted-foreground leading-normal">
+											Envie este link para seus amigos pelo WhatsApp ou Discord. Ao clicar, eles entram instantaneamente na mesa!
+										</p>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											onClick={() => {
+												const link = `${window.location.origin}/join/${campaign.id}`;
+												void navigator.clipboard.writeText(link);
+												toast.success({
+													title: "Link Copiado! 🔗",
+													description: "Envie o link para seus amigos entrarem instantaneamente na mesa.",
+												});
+											}}
+											className="w-full gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
+										>
+											<Copy className="h-3.5 w-3.5" /> Copiar Link da Mesa
+										</Button>
+									</div>
+								)}
+
+								{/* Enviar Convite por E-mail */}
 								{invitedCount < 6 ? (
 									<form
 										onSubmit={handleSendInvite}

@@ -40,6 +40,7 @@ import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessio
 import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
 import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
 import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
+import { Route as JoinCampaignIdRouteImport } from './routes/join/$campaignId'
 import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
 import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
 
@@ -198,6 +199,11 @@ const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
   path: '/locations/$locationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCampaignIdRoute = JoinCampaignIdRouteImport.update({
+  id: '/join/$campaignId',
+  path: '/join/$campaignId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
   id: '/items/$itemId',
   path: '/items/$itemId',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -442,6 +454,7 @@ export interface RootRouteChildren {
   WorldRoute: typeof WorldRoute
   FactionsFactionIdRoute: typeof FactionsFactionIdRoute
   ItemsItemIdRoute: typeof ItemsItemIdRoute
+  JoinCampaignIdRoute: typeof JoinCampaignIdRoute
   LocationsLocationIdRoute: typeof LocationsLocationIdRoute
   LoreLoreIdRoute: typeof LoreLoreIdRoute
   NpcsNpcIdRoute: typeof NpcsNpcIdRoute
@@ -678,6 +691,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LocationsLocationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$campaignId': {
+      id: '/join/$campaignId'
+      path: '/join/$campaignId'
+      fullPath: '/join/$campaignId'
+      preLoaderRoute: typeof JoinCampaignIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/items/$itemId': {
       id: '/items/$itemId'
       path: '/items/$itemId'
@@ -714,6 +734,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorldRoute: WorldRoute,
   FactionsFactionIdRoute: FactionsFactionIdRoute,
   ItemsItemIdRoute: ItemsItemIdRoute,
+  JoinCampaignIdRoute: JoinCampaignIdRoute,
   LocationsLocationIdRoute: LocationsLocationIdRoute,
   LoreLoreIdRoute: LoreLoreIdRoute,
   NpcsNpcIdRoute: NpcsNpcIdRoute,
