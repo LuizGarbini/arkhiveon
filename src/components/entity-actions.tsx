@@ -19,6 +19,8 @@ interface EntityActionsProps {
 	worldStaffOnly?: boolean;
 	/** Quando definido, substitui a checagem de role/staff. */
 	canManage?: boolean;
+	/** Ações adicionais renderizadas antes de Editar e Excluir. */
+	extraActions?: ReactNode;
 }
 
 /**
@@ -33,6 +35,7 @@ export function EntityActions({
 	entityKindLabel,
 	worldStaffOnly = false,
 	canManage: canManageProp,
+	extraActions,
 }: EntityActionsProps) {
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const role = useActiveCampaignRole();
@@ -50,7 +53,8 @@ export function EntityActions({
 
 	return (
 		<>
-			<div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover:opacity-100 focus-within:opacity-100">
+			<div className="absolute right-2.5 top-2.5 z-20 flex items-center gap-1.5 opacity-100 md:opacity-0 transition-opacity duration-200 md:group-hover:opacity-100 focus-within:opacity-100">
+				{extraActions}
 				{!canManage ? (
 					<div className="group/tooltip relative">
 						<div className="pointer-events-none absolute -top-8 right-0 z-30 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-9 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">

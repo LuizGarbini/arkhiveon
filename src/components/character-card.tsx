@@ -137,24 +137,25 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							onDelete={handleDeleteCharacter}
 							entityName={characterName}
 							entityKindLabel="personagem"
+							extraActions={
+								!isViewer && (
+									<button
+										type="button"
+										onClick={openImageDialog}
+										className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
+										aria-label={
+											hasCustomImage
+												? "Editar imagem do personagem"
+												: "Adicionar imagem do personagem"
+										}
+										title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
+									>
+										<Camera className="h-3.5 w-3.5" />
+									</button>
+								)
+							}
 						/>
 					</div>
-
-					{!isViewer && (
-						<button
-							type="button"
-							onClick={openImageDialog}
-							className="absolute bottom-36 right-3 z-20 flex h-8 w-8 pointer-events-auto items-center justify-center rounded-lg border border-white/15 bg-black/45 text-white opacity-100 backdrop-blur transition hover:border-primary/40 hover:text-primary md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
-							aria-label={
-								hasCustomImage
-									? "Editar imagem do personagem"
-									: "Adicionar imagem do personagem"
-							}
-							title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
-						>
-							<Camera className="h-3.5 w-3.5" />
-						</button>
-					)}
 
 					<div className="p-4 pt-5">
 						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
