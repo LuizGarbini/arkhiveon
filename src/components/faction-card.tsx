@@ -20,6 +20,34 @@ const STATUS_CLASSES: Record<FactionReputationStatus, string> = {
 	unfriendly: "border-amber-500/30 bg-amber-500/20 text-amber-300",
 };
 
+const KIND_CONFIG: Record<string, { label: string; icon: string; badge: string }> = {
+	patron: {
+		label: "Patrono de Grupo",
+		icon: "👑",
+		badge: "border-amber-500/40 bg-amber-500/15 text-amber-300",
+	},
+	noble_house: {
+		label: "Casa Nobre",
+		icon: "🏰",
+		badge: "border-sky-500/40 bg-sky-500/15 text-sky-300",
+	},
+	guild_order: {
+		label: "Ordem / Guilda",
+		icon: "⚔️",
+		badge: "border-indigo-500/40 bg-indigo-500/15 text-indigo-300",
+	},
+	cult_society: {
+		label: "Culto / Seita",
+		icon: "👁️",
+		badge: "border-purple-500/40 bg-purple-500/15 text-purple-300",
+	},
+	faction: {
+		label: "Facção",
+		icon: "🚩",
+		badge: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+	},
+};
+
 interface FactionCardProps {
 	faction?: Faction;
 	isLoading?: boolean;
@@ -84,6 +112,18 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 						{faction.name || "Facção sem nome"}
 					</h3>
 					<div className="mt-2 flex flex-wrap items-center gap-1.5">
+						{faction.kind && KIND_CONFIG[faction.kind] && (
+							<span
+								className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${KIND_CONFIG[faction.kind].badge}`}
+							>
+								{KIND_CONFIG[faction.kind].icon} {KIND_CONFIG[faction.kind].label}
+							</span>
+						)}
+						{faction.patronType && (
+							<span className="rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">
+								{faction.patronType}
+							</span>
+						)}
 						{faction.alignment && (
 							<span className="rounded border border-primary/30 bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
 								{faction.alignment}
@@ -92,7 +132,7 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 						<span
 							className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${STATUS_CLASSES[status]}`}
 						>
-							{STATUS_LABELS[status]} (mesa ativa)
+							{STATUS_LABELS[status]}
 						</span>
 					</div>
 				</div>

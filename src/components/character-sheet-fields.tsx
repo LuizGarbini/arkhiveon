@@ -1190,6 +1190,7 @@ export function CombatFields({
 						control={control}
 						setValue={setValue}
 						min={0}
+						step="any"
 						placeholder="9"
 					/>
 				</Field>
@@ -1518,6 +1519,7 @@ export interface AdjustableNumberFieldProps {
 	setValue: CharacterSetValue;
 	min?: number;
 	max?: number;
+	step?: number | "any";
 	placeholder?: string;
 	className?: string;
 	validate?: import("react-hook-form").RegisterOptions<
@@ -1533,6 +1535,7 @@ export function AdjustableNumberField({
 	setValue,
 	min = 0,
 	max = 9999,
+	step = "any",
 	placeholder = "0",
 	className,
 	validate,
@@ -1542,12 +1545,14 @@ export function AdjustableNumberField({
 	const numeric =
 		typeof value === "number" && !Number.isNaN(value)
 			? value
-			: Number.parseInt(value as string, 10) || 0;
+			: Number.parseFloat(value as string) || 0;
 
 	const handleAdjustment = (delta: number) => {
 		const currentVal = Number.isNaN(numeric) ? 0 : numeric;
-		const newVal = Math.max(min, Math.min(max, currentVal + delta));
-		setValue(fieldName, newVal, { shouldValidate: true, shouldDirty: true });
+		const stepVal = typeof step === "number" ? step : 0.5;
+		const newVal = Math.max(min, Math.min(max, currentVal + delta * stepVal));
+		const roundedVal = Math.round(newVal * 10) / 10;
+		setValue(fieldName, roundedVal, { shouldValidate: true, shouldDirty: true });
 	};
 
 	return (
@@ -1592,6 +1597,7 @@ export function AdjustableNumberField({
 					type="number"
 					min={min}
 					max={max}
+					step={step}
 					placeholder={placeholder}
 					className="absolute inset-0 w-full h-full opacity-0 cursor-default outline-none border-none p-0 text-center text-[13.5px] font-extrabold text-foreground focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 					{...register(fieldName, { valueAsNumber: true, validate })}

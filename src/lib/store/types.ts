@@ -490,15 +490,26 @@ export interface Campaign {
 	updatedAt?: number;
 }
 
+export type FactionKind =
+	| "patron"
+	| "noble_house"
+	| "guild_order"
+	| "cult_society"
+	| "faction";
+
 export interface Faction {
 	id: string;
 	worldId: string;
 	name: string;
+	kind?: FactionKind;
+	patronType?: string;
 	leader: string;
 	seat: string;
 	goals: string;
 	alignment: string;
 	influence: string;
+	perks?: string;
+	duties?: string;
 	description: string;
 	imageUrl: string;
 	createdAt: number;

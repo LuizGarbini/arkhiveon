@@ -104,6 +104,7 @@ function FactionFormDialog({
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedName = useWatch({ control, name: "name" });
+	const selectedKind = useWatch({ control, name: "kind" }) || "faction";
 
 	useEffect(() => {
 		if (!open) return;
@@ -114,11 +115,15 @@ function FactionFormDialog({
 	function onSubmit(data: FactionFormValues) {
 		const normalized = {
 			name: data.name.trim(),
+			kind: data.kind || "faction",
+			patronType: (data.patronType || "").trim(),
 			leader: data.leader.trim(),
 			seat: data.seat.trim(),
 			goals: data.goals.trim(),
 			alignment: data.alignment.trim(),
 			influence: data.influence.trim(),
+			perks: (data.perks || "").trim(),
+			duties: (data.duties || "").trim(),
 			description: data.description.trim(),
 			imageUrl: data.imageUrl.trim(),
 		};
@@ -185,18 +190,50 @@ function FactionFormDialog({
 					</DialogHeader>
 
 					<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-						<FormSection title="Identidade">
+						<FormSection title="Identidade & Categoria">
 							<ImageUploader
 								value={imageUrl ?? ""}
 								onChange={(url) =>
 									setValue("imageUrl", url, { shouldDirty: true })
 								}
 								folder="factions"
-								libraryName={watchedName || "Facção"}
-								label="Brasão / imagem"
+								libraryName={watchedName || "Organização"}
+								label="Brasão / Imagem"
 								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<Field label="Categoria de Organização" className="sm:col-span-2">
+									<select
+										{...register("kind")}
+										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary"
+									>
+										<option value="faction">🚩 Facção Política / Liga</option>
+										<option value="patron">👑 Patrono de Grupo (Group Patron)</option>
+										<option value="noble_house">🏰 Família Nobre / Casa Real</option>
+										<option value="guild_order">⚔️ Ordem / Guilda de Aventureiros</option>
+										<option value="cult_society">👁️ Culto / Seita Secreta</option>
+									</select>
+								</Field>
+
+								{selectedKind === "patron" && (
+									<Field label="Tipo de Patrono (D&D 5e / 2024)" className="sm:col-span-2">
+										<select
+											{...register("patronType")}
+											className="w-full rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-xs font-bold text-amber-200 outline-none focus:border-amber-400"
+										>
+											<option value="Dragão Ancião">🐲 Dragão Ancião</option>
+											<option value="Ser das Fadas / Arquifada">✨ Ser das Fadas / Arquifada</option>
+											<option value="Coroa / Soberano Real">👑 Coroa / Soberano Real</option>
+											<option value="Sindicato / Mestre do Crime">🗡️ Sindicato / Mestre do Crime</option>
+											<option value="Academia de Magia / Colegiado">📜 Academia de Magia / Colegiado</option>
+											<option value="Entidade Celestial / Anjo">⚜️ Entidade Celestial / Anjo</option>
+											<option value="Entidade Infernal / Diabo">🔥 Entidade Infernal / Diabo</option>
+											<option value="Ordem Religiosa / Templo">🛐 Ordem Religiosa / Templo</option>
+											<option value="Outro Patrono">🌌 Outro Patrono</option>
+										</select>
+									</Field>
+								)}
+
 								<Field
 									label="Nome"
 									htmlFor={nameId}
@@ -204,19 +241,19 @@ function FactionFormDialog({
 								>
 									<Input
 										id={nameId}
-										placeholder="Ex: Guilda dos Ladrões de Waterdeep"
+										placeholder="Ex: Dragão Ignis, Casa Cassalanter, Harpers..."
 										{...register("name", { required: true })}
 									/>
 								</Field>
-								<Field label="Líder">
+								<Field label="Líder / Entidade">
 									<Input
-										placeholder="Ex: Xanathar"
+										placeholder="Ex: Xanathar, Lorde Neverember..."
 										{...register("leader")}
 									/>
 								</Field>
-								<Field label="Sede">
+								<Field label="Sede / Base">
 									<Input
-										placeholder="Ex: Esgotos de Waterdeep"
+										placeholder="Ex: Waterdeep, Distrito Nobre..."
 										{...register("seat")}
 									/>
 								</Field>
@@ -228,18 +265,37 @@ function FactionFormDialog({
 								</Field>
 								<Field label="Influência">
 									<Input
-										placeholder="Ex: Regional, continental..."
+										placeholder="Ex: Local, Regional, Global..."
 										{...register("influence")}
 									/>
 								</Field>
 							</div>
 						</FormSection>
 
-						<FormSection title="Agenda">
+						{selectedKind === "patron" && (
+							<FormSection title="Benefícios & Deveres do Patrono (Mesa D&D)">
+								<Field label="🎁 Recursos & Favores Concedidos aos Jogadores">
+									<Textarea
+										rows={3}
+										placeholder="Ex: Acesso a tomos mágicos, advogados da coroa, biblioteca restrita, financiamento de equipamentos..."
+										{...register("perks")}
+									/>
+								</Field>
+								<Field label="📜 Deveres & Exigências dos Jogadores">
+									<Textarea
+										rows={3}
+										placeholder="Ex: Dízimo de 10% do tesouro, missões secretas mensais, proteção de relíquias..."
+										{...register("duties")}
+									/>
+								</Field>
+							</FormSection>
+						)}
+
+						<FormSection title="Agenda & História">
 							<Field label="Objetivos">
 								<Textarea
 									rows={3}
-									placeholder="O que a facção busca? Quais são seus planos?"
+									placeholder="O que a organização/patrono busca? Quais são seus planos?"
 									{...register("goals")}
 								/>
 							</Field>
