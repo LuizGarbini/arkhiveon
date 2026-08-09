@@ -1,4 +1,4 @@
-import { Copy, Globe2, Link as LinkIcon, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
+import { Globe2, Link as LinkIcon, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
