@@ -5,9 +5,6 @@ import { cn } from "@/lib/utils";
 
 export function PartyStatsMatrix() {
 	const characters = useRPGStore((state) => state.characters);
-	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
-
-	// Filtrar personagens da campanha ativa se houver vinculação
 	const party = characters;
 
 	if (party.length === 0) {

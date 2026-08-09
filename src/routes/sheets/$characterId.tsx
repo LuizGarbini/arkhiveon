@@ -1117,7 +1117,9 @@ function ModuleContent({
 				<TextBlock title="Anotações" value={character.notes} />
 				<CharacterTrainingFields
 					character={character}
-					onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
+					onUpdateCharacter={(patch) =>
+						useRPGStore.getState().updateCharacter(character.id, patch)
+					}
 				/>
 			</div>
 		);

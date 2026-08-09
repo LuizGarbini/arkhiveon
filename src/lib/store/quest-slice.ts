@@ -50,9 +50,12 @@ export const createQuestSlice: StateCreator<
 			return {} as Quest;
 		}
 
+		const activeCampaign = get().campaigns.find((c) => c.id === campaignId);
+		const worldId = activeCampaign?.worldId || "";
+
 		const defaults = {
 			...questDefaults,
-			...worldEntityDefaultsForCampaign(get(), campaignId),
+			...(worldId ? worldEntityDefaultsForCampaign(worldId, campaignId) : {}),
 		};
 
 		const created = generateEntry(defaults, quest) as Quest;

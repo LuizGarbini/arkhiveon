@@ -9,11 +9,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRPGStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
 
 export function PartyLootDialog() {
 	const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +26,6 @@ export function PartyLootDialog() {
 
 	const [newItemName, setNewItemName] = useState("");
 	const [newItemQuantity, setNewItemQuantity] = useState(1);
-	const [newItemCategory, setNewItemCategory] = useState("Equipamento");
 	const [newItemProps, setNewItemProps] = useState("");
 	const [newItemDesc, setNewItemDesc] = useState("");
 	const [selectedCharId, setSelectedCharId] = useState<string>("");
@@ -39,7 +37,7 @@ export function PartyLootDialog() {
 		addPartyLootItem({
 			name: newItemName.trim(),
 			quantity: newItemQuantity,
-			category: newItemCategory,
+			category: "Equipamento",
 			properties: newItemProps.trim(),
 			description: newItemDesc.trim(),
 		});
@@ -56,7 +54,7 @@ export function PartyLootDialog() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<DialogTrigger asChild>
+			<DialogTrigger>
 				<Button
 					type="button"
 					variant="outline"
@@ -109,7 +107,8 @@ export function PartyLootDialog() {
 
 							<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 								<div className="sm:col-span-2">
-									<Field label="Nome do Item">
+									<Field>
+										<FieldLabel>Nome do Item</FieldLabel>
 										<Input
 											placeholder="Ex: Manoplas de Shar, 4 Objetos de Arte..."
 											value={newItemName}
@@ -119,7 +118,8 @@ export function PartyLootDialog() {
 									</Field>
 								</div>
 								<div>
-									<Field label="Quantidade">
+									<Field>
+										<FieldLabel>Quantidade</FieldLabel>
 										<Input
 											type="number"
 											min={1}
@@ -130,7 +130,8 @@ export function PartyLootDialog() {
 								</div>
 							</div>
 
-							<Field label="Propriedades Especiais / Efeitos">
+							<Field>
+								<FieldLabel>Propriedades Especiais / Efeitos</FieldLabel>
 								<Input
 									placeholder="Ex: +16 CA, 1d10 dano de gelo, congela se falhar no teste de CON"
 									value={newItemProps}
@@ -138,7 +139,8 @@ export function PartyLootDialog() {
 								/>
 							</Field>
 
-							<Field label="Descrição / Notas">
+							<Field>
+								<FieldLabel>Descrição / Notas</FieldLabel>
 								<Textarea
 									rows={2}
 									placeholder="Detalhes adicionais ou local onde foi encontrado..."

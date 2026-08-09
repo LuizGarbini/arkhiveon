@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,7 +63,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 				<div className="sm:col-span-2">
-					<Field label="Título da Missão">
+					<Field>
+						<FieldLabel>Título da Missão</FieldLabel>
 						<Input
 							placeholder="Ex: Matar a Calamidade Usagi, Pintar a Sereia..."
 							value={title}
@@ -73,7 +74,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 					</Field>
 				</div>
 				<div>
-					<Field label="Categoria">
+					<Field>
+						<FieldLabel>Categoria</FieldLabel>
 						<Select
 							value={category}
 							onChange={(e) => setCategory(e.target.value as "main" | "side")}
@@ -87,7 +89,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 				<div>
-					<Field label="Status Atual">
+					<Field>
+						<FieldLabel>Status Atual</FieldLabel>
 						<Select
 							value={status}
 							onChange={(e) =>
@@ -101,7 +104,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 					</Field>
 				</div>
 				<div>
-					<Field label="Contratante / NPC Solicitante">
+					<Field>
+						<FieldLabel>Contratante / NPC Solicitante</FieldLabel>
 						<Input
 							placeholder="Ex: Elb, Maico Jackson..."
 							value={giverNpcName}
@@ -110,7 +114,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 					</Field>
 				</div>
 				<div>
-					<Field label="Localização / Alvo">
+					<Field>
+						<FieldLabel>Localização / Alvo</FieldLabel>
 						<Input
 							placeholder="Ex: Waterdeep, Monastério de Liss..."
 							value={locationName}
@@ -120,7 +125,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 				</div>
 			</div>
 
-			<Field label="Recompensa Prometida">
+			<Field>
+				<FieldLabel>Recompensa Prometida</FieldLabel>
 				<Input
 					placeholder="Ex: Desconto em poções, Item mágico, 500 PO..."
 					value={reward}
@@ -128,7 +134,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 				/>
 			</Field>
 
-			<Field label="Descrição dos Objetivos">
+			<Field>
+				<FieldLabel>Descrição dos Objetivos</FieldLabel>
 				<Textarea
 					rows={3}
 					placeholder="O que o grupo precisa realizar exatamente..."
@@ -137,7 +144,8 @@ export function QuestForm({ initialQuest, onClose }: QuestFormProps) {
 				/>
 			</Field>
 
-			<Field label="Pistas, Notas & Progresso">
+			<Field>
+				<FieldLabel>Pistas, Notas & Progresso</FieldLabel>
 				<Textarea
 					rows={2}
 					placeholder="Anotações sobre investigações ou próximos passos..."

@@ -1,7 +1,7 @@
 import { BookOpen, Clock, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,7 +133,8 @@ export function CharacterTrainingFields({
 					>
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 							<div className="sm:col-span-2">
-								<Field label="Nome do Treino / Atividade">
+								<Field>
+									<FieldLabel>Nome do Treino / Atividade</FieldLabel>
 									<Input
 										placeholder="Ex: Treino de Abissal, Alquimia, Treinamento com Pantera..."
 										value={newTrainTitle}
@@ -143,7 +144,8 @@ export function CharacterTrainingFields({
 								</Field>
 							</div>
 							<div>
-								<Field label="Categoria">
+								<Field>
+									<FieldLabel>Categoria</FieldLabel>
 									<Select
 										value={newTrainCategory}
 										onChange={(e) =>
@@ -162,14 +164,16 @@ export function CharacterTrainingFields({
 						</div>
 
 						<div className="grid grid-cols-2 gap-3">
-							<Field label="Horas Já Investidas">
+							<Field>
+								<FieldLabel>Horas Já Investidas</FieldLabel>
 								<Input
 									type="number"
 									value={newTrainHours}
 									onChange={(e) => setNewTrainHours(Number(e.target.value))}
 								/>
 							</Field>
-							<Field label="Meta de Horas">
+							<Field>
+								<FieldLabel>Meta de Horas</FieldLabel>
 								<Input
 									type="number"
 									value={newTrainTarget}
@@ -297,7 +301,8 @@ export function CharacterTrainingFields({
 					>
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 							<div className="sm:col-span-2">
-								<Field label="Título do Bônus">
+								<Field>
+									<FieldLabel>Título do Bônus</FieldLabel>
 									<Input
 										placeholder="Ex: Resistência ao Fogo, -1 Margem de Crítico..."
 										value={newBonusTitle}
@@ -307,7 +312,8 @@ export function CharacterTrainingFields({
 								</Field>
 							</div>
 							<div>
-								<Field label="Duração (Dias / Sessões)">
+								<Field>
+									<FieldLabel>Duração (Dias / Sessões)</FieldLabel>
 									<Input
 										type="number"
 										min={1}
@@ -318,7 +324,8 @@ export function CharacterTrainingFields({
 							</div>
 						</div>
 
-						<Field label="Descrição dos Efeitos">
+						<Field>
+							<FieldLabel>Descrição dos Efeitos</FieldLabel>
 							<Textarea
 								rows={2}
 								placeholder="Ex: Reduz dano de fogo pela metade por 5 dias / +2 em Intuição"

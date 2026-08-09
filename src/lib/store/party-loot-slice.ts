@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand";
-import { entityNameOf, generateEntry, pushLog } from "./helpers";
+import { generateEntry, pushLog } from "./helpers";
 import type { PartyLootItem, RPGState } from "./types";
 
 export const partyLootDefaults: Omit<PartyLootItem, "id" | "createdAt"> = {

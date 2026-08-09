@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Compass, MapPin, Plus, Scroll, ShieldAlert, Sparkles, User, XCircle } from "lucide-react";
+import { CheckCircle2, Compass, MapPin, Plus, Scroll, Sparkles, User, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ListLayout } from "@/components/list-layout";
+import { PageHeader } from "@/components/page-header";
 import { QuestForm } from "@/components/quest-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,14 +26,14 @@ function QuestsPage() {
 	const removeQuest = useRPGStore((state) => state.removeQuest);
 
 	const [searchQuery, setSearchQuery] = useState("");
-	const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
 
 	const filterGroups = [
 		{
 			id: "status",
-			title: "Status da Missão",
+			label: "Status da Missão",
 			options: [
 				{ label: "Em Andamento", value: "active" },
 				{ label: "Concluídas", value: "completed" },
@@ -41,7 +42,7 @@ function QuestsPage() {
 		},
 		{
 			id: "category",
-			title: "Tipo de Quest",
+			label: "Tipo de Quest",
 			options: [
 				{ label: "Principais", value: "main" },
 				{ label: "Secundárias", value: "side" },
@@ -61,17 +62,11 @@ function QuestsPage() {
 				return false;
 			}
 
-			if (
-				activeFilters.status?.length &&
-				!activeFilters.status.includes(q.status)
-			) {
+			if (activeFilters.status && q.status !== activeFilters.status) {
 				return false;
 			}
 
-			if (
-				activeFilters.category?.length &&
-				!activeFilters.category.includes(q.category)
-			) {
+			if (activeFilters.category && q.category !== activeFilters.category) {
 				return false;
 			}
 
@@ -83,28 +78,28 @@ function QuestsPage() {
 	const completedCount = quests.filter((q) => q.status === "completed").length;
 
 	return (
+		<div className="space-y-6">
+			<PageHeader
+				title="Diário de Missões & Objetivos"
+				description="Acompanhe missões principais, tarefas de facção, recompensas e pistas investigativas do grupo."
+				icon={Scroll}
+				action={
+					<Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+						<Plus className="h-4 w-4" /> Nova Missão
+					</Button>
+				}
+			/>
 		<ListLayout
-			title="Diário de Missões & Objetivos"
-			subtitle="Acompanhe missões principais, tarefas de facção, recompensas e pistas investigativas do grupo."
-			icon={Scroll}
-			searchQuery={searchQuery}
-			onSearchChange={setSearchQuery}
+			searchPlaceholder="Buscar missões, contratante ou localização..."
 			filterGroups={filterGroups}
 			activeFilters={activeFilters}
 			onFilterChange={(groupId, value) => {
-				setActiveFilters((prev) => {
-					const current = prev[groupId] || [];
-					const next = current.includes(value)
-						? current.filter((v) => v !== value)
-						: [...current, value];
-					return { ...prev, [groupId]: next };
-				});
+				setActiveFilters((prev) => ({
+					...prev,
+					[groupId]: prev[groupId] === value ? "" : value,
+				}));
 			}}
-			actionButton={
-				<Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-					<Plus className="h-4 w-4" /> Nova Missão
-				</Button>
-			}
+			onClearFilters={() => setActiveFilters({})}
 		>
 			{/* Resumo de Progresso */}
 			<div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
@@ -357,5 +352,6 @@ function QuestsPage() {
 				</DialogContent>
 			</Dialog>
 		</ListLayout>
+	</div>
 	);
 }
