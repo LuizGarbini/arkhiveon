@@ -1309,42 +1309,36 @@ const SAVING_THROWS_LIST: Array<{
 	{ key: "charisma", label: "Carisma", short: "CAR" },
 ];
 
-export function SkillsFields({
-	control,
-	setValue,
-	character,
-}: {
-	register?: CharacterRegister;
-	control?: CharacterControl;
-	setValue?: CharacterSetValue;
-	config?: SystemConfig;
-	character?: Character;
-}) {
+interface SkillsFieldsViewProps {
+	proficiencyBonus: number;
+	strength: number;
+	dexterity: number;
+	constitution: number;
+	intelligence: number;
+	wisdom: number;
+	charisma: number;
+	savingThrowProficiencies: Record<string, boolean>;
+	skillProficiencies: Record<string, "none" | "proficient" | "expertise">;
+	onToggleSavingThrow?: (key: string) => void;
+	onCycleSkillProficiency?: (skillId: string) => void;
+}
+
+function SkillsFieldsView({
+	proficiencyBonus,
+	strength,
+	dexterity,
+	constitution,
+	intelligence,
+	wisdom,
+	charisma,
+	savingThrowProficiencies,
+	skillProficiencies,
+	onToggleSavingThrow,
+	onCycleSkillProficiency,
+}: SkillsFieldsViewProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterType, setFilterType] = useState<"all" | "proficient" | "expertise">("all");
 	const [rollOverlay, setRollOverlay] = useState<{ name: string; bonus: number } | null>(null);
-
-	const watchedProficiencyBonus = useWatch({ control, name: "proficiencyBonus" });
-	const watchedStrength = useWatch({ control, name: "strength" });
-	const watchedDexterity = useWatch({ control, name: "dexterity" });
-	const watchedConstitution = useWatch({ control, name: "constitution" });
-	const watchedIntelligence = useWatch({ control, name: "intelligence" });
-	const watchedWisdom = useWatch({ control, name: "wisdom" });
-	const watchedCharisma = useWatch({ control, name: "charisma" });
-
-	const watchedSavingThrowProficiencies = useWatch({ control, name: "savingThrowProficiencies" });
-	const watchedSkillProficiencies = useWatch({ control, name: "skillProficiencies" });
-
-	const proficiencyBonus = watchedProficiencyBonus ?? character?.proficiencyBonus ?? 2;
-	const strength = watchedStrength ?? character?.strength ?? 10;
-	const dexterity = watchedDexterity ?? character?.dexterity ?? 10;
-	const constitution = watchedConstitution ?? character?.constitution ?? 10;
-	const intelligence = watchedIntelligence ?? character?.intelligence ?? 10;
-	const wisdom = watchedWisdom ?? character?.wisdom ?? 10;
-	const charisma = watchedCharisma ?? character?.charisma ?? 10;
-
-	const savingThrowProficiencies = watchedSavingThrowProficiencies ?? character?.savingThrowProficiencies ?? {};
-	const skillProficiencies = watchedSkillProficiencies ?? character?.skillProficiencies ?? {};
 
 	const getAttrScore = (key: string) => {
 		switch (key) {
@@ -1359,35 +1353,6 @@ export function SkillsFields({
 	};
 
 	const getAttrMod = (key: string) => Math.floor((getAttrScore(key) - 10) / 2);
-
-	const toggleSavingThrow = (key: string) => {
-		if (!setValue) return;
-		const current = !!savingThrowProficiencies[key];
-		setValue(
-			"savingThrowProficiencies",
-			{
-				...savingThrowProficiencies,
-				[key]: !current,
-			},
-			{ shouldDirty: true },
-		);
-	};
-
-	const cycleSkillProficiency = (skillId: string) => {
-		if (!setValue) return;
-		const current = skillProficiencies[skillId] || "none";
-		const nextState: "none" | "proficient" | "expertise" =
-			current === "none" ? "proficient" : current === "proficient" ? "expertise" : "none";
-
-		setValue(
-			"skillProficiencies",
-			{
-				...skillProficiencies,
-				[skillId]: nextState,
-			},
-			{ shouldDirty: true },
-		);
-	};
 
 	const filteredSkills = (DND5E_SKILLS || []).filter((skill) => {
 		const status = skillProficiencies[skill.id] || "none";
@@ -1429,12 +1394,13 @@ export function SkillsFields({
 							<div
 								key={st.key}
 								className={cn(
-									"flex flex-col items-center justify-between rounded-xl border p-3 text-center transition-all cursor-pointer select-none",
+									"flex flex-col items-center justify-between rounded-xl border p-3 text-center transition-all select-none",
+									onToggleSavingThrow ? "cursor-pointer" : "cursor-default",
 									isProficient
 										? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
 										: "border-border/60 bg-card/40 hover:border-border hover:bg-card/70",
 								)}
-								onClick={() => toggleSavingThrow(st.key)}
+								onClick={() => onToggleSavingThrow?.(st.key)}
 							>
 								<div className="flex items-center gap-1.5 w-full justify-between">
 									<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
@@ -1545,9 +1511,10 @@ export function SkillsFields({
 									<div className="flex items-center gap-2.5 min-w-0">
 										<button
 											type="button"
-											onClick={() => cycleSkillProficiency(skill.id)}
+											onClick={() => onCycleSkillProficiency?.(skill.id)}
 											className={cn(
-												"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-extrabold transition-all cursor-pointer",
+												"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-extrabold transition-all",
+												onCycleSkillProficiency ? "cursor-pointer" : "cursor-default opacity-80",
 												status === "expertise"
 													? "border-purple-400 bg-purple-500 text-white shadow-xs"
 													: status === "proficient"
@@ -1593,6 +1560,100 @@ export function SkillsFields({
 				</div>
 			</FormSection>
 		</div>
+	);
+}
+
+function SkillsFieldsForm({
+	control,
+	setValue,
+}: {
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+}) {
+	const proficiencyBonus = useWatch({ control, name: "proficiencyBonus" }) || 2;
+	const strength = useWatch({ control, name: "strength" }) || 10;
+	const dexterity = useWatch({ control, name: "dexterity" }) || 10;
+	const constitution = useWatch({ control, name: "constitution" }) || 10;
+	const intelligence = useWatch({ control, name: "intelligence" }) || 10;
+	const wisdom = useWatch({ control, name: "wisdom" }) || 10;
+	const charisma = useWatch({ control, name: "charisma" }) || 10;
+
+	const savingThrowProficiencies =
+		useWatch({ control, name: "savingThrowProficiencies" }) || {};
+	const skillProficiencies =
+		useWatch({ control, name: "skillProficiencies" }) || {};
+
+	const toggleSavingThrow = (key: string) => {
+		const current = !!savingThrowProficiencies[key];
+		setValue(
+			"savingThrowProficiencies",
+			{
+				...savingThrowProficiencies,
+				[key]: !current,
+			},
+			{ shouldDirty: true },
+		);
+	};
+
+	const cycleSkillProficiency = (skillId: string) => {
+		const current = skillProficiencies[skillId] || "none";
+		const nextState: "none" | "proficient" | "expertise" =
+			current === "none" ? "proficient" : current === "proficient" ? "expertise" : "none";
+
+		setValue(
+			"skillProficiencies",
+			{
+				...skillProficiencies,
+				[skillId]: nextState,
+			},
+			{ shouldDirty: true },
+		);
+	};
+
+	return (
+		<SkillsFieldsView
+			proficiencyBonus={proficiencyBonus}
+			strength={strength}
+			dexterity={dexterity}
+			constitution={constitution}
+			intelligence={intelligence}
+			wisdom={wisdom}
+			charisma={charisma}
+			savingThrowProficiencies={savingThrowProficiencies}
+			skillProficiencies={skillProficiencies}
+			onToggleSavingThrow={toggleSavingThrow}
+			onCycleSkillProficiency={cycleSkillProficiency}
+		/>
+	);
+}
+
+export function SkillsFields({
+	control,
+	setValue,
+	character,
+}: {
+	register?: CharacterRegister;
+	control?: CharacterControl;
+	setValue?: CharacterSetValue;
+	config?: SystemConfig;
+	character?: Character;
+}) {
+	if (control && setValue) {
+		return <SkillsFieldsForm control={control} setValue={setValue} />;
+	}
+
+	return (
+		<SkillsFieldsView
+			proficiencyBonus={character?.proficiencyBonus ?? 2}
+			strength={character?.strength ?? 10}
+			dexterity={character?.dexterity ?? 10}
+			constitution={character?.constitution ?? 10}
+			intelligence={character?.intelligence ?? 10}
+			wisdom={character?.wisdom ?? 10}
+			charisma={character?.charisma ?? 10}
+			savingThrowProficiencies={character?.savingThrowProficiencies ?? {}}
+			skillProficiencies={character?.skillProficiencies ?? {}}
+		/>
 	);
 }
 
