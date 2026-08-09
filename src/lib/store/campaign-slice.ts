@@ -290,7 +290,18 @@ export const createCampaignSlice: StateCreator<
 			}
 		}
 
-		const combinedRows = [...(memberData ?? []), ...extraCampaignRows];
+		// 3. Buscar campanhas das quais o usuário é dono diretamente na tabela campaigns
+		const { data: ownedCampaignsData } = await supabase
+			.from(SUPABASE_TABLES.campaigns)
+			.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+			.eq("owner_id", user.id);
+
+		const ownedCampaignRows = (ownedCampaignsData ?? []).map((c: any) => ({
+			role: "owner",
+			campaign: c,
+		}));
+
+		const combinedRows = [...(memberData ?? []), ...extraCampaignRows, ...ownedCampaignRows];
 		const campaignsMap = new Map<string, Campaign>();
 
 		combinedRows.forEach((row: any) => {
