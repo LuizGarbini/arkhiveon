@@ -29,19 +29,7 @@ import type {
 	World,
 } from "./types";
 
-interface MembershipCampaignRow {
-	role?: string | null;
-	campaign: {
-		id: string;
-		name?: string | null;
-		description?: string | null;
-		owner_id?: string | null;
-		world_id?: string | null;
-		system?: string | null;
-		created_at?: string | null;
-		updated_at?: string | null;
-	} | null;
-}
+
 
 export interface CampaignSlice {
 	campaigns: Campaign[];
@@ -223,16 +211,19 @@ export const createCampaignSlice: StateCreator<
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
-		if (!user) {
+		if (!user || !user.email) {
 			set({ hasLoadedCampaigns: true });
 			return;
 		}
 
-		// Carregar campanhas das quais o usuário é membro, com role
-		const { data, error } = await supabase
+		const userEmailClean = user.email.trim().toLowerCase();
+
+		// 1. Carregar campanhas das quais o usuário é membro no memberships
+		const { data: memberData, error: memberError } = await supabase
 			.from(SUPABASE_TABLES.memberships)
 			.select(`
 				role,
+				campaign_id,
 				campaign:campaigns (
 					id,
 					name,
@@ -244,25 +235,68 @@ export const createCampaignSlice: StateCreator<
 					updated_at
 				)
 			`)
-			.eq("user_id", user.id)
-			.order("created_at", { ascending: true });
+			.eq("user_id", user.id);
 
-		if (error) {
-			set({
-				syncError: `Erro ao carregar campanhas: ${error.message}`,
-				hasLoadedCampaigns: true,
-			});
-			return;
+		if (memberError) {
+			console.error("Erro ao carregar memberships:", memberError);
 		}
 
-		const campaigns: Campaign[] = (
-			(data ?? []) as unknown as MembershipCampaignRow[]
-		)
-			.filter((row) => row.campaign !== null)
-			.map((row) => {
-				const c = row.campaign;
-				if (!c) throw new Error("Campanha ausente no membership.");
-				return {
+		// 2. Buscar convites aceitos do usuário (garantia extra para convites aceitos sem membership)
+		const { data: acceptedInvitesData } = await supabase
+			.from(SUPABASE_TABLES.invites)
+			.select("campaign_id, role")
+			.ilike("email", userEmailClean)
+			.eq("status", "accepted");
+
+		const membershipCampaignIds = new Set(
+			(memberData ?? []).map((m: any) => m.campaign_id),
+		);
+
+		const missingFromMemberships = (acceptedInvitesData ?? []).filter(
+			(inv: any) => inv.campaign_id && !membershipCampaignIds.has(inv.campaign_id),
+		);
+
+		// Se houver convites aceitos sem pertencimento no memberships, buscar campanhas e auto-reparar
+		let extraCampaignRows: any[] = [];
+		if (missingFromMemberships.length > 0) {
+			const missingIds = missingFromMemberships.map((inv: any) => inv.campaign_id);
+			const { data: extraCamps } = await supabase
+				.from(SUPABASE_TABLES.campaigns)
+				.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+				.in("id", missingIds);
+
+			if (extraCamps) {
+				extraCampaignRows = extraCamps.map((c: any) => {
+					const inv = missingFromMemberships.find((i: any) => i.campaign_id === c.id);
+					return {
+						role: inv?.role || "viewer",
+						campaign: c,
+					};
+				});
+
+				// Auto-reparar inserindo no memberships
+				for (const inv of missingFromMemberships) {
+					void supabase
+						.from(SUPABASE_TABLES.memberships)
+						.upsert(
+							{
+								campaign_id: inv.campaign_id,
+								user_id: user.id,
+								role: inv.role,
+							},
+							{ onConflict: "campaign_id, user_id" },
+						);
+				}
+			}
+		}
+
+		const combinedRows = [...(memberData ?? []), ...extraCampaignRows];
+		const campaignsMap = new Map<string, Campaign>();
+
+		combinedRows.forEach((row: any) => {
+			const c = row.campaign;
+			if (c && !campaignsMap.has(c.id)) {
+				campaignsMap.set(c.id, {
 					id: c.id,
 					name: c.name ?? "Sem nome",
 					description: c.description ?? "",
@@ -270,23 +304,47 @@ export const createCampaignSlice: StateCreator<
 					worldId: c.world_id ?? "",
 					system: (c.system as RpgSystem) ?? "dnd5e",
 					myRole: row.role as MembershipRole,
-					createdAt: c.created_at
-						? new Date(c.created_at).getTime()
-						: Date.now(),
-					updatedAt: c.updated_at
-						? new Date(c.updated_at).getTime()
-						: undefined,
-				};
-			});
+					createdAt: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
+					updatedAt: c.updated_at ? new Date(c.updated_at).getTime() : undefined,
+				});
+			}
+		});
 
+		const campaigns = Array.from(campaignsMap.values());
 		set({ campaigns, syncError: null, hasLoadedCampaigns: true });
 
-		// Mundos acessíveis (dono ou membro de campanha)
+		// Carregar Mundos acessíveis + garantir Mundos das campanhas aceitas
 		try {
 			const worlds = await loadAccessibleWorlds();
-			set({ worlds });
+			const worldIds = new Set(worlds.map((w) => w.id));
+			const missingWorldIds = campaigns
+				.map((c) => c.worldId)
+				.filter((wid) => wid && !worldIds.has(wid));
+
+			if (missingWorldIds.length > 0) {
+				const { data: extraWorlds } = await supabase
+					.from("worlds")
+					.select("id, name, is_default, owner_user_id, created_at, updated_at")
+					.in("id", missingWorldIds);
+
+				if (extraWorlds) {
+					const mappedExtra = extraWorlds.map((row: any) => ({
+						id: row.id,
+						name: row.name,
+						isDefault: row.is_default,
+						ownerUserId: row.owner_user_id,
+						createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+						updatedAt: row.updated_at ? Date.parse(row.updated_at) : undefined,
+					}));
+					set({ worlds: [...worlds, ...mappedExtra] });
+				} else {
+					set({ worlds });
+				}
+			} else {
+				set({ worlds });
+			}
 		} catch {
-			// Campanhas já carregaram; mundos podem falhar sem bloquear a sessão
+			// Campanhas já carregaram
 		}
 
 		const state = get();
