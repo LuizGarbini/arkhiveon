@@ -138,7 +138,24 @@ function RouteComponent() {
 
 				{/* Filtros por Categoria e Busca */}
 				<div className="space-y-4">
-					<ListLayout onSearch={setSearchQuery} />
+					<ListLayout
+						onSearch={setSearchQuery}
+						searchPlaceholder={`Buscar em ${tabConfig.label.toLowerCase()} por nome, líder, sede...`}
+						filterGroups={[
+							{
+								id: "kind",
+								label: "Categoria",
+								options: CATEGORY_FILTERS.filter((c) => c.id !== "all").map((c) => ({
+									value: c.id,
+									label: c.label,
+									icon: c.icon,
+								})),
+							},
+						]}
+						activeFilters={{ kind: selectedCategory }}
+						onFilterChange={(_id, val) => setSelectedCategory(val as FactionKind | "all")}
+						onClearFilters={() => setSelectedCategory("all")}
+					/>
 
 					<div className="flex flex-wrap items-center gap-2 pt-1">
 						{CATEGORY_FILTERS.map((cat) => (

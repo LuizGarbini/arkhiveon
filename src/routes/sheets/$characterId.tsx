@@ -40,6 +40,7 @@ import {
 	type CharacterFormValues,
 	CharacterModuleFields,
 	sanitizeCharacterFormValues,
+	SkillsFields,
 } from "@/components/character-sheet-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
@@ -863,6 +864,10 @@ function ModuleContent({
 				})}
 			</div>
 		);
+	}
+
+	if (module.kind === "skills") {
+		return <SkillsFields character={character} config={config} />;
 	}
 
 	if (module.kind === "combat") {

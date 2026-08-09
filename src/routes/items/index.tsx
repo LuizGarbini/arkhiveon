@@ -19,15 +19,67 @@ function RouteComponent() {
 	const items = useRPGStore((state) => state.items);
 	const visibleItems = useVisibleWorldEntities(items);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+		category: "all",
+		rarity: "all",
+	});
 	const deferredSearchQuery = useDeferredValue(searchQuery);
+
+	const filterGroups = useMemo(
+		() => [
+			{
+				id: "category",
+				label: "Categoria do Item",
+				options: [
+					{ value: "weapon", label: "Arma", icon: "⚔️" },
+					{ value: "armor", label: "Armadura / Escudo", icon: "🛡️" },
+					{ value: "potion", label: "Poção / Consumível", icon: "🧪" },
+					{ value: "ring", label: "Anel / Amuleto", icon: "💍" },
+					{ value: "scroll", label: "Pergaminho / Grimoire", icon: "📜" },
+					{ value: "wand", label: "Varinha / Cajado", icon: "🪄" },
+					{ value: "misc", label: "Outro / Utilitário", icon: "📦" },
+				],
+			},
+			{
+				id: "rarity",
+				label: "Raridade",
+				options: [
+					{ value: "common", label: "Comum" },
+					{ value: "uncommon", label: "Incomum" },
+					{ value: "rare", label: "Raro" },
+					{ value: "very_rare", label: "Muito Raro" },
+					{ value: "legendary", label: "Lendário" },
+					{ value: "artifact", label: "Artefato" },
+				],
+			},
+		],
+		[],
+	);
 
 	const filteredItems = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return visibleItems;
-		return visibleItems.filter((item) =>
-			item.name.toLowerCase().includes(query),
-		);
-	}, [visibleItems, deferredSearchQuery]);
+		return visibleItems.filter((item) => {
+			const matchesQuery =
+				!query ||
+				[item.name, item.category, item.rarity, item.description]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query);
+
+			const matchesCategory =
+				!activeFilters.category ||
+				activeFilters.category === "all" ||
+				item.category === activeFilters.category;
+
+			const matchesRarity =
+				!activeFilters.rarity ||
+				activeFilters.rarity === "all" ||
+				item.rarity === activeFilters.rarity;
+
+			return matchesQuery && matchesCategory && matchesRarity;
+		});
+	}, [visibleItems, deferredSearchQuery, activeFilters]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -44,7 +96,14 @@ function RouteComponent() {
 			/>
 
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+				<ListLayout
+					onSearch={setSearchQuery}
+					searchPlaceholder="Buscar item por nome, categoria, raridade..."
+					filterGroups={filterGroups}
+					activeFilters={activeFilters}
+					onFilterChange={(id, val) => setActiveFilters((prev) => ({ ...prev, [id]: val }))}
+					onClearFilters={() => setActiveFilters({ category: "all", rarity: "all" })}
+				/>
 
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading
