@@ -1310,10 +1310,8 @@ const SAVING_THROWS_LIST: Array<{
 ];
 
 export function SkillsFields({
-	register,
 	control,
 	setValue,
-	config,
 }: {
 	register: CharacterRegister;
 	control: CharacterControl;
@@ -1399,8 +1397,10 @@ export function SkillsFields({
 		<div className="space-y-6">
 			{rollOverlay && (
 				<DiceRollOverlay
-					rollFormula={`1d20${rollOverlay.bonus >= 0 ? `+${rollOverlay.bonus}` : rollOverlay.bonus}`}
-					rollName={rollOverlay.name}
+					open={true}
+					attributeLabel={`${rollOverlay.name} (${rollOverlay.bonus >= 0 ? `+${rollOverlay.bonus}` : rollOverlay.bonus})`}
+					diceType="d20"
+					onComplete={() => {}}
 					onClose={() => setRollOverlay(null)}
 				/>
 			)}

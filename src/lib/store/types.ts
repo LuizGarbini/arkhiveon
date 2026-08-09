@@ -280,6 +280,7 @@ export interface FamilyRelation {
 export type SheetModuleKind =
 	| "identity"
 	| "abilities"
+	| "skills"
 	| "combat"
 	| "sanity"
 	| "magic"
