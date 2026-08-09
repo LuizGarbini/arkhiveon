@@ -80,11 +80,11 @@ export async function resolveDefaultWorldId(
 export async function loadAccessibleWorlds(): Promise<World[]> {
 	const db = requireSupabase();
 	const { data: rpcData, error: rpcError } = await db.rpc(
-		"get_user_accessible_worlds",
+		"get_user_accessible_worlds" as any,
 	);
 
 	if (!rpcError && rpcData) {
-		return (rpcData as any[]).map((row) => ({
+		return (rpcData as unknown as any[]).map((row) => ({
 			id: row.id,
 			name: row.name,
 			isDefault: row.is_default,

@@ -220,13 +220,13 @@ export const createCampaignSlice: StateCreator<
 
 		// 1. Tentar obter campanhas via RPC SECURITY DEFINER (imune a bloqueios de RLS)
 		const { data: rpcData, error: rpcError } = await supabase.rpc(
-			"get_user_accessible_campaigns",
+			"get_user_accessible_campaigns" as any,
 		);
 
 		const campaignsMap = new Map<string, Campaign>();
 
 		if (!rpcError && rpcData) {
-			(rpcData as any[]).forEach((row) => {
+			(rpcData as unknown as any[]).forEach((row) => {
 				campaignsMap.set(row.id, {
 					id: row.id,
 					name: row.name ?? "Sem nome",
