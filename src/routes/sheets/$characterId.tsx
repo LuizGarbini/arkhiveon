@@ -35,6 +35,7 @@ const CharacterExportDialog = lazy(() =>
 	})),
 );
 
+import { CharacterInventoryModule } from "@/components/character-inventory-module";
 import { CharacterTrainingFields } from "@/components/character-training-fields";
 
 import {
@@ -1072,7 +1073,7 @@ function ModuleContent({
 
 	if (module.kind === "inventory") {
 		return (
-			<div className="grid gap-3">
+			<div className="grid gap-4">
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
@@ -1080,8 +1081,12 @@ function ModuleContent({
 						value={character.systemFields?.[field.key]}
 					/>
 				))}
-				<TextBlock title="Equipamento" value={character.equipment} />
-				<TextBlock title="Moedas / Tesouro" value={character.currency} />
+				<CharacterInventoryModule
+					character={character}
+					onUpdateCharacter={(patch) =>
+						useRPGStore.getState().updateCharacter(character.id, patch)
+					}
+				/>
 			</div>
 		);
 	}

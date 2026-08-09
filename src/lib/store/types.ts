@@ -234,6 +234,18 @@ export interface Character {
 	featsList?: Feat[];
 	trainingList?: TrainingActivity[];
 	tempBonusesList?: TempBonus[];
+	inventoryList?: InventoryItem[];
+}
+
+export interface InventoryItem {
+	id: string;
+	name: string;
+	quantity: number;
+	weightLbs: number;
+	location: "equipped" | "backpack" | "mount_stash";
+	category?: "weapon" | "armor" | "potion" | "gear" | "treasure" | "custom";
+	description?: string;
+	isAttuned?: boolean;
 }
 
 export interface TrainingActivity {
