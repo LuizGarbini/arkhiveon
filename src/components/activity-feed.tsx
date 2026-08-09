@@ -7,6 +7,7 @@ import {
 	Package,
 	Pencil,
 	Plus,
+	Scroll,
 	ScrollText,
 	Trash2,
 	User,

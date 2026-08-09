@@ -49,7 +49,7 @@ export interface CampaignSlice {
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description" | "system">>,
+		data: Partial<Pick<Campaign, "name" | "description" | "system" | "memberLimit">>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
