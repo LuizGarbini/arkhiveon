@@ -218,108 +218,121 @@ export const createCampaignSlice: StateCreator<
 
 		const userEmailClean = user.email.trim().toLowerCase();
 
-		// 1. Carregar campanhas das quais o usuário é membro no memberships
-		const { data: memberData, error: memberError } = await supabase
-			.from(SUPABASE_TABLES.memberships)
-			.select(`
-				role,
-				campaign_id,
-				campaign:campaigns (
-					id,
-					name,
-					description,
-					owner_id,
-					world_id,
-					system,
-					created_at,
-					updated_at
-				)
-			`)
-			.eq("user_id", user.id);
-
-		if (memberError) {
-			console.error("Erro ao carregar memberships:", memberError);
-		}
-
-		// 2. Buscar convites aceitos do usuário (garantia extra para convites aceitos sem membership)
-		const { data: acceptedInvitesData } = await supabase
-			.from(SUPABASE_TABLES.invites)
-			.select("campaign_id, role")
-			.ilike("email", userEmailClean)
-			.eq("status", "accepted");
-
-		const membershipCampaignIds = new Set(
-			(memberData ?? []).map((m: any) => m.campaign_id),
+		// 1. Tentar obter campanhas via RPC SECURITY DEFINER (imune a bloqueios de RLS)
+		const { data: rpcData, error: rpcError } = await supabase.rpc(
+			"get_user_accessible_campaigns",
 		);
 
-		const missingFromMemberships = (acceptedInvitesData ?? []).filter(
-			(inv: any) => inv.campaign_id && !membershipCampaignIds.has(inv.campaign_id),
-		);
-
-		// Se houver convites aceitos sem pertencimento no memberships, buscar campanhas e auto-reparar
-		let extraCampaignRows: any[] = [];
-		if (missingFromMemberships.length > 0) {
-			const missingIds = missingFromMemberships.map((inv: any) => inv.campaign_id);
-			const { data: extraCamps } = await supabase
-				.from(SUPABASE_TABLES.campaigns)
-				.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
-				.in("id", missingIds);
-
-			if (extraCamps) {
-				extraCampaignRows = extraCamps.map((c: any) => {
-					const inv = missingFromMemberships.find((i: any) => i.campaign_id === c.id);
-					return {
-						role: inv?.role || "viewer",
-						campaign: c,
-					};
-				});
-
-				// Auto-reparar inserindo no memberships
-				for (const inv of missingFromMemberships) {
-					void supabase
-						.from(SUPABASE_TABLES.memberships)
-						.upsert(
-							{
-								campaign_id: inv.campaign_id,
-								user_id: user.id,
-								role: inv.role,
-							},
-							{ onConflict: "campaign_id, user_id" },
-						);
-				}
-			}
-		}
-
-		// 3. Buscar campanhas das quais o usuário é dono diretamente na tabela campaigns
-		const { data: ownedCampaignsData } = await supabase
-			.from(SUPABASE_TABLES.campaigns)
-			.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
-			.eq("owner_id", user.id);
-
-		const ownedCampaignRows = (ownedCampaignsData ?? []).map((c: any) => ({
-			role: "owner",
-			campaign: c,
-		}));
-
-		const combinedRows = [...(memberData ?? []), ...extraCampaignRows, ...ownedCampaignRows];
 		const campaignsMap = new Map<string, Campaign>();
 
-		combinedRows.forEach((row: any) => {
-			const c = row.campaign;
-			if (c && !campaignsMap.has(c.id)) {
-				campaignsMap.set(c.id, {
-					id: c.id,
-					name: c.name ?? "Sem nome",
-					description: c.description ?? "",
-					ownerId: c.owner_id ?? "",
-					worldId: c.world_id ?? "",
-					system: (c.system as RpgSystem) ?? "dnd5e",
-					myRole: row.role as MembershipRole,
-					createdAt: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
-					updatedAt: c.updated_at ? new Date(c.updated_at).getTime() : undefined,
+		if (!rpcError && rpcData) {
+			(rpcData as any[]).forEach((row) => {
+				campaignsMap.set(row.id, {
+					id: row.id,
+					name: row.name ?? "Sem nome",
+					description: row.description ?? "",
+					ownerId: row.owner_id ?? "",
+					worldId: row.world_id ?? "",
+					system: (row.system as RpgSystem) ?? "dnd5e",
+					myRole: (row.my_role as MembershipRole) ?? "viewer",
+					createdAt: row.created_at
+						? new Date(row.created_at).getTime()
+						: Date.now(),
+					updatedAt: row.updated_at
+						? new Date(row.updated_at).getTime()
+						: undefined,
 				});
+			});
+		} else {
+			// Fallback: consulta direta com Resolução Tripla
+			const { data: memberData, error: memberError } = await supabase
+				.from(SUPABASE_TABLES.memberships)
+				.select(`
+					role,
+					campaign_id,
+					campaign:campaigns (
+						id,
+						name,
+						description,
+						owner_id,
+						world_id,
+						system,
+						created_at,
+						updated_at
+					)
+				`)
+				.eq("user_id", user.id);
+
+			if (memberError) {
+				console.error("Erro ao carregar memberships:", memberError);
 			}
-		});
+
+			const { data: acceptedInvitesData } = await supabase
+				.from(SUPABASE_TABLES.invites)
+				.select("campaign_id, role")
+				.ilike("email", userEmailClean)
+				.eq("status", "accepted");
+
+			const membershipCampaignIds = new Set(
+				(memberData ?? []).map((m: any) => m.campaign_id),
+			);
+
+			const missingFromMemberships = (acceptedInvitesData ?? []).filter(
+				(inv: any) => inv.campaign_id && !membershipCampaignIds.has(inv.campaign_id),
+			);
+
+			let extraCampaignRows: any[] = [];
+			if (missingFromMemberships.length > 0) {
+				const missingIds = missingFromMemberships.map((inv: any) => inv.campaign_id);
+				const { data: extraCamps } = await supabase
+					.from(SUPABASE_TABLES.campaigns)
+					.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+					.in("id", missingIds);
+
+				if (extraCamps) {
+					extraCampaignRows = extraCamps.map((c: any) => {
+						const inv = missingFromMemberships.find((i: any) => i.campaign_id === c.id);
+						return {
+							role: inv?.role || "viewer",
+							campaign: c,
+						};
+					});
+				}
+			}
+
+			const { data: ownedCampaignsData } = await supabase
+				.from(SUPABASE_TABLES.campaigns)
+				.select("id, name, description, owner_id, world_id, system, created_at, updated_at")
+				.eq("owner_id", user.id);
+
+			const ownedCampaignRows = (ownedCampaignsData ?? []).map((c: any) => ({
+				role: "owner",
+				campaign: c,
+			}));
+
+			const combinedRows = [...(memberData ?? []), ...extraCampaignRows, ...ownedCampaignRows];
+
+			combinedRows.forEach((row: any) => {
+				const c = row.campaign;
+				if (c && !campaignsMap.has(c.id)) {
+					campaignsMap.set(c.id, {
+						id: c.id,
+						name: c.name ?? "Sem nome",
+						description: c.description ?? "",
+						ownerId: c.owner_id ?? "",
+						worldId: c.world_id ?? "",
+						system: (c.system as RpgSystem) ?? "dnd5e",
+						myRole: (row.role as MembershipRole) ?? "viewer",
+						createdAt: c.created_at
+							? new Date(c.created_at).getTime()
+							: Date.now(),
+						updatedAt: c.updated_at
+							? new Date(c.updated_at).getTime()
+							: undefined,
+					});
+				}
+			});
+		}
 
 		const campaigns = Array.from(campaignsMap.values());
 		set({ campaigns, syncError: null, hasLoadedCampaigns: true });
