@@ -18,6 +18,7 @@ export const Route = createFileRoute("/factions/")({
 const CATEGORY_FILTERS: Array<{ id: FactionKind | "all"; label: string; icon: string }> = [
 	{ id: "all", label: "Todos", icon: "🌐" },
 	{ id: "patron", label: "Patronos de Grupo", icon: "👑" },
+	{ id: "legendary_family", label: "Famílias Lendárias", icon: "⚜️" },
 	{ id: "noble_house", label: "Famílias Nobres", icon: "🏰" },
 	{ id: "guild_order", label: "Ordens & Guildas", icon: "⚔️" },
 	{ id: "cult_society", label: "Cultos & Seitas", icon: "👁️" },

@@ -492,6 +492,7 @@ export interface Campaign {
 
 export type FactionKind =
 	| "patron"
+	| "legendary_family"
 	| "noble_house"
 	| "guild_order"
 	| "cult_society"
@@ -510,6 +511,7 @@ export interface Faction {
 	influence: string;
 	perks?: string;
 	duties?: string;
+	contacts?: string;
 	description: string;
 	imageUrl: string;
 	createdAt: number;

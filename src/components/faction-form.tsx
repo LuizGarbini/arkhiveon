@@ -23,13 +23,19 @@ type FactionFormValues = Omit<Faction, "id" | "createdAt" | "updatedAt" | "world
 
 export function FactionForm() {
 	const isStaff = useIsWorldStaff();
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
+	const isDnd =
+		activeCampaign?.system === "dnd5e" || activeCampaign?.system === "dnd2024";
+
 	if (!isStaff) return null;
 	return (
 		<FactionFormDialog
 			trigger={
-				<Button size="sm" type="button">
+				<Button size="sm" type="button" className="gap-1.5 font-bold">
 					<Plus className="h-3.5 w-3.5" />
-					Nova facção
+					{isDnd ? "Novo Patrono / Organização" : "Nova Organização"}
 				</Button>
 			}
 		/>
@@ -124,6 +130,7 @@ function FactionFormDialog({
 			influence: data.influence.trim(),
 			perks: (data.perks || "").trim(),
 			duties: (data.duties || "").trim(),
+			contacts: (data.contacts || "").trim(),
 			description: data.description.trim(),
 			imageUrl: data.imageUrl.trim(),
 		};
@@ -209,6 +216,7 @@ function FactionFormDialog({
 									>
 										<option value="faction">🚩 Facção Política / Liga</option>
 										<option value="patron">👑 Patrono de Grupo (Group Patron)</option>
+										<option value="legendary_family">⚜️ Família Lendária / Linhagem Mítica</option>
 										<option value="noble_house">🏰 Família Nobre / Casa Real</option>
 										<option value="guild_order">⚔️ Ordem / Guilda de Aventureiros</option>
 										<option value="cult_society">👁️ Culto / Seita Secreta</option>
@@ -234,6 +242,22 @@ function FactionFormDialog({
 									</Field>
 								)}
 
+								{selectedKind === "legendary_family" && (
+									<Field label="Origem da Linhagem / Sangue Ancestral" className="sm:col-span-2">
+										<select
+											{...register("patronType")}
+											className="w-full rounded-lg border border-yellow-500/40 bg-yellow-950/20 px-3 py-2 text-xs font-bold text-yellow-200 outline-none focus:border-yellow-400"
+										>
+											<option value="Linhagem Dracônica">🐲 Linhagem Dracônica</option>
+											<option value="Sangue Celestial / Divino">⚜️ Sangue Celestial / Divino</option>
+											<option value="Ancestralidade Titan / Gigante">🗻 Ancestralidade Titan / Gigante</option>
+											<option value="Heróis Lendários da Primeira Era">⚔️ Heróis Lendários da Primeira Era</option>
+											<option value="Dinastia de Reis Magos">🔮 Dinastia de Reis Magos</option>
+											<option value="Outra Linhagem Mítica">📜 Outra Linhagem Mítica</option>
+										</select>
+									</Field>
+								)}
+
 								<Field
 									label="Nome"
 									htmlFor={nameId}
@@ -241,17 +265,17 @@ function FactionFormDialog({
 								>
 									<Input
 										id={nameId}
-										placeholder="Ex: Dragão Ignis, Casa Cassalanter, Harpers..."
+										placeholder="Ex: Dragão Ignis, Família Pendragon, Harpers..."
 										{...register("name", { required: true })}
 									/>
 								</Field>
-								<Field label="Líder / Entidade">
+								<Field label="Líder / Matriarca / Entidade">
 									<Input
 										placeholder="Ex: Xanathar, Lorde Neverember..."
 										{...register("leader")}
 									/>
 								</Field>
-								<Field label="Sede / Base">
+								<Field label="Sede / Base / Solar">
 									<Input
 										placeholder="Ex: Waterdeep, Distrito Nobre..."
 										{...register("seat")}
@@ -291,11 +315,36 @@ function FactionFormDialog({
 							</FormSection>
 						)}
 
-						<FormSection title="Agenda & História">
+						{selectedKind === "legendary_family" && (
+							<FormSection title="Heranças & Tradições da Família Lendária">
+								<Field label="🎁 Recursos, Bens & Heranças da Linhagem">
+									<Textarea
+										rows={3}
+										placeholder="Ex: Armas de família, terras ancestrais, imunidade diplomática local..."
+										{...register("perks")}
+									/>
+								</Field>
+								<Field label="📜 Código & Tradições da Família">
+									<Textarea
+										rows={3}
+										placeholder="Ex: Nunca recusar um desafio de honra, proteger a relíquia do fundador..."
+										{...register("duties")}
+									/>
+								</Field>
+							</FormSection>
+						)}
+
+						<FormSection title="Agenda, Contatos & História">
+							<Field label="🗝️ Contatos & Informantes Principais">
+								<Input
+									placeholder="Ex: Emissário Sir Tristan, Espiã Nyx..."
+									{...register("contacts")}
+								/>
+							</Field>
 							<Field label="Objetivos">
 								<Textarea
 									rows={3}
-									placeholder="O que a organização/patrono busca? Quais são seus planos?"
+									placeholder="O que a organização/patrono/família busca? Quais são seus planos?"
 									{...register("goals")}
 								/>
 							</Field>
@@ -324,7 +373,7 @@ function FactionFormDialog({
 							loading={isSubmitting}
 							loadingText={isEdit ? "Salvando..." : "Criando..."}
 						>
-							{isEdit ? "Salvar" : "Criar facção"}
+							{isEdit ? "Salvar Alterações" : "Salvar Registro"}
 						</Button>
 					</div>
 				</form>

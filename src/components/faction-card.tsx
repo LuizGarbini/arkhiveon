@@ -26,6 +26,11 @@ const KIND_CONFIG: Record<string, { label: string; icon: string; badge: string }
 		icon: "👑",
 		badge: "border-amber-500/40 bg-amber-500/15 text-amber-300",
 	},
+	legendary_family: {
+		label: "Família Lendária",
+		icon: "⚜️",
+		badge: "border-yellow-400/40 bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/20",
+	},
 	noble_house: {
 		label: "Casa Nobre",
 		icon: "🏰",
@@ -103,8 +108,13 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 						}
 						onDelete={() => removeFaction(faction.id)}
 						entityName={faction.name || "Sem nome"}
-						entityKindLabel="facção"
-						worldStaffOnly
+						entityKindLabel={
+							faction.kind === "patron"
+								? "patrono"
+								: faction.kind === "legendary_family" || faction.kind === "noble_house"
+									? "família"
+									: "organização"
+						}
 					/>
 				</div>
 				<div className="p-4.5 pt-5">
