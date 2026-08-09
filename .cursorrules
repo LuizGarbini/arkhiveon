@@ -1,0 +1,35 @@
+# Cursor AI Rules — Arkhiveon (RPG Notes)
+
+Always adhere to these guidelines when suggesting code, creating components, or refactoring in this repository.
+
+## 1. Design System Check (Mandatory)
+- Before creating or modifying UI components, inspect the Design System in `src/routes/design-system.tsx`.
+- Use global semantic HSL tokens: `bg-background`, `bg-card`, `bg-card-elevated`, `text-primary`, `text-foreground`, `text-muted-foreground`, `border-border/70`.
+- DO NOT hardcode solid arbitrary colors (e.g. `bg-[#1a1a1a]`, `text-[#ff0000]`).
+- Include glassmorphism (`backdrop-blur-md`), smooth hover states (`transition-all duration-150 ease-out active:scale-[0.98]`), and responsive touch targets (min 44px on mobile).
+
+## 2. Anti-useEffect Rule
+- STRICTLY MINIMIZE / AVOID `useEffect`. Multiple `useEffect` hooks create exponential cognitive complexity, stale closures, race conditions, and infinite re-render loops.
+- Use derived state during render or `useMemo`.
+- Handle side effects directly inside user event handlers (`onClick`, `onChange`, `onSubmit`).
+- Use Zustand actions or TanStack Router loaders/subscribers for store synchronization.
+- Use `useDeferredValue` for input filtering instead of custom effects.
+
+## 3. Zustand Performance & Selectors
+- Selectors must return primitive values or stable references (`useRPGStore(state => state.characters)`).
+- NEVER create new objects/arrays inside selector functions (e.g. `useRPGStore(state => state.items.filter(...))`), as this triggers infinite React render loops.
+- Wrap heavy list filtering in `useMemo`.
+
+## 4. Mobile-First Responsiveness
+- All sheets, modals, forms, and cards must work seamlessly on mobile viewports (`grid-cols-1 sm:grid-cols-2`).
+- Touch targets must be at least 44px in height/width.
+- Prevent horizontal scrollbars (`overflow-x`).
+
+## 5. TypeScript & Biome Standards
+- Avoid `any` types; define explicit TypeScript interfaces (`Character`, `SheetModuleConfig`, `Faction`, `Item`, `Npc`, `Lore`).
+- Always run Biome check before completing changes: `npx @biomejs/biome check --write <modified_files>`.
+- Ensure `pnpm run build` (`tsc`) completes with zero errors.
+
+## 6. Package Manager & Git Rules
+- Package manager: EXCLUSIVELY use `pnpm`. Never run `npm` or `yarn`.
+- Branch prefixes: `garbini/*` for Luiz Garbini (`garbasneto@gmail.com`) and `arroyo/*` for Gabriel Arroyo (`gabrielarroyoc18@gmail.com`).
