@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
 	Crown,
-	Flag,
 	GitFork,
 	Globe2,
 	House,
@@ -29,17 +28,6 @@ const mesaItems = [
 	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
 	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
 	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+4" },
-];
-
-const worldItems = [
-	{ to: "/world", label: "Visão geral", Icon: Globe2 },
-	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
-	{ to: "/factions", label: "Facções", Icon: Flag },
-	{ to: "/news", label: "Mural", Icon: Newspaper },
-	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
-	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
-	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
-	{ to: "/images", label: "Imagens", Icon: Images },
 ];
 
 const systemItems = isDesignSystemEnabled()

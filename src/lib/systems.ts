@@ -19,6 +19,7 @@ import {
 	Crown,
 	Dices,
 	Eye,
+	Flag,
 	Flame,
 	Ghost,
 	Globe,
