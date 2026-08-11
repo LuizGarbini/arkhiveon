@@ -185,6 +185,7 @@ export interface Character {
 	health: number;
 	healthMax: number;
 	tempHealth: number;
+	lifeStatus?: CharacterLifeStatus;
 	armorClass: number;
 	initiative: number;
 	speed: number;
@@ -253,6 +254,8 @@ export interface Feat {
 	source: string;
 	is_homebrew?: boolean;
 }
+
+export type CharacterLifeStatus = "alive" | "wounded" | "down" | "dead";
 
 export type FamilyRelationKind =
 	| "father"

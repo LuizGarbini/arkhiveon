@@ -3,9 +3,11 @@ import { AlertTriangle, Camera } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
+import { LifeStatusBadge } from "@/components/roster-status";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
 import { getCharacterPresetUrl } from "@/lib/character-presets";
+import { getCharacterLifeStatus } from "@/lib/roster-status";
 import {
 	type Character,
 	formatModifier,
@@ -15,6 +17,7 @@ import {
 	useImageAssetLookup,
 	useRPGStore,
 } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { EntityActions } from "./entity-actions";
 
 interface CharacterCardProps {
@@ -68,6 +71,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const hasSystemMismatch = Boolean(
 		activeCampaign?.system && activeCampaign.system !== character.system,
 	);
+	const lifeStatus = getCharacterLifeStatus(character);
+	const isInactive = lifeStatus === "dead" || lifeStatus === "down";
 
 	function handleDeleteCharacter() {
 		if (!character) return;
@@ -86,7 +91,12 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 
 	return (
 		<>
-			<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0">
+			<div
+				className={cn(
+					"group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0",
+					isInactive ? "border-rose-400/35" : "border-border/70",
+				)}
+			>
 				{/* Accessible anchor covering the entire card background */}
 				<Link
 					to="/sheets/$characterId"
@@ -104,7 +114,10 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							framing={character}
 							loading="lazy"
 							decoding="async"
-							imgClassName="opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+							imgClassName={cn(
+								"opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105",
+								isInactive && "grayscale opacity-45",
+							)}
 						/>
 					) : (
 						<img
@@ -113,7 +126,10 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							aria-hidden
 							loading="lazy"
 							decoding="async"
-							className="h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+							className={cn(
+								"h-full w-full object-cover object-center opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105",
+								isInactive && "grayscale opacity-45",
+							)}
 						/>
 					)}
 					<div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/80 via-black/40 to-transparent" />
@@ -167,6 +183,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 							) : null}
 						</div>
 						<div className="mt-2 flex flex-wrap items-center gap-1.5">
+							<LifeStatusBadge status={lifeStatus} size="xs" />
 							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
 								{systemLabel(character.system)}
 							</span>

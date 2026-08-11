@@ -16,11 +16,15 @@ export function ChangelogPanel({ open, onClose }: ChangelogPanelProps) {
 		if (open) {
 			setMounted(true);
 			// Delay para dar tempo de engajar a animação do CSS
-			const timer = setTimeout(() => setAnimate(true), 20);
+			const timer = setTimeout(() => {
+				if (typeof window !== "undefined") setAnimate(true);
+			}, 20);
 			return () => clearTimeout(timer);
 		} else {
 			setAnimate(false);
-			const timer = setTimeout(() => setMounted(false), 300);
+			const timer = setTimeout(() => {
+				if (typeof window !== "undefined") setMounted(false);
+			}, 300);
 			return () => clearTimeout(timer);
 		}
 	}, [open]);

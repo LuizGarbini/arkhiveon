@@ -1,7 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileText, MapPin, Skull, User } from "lucide-react";
+import { FileText, HeartPulse, MapPin, Skull, User } from "lucide-react";
+import type { MouseEvent } from "react";
+import { LifeStatusBadge } from "@/components/roster-status";
+import { getCharacterLifeStatus, getNpcLifeStatus } from "@/lib/roster-status";
 import type { Npc } from "@/lib/store";
-import { useRPGStore } from "@/lib/store";
+import { useIsWorldStaff, useRPGStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
 
@@ -43,6 +47,8 @@ const importanceStyles: Record<string, string> = {
 
 export function NpcCard({ npc, isLoading }: NpcCardProps) {
 	const removeNpc = useRPGStore((s) => s.removeNpc);
+	const updateNpc = useRPGStore((s) => s.updateNpc);
+	const isWorldStaff = useIsWorldStaff();
 	const navigate = useNavigate();
 	const linkedCharacterId = npc?.linkedCharacterId;
 	const linkedCharacter = useRPGStore((s) =>
@@ -71,9 +77,30 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 	const isMonster = npc.kind === "monster";
 	const kindLabel = isMonster ? "Monstro" : "NPC";
 	const SubtitleIcon = isMonster ? Skull : User;
+	const linkedLifeStatus = linkedCharacter
+		? getCharacterLifeStatus(linkedCharacter)
+		: undefined;
+	const lifeStatus = getNpcLifeStatus(npc, linkedCharacter);
+	const isInactive = lifeStatus === "dead" || lifeStatus === "down";
+	const canManage = isWorldStaff;
+	const linkedSheetOwnsStatus =
+		linkedCharacter &&
+		(linkedLifeStatus === "dead" || linkedLifeStatus === "down");
+
+	function toggleNpcAlive(event: MouseEvent<HTMLButtonElement>) {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!npc) return;
+		updateNpc(npc.id, { isAlive: !npc.isAlive });
+	}
 
 	return (
-		<div className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0">
+		<div
+			className={cn(
+				"group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0",
+				isInactive ? "border-rose-400/35" : "border-border/70",
+			)}
+		>
 			<Link
 				to="/npcs/$npcId"
 				params={{ npcId: npc.id }}
@@ -89,6 +116,9 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 				accentClassName="from-fuchsia-500/15 text-fuchsia-300/40"
 				initials={cardInitials(npc.name || kindLabel)}
 			/>
+			{isInactive && (
+				<div className="absolute inset-0 -z-10 bg-black/35 backdrop-grayscale" />
+			)}
 
 			<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
 				<div className="pointer-events-auto">
@@ -114,9 +144,7 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 						>
 							{npc.name || "Sem nome"}
 						</h3>
-						{!npc.isAlive && (
-							<Skull className="h-4 w-4 shrink-0 text-rose-400" />
-						)}
+						<LifeStatusBadge status={lifeStatus} size="xs" />
 					</div>
 					<p className="mt-1 flex items-center gap-1.5 text-xs text-white/70 font-medium">
 						<SubtitleIcon className="h-3.5 w-3.5 opacity-80" />{" "}
@@ -154,11 +182,47 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 					)}
 
 					{linkedCharacter && (
-						<div className="pointer-events-auto inline-flex w-fit items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/20 px-2 py-1 text-xs font-bold text-primary transition hover:bg-primary/25">
+						<Link
+							to="/sheets/$characterId"
+							params={{ characterId: linkedCharacter.id }}
+							onClick={(event) => event.stopPropagation()}
+							className="pointer-events-auto inline-flex w-fit items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/20 px-2 py-1 text-xs font-bold text-primary transition hover:bg-primary/25"
+						>
 							<FileText className="h-3.5 w-3.5" />
 							Ficha: {linkedCharacter.characterName || "Sem nome"}
-						</div>
+						</Link>
 					)}
+
+					{canManage && linkedSheetOwnsStatus ? (
+						<button
+							type="button"
+							disabled
+							className="pointer-events-auto inline-flex w-fit cursor-not-allowed items-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-200/80"
+							title="A ficha vinculada controla este status"
+							aria-label="A ficha vinculada controla este status"
+						>
+							<FileText className="h-3.5 w-3.5" />
+							Ajustar ficha
+						</button>
+					) : canManage ? (
+						<button
+							type="button"
+							onClick={toggleNpcAlive}
+							className={cn(
+								"pointer-events-auto inline-flex w-fit items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold transition",
+								npc.isAlive
+									? "border-rose-400/25 bg-rose-500/15 text-rose-200 hover:bg-rose-500/20"
+									: "border-emerald-400/25 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/20",
+							)}
+						>
+							{npc.isAlive ? (
+								<Skull className="h-3.5 w-3.5" />
+							) : (
+								<HeartPulse className="h-3.5 w-3.5" />
+							)}
+							{npc.isAlive ? "Marcar morto" : "Marcar vivo"}
+						</button>
+					) : null}
 
 					{npc.description && (
 						<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60">

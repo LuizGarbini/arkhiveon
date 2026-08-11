@@ -5,7 +5,13 @@ import { CharacterCard } from "@/components/character-card";
 import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
+import { RosterStatusFilter } from "@/components/roster-status";
 import { Button } from "@/components/ui/button";
+import {
+	getCharacterLifeStatus,
+	matchesRosterLifeFilter,
+	type RosterLifeFilter,
+} from "@/lib/roster-status";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 
 export const Route = createFileRoute("/characters/")({
@@ -25,15 +31,33 @@ function RouteComponent() {
 	const isViewer = activeCampaignRole === "viewer";
 
 	const [searchQuery, setSearchQuery] = useState("");
+	const [lifeFilter, setLifeFilter] = useState<RosterLifeFilter>("all");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 
 	const filteredCharacters = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return characters;
-		return characters.filter((character) =>
-			character.characterName.toLowerCase().includes(query),
+		return characters.filter(
+			(character) =>
+				(query
+					? character.characterName.toLowerCase().includes(query)
+					: true) &&
+				matchesRosterLifeFilter(getCharacterLifeStatus(character), lifeFilter),
 		);
-	}, [characters, deferredSearchQuery]);
+	}, [characters, deferredSearchQuery, lifeFilter]);
+
+	const lifeCounts = useMemo(() => {
+		const counts: Record<RosterLifeFilter, number> = {
+			all: characters.length,
+			alive: 0,
+			wounded: 0,
+			down: 0,
+			dead: 0,
+		};
+		for (const character of characters) {
+			counts[getCharacterLifeStatus(character)] += 1;
+		}
+		return counts;
+	}, [characters]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -79,6 +103,11 @@ function RouteComponent() {
 			<div className="px-6 pb-10 sm:px-8">
 				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
 					<ListLayout onSearch={setSearchQuery} />
+					<RosterStatusFilter
+						value={lifeFilter}
+						onChange={setLifeFilter}
+						counts={lifeCounts}
+					/>
 
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 						{isLoading

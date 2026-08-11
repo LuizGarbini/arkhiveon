@@ -6,6 +6,12 @@ import { ListLayout } from "@/components/list-layout";
 import { NpcCard } from "@/components/npc-card";
 import { NpcForm } from "@/components/npc-form";
 import { PageHeader } from "@/components/page-header";
+import { RosterStatusFilter } from "@/components/roster-status";
+import {
+	getNpcLifeStatus,
+	matchesRosterLifeFilter,
+	type RosterLifeFilter,
+} from "@/lib/roster-status";
 import { useRPGStore } from "@/lib/store";
 import { useVisibleWorldEntities } from "@/lib/worldbuilding/hooks";
 
@@ -17,25 +23,60 @@ const loadingCardKeys = ["npc-1", "npc-2", "npc-3", "npc-4"];
 
 function RouteComponent() {
 	const npcs = useRPGStore((state) => state.npcs);
+	const characters = useRPGStore((state) => state.characters);
 	const visibleNpcs = useVisibleWorldEntities(npcs);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [lifeFilter, setLifeFilter] = useState<RosterLifeFilter>("all");
 	const deferredSearchQuery = useDeferredValue(searchQuery);
+	const characterById = useMemo(
+		() => new Map(characters.map((character) => [character.id, character])),
+		[characters],
+	);
 
 	const filteredNpcs = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return visibleNpcs;
-		return visibleNpcs.filter((npc) =>
-			[
-				npc.name,
-				npc.race,
-				npc.role,
-				npc.kind === "monster" ? "monstro monster criatura ameaça" : "npc",
-			]
-				.join(" ")
-				.toLowerCase()
-				.includes(query),
-		);
-	}, [visibleNpcs, deferredSearchQuery]);
+		return visibleNpcs.filter((npc) => {
+			const linkedCharacter = npc.linkedCharacterId
+				? characterById.get(npc.linkedCharacterId)
+				: undefined;
+			const matchesQuery = query
+				? [
+						npc.name,
+						npc.race,
+						npc.role,
+						npc.kind === "monster" ? "monstro monster criatura ameaça" : "npc",
+					]
+						.join(" ")
+						.toLowerCase()
+						.includes(query)
+				: true;
+
+			return (
+				matchesQuery &&
+				matchesRosterLifeFilter(
+					getNpcLifeStatus(npc, linkedCharacter),
+					lifeFilter,
+				)
+			);
+		});
+	}, [visibleNpcs, deferredSearchQuery, characterById, lifeFilter]);
+
+	const lifeCounts = useMemo(() => {
+		const counts: Record<RosterLifeFilter, number> = {
+			all: visibleNpcs.length,
+			alive: 0,
+			wounded: 0,
+			down: 0,
+			dead: 0,
+		};
+		for (const npc of visibleNpcs) {
+			const linkedCharacter = npc.linkedCharacterId
+				? characterById.get(npc.linkedCharacterId)
+				: undefined;
+			counts[getNpcLifeStatus(npc, linkedCharacter)] += 1;
+		}
+		return counts;
+	}, [visibleNpcs, characterById]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -53,6 +94,11 @@ function RouteComponent() {
 
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
 				<ListLayout onSearch={setSearchQuery} />
+				<RosterStatusFilter
+					value={lifeFilter}
+					onChange={setLifeFilter}
+					counts={lifeCounts}
+				/>
 
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading
