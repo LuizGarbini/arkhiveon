@@ -58,28 +58,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		}
 
 		let mounted = true;
+		let sessionResolved = false;
 
-		supabase.auth.getSession().then(({ data }) => {
+		const resolveSession = (nextSession: Session | null) => {
 			if (!mounted) return;
-			setSession(data.session);
+			sessionResolved = true;
+			setSession(nextSession);
 			setLoading(false);
-		});
+		};
+
+		const fallbackTimer = window.setTimeout(() => {
+			if (!sessionResolved) resolveSession(null);
+		}, 5000);
+
+		supabase.auth
+			.getSession()
+			.then(({ data }) => resolveSession(data.session))
+			.catch(() => resolveSession(null));
 
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange((event, nextSession) => {
 			if (suppressAutoSignInRef.current && event === "SIGNED_IN") {
-				setSession(null);
-				setLoading(false);
+				resolveSession(null);
 				return;
 			}
 
-			setSession(nextSession);
-			setLoading(false);
+			resolveSession(nextSession);
 		});
 
 		return () => {
 			mounted = false;
+			window.clearTimeout(fallbackTimer);
 			subscription.unsubscribe();
 		};
 	}, [supabase]);
