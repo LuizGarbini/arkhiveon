@@ -86,9 +86,6 @@ function QuestsPage() {
 		});
 	}, [quests, searchQuery, activeFilters]);
 
-	const activeCount = quests.filter((q) => q.status === "active").length;
-	const completedCount = quests.filter((q) => q.status === "completed").length;
-
 	return (
 		<div className="w-full">
 			<PageHeader
@@ -104,74 +101,23 @@ function QuestsPage() {
 				}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout
-					onSearch={setSearchQuery}
-					searchPlaceholder="Buscar missões, contratante ou localização..."
-					filterGroups={filterGroups}
-					activeFilters={activeFilters}
-					onFilterChange={(groupId, value) => {
-						setActiveFilters((prev) => ({
-							...prev,
-							[groupId]: prev[groupId] === value ? "" : value,
-						}));
-					}}
-					onClearFilters={() => setActiveFilters({})}
-				/>
-
-				{/* Resumo de Progresso */}
-				<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-					<div className="rounded-xl border border-border/70 bg-card/60 p-3 flex items-center gap-3">
-						<div className="h-9 w-9 shrink-0 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
-							<Compass className="h-5 w-5" />
-						</div>
-						<div className="min-w-0">
-							<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block truncate">
-								Em Andamento
-							</span>
-							<span className="text-lg font-bold font-display text-foreground block truncate">
-								{activeCount} Missões
-							</span>
-						</div>
-					</div>
-
-					<div className="rounded-xl border border-border/70 bg-card/60 p-3 flex items-center gap-3">
-						<div className="h-9 w-9 shrink-0 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-							<CheckCircle2 className="h-5 w-5" />
-						</div>
-						<div className="min-w-0">
-							<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block truncate">
-								Concluídas
-							</span>
-							<span className="text-lg font-bold font-display text-foreground block truncate">
-								{completedCount} Cumpridas
-							</span>
-						</div>
-					</div>
-
-					<div className="col-span-2 sm:col-span-1 rounded-xl border border-border/70 bg-card/60 p-3 flex items-center gap-3">
-						<div className="h-9 w-9 shrink-0 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
-							<Scroll className="h-5 w-5" />
-						</div>
-						<div className="min-w-0">
-							<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block truncate">
-								Total de Quests
-							</span>
-							<span className="text-lg font-bold font-display text-foreground block truncate">
-								{quests.length} Registradas
-							</span>
-						</div>
-					</div>
-				</div>
-
-				{filteredQuests.length === 0 ? (
-					<EmptyState
-						Icon={Scroll}
-						title="Nenhuma missão encontrada"
-						description="Registre objetivos e contratos de aventura no diário do grupo."
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout
+						onSearch={setSearchQuery}
+						searchPlaceholder="Buscar missões, contratante ou localização..."
+						filterGroups={filterGroups}
+						activeFilters={activeFilters}
+						onFilterChange={(groupId, value) => {
+							setActiveFilters((prev) => ({
+								...prev,
+								[groupId]: prev[groupId] === value ? "" : value,
+							}));
+						}}
+						onClearFilters={() => setActiveFilters({})}
 					/>
-				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{filteredQuests.map((quest) => {
 							const isCompleted = quest.status === "completed";
 							const isFailed = quest.status === "failed";
@@ -330,49 +276,56 @@ function QuestsPage() {
 								</div>
 							);
 						})}
-					</div>
-				)}
-
-				{/* Modal de Criação */}
-				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-					<DialogContent className="max-w-xl">
-						<DialogHeader>
-							<DialogTitle className="font-display flex items-center gap-2">
-								<Scroll className="h-5 w-5 text-primary" />
-								Registrar Nova Missão
-							</DialogTitle>
-							<DialogDescription>
-								Adicione uma tarefa, contrato ou objetivo principal para o
-								diário de bordo do grupo.
-							</DialogDescription>
-						</DialogHeader>
-						<QuestForm onClose={() => setIsCreateOpen(false)} />
-					</DialogContent>
-				</Dialog>
-
-				{/* Modal de Edição */}
-				<Dialog
-					open={!!editingQuest}
-					onOpenChange={(open) => !open && setEditingQuest(null)}
-				>
-					<DialogContent className="max-w-xl">
-						<DialogHeader>
-							<DialogTitle className="font-display flex items-center gap-2">
-								<Scroll className="h-5 w-5 text-primary" />
-								Editar Missão
-							</DialogTitle>
-							<DialogDescription>
-								Atualize os detalhes, localização ou status desta quest.
-							</DialogDescription>
-						</DialogHeader>
-						{editingQuest && (
-							<QuestForm
-								initialQuest={editingQuest}
-								onClose={() => setEditingQuest(null)}
+						{filteredQuests.length === 0 && (
+							<EmptyState
+								Icon={Scroll}
+								title="Nenhuma missão encontrada"
+								description="Registre objetivos e contratos de aventura no diário do grupo."
 							/>
 						)}
-					</DialogContent>
-				</Dialog>
+					</div>
+
+					{/* Modal de Criação */}
+					<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+						<DialogContent className="max-w-xl">
+							<DialogHeader>
+								<DialogTitle className="font-display flex items-center gap-2">
+									<Scroll className="h-5 w-5 text-primary" />
+									Registrar Nova Missão
+								</DialogTitle>
+								<DialogDescription>
+									Adicione uma tarefa, contrato ou objetivo principal para o
+									diário de bordo do grupo.
+								</DialogDescription>
+							</DialogHeader>
+							<QuestForm onClose={() => setIsCreateOpen(false)} />
+						</DialogContent>
+					</Dialog>
+
+					{/* Modal de Edição */}
+					<Dialog
+						open={!!editingQuest}
+						onOpenChange={(open) => !open && setEditingQuest(null)}
+					>
+						<DialogContent className="max-w-xl">
+							<DialogHeader>
+								<DialogTitle className="font-display flex items-center gap-2">
+									<Scroll className="h-5 w-5 text-primary" />
+									Editar Missão
+								</DialogTitle>
+								<DialogDescription>
+									Atualize os detalhes, localização ou status desta quest.
+								</DialogDescription>
+							</DialogHeader>
+							{editingQuest && (
+								<QuestForm
+									initialQuest={editingQuest}
+									onClose={() => setEditingQuest(null)}
+								/>
+							)}
+						</DialogContent>
+					</Dialog>
+				</div>
 			</div>
 		</div>
 	);

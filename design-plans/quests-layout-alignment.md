@@ -1,66 +1,64 @@
-# Align the missions page with the collection layout
+# Make missions follow the Characters collection pattern
 
-Written against: `9ceb3c849554f280bbd89b70ea43e5e94109201b`
+Written against: `8f09aaccd7956d5fe3ccd7412f370a901b65ae9e`
 
 ## Evidence chain
 
-- Surface: `/quests/`
-- Problem: The missions route renders `PageHeader` inside the same padded, width-limited wrapper as the page body. Because `PageHeader` already owns `px-6 sm:px-8` and an inner `max-w-7xl`, the route applies the collection gutters and width constraint twice. The result is a narrower, inset hero whose edges do not align with the search, summary, and cards. The card action row also keeps three compact controls on one non-wrapping line at mobile widths.
-- Design evidence: `src/routes/design-system.tsx` lines 214–236 defines the page pattern as `PageHeader` followed by a separate `mx-auto ... max-w-7xl ... px-6 ... sm:px-8` body. `src/routes/items/index.tsx` lines 86–136 and `src/routes/sessions/index.tsx` lines 34–82 use that composition at runtime. `.agents/AGENTS.md` sections 1 and 4 require reuse of the design system, mobile-first layout, 44px touch targets, and overflow prevention.
-- Owner: `src/routes/quests/index.tsx`; reused owners are `src/components/page-header.tsx`, `src/components/list-layout.tsx`, `src/components/ui/button.tsx`, and `src/components/empty-state.tsx`.
-- Scope and affected surfaces: `/quests/` at mobile and desktop widths, including empty and populated states. Create/edit dialog behavior is preserved.
-- Uncertainty: none. The governing page composition and responsive requirements are explicit, and the same composition is live on sibling collection routes.
+- Surface: `/quests/`, compared directly with `/characters/` in the user-provided rendered reference.
+- Problem: The missions body combines `max-w-7xl` and horizontal padding on one element, so at wide viewports the padding is subtracted from the maximum width and the search, summary, and results become 64px narrower than the `PageHeader`. Characters applies padding on an outer element and `max-w-7xl` on an inner element, keeping header, search, and results the same width. Missions also inserts a route-specific progress-summary row between search and results, while the selected Characters pattern goes directly from search to the result grid or empty state.
+- Design evidence: User-provided Characters screenshot; `src/routes/characters/index.tsx` lines 110–190; shared `PageHeader`, `ListLayout`, and `EmptyState`; `.agents/AGENTS.md` section 1 requires the design-system pattern to govern UI changes.
+- Owner: `src/routes/quests/index.tsx`; visual exemplars and reused owners are `src/routes/characters/index.tsx`, `src/components/page-header.tsx`, `src/components/list-layout.tsx`, and `src/components/empty-state.tsx`.
+- Scope and affected surfaces: `/quests/` empty, filtered-empty, and populated states at mobile and desktop widths.
+- Uncertainty: none. The user explicitly selected Characters as the target, and the width difference follows deterministically from the two box-model compositions.
 
 ## Design decision
 
-Make `/quests/` use the canonical collection-page composition: a full-width route wrapper, `PageHeader` as its first child, and one separate width-limited body wrapper for search, summary, empty state, and mission cards. Keep the two-column card grid from `md` upward, but make each card's action footer stack on narrow screens and use the shared `Button` sizes so controls meet the repository's mobile touch-target rule without horizontal overflow.
+Make Missions use the exact collection flow selected by the user: `PageHeader`, then an outer gutter wrapper, then an inner `max-w-7xl` stack containing `ListLayout` followed immediately by one result grid. Remove the bespoke progress-summary row; the header count remains the collection-level summary. Render `EmptyState` inside the result grid exactly as Characters does.
 
 ## Reuse
 
-- `PageHeader` for hero spacing, width, icon, title, description, count, and primary action.
+- `PageHeader` for the hero and total mission count.
 - `ListLayout` for search and filters.
-- `EmptyState` for the collection's empty result.
-- `Button` `sm`/`ghost` variants for mission actions.
-- Exemplar: `src/routes/design-system.tsx` lines 214–236; runtime exemplars: `src/routes/items/index.tsx` and `src/routes/sessions/index.tsx`.
+- `EmptyState` as a full-span result-grid child.
+- Exemplar: `src/routes/characters/index.tsx` lines 110–190.
 
-No new primitive is required. The existing owners express the whole correction.
+No new primitive is required for this scoped correction. Copy the existing Characters composition without changing its owner or inventing another page shell.
 
 ## Changes
 
-1. `src/routes/quests/index.tsx` — page composition
-   - Change: Replace the outer padded wrapper with `w-full`; render `PageHeader` directly beneath it; move `ListLayout`, the progress summary, results, and dialogs into a sibling `mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8` body wrapper.
-   - Change: Give `PageHeader` the missions count and a mission-specific eyebrow while retaining its default `text-primary` icon token.
-   - Preserve: Search, filters, counts, create/edit dialog state, status changes, deletion, and the existing `md:grid-cols-2` mission-card density.
-   - Verify: Hero and body share the same visual 7xl alignment without doubled horizontal padding; the route matches the page-pattern exemplar.
+1. `src/routes/quests/index.tsx` — body width composition
+   - Change: Replace the combined `mx-auto ... max-w-7xl ... px-6 ... sm:px-8` wrapper with the exact Characters nesting: outer `px-6 pb-10 sm:px-8`, inner `mx-auto flex w-full max-w-7xl flex-col gap-5`.
+   - Preserve: `PageHeader`, header count/action, dialogs, filters, and all mission behavior.
+   - Verify: At viewports wider than 1344px, the left and right edges of header, search, and results align exactly; at narrower widths, current gutters remain unchanged.
 
-2. `src/routes/quests/index.tsx` — mobile card footer
-   - Change: Stack status and edit/delete action groups at the base breakpoint, returning to a horizontal footer at `sm`; make the status action full-width on mobile and use shared `Button` components with at least `h-11` for all three controls.
-   - Preserve: Completed-state toggle copy and styling, edit/delete handlers, semantic status colors, and the existing horizontal desktop arrangement.
-   - Verify: At 320–430px widths no footer label clips or overflows and every action has a 44px-high touch target.
+2. `src/routes/quests/index.tsx` — standard collection flow
+   - Change: Remove the three-card progress-summary row and its derived `activeCount`/`completedCount` values. Keep the total in `PageHeader`.
+   - Preserve: Status/category badges on mission cards and status filtering.
+   - Verify: The visible sequence matches Characters: header → search/filter → results or empty state.
 
-3. `src/routes/quests/index.tsx` — empty result
-   - Change: Replace the route-local dashed empty panel with the shared `EmptyState` owner and mission copy.
-   - Preserve: Empty-state meaning and the create action in the page header.
-   - Verify: Empty missions and zero search results span the available grid/body width and match sibling collection pages.
+3. `src/routes/quests/index.tsx` — results and empty state
+   - Change: Always render the mission results grid and place `EmptyState` inside it when no missions match, mirroring the Characters grid composition.
+   - Preserve: The two-column mission-card density from `md` upward, mission card content/actions, and empty-state copy.
+   - Verify: Empty and populated states occupy the same full body width and switching search/filter state does not change the page shell.
 
 ## Scope
 
 - Inherit: `/quests/` only.
-- Verify: Empty list; populated list with main/side and active/completed/failed missions; long title, requester, location, reward, and notes; create/edit dialogs; 320px, 390px, 768px, and desktop widths.
-- Exclude: Store schema and persistence, quest form fields, deletion confirmation behavior, new card primitives, motion redesign, and unrelated collection routes.
+- Verify: Empty collection, zero search results, active filters, populated cards with long content, 320px, 768px, 1440px, and wider desktop viewports.
+- Exclude: Mission data/store behavior, form fields, card visual redesign, Character route changes, and repository-wide migration of other collection routes.
 
 ## Validation
 
-- Product: Open `/quests/`, search/filter missions, toggle a mission complete, edit it, and open the create dialog; layout changes must not alter those flows.
-- Interface: Compare hero/body alignment with `/items/`; verify empty and populated states at mobile and desktop widths; check long metadata and the stacked mobile action footer for overflow.
-- System: Confirm `PageHeader`, `ListLayout`, `EmptyState`, and `Button` are reused and no parallel page-layout primitive or CSS file is added.
-- Repository: `pnpm exec biome check --write src/routes/quests/index.tsx` then `pnpm run build` -> both succeed.
+- Product: Search/filter missions, open create/edit dialogs, toggle completion, and confirm those flows are unchanged.
+- Interface: Compare `/quests/` with the supplied `/characters/` reference; confirm identical outer widths and block order for header, search, and result/empty surfaces.
+- System: Reuse `PageHeader`, `ListLayout`, and `EmptyState`; do not add a competing layout primitive.
+- Repository: `.\\node_modules\\.bin\\biome.CMD check --write src\\routes\\quests\\index.tsx` then `pnpm run build` -> both succeed.
 
 ## Stop conditions
 
-- Stop if `PageHeader` is no longer the active collection-page owner or if the design-system page-pattern composition has changed since the recorded commit.
-- Stop if correcting mobile actions requires changing quest data or store behavior; that is outside this layout fix.
+- Stop if Characters no longer renders the cited outer-gutter/inner-max-width composition.
+- Stop if removing the summary row would remove the only access to a mission action or status; current source shows it is display-only.
 
 ## Design documentation
 
-- After acceptance and validation: none. The implementation conforms to the existing page pattern and mobile rules.
+- After acceptance and validation: none. The correction follows the user-selected live exemplar.
