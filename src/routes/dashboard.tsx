@@ -22,7 +22,10 @@ import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { PartyStatsMatrix } from "@/components/party-stats-matrix";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { needsAppOnboarding } from "@/lib/campaign-bootstrap";
+import {
+	isCampaignLoadPending,
+	needsAppOnboarding,
+} from "@/lib/campaign-bootstrap";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -94,7 +97,10 @@ function Dashboard() {
 	const lores = useRPGStore((s) => s.lores);
 	const activityLog = useRPGStore((s) => s.activityLog);
 	const isLoading = useRPGStore((s) => s.isLoadingRemote);
-	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
+	const hasAuthoritativeCampaignSnapshot = useRPGStore(
+		(s) => s.hasLoadedCampaigns,
+	);
+	const campaignLoadStatus = useRPGStore((s) => s.campaignLoadStatus);
 	const loadInvites = useRPGStore((s) => s.loadInvites);
 
 	const campaigns = useRPGStore((s) => s.campaigns);
@@ -114,13 +120,13 @@ function Dashboard() {
 	useEffect(() => {
 		if (
 			needsAppOnboarding({
-				hasLoadedCampaigns,
+				campaignLoadStatus,
 				campaignCount: campaigns.length,
 			})
 		) {
 			void navigate({ to: "/onboarding", replace: true });
 		}
-	}, [hasLoadedCampaigns, campaigns.length, navigate]);
+	}, [campaignLoadStatus, campaigns.length, navigate]);
 
 	const quests = useRPGStore((s) => s.quests || []);
 
@@ -158,7 +164,10 @@ function Dashboard() {
 	);
 	const lastActivity = activityLog[0];
 
-	if (!hasLoadedCampaigns) {
+	if (
+		!hasAuthoritativeCampaignSnapshot &&
+		isCampaignLoadPending(campaignLoadStatus)
+	) {
 		return (
 			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
 				Carregando...
@@ -168,7 +177,7 @@ function Dashboard() {
 
 	if (
 		needsAppOnboarding({
-			hasLoadedCampaigns,
+			campaignLoadStatus,
 			campaignCount: campaigns.length,
 		})
 	) {

@@ -68,6 +68,7 @@ export type Database = {
 					name: string;
 					owner_id: string;
 					spotify_jam_link: string | null;
+					system: string;
 					updated_at: string;
 					world_id: string;
 				};
@@ -80,6 +81,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
+					system?: string;
 					updated_at?: string;
 					world_id: string;
 				};
@@ -92,6 +94,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
+					system?: string;
 					updated_at?: string;
 					world_id?: string;
 				};
@@ -885,6 +888,21 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			get_user_accessible_campaigns: {
+				Args: Record<PropertyKey, never>;
+				Returns: {
+					created_at: string | null;
+					description: string | null;
+					id: string;
+					member_limit: number | null;
+					my_role: string | null;
+					name: string | null;
+					owner_id: string | null;
+					system: string | null;
+					updated_at: string | null;
+					world_id: string | null;
+				}[];
+			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 		};
 		Enums: {

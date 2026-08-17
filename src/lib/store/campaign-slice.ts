@@ -20,6 +20,7 @@ import {
 import { remoteErrorMessage } from "./helpers";
 import type {
 	Campaign,
+	CampaignLoadStatus,
 	Invite,
 	InviteStatus,
 	MembershipRole,
@@ -28,16 +29,63 @@ import type {
 	UserPlan,
 	World,
 } from "./types";
+import { RPG_SYSTEMS } from "./types";
 
+interface CampaignRecord {
+	created_at: string | null;
+	description: string | null;
+	id: string;
+	member_limit: number | null;
+	name: string | null;
+	owner_id: string | null;
+	system: string | null;
+	updated_at: string | null;
+	world_id: string | null;
+}
 
+function normalizeCampaignRole(role: unknown): MembershipRole {
+	if (role === "owner" || role === "editor" || role === "viewer") {
+		return role;
+	}
+	return "viewer";
+}
+
+function isRpgSystem(system: unknown): system is RpgSystem {
+	return (
+		typeof system === "string" &&
+		(system.startsWith("custom_") ||
+			RPG_SYSTEMS.some((knownSystem) => knownSystem.value === system))
+	);
+}
+
+function mapCampaignRecord(record: CampaignRecord, role: unknown): Campaign {
+	return {
+		id: record.id,
+		name: record.name ?? "Sem nome",
+		description: record.description ?? "",
+		ownerId: record.owner_id ?? "",
+		worldId: record.world_id ?? "",
+		system: isRpgSystem(record.system) ? record.system : "dnd5e",
+		myRole: normalizeCampaignRole(role),
+		memberLimit:
+			typeof record.member_limit === "number" ? record.member_limit : 6,
+		createdAt: record.created_at
+			? new Date(record.created_at).getTime()
+			: Date.now(),
+		updatedAt: record.updated_at
+			? new Date(record.updated_at).getTime()
+			: undefined,
+	};
+}
 
 export interface CampaignSlice {
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
 	activeWorldId: string | null;
 	activeCampaignOwnerPlan: UserPlan;
-	/** False until the first loadCampaigns() for this session finishes. */
+	/** Stays true after the first authoritative load, including during refreshes. */
 	hasLoadedCampaigns: boolean;
+	campaignLoadStatus: CampaignLoadStatus;
 	pendingInvites: Invite[];
 	worlds: World[];
 
@@ -49,7 +97,9 @@ export interface CampaignSlice {
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description" | "system" | "memberLimit">>,
+		data: Partial<
+			Pick<Campaign, "name" | "description" | "system" | "memberLimit">
+		>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
@@ -93,6 +143,7 @@ export const createCampaignSlice: StateCreator<
 	activeWorldId: null,
 	activeCampaignOwnerPlan: "free",
 	hasLoadedCampaigns: false,
+	campaignLoadStatus: "idle",
 	pendingInvites: [],
 
 	worlds: [],
@@ -104,6 +155,7 @@ export const createCampaignSlice: StateCreator<
 			activeWorldId: null,
 			activeCampaignOwnerPlan: "free",
 			hasLoadedCampaigns: false,
+			campaignLoadStatus: "idle",
 			pendingInvites: [],
 			worlds: [],
 		}),
@@ -183,8 +235,7 @@ export const createCampaignSlice: StateCreator<
 
 		set((prev) => {
 			const nextWorlds = prev.worlds.filter((w) => w.id !== id);
-			const defaultWorld =
-				nextWorlds.find((w) => w.isDefault) ?? nextWorlds[0];
+			const defaultWorld = nextWorlds.find((w) => w.isDefault) ?? nextWorlds[0];
 			const nextActiveWorldId =
 				prev.activeWorldId === id
 					? (defaultWorld?.id ?? null)
@@ -200,56 +251,49 @@ export const createCampaignSlice: StateCreator<
 		await get().loadCampaigns();
 	},
 
-
 	loadCampaigns: async () => {
+		set({ campaignLoadStatus: "loading" });
 		const supabase = getSupabase();
 		if (!supabase) {
-			set({ hasLoadedCampaigns: true });
+			set({ hasLoadedCampaigns: true, campaignLoadStatus: "ready" });
 			return;
 		}
 
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-		if (!user || !user.email) {
-			set({ hasLoadedCampaigns: true });
-			return;
-		}
-
-		const userEmailClean = user.email.trim().toLowerCase();
-
-		// 1. Tentar obter campanhas via RPC SECURITY DEFINER (imune a bloqueios de RLS)
-		const { data: rpcData, error: rpcError } = await supabase.rpc(
-			"get_user_accessible_campaigns" as any,
-		);
-
-		const campaignsMap = new Map<string, Campaign>();
-
-		if (!rpcError && rpcData) {
-			(rpcData as unknown as any[]).forEach((row) => {
-				campaignsMap.set(row.id, {
-					id: row.id,
-					name: row.name ?? "Sem nome",
-					description: row.description ?? "",
-					ownerId: row.owner_id ?? "",
-					worldId: row.world_id ?? "",
-					system: (row.system as RpgSystem) ?? "dnd5e",
-					myRole: (row.my_role as MembershipRole) ?? "viewer",
-					memberLimit:
-						typeof row.member_limit === "number" ? row.member_limit : 6,
-					createdAt: row.created_at
-						? new Date(row.created_at).getTime()
-						: Date.now(),
-					updatedAt: row.updated_at
-						? new Date(row.updated_at).getTime()
-						: undefined,
+		let campaigns: Campaign[];
+		try {
+			const {
+				data: { user },
+				error: userError,
+			} = await supabase.auth.getUser();
+			if (userError || !user || !user.email) {
+				const detail = userError
+					? remoteErrorMessage(userError)
+					: "sessão autenticada indisponível";
+				set({
+					campaignLoadStatus: "error",
+					syncError: `Erro ao carregar campanhas: ${detail}`,
 				});
-			});
-		} else {
-			// Fallback: consulta direta com Resolução Tripla
-			const { data: memberData, error: memberError } = await supabase
-				.from(SUPABASE_TABLES.memberships)
-				.select(`
+				return;
+			}
+
+			const userEmailClean = user.email.trim().toLowerCase();
+
+			// 1. Tentar obter campanhas via RPC SECURITY DEFINER (imune a bloqueios de RLS)
+			const { data: rpcData, error: rpcError } = await supabase.rpc(
+				"get_user_accessible_campaigns",
+			);
+
+			const campaignsMap = new Map<string, Campaign>();
+
+			if (!rpcError && rpcData) {
+				rpcData.forEach((row) => {
+					campaignsMap.set(row.id, mapCampaignRecord(row, row.my_role));
+				});
+			} else {
+				// Fallback: consulta direta com Resolução Tripla
+				const { data: memberData, error: memberError } = await supabase
+					.from(SUPABASE_TABLES.memberships)
+					.select(`
 					role,
 					campaign_id,
 					campaign:campaigns (
@@ -264,83 +308,109 @@ export const createCampaignSlice: StateCreator<
 						updated_at
 					)
 				`)
-				.eq("user_id", user.id);
+					.eq("user_id", user.id);
 
-			if (memberError) {
-				console.error("Erro ao carregar memberships:", memberError);
+				const { data: acceptedInvitesData, error: acceptedInvitesError } =
+					await supabase
+						.from(SUPABASE_TABLES.invites)
+						.select("campaign_id, role")
+						.ilike("email", userEmailClean)
+						.eq("status", "accepted");
+
+				const membershipCampaignIds = new Set(
+					(memberData ?? []).map((membership) => membership.campaign_id),
+				);
+
+				const missingFromMemberships = (acceptedInvitesData ?? []).filter(
+					(invite) => !membershipCampaignIds.has(invite.campaign_id),
+				);
+
+				let extraCampaignRows: Array<{
+					role: string;
+					campaign: CampaignRecord;
+				}> = [];
+				let extraCampaignError: unknown = null;
+				if (missingFromMemberships.length > 0) {
+					const missingIds = missingFromMemberships.map(
+						(invite) => invite.campaign_id,
+					);
+					const { data: extraCamps, error } = await supabase
+						.from(SUPABASE_TABLES.campaigns)
+						.select(
+							"id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at",
+						)
+						.in("id", missingIds);
+					extraCampaignError = error;
+
+					if (extraCamps) {
+						extraCampaignRows = extraCamps.map((campaign) => {
+							const inv = missingFromMemberships.find(
+								(invite) => invite.campaign_id === campaign.id,
+							);
+							return {
+								role: inv?.role || "viewer",
+								campaign,
+							};
+						});
+					}
+				}
+
+				const { data: ownedCampaignsData, error: ownedCampaignsError } =
+					await supabase
+						.from(SUPABASE_TABLES.campaigns)
+						.select(
+							"id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at",
+						)
+						.eq("owner_id", user.id);
+
+				const fallbackError =
+					memberError ??
+					acceptedInvitesError ??
+					extraCampaignError ??
+					ownedCampaignsError;
+				if (fallbackError) {
+					set({
+						campaignLoadStatus: "error",
+						syncError: `Erro ao carregar campanhas: ${remoteErrorMessage(fallbackError)}`,
+					});
+					return;
+				}
+
+				const ownedCampaignRows = (ownedCampaignsData ?? []).map(
+					(campaign) => ({
+						role: "owner",
+						campaign,
+					}),
+				);
+
+				const combinedRows = [
+					...(memberData ?? []),
+					...extraCampaignRows,
+					...ownedCampaignRows,
+				];
+
+				combinedRows.forEach((row) => {
+					const c = row.campaign;
+					if (c && !campaignsMap.has(c.id)) {
+						campaignsMap.set(c.id, mapCampaignRecord(c, row.role));
+					}
+				});
 			}
 
-			const { data: acceptedInvitesData } = await supabase
-				.from(SUPABASE_TABLES.invites)
-				.select("campaign_id, role")
-				.ilike("email", userEmailClean)
-				.eq("status", "accepted");
-
-			const membershipCampaignIds = new Set(
-				(memberData ?? []).map((m: any) => m.campaign_id),
-			);
-
-			const missingFromMemberships = (acceptedInvitesData ?? []).filter(
-				(inv: any) => inv.campaign_id && !membershipCampaignIds.has(inv.campaign_id),
-			);
-
-			let extraCampaignRows: any[] = [];
-			if (missingFromMemberships.length > 0) {
-				const missingIds = missingFromMemberships.map((inv: any) => inv.campaign_id);
-				const { data: extraCamps } = await supabase
-					.from(SUPABASE_TABLES.campaigns)
-					.select("id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at")
-					.in("id", missingIds);
-
-				if (extraCamps) {
-					extraCampaignRows = extraCamps.map((c: any) => {
-						const inv = missingFromMemberships.find((i: any) => i.campaign_id === c.id);
-						return {
-							role: inv?.role || "viewer",
-							campaign: c,
-						};
-					});
-				}
-			}
-
-			const { data: ownedCampaignsData } = await supabase
-				.from(SUPABASE_TABLES.campaigns)
-				.select("id, name, description, owner_id, world_id, system, member_limit, created_at, updated_at")
-				.eq("owner_id", user.id);
-
-			const ownedCampaignRows = (ownedCampaignsData ?? []).map((c: any) => ({
-				role: "owner",
-				campaign: c,
-			}));
-
-			const combinedRows = [...(memberData ?? []), ...extraCampaignRows, ...ownedCampaignRows];
-
-			combinedRows.forEach((row: any) => {
-				const c = row.campaign;
-				if (c && !campaignsMap.has(c.id)) {
-					campaignsMap.set(c.id, {
-						id: c.id,
-						name: c.name ?? "Sem nome",
-						description: c.description ?? "",
-						ownerId: c.owner_id ?? "",
-						worldId: c.world_id ?? "",
-						system: (c.system as RpgSystem) ?? "dnd5e",
-						myRole: (row.role as MembershipRole) ?? "viewer",
-						memberLimit:
-							typeof c.member_limit === "number" ? c.member_limit : 6,
-						createdAt: c.created_at
-							? new Date(c.created_at).getTime()
-							: Date.now(),
-						updatedAt: c.updated_at
-							? new Date(c.updated_at).getTime()
-							: undefined,
-					});
-				}
+			campaigns = Array.from(campaignsMap.values());
+			set({
+				campaigns,
+				syncError: null,
+				hasLoadedCampaigns: true,
+				campaignLoadStatus: "ready",
 			});
+		} catch (error) {
+			set({
+				campaignLoadStatus: "error",
+				syncError: `Erro ao carregar campanhas: ${remoteErrorMessage(error)}`,
+			});
+			return;
 		}
-
-		const campaigns = Array.from(campaignsMap.values());
-		set({ campaigns, syncError: null, hasLoadedCampaigns: true });
 
 		// Carregar Mundos acessíveis + garantir Mundos das campanhas aceitas
 		try {
@@ -357,12 +427,14 @@ export const createCampaignSlice: StateCreator<
 					.in("id", missingWorldIds);
 
 				if (extraWorlds) {
-					const mappedExtra = extraWorlds.map((row: any) => ({
+					const mappedExtra = extraWorlds.map((row) => ({
 						id: row.id,
 						name: row.name,
 						isDefault: row.is_default,
 						ownerUserId: row.owner_user_id,
-						createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+						createdAt: row.created_at
+							? new Date(row.created_at).getTime()
+							: Date.now(),
 						updatedAt: row.updated_at ? Date.parse(row.updated_at) : undefined,
 					}));
 					set({ worlds: [...worlds, ...mappedExtra] });
@@ -553,8 +625,8 @@ export const createCampaignSlice: StateCreator<
 			if (data.description !== undefined)
 				updatePayload.description = data.description;
 			if (data.system !== undefined) updatePayload.system = data.system;
-if (data.memberLimit !== undefined)
-	updatePayload.member_limit = data.memberLimit;
+			if (data.memberLimit !== undefined)
+				updatePayload.member_limit = data.memberLimit;
 
 			void supabase
 				.from(SUPABASE_TABLES.campaigns)
@@ -819,8 +891,7 @@ if (data.memberLimit !== undefined)
 			get().campaigns.find((campaign) => campaign.id === campaignId)
 				?.memberLimit ?? 6;
 		if (totalParticipants >= memberLimit) {
-			const errorMsg =
-				`Limite de participantes atingido (maximo de ${memberLimit} por mesa).`;
+			const errorMsg = `Limite de participantes atingido (maximo de ${memberLimit} por mesa).`;
 			set({ syncError: errorMsg });
 			throw new Error(errorMsg);
 		}
