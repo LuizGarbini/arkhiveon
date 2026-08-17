@@ -124,97 +124,103 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 				</div>
 
 				{/* Card Interactive Content Area */}
-				<div className="relative z-10 pointer-events-none flex h-full flex-col justify-between">
-					<div className="pointer-events-auto">
-						<EntityActions
-							onEdit={() =>
-								void navigate({
-									to: "/sheets/$characterId",
-									params: { characterId: character.id },
-									search: { edit: true },
-								})
-							}
-							onDelete={handleDeleteCharacter}
-							entityName={characterName}
-							entityKindLabel="personagem"
-							extraActions={
-								!isViewer && (
-									<button
-										type="button"
-										onClick={openImageDialog}
-										className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
-										aria-label={
-											hasCustomImage
-												? "Editar imagem do personagem"
-												: "Adicionar imagem do personagem"
-										}
-										title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
-									>
-										<Camera className="h-3.5 w-3.5" />
-									</button>
-								)
-							}
-						/>
-					</div>
-
-					<div className="p-4 pt-5">
-						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
-							{characterName}
-						</h3>
-						<div className="mt-1 flex items-center gap-1.5 text-xs text-white/70">
-							<span className="truncate">{character.race || "Sem raça"}</span>
-							{character.class ? (
-								<>
-									<span className="opacity-50">·</span>
-									<span className="truncate">{character.class}</span>
-								</>
-							) : null}
-						</div>
-						<div className="mt-2 flex flex-wrap items-center gap-1.5">
-							<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-								{systemLabel(character.system)}
-							</span>
-							{isSystemMismatch && (
-								<span
-									className="rounded border border-amber-500/40 bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 flex items-center gap-1 shadow-xs"
-									title={`Mesa configurada para ${systemLabel(activeCampaign?.system ?? "dnd5e")}`}
-								>
-									⚠️ Sistema diferente
+				<div className="relative z-10 pointer-events-none flex flex-1 flex-col justify-between">
+					{/* Top Section: Badges, Actions, Name, Race & Class */}
+					<div className="p-4 pt-3.5">
+						<div className="pointer-events-auto flex items-start justify-between gap-2">
+							<div className="flex flex-wrap items-center gap-1.5">
+								<span className="rounded border border-primary/30 bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+									{systemLabel(character.system)}
 								</span>
-							)}
-							<span className="text-[10px] text-white/50">
-								Nv. {character.level}
-							</span>
+								{isSystemMismatch && (
+									<span
+										className="rounded border border-amber-500/40 bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 flex items-center gap-1 shadow-xs"
+										title={`Mesa configurada para ${systemLabel(activeCampaign?.system ?? "dnd5e")}`}
+									>
+										⚠️ Sistema diferente
+									</span>
+								)}
+								<span className="text-[10px] text-white/70 font-semibold">
+									Nv. {character.level}
+								</span>
+							</div>
+
+							<EntityActions
+								onEdit={() =>
+									void navigate({
+										to: "/sheets/$characterId",
+										params: { characterId: character.id },
+										search: { edit: true },
+									})
+								}
+								onDelete={handleDeleteCharacter}
+								entityName={characterName}
+								entityKindLabel="personagem"
+								extraActions={
+									!isViewer && (
+										<button
+											type="button"
+											onClick={openImageDialog}
+											className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
+											aria-label={
+												hasCustomImage
+													? "Editar imagem do personagem"
+													: "Adicionar imagem do personagem"
+											}
+											title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
+										>
+											<Camera className="h-3.5 w-3.5" />
+										</button>
+									)
+								}
+							/>
+						</div>
+
+						<div className="mt-2.5">
+							<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-md">
+								{characterName}
+							</h3>
+							<div className="mt-0.5 flex items-center gap-1.5 text-xs text-white/80 drop-shadow-sm">
+								<span className="truncate">{character.race || "Sem raça"}</span>
+								{character.class ? (
+									<>
+										<span className="opacity-50">·</span>
+										<span className="truncate">{character.class}</span>
+									</>
+								) : null}
+							</div>
 						</div>
 					</div>
 
-					<div className="space-y-4 p-4 pb-5">
-						<div className="flex flex-col gap-3 border-t border-white/10 pt-4">
-							<div className="grid grid-cols-3 gap-2 text-center">
-								{[
-									{
-										value: character.armorClass || 10,
-										label: "Defesa (CA)",
-									},
-									{
-										value: formatModifier(character.initiative),
-										label: "Iniciativa",
-									},
-									{
-										value: `${character.health}/${character.healthMax || 10}`,
-										label: "Pontos de Vida",
-									},
-								].map((stat) => (
-									<div key={stat.label} className="flex flex-col">
-										<span className="truncate text-base font-bold leading-none text-white">
-											{stat.value}
-										</span>
-										<span className="mt-1.5 text-[8px] uppercase tracking-wider text-white/50">
-											{stat.label}
-										</span>
-									</div>
-								))}
-							</div>
+					{/* Bottom Section: Stats matrix pinned firmly to the bottom */}
+					<div className="p-3.5 pb-3.5 bg-linear-to-t from-black/95 via-black/85 to-transparent pt-8">
+						<div className="grid grid-cols-3 gap-1.5 text-center">
+							{[
+								{
+									value: character.armorClass || 10,
+									label: "Defesa (CA)",
+								},
+								{
+									value: formatModifier(character.initiative),
+									label: "Iniciativa",
+								},
+								{
+									value: `${character.health}/${character.healthMax || 10}`,
+									label: "Pontos de Vida",
+								},
+							].map((stat) => (
+								<div
+									key={stat.label}
+									className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black/60 p-2 backdrop-blur-md shadow-xs transition group-hover:border-white/20"
+								>
+									<span className="truncate text-sm sm:text-base font-extrabold leading-none text-white drop-shadow-sm">
+										{stat.value}
+									</span>
+									<span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-white/60 leading-none">
+										{stat.label}
+									</span>
+								</div>
+							))}
 						</div>
 					</div>
 				</div>
