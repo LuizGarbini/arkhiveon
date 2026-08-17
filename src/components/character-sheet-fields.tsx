@@ -1803,31 +1803,48 @@ export function MagicFields({
 				</div>
 
 				{spellsList.length === 0 ? (
-					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
-						Nenhuma magia adicionada ao grimório ainda. Use o botão acima para
-						buscar e adicionar.
+					<div className="rounded-2xl border border-dashed border-border/60 bg-background/30 p-6 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
+						<BookOpen className="h-7 w-7 opacity-40 text-primary" />
+						<p className="font-semibold text-foreground">Nenhuma magia adicionada ao grimório</p>
+						<p className="text-[11px] text-muted-foreground">Clique em "Buscar no Grimório" para explorar e adicionar truques e magias.</p>
 					</div>
 				) : (
 					<div className="grid gap-2 sm:grid-cols-2">
 						{spellsList.map((spell) => (
 							<div
 								key={spell.id}
-								className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/30 text-[13px]"
+								className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/40 hover:bg-card/70 transition-all text-xs group"
 							>
-								<div>
-									<span className="font-bold text-foreground">
-										{spell.name}
-									</span>
-									<span className="text-[11px] text-muted-foreground ml-2">
-										{spell.level === 0 ? "Truque" : `${spell.level}º nível`}
-									</span>
+								<div className="min-w-0 pr-2">
+									<div className="flex items-center gap-1.5 flex-wrap">
+										<span className="font-display font-bold text-foreground truncate">
+											{spell.name}
+										</span>
+										{spell.is_homebrew && (
+											<span className="text-[8px] font-extrabold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/30">
+												HB
+											</span>
+										)}
+									</div>
+									<div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+										<span className="text-primary font-semibold">
+											{spell.level === 0 ? "Truque" : `${spell.level}º Círculo`}
+										</span>
+										{spell.school && (
+											<span>· {spell.school}</span>
+										)}
+										{spell.casting_time && (
+											<span className="text-white/50 hidden sm:inline">· {spell.casting_time}</span>
+										)}
+									</div>
 								</div>
 								<button
 									type="button"
 									onClick={() => handleRemoveSpell(spell.id)}
-									className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
+									className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1.5 rounded-lg transition-colors shrink-0"
+									title="Remover magia do grimório"
 								>
-									<Trash className="h-4 w-4" />
+									<Trash className="h-3.5 w-3.5" />
 								</button>
 							</div>
 						))}
@@ -2251,26 +2268,48 @@ export function FeatsFields({
 
 				{featsList.length === 0 ? (
 					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
-						Nenhum item adicionado à lista ainda. Use o botão acima para buscar
-						e adicionar.
+						Nenhum {featsLabel.toLowerCase()} adicionado à ficha ainda. Use o botão acima para buscar e adicionar do compêndio.
 					</div>
 				) : (
-					<div className="grid gap-2 sm:grid-cols-2">
+					<div className="grid gap-2.5 sm:grid-cols-2">
 						{featsList.map((feat) => (
 							<div
 								key={feat.id}
-								className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/30 text-[13px]"
+								className="flex items-start justify-between p-3 rounded-xl border border-border/60 bg-background/40 hover:border-border/80 transition-all group"
 							>
-								<div>
-									<span className="font-bold text-foreground">{feat.name}</span>
-									<span className="text-[11px] text-muted-foreground ml-2">
-										({feat.category || "Geral"})
-									</span>
+								<div className="min-w-0 flex-1 pr-2">
+									<div className="flex items-center gap-1.5 flex-wrap">
+										<span className="font-display font-bold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors">
+											{feat.name}
+										</span>
+										<span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+											{feat.category || "Geral"}
+										</span>
+										{feat.source && (
+											<span className="text-[8px] font-semibold text-white/50 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+												{feat.source}
+											</span>
+										)}
+									</div>
+
+									{feat.ability_increase && (
+										<p className="text-[10px] text-emerald-400/90 font-medium mt-0.5">
+											{feat.ability_increase}
+										</p>
+									)}
+
+									{feat.description && (
+										<p className="text-[10px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
+											{feat.description}
+										</p>
+									)}
 								</div>
+
 								<button
 									type="button"
 									onClick={() => handleRemoveFeat(feat.id)}
-									className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors cursor-pointer"
+									title={`Remover ${feat.name}`}
+									className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 active:scale-90"
 								>
 									<Trash className="h-4 w-4" />
 								</button>
