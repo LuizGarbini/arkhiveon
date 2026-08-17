@@ -32,18 +32,96 @@ function RouteComponent() {
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [lifeFilter, setLifeFilter] = useState<RosterLifeFilter>("all");
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+		system: "all",
+		level: "all",
+	});
 	const deferredSearchQuery = useDeferredValue(searchQuery);
+
+	const filterGroups = useMemo(
+		() => [
+			{
+				id: "system",
+				label: "Sistema",
+				options: [
+					{ value: "dnd5e", label: "D&D 5e / 2024", icon: "🐉" },
+					{ value: "ordem", label: "Ordem Paranormal", icon: "👁️" },
+					{ value: "coc", label: "Call of Cthulhu 7e", icon: "🐙" },
+					{ value: "vampire", label: "Vampiro: A Máscara", icon: "🌙" },
+					{ value: "tormenta20", label: "Tormenta20", icon: "⚔️" },
+					{ value: "pathfinder", label: "Pathfinder 2e", icon: "📜" },
+					{ value: "generic", label: "Genérico", icon: "🎲" },
+				],
+			},
+			{
+				id: "level",
+				label: "Faixa de Nível",
+				options: [
+					{ value: "low", label: "Nível 1 - 4 (Iniciante)" },
+					{ value: "mid", label: "Nível 5 - 10 (Heroico)" },
+					{ value: "high", label: "Nível 11 - 16 (Lendário)" },
+					{ value: "epic", label: "Nível 17+ (Épico)" },
+				],
+			},
+		],
+		[],
+	);
+
+	const handleFilterChange = (filterId: string, value: string) => {
+		setActiveFilters((prev) => ({ ...prev, [filterId]: value }));
+	};
+
+	const handleClearFilters = () => {
+		setActiveFilters({ system: "all", level: "all" });
+		setLifeFilter("all");
+	};
+
+	const visibleActiveFilters = useMemo(
+		() => ({ ...activeFilters, lifeStatus: lifeFilter }),
+		[activeFilters, lifeFilter],
+	);
 
 	const filteredCharacters = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		return characters.filter(
-			(character) =>
-				(query
-					? character.characterName.toLowerCase().includes(query)
-					: true) &&
-				matchesRosterLifeFilter(getCharacterLifeStatus(character), lifeFilter),
-		);
-	}, [characters, deferredSearchQuery, lifeFilter]);
+		return characters.filter((character) => {
+			const matchesQuery =
+				!query ||
+				[
+					character.characterName,
+					character.playerName,
+					character.race,
+					character.class,
+					character.subclass,
+					character.title,
+					character.nickname,
+				]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query);
+
+			const matchesSystem =
+				!activeFilters.system ||
+				activeFilters.system === "all" ||
+				character.system === activeFilters.system;
+
+			const lvl = character.level || 1;
+			const matchesLevel =
+				!activeFilters.level ||
+				activeFilters.level === "all" ||
+				(activeFilters.level === "low" && lvl >= 1 && lvl <= 4) ||
+				(activeFilters.level === "mid" && lvl >= 5 && lvl <= 10) ||
+				(activeFilters.level === "high" && lvl >= 11 && lvl <= 16) ||
+				(activeFilters.level === "epic" && lvl >= 17);
+
+			const matchesLife = matchesRosterLifeFilter(
+				getCharacterLifeStatus(character),
+				lifeFilter,
+			);
+
+			return matchesQuery && matchesSystem && matchesLevel && matchesLife;
+		});
+	}, [characters, deferredSearchQuery, activeFilters, lifeFilter]);
 
 	const lifeCounts = useMemo(() => {
 		const counts: Record<RosterLifeFilter, number> = {
@@ -102,12 +180,20 @@ function RouteComponent() {
 
 			<div className="px-6 pb-10 sm:px-8">
 				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-					<ListLayout onSearch={setSearchQuery} />
-					<RosterStatusFilter
-						value={lifeFilter}
-						onChange={setLifeFilter}
-						counts={lifeCounts}
-					/>
+					<ListLayout
+						onSearch={setSearchQuery}
+						searchPlaceholder="Buscar personagem por nome, classe, raça, título..."
+						filterGroups={filterGroups}
+						activeFilters={visibleActiveFilters}
+						onFilterChange={handleFilterChange}
+						onClearFilters={handleClearFilters}
+					>
+						<RosterStatusFilter
+							value={lifeFilter}
+							onChange={setLifeFilter}
+							counts={lifeCounts}
+						/>
+					</ListLayout>
 
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 						{isLoading

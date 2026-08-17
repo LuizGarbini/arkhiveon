@@ -164,7 +164,7 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 
 				<div className="space-y-3.5 p-4.5 pb-5">
 					{item.stats && (
-						<p className="font-mono rounded-xl bg-background/45 p-2 text-xs text-white/80 ring-1 ring-white/10 leading-relaxed">
+						<p className="font-mono rounded-xl bg-background/45 p-2 text-xs text-white/80 ring-1 ring-white/10 leading-relaxed line-clamp-3 break-words">
 							{item.stats}
 						</p>
 					)}
@@ -182,7 +182,7 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 					</div>
 
 					{item.description && (
-						<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60">
+						<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60 break-words">
 							“{item.description}”
 						</p>
 					)}

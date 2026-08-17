@@ -27,6 +27,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
 import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
+import { Route as QuestsIndexRouteImport } from './routes/quests/index'
 import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
 import { Route as NewsIndexRouteImport } from './routes/news/index'
 import { Route as LoreIndexRouteImport } from './routes/lore/index'
@@ -40,6 +41,7 @@ import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessio
 import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
 import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
 import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
+import { Route as JoinCampaignIdRouteImport } from './routes/join/$campaignId'
 import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
 import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
 
@@ -133,6 +135,11 @@ const SessionsIndexRoute = SessionsIndexRouteImport.update({
   path: '/sessions/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuestsIndexRoute = QuestsIndexRouteImport.update({
+  id: '/quests/',
+  path: '/quests/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NpcsIndexRoute = NpcsIndexRouteImport.update({
   id: '/npcs/',
   path: '/npcs/',
@@ -198,6 +205,11 @@ const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
   path: '/locations/$locationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCampaignIdRoute = JoinCampaignIdRouteImport.update({
+  id: '/join/$campaignId',
+  path: '/join/$campaignId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
   id: '/items/$itemId',
   path: '/items/$itemId',
@@ -228,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -241,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
+  '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
 }
@@ -263,6 +277,7 @@ export interface FileRoutesByTo {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -276,6 +291,7 @@ export interface FileRoutesByTo {
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
   '/npcs': typeof NpcsIndexRoute
+  '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
 }
@@ -299,6 +315,7 @@ export interface FileRoutesById {
   '/world': typeof WorldRoute
   '/factions/$factionId': typeof FactionsFactionIdRoute
   '/items/$itemId': typeof ItemsItemIdRoute
+  '/join/$campaignId': typeof JoinCampaignIdRoute
   '/locations/$locationId': typeof LocationsLocationIdRoute
   '/lore/$loreId': typeof LoreLoreIdRoute
   '/npcs/$npcId': typeof NpcsNpcIdRoute
@@ -312,6 +329,7 @@ export interface FileRoutesById {
   '/lore/': typeof LoreIndexRoute
   '/news/': typeof NewsIndexRoute
   '/npcs/': typeof NpcsIndexRoute
+  '/quests/': typeof QuestsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/sheets/': typeof SheetsIndexRoute
 }
@@ -336,6 +354,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -349,6 +368,7 @@ export interface FileRouteTypes {
     | '/lore'
     | '/news'
     | '/npcs'
+    | '/quests'
     | '/sessions'
     | '/sheets'
   fileRoutesByTo: FileRoutesByTo
@@ -371,6 +391,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -384,6 +405,7 @@ export interface FileRouteTypes {
     | '/lore'
     | '/news'
     | '/npcs'
+    | '/quests'
     | '/sessions'
     | '/sheets'
   id:
@@ -406,6 +428,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/factions/$factionId'
     | '/items/$itemId'
+    | '/join/$campaignId'
     | '/locations/$locationId'
     | '/lore/$loreId'
     | '/npcs/$npcId'
@@ -419,6 +442,7 @@ export interface FileRouteTypes {
     | '/lore/'
     | '/news/'
     | '/npcs/'
+    | '/quests/'
     | '/sessions/'
     | '/sheets/'
   fileRoutesById: FileRoutesById
@@ -442,6 +466,7 @@ export interface RootRouteChildren {
   WorldRoute: typeof WorldRoute
   FactionsFactionIdRoute: typeof FactionsFactionIdRoute
   ItemsItemIdRoute: typeof ItemsItemIdRoute
+  JoinCampaignIdRoute: typeof JoinCampaignIdRoute
   LocationsLocationIdRoute: typeof LocationsLocationIdRoute
   LoreLoreIdRoute: typeof LoreLoreIdRoute
   NpcsNpcIdRoute: typeof NpcsNpcIdRoute
@@ -455,6 +480,7 @@ export interface RootRouteChildren {
   LoreIndexRoute: typeof LoreIndexRoute
   NewsIndexRoute: typeof NewsIndexRoute
   NpcsIndexRoute: typeof NpcsIndexRoute
+  QuestsIndexRoute: typeof QuestsIndexRoute
   SessionsIndexRoute: typeof SessionsIndexRoute
   SheetsIndexRoute: typeof SheetsIndexRoute
 }
@@ -587,6 +613,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quests/': {
+      id: '/quests/'
+      path: '/quests'
+      fullPath: '/quests'
+      preLoaderRoute: typeof QuestsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/npcs/': {
       id: '/npcs/'
       path: '/npcs'
@@ -678,6 +711,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LocationsLocationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$campaignId': {
+      id: '/join/$campaignId'
+      path: '/join/$campaignId'
+      fullPath: '/join/$campaignId'
+      preLoaderRoute: typeof JoinCampaignIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/items/$itemId': {
       id: '/items/$itemId'
       path: '/items/$itemId'
@@ -714,6 +754,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorldRoute: WorldRoute,
   FactionsFactionIdRoute: FactionsFactionIdRoute,
   ItemsItemIdRoute: ItemsItemIdRoute,
+  JoinCampaignIdRoute: JoinCampaignIdRoute,
   LocationsLocationIdRoute: LocationsLocationIdRoute,
   LoreLoreIdRoute: LoreLoreIdRoute,
   NpcsNpcIdRoute: NpcsNpcIdRoute,
@@ -727,6 +768,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoreIndexRoute: LoreIndexRoute,
   NewsIndexRoute: NewsIndexRoute,
   NpcsIndexRoute: NpcsIndexRoute,
+  QuestsIndexRoute: QuestsIndexRoute,
   SessionsIndexRoute: SessionsIndexRoute,
   SheetsIndexRoute: SheetsIndexRoute,
 }

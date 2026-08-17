@@ -101,6 +101,8 @@ export type EntityKind =
 	| "item"
 	| "location"
 	| "lore"
+	| "quest"
+	| "partyLoot"
 	| "customTemplate";
 
 export const ENTITY_LABELS: Record<
@@ -113,6 +115,8 @@ export const ENTITY_LABELS: Record<
 	item: { singular: "Item", plural: "Itens" },
 	location: { singular: "Local", plural: "Locais" },
 	lore: { singular: "Lore", plural: "Lore" },
+	quest: { singular: "Missão", plural: "Missões" },
+	partyLoot: { singular: "Saque do Grupo", plural: "Saques do Grupo" },
 	customTemplate: { singular: "Layout salvo", plural: "Layouts salvos" },
 };
 
@@ -128,6 +132,8 @@ export interface ActivityEntry {
 	entityKind: EntityKind;
 	entityId: string;
 	entityName: string;
+	actorName?: string;
+	actorEmail?: string;
 }
 
 export interface AppNotification {
@@ -192,8 +198,12 @@ export interface Character {
 	proficiencyBonus: number;
 	hitDice: string;
 	deathSaves: { successes: number; failures: number };
+	title?: string;
+	nickname?: string;
 	savingThrows: string;
+	savingThrowProficiencies?: Record<string, boolean>;
 	skills: string;
+	skillProficiencies?: Record<string, "none" | "proficient" | "expertise">;
 	languages: string;
 	proficiencies: string;
 	spellcastingClass: string;
@@ -225,6 +235,38 @@ export interface Character {
 	customTemplateId?: string;
 	spellsList?: Spell[];
 	featsList?: Feat[];
+	trainingList?: TrainingActivity[];
+	tempBonusesList?: TempBonus[];
+	inventoryList?: InventoryItem[];
+}
+
+export interface InventoryItem {
+	id: string;
+	name: string;
+	quantity: number;
+	weightLbs: number;
+	location: "equipped" | "backpack" | "mount_stash";
+	category?: "weapon" | "armor" | "potion" | "gear" | "treasure" | "custom";
+	description?: string;
+	isAttuned?: boolean;
+}
+
+export interface TrainingActivity {
+	id: string;
+	title: string;
+	category?: "language" | "skill" | "tool" | "custom";
+	hoursInvested: number;
+	targetHours: number;
+	note?: string;
+}
+
+export interface TempBonus {
+	id: string;
+	title: string;
+	description: string;
+	durationDaysOrSessions: number;
+	remainingDaysOrSessions: number;
+	isExpired?: boolean;
 }
 
 export interface Spell {
@@ -279,6 +321,7 @@ export interface FamilyRelation {
 export type SheetModuleKind =
 	| "identity"
 	| "abilities"
+	| "skills"
 	| "combat"
 	| "sanity"
 	| "magic"
@@ -446,9 +489,32 @@ export interface Lore extends WorldEntityFields {
 	entityLinks: EntityLink[];
 }
 
-// =====================================================
-//  Campanha + Memberships
-// =====================================================
+export interface Quest extends WorldEntityFields {
+	id: string;
+	createdAt: number;
+	updatedAt?: number;
+	title: string;
+	description: string;
+	status: "active" | "completed" | "failed";
+	category: "main" | "side";
+	giverNpcName?: string;
+	locationName?: string;
+	reward?: string;
+	notes?: string;
+}
+
+export interface PartyLootItem {
+	id: string;
+	createdAt: number;
+	name: string;
+	quantity: number;
+	category?: string;
+	description?: string;
+	properties?: string;
+	isClaimed?: boolean;
+	claimedByCharacterId?: string;
+	claimedByCharacterName?: string;
+}
 export type MembershipRole = "owner" | "editor" | "viewer";
 
 export interface Membership {
@@ -489,19 +555,33 @@ export interface Campaign {
 	ownerId: string;
 	worldId: string;
 	myRole?: MembershipRole;
+	memberLimit?: number;
 	createdAt: number;
 	updatedAt?: number;
 }
+
+export type FactionKind =
+	| "patron"
+	| "legendary_family"
+	| "noble_house"
+	| "guild_order"
+	| "cult_society"
+	| "faction";
 
 export interface Faction {
 	id: string;
 	worldId: string;
 	name: string;
+	kind?: FactionKind;
+	patronType?: string;
 	leader: string;
 	seat: string;
 	goals: string;
 	alignment: string;
 	influence: string;
+	perks?: string;
+	duties?: string;
+	contacts?: string;
 	description: string;
 	imageUrl: string;
 	createdAt: number;
@@ -589,7 +669,9 @@ export interface RPGState {
 	) => Promise<Campaign>;
 	updateCampaign: (
 		id: string,
-		data: Partial<Pick<Campaign, "name" | "description" | "system">>,
+		data: Partial<
+			Pick<Campaign, "name" | "description" | "system" | "memberLimit">
+		>,
 	) => void;
 	deleteCampaign: (id: string) => Promise<void>;
 	switchCampaign: (id: string) => Promise<void>;
@@ -695,6 +777,23 @@ export interface RPGState {
 		status: FactionReputationStatus,
 	) => void;
 
+	quests: Quest[];
+	addQuest: (quest: Partial<Omit<Quest, "id" | "createdAt">>) => Quest;
+	updateQuest: (id: string, quest: Partial<Quest>) => void;
+	removeQuest: (id: string) => void;
+
+	partyLoot: PartyLootItem[];
+	addPartyLootItem: (
+		item: Partial<Omit<PartyLootItem, "id" | "createdAt">>,
+	) => PartyLootItem;
+	updatePartyLootItem: (id: string, item: Partial<PartyLootItem>) => void;
+	removePartyLootItem: (id: string) => void;
+	claimPartyLootItem: (
+		id: string,
+		characterId: string,
+		characterName: string,
+	) => void;
+
 	worldNews: WorldNews[];
 	newsComments: NewsComment[];
 	addWorldNews: (
@@ -714,7 +813,6 @@ export interface RPGState {
 	activityLog: ActivityEntry[];
 	clearActivity: () => void;
 
-	// ----- Spotify Jam -----
 	spotifyJamLink: string | null;
 	spotifyJamActive: boolean;
 	spotifyToken: string | null;

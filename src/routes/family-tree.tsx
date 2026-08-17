@@ -46,6 +46,7 @@ import type {
 	FamilyRelationKind,
 } from "@/lib/store";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/family-tree")({
 	component: FamilyTreePage,
@@ -353,6 +354,8 @@ function FamilyFlowCanvas({
 		setSelectedEdgeId(null);
 	}
 
+	const [mobileTab, setMobileTab] = useState<"tree" | "directory">("tree");
+
 	function focusGraph() {
 		void fitView({ duration: 320, padding: 0.18 });
 	}
@@ -378,7 +381,35 @@ function FamilyFlowCanvas({
 					</h3>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2">
+					{/* Alternador de Abas Mobile (Árvore / Diretório) */}
+					<div className="flex items-center rounded-xl border border-border/70 bg-background/60 p-1 lg:hidden w-full sm:w-auto">
+						<button
+							type="button"
+							onClick={() => setMobileTab("tree")}
+							className={cn(
+								"flex-1 sm:flex-none rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none",
+								mobileTab === "tree"
+									? "bg-primary text-primary-foreground shadow-xs"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+						>
+							🌳 Árvore (Grafo)
+						</button>
+						<button
+							type="button"
+							onClick={() => setMobileTab("directory")}
+							className={cn(
+								"flex-1 sm:flex-none rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none",
+								mobileTab === "directory"
+									? "bg-primary text-primary-foreground shadow-xs"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+						>
+							📜 Diretório ({characters.length})
+						</button>
+					</div>
+
 					{!isPlayer && (
 						<Button
 							type="button"
@@ -410,7 +441,12 @@ function FamilyFlowCanvas({
 			{/* Split Layout: 65% Interactive Canvas / 35% Persistent Inspector */}
 			<div className="grid grid-cols-1 lg:grid-cols-12 h-[600px] w-full divide-y lg:divide-y-0 lg:divide-x divide-border/70 rounded-b-[1.75rem] overflow-hidden">
 				{/* Left Column: Canvas (8 Cols) */}
-				<div className="lg:col-span-8 h-full relative overflow-hidden rounded-bl-[1.75rem]">
+				<div
+					className={cn(
+						"lg:col-span-8 h-full relative overflow-hidden rounded-bl-[1.75rem]",
+						mobileTab === "tree" ? "block" : "hidden lg:block",
+					)}
+				>
 					<ReactFlow<FamilyNode, FamilyEdge>
 						nodes={mappedNodes}
 						edges={mappedEdges}
@@ -486,7 +522,9 @@ function FamilyFlowCanvas({
 					onSelectCharacter={(id) => {
 						setSelectedCharacterId(id);
 						setSelectedEdgeId(null);
+						setMobileTab("tree");
 					}}
+					className={mobileTab === "directory" ? "flex" : "hidden lg:flex"}
 				/>
 			</div>
 
@@ -1046,6 +1084,7 @@ function LineageSidebar({
 	selectedCharacter,
 	selectedCharacterId,
 	onSelectCharacter,
+	className,
 }: {
 	characters: Character[];
 	filteredCharacters: Character[];
@@ -1054,9 +1093,10 @@ function LineageSidebar({
 	selectedCharacter?: Character;
 	selectedCharacterId: string | null;
 	onSelectCharacter: (id: string | null) => void;
+	className?: string;
 }) {
 	return (
-		<aside className="lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]">
+		<aside className={cn("lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]", className)}>
 			<div>
 				<h3 className="font-display text-base font-bold text-foreground flex items-center justify-between">
 					<span>Diretório da Linhagem</span>

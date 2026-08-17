@@ -19,6 +19,7 @@ import {
 	Crown,
 	Dices,
 	Eye,
+	Flag,
 	Flame,
 	Ghost,
 	Globe,
@@ -756,5 +757,60 @@ export function getFeatsLabel(system: string): string {
 			return "Habilidades de Classe";
 		default:
 			return "Talentos";
+	}
+}
+
+export interface FactionsTabConfig {
+	label: string;
+	eyebrow: string;
+	description: string;
+	Icon: LucideIcon;
+	accentColor: string;
+}
+
+export function getFactionsTabConfig(system?: string): FactionsTabConfig {
+	switch (system) {
+		case "dnd5e":
+		case "dnd2024":
+		case "dnd35":
+			return {
+				label: "Patronos & Organizações",
+				eyebrow: "Mesa D&D",
+				description: "Patronos de Grupo, Famílias Nobres, Ordens e Cultos da Campanha",
+				Icon: Crown,
+				accentColor: "text-amber-400",
+			};
+		case "ordem":
+			return {
+				label: "Organizações & Cultos",
+				eyebrow: "Ordem Paranormal",
+				description: "Grupos de Investigação, Empresas de Fachada e Cultos Elementais",
+				Icon: Eye,
+				accentColor: "text-purple-400",
+			};
+		case "coc":
+			return {
+				label: "Sociedades & Cultos",
+				eyebrow: "Call of Cthulhu",
+				description: "Sociedades Secretas, Universidades e Cultos Ancestrais",
+				Icon: Ghost,
+				accentColor: "text-emerald-400",
+			};
+		case "vampire":
+			return {
+				label: "Clãs & Seitas",
+				eyebrow: "Vampire: The Masquerade",
+				description: "Seitas da Camarilla, Anarchs, Sabbat e Coteries da Cidade",
+				Icon: Moon,
+				accentColor: "text-rose-400",
+			};
+		default:
+			return {
+				label: "Facções & Ordens",
+				eyebrow: "Worldbuilding",
+				description: "Organizações do Mundo e reputação por campanha",
+				Icon: Flag,
+				accentColor: "text-emerald-300",
+			};
 	}
 }

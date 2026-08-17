@@ -27,10 +27,45 @@ function RouteComponent() {
 	const visibleNpcs = useVisibleWorldEntities(npcs);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [lifeFilter, setLifeFilter] = useState<RosterLifeFilter>("all");
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+		kind: "all",
+	});
 	const deferredSearchQuery = useDeferredValue(searchQuery);
 	const characterById = useMemo(
 		() => new Map(characters.map((character) => [character.id, character])),
 		[characters],
+	);
+
+	const filterGroups = useMemo(
+		() => [
+			{
+				id: "kind",
+				label: "Tipo de Ameaça / Entidade",
+				options: [
+					{ value: "npc", label: "NPC / Habitante", icon: "👤" },
+					{
+						value: "monster",
+						label: "Monstro / Criatura / Ameaça",
+						icon: "🐉",
+					},
+				],
+			},
+		],
+		[],
+	);
+
+	const handleFilterChange = (id: string, value: string) => {
+		setActiveFilters((prev) => ({ ...prev, [id]: value }));
+	};
+
+	const handleClearFilters = () => {
+		setActiveFilters({ kind: "all" });
+		setLifeFilter("all");
+	};
+
+	const visibleActiveFilters = useMemo(
+		() => ({ ...activeFilters, lifeStatus: lifeFilter }),
+		[activeFilters, lifeFilter],
 	);
 
 	const filteredNpcs = useMemo(() => {
@@ -39,27 +74,44 @@ function RouteComponent() {
 			const linkedCharacter = npc.linkedCharacterId
 				? characterById.get(npc.linkedCharacterId)
 				: undefined;
-			const matchesQuery = query
-				? [
-						npc.name,
-						npc.race,
-						npc.role,
-						npc.kind === "monster" ? "monstro monster criatura ameaça" : "npc",
-					]
-						.join(" ")
-						.toLowerCase()
-						.includes(query)
-				: true;
+			const matchesQuery =
+				!query ||
+				[
+					npc.name,
+					npc.race,
+					npc.role,
+					npc.location,
+					npc.alignment,
+					npc.kind === "monster" ? "monstro monster criatura ameaça" : "npc",
+				]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query);
+
+			const matchesKind =
+				!activeFilters.kind ||
+				activeFilters.kind === "all" ||
+				(activeFilters.kind === "monster"
+					? npc.kind === "monster"
+					: npc.kind !== "monster");
 
 			return (
 				matchesQuery &&
+				matchesKind &&
 				matchesRosterLifeFilter(
 					getNpcLifeStatus(npc, linkedCharacter),
 					lifeFilter,
 				)
 			);
 		});
-	}, [visibleNpcs, deferredSearchQuery, characterById, lifeFilter]);
+	}, [
+		visibleNpcs,
+		deferredSearchQuery,
+		activeFilters,
+		characterById,
+		lifeFilter,
+	]);
 
 	const lifeCounts = useMemo(() => {
 		const counts: Record<RosterLifeFilter, number> = {
@@ -92,34 +144,44 @@ function RouteComponent() {
 				action={<NpcForm />}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
-				<RosterStatusFilter
-					value={lifeFilter}
-					onChange={setLifeFilter}
-					counts={lifeCounts}
-				/>
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout
+						onSearch={setSearchQuery}
+						searchPlaceholder="Buscar NPC por nome, papel, ocupação, localização..."
+						filterGroups={filterGroups}
+						activeFilters={visibleActiveFilters}
+						onFilterChange={handleFilterChange}
+						onClearFilters={handleClearFilters}
+					>
+						<RosterStatusFilter
+							value={lifeFilter}
+							onChange={setLifeFilter}
+							counts={lifeCounts}
+						/>
+					</ListLayout>
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{isLoading
-						? loadingCardKeys.map((key, i) => (
-								<div
-									key={key}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<NpcCard isLoading />
-								</div>
-							))
-						: filteredNpcs.map((npc, i) => (
-								<div
-									key={npc.id}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<NpcCard npc={npc} />
-								</div>
-							))}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{isLoading
+							? loadingCardKeys.map((key, i) => (
+									<div
+										key={key}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<NpcCard isLoading />
+									</div>
+								))
+							: filteredNpcs.map((npc, i) => (
+									<div
+										key={npc.id}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<NpcCard npc={npc} />
+									</div>
+								))}
+					</div>
 					{!isLoading && filteredNpcs.length === 0 && (
 						<EmptyState
 							Icon={Users}

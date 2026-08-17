@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
 	Crown,
-	Flag,
 	GitFork,
 	Globe2,
 	House,
@@ -11,6 +10,7 @@ import {
 	Newspaper,
 	Package,
 	Palette,
+	Scroll,
 	ScrollText,
 	Sparkles,
 	User,
@@ -20,25 +20,16 @@ import { useAuth } from "@/lib/auth";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
+import { getFactionsTabConfig } from "@/lib/systems";
 import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
 const mesaItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
 	{ to: "/characters", label: "Personagens", Icon: User, shortcut: "Alt+2" },
-	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+3" },
-	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+4" },
-];
-
-const worldItems = [
-	{ to: "/world", label: "Visão geral", Icon: Globe2 },
-	{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
-	{ to: "/factions", label: "Facções", Icon: Flag },
-	{ to: "/news", label: "Mural", Icon: Newspaper },
-	{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
-	{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
-	{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
-	{ to: "/images", label: "Imagens", Icon: Images },
+	{ to: "/quests", label: "Missões", Icon: Scroll, shortcut: "Alt+3" },
+	{ to: "/family-tree", label: "Árvore", Icon: GitFork, shortcut: "Alt+4" },
+	{ to: "/sessions", label: "Sessões", Icon: ScrollText, shortcut: "Alt+5" },
 ];
 
 const systemItems = isDesignSystemEnabled()
@@ -69,6 +60,22 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 
 	const planLabel = isPro ? "Plano Pro" : "Plano Free";
 	const badgeLabel = planLoading ? "..." : isPro ? "Pro" : "Free";
+
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
+	const factionsTabConfig = getFactionsTabConfig(activeCampaign?.system);
+
+	const dynamicWorldItems = [
+		{ to: "/world", label: "Visão geral", Icon: Globe2 },
+		{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
+		{ to: "/factions", label: factionsTabConfig.label, Icon: factionsTabConfig.Icon },
+		{ to: "/news", label: "Mural", Icon: Newspaper },
+		{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
+		{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
+		{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
+		{ to: "/images", label: "Imagens", Icon: Images },
+	];
 
 	return (
 		<aside
@@ -122,7 +129,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 					<SidebarNav
 						title="Mundo"
 						isCollapsed={isCollapsed}
-						items={worldItems}
+						items={dynamicWorldItems}
 						onItemClick={onItemClick}
 					/>
 					{systemItems.length > 0 ? (

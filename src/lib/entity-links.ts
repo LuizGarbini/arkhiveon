@@ -44,8 +44,25 @@ export const ENTITY_KIND_LABELS: Record<EntityKind, string> = {
 	item: "Item",
 	location: "Local",
 	lore: "Lore",
+	quest: "Missão",
+	partyLoot: "Saque do Grupo",
 	customTemplate: "Template",
 };
+
+function fallbackPathFor(kind: EntityKind) {
+	const paths: Record<EntityKind, string> = {
+		character: "/sheets",
+		npc: "/npcs",
+		session: "/sessions",
+		item: "/items",
+		location: "/locations",
+		lore: "/lore",
+		quest: "/quests",
+		partyLoot: "/dashboard",
+		customTemplate: "/sheets/new",
+	};
+	return paths[kind];
+}
 
 export function listLinkableEntities(
 	state: EntityCollections,
@@ -203,18 +220,7 @@ function entityKindPath(
 	return `${path}?selected=${entityId}`;
 }
 
-function fallbackPathFor(kind: EntityKind) {
-	const paths: Record<EntityKind, string> = {
-		character: "/sheets",
-		npc: "/npcs",
-		session: "/sessions",
-		item: "/items",
-		location: "/locations",
-		lore: "/lore",
-		customTemplate: "/sheets/new",
-	};
-	return paths[kind];
-}
+
 
 function linkKey(entityKind: EntityKind, entityId: string) {
 	return `${entityKind}:${entityId}`;

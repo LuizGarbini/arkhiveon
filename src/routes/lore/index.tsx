@@ -19,15 +19,47 @@ function RouteComponent() {
 	const lores = useRPGStore((state) => state.lores);
 	const visibleLores = useVisibleWorldEntities(lores);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+		category: "all",
+	});
 	const deferredSearchQuery = useDeferredValue(searchQuery);
+
+	const filterGroups = useMemo(
+		() => [
+			{
+				id: "category",
+				label: "Categoria da Lore",
+				options: [
+					{ value: "history", label: "História & Cronologia", icon: "📜" },
+					{ value: "religion", label: "Religião & Deuses", icon: "⚡" },
+					{ value: "magic", label: "Arcanismo & Magia", icon: "🔮" },
+					{ value: "legend", label: "Mitos & Lendas", icon: "📖" },
+					{ value: "secret", label: "Segredo & Arquivo Oculto", icon: "👁️" },
+				],
+			},
+		],
+		[],
+	);
 
 	const filteredLores = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		if (!query) return visibleLores;
-		return visibleLores.filter((lore) =>
-			lore.title.toLowerCase().includes(query),
-		);
-	}, [visibleLores, deferredSearchQuery]);
+		return visibleLores.filter((lore) => {
+			const matchesQuery =
+				!query ||
+				[lore.title, lore.category, lore.content]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query);
+
+			const matchesCategory =
+				!activeFilters.category ||
+				activeFilters.category === "all" ||
+				lore.category === activeFilters.category;
+
+			return matchesQuery && matchesCategory;
+		});
+	}, [visibleLores, deferredSearchQuery, activeFilters]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -44,7 +76,14 @@ function RouteComponent() {
 			/>
 
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+				<ListLayout
+					onSearch={setSearchQuery}
+					searchPlaceholder="Buscar lore por título, categoria, conteúdo..."
+					filterGroups={filterGroups}
+					activeFilters={activeFilters}
+					onFilterChange={(id, val) => setActiveFilters((prev) => ({ ...prev, [id]: val }))}
+					onClearFilters={() => setActiveFilters({ category: "all" })}
+				/>
 
 				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{isLoading

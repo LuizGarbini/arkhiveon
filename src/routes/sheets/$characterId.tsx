@@ -36,11 +36,15 @@ const CharacterExportDialog = lazy(() =>
 	})),
 );
 
+import { CharacterInventoryModule } from "@/components/character-inventory-module";
+import { CharacterTrainingFields } from "@/components/character-training-fields";
+
 import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
 	CharacterModuleFields,
 	sanitizeCharacterFormValues,
+	SkillsFields,
 } from "@/components/character-sheet-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
@@ -393,6 +397,8 @@ function CharacterSheetPage() {
 								</div>
 								<p className="mt-2 text-[13px] text-muted-foreground">
 									{[
+										currentCharacter.title,
+										currentCharacter.nickname ? `"${currentCharacter.nickname}"` : undefined,
 										currentCharacter.race,
 										currentCharacter.class,
 										currentCharacter.subclass,
@@ -891,6 +897,10 @@ function ModuleContent({
 		);
 	}
 
+	if (module.kind === "skills") {
+		return <SkillsFields character={character} config={config} />;
+	}
+
 	if (module.kind === "combat") {
 		const hasTough = character.featsList?.some(
 			(f) =>
@@ -1091,7 +1101,7 @@ function ModuleContent({
 
 	if (module.kind === "inventory") {
 		return (
-			<div className="grid gap-3">
+			<div className="grid gap-4">
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
@@ -1099,8 +1109,12 @@ function ModuleContent({
 						value={character.systemFields?.[field.key]}
 					/>
 				))}
-				<TextBlock title="Equipamento" value={character.equipment} />
-				<TextBlock title="Moedas / Tesouro" value={character.currency} />
+				<CharacterInventoryModule
+					character={character}
+					onUpdateCharacter={(patch) =>
+						useRPGStore.getState().updateCharacter(character.id, patch)
+					}
+				/>
 			</div>
 		);
 	}
@@ -1125,7 +1139,7 @@ function ModuleContent({
 
 	if (module.kind === "notes") {
 		return (
-			<div className="grid gap-3">
+			<div className="grid gap-4">
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
@@ -1134,6 +1148,12 @@ function ModuleContent({
 					/>
 				))}
 				<TextBlock title="Anotações" value={character.notes} />
+				<CharacterTrainingFields
+					character={character}
+					onUpdateCharacter={(patch) =>
+						useRPGStore.getState().updateCharacter(character.id, patch)
+					}
+				/>
 			</div>
 		);
 	}

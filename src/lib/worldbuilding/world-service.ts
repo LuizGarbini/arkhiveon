@@ -79,6 +79,21 @@ export async function resolveDefaultWorldId(
 /** Mundos visíveis ao usuário (dono ou membro de alguma campanha). */
 export async function loadAccessibleWorlds(): Promise<World[]> {
 	const db = requireSupabase();
+	const { data: rpcData, error: rpcError } = await db.rpc(
+		"get_user_accessible_worlds" as any,
+	);
+
+	if (!rpcError && rpcData) {
+		return (rpcData as unknown as any[]).map((row) => ({
+			id: row.id,
+			name: row.name,
+			isDefault: row.is_default,
+			ownerUserId: row.owner_user_id,
+			createdAt: toTimestamp(row.created_at) ?? Date.now(),
+			updatedAt: toTimestamp(row.updated_at),
+		}));
+	}
+
 	const { data, error } = await db
 		.from("worlds")
 		.select("id,name,is_default,owner_user_id,created_at,updated_at")

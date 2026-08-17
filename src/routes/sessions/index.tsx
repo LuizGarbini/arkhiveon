@@ -44,7 +44,10 @@ function RouteComponent() {
 			/>
 
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+				<ListLayout
+					onSearch={setSearchQuery}
+					searchPlaceholder="Buscar sessão por título, resumo, anotações..."
+				/>
 
 				<div
 					className={`${!isLoading && filteredSessions.length === 0 ? "" : "relative border-l border-border/70 pl-8 sm:pl-10 ml-4 sm:ml-8"} space-y-8 py-2`}

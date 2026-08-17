@@ -257,12 +257,53 @@ function FactionDetailPage() {
 						}
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
+							{faction.kind && (
+								<DetailInfo
+									label="Categoria"
+									value={
+										faction.kind === "patron"
+											? `👑 Patrono de Grupo (${faction.patronType || "D&D"})`
+											: faction.kind === "legendary_family"
+												? `⚜️ Família Lendária (${faction.patronType || "Linhagem Mítica"})`
+												: faction.kind === "noble_house"
+													? "🏰 Família Nobre / Casa Real"
+													: faction.kind === "guild_order"
+														? "⚔️ Ordem / Guilda de Aventureiros"
+														: faction.kind === "cult_society"
+															? "👁️ Culto / Seita Secreta"
+															: "🚩 Facção Política"
+									}
+								/>
+							)}
 							<DetailInfo label="Alinhamento" value={faction.alignment} />
 							<DetailInfo label="Influência" value={faction.influence} />
-							<DetailInfo label="Líder" value={faction.leader} />
-							<DetailInfo label="Sede" value={faction.seat} />
+							<DetailInfo label="Líder / Matriarca" value={faction.leader} />
+							<DetailInfo label="Sede / Solar" value={faction.seat} />
+							{faction.contacts && (
+								<DetailInfo label="🗝️ Contatos Principais" value={faction.contacts} />
+							)}
 						</div>
 					</DetailSection>
+
+					{faction.perks && (
+						<DetailSection
+							eyebrow="Benefícios"
+							title="🎁 Recursos & Favores Concedidos"
+							onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						>
+							<DetailText value={faction.perks} />
+						</DetailSection>
+					)}
+
+					{faction.duties && (
+						<DetailSection
+							eyebrow="Código"
+							title="📜 Deveres, Código & Exigências"
+							onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						>
+							<DetailText value={faction.duties} />
+						</DetailSection>
+					)}
 
 					<DetailSection
 						eyebrow="Agenda"
@@ -274,7 +315,7 @@ function FactionDetailPage() {
 
 					<DetailSection
 						eyebrow="Narrativa"
-						title="Descrição"
+						title="Descrição & História"
 						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
 					>
 						<DetailText value={faction.description} />

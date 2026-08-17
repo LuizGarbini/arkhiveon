@@ -10,6 +10,7 @@ import type {
 export const SHEET_MODULE_LABELS: Record<SheetModuleKind, string> = {
 	identity: "Identidade",
 	abilities: "Atributos",
+	skills: "Perícias & Salvaguardas",
 	combat: "Combate",
 	sanity: "Sanidade",
 	magic: "Magia",
@@ -118,6 +119,9 @@ export function createDefaultSheetLayout(
 				"wisdom",
 				"charisma",
 			],
+		}),
+		moduleConfig("skills", 25, "main", {
+			fields: ["savingThrows", "skills"],
 		}),
 		moduleConfig("combat", 30, "main", {
 			fields: ["health", "healthMax", "armorClass", "initiative", "speed"],

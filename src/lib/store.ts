@@ -7,6 +7,8 @@ import { createCharacterSlice } from "./store/character-slice";
 import { createCollectionSlice } from "./store/collection-slice";
 import { createImageLibrarySlice } from "./store/image-library-slice";
 import { createNpcSlice } from "./store/npc-slice";
+import { createPartyLootSlice } from "./store/party-loot-slice";
+import { createQuestSlice } from "./store/quest-slice";
 import { createSessionSlice } from "./store/session-slice";
 import { createSpotifySlice } from "./store/spotify-slice";
 import { createSyncSlice } from "./store/sync-slice";
@@ -27,6 +29,8 @@ export {
 	systemLabel,
 } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
+export { partyLootDefaults } from "./store/party-loot-slice";
+export { questDefaults } from "./store/quest-slice";
 export { sessionDefaults } from "./store/session-slice";
 export {
 	FREE_CREATION_LIMIT,
@@ -87,6 +91,8 @@ export const useRPGStore = create<RPGState>()(
 			...createNpcSlice(...a),
 			...createSessionSlice(...a),
 			...createCollectionSlice(...a),
+			...createQuestSlice(...a),
+			...createPartyLootSlice(...a),
 			...createImageLibrarySlice(...a),
 			...createSpotifySlice(...a),
 			...createWorldbuildingSlice(...a),

@@ -1,6 +1,7 @@
 import {
 	CheckCircle2,
 	Globe2,
+	Link as LinkIcon,
 	Loader2,
 	Shield,
 	Trash2,
@@ -8,6 +9,7 @@ import {
 	UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import {
 	DEDICATED_CAMPAIGN_SYSTEMS,
 	DEFAULT_CAMPAIGN_SYSTEM,
@@ -97,6 +99,7 @@ export function CampaignForm({
 	const createInvite = useRPGStore((s) => s.createInvite);
 	const revokeInvite = useRPGStore((s) => s.revokeInvite);
 	const removeMember = useRPGStore((s) => s.removeMember);
+	const toast = useToast();
 
 	const [activeTab, setActiveTab] = useState<"general" | "members">("general");
 	const [name, setName] = useState("");
@@ -106,6 +109,7 @@ export function CampaignForm({
 	const [isSaving, setIsSaving] = useState(false);
 	const nameInputId = useId();
 	const descInputId = useId();
+	const memberLimitInputId = useId();
 	const selectedWorld = worlds.find(
 		(world) => world.id === (campaign?.worldId ?? defaultWorldId),
 	);
@@ -120,6 +124,8 @@ export function CampaignForm({
 	const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [isSendingInvite, setIsSendingInvite] = useState(false);
+	const [memberLimit, setMemberLimit] = useState(6);
+	const [isSavingMemberLimit, setIsSavingMemberLimit] = useState(false);
 
 	const [slideDirection, setSlideDirection] = useState<"left" | "right">(
 		"left",
@@ -144,6 +150,7 @@ export function CampaignForm({
 			setInviteEmail("");
 			setInviteRole("viewer");
 			setInviteError(null);
+			setMemberLimit(campaign?.memberLimit ?? 6);
 			setActiveTab(defaultTab);
 			setMembers([]);
 			setInvites([]);
@@ -152,6 +159,7 @@ export function CampaignForm({
 		open,
 		campaign?.name,
 		campaign?.description,
+		campaign?.memberLimit,
 		campaign?.system,
 		defaultTab,
 	]);
@@ -247,8 +255,26 @@ export function CampaignForm({
 		}
 	}
 
+	function handleMemberLimitChange(value: string) {
+		const parsed = Number.parseInt(value, 10);
+		if (Number.isNaN(parsed)) return;
+		setMemberLimit(Math.min(100, Math.max(1, parsed)));
+	}
+
+	function handleSaveMemberLimit() {
+		if (!campaign || campaign.myRole !== "owner" || isSavingMemberLimit) return;
+		setIsSavingMemberLimit(true);
+		updateCampaign(campaign.id, { memberLimit });
+		toast.success({
+			title: "Limite atualizado",
+			description: `A campanha agora aceita ate ${memberLimit} jogadores.`,
+		});
+		setIsSavingMemberLimit(false);
+	}
 	const invitedCount =
 		members.filter((m) => m.role !== "owner").length + invites.length;
+	const effectiveMemberLimit = campaign?.memberLimit ?? 6;
+	const isCampaignOwner = campaign?.myRole === "owner";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -288,7 +314,7 @@ export function CampaignForm({
 									: "border-transparent text-muted-foreground hover:text-foreground",
 							)}
 						>
-							Jogadores Convocados ({invitedCount}/6)
+							Jogadores Convocados ({invitedCount}/{effectiveMemberLimit})
 						</button>
 					</div>
 				)}
@@ -482,9 +508,81 @@ export function CampaignForm({
 								</DialogFooter>
 							</form>
 						) : (
-							<div className="space-y-6">
-								{/* Enviar Convite */}
-								{invitedCount < 6 ? (
+							<div className="space-y-4">
+								{isCampaignOwner && (
+									<div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:flex-row sm:items-end">
+										<div className="flex-1 space-y-1.5">
+											<label
+												className="text-[12px] font-bold text-foreground"
+												htmlFor={memberLimitInputId}
+											>
+												Limite de jogadores
+											</label>
+											<p className="text-[10px] text-muted-foreground">
+												Inclui membros e convites pendentes; o mestre nao ocupa
+												vaga.
+											</p>
+											<Input
+												id={memberLimitInputId}
+												type="number"
+												min={1}
+												max={100}
+												value={memberLimit}
+												onChange={(event) =>
+													handleMemberLimitChange(event.target.value)
+												}
+											/>
+										</div>
+										<Button
+											type="button"
+											size="sm"
+											onClick={handleSaveMemberLimit}
+											loading={isSavingMemberLimit}
+											disabled={memberLimit === effectiveMemberLimit}
+										>
+											Salvar limite
+										</Button>
+									</div>
+								)}
+								{/* Link de Convite Direto */}
+								{campaign && (
+									<div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
+										<div className="flex items-center justify-between">
+											<h4 className="text-[12px] font-bold text-sky-300 flex items-center gap-1.5">
+												<LinkIcon className="h-3.5 w-3.5 text-sky-400" /> Link
+												de Convite Direto
+											</h4>
+											<span className="text-[9px] font-bold text-sky-400/90 uppercase tracking-wider bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+												Entrada Rápida
+											</span>
+										</div>
+										<p className="text-[11px] text-muted-foreground leading-normal">
+											Envie este link para seus amigos pelo WhatsApp ou Discord.
+											Ao clicar, eles entram instantaneamente na mesa!
+										</p>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											onClick={() => {
+												const link = `${window.location.origin}/join/${campaign.id}`;
+												void navigator.clipboard.writeText(link);
+												toast.success({
+													title: "Link Copiado! 🔗",
+													description:
+														"Envie o link para seus amigos entrarem instantaneamente na mesa.",
+												});
+											}}
+											className="w-full gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
+										>
+											<LinkIcon className="h-3.5 w-3.5" />
+											Copiar link de convite
+										</Button>
+									</div>
+								)}
+
+								{/* Enviar Convite por E-mail */}
+								{invitedCount < effectiveMemberLimit ? (
 									<form
 										onSubmit={handleSendInvite}
 										className="space-y-3 p-3.5 rounded-xl border border-border/40 bg-muted/20"
@@ -530,8 +628,9 @@ export function CampaignForm({
 									</form>
 								) : (
 									<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-										Limite de 6 participantes atingido. Remova um membro ou
-										cancele um convite pendente antes de enviar outro.
+										Limite de {effectiveMemberLimit} participantes atingido.
+										Remova um membro ou cancele um convite pendente antes de
+										enviar outro.
 									</p>
 								)}
 
