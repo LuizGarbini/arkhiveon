@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Compass, MapPin, Plus, Scroll, Sparkles, User, XCircle } from "lucide-react";
+import {
+	CheckCircle2,
+	Compass,
+	MapPin,
+	Plus,
+	Scroll,
+	Sparkles,
+	User,
+	XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { QuestForm } from "@/components/quest-form";
@@ -26,7 +36,9 @@ function QuestsPage() {
 	const removeQuest = useRPGStore((state) => state.removeQuest);
 
 	const [searchQuery, setSearchQuery] = useState("");
-	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>(
+		{},
+	);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
 
@@ -78,18 +90,21 @@ function QuestsPage() {
 	const completedCount = quests.filter((q) => q.status === "completed").length;
 
 	return (
-		<div className="px-6 pb-10 sm:px-8">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-				<PageHeader
-					title="Diário de Missões & Objetivos"
-					description="Acompanhe missões principais, tarefas de facção, recompensas e pistas investigativas do grupo."
-					Icon={Scroll}
-					action={
-						<Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-							<Plus className="h-4 w-4" /> Nova Missão
-						</Button>
-					}
-				/>
+		<div className="w-full">
+			<PageHeader
+				title="Diário de Missões & Objetivos"
+				description="Acompanhe missões principais, tarefas de facção, recompensas e pistas investigativas do grupo."
+				Icon={Scroll}
+				eyebrow="Diário de bordo"
+				count={quests.length}
+				action={
+					<Button onClick={() => setIsCreateOpen(true)} className="h-11 gap-2">
+						<Plus className="h-4 w-4" /> Nova Missão
+					</Button>
+				}
+			/>
+
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
 				<ListLayout
 					onSearch={setSearchQuery}
 					searchPlaceholder="Buscar missões, contratante ou localização..."
@@ -150,15 +165,11 @@ function QuestsPage() {
 				</div>
 
 				{filteredQuests.length === 0 ? (
-					<div className="rounded-2xl border border-dashed border-border/70 p-12 text-center space-y-3">
-						<Scroll className="h-10 w-10 text-muted-foreground/50 mx-auto" />
-						<h3 className="font-display font-bold text-foreground">
-							Nenhuma missão encontrada
-						</h3>
-						<p className="text-xs text-muted-foreground max-w-sm mx-auto">
-							Clique no botão "Nova Missão" acima para registrar seus objetivos e contratos de aventura.
-						</p>
-					</div>
+					<EmptyState
+						Icon={Scroll}
+						title="Nenhuma missão encontrada"
+						description="Registre objetivos e contratos de aventura no diário do grupo."
+					/>
 				) : (
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						{filteredQuests.map((quest) => {
@@ -214,7 +225,8 @@ function QuestsPage() {
 															</>
 														) : (
 															<>
-																<Compass className="h-3 w-3 animate-spin" /> Em Andamento
+																<Compass className="h-3 w-3 animate-spin" /> Em
+																Andamento
 															</>
 														)}
 													</span>
@@ -237,7 +249,9 @@ function QuestsPage() {
 											{quest.giverNpcName && (
 												<span className="flex items-center gap-1 min-w-0 truncate">
 													<User className="h-3.5 w-3.5 shrink-0 text-primary" />
-													<strong className="text-foreground shrink-0">Solicitante:</strong>{" "}
+													<strong className="text-foreground shrink-0">
+														Solicitante:
+													</strong>{" "}
 													<span className="truncate">{quest.giverNpcName}</span>
 												</span>
 											)}
@@ -245,7 +259,9 @@ function QuestsPage() {
 											{quest.locationName && (
 												<span className="flex items-center gap-1 min-w-0 truncate">
 													<MapPin className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-													<strong className="text-foreground shrink-0">Local:</strong>{" "}
+													<strong className="text-foreground shrink-0">
+														Local:
+													</strong>{" "}
 													<span className="truncate">{quest.locationName}</span>
 												</span>
 											)}
@@ -253,7 +269,9 @@ function QuestsPage() {
 											{quest.reward && (
 												<span className="flex items-center gap-1 text-amber-300 min-w-0 truncate">
 													<Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-													<strong className="text-foreground shrink-0">Recompensa:</strong>{" "}
+													<strong className="text-foreground shrink-0">
+														Recompensa:
+													</strong>{" "}
 													<span className="truncate">{quest.reward}</span>
 												</span>
 											)}
@@ -267,34 +285,34 @@ function QuestsPage() {
 									</div>
 
 									{/* Ações e Alternador de Status */}
-									<div className="flex items-center justify-between pt-3 border-t border-border/50">
-										<div className="flex items-center gap-1">
-											<button
-												type="button"
-												onClick={() =>
-													updateQuest(quest.id, {
-														status: isCompleted ? "active" : "completed",
-													})
-												}
-												className={cn(
-													"px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 border cursor-pointer",
-													isCompleted
-														? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
-														: "bg-muted/60 text-muted-foreground border-border hover:bg-emerald-500/20 hover:text-emerald-300",
-												)}
-											>
-												<CheckCircle2 className="h-3.5 w-3.5" />
-												{isCompleted ? "Concluída" : "Marcar Concluída"}
-											</button>
-										</div>
+									<div className="flex flex-col gap-2 border-t border-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
+										<Button
+											type="button"
+											variant="secondary"
+											size="sm"
+											onClick={() =>
+												updateQuest(quest.id, {
+													status: isCompleted ? "active" : "completed",
+												})
+											}
+											className={cn(
+												"h-11 w-full gap-1 text-xs sm:w-auto",
+												isCompleted
+													? "border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+													: "border-border bg-muted/60 text-muted-foreground hover:bg-emerald-500/20 hover:text-emerald-300",
+											)}
+										>
+											<CheckCircle2 className="h-3.5 w-3.5" />
+											{isCompleted ? "Concluída" : "Marcar Concluída"}
+										</Button>
 
-										<div className="flex items-center gap-2">
+										<div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
 											<Button
 												type="button"
 												variant="ghost"
 												size="sm"
 												onClick={() => setEditingQuest(quest)}
-												className="h-8 text-xs"
+												className="h-11 w-full text-xs sm:w-auto"
 											>
 												Editar
 											</Button>
@@ -303,7 +321,7 @@ function QuestsPage() {
 												variant="ghost"
 												size="sm"
 												onClick={() => removeQuest(quest.id)}
-												className="h-8 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+												className="h-11 w-full text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 sm:w-auto"
 											>
 												Excluir
 											</Button>
@@ -324,7 +342,8 @@ function QuestsPage() {
 								Registrar Nova Missão
 							</DialogTitle>
 							<DialogDescription>
-								Adicione uma tarefa, contrato ou objetivo principal para o diário de bordo do grupo.
+								Adicione uma tarefa, contrato ou objetivo principal para o
+								diário de bordo do grupo.
 							</DialogDescription>
 						</DialogHeader>
 						<QuestForm onClose={() => setIsCreateOpen(false)} />
