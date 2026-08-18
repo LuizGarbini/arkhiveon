@@ -44,6 +44,7 @@ import { Route as LocationsLocationIdRouteImport } from './routes/locations/$loc
 import { Route as JoinCampaignIdRouteImport } from './routes/join/$campaignId'
 import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
 import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
+import { Route as CampaignsCampaignIdVttRouteImport } from './routes/campaigns/$campaignId/vtt'
 
 const WorldRoute = WorldRouteImport.update({
   id: '/world',
@@ -220,6 +221,11 @@ const FactionsFactionIdRoute = FactionsFactionIdRouteImport.update({
   path: '/factions/$factionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignsCampaignIdVttRoute = CampaignsCampaignIdVttRouteImport.update({
+  id: '/campaigns/$campaignId/vtt',
+  path: '/campaigns/$campaignId/vtt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
+  '/campaigns/$campaignId/vtt': typeof CampaignsCampaignIdVttRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/quests': typeof QuestsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/sheets': typeof SheetsIndexRoute
+  '/campaigns/$campaignId/vtt': typeof CampaignsCampaignIdVttRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/quests/': typeof QuestsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/sheets/': typeof SheetsIndexRoute
+  '/campaigns/$campaignId/vtt': typeof CampaignsCampaignIdVttRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/quests'
     | '/sessions'
     | '/sheets'
+    | '/campaigns/$campaignId/vtt'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/quests'
     | '/sessions'
     | '/sheets'
+    | '/campaigns/$campaignId/vtt'
   id:
     | '__root__'
     | '/'
@@ -445,6 +456,7 @@ export interface FileRouteTypes {
     | '/quests/'
     | '/sessions/'
     | '/sheets/'
+    | '/campaigns/$campaignId/vtt'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   QuestsIndexRoute: typeof QuestsIndexRoute
   SessionsIndexRoute: typeof SessionsIndexRoute
   SheetsIndexRoute: typeof SheetsIndexRoute
+  CampaignsCampaignIdVttRoute: typeof CampaignsCampaignIdVttRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -732,6 +745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FactionsFactionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaigns/$campaignId/vtt': {
+      id: '/campaigns/$campaignId/vtt'
+      path: '/campaigns/$campaignId/vtt'
+      fullPath: '/campaigns/$campaignId/vtt'
+      preLoaderRoute: typeof CampaignsCampaignIdVttRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -771,6 +791,7 @@ const rootRouteChildren: RootRouteChildren = {
   QuestsIndexRoute: QuestsIndexRoute,
   SessionsIndexRoute: SessionsIndexRoute,
   SheetsIndexRoute: SheetsIndexRoute,
+  CampaignsCampaignIdVttRoute: CampaignsCampaignIdVttRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

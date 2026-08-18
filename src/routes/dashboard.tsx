@@ -4,6 +4,7 @@ import {
 	BookOpen,
 	CalendarDays,
 	Clock3,
+	Compass,
 	type LucideIcon,
 	MapIcon,
 	Package,
@@ -301,6 +302,20 @@ function Dashboard() {
 								</Button>
 							)}
 							<PartyLootDialog />
+							{activeCampaign && (
+								<Link
+									to="/campaigns/$campaignId/vtt"
+									params={{ campaignId: activeCampaign.id }}
+								>
+									<Button
+										variant="outline"
+										className="h-11 gap-2 border-primary/40 bg-primary/20 px-5 font-bold text-primary backdrop-blur-sm hover:bg-primary/30 hover:text-white"
+									>
+										<Compass className="h-4 w-4" />
+										Mesa Virtual (VTT)
+									</Button>
+								</Link>
+							)}
 						</div>
 					</div>
 
