@@ -40,7 +40,32 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const FALLBACK_AUTH_VALUE: AuthContextValue = {
+	user: null,
+	session: null,
+	loading: true,
+	plan: "free",
+	storageUsedBytes: 0,
+	isPro: false,
+	planLoading: false,
+	signIn: async () => "Supabase não está configurado.",
+	signUp: async () => "Supabase não está configurado.",
+	signOut: async () => null,
+	resetPassword: async () => null,
+	updatePassword: async () => null,
+	signInWithOAuth: async () => null,
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+	const existingContext = useContext(AuthContext);
+	if (existingContext) {
+		return <>{children}</>;
+	}
+
+	return <AuthContextProvider>{children}</AuthContextProvider>;
+}
+
+function AuthContextProvider({ children }: { children: ReactNode }) {
 	const supabase = getSupabase();
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -152,51 +177,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			},
 			signUp: async (name, email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
-				suppressAutoSignInRef.current = true;
-				const { data, error } = await supabase.auth.signUp({
+				suppressAutoSignInRef.current = false;
+				const { error } = await supabase.auth.signUp({
 					email,
 					password,
 					options: {
 						data: { name },
 					},
 				});
-				if (error) {
-					suppressAutoSignInRef.current = false;
-					return error.message;
-				}
-
-				if (data.session) {
-					const { error: signOutError } = await supabase.auth.signOut();
-					if (signOutError) {
-						suppressAutoSignInRef.current = false;
-						return signOutError.message;
-					}
-				}
-				setSession(null);
-				return null;
+				return error?.message ?? null;
 			},
 			signOut: async () => {
-				if (!supabase) {
-					setSession(null);
-					return null;
-				}
+				if (!supabase) return "Supabase não está configurado.";
+				suppressAutoSignInRef.current = true;
 				const { error } = await supabase.auth.signOut();
-				if (error) return error.message;
-				setSession(null);
-				return null;
+				return error?.message ?? null;
 			},
 			resetPassword: async (email) => {
 				if (!supabase) return "Supabase não está configurado.";
 				const { error } = await supabase.auth.resetPasswordForEmail(email, {
-					redirectTo: `${window.location.origin}/auth?mode=reset`,
+					redirectTo: `${window.location.origin}/auth?mode=update-password`,
 				});
 				return error?.message ?? null;
 			},
 			updatePassword: async (password) => {
 				if (!supabase) return "Supabase não está configurado.";
-				const { error } = await supabase.auth.updateUser({
-					password,
-				});
+				const { error } = await supabase.auth.updateUser({ password });
 				return error?.message ?? null;
 			},
 			signInWithOAuth: async (provider) => {
@@ -218,8 +224,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
 	const value = useContext(AuthContext);
-	if (!value) {
-		throw new Error("useAuth deve ser usado dentro de AuthProvider.");
-	}
-	return value;
+	return value ?? FALLBACK_AUTH_VALUE;
 }

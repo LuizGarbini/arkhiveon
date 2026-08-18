@@ -25,13 +25,20 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+import { ToastProvider } from "./components/ui/toast";
+import { AuthProvider } from "./lib/auth";
+
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<StrictMode>
-			<RouterProvider router={router} />
+			<ToastProvider>
+				<AuthProvider>
+					<RouterProvider router={router} />
+				</AuthProvider>
+			</ToastProvider>
 		</StrictMode>,
 	);
 }
