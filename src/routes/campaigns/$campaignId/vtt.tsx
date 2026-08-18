@@ -271,21 +271,40 @@ function VTTPage() {
 						});
 					} else if (payload.eventType === "UPDATE") {
 						const row = payload.new;
-						updateToken(row.id, {
-							x: Number(row.x),
-							y: Number(row.y),
-							sizeCells: Number(row.size_cells),
-							rotation: Number(row.rotation || 0),
-							hpCurrent: row.hp_current,
-							hpMax: row.hp_max,
-							elevation: Number(row.elevation || 0),
-							conditions: row.conditions || [],
-							auras: row.auras || [],
-							visionRange: Number(row.vision_range || 0),
-							isLocked: row.is_locked,
-							isHidden: row.is_hidden,
-							layer: row.layer,
-						});
+						const isBeingDraggedLocally = useVTTStore.getState().draggedTokenId === row.id;
+
+						if (isBeingDraggedLocally) {
+							// Prevent position rubberbanding during active local drag
+							updateToken(row.id, {
+								sizeCells: Number(row.size_cells),
+								rotation: Number(row.rotation || 0),
+								hpCurrent: row.hp_current,
+								hpMax: row.hp_max,
+								elevation: Number(row.elevation || 0),
+								conditions: row.conditions || [],
+								auras: row.auras || [],
+								visionRange: Number(row.vision_range || 0),
+								isLocked: row.is_locked,
+								isHidden: row.is_hidden,
+								layer: row.layer,
+							});
+						} else {
+							updateToken(row.id, {
+								x: Number(row.x),
+								y: Number(row.y),
+								sizeCells: Number(row.size_cells),
+								rotation: Number(row.rotation || 0),
+								hpCurrent: row.hp_current,
+								hpMax: row.hp_max,
+								elevation: Number(row.elevation || 0),
+								conditions: row.conditions || [],
+								auras: row.auras || [],
+								visionRange: Number(row.vision_range || 0),
+								isLocked: row.is_locked,
+								isHidden: row.is_hidden,
+								layer: row.layer,
+							});
+						}
 					} else if (payload.eventType === "DELETE") {
 						if (payload.old?.id) {
 							removeToken(payload.old.id);

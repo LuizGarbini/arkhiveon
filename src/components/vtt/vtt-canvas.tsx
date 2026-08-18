@@ -49,6 +49,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		activePings,
 		addPing,
 		removePing,
+		setDraggedTokenId,
 		isGM,
 	} = useVTTStore();
 
@@ -346,7 +347,8 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			// HP Bar (Above token)
 			if (token.hpMax && token.hpMax > 0) {
 				const currentHp = Math.max(0, token.hpCurrent ?? 0);
-				const hpRatio = Math.min(1, currentHp / token.hpMax);
+				const maxHp = Math.max(1, token.hpMax ?? currentHp ?? 1);
+				const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
 
 				const barWidth = tokenRadius * 1.8;
 				const barHeight = Math.max(4, tokenRadius * 0.16);
@@ -365,7 +367,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 					hpBar.roundRect(
 						-barWidth / 2,
 						barY,
-						barWidth * hpRatio,
+						Math.max(2, barWidth * hpRatio),
 						barHeight,
 						3,
 					);
@@ -417,6 +419,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 
 					if (!token.isLocked) {
 						draggingTokenIdRef.current = token.id;
+						setDraggedTokenId(token.id);
 						tokenInitialPosRef.current = { x: token.x, y: token.y };
 
 						const rect = containerRef.current?.getBoundingClientRect();
@@ -447,6 +450,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		activeTool,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
+		setDraggedTokenId,
 	]);
 
 	// 5. Render Active Pings (Concentric pulsing ripples)
@@ -624,6 +628,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 				const tokenId = draggingTokenIdRef.current;
 				const token = tokens.find((t) => t.id === tokenId);
 				draggingTokenIdRef.current = null;
+				setDraggedTokenId(null);
 
 				if (token) {
 					const worldPoint = screenToWorld(e.clientX, e.clientY);

@@ -6,7 +6,8 @@ export interface Point {
 }
 
 /**
- * Snap pixel coordinates (world position) to the center of the nearest grid cell.
+ * Snap pixel coordinates (world position) to the center of the nearest grid cell or vertex.
+ * Correctly accounts for multi-cell tokens (1x1, 2x2, 3x3, 4x4) in Square and Hexagonal grids.
  */
 export function snapToGrid(
 	point: Point,
@@ -16,37 +17,90 @@ export function snapToGrid(
 ): Point {
 	if (gridType === "none" || gridSize <= 0) return point;
 
+	const isEven = tokenSizeCells % 2 === 0;
+
 	if (gridType === "square") {
-		const halfCell = gridSize / 2;
-		const offset = (tokenSizeCells % 2 === 0) ? 0 : halfCell;
-		const cellX = Math.floor((point.x - offset) / gridSize);
-		const cellY = Math.floor((point.y - offset) / gridSize);
+		if (isEven) {
+			// Even sized tokens (2x2, 4x4) snap to grid line intersection (vertex)
+			return {
+				x: Math.round(point.x / gridSize) * gridSize,
+				y: Math.round(point.y / gridSize) * gridSize,
+			};
+		}
+		// Odd sized tokens (1x1, 3x3) snap to cell center
 		return {
-			x: cellX * gridSize + offset + (tokenSizeCells > 1 && tokenSizeCells % 2 === 0 ? (tokenSizeCells * gridSize) / 2 : 0),
-			y: cellY * gridSize + offset + (tokenSizeCells > 1 && tokenSizeCells % 2 === 0 ? (tokenSizeCells * gridSize) / 2 : 0),
+			x: (Math.floor(point.x / gridSize) + 0.5) * gridSize,
+			y: (Math.floor(point.y / gridSize) + 0.5) * gridSize,
 		};
 	}
 
 	if (gridType === "hex_pointy") {
-		// Pointy-topped hexagon center snapping
 		const r = gridSize / 2;
 		const h = r * Math.sqrt(3);
+
+		if (isEven) {
+			// Multi-hex even tokens snap to nearest hex vertex to avoid barycenter offset
+			const col = Math.round(point.x / (1.5 * r));
+			const offsetY = col % 2 !== 0 ? h / 2 : 0;
+			const row = Math.round((point.y - offsetY) / h);
+			const centerX = col * 1.5 * r;
+			const centerY = row * h + offsetY;
+			const corners = getPointyHexCorners(centerX, centerY, r);
+
+			// Find closest corner
+			let closest = corners[0];
+			let minDist = Number.POSITIVE_INFINITY;
+			for (const c of corners) {
+				const distSq = (point.x - c.x) ** 2 + (point.y - c.y) ** 2;
+				if (distSq < minDist) {
+					minDist = distSq;
+					closest = c;
+				}
+			}
+			return closest;
+		}
+
+		// Odd sized tokens (1x1, 3x3) snap to hex center
 		const col = Math.round(point.x / (1.5 * r));
-		const row = Math.round((point.y - (col % 2 !== 0 ? h / 2 : 0)) / h);
+		const offsetY = col % 2 !== 0 ? h / 2 : 0;
+		const row = Math.round((point.y - offsetY) / h);
 		return {
 			x: col * 1.5 * r,
-			y: row * h + (col % 2 !== 0 ? h / 2 : 0),
+			y: row * h + offsetY,
 		};
 	}
 
 	if (gridType === "hex_flat") {
-		// Flat-topped hexagon center snapping
 		const r = gridSize / 2;
 		const w = r * Math.sqrt(3);
+
+		if (isEven) {
+			// Multi-hex even tokens snap to nearest hex vertex
+			const row = Math.round(point.y / (1.5 * r));
+			const offsetX = row % 2 !== 0 ? w / 2 : 0;
+			const col = Math.round((point.x - offsetX) / w);
+			const centerX = col * w + offsetX;
+			const centerY = row * 1.5 * r;
+			const corners = getFlatHexCorners(centerX, centerY, r);
+
+			let closest = corners[0];
+			let minDist = Number.POSITIVE_INFINITY;
+			for (const c of corners) {
+				const distSq = (point.x - c.x) ** 2 + (point.y - c.y) ** 2;
+				if (distSq < minDist) {
+					minDist = distSq;
+					closest = c;
+				}
+			}
+			return closest;
+		}
+
+		// Odd sized tokens snap to hex center
 		const row = Math.round(point.y / (1.5 * r));
-		const col = Math.round((point.x - (row % 2 !== 0 ? w / 2 : 0)) / w);
+		const offsetX = row % 2 !== 0 ? w / 2 : 0;
+		const col = Math.round((point.x - offsetX) / w);
 		return {
-			x: col * w + (row % 2 !== 0 ? w / 2 : 0),
+			x: col * w + offsetX,
 			y: row * 1.5 * r,
 		};
 	}
