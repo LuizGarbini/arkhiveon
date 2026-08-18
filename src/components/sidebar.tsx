@@ -21,6 +21,7 @@ import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getFactionsTabConfig } from "@/lib/systems";
+import { cn } from "@/lib/utils";
 import { CampaignSwitcher } from "./campaign-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
@@ -69,7 +70,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const dynamicWorldItems = [
 		{ to: "/world", label: "Visão geral", Icon: Globe2 },
 		{ to: "/npcs", label: "NPCs", Icon: Users, shortcut: "Alt+5" },
-		{ to: "/factions", label: factionsTabConfig.label, Icon: factionsTabConfig.Icon },
+		{
+			to: "/factions",
+			label: factionsTabConfig.label,
+			Icon: factionsTabConfig.Icon,
+		},
 		{ to: "/news", label: "Mural", Icon: Newspaper },
 		{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
 		{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
@@ -86,12 +91,16 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 			<div className="flex h-full flex-col">
 				{/* Brand & Switcher */}
 				<div className="px-4 py-5">
-					<div
-						className={`mb-7 flex items-center gap-3 transition-[justify-content] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-							isCollapsed ? "justify-center" : "justify-start"
-						}`}
+					<Link
+						to="/dashboard"
+						onClick={onItemClick}
+						aria-label="Ir para a visão inicial (Dashboard)"
+						className={cn(
+							"group mb-7 flex items-center gap-3 rounded-2xl transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-[0.98]",
+							isCollapsed ? "justify-center" : "justify-start",
+						)}
 					>
-						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-[0_12px_28px_-22px_var(--primary)]">
+						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-[0_12px_28px_-22px_var(--primary)] transition-all duration-200 group-hover:scale-105 group-hover:border-primary/50 group-hover:bg-primary/20">
 							<img
 								src="/favicon.svg"
 								alt="Arkhiveon"
@@ -106,14 +115,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 									: "max-w-40 translate-x-0 opacity-100"
 							}`}
 						>
-							<span className="font-display block whitespace-nowrap text-[13px] font-bold tracking-[0.2em] text-foreground">
+							<span className="font-display block whitespace-nowrap text-[13px] font-bold tracking-[0.2em] text-foreground transition-colors group-hover:text-primary">
 								ARKHIVEON
 							</span>
-							<span className="mt-0.5 block whitespace-nowrap text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
+							<span className="mt-0.5 block whitespace-nowrap text-[9px] uppercase tracking-[0.28em] text-muted-foreground transition-colors group-hover:text-foreground/80">
 								Arkhiveon
 							</span>
 						</div>
-					</div>
+					</Link>
 
 					<CampaignSwitcher isCollapsed={isCollapsed} />
 				</div>
