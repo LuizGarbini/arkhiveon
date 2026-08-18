@@ -1,5 +1,16 @@
 import type { UserPlan } from "../user-plan";
 export type { UserPlan };
+export type {
+	VTTGridType,
+	VTTGridScaleUnit,
+	VTTLayer,
+	VTTScene,
+	VTTAura,
+	VTTToken,
+	VTTRevealedPath,
+	VTTFogState,
+	VTTPingEvent,
+} from "../vtt/types";
 
 // =====================================================
 //  Sistemas suportados
