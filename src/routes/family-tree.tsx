@@ -1096,7 +1096,12 @@ function LineageSidebar({
 	className?: string;
 }) {
 	return (
-		<aside className={cn("lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]", className)}>
+		<aside
+			className={cn(
+				"lg:col-span-4 h-full p-4 overflow-y-auto flex flex-col gap-4 bg-card-elevated/50 rounded-br-[1.75rem]",
+				className,
+			)}
+		>
 			<div>
 				<h3 className="font-display text-base font-bold text-foreground flex items-center justify-between">
 					<span>Diretório da Linhagem</span>

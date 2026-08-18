@@ -95,43 +95,49 @@ function RouteComponent() {
 				action={<ItemForm />}
 			/>
 
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout
-					onSearch={setSearchQuery}
-					searchPlaceholder="Buscar item por nome, categoria, raridade..."
-					filterGroups={filterGroups}
-					activeFilters={activeFilters}
-					onFilterChange={(id, val) => setActiveFilters((prev) => ({ ...prev, [id]: val }))}
-					onClearFilters={() => setActiveFilters({ category: "all", rarity: "all" })}
-				/>
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout
+						onSearch={setSearchQuery}
+						searchPlaceholder="Buscar item por nome, categoria, raridade..."
+						filterGroups={filterGroups}
+						activeFilters={activeFilters}
+						onFilterChange={(id, val) =>
+							setActiveFilters((prev) => ({ ...prev, [id]: val }))
+						}
+						onClearFilters={() =>
+							setActiveFilters({ category: "all", rarity: "all" })
+						}
+					/>
 
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{isLoading
-						? loadingCardKeys.map((key, i) => (
-								<div
-									key={key}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<ItemCard isLoading />
-								</div>
-							))
-						: filteredItems.map((item, i) => (
-								<div
-									key={item.id}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<ItemCard item={item} />
-								</div>
-							))}
-					{!isLoading && filteredItems.length === 0 && (
-						<EmptyState
-							Icon={Package}
-							title="Nenhum item encontrado"
-							description="Adicione armas, armaduras ou itens mágicos ao seu inventário."
-						/>
-					)}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{isLoading
+							? loadingCardKeys.map((key, i) => (
+									<div
+										key={key}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<ItemCard isLoading />
+									</div>
+								))
+							: filteredItems.map((item, i) => (
+									<div
+										key={item.id}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<ItemCard item={item} />
+									</div>
+								))}
+						{!isLoading && filteredItems.length === 0 && (
+							<EmptyState
+								Icon={Package}
+								title="Nenhum item encontrado"
+								description="Adicione armas, armaduras ou itens mágicos ao seu inventário."
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

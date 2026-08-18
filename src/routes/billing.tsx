@@ -7,6 +7,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { SparklesCanvas } from "@/components/ui/sparkles-canvas";
 import { useToast } from "@/components/ui/toast";
@@ -148,7 +149,7 @@ function BillingPage() {
 			});
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [canceled]);
+	}, [canceled, navigate, toast]);
 
 	// ── Success celebration screen ───────────────────────────────────
 	if (success) {
@@ -210,48 +211,28 @@ function BillingPage() {
 		);
 	}
 
-	// ── Canceled toast ───────────────────────────────────────────────
-	useEffect(() => {
-		if (canceled) {
-			toast.info({
-				title: "Checkout cancelado",
-				description: "Você pode tentar novamente quando quiser.",
-			});
-			void navigate({
-				to: "/billing",
-				search: { success: undefined, canceled: undefined, mock: undefined },
-				replace: true,
-			});
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [canceled]);
-
 	// ── Normal billing page ──────────────────────────────────────────
 	return (
-		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 sm:px-8">
-			<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5 sm:p-8">
-				<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-				<div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-					<div className="max-w-3xl">
-						<div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-							<CreditCard className="h-3.5 w-3.5" />
-							Plano & Assinatura
-						</div>
-						<h1 className="font-display mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-							{planLoading
-								? "Verificando plano"
-								: isPro
-									? "Plano Pro ativo"
-									: "Plano Free ativo"}
-						</h1>
-						<p className="mt-3 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-							{isPro
-								? "Até 5 Mundos, 5 campanhas por Mundo e criações ilimitadas. Convidados usam o seu plano."
-								: "Free: 1 Mundo e 1 campanha própria. Em mesa de um mestre Pro, você usa os limites dele."}
-						</p>
-					</div>
+		<div className="w-full">
+			<PageHeader
+				title={
+					planLoading
+						? "Verificando plano"
+						: isPro
+							? "Plano Pro ativo"
+							: "Plano Free ativo"
+				}
+				description={
+					isPro
+						? "Até 5 Mundos, 5 campanhas por Mundo e criações ilimitadas. Convidados usam o seu plano."
+						: "Free: 1 Mundo e 1 campanha própria. Em mesa de um mestre Pro, você usa os limites dele."
+				}
+				Icon={CreditCard}
+				iconColor="text-primary"
+				eyebrow="Plano & Assinatura"
+				action={
 					<Button
-						className="h-11 gap-2 px-5"
+						className="h-10 gap-2 px-5"
 						loading={checkoutLoading}
 						loadingText="Redirecionando..."
 						disabled={isPro || planLoading}
@@ -261,97 +242,101 @@ function BillingPage() {
 						<Crown className="h-4 w-4" />
 						{isPro ? "Pro ativo" : "Fazer upgrade"}
 					</Button>
-				</div>
-			</header>
+				}
+			/>
 
-			<div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-				<section className="rounded-2xl border border-primary/25 bg-primary/8 p-5 shadow-sm shadow-black/5">
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-								{planName}
-							</p>
-							<h2 className="font-display mt-1 text-2xl font-bold text-foreground">
-								{usageTitle}
-							</h2>
-						</div>
-						<span className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-							{planLoading ? "Verificando" : "Ativo"}
-						</span>
-					</div>
-					<div className="mt-5 h-2 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
-						<div
-							className="h-full rounded-full bg-linear-to-r from-primary to-fuchsia-500 transition-all duration-500"
-							style={{ width: `${usagePercent}%` }}
-						/>
-					</div>
-					<p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-						{isPro
-							? `Você já tem ${used} criações salvas e pode continuar criando sem limite.`
-							: "Contabilizamos personagens, NPCs, sessões, itens, locais e lore para representar o uso total da campanha."}
-					</p>
-				</section>
-
-				<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-								Upgrade
-							</p>
-							<h2 className="font-display mt-1 text-xl font-bold text-foreground">
-								{isPro ? "Benefícios liberados" : "Benefícios planejados"}
-							</h2>
-						</div>
-						<Sparkles className="h-5 w-5 text-primary" />
-					</div>
-					<div className="mt-5 grid gap-3">
-						{benefits.map((benefit) => (
-							<div
-								key={benefit}
-								className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
-							>
-								<CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
-								<span className="text-[13px] font-medium text-foreground">
-									{benefit}
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+						<section className="rounded-2xl border border-primary/25 bg-primary/8 p-5 shadow-sm shadow-black/5">
+							<div className="flex items-center justify-between gap-4">
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+										{planName}
+									</p>
+									<h2 className="font-display mt-1 text-2xl font-bold text-foreground">
+										{usageTitle}
+									</h2>
+								</div>
+								<span className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+									{planLoading ? "Verificando" : "Ativo"}
 								</span>
 							</div>
-						))}
-					</div>
-				</section>
-			</div>
+							<div className="mt-5 h-2 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
+								<div
+									className="h-full rounded-full bg-linear-to-r from-primary to-fuchsia-500 transition-all duration-500"
+									style={{ width: `${usagePercent}%` }}
+								/>
+							</div>
+							<p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+								{isPro
+									? `Você já tem ${used} criações salvas e pode continuar criando sem limite.`
+									: "Contabilizamos personagens, NPCs, sessões, itens, locais e lore para representar o uso total da campanha."}
+							</p>
+						</section>
 
-			<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
-							Cobrança
-						</p>
-						<h2 className="font-display mt-1 text-lg font-bold text-foreground">
-							{isPro ? "Assinatura Pro via Stripe" : "Sem cobrança ativa"}
-						</h2>
-						<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-							{isPro
-								? "Sua assinatura é gerenciada pelo Stripe. Use o portal para alterar forma de pagamento ou cancelar."
-								: "Faça upgrade para o plano Pro e desbloqueie todo o potencial do seu grimório."}
-						</p>
+						<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
+							<div className="flex items-center justify-between gap-4">
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+										Upgrade
+									</p>
+									<h2 className="font-display mt-1 text-xl font-bold text-foreground">
+										{isPro ? "Benefícios liberados" : "Benefícios planejados"}
+									</h2>
+								</div>
+								<Sparkles className="h-5 w-5 text-primary" />
+							</div>
+							<div className="mt-5 grid gap-3">
+								{benefits.map((benefit) => (
+									<div
+										key={benefit}
+										className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
+									>
+										<CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
+										<span className="text-[13px] font-medium text-foreground">
+											{benefit}
+										</span>
+									</div>
+								))}
+							</div>
+						</section>
 					</div>
-					<Button
-						variant="outline"
-						className="h-10 gap-2"
-						disabled={!isPro}
-						onClick={() => {
-							toast.info({
-								title: "Portal Stripe",
-								description:
-									"O portal de gerenciamento da assinatura será integrado em breve.",
-							});
-						}}
-					>
-						Gerenciar assinatura
-						<ArrowUpRight className="h-4 w-4" />
-					</Button>
+
+					<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+									Cobrança
+								</p>
+								<h2 className="font-display mt-1 text-lg font-bold text-foreground">
+									{isPro ? "Assinatura Pro via Stripe" : "Sem cobrança ativa"}
+								</h2>
+								<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+									{isPro
+										? "Sua assinatura é gerenciada pelo Stripe. Use o portal para alterar forma de pagamento ou cancelar."
+										: "Faça upgrade para o plano Pro e desbloqueie todo o potencial do seu grimório."}
+								</p>
+							</div>
+							<Button
+								variant="outline"
+								className="h-10 gap-2"
+								disabled={!isPro}
+								onClick={() => {
+									toast.info({
+										title: "Portal Stripe",
+										description:
+											"O portal de gerenciamento da assinatura será integrado em breve.",
+									});
+								}}
+							>
+								Gerenciar assinatura
+								<ArrowUpRight className="h-4 w-4" />
+							</Button>
+						</div>
+					</section>
 				</div>
-			</section>
+			</div>
 		</div>
 	);
 }

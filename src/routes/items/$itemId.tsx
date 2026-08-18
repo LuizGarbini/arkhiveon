@@ -33,8 +33,8 @@ import {
 	useIsWorldStaff,
 	useRPGStore,
 } from "@/lib/store";
-import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
+import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/items/$itemId")({
@@ -67,9 +67,7 @@ function ItemDetailPage() {
 	const canView =
 		!!item &&
 		canViewScopedContent(item, activeCampaign, activeCampaignRole, campaigns);
-	const canManage = item
-		? canManageOwnItem(item, user?.id, isStaff)
-		: false;
+	const canManage = item ? canManageOwnItem(item, user?.id, isStaff) : false;
 
 	if (isLoading) return <DetailSkeleton />;
 
@@ -314,9 +312,7 @@ function ItemDetailPage() {
 							imageFocusY: currentItem.imageFocusY,
 							imageZoom: currentItem.imageZoom,
 						}}
-						onChange={(patch) =>
-							updateItem(currentItem.id, patch, user?.id)
-						}
+						onChange={(patch) => updateItem(currentItem.id, patch, user?.id)}
 						folder="items"
 						campaignId={activeCampaignId ?? undefined}
 						libraryName={currentItem.name}
