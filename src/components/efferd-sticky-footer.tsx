@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, BookOpen, Mail } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
@@ -99,14 +100,18 @@ export function EfferdStickyFooter() {
 				<div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-8 text-center">
 					{/* Brand */}
 					<div className="flex flex-col items-center gap-3">
-						<a href="/" className="inline-flex items-center gap-3">
+						<Link
+							to="/"
+							aria-label="Arkhiveon - Início"
+							className="inline-flex items-center gap-3 rounded-2xl transition-all duration-150 ease-out hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+						>
 							<span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
 								<BookOpen className="h-4.5 w-4.5" strokeWidth={2.1} />
 							</span>
 							<span className="text-xl font-bold tracking-tight">
 								Arkhiveon
 							</span>
-						</a>
+						</Link>
 						<p className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">
 							Um grimório digital para
 							<br />
@@ -223,14 +228,18 @@ export function EfferdStickyFooter() {
 							<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
 								{/* Brand + CTA */}
 								<AnimatedContainer className="space-y-4">
-									<a href="/" className="inline-flex w-fit items-center gap-3">
+									<Link
+										to="/"
+										aria-label="Arkhiveon - Início"
+										className="inline-flex w-fit items-center gap-3 rounded-2xl transition-all duration-150 ease-out hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+									>
 										<span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_8px_20px_-16px_var(--primary)]">
 											<BookOpen className="h-4.5 w-4.5" strokeWidth={2.1} />
 										</span>
 										<span className="text-xl font-bold tracking-tight">
 											Arkhiveon
 										</span>
-									</a>
+									</Link>
 
 									<div>
 										<p className="max-w-md font-display text-[1.4rem] sm:text-[1.6rem] font-black leading-[0.9] text-foreground">

@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
 	Bell,
 	CheckCircle2,
@@ -274,14 +274,18 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 					</Button>
 
 					<div className="hidden h-4 w-px bg-border/40 sm:block md:hidden" />
-					<div className="hidden min-w-36 flex-col sm:flex">
-						<span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+					<Link
+						to="/dashboard"
+						className="group hidden min-w-36 flex-col rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:flex"
+						aria-label="Ir para a visão inicial (Dashboard)"
+					>
+						<span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground transition-colors group-hover:text-primary">
 							Arkhiveon
 						</span>
 						<span className="mt-0.5 text-[13px] font-bold text-foreground">
 							{pageTitle}
 						</span>
-					</div>
+					</Link>
 
 					<div className="hidden flex-1 items-center justify-center md:flex">
 						<button

@@ -161,8 +161,12 @@ function AuthPage() {
 			{/* Card */}
 			<div className="w-full max-w-md">
 				{/* Brand */}
-				<div className="mb-8 flex flex-col items-center gap-3">
-					<div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/30">
+				<Link
+					to="/"
+					className="group mb-8 flex flex-col items-center gap-3 rounded-2xl transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-[0.98]"
+					aria-label="Voltar para a página inicial"
+				>
+					<div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/30 transition-all duration-200 group-hover:scale-105 group-hover:bg-primary/25 group-hover:ring-primary/50">
 						<svg
 							width="24"
 							height="24"
@@ -215,14 +219,14 @@ function AuthPage() {
 						</svg>
 					</div>
 					<div className="text-center leading-none">
-						<span className="font-display text-base font-bold tracking-[0.18em] text-foreground">
+						<span className="font-display text-base font-bold tracking-[0.18em] text-foreground transition-colors group-hover:text-primary">
 							ARKHIVEON
 						</span>
-						<p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+						<p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-muted-foreground transition-colors group-hover:text-foreground/80">
 							Arkhiveon
 						</p>
 					</div>
-				</div>
+				</Link>
 
 				<div className="panel corner-mark p-6 sm:p-8">
 					{/* Tabs */}
