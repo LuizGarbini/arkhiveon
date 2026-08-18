@@ -209,18 +209,6 @@ function ProtectedLayout() {
 
 		if (!onboarding && onOnboardingRoute) {
 			void navigate({ to: "/dashboard", replace: true });
-			return;
-		}
-
-		const isCampaignDependentRoute = CAMPAIGN_DEPENDENT_PREFIXES.some(
-			(prefix) => location.pathname.startsWith(prefix),
-		);
-
-		if (campaigns.length === 0 && isCampaignDependentRoute) {
-			void navigate({
-				to: "/onboarding",
-				replace: true,
-			});
 		}
 	}, [
 		loading,
@@ -273,7 +261,7 @@ function ProtectedLayout() {
 	);
 
 	if (
-		(onboarding || campaigns.length === 0) &&
+		onboarding &&
 		isCampaignDependentRoute &&
 		!location.pathname.startsWith("/onboarding")
 	) {

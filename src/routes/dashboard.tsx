@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowUpRight,
 	BookOpen,
@@ -88,7 +88,6 @@ const sections = [
 ];
 
 function Dashboard() {
-	const navigate = useNavigate();
 	const characters = useRPGStore((s) => s.characters);
 	const npcs = useRPGStore((s) => s.npcs);
 	const sessions = useRPGStore((s) => s.sessions);
@@ -116,18 +115,6 @@ function Dashboard() {
 	useEffect(() => {
 		void loadInvites();
 	}, [loadInvites]);
-
-	useEffect(() => {
-		if (
-			campaigns.length === 0 ||
-			needsAppOnboarding({
-				campaignLoadStatus,
-				campaignCount: campaigns.length,
-			})
-		) {
-			void navigate({ to: "/onboarding", replace: true });
-		}
-	}, [campaignLoadStatus, campaigns.length, navigate]);
 
 	const quests = useRPGStore((s) => s.quests || []);
 

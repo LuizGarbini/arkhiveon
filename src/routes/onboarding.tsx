@@ -8,11 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
-import {
-	appOnboardingStep,
-	isCampaignLoadPending,
-	needsAppOnboarding,
-} from "@/lib/campaign-bootstrap";
+import { appOnboardingStep } from "@/lib/campaign-bootstrap";
 import {
 	normalizeOnboardingName,
 	ONBOARDING_MAX_DESC_LENGTH,
@@ -36,8 +32,6 @@ function OnboardingPage() {
 	const campaignNameId = useId();
 	const campaignDescId = useId();
 
-	const campaignLoadStatus = useRPGStore((s) => s.campaignLoadStatus);
-	const campaigns = useRPGStore((s) => s.campaigns);
 	const worlds = useRPGStore((s) => s.worlds);
 	const createWorld = useRPGStore((s) => s.createWorld);
 	const createCampaign = useRPGStore((s) => s.createCampaign);
@@ -71,23 +65,9 @@ function OnboardingPage() {
 		[worlds, user?.id],
 	);
 
-	const needsOnboarding = needsAppOnboarding({
-		campaignLoadStatus,
-		campaignCount: campaigns.length,
-	});
-
 	useEffect(() => {
 		void loadInvites();
 	}, [loadInvites]);
-
-	useEffect(() => {
-		if (isCampaignLoadPending(campaignLoadStatus)) {
-			return;
-		}
-		if (!needsOnboarding) {
-			void navigate({ to: "/dashboard", replace: true });
-		}
-	}, [campaignLoadStatus, needsOnboarding, navigate]);
 
 	const worldValid = !validateOnboardingName(worldName, "nome do Mundo");
 	const campaignValid = !validateOnboardingName(
@@ -182,14 +162,6 @@ function OnboardingPage() {
 			description: "Entre de novo com a conta certa quando quiser.",
 		});
 		void navigate({ to: "/auth", search: { mode: "login" }, replace: true });
-	}
-
-	if (!isCampaignLoadPending(campaignLoadStatus) && !needsOnboarding) {
-		return (
-			<div className="flex min-h-dvh items-center justify-center bg-dashboard-deep text-[13px] text-white/60">
-				Redirecionando...
-			</div>
-		);
 	}
 
 	return (
