@@ -18,7 +18,9 @@ export function resolveActiveContextAfterCampaignLoad({
 		activeCampaignId &&
 		campaigns.some((campaign) => campaign.id === activeCampaignId)
 	) {
-		const active = campaigns.find((campaign) => campaign.id === activeCampaignId);
+		const active = campaigns.find(
+			(campaign) => campaign.id === activeCampaignId,
+		);
 		return {
 			campaignId: active?.id ?? null,
 			worldId: active?.worldId ?? activeWorldId,
@@ -29,9 +31,10 @@ export function resolveActiveContextAfterCampaignLoad({
 		const inWorld = campaigns.find(
 			(campaign) => campaign.worldId === activeWorldId,
 		);
-		if (inWorld) {
-			return { campaignId: inWorld.id, worldId: activeWorldId };
-		}
+		return {
+			campaignId: inWorld?.id ?? null,
+			worldId: activeWorldId,
+		};
 	}
 
 	const first = campaigns[0];
