@@ -31,6 +31,25 @@ import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { cn } from "@/lib/utils";
 
+const CAMPAIGN_DEPENDENT_PREFIXES = [
+	"/dashboard",
+	"/characters",
+	"/npcs",
+	"/sessions",
+	"/sheets",
+	"/family-tree",
+	"/images",
+	"/items",
+	"/locations",
+	"/lore",
+	"/templates",
+	"/factions",
+	"/news",
+	"/world",
+	"/quests",
+	"/arquivos-secretos",
+];
+
 export const Route = createRootRoute({
 	component: RootLayout,
 	errorComponent: GlobalError,
@@ -193,28 +212,13 @@ function ProtectedLayout() {
 			return;
 		}
 
-		const campaignDependentPrefixes = [
-			"/characters",
-			"/npcs",
-			"/sessions",
-			"/sheets",
-			"/family-tree",
-			"/images",
-			"/items",
-			"/locations",
-			"/lore",
-			"/templates",
-			"/factions",
-			"/news",
-			"/world",
-		];
-		const isCampaignDependentRoute = campaignDependentPrefixes.some((prefix) =>
-			location.pathname.startsWith(prefix),
+		const isCampaignDependentRoute = CAMPAIGN_DEPENDENT_PREFIXES.some(
+			(prefix) => location.pathname.startsWith(prefix),
 		);
 
 		if (campaigns.length === 0 && isCampaignDependentRoute) {
 			void navigate({
-				to: onboarding ? "/onboarding" : "/dashboard",
+				to: "/onboarding",
 				replace: true,
 			});
 		}
@@ -263,6 +267,22 @@ function ProtectedLayout() {
 		campaignLoadStatus,
 		campaignCount: campaigns.length,
 	});
+
+	const isCampaignDependentRoute = CAMPAIGN_DEPENDENT_PREFIXES.some((prefix) =>
+		location.pathname.startsWith(prefix),
+	);
+
+	if (
+		(onboarding || campaigns.length === 0) &&
+		isCampaignDependentRoute &&
+		!location.pathname.startsWith("/onboarding")
+	) {
+		return (
+			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
+				Redirecionando para o onboarding...
+			</div>
+		);
+	}
 
 	if (onboarding || location.pathname.startsWith("/onboarding")) {
 		return <Outlet />;

@@ -119,6 +119,7 @@ function Dashboard() {
 
 	useEffect(() => {
 		if (
+			campaigns.length === 0 ||
 			needsAppOnboarding({
 				campaignLoadStatus,
 				campaignCount: campaigns.length,
@@ -176,6 +177,7 @@ function Dashboard() {
 	}
 
 	if (
+		campaigns.length === 0 ||
 		needsAppOnboarding({
 			campaignLoadStatus,
 			campaignCount: campaigns.length,
@@ -183,7 +185,7 @@ function Dashboard() {
 	) {
 		return (
 			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
-				Preparando onboarding...
+				Redirecionando para o onboarding...
 			</div>
 		);
 	}

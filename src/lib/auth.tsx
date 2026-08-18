@@ -8,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useRPGStore } from "./store";
 import { getSupabase, SUPABASE_TABLES } from "./supabase";
 import {
 	loadCurrentUserPlan,
