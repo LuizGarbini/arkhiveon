@@ -4,13 +4,21 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
+import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
+import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
-import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
+import type {
+	VTTGridScaleUnit,
+	VTTGridType,
+	VTTLayer,
+	VTTScene,
+	VTTToken,
+} from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
@@ -30,6 +38,12 @@ function VTTPage() {
 		setActiveSceneId,
 		addScene,
 		updateScene,
+		tokens,
+		setTokens,
+		addToken,
+		updateToken,
+		removeToken,
+		activeTokenIdForMenu,
 		setIsGM,
 		isGM,
 	} = useVTTStore();
@@ -97,7 +111,58 @@ function VTTPage() {
 		void fetchScenes();
 	}, [fetchScenes]);
 
-	// 3. Realtime subscription on vtt_scenes for scene activation & live edits
+	// 3. Fetch tokens whenever activeSceneId changes
+	const fetchTokens = useCallback(async (sceneId: string) => {
+		const client = getSupabase() as any;
+		if (!client || !sceneId) return;
+
+		try {
+			const { data, error } = await client
+				.from("vtt_tokens")
+				.select("*")
+				.eq("scene_id", sceneId)
+				.order("created_at", { ascending: true });
+
+			if (error) throw error;
+
+			const mappedTokens: VTTToken[] = (data || []).map((row: any) => ({
+				id: row.id,
+				sceneId: row.scene_id,
+				characterId: row.character_id,
+				npcId: row.npc_id,
+				name: row.name,
+				avatarUrl: row.avatar_url,
+				layer: row.layer as VTTLayer,
+				x: Number(row.x),
+				y: Number(row.y),
+				sizeCells: Number(row.size_cells),
+				rotation: Number(row.rotation || 0),
+				hpCurrent: row.hp_current,
+				hpMax: row.hp_max,
+				elevation: Number(row.elevation || 0),
+				conditions: row.conditions || [],
+				auras: row.auras || [],
+				visionRange: Number(row.vision_range || 0),
+				isLocked: row.is_locked,
+				isHidden: row.is_hidden,
+				controlledBy: row.controlled_by || [],
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+			}));
+
+			setTokens(mappedTokens);
+		} catch (err) {
+			console.error("Erro ao carregar tokens da cena:", err);
+		}
+	}, [setTokens]);
+
+	useEffect(() => {
+		if (activeSceneId) {
+			void fetchTokens(activeSceneId);
+		}
+	}, [activeSceneId, fetchTokens]);
+
+	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
 		const client = getSupabase() as any;
 		if (!client || !campaignId) return;
@@ -151,7 +216,6 @@ function VTTPage() {
 							isActive: row.is_active,
 						});
 
-						// If non-GM player and this scene became active, switch view automatically
 						if (row.is_active && !isGM) {
 							setActiveSceneId(row.id);
 						}
@@ -164,6 +228,77 @@ function VTTPage() {
 			client.removeChannel(channel);
 		};
 	}, [campaignId, addScene, updateScene, isGM, setActiveSceneId]);
+
+	// 5. Realtime subscription on vtt_tokens for live token positions & status
+	useEffect(() => {
+		const client = getSupabase() as any;
+		if (!client || !activeSceneId) return;
+
+		const channel = client
+			.channel(`vtt-tokens-live:${activeSceneId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "vtt_tokens",
+					filter: `scene_id=eq.${activeSceneId}`,
+				},
+				(payload: any) => {
+					if (payload.eventType === "INSERT") {
+						const row = payload.new;
+						addToken({
+							id: row.id,
+							sceneId: row.scene_id,
+							characterId: row.character_id,
+							npcId: row.npc_id,
+							name: row.name,
+							avatarUrl: row.avatar_url,
+							layer: row.layer,
+							x: Number(row.x),
+							y: Number(row.y),
+							sizeCells: Number(row.size_cells),
+							rotation: Number(row.rotation || 0),
+							hpCurrent: row.hp_current,
+							hpMax: row.hp_max,
+							elevation: Number(row.elevation || 0),
+							conditions: row.conditions || [],
+							auras: row.auras || [],
+							visionRange: Number(row.vision_range || 0),
+							isLocked: row.is_locked,
+							isHidden: row.is_hidden,
+							controlledBy: row.controlled_by || [],
+						});
+					} else if (payload.eventType === "UPDATE") {
+						const row = payload.new;
+						updateToken(row.id, {
+							x: Number(row.x),
+							y: Number(row.y),
+							sizeCells: Number(row.size_cells),
+							rotation: Number(row.rotation || 0),
+							hpCurrent: row.hp_current,
+							hpMax: row.hp_max,
+							elevation: Number(row.elevation || 0),
+							conditions: row.conditions || [],
+							auras: row.auras || [],
+							visionRange: Number(row.vision_range || 0),
+							isLocked: row.is_locked,
+							isHidden: row.is_hidden,
+							layer: row.layer,
+						});
+					} else if (payload.eventType === "DELETE") {
+						if (payload.old?.id) {
+							removeToken(payload.old.id);
+						}
+					}
+				},
+			)
+			.subscribe();
+
+		return () => {
+			client.removeChannel(channel);
+		};
+	}, [activeSceneId, addToken, updateToken, removeToken]);
 
 	// Scene Management Handlers
 	const handleCreateScene = async (sceneData: Partial<VTTScene>) => {
@@ -223,19 +358,16 @@ function VTTPage() {
 		const client = getSupabase() as any;
 		if (!client || !campaignId) return;
 
-		// 1. Deactivate other scenes in campaign
 		await client
 			.from("vtt_scenes")
 			.update({ is_active: false })
 			.eq("campaign_id", campaignId);
 
-		// 2. Activate target scene
 		await client
 			.from("vtt_scenes")
 			.update({ is_active: true })
 			.eq("id", sceneId);
 
-		// 3. Update local state
 		setScenes(
 			scenes.map((s) => ({
 				...s,
@@ -254,7 +386,6 @@ function VTTPage() {
 	}) => {
 		if (!activeSceneId) return;
 
-		// Optimistic update
 		updateScene(activeSceneId, settings);
 
 		const client = getSupabase() as any;
@@ -273,11 +404,110 @@ function VTTPage() {
 			.eq("id", activeSceneId);
 	};
 
+	// Token Management Handlers
+	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
+		const client = getSupabase() as any;
+		if (!client || !activeSceneId) return;
+
+		const insertPayload = {
+			scene_id: activeSceneId,
+			character_id: tokenData.characterId || null,
+			npc_id: tokenData.npcId || null,
+			name: tokenData.name || "Token",
+			avatar_url: tokenData.avatarUrl || null,
+			layer: tokenData.layer || "token",
+			x: tokenData.x || 0,
+			y: tokenData.y || 0,
+			size_cells: tokenData.sizeCells || 1.0,
+			rotation: tokenData.rotation || 0,
+			hp_current: tokenData.hpCurrent ?? 20,
+			hp_max: tokenData.hpMax ?? 20,
+			elevation: tokenData.elevation || 0,
+			conditions: tokenData.conditions || [],
+			auras: tokenData.auras || [],
+			vision_range: tokenData.visionRange || 6,
+			is_locked: tokenData.isLocked || false,
+			is_hidden: tokenData.isHidden || false,
+			controlled_by: tokenData.controlledBy || [],
+		};
+
+		const { data, error } = await client
+			.from("vtt_tokens")
+			.insert(insertPayload)
+			.select()
+			.single();
+
+		if (error) {
+			console.error("Erro ao criar token:", error);
+			return;
+		}
+
+		if (data) {
+			const spawned: VTTToken = {
+				id: data.id,
+				sceneId: data.scene_id,
+				characterId: data.character_id,
+				npcId: data.npc_id,
+				name: data.name,
+				avatarUrl: data.avatar_url,
+				layer: data.layer as VTTLayer,
+				x: Number(data.x),
+				y: Number(data.y),
+				sizeCells: Number(data.size_cells),
+				rotation: Number(data.rotation || 0),
+				hpCurrent: data.hp_current,
+				hpMax: data.hp_max,
+				elevation: Number(data.elevation || 0),
+				conditions: data.conditions || [],
+				auras: data.auras || [],
+				visionRange: Number(data.vision_range || 0),
+				isLocked: data.is_locked,
+				isHidden: data.is_hidden,
+				controlledBy: data.controlled_by || [],
+			};
+			addToken(spawned);
+		}
+	};
+
+	const handleUpdateToken = async (tokenId: string, updates: Partial<VTTToken>) => {
+		// Optimistic update
+		updateToken(tokenId, updates);
+
+		const client = getSupabase() as any;
+		if (!client) return;
+
+		const dbUpdates: any = {};
+		if (updates.x !== undefined) dbUpdates.x = updates.x;
+		if (updates.y !== undefined) dbUpdates.y = updates.y;
+		if (updates.sizeCells !== undefined) dbUpdates.size_cells = updates.sizeCells;
+		if (updates.rotation !== undefined) dbUpdates.rotation = updates.rotation;
+		if (updates.hpCurrent !== undefined) dbUpdates.hp_current = updates.hpCurrent;
+		if (updates.hpMax !== undefined) dbUpdates.hp_max = updates.hpMax;
+		if (updates.elevation !== undefined) dbUpdates.elevation = updates.elevation;
+		if (updates.conditions !== undefined) dbUpdates.conditions = updates.conditions;
+		if (updates.auras !== undefined) dbUpdates.auras = updates.auras;
+		if (updates.isLocked !== undefined) dbUpdates.is_locked = updates.isLocked;
+		if (updates.isHidden !== undefined) dbUpdates.is_hidden = updates.isHidden;
+		if (updates.layer !== undefined) dbUpdates.layer = updates.layer;
+
+		await client.from("vtt_tokens").update(dbUpdates).eq("id", tokenId);
+	};
+
+	const handleDeleteToken = async (tokenId: string) => {
+		removeToken(tokenId);
+
+		const client = getSupabase() as any;
+		if (!client) return;
+
+		await client.from("vtt_tokens").delete().eq("id", tokenId);
+	};
+
 	const currentActiveScene = scenes.find((s) => s.id === activeSceneId) || null;
+	const activeTokenForMenu = tokens.find((t) => t.id === activeTokenIdForMenu) || null;
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-[#090a0f] select-none">
-			{/* Top Header / Scene Tabs */}
+			{/* Top Header / Scene Tabs & Roster Toggle */}
 			<VTTSceneBar
 				campaignId={campaignId}
 				campaignName={activeCampaign?.name || "Campanha"}
@@ -293,7 +523,10 @@ function VTTPage() {
 
 			{/* Canvas Viewport */}
 			{currentActiveScene ? (
-				<VTTCanvas scene={currentActiveScene} />
+				<VTTCanvas
+					scene={currentActiveScene}
+					onUpdateToken={handleUpdateToken}
+				/>
 			) : !isLoading ? (
 				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white/70">
 					<div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl mb-4 shadow-2xl">
@@ -323,6 +556,19 @@ function VTTPage() {
 					<Sparkles className="h-8 w-8 text-primary animate-spin" />
 				</div>
 			)}
+
+			{/* Right Campaign Roster Drawer (Characters & Bestiary) */}
+			<VTTRosterDrawer
+				scene={currentActiveScene}
+				onSpawnToken={handleSpawnToken}
+			/>
+
+			{/* Token Contextual / Health & Status Edit Popover */}
+			<VTTTokenMenu
+				token={activeTokenForMenu}
+				onUpdateToken={handleUpdateToken}
+				onDeleteToken={handleDeleteToken}
+			/>
 
 			{/* Bottom-Right Zoom & Distance HUD */}
 			<VTTZoomControls />
