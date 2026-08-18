@@ -153,7 +153,10 @@ function ProtectedLayout() {
 			void navigate({ to: "/auth", search: { mode: "login" }, replace: true });
 			return;
 		}
-		if (bootstrappedUserIdRef.current === authenticatedUserId) {
+		if (
+			bootstrappedUserIdRef.current === authenticatedUserId &&
+			campaignLoadStatus !== "idle"
+		) {
 			return;
 		}
 		bootstrappedUserIdRef.current = authenticatedUserId;
@@ -186,6 +189,7 @@ function ProtectedLayout() {
 		loading,
 		navigate,
 		authenticatedUserId,
+		campaignLoadStatus,
 	]);
 
 	useEffect(() => {

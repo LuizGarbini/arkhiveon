@@ -194,9 +194,7 @@ export const createCampaignSlice: StateCreator<
 			.eq("user_id", user.id)
 			.maybeSingle();
 		const currentPlan: UserPlan =
-			(planRow as { plan?: UserPlan } | null)?.plan ||
-			get().userPlan ||
-			"free";
+			(planRow as { plan?: UserPlan } | null)?.plan || get().userPlan || "free";
 		if (currentPlan !== get().userPlan) {
 			set({ userPlan: currentPlan });
 		}
@@ -286,17 +284,17 @@ export const createCampaignSlice: StateCreator<
 
 		let campaigns: Campaign[];
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-			if (userError || !user || !user.email) {
-				const detail = userError
-					? remoteErrorMessage(userError)
-					: "sessão autenticada indisponível";
+			const sessionRes = await supabase.auth?.getSession?.();
+			let user = sessionRes?.data?.session?.user;
+			if (!user) {
+				const userRes = await supabase.auth.getUser();
+				user = userRes?.data?.user ?? undefined;
+			}
+			if (!user || !user.email) {
 				set({
 					campaignLoadStatus: "error",
-					syncError: `Erro ao carregar campanhas: ${detail}`,
+					syncError:
+						"Erro ao carregar campanhas: sessão autenticada indisponível",
 				});
 				return;
 			}
