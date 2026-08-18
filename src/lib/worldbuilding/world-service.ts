@@ -1,6 +1,6 @@
 import type { TablesInsert, TablesUpdate } from "../database.types";
-import { getSupabase } from "../supabase";
 import type { World } from "../store/types";
+import { getSupabase } from "../supabase";
 
 export interface DefaultWorldResult {
 	worldId: string;
@@ -109,11 +109,26 @@ export async function createRemoteWorld(input: {
 }): Promise<World> {
 	const db = requireSupabase();
 	const id = crypto.randomUUID();
+
+	let isDefault = input.isDefault ?? false;
+	if (isDefault) {
+		const { data: existingDefault } = await db
+			.from("worlds")
+			.select("id")
+			.eq("owner_user_id", input.ownerUserId)
+			.eq("is_default", true)
+			.maybeSingle();
+
+		if (existingDefault) {
+			isDefault = false;
+		}
+	}
+
 	const row: TablesInsert<"worlds"> = {
 		id,
 		owner_user_id: input.ownerUserId,
 		name: input.name.trim() || "Novo Mundo",
-		is_default: input.isDefault ?? false,
+		is_default: isDefault,
 	};
 	const { data, error } = await db
 		.from("worlds")
@@ -150,7 +165,6 @@ export async function deleteRemoteWorld(id: string): Promise<void> {
 	const { error } = await db.from("worlds").delete().eq("id", id);
 	if (error) throw error;
 }
-
 
 /**
  * Resolve o world_id para uma nova campanha (§9.1).

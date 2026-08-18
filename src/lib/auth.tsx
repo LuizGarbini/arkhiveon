@@ -122,10 +122,16 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 
 		loadCurrentUserPlan(userId)
 			.then((nextPlanData) => {
-				if (mounted) setPlanData(nextPlanData);
+				if (mounted) {
+					setPlanData(nextPlanData);
+					useRPGStore.getState().setUserPlan(nextPlanData.plan);
+				}
 			})
 			.catch(() => {
-				if (mounted) setPlanData({ plan: "free", storageUsedBytes: 0 });
+				if (mounted) {
+					setPlanData({ plan: "free", storageUsedBytes: 0 });
+					useRPGStore.getState().setUserPlan("free");
+				}
 			})
 			.finally(() => {
 				if (mounted) setPlanLoading(false);
@@ -144,9 +150,12 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				(payload) => {
 					if (payload.eventType === "DELETE") {
 						setPlanData({ plan: "free", storageUsedBytes: 0 });
+						useRPGStore.getState().setUserPlan("free");
 						return;
 					}
-					setPlanData(planFromRealtimeRow(payload.new));
+					const parsed = planFromRealtimeRow(payload.new);
+					setPlanData(parsed);
+					useRPGStore.getState().setUserPlan(parsed.plan);
 				},
 			)
 			.subscribe();

@@ -186,21 +186,46 @@ export const createCampaignSlice: StateCreator<
 		if (!user) {
 			throw new Error("Usuário não autenticado.");
 		}
-		const state = get();
+
+		// Obter plano atualizado do usuário no banco para evitar limites stale
+		const { data: planRow } = await supabase
+			.from(SUPABASE_TABLES.userPlans)
+			.select("plan")
+			.eq("user_id", user.id)
+			.maybeSingle();
+		const currentPlan: UserPlan =
+			(planRow as { plan?: UserPlan } | null)?.plan ||
+			get().userPlan ||
+			"free";
+		if (currentPlan !== get().userPlan) {
+			set({ userPlan: currentPlan });
+		}
+
+		let currentWorlds = get().worlds;
+		try {
+			const fetchedWorlds = await loadAccessibleWorlds();
+			if (fetchedWorlds.length > 0) {
+				currentWorlds = fetchedWorlds;
+				set({ worlds: fetchedWorlds });
+			}
+		} catch {
+			// Mantém currentWorlds locais
+		}
+
 		if (
-			countOwnedWorlds(state.worlds, user.id) >= maxOwnedWorlds(state.userPlan)
+			countOwnedWorlds(currentWorlds, user.id) >= maxOwnedWorlds(currentPlan)
 		) {
-			const errorMsg = worldLimitError(state.userPlan);
+			const errorMsg = worldLimitError(currentPlan);
 			set({ syncError: errorMsg });
 			throw new Error(errorMsg);
 		}
 		const created = await createRemoteWorld({
 			ownerUserId: user.id,
 			name,
-			isDefault: countOwnedWorlds(state.worlds, user.id) === 0,
+			isDefault: countOwnedWorlds(currentWorlds, user.id) === 0,
 		});
 		set((state) => ({
-			worlds: [...state.worlds, created],
+			worlds: [...state.worlds.filter((w) => w.id !== created.id), created],
 			activeWorldId: created.id,
 			syncError: null,
 		}));
@@ -514,12 +539,26 @@ export const createCampaignSlice: StateCreator<
 					user.id,
 					options,
 				);
+
+				const { data: planRow } = await supabase
+					.from(SUPABASE_TABLES.userPlans)
+					.select("plan")
+					.eq("user_id", user.id)
+					.maybeSingle();
+				const currentPlan: UserPlan =
+					(planRow as { plan?: UserPlan } | null)?.plan ||
+					get().userPlan ||
+					"free";
+				if (currentPlan !== get().userPlan) {
+					set({ userPlan: currentPlan });
+				}
+
 				const state = get();
 				if (
 					countOwnedCampaignsInWorld(state.campaigns, worldId) >=
-					maxOwnedCampaignsPerWorld(state.userPlan)
+					maxOwnedCampaignsPerWorld(currentPlan)
 				) {
-					const errorMsg = campaignPerWorldLimitError(state.userPlan);
+					const errorMsg = campaignPerWorldLimitError(currentPlan);
 					set({ syncError: errorMsg });
 					throw new Error(errorMsg);
 				}
