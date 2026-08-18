@@ -1,6 +1,7 @@
 import {
 	createRootRoute,
 	Link,
+	Navigate,
 	Outlet,
 	useLocation,
 	useNavigate,
@@ -241,8 +242,8 @@ function ProtectedLayout() {
 	}
 
 	if (
-		!hasAuthoritativeCampaignSnapshot &&
-		isCampaignLoadPending(campaignLoadStatus)
+		isCampaignLoadPending(campaignLoadStatus) &&
+		!hasAuthoritativeCampaignSnapshot
 	) {
 		return (
 			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
@@ -265,11 +266,7 @@ function ProtectedLayout() {
 		isCampaignDependentRoute &&
 		!location.pathname.startsWith("/onboarding")
 	) {
-		return (
-			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
-				Redirecionando para o onboarding...
-			</div>
-		);
+		return <Navigate to="/onboarding" replace />;
 	}
 
 	if (onboarding || location.pathname.startsWith("/onboarding")) {

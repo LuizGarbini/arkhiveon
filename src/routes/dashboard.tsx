@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import {
 	ArrowUpRight,
 	BookOpen,
@@ -170,11 +170,7 @@ function Dashboard() {
 			campaignCount: campaigns.length,
 		})
 	) {
-		return (
-			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
-				Redirecionando para o onboarding...
-			</div>
-		);
+		return <Navigate to="/onboarding" replace />;
 	}
 
 	return (
