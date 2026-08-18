@@ -8,14 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
+import { appOnboardingStep } from "@/lib/campaign-bootstrap";
 import {
-	appOnboardingStep,
-	needsAppOnboarding,
-} from "@/lib/campaign-bootstrap";
-import {
+	normalizeOnboardingName,
 	ONBOARDING_MAX_DESC_LENGTH,
 	ONBOARDING_MAX_NAME_LENGTH,
-	normalizeOnboardingName,
 	validateOnboardingName,
 } from "@/lib/onboarding-validation";
 import { useRPGStore } from "@/lib/store";
@@ -35,8 +32,6 @@ function OnboardingPage() {
 	const campaignNameId = useId();
 	const campaignDescId = useId();
 
-	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
-	const campaigns = useRPGStore((s) => s.campaigns);
 	const worlds = useRPGStore((s) => s.worlds);
 	const createWorld = useRPGStore((s) => s.createWorld);
 	const createCampaign = useRPGStore((s) => s.createCampaign);
@@ -54,34 +49,25 @@ function OnboardingPage() {
 	const [worldName, setWorldName] = useState("");
 	const [campaignName, setCampaignName] = useState("");
 	const [campaignDesc, setCampaignDesc] = useState("");
-	const [error, setError] = useState<string | null>(null);
+	const [submissionError, setSubmissionError] = useState<{
+		message: string;
+		step: "world" | "campaign";
+	} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [isSigningOut, setIsSigningOut] = useState(false);
+	const error = submissionError?.step === step ? submissionError.message : null;
+	const setError = (message: string | null) => {
+		setSubmissionError(message ? { message, step } : null);
+	};
 
 	const ownedWorld = useMemo(
 		() => worlds.find((w) => w.ownerUserId === user?.id) ?? null,
 		[worlds, user?.id],
 	);
 
-	const needsOnboarding = needsAppOnboarding({
-		hasLoadedCampaigns,
-		campaignCount: campaigns.length,
-	});
-
 	useEffect(() => {
 		void loadInvites();
 	}, [loadInvites]);
-
-	useEffect(() => {
-		if (!hasLoadedCampaigns) return;
-		if (!needsOnboarding) {
-			void navigate({ to: "/dashboard", replace: true });
-		}
-	}, [hasLoadedCampaigns, needsOnboarding, navigate]);
-
-	useEffect(() => {
-		setError(null);
-	}, [step]);
 
 	const worldValid = !validateOnboardingName(worldName, "nome do Mundo");
 	const campaignValid = !validateOnboardingName(
@@ -93,10 +79,7 @@ function OnboardingPage() {
 		e.preventDefault();
 		if (busy) return;
 
-		const validationError = validateOnboardingName(
-			worldName,
-			"nome do Mundo",
-		);
+		const validationError = validateOnboardingName(worldName, "nome do Mundo");
 		if (validationError) {
 			setError(validationError);
 			return;
@@ -179,14 +162,6 @@ function OnboardingPage() {
 			description: "Entre de novo com a conta certa quando quiser.",
 		});
 		void navigate({ to: "/auth", search: { mode: "login" }, replace: true });
-	}
-
-	if (hasLoadedCampaigns && !needsOnboarding) {
-		return (
-			<div className="flex min-h-dvh items-center justify-center bg-dashboard-deep text-[13px] text-white/60">
-				Redirecionando...
-			</div>
-		);
 	}
 
 	return (
@@ -359,8 +334,7 @@ function OnboardingPage() {
 				<div className="flex flex-col items-center gap-2 text-center">
 					{user?.email ? (
 						<p className="max-w-sm truncate text-[12px] text-white/45">
-							Conectado como{" "}
-							<span className="text-white/70">{user.email}</span>
+							Conectado como <span className="text-white/70">{user.email}</span>
 						</p>
 					) : null}
 					<Button

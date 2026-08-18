@@ -1,6 +1,7 @@
 import {
 	createRootRoute,
 	Link,
+	Navigate,
 	Outlet,
 	useLocation,
 	useNavigate,
@@ -12,7 +13,7 @@ import {
 	Crown,
 	X,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { GlobalError } from "@/components/global-error";
 import { LegacyWorldNamingGate } from "@/components/legacy-world-naming-gate";
@@ -22,11 +23,33 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ToastProvider } from "@/components/ui/toast";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { needsAppOnboarding } from "@/lib/campaign-bootstrap";
+import {
+	isCampaignLoadPending,
+	needsAppOnboarding,
+} from "@/lib/campaign-bootstrap";
 import { usePerformanceMode } from "@/lib/performance-mode";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { cn } from "@/lib/utils";
+
+const CAMPAIGN_DEPENDENT_PREFIXES = [
+	"/dashboard",
+	"/characters",
+	"/npcs",
+	"/sessions",
+	"/sheets",
+	"/family-tree",
+	"/images",
+	"/items",
+	"/locations",
+	"/lore",
+	"/templates",
+	"/factions",
+	"/news",
+	"/world",
+	"/quests",
+	"/arquivos-secretos",
+];
 
 export const Route = createRootRoute({
 	component: RootLayout,
@@ -65,10 +88,12 @@ function ProtectedLayout() {
 	const navigate = useNavigate();
 	const mainContentId = useId();
 	const { loading, session, plan } = useAuth();
+	const authenticatedUserId = session?.user.id;
 	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
 	const setupRealtime = useRPGStore((s) => s.setupRealtime);
 	const clearLocalData = useRPGStore((s) => s.clearLocalData);
 	const loadCampaigns = useRPGStore((s) => s.loadCampaigns);
+	const bootstrappedUserIdRef = useRef<string | null>(null);
 	const syncError = useRPGStore((s) => s.syncError);
 	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -114,21 +139,35 @@ function ProtectedLayout() {
 	}, [syncError]);
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
-	const hasLoadedCampaigns = useRPGStore((s) => s.hasLoadedCampaigns);
+	const hasAuthoritativeCampaignSnapshot = useRPGStore(
+		(s) => s.hasLoadedCampaigns,
+	);
+	const campaignLoadStatus = useRPGStore((s) => s.campaignLoadStatus);
 	const campaigns = useRPGStore((s) => s.campaigns);
 
 	useEffect(() => {
 		if (loading) return;
-		if (!session) {
+		if (!authenticatedUserId) {
+			bootstrappedUserIdRef.current = null;
 			clearLocalData();
 			void navigate({ to: "/auth", search: { mode: "login" }, replace: true });
 			return;
 		}
+		if (
+			bootstrappedUserIdRef.current === authenticatedUserId &&
+			useRPGStore.getState().campaignLoadStatus !== "idle"
+		) {
+			return;
+		}
+		bootstrappedUserIdRef.current = authenticatedUserId;
 
 		async function initCampaigns() {
 			await loadCampaigns();
 
 			const state = useRPGStore.getState();
+			if (state.campaignLoadStatus !== "ready") {
+				return;
+			}
 			// loadCampaigns já resolve campanha/mundo respeitando activeWorldId.
 			// Só auto-escolhe a primeira mesa global se ainda não há contexto.
 			if (
@@ -149,60 +188,7 @@ function ProtectedLayout() {
 		loadRemoteData,
 		loading,
 		navigate,
-		session,
-	]);
-
-	useEffect(() => {
-		if (loading || !session || !hasLoadedCampaigns) return;
-
-		const onboarding = needsAppOnboarding({
-			hasLoadedCampaigns,
-			campaignCount: campaigns.length,
-		});
-		const onOnboardingRoute = location.pathname.startsWith("/onboarding");
-
-		if (onboarding && !onOnboardingRoute) {
-			void navigate({ to: "/onboarding", replace: true });
-			return;
-		}
-
-		if (!onboarding && onOnboardingRoute) {
-			void navigate({ to: "/dashboard", replace: true });
-			return;
-		}
-
-		const campaignDependentPrefixes = [
-			"/characters",
-			"/npcs",
-			"/sessions",
-			"/sheets",
-			"/family-tree",
-			"/images",
-			"/items",
-			"/locations",
-			"/lore",
-			"/templates",
-			"/factions",
-			"/news",
-			"/world",
-		];
-		const isCampaignDependentRoute = campaignDependentPrefixes.some((prefix) =>
-			location.pathname.startsWith(prefix),
-		);
-
-		if (campaigns.length === 0 && isCampaignDependentRoute) {
-			void navigate({
-				to: onboarding ? "/onboarding" : "/dashboard",
-				replace: true,
-			});
-		}
-	}, [
-		loading,
-		session,
-		hasLoadedCampaigns,
-		campaigns.length,
-		location.pathname,
-		navigate,
+		authenticatedUserId,
 	]);
 
 	useEffect(() => {
@@ -226,7 +212,10 @@ function ProtectedLayout() {
 		return null; // The useEffect handles the redirect without flickering the UI
 	}
 
-	if (!hasLoadedCampaigns) {
+	if (
+		isCampaignLoadPending(campaignLoadStatus) &&
+		!hasAuthoritativeCampaignSnapshot
+	) {
 		return (
 			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
 				Carregando campanhas...
@@ -235,9 +224,25 @@ function ProtectedLayout() {
 	}
 
 	const onboarding = needsAppOnboarding({
-		hasLoadedCampaigns,
+		campaignLoadStatus,
 		campaignCount: campaigns.length,
 	});
+
+	const isCampaignDependentRoute = CAMPAIGN_DEPENDENT_PREFIXES.some((prefix) =>
+		location.pathname.startsWith(prefix),
+	);
+
+	if (
+		onboarding &&
+		isCampaignDependentRoute &&
+		!location.pathname.startsWith("/onboarding")
+	) {
+		return <Navigate to="/onboarding" replace />;
+	}
+
+	if (!onboarding && location.pathname.startsWith("/onboarding")) {
+		return <Navigate to="/dashboard" replace />;
+	}
 
 	if (onboarding || location.pathname.startsWith("/onboarding")) {
 		return <Outlet />;

@@ -1,8 +1,10 @@
-import type { Session, User } from "@supabase/supabase-js";
+// @vitest-environment jsdom
+
+import type { Session } from "@supabase/supabase-js";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { type ReactNode, StrictMode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
 import { routeTree } from "../routeTree.gen";
 
@@ -20,59 +22,100 @@ window.matchMedia =
 		dispatchEvent: vi.fn(),
 	}));
 
-// Mock the auth context hook
-vi.mock("@/lib/auth", () => {
+const { authSession, authActions } = vi.hoisted(() => {
+	const createSession = (): Session => ({
+		access_token: "test-access-token",
+		expires_at: 1,
+		expires_in: 3600,
+		refresh_token: "test-refresh-token",
+		token_type: "bearer",
+		user: {
+			app_metadata: {},
+			aud: "authenticated",
+			created_at: "2026-01-01T00:00:00.000Z",
+			email: "test@arkhiveon.com",
+			id: "test-user-id",
+			user_metadata: {},
+		},
+	});
+	let currentSession = createSession();
+	const listeners = new Set<() => void>();
+
+	return {
+		authSession: {
+			getSnapshot: () => currentSession,
+			refresh: () => {
+				currentSession = {
+					...createSession(),
+					access_token: "refreshed-access-token",
+				};
+				listeners.forEach((listener) => {
+					listener();
+				});
+			},
+			reset: () => {
+				currentSession = createSession();
+			},
+			subscribe: (listener: () => void) => {
+				listeners.add(listener);
+				return () => {
+					listeners.delete(listener);
+				};
+			},
+		},
+		authActions: {
+			resetPassword: vi.fn(),
+			signIn: vi.fn(),
+			signInWithOAuth: vi.fn(),
+			signOut: vi.fn(),
+			signUp: vi.fn(),
+			updatePassword: vi.fn(),
+		},
+	};
+});
+
+vi.mock("@/lib/auth", async () => {
+	const { useSyncExternalStore } = await import("react");
 	return {
 		AuthProvider: ({ children }: { children: ReactNode }) => children,
-		useAuth: () => ({
-			loading: false,
-			session: {
-				user: {
-					id: "test-user-id",
-					email: "test@arkhiveon.com",
-				} as unknown as User,
-			} as unknown as Session,
-			plan: "free",
-			storageUsedBytes: 0,
-			isPro: false,
-			planLoading: false,
-			signIn: vi.fn(),
-			signUp: vi.fn(),
-			signOut: vi.fn(),
-			resetPassword: vi.fn(),
-			updatePassword: vi.fn(),
-			signInWithOAuth: vi.fn(),
-		}),
+		useAuth: () => {
+			const session = useSyncExternalStore(
+				authSession.subscribe,
+				authSession.getSnapshot,
+			);
+			return {
+				...authActions,
+				loading: false,
+				session,
+				user: session?.user ?? null,
+				plan: "free",
+				storageUsedBytes: 0,
+				isPro: false,
+				planLoading: false,
+			};
+		},
 	};
 });
 
 describe("Router navigation loop test", () => {
 	beforeEach(() => {
+		cleanup();
+		authSession.reset();
 		useRPGStore.setState({
+			activeCampaignId: "campaign-1",
+			activeWorldId: "world-1",
+			campaignLoadStatus: "ready",
 			campaigns: [
 				{
-					id: "c1",
-					name: "Campanha Principal",
-					description: "Descrição de teste",
-					worldId: "w1",
-					system: "dnd5e",
-					createdAt: 1767225600000,
-					updatedAt: 1767225600000,
+					id: "campaign-1",
+					name: "Campanha",
+					description: "",
 					ownerId: "test-user-id",
+					worldId: "world-1",
+					myRole: "owner",
+					createdAt: 1,
 				},
 			],
-			worlds: [
-				{
-					id: "w1",
-					name: "Mundo de Teste",
-					isDefault: true,
-					createdAt: 1767225600000,
-					updatedAt: 1767225600000,
-					ownerUserId: "test-user-id",
-				},
-			],
-			activeCampaignId: "c1",
-			activeWorldId: "w1",
 			hasLoadedCampaigns: true,
 			loadCampaigns: vi.fn().mockResolvedValue(undefined),
 			loadRemoteData: vi.fn().mockResolvedValue(undefined),
@@ -80,9 +123,6 @@ describe("Router navigation loop test", () => {
 		});
 	});
 
-	afterEach(() => {
-		cleanup();
-	});
 	it("renders settings page without crashing", async () => {
 		const router = createRouter({
 			routeTree,
@@ -142,5 +182,93 @@ describe("Router navigation loop test", () => {
 		for (const link of brandLogoLinks) {
 			expect(link.getAttribute("href")).toBe("/dashboard");
 		}
+	});
+
+	it("navigates between protected routes without restarting campaign bootstrap", async () => {
+		const router = createRouter({ routeTree });
+		const loadCampaigns = useRPGStore.getState().loadCampaigns;
+
+		render(<RouterProvider router={router} />);
+		await router.navigate({ to: "/settings" });
+		await waitFor(() => {
+			expect(screen.getByText("Preferências da plataforma")).toBeDefined();
+		});
+
+		await router.navigate({ to: "/account" });
+		await waitFor(() => {
+			expect(screen.getAllByText("Aventureiro").length).toBeGreaterThan(0);
+		});
+
+		expect(loadCampaigns).toHaveBeenCalledTimes(1);
+		expect(screen.queryByText("Comece pelo seu Mundo")).toBeNull();
+	});
+
+	it("runs the initial campaign bootstrap once in StrictMode", async () => {
+		const router = createRouter({ routeTree });
+		const loadCampaigns = useRPGStore.getState().loadCampaigns;
+
+		render(
+			<StrictMode>
+				<RouterProvider router={router} />
+			</StrictMode>,
+		);
+		await router.navigate({ to: "/account" });
+		await waitFor(() => {
+			expect(screen.getAllByText("Aventureiro").length).toBeGreaterThan(0);
+		});
+
+		expect(loadCampaigns).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not reload campaign bootstrap when the same user refreshes their session", async () => {
+		const router = createRouter({ routeTree });
+		const loadCampaigns = useRPGStore.getState().loadCampaigns;
+
+		render(<RouterProvider router={router} />);
+		await router.navigate({ to: "/account" });
+		await waitFor(() => {
+			expect(screen.getAllByText("Aventureiro").length).toBeGreaterThan(0);
+		});
+
+		act(() => authSession.refresh());
+
+		await waitFor(() => {
+			expect(loadCampaigns).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it("keeps account accessible when campaign bootstrap fails", async () => {
+		const campaignError = "Erro ao carregar campanhas: network unavailable";
+		const loadCampaigns = vi.fn(async () => {
+			useRPGStore.setState({
+				campaignLoadStatus: "error",
+				syncError: campaignError,
+			});
+		});
+		const loadRemoteData = vi.fn(async () => {
+			useRPGStore.setState({ syncError: null });
+		});
+		useRPGStore.setState({
+			activeCampaignId: null,
+			activeWorldId: null,
+			campaignLoadStatus: "idle",
+			campaigns: [],
+			hasLoadedCampaigns: false,
+			loadCampaigns,
+			loadRemoteData,
+			syncError: null,
+		});
+		const router = createRouter({ routeTree });
+
+		render(<RouterProvider router={router} />);
+		await router.navigate({ to: "/account" });
+
+		await waitFor(() => {
+			expect(screen.getAllByText("Aventureiro").length).toBeGreaterThan(0);
+		});
+		expect(screen.queryByText("Comece pelo seu Mundo")).toBeNull();
+		expect(screen.getByText(campaignError)).toBeDefined();
+		expect(useRPGStore.getState().syncError).toBe(campaignError);
+		expect(loadRemoteData).not.toHaveBeenCalled();
 	});
 });

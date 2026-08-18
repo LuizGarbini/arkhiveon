@@ -80,20 +80,20 @@ function NewSheetPage() {
 	const customTemplates = useRPGStore((state) => state.customTemplates || []);
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
-	const hasLoadedCampaigns = useRPGStore((state) => state.hasLoadedCampaigns);
+	const campaignLoadStatus = useRPGStore((state) => state.campaignLoadStatus);
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const [activeStep, setActiveStep] = useState<WizardStep>("system");
 
 	useEffect(() => {
 		if (
 			shouldShowEmptyCampaignOnboarding({
-				hasLoadedCampaigns,
+				campaignLoadStatus,
 				campaignCount: campaigns.length,
 			})
 		) {
 			void navigate({ to: "/dashboard" });
 		}
-	}, [hasLoadedCampaigns, campaigns.length, navigate]);
+	}, [campaignLoadStatus, campaigns.length, navigate]);
 
 	const [stepError, setStepError] = useState<string | null>(null);
 	const [selectedLayoutTemplateId, setSelectedLayoutTemplateId] = useState<

@@ -12,6 +12,8 @@ export type {
 	VTTPingEvent,
 } from "../vtt/types";
 
+export type CampaignLoadStatus = "idle" | "loading" | "ready" | "error";
+
 // =====================================================
 //  Sistemas suportados
 // =====================================================
@@ -668,7 +670,9 @@ export interface RPGState {
 	campaigns: Campaign[];
 	activeCampaignId: string | null;
 	activeWorldId: string | null;
+	/** Stays true after the first authoritative load, including during refreshes. */
 	hasLoadedCampaigns: boolean;
+	campaignLoadStatus: CampaignLoadStatus;
 	loadCampaigns: () => Promise<void>;
 	createCampaign: (
 		name: string,

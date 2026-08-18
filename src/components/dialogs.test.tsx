@@ -80,13 +80,11 @@ describe("SpellSearchDialog State Resets", () => {
 		// Verify it loads spells
 		await waitFor(() => {
 			expect(screen.getByText("Grimório de Magias")).toBeDefined();
-			expect(screen.getByText("Bola de Fogo")).toBeDefined();
+			expect(screen.getAllByText("Bola de Fogo").length).toBeGreaterThan(0);
 		});
 
 		// Type in the search input
-		const searchInput = screen.getByPlaceholderText(
-			"Buscar magias pelo nome...",
-		);
+		const searchInput = screen.getByPlaceholderText(/Buscar por nome/i);
 		fireEvent.change(searchInput, { target: { value: "Fogo" } });
 		expect((searchInput as HTMLInputElement).value).toBe("Fogo");
 
@@ -113,9 +111,8 @@ describe("SpellSearchDialog State Resets", () => {
 		);
 
 		await waitFor(() => {
-			const reopenedSearchInput = screen.getByPlaceholderText(
-				"Buscar magias pelo nome...",
-			);
+			const reopenedSearchInput =
+				screen.getByPlaceholderText(/Buscar por nome/i);
 			expect((reopenedSearchInput as HTMLInputElement).value).toBe("");
 		});
 	});
