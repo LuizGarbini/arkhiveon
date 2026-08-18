@@ -55,6 +55,7 @@ Este documento define as regras arquiteturais, de estilo e boas práticas que **
 - **Convenção de Branches**:
   - Usuário **Luiz Garbini** (`garbasneto@gmail.com`): utilizar prefixo `garbini/nome-da-feature`.
   - Usuário **Gabriel Arroyo** (`gabrielarroyoc18@gmail.com`): utilizar prefixo `arroyo/nome-da-feature`.
+- **Sincronização com Git (`git pull`)**: SEMPRE execute `git pull` ao finalizar qualquer tarefa para manter a branch e o repositório sincronizados com a origem.
 
 ---
 
