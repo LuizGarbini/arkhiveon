@@ -155,7 +155,7 @@ function ProtectedLayout() {
 		}
 		if (
 			bootstrappedUserIdRef.current === authenticatedUserId &&
-			campaignLoadStatus !== "idle"
+			useRPGStore.getState().campaignLoadStatus !== "idle"
 		) {
 			return;
 		}
@@ -189,39 +189,6 @@ function ProtectedLayout() {
 		loading,
 		navigate,
 		authenticatedUserId,
-		campaignLoadStatus,
-	]);
-
-	useEffect(() => {
-		if (
-			loading ||
-			!authenticatedUserId ||
-			isCampaignLoadPending(campaignLoadStatus)
-		) {
-			return;
-		}
-
-		const onboarding = needsAppOnboarding({
-			campaignLoadStatus,
-			campaignCount: campaigns.length,
-		});
-		const onOnboardingRoute = location.pathname.startsWith("/onboarding");
-
-		if (onboarding && !onOnboardingRoute) {
-			void navigate({ to: "/onboarding", replace: true });
-			return;
-		}
-
-		if (!onboarding && onOnboardingRoute) {
-			void navigate({ to: "/dashboard", replace: true });
-		}
-	}, [
-		loading,
-		authenticatedUserId,
-		campaignLoadStatus,
-		campaigns.length,
-		location.pathname,
-		navigate,
 	]);
 
 	useEffect(() => {
@@ -271,6 +238,10 @@ function ProtectedLayout() {
 		!location.pathname.startsWith("/onboarding")
 	) {
 		return <Navigate to="/onboarding" replace />;
+	}
+
+	if (!onboarding && location.pathname.startsWith("/onboarding")) {
+		return <Navigate to="/dashboard" replace />;
 	}
 
 	if (onboarding || location.pathname.startsWith("/onboarding")) {

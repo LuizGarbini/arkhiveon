@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowUpRight,
 	BookOpen,
@@ -170,7 +170,7 @@ function Dashboard() {
 			campaignCount: campaigns.length,
 		})
 	) {
-		return <Navigate to="/onboarding" replace />;
+		return null;
 	}
 
 	return (
