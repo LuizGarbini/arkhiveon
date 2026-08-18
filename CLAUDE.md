@@ -23,3 +23,18 @@
 - Formatting & Linting: Run `npx @biomejs/biome check --write <files>`.
 - Type Safety: No `any` types. Verify build with `pnpm run build`.
 - Branch naming: `garbini/*` or `arroyo/*`.
+
+### 5. Mandatory Pull Request Description Format
+Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:
+
+```markdown
+## ✨ What was added
+
+- Clearly describe what was added or implemented in this PR.
+Be specific and concise with bullet points.
+
+## 📷 Implementation preview
+
+<!-- Add screenshots or a short video showing the implemented feature.
+Make sure the preview reflects the final behavior. -->
+```
