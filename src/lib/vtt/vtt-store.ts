@@ -20,7 +20,7 @@ export interface VTTRulerMeasurement {
 	startY: number;
 	currentX: number;
 	currentY: number;
-	distance: number; // in units (e.g. meters or feet)
+	distance: number;
 	unit: string;
 }
 
@@ -44,6 +44,8 @@ interface VTTState {
 	// Tokens & Fog for current scene
 	tokens: VTTToken[];
 	selectedTokenIds: string[];
+	activeTokenIdForMenu: string | null;
+	draggedTokenId: string | null;
 	fogState: VTTFogState | null;
 
 	// Overlays & Ephemeral Events
@@ -53,7 +55,8 @@ interface VTTState {
 	// UI Panels
 	showGridSettings: boolean;
 	showSceneManager: boolean;
-	showCharacterDrawer: boolean;
+	showRosterDrawer: boolean;
+	showCharacterSheetId: string | null;
 	isGM: boolean;
 
 	// Actions
@@ -70,9 +73,13 @@ interface VTTState {
 	setActiveLayer: (layer: VTTLayer) => void;
 
 	setTokens: (tokens: VTTToken[]) => void;
-	updateTokenLocal: (tokenId: string, updates: Partial<VTTToken>) => void;
+	addToken: (token: VTTToken) => void;
+	updateToken: (tokenId: string, updates: Partial<VTTToken>) => void;
+	removeToken: (tokenId: string) => void;
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
+	setActiveTokenIdForMenu: (id: string | null) => void;
+	setDraggedTokenId: (id: string | null) => void;
 
 	setFogState: (fogState: VTTFogState | null) => void;
 
@@ -82,7 +89,8 @@ interface VTTState {
 
 	setShowGridSettings: (show: boolean) => void;
 	setShowSceneManager: (show: boolean) => void;
-	setShowCharacterDrawer: (show: boolean) => void;
+	setShowRosterDrawer: (show: boolean) => void;
+	setShowCharacterSheetId: (characterId: string | null) => void;
 	setIsGM: (isGM: boolean) => void;
 }
 
@@ -102,6 +110,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	tokens: [],
 	selectedTokenIds: [],
+	activeTokenIdForMenu: null,
+	draggedTokenId: null,
 	fogState: null,
 
 	activeMeasurement: null,
@@ -109,11 +119,18 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	showGridSettings: false,
 	showSceneManager: false,
-	showCharacterDrawer: false,
+	showRosterDrawer: false,
+	showCharacterSheetId: null,
 	isGM: false,
 
 	setScenes: (scenes) => set({ scenes }),
-	setActiveSceneId: (sceneId) => set({ activeSceneId: sceneId, selectedTokenIds: [] }),
+	setActiveSceneId: (sceneId) =>
+		set({
+			activeSceneId: sceneId,
+			selectedTokenIds: [],
+			activeTokenIdForMenu: null,
+			tokens: [],
+		}),
 	addScene: (scene) =>
 		set((state) => ({
 			scenes: [...state.scenes, scene],
@@ -148,9 +165,22 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
 
 	setTokens: (tokens) => set({ tokens }),
-	updateTokenLocal: (tokenId, updates) =>
+	addToken: (token) =>
+		set((state) => ({
+			tokens: state.tokens.some((t) => t.id === token.id)
+				? state.tokens.map((t) => (t.id === token.id ? token : t))
+				: [...state.tokens, token],
+		})),
+	updateToken: (tokenId, updates) =>
 		set((state) => ({
 			tokens: state.tokens.map((t) => (t.id === tokenId ? { ...t, ...updates } : t)),
+		})),
+	removeToken: (tokenId) =>
+		set((state) => ({
+			tokens: state.tokens.filter((t) => t.id !== tokenId),
+			selectedTokenIds: state.selectedTokenIds.filter((id) => id !== tokenId),
+			activeTokenIdForMenu:
+				state.activeTokenIdForMenu === tokenId ? null : state.activeTokenIdForMenu,
 		})),
 	setSelectedTokenIds: (ids) => set({ selectedTokenIds: ids }),
 	toggleSelectTokenId: (id, multiSelect) =>
@@ -165,6 +195,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 			}
 			return { selectedTokenIds: [id] };
 		}),
+	setActiveTokenIdForMenu: (id) => set({ activeTokenIdForMenu: id }),
+	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setFogState: (fogState) => set({ fogState }),
 
@@ -180,6 +212,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setShowGridSettings: (show) => set({ showGridSettings: show }),
 	setShowSceneManager: (show) => set({ showSceneManager: show }),
-	setShowCharacterDrawer: (show) => set({ showCharacterDrawer: show }),
+	setShowRosterDrawer: (show) => set({ showRosterDrawer: show }),
+	setShowCharacterSheetId: (id) => set({ showCharacterSheetId: id }),
 	setIsGM: (isGM) => set({ isGM }),
 }));
