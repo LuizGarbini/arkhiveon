@@ -12,6 +12,7 @@ import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
+import { playPingAudio } from "@/lib/vtt/audio";
 import type {
 	VTTGridScaleUnit,
 	VTTGridType,
@@ -340,6 +341,11 @@ function VTTPage() {
 		};
 	}, [activeSceneId, addToken, updateToken, removeToken]);
 
+	const userColorRef = useRef(userColor);
+	useEffect(() => {
+		userColorRef.current = userColor;
+	}, [userColor]);
+
 	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers)
 	useEffect(() => {
 		const client = getSupabase() as any;
@@ -415,6 +421,7 @@ function VTTPage() {
 				const data = payload.payload;
 				if (data) {
 					addPing(data);
+					playPingAudio();
 				}
 			})
 			.subscribe(async (status: string) => {
@@ -423,7 +430,7 @@ function VTTPage() {
 						userId: user.id,
 						userName: currentUserName,
 						avatarUrl: user.user_metadata?.avatar_url || null,
-						color: userColor,
+						color: userColorRef.current,
 						isGM,
 						onlineAt: Date.now(),
 					});
@@ -438,7 +445,6 @@ function VTTPage() {
 		campaignId,
 		user,
 		isGM,
-		userColor,
 		setOnlineUsers,
 		setTokenTargetPosition,
 		setRemoteCursor,
@@ -446,6 +452,24 @@ function VTTPage() {
 		setRemoteMeasurement,
 		addPing,
 	]);
+
+	// Update user presence when color changes without tearing down the room channel
+	useEffect(() => {
+		if (!roomChannelRef.current || !user) return;
+		const currentUserName =
+			user.user_metadata?.full_name ||
+			user.email?.split("@")[0] ||
+			"Aventureiro";
+
+		void roomChannelRef.current.track({
+			userId: user.id,
+			userName: currentUserName,
+			avatarUrl: user.user_metadata?.avatar_url || null,
+			color: userColor,
+			isGM,
+			onlineAt: Date.now(),
+		});
+	}, [userColor, user, isGM]);
 
 	// Broadcast Helper Handlers
 	const handleBroadcastDrag = useCallback(

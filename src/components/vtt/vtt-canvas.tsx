@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle } from "pixi.js";
+import { playPingAudio } from "@/lib/vtt/audio";
 import {
 	calculateGridDistance,
 	getFlatHexCorners,
@@ -39,9 +40,13 @@ export function VTTCanvas({
 	const aurasLayerRef = useRef<Graphics | null>(null);
 	const tokensLayerRef = useRef<Container | null>(null);
 	const remoteRulersLayerRef = useRef<Graphics | null>(null);
+	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
 	const pingsLayerRef = useRef<Graphics | null>(null);
 	const remoteCursorsLayerRef = useRef<Container | null>(null);
+
+	// Display containers map for direct 60fps WebGL interpolation without React state thrashing
+	const tokenDisplayObjectsRef = useRef<Map<string, Container>>(new Map());
 
 	// Interaction refs
 	const isDraggingViewportRef = useRef(false);
@@ -82,6 +87,7 @@ export function VTTCanvas({
 
 		let isMounted = true;
 		const app = new Application();
+		let tickerCallback: (() => void) | null = null;
 
 		async function initPixi() {
 			if (!containerRef.current) return;
@@ -127,6 +133,10 @@ export function VTTCanvas({
 			remoteRulersLayerRef.current = remoteRulersLayer;
 			world.addChild(remoteRulersLayer);
 
+			const remoteRulersLabels = new Container();
+			remoteRulersLabelsRef.current = remoteRulersLabels;
+			world.addChild(remoteRulersLabels);
+
 			const measurementLayer = new Graphics();
 			measurementLayerRef.current = measurementLayer;
 			world.addChild(measurementLayer);
@@ -143,23 +153,30 @@ export function VTTCanvas({
 			world.position.set(viewport.x, viewport.y);
 			world.scale.set(viewport.scale);
 
-			// 60FPS Smooth Token Position Interpolation (Lerp ticker)
-			app.ticker.add(() => {
+			// 60FPS Direct PixiJS Display Object Interpolation (NO React re-renders)
+			tickerCallback = () => {
 				const currentTokens = useVTTStore.getState().tokens;
 
 				for (const t of currentTokens) {
 					if (t.targetX !== undefined && t.targetY !== undefined) {
-						const dx = t.targetX - t.x;
-						const dy = t.targetY - t.y;
+						const displayObj = tokenDisplayObjectsRef.current.get(t.id);
+						if (displayObj) {
+							const dx = t.targetX - displayObj.x;
+							const dy = t.targetY - displayObj.y;
 
-						if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
-							const newX = t.x + dx * 0.35;
-							const newY = t.y + dy * 0.35;
-							useVTTStore.getState().updateToken(t.id, { x: newX, y: newY });
+							if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
+								displayObj.x += dx * 0.35;
+								displayObj.y += dy * 0.35;
+							} else {
+								displayObj.x = t.targetX;
+								displayObj.y = t.targetY;
+							}
 						}
 					}
 				}
-			});
+			};
+
+			app.ticker.add(tickerCallback);
 		}
 
 		void initPixi();
@@ -167,6 +184,9 @@ export function VTTCanvas({
 		return () => {
 			isMounted = false;
 			if (appRef.current) {
+				if (tickerCallback) {
+					appRef.current.ticker.remove(tickerCallback);
+				}
 				appRef.current.destroy(true, { children: true });
 				appRef.current = null;
 			}
@@ -287,6 +307,7 @@ export function VTTCanvas({
 
 		tokensLayer.removeChildren();
 		aurasLayer.clear();
+		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
 
@@ -316,6 +337,9 @@ export function VTTCanvas({
 			tokenContainer.eventMode = "static";
 			tokenContainer.cursor = token.isLocked ? "default" : "grab";
 			tokenContainer.alpha = token.isHidden ? 0.5 : 1;
+
+			// Register in display objects map for zero-thrash GPU interpolation
+			tokenDisplayObjectsRef.current.set(token.id, tokenContainer);
 
 			// Base circular background
 			const bg = new Graphics();
@@ -547,23 +571,51 @@ export function VTTCanvas({
 		}
 	}, [remoteCursors]);
 
-	// 6. Render Remote Multiplayer Measurements
+	// 6. Render Remote Multiplayer Measurements (with distance labels)
 	useEffect(() => {
-		if (!remoteRulersLayerRef.current) return;
+		if (!remoteRulersLayerRef.current || !remoteRulersLabelsRef.current) return;
 		const layer = remoteRulersLayerRef.current;
+		const labelsLayer = remoteRulersLabelsRef.current;
+
 		layer.clear();
+		labelsLayer.removeChildren();
 
 		for (const m of Object.values(remoteMeasurements)) {
 			const colorHex = Number.parseInt(m.color.replace("#", "0x"), 16) || 0x38bdf8;
 
+			// Line & Endpoints
 			layer.moveTo(m.startX, m.startY);
 			layer.lineTo(m.currentX, m.currentY);
-			layer.stroke({ width: 2.5, color: colorHex, alpha: 0.8 });
+			layer.stroke({ width: 2.5, color: colorHex, alpha: 0.85 });
 
 			layer.circle(m.startX, m.startY, 5);
 			layer.fill({ color: colorHex });
 			layer.circle(m.currentX, m.currentY, 5);
 			layer.fill({ color: colorHex });
+
+			// Distance Badge Label
+			const label = new Text({
+				text: `${m.userName}: ${m.distance.toFixed(1)}${m.unit}`,
+				style: new TextStyle({
+					fontFamily: "system-ui, sans-serif",
+					fontSize: 11,
+					fontWeight: "bold",
+					fill: m.color || "#38bdf8",
+					dropShadow: {
+						alpha: 0.9,
+						angle: Math.PI / 4,
+						blur: 3,
+						color: "#000000",
+						distance: 1.5,
+					},
+				}),
+			});
+			label.anchor.set(0.5);
+			label.position.set(
+				(m.startX + m.currentX) / 2,
+				(m.startY + m.currentY) / 2 - 12,
+			);
+			labelsLayer.addChild(label);
 		}
 	}, [remoteMeasurements]);
 
@@ -670,6 +722,7 @@ export function VTTCanvas({
 					timestamp: Date.now(),
 				};
 				addPing(pingEvent);
+				playPingAudio();
 				if (onBroadcastPing) {
 					onBroadcastPing(pingEvent);
 				}
