@@ -34,7 +34,14 @@ Always adhere to these guidelines when suggesting code, creating components, or 
 - Package manager: EXCLUSIVELY use `pnpm`. Never run `npm` or `yarn`.
 - Branch prefixes: `garbini/*` for Luiz Garbini (`garbasneto@gmail.com`) and `arroyo/*` for Gabriel Arroyo (`gabrielarroyoc18@gmail.com`).
 
-## 7. Mandatory Pull Request Description Format
+## 7. Automated E2E Video / Screenshot Preview Testing
+Whenever completing any frontend feature or UI component, execute:
+```bash
+pnpm preview:record
+```
+This generates a test video (`.webm`) and screenshot in `docs/previews/` validating that the feature renders cleanly in the browser.
+
+## 8. Mandatory Pull Request Description Format
 Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ```markdown
