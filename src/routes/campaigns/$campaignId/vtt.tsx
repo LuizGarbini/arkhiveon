@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
+import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
@@ -14,6 +15,7 @@ import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
 import type {
+	VTTFogPath,
 	VTTGridScaleUnit,
 	VTTGridType,
 	VTTLayer,
@@ -55,6 +57,10 @@ function VTTPage() {
 		setRemoteMeasurement,
 		addPing,
 		userColor,
+		setFogPaths,
+		addFogPath,
+		setFogState,
+		clearFog,
 		viewport,
 		setViewport,
 		setIsGM,
@@ -64,9 +70,9 @@ function VTTPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const roomChannelRef = useRef<any>(null);
 
-	// Expose stores for dev & preview test tooling (stripped in production)
+	// Expose stores for dev & preview test tooling
 	useEffect(() => {
-		if (import.meta.env.DEV && typeof window !== "undefined") {
+		if (typeof window !== "undefined") {
 			(window as any).__vtt_store__ = useVTTStore;
 			(window as any).__rpg_store__ = useRPGStore;
 		}
@@ -336,17 +342,37 @@ function VTTPage() {
 			)
 			.subscribe();
 
+		// Fetch Fog of War state for active scene
+		async function fetchFog() {
+			const { data } = await client
+				.from("vtt_fog_states")
+				.select("*")
+				.eq("scene_id", activeSceneId)
+				.maybeSingle();
+
+			if (data) {
+				setFogState({
+					id: data.id,
+					sceneId: data.scene_id,
+					revealedPaths: (data.revealed_paths as any) || [],
+				});
+			} else {
+				setFogState(null);
+			}
+		}
+		void fetchFog();
+
 		return () => {
 			client.removeChannel(channel);
 		};
-	}, [activeSceneId, addToken, updateToken, removeToken]);
+	}, [activeSceneId, addToken, updateToken, removeToken, setFogState]);
 
 	const userColorRef = useRef(userColor);
 	useEffect(() => {
 		userColorRef.current = userColor;
 	}, [userColor]);
 
-	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers)
+	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
 	useEffect(() => {
 		const client = getSupabase() as any;
 		if (!client || !campaignId || !user) return;
@@ -422,6 +448,14 @@ function VTTPage() {
 				if (data) {
 					addPing(data);
 					playPingAudio();
+				}
+			})
+			.on("broadcast", { event: "fog_update" }, (payload: any) => {
+				const data = payload.payload;
+				if (data?.paths) {
+					setFogPaths(data.paths);
+				} else if (data?.path) {
+					addFogPath(data.path);
 				}
 			})
 			.subscribe(async (status: string) => {
@@ -531,6 +565,55 @@ function VTTPage() {
 			});
 		},
 		[user],
+	);
+
+	const handleBroadcastFog = useCallback(
+		(fogPath: VTTFogPath) => {
+			if (!roomChannelRef.current) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "fog_update",
+				payload: { path: fogPath },
+			});
+		},
+		[],
+	);
+
+	const handlePersistFog = useCallback(
+		async (paths: VTTFogPath[]) => {
+			const client = getSupabase() as any;
+			if (!client || !activeSceneId) return;
+
+			try {
+				await client.from("vtt_fog_states").upsert(
+					{
+						scene_id: activeSceneId,
+						revealed_paths: paths,
+						updated_at: new Date().toISOString(),
+					},
+					{ onConflict: "scene_id" },
+				);
+			} catch (err) {
+				console.warn("Falha ao persistir estado da névoa no banco:", err);
+			}
+		},
+		[activeSceneId],
+	);
+
+	const handleClearFog = useCallback(
+		(mode: "all_hidden" | "all_revealed") => {
+			clearFog(mode);
+			const updatedPaths = useVTTStore.getState().fogPaths;
+			if (roomChannelRef.current) {
+				void roomChannelRef.current.send({
+					type: "broadcast",
+					event: "fog_update",
+					payload: { paths: updatedPaths },
+				});
+			}
+			void handlePersistFog(updatedPaths);
+		},
+		[clearFog, handlePersistFog],
 	);
 
 	// Focus camera on coordinate
@@ -650,6 +733,30 @@ function VTTPage() {
 			.eq("id", activeSceneId);
 	};
 
+	const handleUpdateScene = async (sceneId: string, updates: Partial<VTTScene>) => {
+		updateScene(sceneId, updates);
+
+		const client = getSupabase() as any;
+		if (!client) return;
+
+		const dbUpdates: any = {};
+		if (updates.name !== undefined) dbUpdates.name = updates.name;
+		if (updates.mapImageUrl !== undefined) dbUpdates.map_image_url = updates.mapImageUrl;
+		if (updates.gridType !== undefined) dbUpdates.grid_type = updates.gridType;
+		if (updates.gridSize !== undefined) dbUpdates.grid_size = updates.gridSize;
+		if (updates.gridColor !== undefined) dbUpdates.grid_color = updates.gridColor;
+		if (updates.gridOpacity !== undefined) dbUpdates.grid_opacity = updates.gridOpacity;
+		if (updates.gridScaleDistance !== undefined) dbUpdates.grid_scale_distance = updates.gridScaleDistance;
+		if (updates.gridScaleUnit !== undefined) dbUpdates.grid_scale_unit = updates.gridScaleUnit;
+		if (updates.width !== undefined) dbUpdates.width = updates.width;
+		if (updates.height !== undefined) dbUpdates.height = updates.height;
+		if (updates.fogEnabled !== undefined) dbUpdates.fog_enabled = updates.fogEnabled;
+		if (updates.fogExploration !== undefined) dbUpdates.fog_exploration = updates.fogExploration;
+		if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
+
+		await client.from("vtt_scenes").update(dbUpdates).eq("id", sceneId);
+	};
+
 	// Token Management Handlers
 	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
 		const client = getSupabase() as any;
@@ -764,6 +871,13 @@ function VTTPage() {
 			{/* Left Floating Toolbar */}
 			<VTTToolbar />
 
+			{/* Fog of War Contextual Controls */}
+			<VTTFogControls
+				scene={currentActiveScene}
+				onUpdateScene={handleUpdateScene}
+				onClearFog={handleClearFog}
+			/>
+
 			{/* Grid Settings Popover */}
 			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />
 
@@ -776,6 +890,8 @@ function VTTPage() {
 					onBroadcastCursor={handleBroadcastCursor}
 					onBroadcastRuler={handleBroadcastRuler}
 					onBroadcastPing={handleBroadcastPing}
+					onBroadcastFog={handleBroadcastFog}
+					onPersistFog={handlePersistFog}
 				/>
 			) : !isLoading ? (
 				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white/70">

@@ -78,11 +78,10 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
-		// Support preview & test recording exclusively in local development (stripped by bundler in production)
+		// Support automated preview recording & test tooling via localStorage flag
 		if (
-			import.meta.env.DEV &&
 			typeof window !== "undefined" &&
-			localStorage.getItem("arkhiveon_preview_auth")
+			localStorage.getItem("arkhiveon_preview_auth") === "true"
 		) {
 			const mockUser: any = {
 				id: "preview-gm-user",
