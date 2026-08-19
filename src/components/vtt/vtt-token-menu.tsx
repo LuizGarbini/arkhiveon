@@ -6,6 +6,7 @@ import {
 	Minus,
 	Plus,
 	RotateCw,
+	ShieldAlert,
 	Trash2,
 	Unlock,
 	X,
@@ -283,19 +284,43 @@ export function VTTTokenMenu({
 					</button>
 
 					{isGM && (
-						<button
-							type="button"
-							onClick={() => onUpdateToken(token.id, { isHidden: !token.isHidden })}
-							title={token.isHidden ? "Revelar aos Jogadores" : "Ocultar dos Jogadores"}
-							className={cn(
-								"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-								token.isHidden
-									? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-									: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
-							)}
-						>
-							{token.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-						</button>
+						<>
+							<button
+								type="button"
+								onClick={() => onUpdateToken(token.id, { isHidden: !token.isHidden })}
+								title={token.isHidden ? "Revelar aos Jogadores" : "Ocultar dos Jogadores"}
+								className={cn(
+									"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+									token.isHidden
+										? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+										: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+								)}
+							>
+								{token.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+							</button>
+
+							<button
+								type="button"
+								onClick={() =>
+									onUpdateToken(token.id, {
+										layer: token.layer === "gm" ? "token" : "gm",
+									})
+								}
+								title={
+									token.layer === "gm"
+										? "Mover para Camada de Jogadores (Tokens)"
+										: "Mover para Camada do Mestre (GM Layer)"
+								}
+								className={cn(
+									"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+									token.layer === "gm"
+										? "border-purple-500/50 bg-purple-500/30 text-purple-300 shadow-md shadow-purple-500/20"
+										: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+								)}
+							>
+								<ShieldAlert className="h-3.5 w-3.5" />
+							</button>
+						</>
 					)}
 
 					<button

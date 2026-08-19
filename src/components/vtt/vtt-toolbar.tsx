@@ -24,6 +24,7 @@ export function VTTToolbar() {
 		isGM,
 		showGridSettings,
 		setShowGridSettings,
+		setShowFogControls,
 	} = useVTTStore();
 
 	// Global Keyboard Shortcuts
@@ -87,7 +88,12 @@ export function VTTToolbar() {
 							<button
 								type="button"
 								key={tool.id}
-								onClick={() => setActiveTool(tool.id)}
+								onClick={() => {
+									setActiveTool(tool.id);
+									if (tool.id === "fog") {
+										setShowFogControls(true);
+									}
+								}}
 								title={`${tool.label} (${tool.shortcut})`}
 								className={cn(
 									"group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 cursor-pointer",
