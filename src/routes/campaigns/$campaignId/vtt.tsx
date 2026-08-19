@@ -63,9 +63,9 @@ function VTTPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const roomChannelRef = useRef<any>(null);
 
-	// Expose stores for dev & preview test tooling
+	// Expose stores for dev & preview test tooling (stripped in production)
 	useEffect(() => {
-		if (typeof window !== "undefined") {
+		if (import.meta.env.DEV && typeof window !== "undefined") {
 			(window as any).__vtt_store__ = useVTTStore;
 			(window as any).__rpg_store__ = useRPGStore;
 		}

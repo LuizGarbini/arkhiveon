@@ -78,8 +78,12 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
-		// Support preview & test recording without remote credentials
-		if (typeof window !== "undefined" && localStorage.getItem("arkhiveon_preview_auth")) {
+		// Support preview & test recording exclusively in local development (stripped by bundler in production)
+		if (
+			import.meta.env.DEV &&
+			typeof window !== "undefined" &&
+			localStorage.getItem("arkhiveon_preview_auth")
+		) {
 			const mockUser: any = {
 				id: "preview-gm-user",
 				email: "gm@arkhiveon.app",
