@@ -63,6 +63,14 @@ function VTTPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const roomChannelRef = useRef<any>(null);
 
+	// Expose stores for dev & preview test tooling
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			(window as any).__vtt_store__ = useVTTStore;
+			(window as any).__rpg_store__ = useRPGStore;
+		}
+	}, []);
+
 	// 1. Determine GM vs Player permissions
 	useEffect(() => {
 		if (!activeCampaign || !user) return;
