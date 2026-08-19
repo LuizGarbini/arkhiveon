@@ -12,6 +12,7 @@ import {
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
 import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ interface VTTSceneBarProps {
 	campaignName: string;
 	onCreateScene: (sceneData: Partial<VTTScene>) => Promise<void>;
 	onActivateScene: (sceneId: string) => Promise<void>;
+	onFocusPoint?: (x: number, y: number) => void;
 }
 
 export function VTTSceneBar({
@@ -28,6 +30,7 @@ export function VTTSceneBar({
 	campaignName,
 	onCreateScene,
 	onActivateScene,
+	onFocusPoint,
 }: VTTSceneBarProps) {
 	const {
 		scenes,
@@ -131,6 +134,8 @@ export function VTTSceneBar({
 
 				{/* Right: GM Scene Actions & Roster Toggle */}
 				<div className="flex items-center gap-2 shrink-0">
+					<VTTPresenceBar onFocusPoint={onFocusPoint} />
+
 					{activeScene && (
 						<Button
 							type="button"
