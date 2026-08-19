@@ -1,5 +1,6 @@
-import { ChevronDown, Filter, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, Filter, RotateCcw, Search, X } from "lucide-react";
 import { useState } from "react";
+import { Select } from "@/components/ui/select";
 import { PAGE_SEARCH_SHORTCUT_ARIA } from "@/lib/keyboard-shortcuts";
 import { useShortcutViewport } from "@/lib/use-shortcut-viewport";
 import { cn } from "@/lib/utils";
@@ -97,28 +98,62 @@ export function ListLayout({
 				<div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-4 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
 					{filterGroups && filterGroups.length > 0 && (
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-							{filterGroups.map((group) => (
-								<div key={group.id} className="space-y-1.5">
-									<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-										{group.label}
-									</label>
-									<select
-										value={activeFilters[group.id] || "all"}
-										onChange={(e) =>
-											onFilterChange?.(group.id, e.target.value)
-										}
-										className="w-full rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary"
-									>
-										<option value="all">Todos ({group.label})</option>
-										{group.options.map((opt) => (
-											<option key={opt.value} value={opt.value}>
-												{opt.icon ? `${opt.icon} ` : ""}
-												{opt.label}
-											</option>
-										))}
-									</select>
-								</div>
-							))}
+							{filterGroups.map((group) => {
+								const isGroupActive =
+									Boolean(activeFilters[group.id]) &&
+									activeFilters[group.id] !== "all" &&
+									activeFilters[group.id] !== "";
+
+								const selectId = `filter-select-${group.id}`;
+
+								return (
+									<div key={group.id} className="space-y-1.5">
+										<div className="flex items-center justify-between">
+											<label
+												htmlFor={selectId}
+												className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 cursor-pointer"
+											>
+												{group.label}
+												{isGroupActive && (
+													<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+												)}
+											</label>
+											{isGroupActive && (
+												<button
+													type="button"
+													onClick={() => onFilterChange?.(group.id, "all")}
+													className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 cursor-pointer transition-colors"
+													title="Redefinir este filtro"
+												>
+													<X className="h-2.5 w-2.5" />
+													<span>Limpar</span>
+												</button>
+											)}
+										</div>
+										<Select
+											id={selectId}
+											value={activeFilters[group.id] || "all"}
+											onChange={(e) =>
+												onFilterChange?.(group.id, e.target.value)
+											}
+											className={cn(
+												"h-10 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+												isGroupActive
+													? "border-primary/50 bg-primary/10 text-primary font-bold ring-1 ring-primary/25"
+													: "border-border/70 bg-background/80 text-foreground hover:border-border/90",
+											)}
+										>
+											<option value="all">Todos ({group.label})</option>
+											{group.options.map((opt) => (
+												<option key={opt.value} value={opt.value}>
+													{opt.icon ? `${opt.icon} ` : ""}
+													{opt.label}
+												</option>
+											))}
+										</Select>
+									</div>
+								);
+							})}
 						</div>
 					)}
 
