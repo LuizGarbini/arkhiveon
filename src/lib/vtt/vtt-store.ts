@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import type {
+	VTTFogMode,
+	VTTFogPath,
+	VTTFogShapeType,
 	VTTFogState,
 	VTTLayer,
 	VTTPingEvent,
@@ -62,6 +65,11 @@ interface VTTState {
 	activeTokenIdForMenu: string | null;
 	draggedTokenId: string | null;
 	fogState: VTTFogState | null;
+	fogPaths: VTTFogPath[];
+	activeFogTool: VTTFogShapeType;
+	activeFogMode: VTTFogMode;
+	fogBrushRadius: number;
+	showFogControls: boolean;
 
 	// Realtime Presence & Remote Multiplayers
 	onlineUsers: VTTPresenceUser[];
@@ -103,14 +111,22 @@ interface VTTState {
 	setActiveTokenIdForMenu: (id: string | null) => void;
 	setDraggedTokenId: (id: string | null) => void;
 
+	// Fog Actions
+	setFogState: (fogState: VTTFogState | null) => void;
+	setFogPaths: (paths: VTTFogPath[]) => void;
+	addFogPath: (path: VTTFogPath) => void;
+	clearFog: (mode: "all_hidden" | "all_revealed") => void;
+	setActiveFogTool: (tool: VTTFogShapeType) => void;
+	setActiveFogMode: (mode: VTTFogMode) => void;
+	setFogBrushRadius: (radius: number) => void;
+	setShowFogControls: (show: boolean) => void;
+
 	// Presence & Broadcast actions
 	setOnlineUsers: (users: VTTPresenceUser[]) => void;
 	setRemoteCursor: (cursor: VTTRemoteCursor) => void;
 	removeRemoteCursor: (userId: string) => void;
 	setRemoteMeasurement: (userId: string, measurement: VTTRemoteMeasurement | null) => void;
 	setUserColor: (color: string) => void;
-
-	setFogState: (fogState: VTTFogState | null) => void;
 
 	setActiveMeasurement: (measurement: VTTRulerMeasurement | null) => void;
 	addPing: (ping: VTTPingEvent) => void;
@@ -142,6 +158,11 @@ export const useVTTStore = create<VTTState>((set) => ({
 	activeTokenIdForMenu: null,
 	draggedTokenId: null,
 	fogState: null,
+	fogPaths: [],
+	activeFogTool: "brush",
+	activeFogMode: "reveal",
+	fogBrushRadius: 40,
+	showFogControls: false,
 
 	onlineUsers: [],
 	remoteCursors: {},
@@ -164,6 +185,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 			selectedTokenIds: [],
 			activeTokenIdForMenu: null,
 			tokens: [],
+			fogPaths: [],
+			fogState: null,
 			remoteCursors: {},
 			remoteMeasurements: {},
 		}),
@@ -272,7 +295,58 @@ export const useVTTStore = create<VTTState>((set) => ({
 		}),
 	setUserColor: (color) => set({ userColor: color }),
 
-	setFogState: (fogState) => set({ fogState }),
+	setFogState: (fogState) =>
+		set({
+			fogState,
+			fogPaths: fogState?.revealedPaths || [],
+		}),
+	setFogPaths: (paths) =>
+		set((state) => ({
+			fogPaths: paths,
+			fogState: state.fogState
+				? { ...state.fogState, revealedPaths: paths }
+				: null,
+		})),
+	addFogPath: (path) =>
+		set((state) => {
+			const updated = [...state.fogPaths, path];
+			return {
+				fogPaths: updated,
+				fogState: state.fogState
+					? { ...state.fogState, revealedPaths: updated }
+					: null,
+			};
+		}),
+	clearFog: (mode) =>
+		set((state) => {
+			if (mode === "all_hidden") {
+				return {
+					fogPaths: [],
+					fogState: state.fogState ? { ...state.fogState, revealedPaths: [] } : null,
+				};
+			}
+			// all_revealed: Single full rect reveal
+			const activeScene = state.scenes.find((s) => s.id === state.activeSceneId);
+			const fullRevealPath: any = {
+				id: `reveal-all-${Date.now()}`,
+				type: "rect",
+				mode: "reveal",
+				x: 0,
+				y: 0,
+				width: activeScene?.width || 4000,
+				height: activeScene?.height || 4000,
+			};
+			return {
+				fogPaths: [fullRevealPath],
+				fogState: state.fogState
+					? { ...state.fogState, revealedPaths: [fullRevealPath] }
+					: null,
+			};
+		}),
+	setActiveFogTool: (tool) => set({ activeFogTool: tool }),
+	setActiveFogMode: (mode) => set({ activeFogMode: mode }),
+	setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
+	setShowFogControls: (show) => set({ showFogControls: show }),
 
 	setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
 	addPing: (ping) =>
