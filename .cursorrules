@@ -33,3 +33,18 @@ Always adhere to these guidelines when suggesting code, creating components, or 
 ## 6. Package Manager & Git Rules
 - Package manager: EXCLUSIVELY use `pnpm`. Never run `npm` or `yarn`.
 - Branch prefixes: `garbini/*` for Luiz Garbini (`garbasneto@gmail.com`) and `arroyo/*` for Gabriel Arroyo (`gabrielarroyoc18@gmail.com`).
+
+## 7. Mandatory Pull Request Description Format
+Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:
+
+```markdown
+## ✨ What was added
+
+- Clearly describe what was added or implemented in this PR.
+Be specific and concise with bullet points.
+
+## 📷 Implementation preview
+
+<!-- Add screenshots or a short video showing the implemented feature.
+Make sure the preview reflects the final behavior. -->
+```
