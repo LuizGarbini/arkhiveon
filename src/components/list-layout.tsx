@@ -1,6 +1,12 @@
-import { ChevronDown, Filter, RotateCcw, Search, X } from "lucide-react";
+import { Check, ChevronDown, Filter, RotateCcw, Search, X } from "lucide-react";
 import { useState } from "react";
-import { Select } from "@/components/ui/select";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PAGE_SEARCH_SHORTCUT_ARIA } from "@/lib/keyboard-shortcuts";
 import { useShortcutViewport } from "@/lib/use-shortcut-viewport";
 import { cn } from "@/lib/utils";
@@ -98,62 +104,14 @@ export function ListLayout({
 				<div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-4 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
 					{filterGroups && filterGroups.length > 0 && (
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-							{filterGroups.map((group) => {
-								const isGroupActive =
-									Boolean(activeFilters[group.id]) &&
-									activeFilters[group.id] !== "all" &&
-									activeFilters[group.id] !== "";
-
-								const selectId = `filter-select-${group.id}`;
-
-								return (
-									<div key={group.id} className="space-y-1.5">
-										<div className="flex items-center justify-between">
-											<label
-												htmlFor={selectId}
-												className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 cursor-pointer"
-											>
-												{group.label}
-												{isGroupActive && (
-													<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-												)}
-											</label>
-											{isGroupActive && (
-												<button
-													type="button"
-													onClick={() => onFilterChange?.(group.id, "all")}
-													className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 cursor-pointer transition-colors"
-													title="Redefinir este filtro"
-												>
-													<X className="h-2.5 w-2.5" />
-													<span>Limpar</span>
-												</button>
-											)}
-										</div>
-										<Select
-											id={selectId}
-											value={activeFilters[group.id] || "all"}
-											onChange={(e) =>
-												onFilterChange?.(group.id, e.target.value)
-											}
-											className={cn(
-												"h-10 rounded-xl text-xs font-semibold transition-all cursor-pointer",
-												isGroupActive
-													? "border-primary/50 bg-primary/10 text-primary font-bold ring-1 ring-primary/25"
-													: "border-border/70 bg-background/80 text-foreground hover:border-border/90",
-											)}
-										>
-											<option value="all">Todos ({group.label})</option>
-											{group.options.map((opt) => (
-												<option key={opt.value} value={opt.value}>
-													{opt.icon ? `${opt.icon} ` : ""}
-													{opt.label}
-												</option>
-											))}
-										</Select>
-									</div>
-								);
-							})}
+							{filterGroups.map((group) => (
+								<FilterGroupDropdown
+									key={group.id}
+									group={group}
+									activeValue={activeFilters[group.id] || "all"}
+									onChange={(val) => onFilterChange?.(group.id, val)}
+								/>
+							))}
 						</div>
 					)}
 
@@ -181,6 +139,130 @@ export function ListLayout({
 					</div>
 				</div>
 			)}
+		</div>
+	);
+}
+
+interface FilterGroupDropdownProps {
+	group: FilterGroup;
+	activeValue: string;
+	onChange: (value: string) => void;
+}
+
+function FilterGroupDropdown({
+	group,
+	activeValue,
+	onChange,
+}: FilterGroupDropdownProps) {
+	const [open, setOpen] = useState(false);
+	const isGroupActive =
+		Boolean(activeValue) && activeValue !== "all" && activeValue !== "";
+
+	const selectedOption = group.options.find((opt) => opt.value === activeValue);
+
+	return (
+		<div className="space-y-1.5">
+			<div className="flex items-center justify-between">
+				<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+					{group.label}
+					{isGroupActive && (
+						<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+					)}
+				</span>
+				{isGroupActive && (
+					<button
+						type="button"
+						onClick={() => onChange("all")}
+						className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 cursor-pointer transition-colors"
+						title="Redefinir este filtro"
+					>
+						<X className="h-2.5 w-2.5" />
+						<span>Limpar</span>
+					</button>
+				)}
+			</div>
+
+			<DropdownMenu open={open} onOpenChange={setOpen}>
+				<DropdownMenuTrigger
+					className={cn(
+						"flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all cursor-pointer select-none text-left outline-none",
+						isGroupActive
+							? "border-primary/50 bg-primary/15 text-primary font-bold ring-1 ring-primary/25 shadow-xs"
+							: "border-border/70 bg-background/80 text-foreground hover:border-border-hover/80 hover:bg-card-elevated/40 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20",
+					)}
+					aria-label={`Filtrar por ${group.label}`}
+				>
+					<span className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+						{selectedOption?.icon && (
+							<span className="text-sm shrink-0">{selectedOption.icon}</span>
+						)}
+						<span className="truncate">
+							{selectedOption ? selectedOption.label : `Todos (${group.label})`}
+						</span>
+					</span>
+					<ChevronDown
+						className={cn(
+							"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+							open && "rotate-180 text-primary",
+						)}
+					/>
+				</DropdownMenuTrigger>
+
+				<DropdownMenuContent
+					align="start"
+					sideOffset={6}
+					className="w-(--anchor-width) min-w-[220px] max-h-[300px] overflow-y-auto rounded-2xl border border-border/70 bg-card-elevated/95 p-1.5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+				>
+					<DropdownMenuGroup className="space-y-0.5">
+						<DropdownMenuItem
+							onClick={() => {
+								onChange("all");
+								setOpen(false);
+							}}
+							className={cn(
+								"flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer transition-colors",
+								!isGroupActive
+									? "bg-primary/15 font-bold text-primary"
+									: "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+							)}
+						>
+							<span className="truncate">Todos ({group.label})</span>
+							{!isGroupActive && (
+								<Check className="h-3.5 w-3.5 text-primary shrink-0" />
+							)}
+						</DropdownMenuItem>
+
+						{group.options.map((opt) => {
+							const isSelected = activeValue === opt.value;
+							return (
+								<DropdownMenuItem
+									key={opt.value}
+									onClick={() => {
+										onChange(opt.value);
+										setOpen(false);
+									}}
+									className={cn(
+										"flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer transition-colors",
+										isSelected
+											? "bg-primary/15 font-bold text-primary"
+											: "text-foreground hover:bg-muted/40",
+									)}
+								>
+									<span className="flex items-center gap-2 truncate">
+										{opt.icon && (
+											<span className="text-sm shrink-0">{opt.icon}</span>
+										)}
+										<span className="truncate">{opt.label}</span>
+									</span>
+									{isSelected && (
+										<Check className="h-3.5 w-3.5 text-primary shrink-0" />
+									)}
+								</DropdownMenuItem>
+							);
+						})}
+					</DropdownMenuGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
 		</div>
 	);
 }
