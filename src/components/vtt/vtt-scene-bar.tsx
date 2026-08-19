@@ -1,4 +1,4 @@
-import { ArrowLeft, Compass, Eye, Plus, Sparkles } from "lucide-react";
+import { ArrowLeft, Compass, Eye, Plus, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,14 @@ export function VTTSceneBar({
 	onCreateScene,
 	onActivateScene,
 }: VTTSceneBarProps) {
-	const { scenes, activeSceneId, setActiveSceneId, isGM } = useVTTStore();
+	const {
+		scenes,
+		activeSceneId,
+		setActiveSceneId,
+		isGM,
+		showRosterDrawer,
+		setShowRosterDrawer,
+	} = useVTTStore();
 
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [newSceneName, setNewSceneName] = useState("");
@@ -122,8 +129,26 @@ export function VTTSceneBar({
 					})}
 				</div>
 
-				{/* Right: GM Scene Actions */}
+				{/* Right: GM Scene Actions & Roster Toggle */}
 				<div className="flex items-center gap-2 shrink-0">
+					{activeScene && (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => setShowRosterDrawer(!showRosterDrawer)}
+							className={cn(
+								"text-xs h-8 gap-1.5 rounded-xl border-white/15 transition-all",
+								showRosterDrawer
+									? "bg-primary text-primary-foreground border-primary"
+									: "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white",
+							)}
+						>
+							<Users className="h-3.5 w-3.5" />
+							<span className="hidden md:inline">Personagens & NPCs</span>
+						</Button>
+					)}
+
 					{isGM && (
 						<>
 							{activeScene && !activeScene.isActive && (
