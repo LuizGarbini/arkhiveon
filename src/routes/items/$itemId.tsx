@@ -77,10 +77,10 @@ function ItemDetailPage() {
 				<Package className="h-16 w-16 text-muted-foreground/30" />
 				<div>
 					<h2 className="font-display text-lg font-bold text-foreground">
-						Item nao encontrado
+						Item não encontrado
 					</h2>
 					<p className="mt-1 text-[13px] text-muted-foreground">
-						Esse registro pode ter sido removido ou ainda nao sincronizou.
+						Esse registro pode ter sido removido ou ainda não sincronizou.
 					</p>
 				</div>
 				<Link to="/items">
@@ -224,7 +224,7 @@ function ItemDetailPage() {
 				<main className="grid content-start gap-5">
 					<DetailSection
 						eyebrow="Resumo"
-						title="Identificacao"
+						title="Identificação"
 						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
@@ -240,7 +240,7 @@ function ItemDetailPage() {
 					</DetailSection>
 
 					<DetailSection
-						eyebrow="Mecanica"
+						eyebrow="Mecânica"
 						title="Efeitos"
 						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
 					>
@@ -255,7 +255,7 @@ function ItemDetailPage() {
 					</DetailSection>
 
 					<DetailSection
-						eyebrow="Descricao"
+						eyebrow="Descrição"
 						title="Lore"
 						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
 					>
@@ -283,10 +283,10 @@ function ItemDetailPage() {
 						</div>
 					</DetailSection>
 
-					<DetailSection eyebrow="Conexoes" title="Vinculos">
+					<DetailSection eyebrow="Conexões" title="Vínculos">
 						<EntityLinkChips
 							links={currentItem.entityLinks}
-							emptyText="Nenhuma conexao registrada."
+							emptyText="Nenhuma conexão registrada."
 						/>
 					</DetailSection>
 				</aside>
