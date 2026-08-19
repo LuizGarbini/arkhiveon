@@ -1,20 +1,37 @@
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle } from "pixi.js";
+import { playPingAudio } from "@/lib/vtt/audio";
 import {
 	calculateGridDistance,
 	getFlatHexCorners,
 	getPointyHexCorners,
 	snapToGrid,
 } from "@/lib/vtt/grid-math";
-import type { VTTScene, VTTToken } from "@/lib/vtt/types";
+import type {
+	VTTPingEvent,
+	VTTRulerMeasurement,
+	VTTScene,
+	VTTToken,
+} from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
 	onUpdateToken?: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
+	onBroadcastDrag?: (tokenId: string, x: number, y: number) => void;
+	onBroadcastCursor?: (x: number, y: number) => void;
+	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
+	onBroadcastPing?: (ping: VTTPingEvent) => void;
 }
 
-export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
+export function VTTCanvas({
+	scene,
+	onUpdateToken,
+	onBroadcastDrag,
+	onBroadcastCursor,
+	onBroadcastRuler,
+	onBroadcastPing,
+}: VTTCanvasProps) {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const appRef = useRef<Application | null>(null);
 	const worldContainerRef = useRef<Container | null>(null);
@@ -22,19 +39,27 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 	const gridLayerRef = useRef<Graphics | null>(null);
 	const aurasLayerRef = useRef<Graphics | null>(null);
 	const tokensLayerRef = useRef<Container | null>(null);
+	const remoteRulersLayerRef = useRef<Graphics | null>(null);
+	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
 	const pingsLayerRef = useRef<Graphics | null>(null);
+	const remoteCursorsLayerRef = useRef<Container | null>(null);
+
+	// Display containers map for direct 60fps WebGL interpolation without React state thrashing
+	const tokenDisplayObjectsRef = useRef<Map<string, Container>>(new Map());
 
 	// Interaction refs
 	const isDraggingViewportRef = useRef(false);
 	const viewportDragStartRef = useRef({ x: 0, y: 0 });
 	const isSpaceHeldRef = useRef(false);
+	const isAltHeldRef = useRef(false);
 	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
 
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
-	const tokenInitialPosRef = useRef({ x: 0, y: 0 });
+	const lastBroadcastTimeRef = useRef(0);
+	const lastCursorBroadcastRef = useRef(0);
 
 	const {
 		viewport,
@@ -50,6 +75,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		addPing,
 		removePing,
 		setDraggedTokenId,
+		remoteCursors,
+		remoteMeasurements,
+		userColor,
 		isGM,
 	} = useVTTStore();
 
@@ -59,6 +87,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 
 		let isMounted = true;
 		const app = new Application();
+		let tickerCallback: (() => void) | null = null;
 
 		async function initPixi() {
 			if (!containerRef.current) return;
@@ -100,6 +129,14 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			tokensLayerRef.current = tokensLayer;
 			world.addChild(tokensLayer);
 
+			const remoteRulersLayer = new Graphics();
+			remoteRulersLayerRef.current = remoteRulersLayer;
+			world.addChild(remoteRulersLayer);
+
+			const remoteRulersLabels = new Container();
+			remoteRulersLabelsRef.current = remoteRulersLabels;
+			world.addChild(remoteRulersLabels);
+
 			const measurementLayer = new Graphics();
 			measurementLayerRef.current = measurementLayer;
 			world.addChild(measurementLayer);
@@ -108,9 +145,38 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			pingsLayerRef.current = pingsLayer;
 			world.addChild(pingsLayer);
 
+			const remoteCursorsLayer = new Container();
+			remoteCursorsLayerRef.current = remoteCursorsLayer;
+			world.addChild(remoteCursorsLayer);
+
 			// Initial viewport position
 			world.position.set(viewport.x, viewport.y);
 			world.scale.set(viewport.scale);
+
+			// 60FPS Direct PixiJS Display Object Interpolation (NO React re-renders)
+			tickerCallback = () => {
+				const currentTokens = useVTTStore.getState().tokens;
+
+				for (const t of currentTokens) {
+					if (t.targetX !== undefined && t.targetY !== undefined) {
+						const displayObj = tokenDisplayObjectsRef.current.get(t.id);
+						if (displayObj) {
+							const dx = t.targetX - displayObj.x;
+							const dy = t.targetY - displayObj.y;
+
+							if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
+								displayObj.x += dx * 0.35;
+								displayObj.y += dy * 0.35;
+							} else {
+								displayObj.x = t.targetX;
+								displayObj.y = t.targetY;
+							}
+						}
+					}
+				}
+			};
+
+			app.ticker.add(tickerCallback);
 		}
 
 		void initPixi();
@@ -118,6 +184,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		return () => {
 			isMounted = false;
 			if (appRef.current) {
+				if (tickerCallback) {
+					appRef.current.ticker.remove(tickerCallback);
+				}
 				appRef.current.destroy(true, { children: true });
 				appRef.current = null;
 			}
@@ -238,6 +307,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 
 		tokensLayer.removeChildren();
 		aurasLayer.clear();
+		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
 
@@ -268,6 +338,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			tokenContainer.cursor = token.isLocked ? "default" : "grab";
 			tokenContainer.alpha = token.isHidden ? 0.5 : 1;
 
+			// Register in display objects map for zero-thrash GPU interpolation
+			tokenDisplayObjectsRef.current.set(token.id, tokenContainer);
+
 			// Base circular background
 			const bg = new Graphics();
 			bg.circle(0, 0, tokenRadius);
@@ -292,7 +365,6 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 						tokenContainer.addChildAt(sprite, 2);
 					})
 					.catch(() => {
-						// Fallback text
 						const initials = token.name.slice(0, 2).toUpperCase();
 						const text = new Text({
 							text: initials,
@@ -344,7 +416,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 				tokenContainer.addChild(outerGlow);
 			}
 
-			// HP Bar (Above token)
+			// HP Bar (Above token) with strict clamping
 			if (token.hpMax && token.hpMax > 0) {
 				const currentHp = Math.max(0, token.hpCurrent ?? 0);
 				const maxHp = Math.max(1, token.hpMax ?? currentHp ?? 1);
@@ -355,11 +427,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 				const barY = -tokenRadius - barHeight - 4;
 
 				const hpBar = new Graphics();
-				// Background bar
 				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, 3);
 				hpBar.fill({ color: 0x000000, alpha: 0.8 });
 
-				// Foreground health fill
 				const fillColor =
 					hpRatio > 0.5 ? 0x22c55e : hpRatio > 0.2 ? 0xf59e0b : 0xef4444;
 
@@ -406,21 +476,19 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			// Token Pointer Events (Drag & Selection)
 			tokenContainer.on("pointerdown", (e) => {
 				if (e.button === 2) {
-					// Right click -> open token menu
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
 					setActiveTokenIdForMenu(token.id);
 					return;
 				}
 
-				if (e.button === 0 && !isSpaceHeldRef.current && activeTool === "select") {
+				if (e.button === 0 && !isSpaceHeldRef.current && !isAltHeldRef.current && activeTool === "select") {
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
 
 					if (!token.isLocked) {
 						draggingTokenIdRef.current = token.id;
 						setDraggedTokenId(token.id);
-						tokenInitialPosRef.current = { x: token.x, y: token.y };
 
 						const rect = containerRef.current?.getBoundingClientRect();
 						if (rect) {
@@ -453,7 +521,105 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		setDraggedTokenId,
 	]);
 
-	// 5. Render Active Pings (Concentric pulsing ripples)
+	// 5. Render Remote Multiplayer Cursors
+	useEffect(() => {
+		if (!remoteCursorsLayerRef.current) return;
+		const layer = remoteCursorsLayerRef.current;
+		layer.removeChildren();
+
+		for (const cursor of Object.values(remoteCursors)) {
+			const cursorContainer = new Container();
+			cursorContainer.position.set(cursor.x, cursor.y);
+
+			const colorHex = Number.parseInt(cursor.color.replace("#", "0x"), 16) || 0x38bdf8;
+
+			// Pointer Arrow
+			const arrow = new Graphics();
+			arrow.moveTo(0, 0);
+			arrow.lineTo(0, 16);
+			arrow.lineTo(4, 12);
+			arrow.lineTo(10, 16);
+			arrow.lineTo(12, 14);
+			arrow.lineTo(6, 10);
+			arrow.lineTo(14, 8);
+			arrow.closePath();
+			arrow.fill({ color: colorHex });
+			arrow.stroke({ width: 1, color: 0xffffff, alpha: 0.9 });
+			cursorContainer.addChild(arrow);
+
+			// User Name Tag
+			const nameTag = new Text({
+				text: cursor.userName,
+				style: new TextStyle({
+					fontFamily: "system-ui, sans-serif",
+					fontSize: 10,
+					fontWeight: "bold",
+					fill: "#ffffff",
+					dropShadow: {
+						alpha: 0.9,
+						angle: Math.PI / 4,
+						blur: 2,
+						color: "#000000",
+						distance: 1,
+					},
+				}),
+			});
+			nameTag.position.set(14, 12);
+			cursorContainer.addChild(nameTag);
+
+			layer.addChild(cursorContainer);
+		}
+	}, [remoteCursors]);
+
+	// 6. Render Remote Multiplayer Measurements (with distance labels)
+	useEffect(() => {
+		if (!remoteRulersLayerRef.current || !remoteRulersLabelsRef.current) return;
+		const layer = remoteRulersLayerRef.current;
+		const labelsLayer = remoteRulersLabelsRef.current;
+
+		layer.clear();
+		labelsLayer.removeChildren();
+
+		for (const m of Object.values(remoteMeasurements)) {
+			const colorHex = Number.parseInt(m.color.replace("#", "0x"), 16) || 0x38bdf8;
+
+			// Line & Endpoints
+			layer.moveTo(m.startX, m.startY);
+			layer.lineTo(m.currentX, m.currentY);
+			layer.stroke({ width: 2.5, color: colorHex, alpha: 0.85 });
+
+			layer.circle(m.startX, m.startY, 5);
+			layer.fill({ color: colorHex });
+			layer.circle(m.currentX, m.currentY, 5);
+			layer.fill({ color: colorHex });
+
+			// Distance Badge Label
+			const label = new Text({
+				text: `${m.userName}: ${m.distance.toFixed(1)}${m.unit}`,
+				style: new TextStyle({
+					fontFamily: "system-ui, sans-serif",
+					fontSize: 11,
+					fontWeight: "bold",
+					fill: m.color || "#38bdf8",
+					dropShadow: {
+						alpha: 0.9,
+						angle: Math.PI / 4,
+						blur: 3,
+						color: "#000000",
+						distance: 1.5,
+					},
+				}),
+			});
+			label.anchor.set(0.5);
+			label.position.set(
+				(m.startX + m.currentX) / 2,
+				(m.startY + m.currentY) / 2 - 12,
+			);
+			labelsLayer.addChild(label);
+		}
+	}, [remoteMeasurements]);
+
+	// 7. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
 		if (!pingsLayerRef.current) return;
 		const layer = pingsLayerRef.current;
@@ -480,7 +646,7 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		}
 	}, [activePings, removePing]);
 
-	// 6. Setup Native DOM event listeners for Pan, Zoom, Token Drag, Ruler and Pings
+	// 8. Native DOM event listeners for Pan, Zoom, Token Drag, Broadcasts, Alt-Ping & Ruler
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -500,12 +666,18 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 				isSpaceHeldRef.current = true;
 				container.style.cursor = "grab";
 			}
+			if (e.code === "AltLeft" || e.code === "AltRight") {
+				isAltHeldRef.current = true;
+			}
 		};
 
 		const handleKeyUp = (e: KeyboardEvent) => {
 			if (e.code === "Space") {
 				isSpaceHeldRef.current = false;
 				container.style.cursor = activeTool === "pan" ? "grab" : "default";
+			}
+			if (e.code === "AltLeft" || e.code === "AltRight") {
+				isAltHeldRef.current = false;
 			}
 		};
 
@@ -539,23 +711,28 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 
-			// Deselect if clicking on empty canvas
-			if (isLeftClick && activeTool === "select") {
-				setSelectedTokenIds([]);
-				setActiveTokenIdForMenu(null);
-			}
-
-			// Ping Trigger
-			if (activeTool === "ping" && isLeftClick) {
-				addPing({
+			// Fast Alt + Click Instant Ping OR Ping tool
+			if ((isAltHeldRef.current || activeTool === "ping") && isLeftClick) {
+				const pingEvent: VTTPingEvent = {
 					x: worldPoint.x,
 					y: worldPoint.y,
 					userId: "self",
 					userName: isGM ? "Mestre" : "Jogador",
-					color: isGM ? "#a855f7" : "#3b82f6",
+					color: userColor,
 					timestamp: Date.now(),
-				});
+				};
+				addPing(pingEvent);
+				playPingAudio();
+				if (onBroadcastPing) {
+					onBroadcastPing(pingEvent);
+				}
 				return;
+			}
+
+			// Deselect if clicking on empty canvas
+			if (isLeftClick && activeTool === "select") {
+				setSelectedTokenIds([]);
+				setActiveTokenIdForMenu(null);
 			}
 
 			// Ruler Start
@@ -566,14 +743,28 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		};
 
 		const handlePointerMove = (e: PointerEvent) => {
-			// Handle Token Dragging with Smooth Movement
+			const worldPoint = screenToWorld(e.clientX, e.clientY);
+			const now = Date.now();
+
+			// Broadcast Live Cursor movement (throttled to ~30-60fps)
+			if (onBroadcastCursor && now - lastCursorBroadcastRef.current > 30) {
+				lastCursorBroadcastRef.current = now;
+				onBroadcastCursor(worldPoint.x, worldPoint.y);
+			}
+
+			// Handle Token Dragging with Realtime Broadcast
 			if (draggingTokenIdRef.current && scene) {
-				const worldPoint = screenToWorld(e.clientX, e.clientY);
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 				const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
 
-				// Local optimistic update during drag
+				// Local optimistic update
 				updateToken(draggingTokenIdRef.current, { x: rawX, y: rawY });
+
+				// Realtime drag broadcast
+				if (onBroadcastDrag && now - lastBroadcastTimeRef.current > 30) {
+					lastBroadcastTimeRef.current = now;
+					onBroadcastDrag(draggingTokenIdRef.current, rawX, rawY);
+				}
 				return;
 			}
 
@@ -587,7 +778,6 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 
 			// Handle Ruler Drawing
 			if (activeTool === "ruler" && rulerStartRef.current && scene && measurementLayerRef.current) {
-				const worldPoint = screenToWorld(e.clientX, e.clientY);
 				const currentSnapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
 				const start = rulerStartRef.current;
 
@@ -599,31 +789,37 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 					scene.gridScaleUnit,
 				);
 
-				setActiveMeasurement({
+				const measurement: VTTRulerMeasurement = {
 					startX: start.x,
 					startY: start.y,
 					currentX: currentSnapped.x,
 					currentY: currentSnapped.y,
 					distance,
 					unit: scene.gridScaleUnit,
-				});
+				};
+
+				setActiveMeasurement(measurement);
+				if (onBroadcastRuler) {
+					onBroadcastRuler(measurement);
+				}
 
 				const layer = measurementLayerRef.current;
 				layer.clear();
 
+				const colorHex = Number.parseInt(userColor.replace("#", "0x"), 16) || 0x38bdf8;
 				layer.moveTo(start.x, start.y);
 				layer.lineTo(currentSnapped.x, currentSnapped.y);
-				layer.stroke({ width: 3, color: 0x38bdf8, alpha: 0.85 });
+				layer.stroke({ width: 3, color: colorHex, alpha: 0.85 });
 
 				layer.circle(start.x, start.y, 6);
-				layer.fill({ color: 0x38bdf8 });
+				layer.fill({ color: colorHex });
 				layer.circle(currentSnapped.x, currentSnapped.y, 6);
-				layer.fill({ color: 0x38bdf8 });
+				layer.fill({ color: colorHex });
 			}
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
-			// Finish Token Dragging with Magnetic Grid Snapping
+			// Finish Token Dragging with Magnetic Grid Snapping & Persistence
 			if (draggingTokenIdRef.current && scene) {
 				const tokenId = draggingTokenIdRef.current;
 				const token = tokens.find((t) => t.id === tokenId);
@@ -635,7 +831,6 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 					const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 					const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
 
-					// Snap to grid
 					const snapped = snapToGrid(
 						{ x: rawX, y: rawY },
 						scene.gridType,
@@ -648,6 +843,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 					if (onUpdateToken) {
 						void onUpdateToken(tokenId, { x: snapped.x, y: snapped.y });
 					}
+					if (onBroadcastDrag) {
+						onBroadcastDrag(tokenId, snapped.x, snapped.y);
+					}
 				}
 			}
 
@@ -659,6 +857,9 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 			if (rulerStartRef.current) {
 				rulerStartRef.current = null;
 				setActiveMeasurement(null);
+				if (onBroadcastRuler) {
+					onBroadcastRuler(null);
+				}
 				if (measurementLayerRef.current) {
 					measurementLayerRef.current.clear();
 				}
@@ -688,11 +889,17 @@ export function VTTCanvas({ scene, onUpdateToken }: VTTCanvasProps) {
 		tokens,
 		updateToken,
 		onUpdateToken,
+		onBroadcastDrag,
+		onBroadcastCursor,
+		onBroadcastRuler,
+		onBroadcastPing,
 		addPing,
+		userColor,
 		isGM,
 		setActiveMeasurement,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
+		setDraggedTokenId,
 	]);
 
 	return (

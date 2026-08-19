@@ -39,6 +39,8 @@ export interface VTTToken {
 	layer: VTTLayer;
 	x: number;
 	y: number;
+	targetX?: number;
+	targetY?: number;
 	sizeCells: number;
 	rotation: number;
 	hpCurrent?: number | null;
@@ -79,4 +81,45 @@ export interface VTTPingEvent {
 	userName: string;
 	color: string;
 	timestamp: number;
+}
+
+export interface VTTRulerMeasurement {
+	startX: number;
+	startY: number;
+	currentX: number;
+	currentY: number;
+	distance: number;
+	unit: string;
+}
+
+export interface VTTPresenceUser {
+	userId: string;
+	userName: string;
+	avatarUrl?: string | null;
+	color: string;
+	isGM: boolean;
+	onlineAt: number;
+	lastActiveAt?: number;
+	cursor?: { x: number; y: number } | null;
+}
+
+export interface VTTRemoteCursor {
+	userId: string;
+	userName: string;
+	color: string;
+	x: number;
+	y: number;
+	timestamp: number;
+}
+
+export interface VTTRemoteMeasurement {
+	userId: string;
+	userName: string;
+	color: string;
+	startX: number;
+	startY: number;
+	currentX: number;
+	currentY: number;
+	distance: number;
+	unit: string;
 }

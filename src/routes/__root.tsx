@@ -248,6 +248,10 @@ function ProtectedLayout() {
 		return <Outlet />;
 	}
 
+	if (location.pathname.includes("/vtt")) {
+		return <Outlet />;
+	}
+
 	return (
 		<div className="relative flex h-screen overflow-hidden bg-background sm:gap-3 sm:p-3">
 			<a

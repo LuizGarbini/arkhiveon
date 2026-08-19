@@ -24,7 +24,16 @@
 - Type Safety: No `any` types. Verify build with `pnpm run build`.
 - Branch naming: `garbini/*` or `arroyo/*`.
 
-### 5. Mandatory Pull Request Description Format
+### 5. Automated E2E Video / Screenshot Preview Testing
+Whenever completing any frontend feature or UI component, execute:
+```bash
+pnpm preview:record
+```
+This generates `docs/previews/latest-preview.webm` and `latest-preview.png` via Playwright.
+- Note: `docs/previews/` is ignored by `.gitignore` to keep Git lightweight.
+- Drag & drop the recorded video directly into GitHub PR description box to embed.
+
+### 6. Mandatory Pull Request Description Format
 Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ```markdown

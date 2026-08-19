@@ -78,6 +78,31 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
+		// Support preview & test recording exclusively in local development (stripped by bundler in production)
+		if (
+			import.meta.env.DEV &&
+			typeof window !== "undefined" &&
+			localStorage.getItem("arkhiveon_preview_auth")
+		) {
+			const mockUser: any = {
+				id: "preview-gm-user",
+				email: "gm@arkhiveon.app",
+				user_metadata: { full_name: "Mestre (Você)" },
+				app_metadata: {},
+				aud: "authenticated",
+				created_at: new Date().toISOString(),
+			};
+			setSession({
+				access_token: "preview-token",
+				token_type: "bearer",
+				expires_in: 3600,
+				refresh_token: "preview-refresh",
+				user: mockUser,
+			} as any);
+			setLoading(false);
+			return;
+		}
+
 		if (!supabase) {
 			setLoading(false);
 			return;

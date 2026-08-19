@@ -7,4 +7,5 @@ When generating code or suggesting edits in this codebase, follow these rules st
 3. **Zustand Selector Safety**: Never instantiate new arrays or objects inside Zustand selectors. Return stable state fields only.
 4. **Mobile Responsiveness**: Enforce touch-friendly button targets (min 44px) and responsive grid layouts (`grid-cols-1 sm:grid-cols-2`).
 5. **Quality Checks**: Always use `pnpm` (never `npm`). Maintain clean TypeScript types (no `any`) and verify formatting with `npx @biomejs/biome check --write <files>`.
-6. **Mandatory Pull Request Description Format**: Whenever pushing changes or preparing a PR, always generate a ready-to-copy PR summary conforming to `.github/PULL_REQUEST_TEMPLATE.md` with `## ✨ What was added` and bullet points.
+6. **Automated E2E Preview Video Testing**: Whenever completing frontend or UI changes, execute `pnpm preview:record` to produce `docs/previews/latest-preview.webm` (ignored in `.gitignore`). Drag & drop it into the GitHub PR description box.
+7. **Mandatory Pull Request Description Format**: Whenever pushing changes or preparing a PR, always generate a ready-to-copy PR summary conforming to `.github/PULL_REQUEST_TEMPLATE.md` with `## ✨ What was added` and bullet points.

@@ -1,5 +1,5 @@
 import { Compass, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
@@ -12,10 +12,14 @@ import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
+import { playPingAudio } from "@/lib/vtt/audio";
 import type {
 	VTTGridScaleUnit,
 	VTTGridType,
 	VTTLayer,
+	VTTPingEvent,
+	VTTPresenceUser,
+	VTTRulerMeasurement,
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
@@ -42,13 +46,31 @@ function VTTPage() {
 		setTokens,
 		addToken,
 		updateToken,
+		setTokenTargetPosition,
 		removeToken,
 		activeTokenIdForMenu,
+		setOnlineUsers,
+		setRemoteCursor,
+		removeRemoteCursor,
+		setRemoteMeasurement,
+		addPing,
+		userColor,
+		viewport,
+		setViewport,
 		setIsGM,
 		isGM,
 	} = useVTTStore();
 
 	const [isLoading, setIsLoading] = useState(true);
+	const roomChannelRef = useRef<any>(null);
+
+	// Expose stores for dev & preview test tooling (stripped in production)
+	useEffect(() => {
+		if (import.meta.env.DEV && typeof window !== "undefined") {
+			(window as any).__vtt_store__ = useVTTStore;
+			(window as any).__rpg_store__ = useRPGStore;
+		}
+	}, []);
 
 	// 1. Determine GM vs Player permissions
 	useEffect(() => {
@@ -319,6 +341,211 @@ function VTTPage() {
 		};
 	}, [activeSceneId, addToken, updateToken, removeToken]);
 
+	const userColorRef = useRef(userColor);
+	useEffect(() => {
+		userColorRef.current = userColor;
+	}, [userColor]);
+
+	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers)
+	useEffect(() => {
+		const client = getSupabase() as any;
+		if (!client || !campaignId || !user) return;
+
+		const currentUserName =
+			user.user_metadata?.full_name ||
+			user.email?.split("@")[0] ||
+			"Aventureiro";
+
+		const roomChannel = client.channel(`vtt-room:${campaignId}`, {
+			config: {
+				presence: { key: user.id },
+				broadcast: { self: false },
+			},
+		});
+
+		roomChannelRef.current = roomChannel;
+
+		roomChannel
+			.on("presence", { event: "sync" }, () => {
+				const state = roomChannel.presenceState();
+				const users: VTTPresenceUser[] = [];
+				for (const [key, presences] of Object.entries(state)) {
+					const latest = (presences as any[])[0];
+					if (latest) {
+						users.push({
+							userId: latest.userId || key,
+							userName: latest.userName || "Aventureiro",
+							avatarUrl: latest.avatarUrl || null,
+							color: latest.color || "#38bdf8",
+							isGM: !!latest.isGM,
+							onlineAt: latest.onlineAt || Date.now(),
+						});
+					}
+				}
+				setOnlineUsers(users);
+			})
+			.on("presence", { event: "leave" }, ({ leftPresences }: any) => {
+				for (const p of leftPresences || []) {
+					if (p.userId) {
+						removeRemoteCursor(p.userId);
+						setRemoteMeasurement(p.userId, null);
+					}
+				}
+			})
+			.on("broadcast", { event: "token_drag" }, (payload: any) => {
+				const data = payload.payload;
+				if (data?.tokenId && data.x !== undefined && data.y !== undefined) {
+					setTokenTargetPosition(data.tokenId, data.x, data.y);
+				}
+			})
+			.on("broadcast", { event: "cursor_move" }, (payload: any) => {
+				const data = payload.payload;
+				if (data?.userId && data.x !== undefined && data.y !== undefined) {
+					setRemoteCursor({
+						userId: data.userId,
+						userName: data.userName || "Jogador",
+						color: data.color || "#38bdf8",
+						x: data.x,
+						y: data.y,
+						timestamp: Date.now(),
+					});
+				}
+			})
+			.on("broadcast", { event: "ruler_move" }, (payload: any) => {
+				const data = payload.payload;
+				if (data?.userId) {
+					setRemoteMeasurement(data.userId, data.measurement || null);
+				}
+			})
+			.on("broadcast", { event: "ping" }, (payload: any) => {
+				const data = payload.payload;
+				if (data) {
+					addPing(data);
+					playPingAudio();
+				}
+			})
+			.subscribe(async (status: string) => {
+				if (status === "SUBSCRIBED") {
+					await roomChannel.track({
+						userId: user.id,
+						userName: currentUserName,
+						avatarUrl: user.user_metadata?.avatar_url || null,
+						color: userColorRef.current,
+						isGM,
+						onlineAt: Date.now(),
+					});
+				}
+			});
+
+		return () => {
+			client.removeChannel(roomChannel);
+			roomChannelRef.current = null;
+		};
+	}, [
+		campaignId,
+		user,
+		isGM,
+		setOnlineUsers,
+		setTokenTargetPosition,
+		setRemoteCursor,
+		removeRemoteCursor,
+		setRemoteMeasurement,
+		addPing,
+	]);
+
+	// Update user presence when color changes without tearing down the room channel
+	useEffect(() => {
+		if (!roomChannelRef.current || !user) return;
+		const currentUserName =
+			user.user_metadata?.full_name ||
+			user.email?.split("@")[0] ||
+			"Aventureiro";
+
+		void roomChannelRef.current.track({
+			userId: user.id,
+			userName: currentUserName,
+			avatarUrl: user.user_metadata?.avatar_url || null,
+			color: userColor,
+			isGM,
+			onlineAt: Date.now(),
+		});
+	}, [userColor, user, isGM]);
+
+	// Broadcast Helper Handlers
+	const handleBroadcastDrag = useCallback(
+		(tokenId: string, x: number, y: number) => {
+			if (!roomChannelRef.current || !user) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "token_drag",
+				payload: { tokenId, x, y, userId: user.id },
+			});
+		},
+		[user],
+	);
+
+	const handleBroadcastCursor = useCallback(
+		(x: number, y: number) => {
+			if (!roomChannelRef.current || !user) return;
+			const userName =
+				user.user_metadata?.full_name ||
+				user.email?.split("@")[0] ||
+				"Aventureiro";
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "cursor_move",
+				payload: {
+					userId: user.id,
+					userName,
+					color: userColor,
+					x,
+					y,
+				},
+			});
+		},
+		[user, userColor],
+	);
+
+	const handleBroadcastRuler = useCallback(
+		(measurement: VTTRulerMeasurement | null) => {
+			if (!roomChannelRef.current || !user) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "ruler_move",
+				payload: {
+					userId: user.id,
+					measurement,
+				},
+			});
+		},
+		[user],
+	);
+
+	const handleBroadcastPing = useCallback(
+		(ping: VTTPingEvent) => {
+			if (!roomChannelRef.current || !user) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "ping",
+				payload: ping,
+			});
+		},
+		[user],
+	);
+
+	// Focus camera on coordinate
+	const handleFocusPoint = useCallback(
+		(worldX: number, worldY: number) => {
+			const screenCenterX = window.innerWidth / 2;
+			const screenCenterY = window.innerHeight / 2;
+			setViewport({
+				x: screenCenterX - worldX * viewport.scale,
+				y: screenCenterY - worldY * viewport.scale,
+			});
+		},
+		[viewport.scale, setViewport],
+	);
+
 	// Scene Management Handlers
 	const handleCreateScene = async (sceneData: Partial<VTTScene>) => {
 		const client = getSupabase() as any;
@@ -489,7 +716,6 @@ function VTTPage() {
 	};
 
 	const handleUpdateToken = async (tokenId: string, updates: Partial<VTTToken>) => {
-		// Optimistic update
 		updateToken(tokenId, updates);
 
 		const client = getSupabase() as any;
@@ -526,12 +752,13 @@ function VTTPage() {
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-[#090a0f] select-none">
-			{/* Top Header / Scene Tabs & Roster Toggle */}
+			{/* Top Header / Scene Tabs & Presence */}
 			<VTTSceneBar
 				campaignId={campaignId}
 				campaignName={activeCampaign?.name || "Campanha"}
 				onCreateScene={handleCreateScene}
 				onActivateScene={handleActivateScene}
+				onFocusPoint={handleFocusPoint}
 			/>
 
 			{/* Left Floating Toolbar */}
@@ -545,6 +772,10 @@ function VTTPage() {
 				<VTTCanvas
 					scene={currentActiveScene}
 					onUpdateToken={handleUpdateToken}
+					onBroadcastDrag={handleBroadcastDrag}
+					onBroadcastCursor={handleBroadcastCursor}
+					onBroadcastRuler={handleBroadcastRuler}
+					onBroadcastPing={handleBroadcastPing}
 				/>
 			) : !isLoading ? (
 				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white/70">

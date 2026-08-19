@@ -36,7 +36,18 @@ This document establishes development standards and workflow rules for ALL AI ag
 
 ---
 
-## 5. Mandatory Pull Request Description Format
+## 5. Automated E2E Video / Screenshot Preview Testing
+- Whenever completing any frontend feature, UI/UX task, or visual component, execute:
+  ```bash
+  pnpm preview:record
+  ```
+- This runs Playwright to record `docs/previews/latest-preview.webm` and `latest-preview.png`.
+- **Git Protection**: `docs/previews/` is strictly ignored in `.gitignore` to avoid bloating repository history.
+- **PR Attachment**: Drag & drop `docs/previews/latest-preview.webm` directly into the GitHub PR description box (GitHub automatically hosts and renders it in the PR).
+
+---
+
+## 6. Mandatory Pull Request Description Format
 Whenever pushing changes to a branch or preparing a task for review, ALL AI agents MUST ALWAYS automatically generate and provide a ready-to-copy Pull Request description strictly conforming to `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ```markdown

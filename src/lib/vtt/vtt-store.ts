@@ -3,6 +3,9 @@ import type {
 	VTTFogState,
 	VTTLayer,
 	VTTPingEvent,
+	VTTPresenceUser,
+	VTTRemoteCursor,
+	VTTRemoteMeasurement,
 	VTTScene,
 	VTTToken,
 } from "./types";
@@ -23,6 +26,18 @@ export interface VTTRulerMeasurement {
 	distance: number;
 	unit: string;
 }
+
+// Default vibrant palette for player colors
+export const VTT_PLAYER_COLORS = [
+	"#38bdf8", // Sky Blue
+	"#a855f7", // Purple
+	"#22c55e", // Emerald Green
+	"#f59e0b", // Amber
+	"#ec4899", // Pink
+	"#f43f5e", // Rose
+	"#06b6d4", // Cyan
+	"#eab308", // Yellow
+];
 
 interface VTTState {
 	// Scenes
@@ -47,6 +62,12 @@ interface VTTState {
 	activeTokenIdForMenu: string | null;
 	draggedTokenId: string | null;
 	fogState: VTTFogState | null;
+
+	// Realtime Presence & Remote Multiplayers
+	onlineUsers: VTTPresenceUser[];
+	remoteCursors: Record<string, VTTRemoteCursor>;
+	remoteMeasurements: Record<string, VTTRemoteMeasurement>;
+	userColor: string;
 
 	// Overlays & Ephemeral Events
 	activeMeasurement: VTTRulerMeasurement | null;
@@ -75,11 +96,19 @@ interface VTTState {
 	setTokens: (tokens: VTTToken[]) => void;
 	addToken: (token: VTTToken) => void;
 	updateToken: (tokenId: string, updates: Partial<VTTToken>) => void;
+	setTokenTargetPosition: (tokenId: string, targetX: number, targetY: number) => void;
 	removeToken: (tokenId: string) => void;
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
 	setActiveTokenIdForMenu: (id: string | null) => void;
 	setDraggedTokenId: (id: string | null) => void;
+
+	// Presence & Broadcast actions
+	setOnlineUsers: (users: VTTPresenceUser[]) => void;
+	setRemoteCursor: (cursor: VTTRemoteCursor) => void;
+	removeRemoteCursor: (userId: string) => void;
+	setRemoteMeasurement: (userId: string, measurement: VTTRemoteMeasurement | null) => void;
+	setUserColor: (color: string) => void;
 
 	setFogState: (fogState: VTTFogState | null) => void;
 
@@ -114,6 +143,11 @@ export const useVTTStore = create<VTTState>((set) => ({
 	draggedTokenId: null,
 	fogState: null,
 
+	onlineUsers: [],
+	remoteCursors: {},
+	remoteMeasurements: {},
+	userColor: VTT_PLAYER_COLORS[Math.floor(Math.random() * VTT_PLAYER_COLORS.length)],
+
 	activeMeasurement: null,
 	activePings: [],
 
@@ -130,6 +164,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 			selectedTokenIds: [],
 			activeTokenIdForMenu: null,
 			tokens: [],
+			remoteCursors: {},
+			remoteMeasurements: {},
 		}),
 	addScene: (scene) =>
 		set((state) => ({
@@ -175,6 +211,14 @@ export const useVTTStore = create<VTTState>((set) => ({
 		set((state) => ({
 			tokens: state.tokens.map((t) => (t.id === tokenId ? { ...t, ...updates } : t)),
 		})),
+	setTokenTargetPosition: (tokenId, targetX, targetY) =>
+		set((state) => ({
+			tokens: state.tokens.map((t) =>
+				t.id === tokenId
+					? { ...t, targetX, targetY }
+					: t,
+			),
+		})),
 	removeToken: (tokenId) =>
 		set((state) => ({
 			tokens: state.tokens.filter((t) => t.id !== tokenId),
@@ -197,6 +241,36 @@ export const useVTTStore = create<VTTState>((set) => ({
 		}),
 	setActiveTokenIdForMenu: (id) => set({ activeTokenIdForMenu: id }),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
+
+	setOnlineUsers: (users) => set({ onlineUsers: users }),
+	setRemoteCursor: (cursor) =>
+		set((state) => ({
+			remoteCursors: {
+				...state.remoteCursors,
+				[cursor.userId]: cursor,
+			},
+		})),
+	removeRemoteCursor: (userId) =>
+		set((state) => {
+			const next = { ...state.remoteCursors };
+			delete next[userId];
+			return { remoteCursors: next };
+		}),
+	setRemoteMeasurement: (userId, measurement) =>
+		set((state) => {
+			if (!measurement) {
+				const next = { ...state.remoteMeasurements };
+				delete next[userId];
+				return { remoteMeasurements: next };
+			}
+			return {
+				remoteMeasurements: {
+					...state.remoteMeasurements,
+					[userId]: measurement,
+				},
+			};
+		}),
+	setUserColor: (color) => set({ userColor: color }),
 
 	setFogState: (fogState) => set({ fogState }),
 
