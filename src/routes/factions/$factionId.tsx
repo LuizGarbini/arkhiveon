@@ -280,7 +280,10 @@ function FactionDetailPage() {
 							<DetailInfo label="Líder / Matriarca" value={faction.leader} />
 							<DetailInfo label="Sede / Solar" value={faction.seat} />
 							{faction.contacts && (
-								<DetailInfo label="🗝️ Contatos Principais" value={faction.contacts} />
+								<DetailInfo
+									label="🗝️ Contatos Principais"
+									value={faction.contacts}
+								/>
 							)}
 						</div>
 					</DetailSection>

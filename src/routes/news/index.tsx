@@ -28,7 +28,7 @@ function RouteComponent() {
 		if (!query) return visibleNews;
 		return visibleNews.filter((n) =>
 			[n.title, n.body, n.category].join(" ").toLowerCase().includes(query),
-		)
+		);
 	}, [visibleNews, deferredSearchQuery]);
 
 	return (
@@ -42,36 +42,38 @@ function RouteComponent() {
 				count={visibleNews.length}
 				action={<NewsForm />}
 			/>
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-10 sm:px-8">
-				<ListLayout onSearch={setSearchQuery} />
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<ListLayout onSearch={setSearchQuery} />
 
-				<div className="flex flex-col gap-4">
-					{isLoading
-						? loadingCardKeys.map((key, i) => (
-								<div
-									key={key}
-									className="t-stagger-item h-32 animate-pulse rounded-2xl border border-border/70 bg-card-elevated/40"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								/>
-							))
-						: filtered.map((news, i) => (
-								<div
-									key={news.id}
-									className="t-stagger-item"
-									style={{ "--stagger-index": i } as React.CSSProperties}
-								>
-									<NewsCard news={news} />
-								</div>
-							))}
-					{!isLoading && filtered.length === 0 && (
-						<EmptyState
-							Icon={Newspaper}
-							title="Nenhuma notícia visível"
-							description="Publique rumores e eventos para a mesa ativa."
-						/>
-					)}
+					<div className="flex flex-col gap-4">
+						{isLoading
+							? loadingCardKeys.map((key, i) => (
+									<div
+										key={key}
+										className="t-stagger-item h-32 animate-pulse rounded-2xl border border-border/70 bg-card-elevated/40"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									/>
+								))
+							: filtered.map((news, i) => (
+									<div
+										key={news.id}
+										className="t-stagger-item"
+										style={{ "--stagger-index": i } as React.CSSProperties}
+									>
+										<NewsCard news={news} />
+									</div>
+								))}
+						{!isLoading && filtered.length === 0 && (
+							<EmptyState
+								Icon={Newspaper}
+								title="Nenhuma notícia visível"
+								description="Publique rumores e eventos para a mesa ativa."
+							/>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

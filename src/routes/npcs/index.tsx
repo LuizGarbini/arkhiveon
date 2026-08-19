@@ -31,7 +31,11 @@ function RouteComponent() {
 				label: "Tipo de Ameaça / Entidade",
 				options: [
 					{ value: "npc", label: "NPC / Habitante", icon: "👤" },
-					{ value: "monster", label: "Monstro / Criatura / Ameaça", icon: "🐉" },
+					{
+						value: "monster",
+						label: "Monstro / Criatura / Ameaça",
+						icon: "🐉",
+					},
 				],
 			},
 		],
@@ -43,13 +47,7 @@ function RouteComponent() {
 		return visibleNpcs.filter((npc) => {
 			const matchesQuery =
 				!query ||
-				[
-					npc.name,
-					npc.race,
-					npc.role,
-					npc.location,
-					npc.alignment,
-				]
+				[npc.name, npc.race, npc.role, npc.location, npc.alignment]
 					.filter(Boolean)
 					.join(" ")
 					.toLowerCase()
@@ -58,7 +56,9 @@ function RouteComponent() {
 			const matchesKind =
 				!activeFilters.kind ||
 				activeFilters.kind === "all" ||
-				(activeFilters.kind === "monster" ? npc.kind === "monster" : npc.kind !== "monster");
+				(activeFilters.kind === "monster"
+					? npc.kind === "monster"
+					: npc.kind !== "monster");
 
 			return matchesQuery && matchesKind;
 		});
@@ -85,7 +85,9 @@ function RouteComponent() {
 						searchPlaceholder="Buscar NPC por nome, papel, ocupação, localização..."
 						filterGroups={filterGroups}
 						activeFilters={activeFilters}
-						onFilterChange={(id, val) => setActiveFilters((prev) => ({ ...prev, [id]: val }))}
+						onFilterChange={(id, val) =>
+							setActiveFilters((prev) => ({ ...prev, [id]: val }))
+						}
 						onClearFilters={() => setActiveFilters({ kind: "all" })}
 					/>
 

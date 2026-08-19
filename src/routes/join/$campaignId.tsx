@@ -94,9 +94,7 @@ function JoinCampaignPage() {
 				}, 1200);
 			} catch (err: any) {
 				setStatus("error");
-				setErrorMessage(
-					err.message || "Não foi possível entrar na campanha.",
-				);
+				setErrorMessage(err.message || "Não foi possível entrar na campanha.");
 			}
 		}
 

@@ -36,15 +36,14 @@ const CharacterExportDialog = lazy(() =>
 );
 
 import { CharacterInventoryModule } from "@/components/character-inventory-module";
-import { CharacterTrainingFields } from "@/components/character-training-fields";
-
 import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
 	CharacterModuleFields,
-	sanitizeCharacterFormValues,
 	SkillsFields,
+	sanitizeCharacterFormValues,
 } from "@/components/character-sheet-fields";
+import { CharacterTrainingFields } from "@/components/character-training-fields";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
@@ -372,7 +371,9 @@ function CharacterSheetPage() {
 								<p className="mt-2 text-[13px] text-muted-foreground">
 									{[
 										currentCharacter.title,
-										currentCharacter.nickname ? `"${currentCharacter.nickname}"` : undefined,
+										currentCharacter.nickname
+											? `"${currentCharacter.nickname}"`
+											: undefined,
 										currentCharacter.race,
 										currentCharacter.class,
 										currentCharacter.subclass,
