@@ -39,7 +39,9 @@ Whenever completing any frontend feature or UI component, execute:
 ```bash
 pnpm preview:record
 ```
-This generates a test video (`.webm`) and screenshot in `docs/previews/` validating that the feature renders cleanly in the browser.
+This generates `docs/previews/latest-preview.webm` and `latest-preview.png` via Playwright.
+- Note: `docs/previews/` is ignored by `.gitignore` to prevent Git bloat.
+- Drag & drop the recorded video directly into GitHub PR description box to embed.
 
 ## 8. Mandatory Pull Request Description Format
 Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:

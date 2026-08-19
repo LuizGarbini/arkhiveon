@@ -37,11 +37,13 @@ This document establishes development standards and workflow rules for ALL AI ag
 ---
 
 ## 5. Automated E2E Video / Screenshot Preview Testing
-- Whenever completing any frontend feature, UI/UX task, or visual component, ALL AI agents MUST execute:
+- Whenever completing any frontend feature, UI/UX task, or visual component, execute:
   ```bash
   pnpm preview:record
   ```
-- This runs Playwright to record a high-resolution video (`.webm`) and screenshot in `docs/previews/`, validating that the UI mounts, responds, and renders cleanly without runtime exceptions.
+- This runs Playwright to record `docs/previews/latest-preview.webm` and `latest-preview.png`.
+- **Git Protection**: `docs/previews/` is strictly ignored in `.gitignore` to avoid bloating repository history.
+- **PR Attachment**: Drag & drop `docs/previews/latest-preview.webm` directly into the GitHub PR description box (GitHub automatically hosts and renders it in the PR).
 
 ---
 

@@ -16,13 +16,21 @@ async function recordPreview() {
 	const outputDir = path.resolve(process.cwd(), "docs/previews");
 	if (!fs.existsSync(outputDir)) {
 		fs.mkdirSync(outputDir, { recursive: true });
+	} else {
+		// Clean older previews so we don't accumulate disk clutter
+		const existingFiles = fs.readdirSync(outputDir);
+		for (const file of existingFiles) {
+			try {
+				fs.unlinkSync(path.join(outputDir, file));
+			} catch {}
+		}
 	}
 
 	let devProcess: any = null;
 	const port = 3000;
 	const devUrl = `http://localhost:${port}`;
 
-	// 1. Check if server is running, otherwise start vite preview/dev
+	// 1. Check if server is running, otherwise start vite preview
 	const alreadyRunning = await isServerRunning(port);
 	if (!alreadyRunning) {
 		console.log("⚡ Iniciando servidor local para teste de preview...");
@@ -31,7 +39,6 @@ async function recordPreview() {
 			stdio: "ignore",
 		});
 
-		// Wait up to 15 seconds for server to be responsive
 		for (let i = 0; i < 30; i++) {
 			await new Promise((r) => setTimeout(r, 500));
 			if (await isServerRunning(port)) {
@@ -43,7 +50,7 @@ async function recordPreview() {
 		console.log("✅ Servidor já em execução em " + devUrl);
 	}
 
-	console.log("🎬 Iniciando gravação de preview com Playwright...");
+	console.log("🎬 Gravando vídeo de demonstração com Playwright...");
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
 		viewport: { width: 1280, height: 720 },
@@ -56,11 +63,10 @@ async function recordPreview() {
 	const page = await context.newPage();
 
 	try {
-		console.log(`🌐 Acessando ${devUrl}...`);
 		await page.goto(devUrl, { waitUntil: "commit", timeout: 15000 });
 		await page.waitForTimeout(1500);
 
-		// Interact with the page (simulate user testing)
+		// Simulate interactive test sequence
 		console.log("🖱️ Executando sequência de testes e interação na tela...");
 		await page.mouse.move(640, 360);
 		await page.waitForTimeout(800);
@@ -69,14 +75,14 @@ async function recordPreview() {
 		await page.mouse.move(900, 400);
 		await page.waitForTimeout(800);
 
-		// Save screenshot
+		// Screenshot
 		const screenshotPath = path.join(outputDir, "latest-preview.png");
 		await page.screenshot({ path: screenshotPath, fullPage: false });
-		console.log(`📸 Screenshot salvo em: ${screenshotPath}`);
+		console.log(`📸 Screenshot salvo: ${screenshotPath}`);
 
 		await page.waitForTimeout(2000);
 	} catch (err) {
-		console.warn("⚠️ Detalhes durante execução:", err);
+		console.warn("⚠️ Aviso durante gravação:", err);
 	} finally {
 		await page.close();
 		await context.close();
@@ -88,11 +94,18 @@ async function recordPreview() {
 			} catch {}
 		}
 
-		// Find the generated video file and log its path
+		// Find the recorded video and rename it to latest-preview.webm
 		const files = fs.readdirSync(outputDir).filter((f) => f.endsWith(".webm"));
 		if (files.length > 0) {
-			const latestVideo = path.join(outputDir, files[files.length - 1]);
-			console.log(`✨ Vídeo de demonstração salvo em: ${latestVideo}`);
+			const originalVideoPath = path.join(outputDir, files[0]);
+			const cleanVideoPath = path.join(outputDir, "latest-preview.webm");
+			if (originalVideoPath !== cleanVideoPath) {
+				fs.renameSync(originalVideoPath, cleanVideoPath);
+			}
+			console.log(`\n✨ Vídeo de demonstração pronto: ${cleanVideoPath}`);
+			console.log(
+				"💡 Dica: Arraste e solte o arquivo acima direto na caixa de texto do Pull Request no GitHub para embutir o player de vídeo automaticamente!\n",
+			);
 		}
 	}
 }
