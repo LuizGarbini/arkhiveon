@@ -30,7 +30,7 @@ async function recordPreview() {
 	const baseUrl = `http://127.0.0.1:${port}`;
 	const devUrl = `${baseUrl}/campaigns/demo-tabletop/vtt`;
 
-	// 1. Ensure local Vite server is running (use vite preview for instant 5ms loading)
+	// 1. Ensure local Vite server is running
 	const alreadyRunning = await isServerRunning(baseUrl);
 	if (!alreadyRunning) {
 		console.log("⚡ Iniciando servidor local instantâneo (Vite Preview)...");
@@ -60,166 +60,177 @@ async function recordPreview() {
 		},
 	});
 
+	// Inject authentication and campaign state before any script execution
+	await context.addInitScript(() => {
+		localStorage.setItem("arkhiveon_preview_auth", "true");
+		localStorage.setItem(
+			"rpg-notes-storage",
+			JSON.stringify({
+				state: {
+					campaigns: [
+						{
+							id: "demo-tabletop",
+							name: "A Forja dos Deuses",
+							description: "Campanha Épica de Demonstração",
+							ownerId: "preview-gm-user",
+							myRole: "owner",
+						},
+					],
+					activeCampaignId: "demo-tabletop",
+					hasLoadedCampaigns: true,
+					campaignLoadStatus: "ready",
+				},
+				version: 0,
+			}),
+		);
+	});
+
 	const page = await context.newPage();
 
 	try {
-		console.log(`🌐 Navegando para o VTT: ${devUrl}...`);
-		await page.goto(devUrl, { waitUntil: "commit", timeout: 20000 });
-		await page.waitForTimeout(2000);
+		console.log(`🌐 Navegando para o VTT autenticado: ${devUrl}...`);
+		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
+		await page.waitForTimeout(2500);
 
 		// Seed rich demo tabletop data
-		console.log("🎲 Injetando dados de demonstração (Cena, Presença Realtime, Tokens)...");
+		console.log("🎲 Injetando dados de demonstração no VTT (Cena, Presença Realtime, Tokens)...");
 		await page.evaluate(() => {
 			const vttStore = (window as any).__vtt_store__?.getState();
-			const rpgStore = (window as any).__rpg_store__?.getState();
+			if (!vttStore) return;
 
-			if (rpgStore) {
-				rpgStore.setCampaigns?.([
-					{
-						id: "demo-tabletop",
-						name: "A Forja dos Deuses",
-						description: "Campanha Épica de Demonstração",
-						ownerId: "gm-user",
-						myRole: "owner",
-					},
-				]);
-			}
+			vttStore.setIsGM(true);
+			vttStore.setScenes([
+				{
+					id: "scene-1",
+					campaignId: "demo-tabletop",
+					name: "Caverna dos Dragões",
+					gridType: "hex_pointy",
+					gridSize: 75,
+					gridColor: "#38bdf8",
+					gridOpacity: 0.35,
+					gridScaleDistance: 1.5,
+					gridScaleUnit: "m",
+					width: 3200,
+					height: 2400,
+					isActive: true,
+					orderIndex: 0,
+				},
+				{
+					id: "scene-2",
+					campaignId: "demo-tabletop",
+					name: "Taverna do Javali",
+					gridType: "square",
+					gridSize: 70,
+					gridColor: "#ffffff",
+					gridOpacity: 0.25,
+					gridScaleDistance: 1.5,
+					gridScaleUnit: "m",
+					width: 3000,
+					height: 2000,
+					isActive: false,
+					orderIndex: 1,
+				},
+			]);
+			vttStore.setActiveSceneId("scene-1");
 
-			if (vttStore) {
-				vttStore.setIsGM(true);
-				vttStore.setScenes([
-					{
-						id: "scene-1",
-						campaignId: "demo-tabletop",
-						name: "Caverna dos Dragões",
-						gridType: "hex_pointy",
-						gridSize: 75,
-						gridColor: "#38bdf8",
-						gridOpacity: 0.35,
-						gridScaleDistance: 1.5,
-						gridScaleUnit: "m",
-						width: 3200,
-						height: 2400,
-						isActive: true,
-						orderIndex: 0,
-					},
-					{
-						id: "scene-2",
-						campaignId: "demo-tabletop",
-						name: "Taverna do Javali",
-						gridType: "square",
-						gridSize: 70,
-						gridColor: "#ffffff",
-						gridOpacity: 0.25,
-						gridScaleDistance: 1.5,
-						gridScaleUnit: "m",
-						width: 3000,
-						height: 2000,
-						isActive: false,
-						orderIndex: 1,
-					},
-				]);
-				vttStore.setActiveSceneId("scene-1");
-
-				// Seed Online Users
-				vttStore.setOnlineUsers([
-					{
-						userId: "gm-user",
-						userName: "Mestre (Você)",
-						color: "#a855f7",
-						isGM: true,
-						onlineAt: Date.now(),
-					},
-					{
-						userId: "player-1",
-						userName: "Arthur (Paladino)",
-						color: "#38bdf8",
-						isGM: false,
-						onlineAt: Date.now(),
-					},
-					{
-						userId: "player-2",
-						userName: "Lyra (Maga)",
-						color: "#22c55e",
-						isGM: false,
-						onlineAt: Date.now(),
-					},
-				]);
-
-				// Seed Tokens
-				vttStore.setTokens([
-					{
-						id: "token-1",
-						sceneId: "scene-1",
-						name: "Arthur Pendelton",
-						layer: "token",
-						x: 525,
-						y: 390,
-						sizeCells: 1,
-						rotation: 0,
-						hpCurrent: 42,
-						hpMax: 50,
-						elevation: 0,
-						conditions: [],
-						auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
-						visionRange: 6,
-						isLocked: false,
-						isHidden: false,
-						controlledBy: ["player-1"],
-					},
-					{
-						id: "token-2",
-						sceneId: "scene-1",
-						name: "Lyra Moonshadow",
-						layer: "token",
-						x: 600,
-						y: 480,
-						sizeCells: 1,
-						rotation: 0,
-						hpCurrent: 24,
-						hpMax: 28,
-						elevation: 0,
-						conditions: [],
-						auras: [],
-						visionRange: 6,
-						isLocked: false,
-						isHidden: false,
-						controlledBy: ["player-2"],
-					},
-					{
-						id: "token-3",
-						sceneId: "scene-1",
-						name: "Dragão Vermelho Jovem",
-						layer: "token",
-						x: 825,
-						y: 390,
-						sizeCells: 2,
-						rotation: 0,
-						hpCurrent: 85,
-						hpMax: 110,
-						elevation: 3,
-						conditions: ["burning"],
-						auras: [{ radius: 3, color: "#ef4444", opacity: 0.25 }],
-						visionRange: 10,
-						isLocked: false,
-						isHidden: false,
-						controlledBy: [],
-					},
-				]);
-
-				// Seed remote cursor
-				vttStore.setRemoteCursor({
+			// Seed Online Users
+			vttStore.setOnlineUsers([
+				{
+					userId: "preview-gm-user",
+					userName: "Mestre (Você)",
+					color: "#a855f7",
+					isGM: true,
+					onlineAt: Date.now(),
+				},
+				{
+					userId: "player-1",
+					userName: "Arthur (Paladino)",
+					color: "#38bdf8",
+					isGM: false,
+					onlineAt: Date.now(),
+				},
+				{
 					userId: "player-2",
 					userName: "Lyra (Maga)",
 					color: "#22c55e",
-					x: 750,
-					y: 420,
-					timestamp: Date.now(),
-				});
-			}
+					isGM: false,
+					onlineAt: Date.now(),
+				},
+			]);
+
+			// Seed Tokens
+			vttStore.setTokens([
+				{
+					id: "token-1",
+					sceneId: "scene-1",
+					name: "Arthur Pendelton",
+					layer: "token",
+					x: 525,
+					y: 390,
+					sizeCells: 1,
+					rotation: 0,
+					hpCurrent: 42,
+					hpMax: 50,
+					elevation: 0,
+					conditions: [],
+					auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
+					visionRange: 6,
+					isLocked: false,
+					isHidden: false,
+					controlledBy: ["player-1"],
+				},
+				{
+					id: "token-2",
+					sceneId: "scene-1",
+					name: "Lyra Moonshadow",
+					layer: "token",
+					x: 600,
+					y: 480,
+					sizeCells: 1,
+					rotation: 0,
+					hpCurrent: 24,
+					hpMax: 28,
+					elevation: 0,
+					conditions: [],
+					auras: [],
+					visionRange: 6,
+					isLocked: false,
+					isHidden: false,
+					controlledBy: ["player-2"],
+				},
+				{
+					id: "token-3",
+					sceneId: "scene-1",
+					name: "Dragão Vermelho Jovem",
+					layer: "token",
+					x: 825,
+					y: 390,
+					sizeCells: 2,
+					rotation: 0,
+					hpCurrent: 85,
+					hpMax: 110,
+					elevation: 3,
+					conditions: ["burning"],
+					auras: [{ radius: 3, color: "#ef4444", opacity: 0.25 }],
+					visionRange: 10,
+					isLocked: false,
+					isHidden: false,
+					controlledBy: [],
+				},
+			]);
+
+			// Seed remote cursor
+			vttStore.setRemoteCursor({
+				userId: "player-2",
+				userName: "Lyra (Maga)",
+				color: "#22c55e",
+				x: 750,
+				y: 420,
+				timestamp: Date.now(),
+			});
 		});
 
-		await page.waitForTimeout(1500);
+		await page.waitForTimeout(2000);
 
 		// --- ACTION 1: Test Presence Bar & Change User Color ---
 		console.log("🎨 Testando Presence Bar e seletor de cor...");
@@ -321,7 +332,7 @@ async function recordPreview() {
 			}
 
 			await page.waitForTimeout(1000);
-			await rosterBtn.click(); // Close drawer
+			await rosterBtn.click();
 			await page.waitForTimeout(800);
 		}
 
