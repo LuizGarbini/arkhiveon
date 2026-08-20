@@ -12,29 +12,26 @@ export function PartyStatsMatrix() {
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm shadow-black/5 backdrop-blur-sm space-y-4">
-			<div className="flex items-center justify-between">
+		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border space-y-4">
+			<div className="flex items-center justify-between border-b border-border/50 pb-4">
 				<div className="flex items-center gap-2.5">
-					<div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-						<UserCheck className="h-4.5 w-4.5" />
+					<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+						<UserCheck className="h-4 w-4" />
 					</div>
 					<div>
-						<h3 className="font-display text-base font-bold text-foreground">
-							Grupo em Números (Matriz de Stats)
-						</h3>
-						<p className="text-[11px] text-muted-foreground">
-							Comparativo rápido de combate e sobrevivência dos aventureiros
-						</p>
+						<h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+							Matriz de Atributos do Grupo
+						</h2>
 					</div>
 				</div>
-				<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary">
-					{party.length} Membro(s)
+				<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary select-none tabular-nums">
+					{party.length} Membro{party.length === 1 ? "" : "s"}
 				</span>
 			</div>
 
 			<div className="overflow-x-auto rounded-xl border border-border/50 bg-background/40">
 				<table className="w-full text-left text-xs">
-					<thead className="border-b border-border/60 bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+					<thead className="border-b border-border/60 bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground select-none">
 						<tr>
 							<th className="py-3 px-4">Personagem</th>
 							<th className="py-3 px-3">Classe & Nível</th>
@@ -47,10 +44,15 @@ export function PartyStatsMatrix() {
 					</thead>
 					<tbody className="divide-y divide-border/40 font-medium">
 						{party.map((char) => {
-							const hpMax = char.healthMax || 1;
+							const currentHp =
+								typeof char.health === "number" ? char.health : 10;
+							const maxHp =
+								typeof char.healthMax === "number" && char.healthMax > 0
+									? char.healthMax
+									: 10;
 							const hpPercent = Math.min(
 								100,
-								Math.max(0, Math.round((char.health / hpMax) * 100)),
+								Math.max(0, Math.round((currentHp / maxHp) * 100)),
 							);
 							const isLowHp = hpPercent <= 30;
 
@@ -69,26 +71,28 @@ export function PartyStatsMatrix() {
 														className="h-full w-full object-cover"
 													/>
 												) : (
-													<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-[10px]">
+													<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-[10px] select-none">
 														{char.characterName?.charAt(0) || "?"}
 													</div>
 												)}
 											</div>
-											<div>
-												<span className="font-bold text-foreground block">
+											<div className="min-w-0">
+												<span className="font-bold text-foreground block truncate">
 													{char.characterName || "Sem nome"}
 												</span>
-												<span className="text-[10px] text-muted-foreground">
-													{char.playerName ? `Jogador: ${char.playerName}` : char.race}
+												<span className="text-[10px] text-muted-foreground block truncate">
+													{char.playerName
+														? `Jogador: ${char.playerName}`
+														: char.race || "Aventureiro"}
 												</span>
 											</div>
 										</div>
 									</td>
 									<td className="py-3 px-3">
-										<span className="font-semibold text-foreground">
+										<span className="font-semibold text-foreground block truncate">
 											{char.class || "Aventureiro"}
 										</span>
-										<span className="text-[10px] text-muted-foreground block">
+										<span className="text-[10px] text-muted-foreground block select-none">
 											Nível {char.level || 1}
 										</span>
 									</td>
@@ -96,12 +100,14 @@ export function PartyStatsMatrix() {
 										<div className="inline-flex flex-col items-center">
 											<span
 												className={cn(
-													"font-bold font-display text-sm flex items-center gap-1",
-													isLowHp ? "text-rose-400 animate-pulse" : "text-emerald-400",
+													"font-bold font-display text-sm flex items-center gap-1 tabular-nums",
+													isLowHp
+														? "text-rose-400 animate-pulse"
+														: "text-emerald-400",
 												)}
 											>
 												<Heart className="h-3 w-3 fill-current" />
-												{char.health}/{char.healthMax}
+												{currentHp}/{maxHp}
 											</span>
 											<div className="w-16 h-1 bg-muted rounded-full overflow-hidden mt-1">
 												<div
@@ -115,19 +121,23 @@ export function PartyStatsMatrix() {
 										</div>
 									</td>
 									<td className="py-3 px-3 text-center">
-										<span className="inline-flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-display text-xs font-bold text-blue-400">
+										<span className="inline-flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-display text-xs font-bold text-blue-400 tabular-nums">
 											<Shield className="h-3 w-3" />
-											{char.armorClass}
+											{char.armorClass || 10}
 										</span>
 									</td>
 									<td className="py-3 px-3 text-center">
-										<span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-display text-xs font-bold text-amber-400">
+										<span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-display text-xs font-bold text-amber-400 tabular-nums font-mono">
 											<Zap className="h-3 w-3" />
-											{formatModifier(char.initiative)}
+											{formatModifier(
+												typeof char.initiative === "number"
+													? char.initiative
+													: 0,
+											)}
 										</span>
 									</td>
-									<td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground">
-										{char.speed}m
+									<td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground tabular-nums">
+										{char.speed || 9}m
 									</td>
 									<td className="py-3 px-4">
 										{char.tempBonusesList && char.tempBonusesList.length > 0 ? (
@@ -135,7 +145,7 @@ export function PartyStatsMatrix() {
 												{char.tempBonusesList.map((bonus) => (
 													<span
 														key={bonus.id}
-														className="inline-flex items-center gap-1 rounded-md border border-purple-500/30 bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-300"
+														className="inline-flex items-center gap-1 rounded-md border border-purple-500/30 bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-300 select-none"
 														title={bonus.description}
 													>
 														<Sparkles className="h-2.5 w-2.5" />
@@ -144,7 +154,7 @@ export function PartyStatsMatrix() {
 												))}
 											</div>
 										) : (
-											<span className="text-[11px] text-muted-foreground/60 italic">
+											<span className="text-[11px] text-muted-foreground/60 italic select-none">
 												Nenhum bônus temporário
 											</span>
 										)}
