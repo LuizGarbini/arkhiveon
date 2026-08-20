@@ -1,7 +1,7 @@
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { spawn } from "node:child_process";
+import { chromium } from "playwright";
 
 async function isServerRunning(url: string): Promise<boolean> {
 	try {
@@ -28,16 +28,20 @@ async function recordPreview() {
 	let devProcess: any = null;
 	const port = 3000;
 	const baseUrl = `http://127.0.0.1:${port}`;
-	const devUrl = `${baseUrl}/campaigns/demo-tabletop/vtt`;
+	const devUrl = `${baseUrl}/dashboard`;
 
 	// 1. Ensure local Vite server is running
 	const alreadyRunning = await isServerRunning(baseUrl);
 	if (!alreadyRunning) {
-		console.log("⚡ Iniciando servidor local instantâneo (Vite Preview)...");
-		devProcess = spawn("npx", ["vite", "preview", "--port", `${port}`, "--host", "127.0.0.1"], {
-			shell: true,
-			stdio: "ignore",
-		});
+		console.log("⚡ Iniciando servidor local (Vite Preview)...");
+		devProcess = spawn(
+			"npx",
+			["vite", "preview", "--port", `${port}`, "--host", "127.0.0.1"],
+			{
+				shell: true,
+				stdio: "ignore",
+			},
+		);
 
 		for (let i = 0; i < 30; i++) {
 			await new Promise((r) => setTimeout(r, 400));
@@ -47,20 +51,20 @@ async function recordPreview() {
 			}
 		}
 	} else {
-		console.log("✅ Servidor já em execução em " + baseUrl);
+		console.log(`✅ Servidor já em execução em ${baseUrl}`);
 	}
 
-	console.log("🎬 Iniciando gravação de demonstração completa com Playwright...");
+	console.log("🎬 Iniciando gravação do Dashboard com Playwright...");
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
-		viewport: { width: 1280, height: 720 },
+		viewport: { width: 1366, height: 820 },
 		recordVideo: {
 			dir: outputDir,
-			size: { width: 1280, height: 720 },
+			size: { width: 1366, height: 820 },
 		},
 	});
 
-	// Inject authentication and campaign state before any script execution
+	// Inject rich mock campaign data
 	await context.addInitScript(() => {
 		localStorage.setItem("arkhiveon_preview_auth", "true");
 		localStorage.setItem(
@@ -71,7 +75,9 @@ async function recordPreview() {
 						{
 							id: "demo-tabletop",
 							name: "A Forja dos Deuses",
-							description: "Campanha Épica de Demonstração",
+							description:
+								"Uma crônica sombria onde relíquias arcanas despertam nas profundezas de Valência. O destino do reino repousa nas mãos da guilda.",
+							system: "ordem",
 							ownerId: "preview-gm-user",
 							myRole: "owner",
 						},
@@ -79,6 +85,165 @@ async function recordPreview() {
 					activeCampaignId: "demo-tabletop",
 					hasLoadedCampaigns: true,
 					campaignLoadStatus: "ready",
+					characters: [
+						{
+							id: "c1",
+							campaignId: "demo-tabletop",
+							characterName: "Carrara",
+							playerName: "Gabriel Arroyo",
+							class: "Especialista",
+							race: "Investigador",
+							level: 7,
+							health: 48,
+							healthMax: 48,
+							armorClass: 16,
+							initiative: 3,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c2",
+							campaignId: "demo-tabletop",
+							characterName: 'Moura "Fênix" Carvalho',
+							playerName: "Luiz Garbini",
+							class: "Combatente",
+							race: "Operações Especiais",
+							level: 7,
+							health: 72,
+							healthMax: 84,
+							armorClass: 18,
+							initiative: 2,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c3",
+							campaignId: "demo-tabletop",
+							characterName: "Elysia Corvo",
+							playerName: "Helena Prado",
+							class: "Ocultista",
+							race: "Graduado",
+							level: 6,
+							health: 32,
+							healthMax: 38,
+							armorClass: 13,
+							initiative: 1,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c4",
+							campaignId: "demo-tabletop",
+							characterName: "Kaelen Vane",
+							playerName: "Lucas Mendes",
+							class: "Infiltrador",
+							race: "Sobrevivente",
+							level: 6,
+							health: 41,
+							healthMax: 50,
+							armorClass: 15,
+							initiative: 4,
+							speed: 12,
+							imageUrl:
+								"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
+						},
+					],
+					npcs: [
+						{
+							id: "n1",
+							campaignId: "demo-tabletop",
+							name: "Valerius, o Herege",
+							role: "Líder de Seita",
+							race: "Humano",
+							importance: "boss",
+							disposition: "hostile",
+							isAlive: true,
+						},
+						{
+							id: "n2",
+							campaignId: "demo-tabletop",
+							name: "Comandante Verena",
+							role: "Líder da Ordem Local",
+							race: "Humano",
+							importance: "major",
+							disposition: "friendly",
+							isAlive: true,
+						},
+					],
+					sessions: [
+						{
+							id: "s1",
+							campaignId: "demo-tabletop",
+							sessionNumber: 12,
+							title: "O Ritual no Observatório Esquecido",
+							date: "2026-08-15",
+							inGameDate: "14 de Outono, Ano 412",
+							summary:
+								"O grupo invadiu o observatório selado a tempo de conter a primeira fase da invocação. Elysia decifrou o glifo de contenção enquanto Moura e Carrara seguravam os cultistas nas escadarias.",
+							cliffhanger:
+								"O sino da torre começou a dobrar sozinho e uma névoa púrpura cobriu os arredores.",
+						},
+					],
+					quests: [
+						{
+							id: "q1",
+							campaignId: "demo-tabletop",
+							title: "Conter o Despertar do Observatório",
+							category: "main",
+							status: "active",
+							description:
+								"Investigar as anomalias dimensionais e selar a fenda antes do solstício.",
+							giverNpcName: "Comandante Verena",
+						},
+						{
+							id: "q2",
+							campaignId: "demo-tabletop",
+							title: "Recuperar o Tomo de Selamento",
+							category: "secondary",
+							status: "active",
+							description:
+								"Localizar as páginas arrancadas na biblioteca subterrânea.",
+						},
+					],
+					items: [
+						{
+							id: "i1",
+							campaignId: "demo-tabletop",
+							name: "Lâmina Rúnica da Aurora",
+							type: "Arma Mágica",
+							rarity: "very_rare",
+							equipped: true,
+							owner: "Moura",
+						},
+						{
+							id: "i2",
+							campaignId: "demo-tabletop",
+							name: "Amuleto de Proteção Mental",
+							type: "Acessório",
+							rarity: "rare",
+							equipped: true,
+							owner: "Carrara",
+						},
+					],
+					partyLoot: [
+						{
+							id: "pl1",
+							campaignId: "demo-tabletop",
+							name: "3x Poções de Vitalidade Maior",
+							quantity: 3,
+							notes: "Recuperadas no cofre do observatório",
+						},
+						{
+							id: "pl2",
+							campaignId: "demo-tabletop",
+							name: "Grimório com Glifos Antigos",
+							quantity: 1,
+							notes: "Aguardando tradução por Elysia",
+						},
+					],
 				},
 				version: 0,
 			}),
@@ -88,287 +253,123 @@ async function recordPreview() {
 	const page = await context.newPage();
 
 	try {
-		console.log(`🌐 Navegando para o VTT autenticado: ${devUrl}...`);
-		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
-		await page.waitForTimeout(2500);
-
-		// Seed rich demo tabletop data
-		console.log("🎲 Injetando dados de demonstração no VTT (Cena, Presença Realtime, Tokens)...");
-		await page.evaluate(() => {
-			const vttStore = (window as any).__vtt_store__?.getState();
-			if (!vttStore) return;
-
-			vttStore.setIsGM(true);
-			vttStore.setScenes([
-				{
-					id: "scene-1",
-					campaignId: "demo-tabletop",
-					name: "Caverna dos Dragões",
-					gridType: "hex_pointy",
-					gridSize: 75,
-					gridColor: "#38bdf8",
-					gridOpacity: 0.35,
-					gridScaleDistance: 1.5,
-					gridScaleUnit: "m",
-					width: 3200,
-					height: 2400,
-					isActive: true,
-					orderIndex: 0,
-				},
-				{
-					id: "scene-2",
-					campaignId: "demo-tabletop",
-					name: "Taverna do Javali",
-					gridType: "square",
-					gridSize: 70,
-					gridColor: "#ffffff",
-					gridOpacity: 0.25,
-					gridScaleDistance: 1.5,
-					gridScaleUnit: "m",
-					width: 3000,
-					height: 2000,
-					isActive: false,
-					orderIndex: 1,
-				},
-			]);
-			vttStore.setActiveSceneId("scene-1");
-
-			// Seed Online Users
-			vttStore.setOnlineUsers([
-				{
-					userId: "preview-gm-user",
-					userName: "Mestre (Você)",
-					color: "#a855f7",
-					isGM: true,
-					onlineAt: Date.now(),
-				},
-				{
-					userId: "player-1",
-					userName: "Arthur (Paladino)",
-					color: "#38bdf8",
-					isGM: false,
-					onlineAt: Date.now(),
-				},
-				{
-					userId: "player-2",
-					userName: "Lyra (Maga)",
-					color: "#22c55e",
-					isGM: false,
-					onlineAt: Date.now(),
-				},
-			]);
-
-			// Seed Tokens
-			vttStore.setTokens([
-				{
-					id: "token-1",
-					sceneId: "scene-1",
-					name: "Arthur Pendelton",
-					layer: "token",
-					x: 525,
-					y: 390,
-					sizeCells: 1,
-					rotation: 0,
-					hpCurrent: 42,
-					hpMax: 50,
-					elevation: 0,
-					conditions: [],
-					auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
-					visionRange: 6,
-					isLocked: false,
-					isHidden: false,
-					controlledBy: ["player-1"],
-				},
-				{
-					id: "token-2",
-					sceneId: "scene-1",
-					name: "Lyra Moonshadow",
-					layer: "token",
-					x: 600,
-					y: 480,
-					sizeCells: 1,
-					rotation: 0,
-					hpCurrent: 24,
-					hpMax: 28,
-					elevation: 0,
-					conditions: [],
-					auras: [],
-					visionRange: 6,
-					isLocked: false,
-					isHidden: false,
-					controlledBy: ["player-2"],
-				},
-				{
-					id: "token-3",
-					sceneId: "scene-1",
-					name: "Dragão Vermelho Jovem",
-					layer: "token",
-					x: 825,
-					y: 390,
-					sizeCells: 2,
-					rotation: 0,
-					hpCurrent: 85,
-					hpMax: 110,
-					elevation: 3,
-					conditions: ["burning"],
-					auras: [{ radius: 3, color: "#ef4444", opacity: 0.25 }],
-					visionRange: 10,
-					isLocked: false,
-					isHidden: false,
-					controlledBy: [],
-				},
-			]);
-
-			// Seed remote cursor
-			vttStore.setRemoteCursor({
-				userId: "player-2",
-				userName: "Lyra (Maga)",
-				color: "#22c55e",
-				x: 750,
-				y: 420,
-				timestamp: Date.now(),
-			});
+		console.log(`🌐 Navegando para o Dashboard: ${devUrl}...`);
+		await page.goto(devUrl, {
+			waitUntil: "domcontentloaded",
+			timeout: 25000,
 		});
-
 		await page.waitForTimeout(2000);
 
-		// --- ACTION 1: Test Presence Bar & Change User Color ---
-		console.log("🎨 Testando Presence Bar e seletor de cor...");
-		const colorTrigger = page.locator("button[title*='Alterar Minha Cor']").first();
-		if (await colorTrigger.isVisible()) {
-			await colorTrigger.click();
-			await page.waitForTimeout(800);
-			const colorOption = page.locator(".grid button").nth(2);
-			if (await colorOption.isVisible()) {
-				await colorOption.click();
-			}
-			await page.waitForTimeout(800);
-		}
-
-		// --- ACTION 2: Test Tactical Ping on Canvas ---
-		console.log("📍 Testando Ping Tático animado no Canvas...");
-		const pingButton = page.locator("button[title*='Ping']").first();
-		if (await pingButton.isVisible()) {
-			await pingButton.click();
-			await page.waitForTimeout(500);
-			await page.mouse.click(700, 380);
-			await page.waitForTimeout(1500);
-		}
-
-		// --- ACTION 3: Test Ruler Tool ---
-		console.log("📏 Testando Régua de Medição em Tempo Real...");
-		const rulerButton = page.locator("button[title*='Régua']").first();
-		if (await rulerButton.isVisible()) {
-			await rulerButton.click();
-			await page.waitForTimeout(500);
-			await page.mouse.move(525, 390);
-			await page.mouse.down();
-			await page.mouse.move(825, 390, { steps: 20 });
-			await page.waitForTimeout(1200);
-			await page.mouse.up();
-			await page.waitForTimeout(600);
-		}
-
-		// Switch back to select tool
-		const selectButton = page.locator("button[title*='Selecionar']").first();
-		if (await selectButton.isVisible()) {
-			await selectButton.click();
-			await page.waitForTimeout(500);
-		}
-
-		// --- ACTION 4: Test Token Dragging with Magnetic Snap ---
-		console.log("♟️ Testando Movimentação e Snap Magnético de Tokens...");
-		await page.mouse.move(525, 390);
-		await page.mouse.down();
-		await page.mouse.move(675, 450, { steps: 25 });
-		await page.waitForTimeout(600);
-		await page.mouse.up();
-		await page.waitForTimeout(1000);
-
-		// --- ACTION 5: Test Token Quick Action Menu (HP, Status, Elevation) ---
-		console.log("⚡ Testando Menu Contextual de Token e Barra de Vida...");
-		await page.evaluate(() => {
-			const vttStore = (window as any).__vtt_store__?.getState();
-			if (vttStore) {
-				vttStore.setActiveTokenIdForMenu("token-1");
-			}
-		});
-		await page.waitForTimeout(1000);
-
-		// Click damage button "-5"
-		const damageBtn = page.locator("button:has-text('-5')").first();
-		if (await damageBtn.isVisible()) {
-			await damageBtn.click();
-			await page.waitForTimeout(600);
-			await damageBtn.click();
-			await page.waitForTimeout(800);
-		}
-
-		// Toggle a condition badge
-		const condBadge = page.locator("button:has-text('Envenenado')").first();
-		if (await condBadge.isVisible()) {
-			await condBadge.click();
-			await page.waitForTimeout(800);
-		}
-
-		// Close menu
-		const closeMenuBtn = page.locator("button[title*='Fechar Menu']").first();
-		if (await closeMenuBtn.isVisible()) {
-			await closeMenuBtn.click();
-			await page.waitForTimeout(500);
-		}
-
-		// --- ACTION 6: Test Roster Spawner Drawer ---
-		console.log("👥 Testando Drawer de Bestiário e Spawner de Tokens...");
-		const rosterBtn = page.locator("button:has-text('Personagens & NPCs')").first();
-		if (await rosterBtn.isVisible()) {
-			await rosterBtn.click();
-			await page.waitForTimeout(1200);
-
-			const monsterTab = page.locator("button:has-text('Criar Monstro')").first();
-			if (await monsterTab.isVisible()) {
-				await monsterTab.click();
-				await page.waitForTimeout(800);
-			}
-
+		// 1. Apresentação do Topo: Banner Discord com Dithering Shader
+		console.log("🎮 Interagindo com o Banner Discord (Dither Shader)...");
+		const discordBanner = page.locator(
+			'aside[aria-label="Comunidade Discord"]',
+		);
+		if (await discordBanner.isVisible()) {
+			await discordBanner.hover();
 			await page.waitForTimeout(1000);
-			await rosterBtn.click();
+			const discordBtn = discordBanner.locator("a");
+			await discordBtn.hover();
 			await page.waitForTimeout(800);
 		}
 
-		// Take Final High-Res Screenshot
+		// 2. Demonstração do Hero Card e Micro-interações de Hover
+		console.log("✨ Testando Hero Card e Metric Cards com transitions.dev...");
+		const header = page.locator("header");
+		await header.hover();
+		await page.waitForTimeout(800);
+
+		// Hover nos 4 Metric Cards
+		const metricCards = header.locator("a");
+		const cardCount = await metricCards.count();
+		for (let i = 0; i < cardCount; i++) {
+			const card = metricCards.nth(i);
+			await card.hover();
+			await page.waitForTimeout(700);
+		}
+
+		// Hover no botão "+ Registrar Sessão"
+		console.log("🔘 Testando botão + Registrar Sessão...");
+		const registrarBtn = header.locator("button, a:has-text('Registrar')");
+		if (await registrarBtn.first().isVisible()) {
+			await registrarBtn.first().hover();
+			await page.waitForTimeout(800);
+		}
+
+		// 3. Scroll suave para visualizar o Roster e Ações
+		console.log("👥 Explorando o Grupo de Aventureiros e Ações Rápidas...");
+		await page.evaluate(() => window.scrollBy({ top: 320, behavior: "smooth" }));
+		await page.waitForTimeout(1200);
+
+		// Hover nos cards de personagens do grupo
+		const heroCards = page.locator(
+			"div:has-text('Grupo de Aventureiros') + div .group",
+		);
+		const heroCount = await heroCards.count();
+		for (let i = 0; i < Math.min(heroCount, 4); i++) {
+			await heroCards.nth(i).hover();
+			await page.waitForTimeout(600);
+		}
+
+		// Hover nas Ações Rápidas (VTT, Mochila, etc.)
+		console.log("⚡ Testando Ações da Mesa (VTT, Mochila, Ficha)...");
+		const actionCards = page.locator(
+			"div:has-text('Ações da Mesa') + div .group",
+		);
+		const actionCount = await actionCards.count();
+		for (let i = 0; i < actionCount; i++) {
+			await actionCards.nth(i).hover();
+			await page.waitForTimeout(600);
+		}
+
+		// 4. Scroll para Missões, NPCs e Grimório
+		console.log("📜 Explorando Missões, NPCs e Grimório de Navegação...");
+		await page.evaluate(() => window.scrollBy({ top: 400, behavior: "smooth" }));
+		await page.waitForTimeout(1200);
+
+		// Hover nas Missões
+		const questCards = page.locator(
+			"div:has-text('Missões Ativas') + div .group",
+		);
+		if (await questCards.first().isVisible()) {
+			await questCards.first().hover();
+			await page.waitForTimeout(700);
+		}
+
+		// Retorna suavemente ao topo
+		await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+		await page.waitForTimeout(1500);
+
+		// Captura screenshot em alta resolução
 		const screenshotPath = path.join(outputDir, "latest-preview.png");
 		await page.screenshot({ path: screenshotPath, fullPage: false });
 		console.log(`📸 Screenshot de alta resolução salva: ${screenshotPath}`);
-
-		await page.waitForTimeout(2000);
 	} catch (err) {
-		console.warn("⚠️ Aviso durante gravação:", err);
+		console.error("❌ Erro durante gravação de demonstração:", err);
 	} finally {
-		await page.close();
 		await context.close();
 		await browser.close();
 
 		if (devProcess) {
-			try {
-				devProcess.kill();
-			} catch {}
-		}
-
-		const files = fs.readdirSync(outputDir).filter((f) => f.endsWith(".webm"));
-		if (files.length > 0) {
-			const originalVideoPath = path.join(outputDir, files[0]);
-			const cleanVideoPath = path.join(outputDir, "latest-preview.webm");
-			if (originalVideoPath !== cleanVideoPath) {
-				fs.renameSync(originalVideoPath, cleanVideoPath);
-			}
-			console.log(`\n✨ Vídeo de demonstração inteligente gravado com sucesso!`);
-			console.log(`📁 Arquivo: ${cleanVideoPath}`);
-			console.log(
-				"💡 Dica: Arraste e solte o arquivo acima direto na caixa de texto da PR no GitHub!\n",
-			);
+			devProcess.kill();
 		}
 	}
+
+	// 5. Rename generated video
+	const files = fs.readdirSync(outputDir);
+	const videoFile = files.find((f) => f.endsWith(".webm"));
+	if (videoFile && videoFile !== "latest-preview.webm") {
+		const oldPath = path.join(outputDir, videoFile);
+		const newPath = path.join(outputDir, "latest-preview.webm");
+		if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+		fs.renameSync(oldPath, newPath);
+	}
+
+	console.log("\n✨ Vídeo de demonstração do Dashboard gravado com sucesso!");
+	console.log(`📁 Arquivo: ${path.join(outputDir, "latest-preview.webm")}`);
 }
 
-void recordPreview();
+recordPreview().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});
