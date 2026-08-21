@@ -13,8 +13,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentlyPlaying, setSpotifyVolume } from "@/lib/spotify";
+import {
+	formatTrackInfo,
+	getCurrentlyPlaying,
+	refreshSpotifyToken,
+	setSpotifyVolume,
+} from "@/lib/spotify";
 import { useRPGStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { SpotifyConnect } from "./spotify-connect";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "./ui/avatar";
@@ -24,23 +30,39 @@ import { Input } from "./ui/input";
 // Usaremos uma API externa para gerar o QR Code e evitar erros de dependência não instalada
 function QRCodePlaceholder({ value, size }: { value: string; size: number }) {
 	const [loading, setLoading] = useState(true);
+	const [hasError, setHasError] = useState(false);
 	const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
 
 	return (
-		<div className="relative" style={{ width: size, height: size }}>
-			{loading && <Skeleton className="absolute inset-0 rounded-sm" />}
-			<img
-				src={qrUrl}
-				alt="QR Code"
-				width={size}
-				height={size}
-				draggable={false}
-				className={cn(
-					"rounded-sm transition-opacity duration-300",
-					loading ? "opacity-0" : "opacity-100",
-				)}
-				onLoad={() => setLoading(false)}
-			/>
+		<div
+			className="relative flex items-center justify-center bg-white rounded-sm overflow-hidden"
+			style={{ width: size, height: size }}
+		>
+			{loading && !hasError && (
+				<Skeleton className="absolute inset-0 rounded-sm" />
+			)}
+			{hasError ? (
+				<div className="flex flex-col items-center justify-center text-[9px] text-zinc-500 p-1 text-center font-medium">
+					<span>QR Code</span>
+				</div>
+			) : (
+				<img
+					src={qrUrl}
+					alt="QR Code"
+					width={size}
+					height={size}
+					draggable={false}
+					className={cn(
+						"rounded-sm transition-opacity duration-300",
+						loading ? "opacity-0" : "opacity-100",
+					)}
+					onLoad={() => setLoading(false)}
+					onError={() => {
+						setLoading(false);
+						setHasError(true);
+					}}
+				/>
+			)}
 		</div>
 	);
 }
@@ -53,80 +75,132 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 	const jamLink = useRPGStore((s) => s.spotifyJamLink);
 	const setSpotifyJam = useRPGStore((s) => s.setSpotifyJam);
 	const clearSpotifyJam = useRPGStore((s) => s.clearSpotifyJam);
+	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 
 	const spotifyToken = useRPGStore((s) => s.spotifyToken);
 	const currentTrack = useRPGStore((s) => s.currentTrack);
-	const setCurrentTrack = useRPGStore((s) => s.setCurrentTrack);
-	const logoutSpotify = useRPGStore((s) => s.logoutSpotify);
-
 	const jamParticipants = useRPGStore((s) => s.jamParticipants);
 
 	const [inputLink, setInputLink] = useState("");
 	const [copied, setCopied] = useState(false);
-	const [isLoadingTrack, setIsLoadingTrack] = useState(true);
+	const [hasInitialLoaded, setHasInitialLoaded] = useState(false);
+	const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 	const [volume, setVolume] = useState(50);
 	const [volumeError, setVolumeError] = useState<string | null>(null);
 	const [playbackMessage, setPlaybackMessage] = useState<string | null>(null);
-	const volumeTimeoutRef = useRef<number | null>(null);
 
-	const refreshTrack = useCallback(async () => {
-		if (!spotifyToken) {
-			setIsLoadingTrack(false);
-			setCurrentTrack(null);
+	const isInitialLoading = !hasInitialLoaded && !!spotifyToken && !currentTrack;
+	const volumeTimeoutRef = useRef<number | null>(null);
+	const isPollingRef = useRef(false);
+
+	const refreshTrack = useCallback(async (isManual = false) => {
+		const state = useRPGStore.getState();
+		const token = state.spotifyToken;
+		const refreshToken = state.spotifyRefreshToken;
+
+		if (!token) {
+			state.setCurrentTrack(null);
 			setPlaybackMessage(
 				"Conecte seu Spotify para mostrar a música da sua Jam.",
 			);
+			setHasInitialLoaded(true);
 			return;
 		}
 
-		const accessToken = spotifyToken;
+		if (isPollingRef.current) return;
+		isPollingRef.current = true;
 
-		setIsLoadingTrack(true);
-		setPlaybackMessage(null);
+		if (isManual) {
+			setIsManualRefreshing(true);
+		}
 
 		try {
-			const data = await getCurrentlyPlaying(accessToken);
+			let currentAccessToken = token;
+			let data = await getCurrentlyPlaying(currentAccessToken);
+
+			if (!data?.item && refreshToken) {
+				try {
+					const refreshed = await refreshSpotifyToken(refreshToken);
+					currentAccessToken = refreshed.access_token;
+					state.setSpotifyAuth(
+						refreshed.access_token,
+						undefined,
+						refreshed.refresh_token,
+						refreshed.expires_in,
+					);
+					data = await getCurrentlyPlaying(currentAccessToken);
+				} catch {
+					// Manter fluxo normal
+				}
+			}
+
 			if (!data?.item) {
-				setCurrentTrack(null);
+				state.setCurrentTrack(null);
 				setPlaybackMessage(
 					"Não encontrei reprodução ativa. Entre na Jam pelo Spotify e dê play no mesmo usuário conectado aqui.",
 				);
 				return;
 			}
 
-			setCurrentTrack({
-				title: data.item.name,
-				artist: data.item.artists
-					.map((artist: { name: string }) => artist.name)
-					.join(", "),
-				albumArt: data.item.album.images[0]?.url,
-				isPlaying: data.is_playing,
-			});
+			const trackInfo = formatTrackInfo(data.item, data.is_playing);
+			state.setCurrentTrack(trackInfo);
+			setPlaybackMessage(null);
+
 			if (typeof data.device?.volume_percent === "number") {
 				setVolume(data.device.volume_percent);
 			}
 		} catch (error) {
 			if (error instanceof Error && error.message === "SPOTIFY_UNAUTHORIZED") {
-				logoutSpotify();
-				return;
+				if (refreshToken) {
+					try {
+						const refreshed = await refreshSpotifyToken(refreshToken);
+						state.setSpotifyAuth(
+							refreshed.access_token,
+							undefined,
+							refreshed.refresh_token,
+							refreshed.expires_in,
+						);
+						const retryData = await getCurrentlyPlaying(refreshed.access_token);
+						if (retryData?.item) {
+							state.setCurrentTrack(
+								formatTrackInfo(retryData.item, retryData.is_playing),
+							);
+							setPlaybackMessage(null);
+							if (typeof retryData.device?.volume_percent === "number") {
+								setVolume(retryData.device.volume_percent);
+							}
+							return;
+						}
+					} catch {
+						state.logoutSpotify();
+						return;
+					}
+				} else {
+					state.logoutSpotify();
+					return;
+				}
 			}
-			setCurrentTrack(null);
+			state.setCurrentTrack(null);
 			setPlaybackMessage(
 				"Não consegui ler o playback do Spotify. Reconecte o Spotify e tente novamente.",
 			);
-			console.error("Erro ao buscar música:", error);
 		} finally {
-			setIsLoadingTrack(false);
+			isPollingRef.current = false;
+			setHasInitialLoaded(true);
+			if (isManual) {
+				setIsManualRefreshing(false);
+			}
 		}
-	}, [logoutSpotify, spotifyToken, setCurrentTrack]);
+	}, []);
 
 	// Polling para a música atual
 	useEffect(() => {
-		void refreshTrack();
-
 		if (!spotifyToken) {
+			setHasInitialLoaded(true);
 			return;
 		}
+
+		void refreshTrack();
 
 		const interval = setInterval(() => {
 			void refreshTrack();
@@ -134,12 +208,6 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 
 		return () => clearInterval(interval);
 	}, [refreshTrack, spotifyToken]);
-
-	useEffect(() => {
-		if (!spotifyToken && isLoadingTrack) {
-			setIsLoadingTrack(false);
-		}
-	}, [isLoadingTrack, spotifyToken]);
 
 	useEffect(() => {
 		return () => {
@@ -153,20 +221,41 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 		setVolume(nextVolume);
 		setVolumeError(null);
 
-		if (!spotifyToken) return;
+		const token = useRPGStore.getState().spotifyToken;
+		const refreshToken = useRPGStore.getState().spotifyRefreshToken;
+		if (!token) return;
+
 		if (volumeTimeoutRef.current) {
 			window.clearTimeout(volumeTimeoutRef.current);
 		}
 
 		volumeTimeoutRef.current = window.setTimeout(async () => {
 			try {
-				await setSpotifyVolume(spotifyToken, nextVolume);
+				await setSpotifyVolume(token, nextVolume);
 			} catch (error) {
 				if (
 					error instanceof Error &&
 					error.message === "SPOTIFY_UNAUTHORIZED"
 				) {
-					logoutSpotify();
+					if (refreshToken) {
+						try {
+							const refreshed = await refreshSpotifyToken(refreshToken);
+							useRPGStore
+								.getState()
+								.setSpotifyAuth(
+									refreshed.access_token,
+									undefined,
+									refreshed.refresh_token,
+									refreshed.expires_in,
+								);
+							await setSpotifyVolume(refreshed.access_token, nextVolume);
+							return;
+						} catch {
+							useRPGStore.getState().logoutSpotify();
+							return;
+						}
+					}
+					useRPGStore.getState().logoutSpotify();
 					return;
 				}
 				setVolumeError("Abra o Spotify em um dispositivo ativo para ajustar.");
@@ -175,10 +264,33 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 	}
 
 	function handleSaveJam() {
-		if (inputLink.trim()) {
-			setSpotifyJam(inputLink.trim());
+		const trimmed = inputLink.trim();
+		if (trimmed) {
+			setSpotifyJam(trimmed);
 			setInputLink("");
+			if (isDM && activeCampaignId) {
+				const supabase = getSupabase();
+				if (supabase) {
+					void supabase
+						.from("campaigns")
+						.update({ spotify_jam_link: trimmed })
+						.eq("id", activeCampaignId);
+				}
+			}
 			void refreshTrack();
+		}
+	}
+
+	function handleClearJam() {
+		clearSpotifyJam();
+		if (isDM && activeCampaignId) {
+			const supabase = getSupabase();
+			if (supabase) {
+				void supabase
+					.from("campaigns")
+					.update({ spotify_jam_link: null })
+					.eq("id", activeCampaignId);
+			}
 		}
 	}
 
@@ -212,13 +324,16 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 							type="button"
 							variant="ghost"
 							size="icon"
-							onClick={() => void refreshTrack()}
-							disabled={isLoadingTrack}
+							onClick={() => void refreshTrack(true)}
+							disabled={isManualRefreshing}
 							className="h-8 w-8 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-400"
 							title="Atualizar música"
 						>
 							<RefreshCw
-								className={cn("h-3.5 w-3.5", isLoadingTrack && "animate-spin")}
+								className={cn(
+									"h-3.5 w-3.5",
+									isManualRefreshing && "animate-spin",
+								)}
 							/>
 						</Button>
 					)}
@@ -227,7 +342,7 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 			</div>
 
 			<div className="border-b border-border/60 bg-linear-to-br from-emerald-500/10 via-card-elevated to-card-elevated p-4">
-				{isLoadingTrack && spotifyToken ? (
+				{isInitialLoading ? (
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-14 w-14 rounded-xl shadow-md" />
 						<div className="min-w-0 flex-1 space-y-2">
@@ -386,7 +501,7 @@ export function SpotifyJamCard({ isDM = false }: SpotifyJamCardProps) {
 								<Button
 									variant="ghost"
 									size="icon"
-									onClick={clearSpotifyJam}
+									onClick={handleClearJam}
 									className="h-8 w-8 shrink-0 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
 								>
 									<Trash2 className="h-4 w-4" />

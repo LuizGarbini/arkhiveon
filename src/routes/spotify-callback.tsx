@@ -23,7 +23,14 @@ function SpotifyCallback() {
 		const authError = urlParams.get("error");
 		const storedState = window.localStorage.getItem("spotify_auth_state");
 
+		function cleanupStorage() {
+			window.localStorage.removeItem("spotify_auth_state");
+			window.localStorage.removeItem("spotify_code_verifier");
+			window.localStorage.removeItem("spotify_redirect_uri");
+		}
+
 		if (authError) {
+			cleanupStorage();
 			console.error("Spotify recusou a autorização:", authError);
 			toast.error({
 				title: "Acesso Negado",
@@ -33,8 +40,13 @@ function SpotifyCallback() {
 			return;
 		}
 
-		if (!code || state !== storedState) {
+		if (!code || !state || state !== storedState) {
+			cleanupStorage();
 			console.error("Callback Spotify inválido ou origem diferente.");
+			toast.error({
+				title: "Falha na Conexão",
+				description: "Parâmetros de autenticação inválidos ou sessão expirada.",
+			});
 			void navigate({ to: "/dashboard" });
 			return;
 		}
@@ -48,15 +60,18 @@ function SpotifyCallback() {
 				const data = await getSpotifyToken(authCode);
 				const profile = await getUserProfile(data.access_token);
 
-				setSpotifyAuth(data.access_token, {
-					name: profile.display_name,
-					email: profile.email,
-					image: profile.images?.[0]?.url,
-				});
+				setSpotifyAuth(
+					data.access_token,
+					{
+						name: profile.display_name,
+						email: profile.email,
+						image: profile.images?.[0]?.url,
+					},
+					data.refresh_token,
+					data.expires_in,
+				);
 
-				window.localStorage.removeItem("spotify_auth_state");
-				window.localStorage.removeItem("spotify_code_verifier");
-				window.localStorage.removeItem("spotify_redirect_uri");
+				cleanupStorage();
 
 				toast.success({
 					title: "Spotify Conectado",
@@ -65,6 +80,7 @@ function SpotifyCallback() {
 
 				void navigate({ to: "/dashboard" });
 			} catch (error: unknown) {
+				cleanupStorage();
 				console.error("Erro no fluxo de auth Spotify:", error);
 
 				const errorMessage =
