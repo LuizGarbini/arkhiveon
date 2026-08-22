@@ -68,7 +68,8 @@ async function recordPreview() {
 
 	try {
 		console.log(`🌐 Navegando para o VTT autenticado: ${devUrl}...`);
-		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
+		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+		await page.waitForFunction(() => (window as any).__vtt_store__ !== undefined, { timeout: 30000 }).catch(() => {});
 		await page.waitForTimeout(2500);
 
 		// Seed rich demo tabletop data
