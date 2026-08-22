@@ -11,9 +11,9 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect } from "react";
-import type { VTTLayer } from "@/lib/vtt/types";
-import { type VTTTool, useVTTStore } from "@/lib/vtt/vtt-store";
 import { cn } from "@/lib/utils";
+import type { VTTLayer } from "@/lib/vtt/types";
+import { useVTTStore, type VTTTool } from "@/lib/vtt/vtt-store";
 
 export function VTTToolbar() {
 	const {
@@ -42,13 +42,16 @@ export function VTTToolbar() {
 			if (key === "h") setActiveTool("pan");
 			if (key === "r") setActiveTool("ruler");
 			if (key === "g") setActiveTool("ping");
-			if (key === "f" && isGM) setActiveTool("fog");
+			if (key === "f" && isGM) {
+				setActiveTool("fog");
+				setShowFogControls(true);
+			}
 			if (key === "d") setActiveTool("draw");
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [isGM, setActiveTool]);
+	}, [isGM, setActiveTool, setShowFogControls]);
 
 	const tools: {
 		id: VTTTool;
@@ -57,11 +60,22 @@ export function VTTToolbar() {
 		shortcut: string;
 		gmOnly?: boolean;
 	}[] = [
-		{ id: "select", label: "Selecionar & Mover", icon: MousePointer2, shortcut: "V" },
+		{
+			id: "select",
+			label: "Selecionar & Mover",
+			icon: MousePointer2,
+			shortcut: "V",
+		},
 		{ id: "pan", label: "Mão / Mover Câmera", icon: Hand, shortcut: "H" },
 		{ id: "ruler", label: "Régua de Medição", icon: Ruler, shortcut: "R" },
 		{ id: "ping", label: "Ponteiro Laser (Ping)", icon: Radio, shortcut: "G" },
-		{ id: "fog", label: "Névoa de Guerra", icon: Eye, shortcut: "F", gmOnly: true },
+		{
+			id: "fog",
+			label: "Névoa de Guerra",
+			icon: Eye,
+			shortcut: "F",
+			gmOnly: true,
+		},
 		{ id: "draw", label: "Desenhar Formas", icon: Pencil, shortcut: "D" },
 	];
 
