@@ -14,9 +14,9 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import { cn } from "@/lib/utils";
 
 interface VTTTokenMenuProps {
 	token: VTTToken | null;
@@ -25,13 +25,48 @@ interface VTTTokenMenuProps {
 }
 
 const COMMON_CONDITIONS = [
-	{ id: "envenenado", label: "Envenenado", icon: "🧪", color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
-	{ id: "caido", label: "Caído", icon: "🧎", color: "text-amber-400 border-amber-500/40 bg-amber-500/10" },
-	{ id: "cego", label: "Cego", icon: "👁️‍🗨️", color: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10" },
-	{ id: "atordoado", label: "Atordoado", icon: "⚡", color: "text-yellow-400 border-yellow-500/40 bg-yellow-500/10" },
-	{ id: "invisivel", label: "Invisível", icon: "👻", color: "text-sky-400 border-sky-500/40 bg-sky-500/10" },
-	{ id: "chamas", label: "Em Chamas", icon: "🔥", color: "text-rose-400 border-rose-500/40 bg-rose-500/10" },
-	{ id: "concentracao", label: "Concentração", icon: "🔮", color: "text-purple-400 border-purple-500/40 bg-purple-500/10" },
+	{
+		id: "envenenado",
+		label: "Envenenado",
+		icon: "🧪",
+		color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
+	},
+	{
+		id: "caido",
+		label: "Caído",
+		icon: "🧎",
+		color: "text-amber-400 border-amber-500/40 bg-amber-500/10",
+	},
+	{
+		id: "cego",
+		label: "Cego",
+		icon: "👁️‍🗨️",
+		color: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10",
+	},
+	{
+		id: "atordoado",
+		label: "Atordoado",
+		icon: "⚡",
+		color: "text-yellow-400 border-yellow-500/40 bg-yellow-500/10",
+	},
+	{
+		id: "invisivel",
+		label: "Invisível",
+		icon: "👻",
+		color: "text-sky-400 border-sky-500/40 bg-sky-500/10",
+	},
+	{
+		id: "chamas",
+		label: "Em Chamas",
+		icon: "🔥",
+		color: "text-rose-400 border-rose-500/40 bg-rose-500/10",
+	},
+	{
+		id: "concentracao",
+		label: "Concentração",
+		icon: "🔮",
+		color: "text-purple-400 border-purple-500/40 bg-purple-500/10",
+	},
 ];
 
 export function VTTTokenMenu({
@@ -39,7 +74,8 @@ export function VTTTokenMenu({
 	onUpdateToken,
 	onDeleteToken,
 }: VTTTokenMenuProps) {
-	const { activeTokenIdForMenu, setActiveTokenIdForMenu, isGM, viewport } = useVTTStore();
+	const { activeTokenIdForMenu, setActiveTokenIdForMenu, isGM, viewport } =
+		useVTTStore();
 
 	const [customHpMod, setCustomHpMod] = useState("");
 
@@ -87,7 +123,10 @@ export function VTTTokenMenu({
 
 	// Clamp to keep inside screen boundaries
 	const leftPos = Math.min(Math.max(screenX + 50, 20), window.innerWidth - 340);
-	const topPos = Math.min(Math.max(screenY - 100, 70), window.innerHeight - 450);
+	const topPos = Math.min(
+		Math.max(screenY - 100, 70),
+		window.innerHeight - 450,
+	);
 
 	return (
 		<div
@@ -99,15 +138,29 @@ export function VTTTokenMenu({
 				<div className="flex items-center gap-2.5 min-w-0">
 					<div className="h-8 w-8 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
 						{token.avatarUrl ? (
-							<img src={token.avatarUrl} alt={token.name} className="h-full w-full object-cover" />
+							<img
+								src={token.avatarUrl}
+								alt={token.name}
+								className="h-full w-full object-cover"
+							/>
 						) : (
-							<span className="font-bold text-xs text-primary">{token.name[0]}</span>
+							<span className="font-bold text-xs text-primary">
+								{token.name[0]}
+							</span>
 						)}
 					</div>
 					<div className="min-w-0">
-						<h4 className="font-display font-bold text-xs text-white truncate">{token.name}</h4>
+						<h4 className="font-display font-bold text-xs text-white truncate">
+							{token.name}
+						</h4>
 						<p className="text-[10px] text-white/50">
-							{token.sizeCells === 1 ? "Médio (1x1)" : token.sizeCells === 2 ? "Grande (2x2)" : token.sizeCells === 3 ? "Enorme (3x3)" : "Imenso (4x4)"}
+							{token.sizeCells === 1
+								? "Médio (1x1)"
+								: token.sizeCells === 2
+									? "Grande (2x2)"
+									: token.sizeCells === 3
+										? "Enorme (3x3)"
+										: "Imenso (4x4)"}
 						</p>
 					</div>
 				</div>
@@ -227,7 +280,9 @@ export function VTTTokenMenu({
 			<div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/10">
 				{/* Size */}
 				<div className="space-y-1">
-					<span className="text-[9px] font-bold text-white/50 uppercase">Tamanho</span>
+					<span className="text-[9px] font-bold text-white/50 uppercase">
+						Tamanho
+					</span>
 					<div className="flex items-center gap-1">
 						{[1, 2, 3, 4].map((sz) => (
 							<button
@@ -287,8 +342,14 @@ export function VTTTokenMenu({
 						<>
 							<button
 								type="button"
-								onClick={() => onUpdateToken(token.id, { isHidden: !token.isHidden })}
-								title={token.isHidden ? "Revelar aos Jogadores" : "Ocultar dos Jogadores"}
+								onClick={() =>
+									onUpdateToken(token.id, { isHidden: !token.isHidden })
+								}
+								title={
+									token.isHidden
+										? "Revelar aos Jogadores"
+										: "Ocultar dos Jogadores"
+								}
 								className={cn(
 									"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
 									token.isHidden
@@ -296,7 +357,11 @@ export function VTTTokenMenu({
 										: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
 								)}
 							>
-								{token.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+								{token.isHidden ? (
+									<EyeOff className="h-3.5 w-3.5" />
+								) : (
+									<Eye className="h-3.5 w-3.5" />
+								)}
 							</button>
 
 							<button
@@ -325,8 +390,12 @@ export function VTTTokenMenu({
 
 					<button
 						type="button"
-						onClick={() => onUpdateToken(token.id, { isLocked: !token.isLocked })}
-						title={token.isLocked ? "Destravar Movimentação" : "Travar no Lugar"}
+						onClick={() =>
+							onUpdateToken(token.id, { isLocked: !token.isLocked })
+						}
+						title={
+							token.isLocked ? "Destravar Movimentação" : "Travar no Lugar"
+						}
 						className={cn(
 							"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
 							token.isLocked
@@ -334,7 +403,11 @@ export function VTTTokenMenu({
 								: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
 						)}
 					>
-						{token.isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+						{token.isLocked ? (
+							<Lock className="h-3.5 w-3.5" />
+						) : (
+							<Unlock className="h-3.5 w-3.5" />
+						)}
 					</button>
 				</div>
 
