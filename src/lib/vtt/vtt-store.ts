@@ -13,13 +13,7 @@ import type {
 	VTTToken,
 } from "./types";
 
-export type VTTTool =
-	| "select"
-	| "pan"
-	| "ruler"
-	| "ping"
-	| "fog"
-	| "draw";
+export type VTTTool = "select" | "pan" | "ruler" | "ping" | "fog" | "draw";
 
 export interface VTTRulerMeasurement {
 	startX: number;
@@ -95,7 +89,9 @@ interface VTTState {
 	updateScene: (sceneId: string, updates: Partial<VTTScene>) => void;
 	removeScene: (sceneId: string) => void;
 
-	setViewport: (updates: Partial<{ x: number; y: number; scale: number }>) => void;
+	setViewport: (
+		updates: Partial<{ x: number; y: number; scale: number }>,
+	) => void;
 	resetViewport: () => void;
 
 	setActiveTool: (tool: VTTTool) => void;
@@ -104,7 +100,11 @@ interface VTTState {
 	setTokens: (tokens: VTTToken[]) => void;
 	addToken: (token: VTTToken) => void;
 	updateToken: (tokenId: string, updates: Partial<VTTToken>) => void;
-	setTokenTargetPosition: (tokenId: string, targetX: number, targetY: number) => void;
+	setTokenTargetPosition: (
+		tokenId: string,
+		targetX: number,
+		targetY: number,
+	) => void;
 	removeToken: (tokenId: string) => void;
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
@@ -125,7 +125,10 @@ interface VTTState {
 	setOnlineUsers: (users: VTTPresenceUser[]) => void;
 	setRemoteCursor: (cursor: VTTRemoteCursor) => void;
 	removeRemoteCursor: (userId: string) => void;
-	setRemoteMeasurement: (userId: string, measurement: VTTRemoteMeasurement | null) => void;
+	setRemoteMeasurement: (
+		userId: string,
+		measurement: VTTRemoteMeasurement | null,
+	) => void;
 	setUserColor: (color: string) => void;
 
 	setActiveMeasurement: (measurement: VTTRulerMeasurement | null) => void;
@@ -167,7 +170,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 	onlineUsers: [],
 	remoteCursors: {},
 	remoteMeasurements: {},
-	userColor: VTT_PLAYER_COLORS[Math.floor(Math.random() * VTT_PLAYER_COLORS.length)],
+	userColor:
+		VTT_PLAYER_COLORS[Math.floor(Math.random() * VTT_PLAYER_COLORS.length)],
 
 	activeMeasurement: null,
 	activePings: [],
@@ -197,7 +201,9 @@ export const useVTTStore = create<VTTState>((set) => ({
 		})),
 	updateScene: (sceneId, updates) =>
 		set((state) => ({
-			scenes: state.scenes.map((s) => (s.id === sceneId ? { ...s, ...updates } : s)),
+			scenes: state.scenes.map((s) =>
+				s.id === sceneId ? { ...s, ...updates } : s,
+			),
 		})),
 	removeScene: (sceneId) =>
 		set((state) => {
@@ -232,14 +238,14 @@ export const useVTTStore = create<VTTState>((set) => ({
 		})),
 	updateToken: (tokenId, updates) =>
 		set((state) => ({
-			tokens: state.tokens.map((t) => (t.id === tokenId ? { ...t, ...updates } : t)),
+			tokens: state.tokens.map((t) =>
+				t.id === tokenId ? { ...t, ...updates } : t,
+			),
 		})),
 	setTokenTargetPosition: (tokenId, targetX, targetY) =>
 		set((state) => ({
 			tokens: state.tokens.map((t) =>
-				t.id === tokenId
-					? { ...t, targetX, targetY }
-					: t,
+				t.id === tokenId ? { ...t, targetX, targetY } : t,
 			),
 		})),
 	removeToken: (tokenId) =>
@@ -247,7 +253,9 @@ export const useVTTStore = create<VTTState>((set) => ({
 			tokens: state.tokens.filter((t) => t.id !== tokenId),
 			selectedTokenIds: state.selectedTokenIds.filter((id) => id !== tokenId),
 			activeTokenIdForMenu:
-				state.activeTokenIdForMenu === tokenId ? null : state.activeTokenIdForMenu,
+				state.activeTokenIdForMenu === tokenId
+					? null
+					: state.activeTokenIdForMenu,
 		})),
 	setSelectedTokenIds: (ids) => set({ selectedTokenIds: ids }),
 	toggleSelectTokenId: (id, multiSelect) =>
@@ -322,12 +330,16 @@ export const useVTTStore = create<VTTState>((set) => ({
 			if (mode === "all_hidden") {
 				return {
 					fogPaths: [],
-					fogState: state.fogState ? { ...state.fogState, revealedPaths: [] } : null,
+					fogState: state.fogState
+						? { ...state.fogState, revealedPaths: [] }
+						: null,
 				};
 			}
 			// all_revealed: Single full rect reveal
-			const activeScene = state.scenes.find((s) => s.id === state.activeSceneId);
-			const fullRevealPath: any = {
+			const activeScene = state.scenes.find(
+				(s) => s.id === state.activeSceneId,
+			);
+			const fullRevealPath: VTTFogPath = {
 				id: `reveal-all-${Date.now()}`,
 				type: "rect",
 				mode: "reveal",
@@ -348,7 +360,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
 	setShowFogControls: (show) => set({ showFogControls: show }),
 
-	setActiveMeasurement: (measurement) => set({ activeMeasurement: measurement }),
+	setActiveMeasurement: (measurement) =>
+		set({ activeMeasurement: measurement }),
 	addPing: (ping) =>
 		set((state) => ({
 			activePings: [...state.activePings, ping],
