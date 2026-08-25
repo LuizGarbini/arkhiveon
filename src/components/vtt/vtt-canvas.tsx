@@ -1,6 +1,15 @@
+import {
+	Application,
+	Assets,
+	Container,
+	Graphics,
+	Sprite,
+	Text,
+	TextStyle,
+} from "pixi.js";
 import { useEffect, useRef } from "react";
-import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle } from "pixi.js";
 import { playPingAudio } from "@/lib/vtt/audio";
+import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
 	calculateGridDistance,
 	getFlatHexCorners,
@@ -8,6 +17,7 @@ import {
 	snapToGrid,
 } from "@/lib/vtt/grid-math";
 import type {
+	VTTFogPath,
 	VTTPingEvent,
 	VTTRulerMeasurement,
 	VTTScene,
@@ -17,11 +27,16 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
-	onUpdateToken?: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
+	onUpdateToken?: (
+		tokenId: string,
+		updates: Partial<VTTToken>,
+	) => Promise<void>;
 	onBroadcastDrag?: (tokenId: string, x: number, y: number) => void;
 	onBroadcastCursor?: (x: number, y: number) => void;
 	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
 	onBroadcastPing?: (ping: VTTPingEvent) => void;
+	onBroadcastFog?: (path: VTTFogPath) => void;
+	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
 export function VTTCanvas({
@@ -31,6 +46,8 @@ export function VTTCanvas({
 	onBroadcastCursor,
 	onBroadcastRuler,
 	onBroadcastPing,
+	onBroadcastFog,
+	onPersistFog,
 }: VTTCanvasProps) {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const appRef = useRef<Application | null>(null);
@@ -39,6 +56,10 @@ export function VTTCanvas({
 	const gridLayerRef = useRef<Graphics | null>(null);
 	const aurasLayerRef = useRef<Graphics | null>(null);
 	const tokensLayerRef = useRef<Container | null>(null);
+	const gmTokensLayerRef = useRef<Container | null>(null);
+	const fogExplorationLayerRef = useRef<Graphics | null>(null);
+	const fogOfWarLayerRef = useRef<Graphics | null>(null);
+	const fogBrushPreviewLayerRef = useRef<Graphics | null>(null);
 	const remoteRulersLayerRef = useRef<Graphics | null>(null);
 	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
@@ -55,6 +76,10 @@ export function VTTCanvas({
 	const isAltHeldRef = useRef(false);
 	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
 
+	// Fog Drawing refs
+	const fogStrokeStartRef = useRef<{ x: number; y: number } | null>(null);
+	const fogCurrentPointsRef = useRef<{ x: number; y: number }[]>([]);
+
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
@@ -65,6 +90,7 @@ export function VTTCanvas({
 		viewport,
 		setViewport,
 		activeTool,
+		activeLayer,
 		tokens,
 		selectedTokenIds,
 		setSelectedTokenIds,
@@ -75,6 +101,11 @@ export function VTTCanvas({
 		addPing,
 		removePing,
 		setDraggedTokenId,
+		fogPaths,
+		addFogPath,
+		activeFogTool,
+		activeFogMode,
+		fogBrushRadius,
 		remoteCursors,
 		remoteMeasurements,
 		userColor,
@@ -129,6 +160,24 @@ export function VTTCanvas({
 			tokensLayerRef.current = tokensLayer;
 			world.addChild(tokensLayer);
 
+			const gmTokensLayer = new Container();
+			gmTokensLayerRef.current = gmTokensLayer;
+			world.addChild(gmTokensLayer);
+
+			// Exploration Penumbra overlay (intermediate layer for visited regions)
+			const fogExplorationLayer = new Graphics();
+			fogExplorationLayerRef.current = fogExplorationLayer;
+			world.addChild(fogExplorationLayer);
+
+			// Solid Fog of War mask layer
+			const fogOfWarLayer = new Graphics();
+			fogOfWarLayerRef.current = fogOfWarLayer;
+			world.addChild(fogOfWarLayer);
+
+			const fogBrushPreviewLayer = new Graphics();
+			fogBrushPreviewLayerRef.current = fogBrushPreviewLayer;
+			world.addChild(fogBrushPreviewLayer);
+
 			const remoteRulersLayer = new Graphics();
 			remoteRulersLayerRef.current = remoteRulersLayer;
 			world.addChild(remoteRulersLayer);
@@ -150,8 +199,9 @@ export function VTTCanvas({
 			world.addChild(remoteCursorsLayer);
 
 			// Initial viewport position
-			world.position.set(viewport.x, viewport.y);
-			world.scale.set(viewport.scale);
+			const initVp = useVTTStore.getState().viewport;
+			world.position.set(initVp.x, initVp.y);
+			world.scale.set(initVp.scale);
 
 			// 60FPS Direct PixiJS Display Object Interpolation (NO React re-renders)
 			tickerCallback = () => {
@@ -202,7 +252,8 @@ export function VTTCanvas({
 
 	// 3. Render Map & Grid whenever scene configuration changes
 	useEffect(() => {
-		if (!appRef.current || !gridLayerRef.current || !mapLayerRef.current) return;
+		if (!appRef.current || !gridLayerRef.current || !mapLayerRef.current)
+			return;
 
 		const mapLayer = mapLayerRef.current;
 		const grid = gridLayerRef.current;
@@ -246,7 +297,8 @@ export function VTTCanvas({
 		// Draw Procedural Grid
 		if (gridType === "none" || gridSize <= 0 || gridOpacity <= 0) return;
 
-		const colorHex = Number.parseInt(gridColor.replace("#", "0x"), 16) || 0xffffff;
+		const colorHex =
+			Number.parseInt(gridColor.replace("#", "0x"), 16) || 0xffffff;
 
 		if (gridType === "square") {
 			grid.beginPath();
@@ -298,24 +350,61 @@ export function VTTCanvas({
 		}
 	}, [scene]);
 
-	// 4. Render Tokens and Auras on the Stage
+	// 4. Render Tokens and Auras on the Stage (with exploration visibility & layer isolation)
 	useEffect(() => {
-		if (!tokensLayerRef.current || !aurasLayerRef.current || !scene) return;
+		if (
+			!tokensLayerRef.current ||
+			!gmTokensLayerRef.current ||
+			!aurasLayerRef.current ||
+			!scene
+		)
+			return;
 
 		const tokensLayer = tokensLayerRef.current;
+		const gmTokensLayer = gmTokensLayerRef.current;
 		const aurasLayer = aurasLayerRef.current;
 
 		tokensLayer.removeChildren();
+		gmTokensLayer.removeChildren();
 		aurasLayer.clear();
 		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
 
+		// Calculate player tokens vision circles for Exploration Mode (Penumbra LOS check)
+		const playerTokens = tokens.filter(
+			(t) =>
+				t.layer === "token" &&
+				!t.isHidden &&
+				(t.characterId || t.controlledBy?.length > 0),
+		);
+
 		for (const token of tokens) {
-			// Visibility filter
+			// Security filter: GM layer tokens are NEVER added to player view
 			if (token.layer === "gm" && !isGM) continue;
 			if (token.isHidden && !isGM) continue;
 
+			// Exploration Mode Line-of-Sight check for Players:
+			// If fog and exploration are active, NPCs / monsters outside active player vision radius are hidden
+			if (!isGM && scene.fogEnabled && scene.fogExploration) {
+				const isPlayerControlled =
+					token.characterId ||
+					(token.controlledBy && token.controlledBy.length > 0);
+				if (!isPlayerControlled) {
+					// Check if this NPC/monster token is inside any active player token's vision circle
+					const isInActiveVision = playerTokens.some((pt) => {
+						const vRange = (pt.visionRange || 6) * gridSize;
+						const dist = Math.hypot(pt.x - token.x, pt.y - token.y);
+						return dist <= vRange;
+					});
+
+					if (!isInActiveVision) {
+						continue; // Hide enemy/monster in explored penumbra
+					}
+				}
+			}
+
+			const isGMLayer = token.layer === "gm";
 			const tokenRadius = (token.sizeCells * gridSize) / 2;
 			const isSelected = selectedTokenIds.includes(token.id);
 
@@ -323,7 +412,8 @@ export function VTTCanvas({
 			if (token.auras && token.auras.length > 0) {
 				for (const aura of token.auras) {
 					const auraRadius = aura.radius * gridSize;
-					const colorHex = Number.parseInt(aura.color.replace("#", "0x"), 16) || 0x38bdf8;
+					const colorHex =
+						Number.parseInt(aura.color.replace("#", "0x"), 16) || 0x38bdf8;
 					aurasLayer.circle(token.x, token.y, auraRadius);
 					aurasLayer.fill({ color: colorHex, alpha: aura.opacity ?? 0.25 });
 					aurasLayer.circle(token.x, token.y, auraRadius);
@@ -336,7 +426,7 @@ export function VTTCanvas({
 			tokenContainer.position.set(token.x, token.y);
 			tokenContainer.eventMode = "static";
 			tokenContainer.cursor = token.isLocked ? "default" : "grab";
-			tokenContainer.alpha = token.isHidden ? 0.5 : 1;
+			tokenContainer.alpha = isGMLayer ? 0.55 : token.isHidden ? 0.5 : 1;
 
 			// Register in display objects map for zero-thrash GPU interpolation
 			tokenDisplayObjectsRef.current.set(token.id, tokenContainer);
@@ -344,7 +434,7 @@ export function VTTCanvas({
 			// Base circular background
 			const bg = new Graphics();
 			bg.circle(0, 0, tokenRadius);
-			bg.fill({ color: 0x18181b });
+			bg.fill({ color: isGMLayer ? 0x2e1065 : 0x18181b });
 			tokenContainer.addChild(bg);
 
 			// Load avatar image or initials placeholder
@@ -386,7 +476,7 @@ export function VTTCanvas({
 						fontFamily: "system-ui, sans-serif",
 						fontSize: Math.max(12, tokenRadius * 0.7),
 						fontWeight: "bold",
-						fill: "#a855f7",
+						fill: isGMLayer ? "#c084fc" : "#a855f7",
 					}),
 				});
 				text.anchor.set(0.5);
@@ -395,18 +485,36 @@ export function VTTCanvas({
 
 			// Border Ring
 			const ring = new Graphics();
-			const ringColor = isSelected
-				? 0x38bdf8 // Cyan for selection
-				: token.layer === "gm"
-					? 0xa855f7 // Purple for GM
-					: 0xd4d4d8; // Light Gray standard
+			const ringColor = isSelected ? 0x38bdf8 : isGMLayer ? 0xa855f7 : 0xd4d4d8;
 
 			ring.circle(0, 0, tokenRadius);
 			ring.stroke({
-				width: isSelected ? 3.5 : 2,
+				width: isSelected ? 3.5 : isGMLayer ? 2.5 : 2,
 				color: ringColor,
 			});
 			tokenContainer.addChild(ring);
+
+			// GM Shield Badge
+			if (isGMLayer) {
+				const gmBadge = new Graphics();
+				gmBadge.circle(tokenRadius * 0.65, -tokenRadius * 0.65, 8);
+				gmBadge.fill({ color: 0x581c87 });
+				gmBadge.stroke({ width: 1.5, color: 0xc084fc });
+				tokenContainer.addChild(gmBadge);
+
+				const gmText = new Text({
+					text: "GM",
+					style: new TextStyle({
+						fontFamily: "system-ui, sans-serif",
+						fontSize: 8,
+						fontWeight: "bold",
+						fill: "#ffffff",
+					}),
+				});
+				gmText.anchor.set(0.5);
+				gmText.position.set(tokenRadius * 0.65, -tokenRadius * 0.65);
+				tokenContainer.addChild(gmText);
+			}
 
 			// Selection outer pulse ring
 			if (isSelected) {
@@ -416,8 +524,8 @@ export function VTTCanvas({
 				tokenContainer.addChild(outerGlow);
 			}
 
-			// HP Bar (Above token) with strict clamping
-			if (token.hpMax && token.hpMax > 0) {
+			// HP Bar (Above token)
+			if (token.hpMax && token.hpMax > 0 && !isGMLayer) {
 				const currentHp = Math.max(0, token.hpCurrent ?? 0);
 				const maxHp = Math.max(1, token.hpMax ?? currentHp ?? 1);
 				const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
@@ -473,7 +581,7 @@ export function VTTCanvas({
 				tokenContainer.addChild(elevText);
 			}
 
-			// Token Pointer Events (Drag & Selection)
+			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
 				if (e.button === 2) {
 					e.stopPropagation();
@@ -482,7 +590,20 @@ export function VTTCanvas({
 					return;
 				}
 
-				if (e.button === 0 && !isSpaceHeldRef.current && !isAltHeldRef.current && activeTool === "select") {
+				if (
+					e.button === 0 &&
+					!isSpaceHeldRef.current &&
+					!isAltHeldRef.current &&
+					activeTool === "select"
+				) {
+					// Strict Layer Isolation:
+					// 1. Map Layer: Tokens cannot be selected/dragged
+					if (activeLayer === "map") return;
+					// 2. GM Layer: Only GM tokens can be selected
+					if (activeLayer === "gm" && !isGMLayer) return;
+					// 3. Token Layer: GM tokens cannot be selected
+					if (activeLayer === "token" && isGMLayer) return;
+
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
 
@@ -505,7 +626,11 @@ export function VTTCanvas({
 				}
 			});
 
-			tokensLayer.addChild(tokenContainer);
+			if (isGMLayer) {
+				gmTokensLayer.addChild(tokenContainer);
+			} else {
+				tokensLayer.addChild(tokenContainer);
+			}
 		}
 	}, [
 		tokens,
@@ -516,12 +641,77 @@ export function VTTCanvas({
 		viewport.y,
 		viewport.scale,
 		activeTool,
+		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		setDraggedTokenId,
 	]);
 
-	// 5. Render Remote Multiplayer Cursors
+	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
+	useEffect(() => {
+		if (!fogOfWarLayerRef.current || !fogExplorationLayerRef.current || !scene)
+			return;
+		const fogLayer = fogOfWarLayerRef.current;
+		const explorationLayer = fogExplorationLayerRef.current;
+
+		fogLayer.clear();
+		explorationLayer.clear();
+
+		if (!scene.fogEnabled) {
+			fogLayer.visible = false;
+			explorationLayer.visible = false;
+			return;
+		}
+
+		fogLayer.visible = true;
+
+		const width = scene.width || 4000;
+		const height = scene.height || 4000;
+		const gridSize = scene.gridSize || 70;
+
+		// GM mode: semi-transparent blue-tinted dark fog (~45% opacity)
+		// Player mode: solid pitch black fog (100% opacity)
+		const fogColor = isGM ? 0x0f172a : 0x090a0f;
+		const fogAlpha = isGM ? 0.45 : 1.0;
+
+		// 5.1 Base Solid Fog Covering Scene
+		fogLayer.rect(0, 0, width, height);
+		fogLayer.fill({ color: fogColor, alpha: fogAlpha });
+
+		// 5.2 Chronological Fog Mask Shaping (Cutouts & Hidden Re-fills)
+		for (const path of fogPaths) {
+			const isReveal = path.mode === "reveal";
+			drawFogGeometry(fogLayer, path, isReveal, fogColor, fogAlpha);
+		}
+
+		// 5.3 Exploration Mode (Penumbra):
+		// Explored areas are covered by twilight/penumbra, cut open by active player token vision
+		if (!isGM && scene.fogExploration) {
+			explorationLayer.visible = true;
+
+			// Base Penumbra overlay over the map
+			explorationLayer.rect(0, 0, width, height);
+			explorationLayer.fill({ color: 0x090a0f, alpha: 0.55 });
+
+			// Cut out active vision circles around player-controlled tokens
+			const playerTokens = tokens.filter(
+				(t) =>
+					t.layer === "token" &&
+					!t.isHidden &&
+					(t.characterId || t.controlledBy?.length > 0),
+			);
+
+			for (const pt of playerTokens) {
+				const vRange = (pt.visionRange || 6) * gridSize;
+				explorationLayer.circle(pt.x, pt.y, vRange);
+				explorationLayer.cut();
+			}
+		} else {
+			explorationLayer.visible = false;
+		}
+	}, [scene, fogPaths, tokens, isGM]);
+
+	// 6. Render Remote Multiplayer Cursors
 	useEffect(() => {
 		if (!remoteCursorsLayerRef.current) return;
 		const layer = remoteCursorsLayerRef.current;
@@ -531,7 +721,8 @@ export function VTTCanvas({
 			const cursorContainer = new Container();
 			cursorContainer.position.set(cursor.x, cursor.y);
 
-			const colorHex = Number.parseInt(cursor.color.replace("#", "0x"), 16) || 0x38bdf8;
+			const colorHex =
+				Number.parseInt(cursor.color.replace("#", "0x"), 16) || 0x38bdf8;
 
 			// Pointer Arrow
 			const arrow = new Graphics();
@@ -571,7 +762,7 @@ export function VTTCanvas({
 		}
 	}, [remoteCursors]);
 
-	// 6. Render Remote Multiplayer Measurements (with distance labels)
+	// 7. Render Remote Multiplayer Measurements (with distance labels)
 	useEffect(() => {
 		if (!remoteRulersLayerRef.current || !remoteRulersLabelsRef.current) return;
 		const layer = remoteRulersLayerRef.current;
@@ -581,7 +772,8 @@ export function VTTCanvas({
 		labelsLayer.removeChildren();
 
 		for (const m of Object.values(remoteMeasurements)) {
-			const colorHex = Number.parseInt(m.color.replace("#", "0x"), 16) || 0x38bdf8;
+			const colorHex =
+				Number.parseInt(m.color.replace("#", "0x"), 16) || 0x38bdf8;
 
 			// Line & Endpoints
 			layer.moveTo(m.startX, m.startY);
@@ -619,7 +811,7 @@ export function VTTCanvas({
 		}
 	}, [remoteMeasurements]);
 
-	// 7. Render Active Pings (Concentric pulsing ripples)
+	// 8. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
 		if (!pingsLayerRef.current) return;
 		const layer = pingsLayerRef.current;
@@ -636,7 +828,8 @@ export function VTTCanvas({
 			const progress = elapsed / 3000;
 			const radius = 20 + progress * 60;
 			const alpha = Math.max(0, 1 - progress);
-			const colorHex = Number.parseInt(ping.color.replace("#", "0x"), 16) || 0xa855f7;
+			const colorHex =
+				Number.parseInt(ping.color.replace("#", "0x"), 16) || 0xa855f7;
 
 			layer.circle(ping.x, ping.y, radius);
 			layer.stroke({ width: 3, color: colorHex, alpha });
@@ -646,7 +839,7 @@ export function VTTCanvas({
 		}
 	}, [activePings, removePing]);
 
-	// 8. Native DOM event listeners for Pan, Zoom, Token Drag, Broadcasts, Alt-Ping & Ruler
+	// 9. Native DOM event listeners for Pan, Zoom, Token Drag, Fog Painting, Alt-Ping & Ruler
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -662,7 +855,14 @@ export function VTTCanvas({
 		};
 
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.code === "Space" && !e.repeat && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+			if (
+				e.code === "Space" &&
+				!e.repeat &&
+				!(
+					e.target instanceof HTMLInputElement ||
+					e.target instanceof HTMLTextAreaElement
+				)
+			) {
 				isSpaceHeldRef.current = true;
 				container.style.cursor = "grab";
 			}
@@ -689,7 +889,10 @@ export function VTTCanvas({
 			const mouseY = e.clientY - rect.top;
 
 			const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-			const newScale = Math.min(Math.max(viewport.scale * zoomFactor, 0.1), 5.0);
+			const newScale = Math.min(
+				Math.max(viewport.scale * zoomFactor, 0.1),
+				5.0,
+			);
 
 			const newX = mouseX - (mouseX - viewport.x) * (newScale / viewport.scale);
 			const newY = mouseY - (mouseY - viewport.y) * (newScale / viewport.scale);
@@ -702,9 +905,15 @@ export function VTTCanvas({
 			const isLeftClick = e.button === 0;
 
 			// Pan start
-			if (isMiddleClick || (isLeftClick && (isSpaceHeldRef.current || activeTool === "pan"))) {
+			if (
+				isMiddleClick ||
+				(isLeftClick && (isSpaceHeldRef.current || activeTool === "pan"))
+			) {
 				isDraggingViewportRef.current = true;
-				viewportDragStartRef.current = { x: e.clientX - viewport.x, y: e.clientY - viewport.y };
+				viewportDragStartRef.current = {
+					x: e.clientX - viewport.x,
+					y: e.clientY - viewport.y,
+				};
 				container.style.cursor = "grabbing";
 				return;
 			}
@@ -729,6 +938,13 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Fog of War Drawing (GM Only)
+			if (activeTool === "fog" && isGM && isLeftClick) {
+				fogStrokeStartRef.current = worldPoint;
+				fogCurrentPointsRef.current = [worldPoint];
+				return;
+			}
+
 			// Deselect if clicking on empty canvas
 			if (isLeftClick && activeTool === "select") {
 				setSelectedTokenIds([]);
@@ -750,6 +966,65 @@ export function VTTCanvas({
 			if (onBroadcastCursor && now - lastCursorBroadcastRef.current > 30) {
 				lastCursorBroadcastRef.current = now;
 				onBroadcastCursor(worldPoint.x, worldPoint.y);
+			}
+
+			// Handle Fog of War Live Preview Drawing (using shared drawFogGeometry)
+			if (
+				activeTool === "fog" &&
+				isGM &&
+				fogStrokeStartRef.current &&
+				fogBrushPreviewLayerRef.current
+			) {
+				const previewLayer = fogBrushPreviewLayerRef.current;
+				const start = fogStrokeStartRef.current;
+				const isReveal = activeFogMode === "reveal";
+				const previewColor = isReveal ? 0x22c55e : 0xef4444;
+
+				previewLayer.clear();
+
+				let previewPath: VTTFogPath | null = null;
+				if (activeFogTool === "brush") {
+					fogCurrentPointsRef.current.push(worldPoint);
+					previewPath = {
+						id: "live-preview",
+						type: "brush",
+						mode: activeFogMode,
+						brushRadius: fogBrushRadius,
+						points: [...fogCurrentPointsRef.current],
+					};
+				} else if (activeFogTool === "rect") {
+					const rx = Math.min(start.x, worldPoint.x);
+					const ry = Math.min(start.y, worldPoint.y);
+					const rw = Math.abs(worldPoint.x - start.x);
+					const rh = Math.abs(worldPoint.y - start.y);
+					previewPath = {
+						id: "live-preview",
+						type: "rect",
+						mode: activeFogMode,
+						x: rx,
+						y: ry,
+						width: rw,
+						height: rh,
+					};
+				} else if (activeFogTool === "circle") {
+					const radius = Math.hypot(
+						worldPoint.x - start.x,
+						worldPoint.y - start.y,
+					);
+					previewPath = {
+						id: "live-preview",
+						type: "circle",
+						mode: activeFogMode,
+						x: start.x,
+						y: start.y,
+						radius,
+					};
+				}
+
+				if (previewPath) {
+					drawFogGeometry(previewLayer, previewPath, false, previewColor, 0.35);
+				}
+				return;
 			}
 
 			// Handle Token Dragging with Realtime Broadcast
@@ -777,8 +1052,17 @@ export function VTTCanvas({
 			}
 
 			// Handle Ruler Drawing
-			if (activeTool === "ruler" && rulerStartRef.current && scene && measurementLayerRef.current) {
-				const currentSnapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
+			if (
+				activeTool === "ruler" &&
+				rulerStartRef.current &&
+				scene &&
+				measurementLayerRef.current
+			) {
+				const currentSnapped = snapToGrid(
+					worldPoint,
+					scene.gridType,
+					scene.gridSize,
+				);
 				const start = rulerStartRef.current;
 
 				const { distance } = calculateGridDistance(
@@ -806,7 +1090,8 @@ export function VTTCanvas({
 				const layer = measurementLayerRef.current;
 				layer.clear();
 
-				const colorHex = Number.parseInt(userColor.replace("#", "0x"), 16) || 0x38bdf8;
+				const colorHex =
+					Number.parseInt(userColor.replace("#", "0x"), 16) || 0x38bdf8;
 				layer.moveTo(start.x, start.y);
 				layer.lineTo(currentSnapped.x, currentSnapped.y);
 				layer.stroke({ width: 3, color: colorHex, alpha: 0.85 });
@@ -819,6 +1104,71 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			// Finish Fog of War Drawing and Commit
+			if (activeTool === "fog" && isGM && fogStrokeStartRef.current) {
+				const start = fogStrokeStartRef.current;
+				const end = screenToWorld(e.clientX, e.clientY);
+				fogStrokeStartRef.current = null;
+
+				if (fogBrushPreviewLayerRef.current) {
+					fogBrushPreviewLayerRef.current.clear();
+				}
+
+				let newFogPath: VTTFogPath | null = null;
+				const id = `fog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+				if (
+					activeFogTool === "brush" &&
+					fogCurrentPointsRef.current.length > 0
+				) {
+					newFogPath = {
+						id,
+						type: "brush",
+						mode: activeFogMode,
+						brushRadius: fogBrushRadius,
+						points: [...fogCurrentPointsRef.current],
+					};
+				} else if (activeFogTool === "rect") {
+					const rw = Math.abs(end.x - start.x);
+					const rh = Math.abs(end.y - start.y);
+					if (rw > 5 && rh > 5) {
+						newFogPath = {
+							id,
+							type: "rect",
+							mode: activeFogMode,
+							x: Math.min(start.x, end.x),
+							y: Math.min(start.y, end.y),
+							width: rw,
+							height: rh,
+						};
+					}
+				} else if (activeFogTool === "circle") {
+					const radius = Math.hypot(end.x - start.x, end.y - start.y);
+					if (radius > 5) {
+						newFogPath = {
+							id,
+							type: "circle",
+							mode: activeFogMode,
+							x: start.x,
+							y: start.y,
+							radius,
+						};
+					}
+				}
+
+				if (newFogPath) {
+					addFogPath(newFogPath);
+					if (onBroadcastFog) {
+						onBroadcastFog(newFogPath);
+					}
+					if (onPersistFog) {
+						onPersistFog([...fogPaths, newFogPath]);
+					}
+				}
+				fogCurrentPointsRef.current = [];
+				return;
+			}
+
 			// Finish Token Dragging with Magnetic Grid Snapping & Persistence
 			if (draggingTokenIdRef.current && scene) {
 				const tokenId = draggingTokenIdRef.current;
@@ -851,7 +1201,8 @@ export function VTTCanvas({
 
 			if (isDraggingViewportRef.current) {
 				isDraggingViewportRef.current = false;
-				container.style.cursor = isSpaceHeldRef.current || activeTool === "pan" ? "grab" : "default";
+				container.style.cursor =
+					isSpaceHeldRef.current || activeTool === "pan" ? "grab" : "default";
 			}
 
 			if (rulerStartRef.current) {
@@ -866,10 +1217,13 @@ export function VTTCanvas({
 			}
 		};
 
+		const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
 		window.addEventListener("keydown", handleKeyDown);
 		window.addEventListener("keyup", handleKeyUp);
 		container.addEventListener("wheel", handleWheel, { passive: false });
 		container.addEventListener("pointerdown", handlePointerDown);
+		container.addEventListener("contextmenu", handleContextMenu);
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
 
@@ -878,6 +1232,7 @@ export function VTTCanvas({
 			window.removeEventListener("keyup", handleKeyUp);
 			container.removeEventListener("wheel", handleWheel);
 			container.removeEventListener("pointerdown", handlePointerDown);
+			container.removeEventListener("contextmenu", handleContextMenu);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);
 		};
@@ -893,7 +1248,14 @@ export function VTTCanvas({
 		onBroadcastCursor,
 		onBroadcastRuler,
 		onBroadcastPing,
+		onBroadcastFog,
+		onPersistFog,
 		addPing,
+		fogPaths,
+		addFogPath,
+		activeFogTool,
+		activeFogMode,
+		fogBrushRadius,
 		userColor,
 		isGM,
 		setActiveMeasurement,
@@ -905,7 +1267,6 @@ export function VTTCanvas({
 	return (
 		<div
 			ref={containerRef}
-			onContextMenu={(e) => e.preventDefault()}
 			className="absolute inset-0 w-full h-full overflow-hidden select-none touch-none bg-[#090a0f]"
 		/>
 	);

@@ -56,9 +56,15 @@ export interface VTTToken {
 	updatedAt?: string;
 }
 
-export interface VTTRevealedPath {
-	type: "rect" | "circle" | "polygon";
+export type VTTFogShapeType = "brush" | "rect" | "circle" | "polygon";
+export type VTTFogMode = "reveal" | "hide";
+
+export interface VTTFogPath {
+	id: string;
+	type: VTTFogShapeType;
+	mode: VTTFogMode;
 	points?: { x: number; y: number }[];
+	brushRadius?: number;
 	x?: number;
 	y?: number;
 	width?: number;
@@ -66,10 +72,12 @@ export interface VTTRevealedPath {
 	radius?: number;
 }
 
+export type VTTRevealedPath = VTTFogPath;
+
 export interface VTTFogState {
 	id: string;
 	sceneId: string;
-	revealedPaths: VTTRevealedPath[];
+	revealedPaths: VTTFogPath[];
 	createdAt?: string;
 	updatedAt?: string;
 }

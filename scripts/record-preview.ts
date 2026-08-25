@@ -1,16 +1,7 @@
+import { chromium } from "playwright";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { spawn } from "node:child_process";
-import { chromium } from "playwright";
-
-async function isServerRunning(url: string): Promise<boolean> {
-	try {
-		const res = await fetch(url, { method: "GET" });
-		return res.status < 500;
-	} catch {
-		return false;
-	}
-}
+import { preview } from "vite";
 
 async function recordPreview() {
 	const outputDir = path.resolve(process.cwd(), "docs/previews");
@@ -25,34 +16,18 @@ async function recordPreview() {
 		}
 	}
 
-	let devProcess: any = null;
-	const port = 3000;
+	const port = 4173;
 	const baseUrl = `http://127.0.0.1:${port}`;
 	const devUrl = `${baseUrl}/dashboard`;
 
-	// 1. Ensure local Vite server is running
-	const alreadyRunning = await isServerRunning(baseUrl);
-	if (!alreadyRunning) {
-		console.log("⚡ Iniciando servidor local (Vite Preview)...");
-		devProcess = spawn(
-			"npx",
-			["vite", "preview", "--port", `${port}`, "--host", "127.0.0.1"],
-			{
-				shell: true,
-				stdio: "ignore",
-			},
-		);
-
-		for (let i = 0; i < 30; i++) {
-			await new Promise((r) => setTimeout(r, 400));
-			if (await isServerRunning(baseUrl)) {
-				console.log("✅ Servidor local pronto!");
-				break;
-			}
-		}
-	} else {
-		console.log(`✅ Servidor já em execução em ${baseUrl}`);
-	}
+	console.log(`⚡ Iniciando servidor Vite Preview nativo na porta ${port}...`);
+	const previewServer = await preview({
+		preview: {
+			port,
+			host: "127.0.0.1",
+		},
+	});
+	console.log("✅ Servidor Vite Preview pronto!");
 
 	console.log("🎬 Iniciando gravação do Dashboard com Playwright...");
 	const browser = await chromium.launch({ headless: true });
@@ -253,87 +228,203 @@ async function recordPreview() {
 	const page = await context.newPage();
 
 	try {
-		console.log(`🌐 Navegando para o Dashboard: ${devUrl}...`);
-		await page.goto(devUrl, {
-			waitUntil: "domcontentloaded",
-			timeout: 25000,
+		console.log(`🌐 Navegando para o VTT autenticado: ${devUrl}...`);
+		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+		await page.waitForFunction(() => (window as any).__vtt_store__ !== undefined, { timeout: 30000 }).catch(() => {});
+		await page.waitForTimeout(2500);
+
+		// Seed rich demo tabletop data
+		console.log("🎲 Injetando dados de demonstração no VTT (Cena com Névoa, GM Layer, Tokens)...");
+		await page.evaluate(() => {
+			const vttStore = (window as any).__vtt_store__?.getState();
+			if (!vttStore) return;
+
+			vttStore.setIsGM(true);
+			vttStore.setScenes([
+				{
+					id: "scene-1",
+					campaignId: "demo-tabletop",
+					name: "Masmorra Antiga dos Titãs",
+					gridType: "square",
+					gridSize: 70,
+					gridColor: "#ffffff",
+					gridOpacity: 0.25,
+					gridScaleDistance: 1.5,
+					gridScaleUnit: "m",
+					width: 3200,
+					height: 2400,
+					fogEnabled: true,
+					fogExploration: true,
+					isActive: true,
+					orderIndex: 0,
+				},
+			]);
+			vttStore.setActiveSceneId("scene-1");
+
+			// Seed initial fog reveal path around player start
+			vttStore.setFogPaths([
+				{
+					id: "fog-start-1",
+					type: "circle",
+					mode: "reveal",
+					x: 525,
+					y: 390,
+					radius: 160,
+				},
+			]);
+
+			// Seed Online Users
+			vttStore.setOnlineUsers([
+				{
+					userId: "preview-gm-user",
+					userName: "Mestre (Você)",
+					color: "#a855f7",
+					isGM: true,
+					onlineAt: Date.now(),
+				},
+				{
+					userId: "player-1",
+					userName: "Arthur (Paladino)",
+					color: "#38bdf8",
+					isGM: false,
+					onlineAt: Date.now(),
+				},
+			]);
+
+			// Seed Tokens (Player tokens & GM secret layer tokens)
+			vttStore.setTokens([
+				{
+					id: "token-1",
+					sceneId: "scene-1",
+					name: "Arthur Pendelton",
+					layer: "token",
+					x: 525,
+					y: 390,
+					sizeCells: 1,
+					rotation: 0,
+					hpCurrent: 45,
+					hpMax: 50,
+					elevation: 0,
+					conditions: [],
+					auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
+					visionRange: 6,
+					isLocked: false,
+					isHidden: false,
+					controlledBy: ["player-1"],
+				},
+				{
+					id: "token-gm-1",
+					sceneId: "scene-1",
+					name: "Armadilha de Espinhos (Oculta)",
+					layer: "gm",
+					x: 735,
+					y: 390,
+					sizeCells: 1,
+					rotation: 0,
+					hpCurrent: 10,
+					hpMax: 10,
+					elevation: 0,
+					conditions: [],
+					auras: [],
+					visionRange: 0,
+					isLocked: true,
+					isHidden: false,
+					controlledBy: [],
+				},
+				{
+					id: "token-gm-2",
+					sceneId: "scene-1",
+					name: "Espectro das Sombras (Emboscada)",
+					layer: "gm",
+					x: 875,
+					y: 460,
+					sizeCells: 1.5,
+					rotation: 0,
+					hpCurrent: 35,
+					hpMax: 35,
+					elevation: 1.5,
+					conditions: ["invisivel"],
+					auras: [{ radius: 2, color: "#a855f7", opacity: 0.25 }],
+					visionRange: 8,
+					isLocked: false,
+					isHidden: false,
+					controlledBy: [],
+				},
+			]);
 		});
-		await page.waitForTimeout(2000);
 
-		// 1. Apresentação do Topo: Banner Discord com Dithering Shader
-		console.log("🎮 Interagindo com o Banner Discord (Dither Shader)...");
-		const discordBanner = page.locator(
-			'aside[aria-label="Comunidade Discord"]',
-		);
-		if (await discordBanner.isVisible()) {
-			await discordBanner.hover();
+		await page.waitForTimeout(1500);
+
+		// --- ACTION 1: Test Fog of War Tool & Open VTTFogControls ---
+		console.log("🌫️ Testando Ferramenta de Névoa de Guerra e Painel de Controles...");
+		const fogToolBtn = page.locator("button[title*='Névoa']").first();
+		if (await fogToolBtn.isVisible()) {
+			await fogToolBtn.click();
 			await page.waitForTimeout(1000);
-			const discordBtn = discordBanner.locator("a");
-			await discordBtn.hover();
+		}
+
+		// --- ACTION 2: Paint Freehand Fog Reveal (Brush Tool) ---
+		console.log("🖌️ Pintando caminho com Pincel Livre para Revelar Névoa...");
+		await page.mouse.move(525, 390);
+		await page.mouse.down();
+		await page.mouse.move(630, 390, { steps: 10 });
+		await page.mouse.move(735, 390, { steps: 10 });
+		await page.mouse.move(800, 420, { steps: 10 });
+		await page.waitForTimeout(500);
+		await page.mouse.up();
+		await page.waitForTimeout(1200);
+
+		// --- ACTION 3: Switch to Rect Shape and Reveal Chamber ---
+		console.log("⬛ Revelando sala retangular com ferramenta de Retângulo...");
+		const rectBtn = page.locator("button:has-text('Retângulo')").first();
+		if (await rectBtn.isVisible()) {
+			await rectBtn.click();
+			await page.waitForTimeout(600);
+
+			await page.mouse.move(800, 320);
+			await page.mouse.down();
+			await page.mouse.move(1020, 520, { steps: 15 });
+			await page.waitForTimeout(600);
+			await page.mouse.up();
+			await page.waitForTimeout(1200);
+		}
+
+		// --- ACTION 4: Switch to GM Layer & Select GM Token ---
+		console.log("🛡️ Testando Camada do Mestre (GM Layer) e revelação de segredo...");
+		const gmLayerBtn = page.locator("button[title*='Mestre']").first();
+		if (await gmLayerBtn.isVisible()) {
+			await gmLayerBtn.click();
 			await page.waitForTimeout(800);
 		}
 
-		// 2. Demonstração do Hero Card e Micro-interações de Hover
-		console.log("✨ Testando Hero Card e Metric Cards com transitions.dev...");
-		const header = page.locator("header");
-		await header.hover();
-		await page.waitForTimeout(800);
-
-		// Hover nos 4 Metric Cards
-		const metricCards = header.locator("a");
-		const cardCount = await metricCards.count();
-		for (let i = 0; i < cardCount; i++) {
-			const card = metricCards.nth(i);
-			await card.hover();
-			await page.waitForTimeout(700);
+		// Switch back to select tool
+		const selectBtn = page.locator("button[title*='Selecionar']").first();
+		if (await selectBtn.isVisible()) {
+			await selectBtn.click();
+			await page.waitForTimeout(600);
 		}
 
-		// Hover no botão "+ Registrar Sessão"
-		console.log("🔘 Testando botão + Registrar Sessão...");
-		const registrarBtn = header.locator("button, a:has-text('Registrar')");
-		if (await registrarBtn.first().isVisible()) {
-			await registrarBtn.first().hover();
+		// Open GM Token Menu
+		await page.evaluate(() => {
+			const vttStore = (window as any).__vtt_store__?.getState();
+			if (vttStore) {
+				vttStore.setActiveTokenIdForMenu("token-gm-2");
+			}
+		});
+		await page.waitForTimeout(1000);
+
+		// Click "Mover para Camada de Jogadores"
+		const moveLayerBtn = page.locator("button[title*='Mover para Camada de Jogadores']").first();
+		if (await moveLayerBtn.isVisible()) {
+			await moveLayerBtn.click();
 			await page.waitForTimeout(800);
 		}
 
-		// 3. Scroll suave para visualizar o Roster e Ações
-		console.log("👥 Explorando o Grupo de Aventureiros e Ações Rápidas...");
-		await page.evaluate(() => window.scrollBy({ top: 320, behavior: "smooth" }));
-		await page.waitForTimeout(1200);
-
-		// Hover nos cards de personagens do grupo
-		const heroCards = page.locator(
-			"div:has-text('Grupo de Aventureiros') + div .group",
-		);
-		const heroCount = await heroCards.count();
-		for (let i = 0; i < Math.min(heroCount, 4); i++) {
-			await heroCards.nth(i).hover();
+		// Close token menu
+		const closeMenuBtn = page.locator("button[title*='Fechar Menu']").first();
+		if (await closeMenuBtn.isVisible()) {
+			await closeMenuBtn.click();
 			await page.waitForTimeout(600);
-		}
-
-		// Hover nas Ações Rápidas (VTT, Mochila, etc.)
-		console.log("⚡ Testando Ações da Mesa (VTT, Mochila, Ficha)...");
-		const actionCards = page.locator(
-			"div:has-text('Ações da Mesa') + div .group",
-		);
-		const actionCount = await actionCards.count();
-		for (let i = 0; i < actionCount; i++) {
-			await actionCards.nth(i).hover();
-			await page.waitForTimeout(600);
-		}
-
-		// 4. Scroll para Missões, NPCs e Grimório
-		console.log("📜 Explorando Missões, NPCs e Grimório de Navegação...");
-		await page.evaluate(() => window.scrollBy({ top: 400, behavior: "smooth" }));
-		await page.waitForTimeout(1200);
-
-		// Hover nas Missões
-		const questCards = page.locator(
-			"div:has-text('Missões Ativas') + div .group",
-		);
-		if (await questCards.first().isVisible()) {
-			await questCards.first().hover();
-			await page.waitForTimeout(700);
 		}
 
 		// Retorna suavemente ao topo
@@ -350,10 +441,9 @@ async function recordPreview() {
 		await context.close();
 		await browser.close();
 
-		if (devProcess) {
-			devProcess.kill();
-		}
-	}
+		try {
+			await previewServer.close();
+		} catch {}
 
 	// 5. Rename generated video
 	const files = fs.readdirSync(outputDir);

@@ -78,27 +78,32 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	const [planLoading, setPlanLoading] = useState(false);
 
 	useEffect(() => {
-		// Support preview & test recording exclusively in local development (stripped by bundler in production)
-		if (
-			import.meta.env.DEV &&
+		// Support automated preview recording & test tooling on localhost only (blocked on production domains)
+		const isLocalhost =
 			typeof window !== "undefined" &&
-			localStorage.getItem("arkhiveon_preview_auth")
+			(window.location.hostname === "localhost" ||
+				window.location.hostname === "127.0.0.1");
+
+		if (
+			(import.meta.env.DEV || isLocalhost) &&
+			typeof window !== "undefined" &&
+			localStorage.getItem("arkhiveon_preview_auth") === "true"
 		) {
-			const mockUser: any = {
+			const mockUser = {
 				id: "preview-gm-user",
 				email: "gm@arkhiveon.app",
 				user_metadata: { full_name: "Mestre (Você)" },
 				app_metadata: {},
 				aud: "authenticated",
 				created_at: new Date().toISOString(),
-			};
+			} as unknown as User;
 			setSession({
 				access_token: "preview-token",
 				token_type: "bearer",
 				expires_in: 3600,
 				refresh_token: "preview-refresh",
 				user: mockUser,
-			} as any);
+			} as unknown as Session);
 			setLoading(false);
 			return;
 		}
