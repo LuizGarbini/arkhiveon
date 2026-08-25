@@ -109,7 +109,7 @@ function ItemFormDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! h-[680px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+			<DialogContent className="max-w-2xl! h-auto max-h-[90dvh] sm:max-h-[85vh] flex flex-col p-0 overflow-hidden">
 				{open && (
 					<ItemFormContent
 						key={item?.id ?? "new"}
@@ -130,6 +130,7 @@ interface ItemFormContentProps {
 function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const isEdit = Boolean(item);
 	const nameId = useId();
+	const typeListId = useId();
 	const toast = useToast();
 
 	const addItem = useRPGStore((state) => state.addItem);
@@ -243,9 +244,24 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 						</Field>
 						<Field label="Tipo">
 							<Input
+								list={typeListId}
 								placeholder="Arma, Armadura, Poção..."
 								{...register("type")}
 							/>
+							<datalist id={typeListId}>
+								<option value="Arma" />
+								<option value="Armadura" />
+								<option value="Escudo" />
+								<option value="Poção" />
+								<option value="Anel" />
+								<option value="Amuleto" />
+								<option value="Pergaminho" />
+								<option value="Varinha" />
+								<option value="Cajado" />
+								<option value="Foco Arcano" />
+								<option value="Item Maravilhoso" />
+								<option value="Utilitário" />
+							</datalist>
 						</Field>
 						<Field label="Subtipo">
 							<Input
@@ -310,22 +326,36 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 							/>
 						</Field>
 					</div>
-					<div className="flex flex-wrap items-center gap-4">
-						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+						<label className="flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-xl border border-border/80 bg-background/50 px-3.5 py-2.5 transition-colors hover:bg-card-elevated hover:border-primary/30">
 							<input
 								type="checkbox"
-								className="h-3.5 w-3.5 rounded border-border accent-primary"
+								className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
 								{...register("requiresAttunement")}
 							/>
-							Requer sintonização
+							<div className="flex flex-col">
+								<span className="text-[13px] font-semibold text-foreground">
+									Requer sintonização
+								</span>
+								<span className="text-[11px] text-muted-foreground">
+									Necessita vínculo místico para ativar efeitos
+								</span>
+							</div>
 						</label>
-						<label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+						<label className="flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-xl border border-border/80 bg-background/50 px-3.5 py-2.5 transition-colors hover:bg-card-elevated hover:border-primary/30">
 							<input
 								type="checkbox"
-								className="h-3.5 w-3.5 rounded border-border accent-primary"
+								className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
 								{...register("equipped")}
 							/>
-							Equipado
+							<div className="flex flex-col">
+								<span className="text-[13px] font-semibold text-foreground">
+									Equipado
+								</span>
+								<span className="text-[11px] text-muted-foreground">
+									Em uso ativo por um personagem
+								</span>
+							</div>
 						</label>
 					</div>
 				</FormSection>

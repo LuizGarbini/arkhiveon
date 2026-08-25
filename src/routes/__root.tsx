@@ -111,6 +111,12 @@ function ProtectedLayout() {
 		if (pathname.startsWith("/dashboard")) return "Dashboard - Arkhiveon";
 		if (pathname.startsWith("/characters")) return "Personagens - Arkhiveon";
 		if (pathname.startsWith("/npcs")) return "NPCs - Arkhiveon";
+		if (pathname.startsWith("/items")) return "Itens & Inventário - Arkhiveon";
+		if (pathname.startsWith("/locations")) return "Locais - Arkhiveon";
+		if (pathname.startsWith("/lore")) return "Lore & Conhecimento - Arkhiveon";
+		if (pathname.startsWith("/factions")) return "Facções - Arkhiveon";
+		if (pathname.startsWith("/quests")) return "Missões - Arkhiveon";
+		if (pathname.startsWith("/world")) return "Mundo - Arkhiveon";
 		if (pathname.startsWith("/sessions")) return "Sessões - Arkhiveon";
 		if (pathname.startsWith("/sheets/new"))
 			return "Novo Personagem - Arkhiveon";

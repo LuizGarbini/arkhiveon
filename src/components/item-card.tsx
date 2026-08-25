@@ -54,6 +54,30 @@ const rarityStyles: Record<
 	},
 };
 
+function normalizeRarityKey(value?: string): string {
+	if (!value) return "comum";
+	const normalized = value
+		.toLowerCase()
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.replace(/[_-]/g, " ")
+		.trim();
+
+	if (normalized === "common" || normalized === "comum") return "comum";
+	if (normalized === "uncommon" || normalized === "incomum") return "incomum";
+	if (normalized === "rare" || normalized === "raro") return "raro";
+	if (normalized === "very rare" || normalized === "muito raro")
+		return "muito raro";
+	if (
+		normalized === "legendary" ||
+		normalized === "lendario" ||
+		normalized === "lendaria"
+	)
+		return "lendario";
+	if (normalized === "artifact" || normalized === "artefato") return "artefato";
+	return normalized;
+}
+
 export function ItemCard({ item, isLoading }: ItemCardProps) {
 	const removeItem = useRPGStore((s) => s.removeItem);
 	const imageAssetLookup = useImageAssetLookup();
@@ -61,13 +85,11 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 	const isStaff = useIsWorldStaff();
 	const { user } = useAuth();
 	const navigate = useNavigate();
-	const canManage = item
-		? canManageOwnItem(item, user?.id, isStaff)
-		: false;
+	const canManage = item ? canManageOwnItem(item, user?.id, isStaff) : false;
 
 	if (isLoading || !item) {
 		return (
-			<div className="relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
+			<div className="relative flex min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card-elevated p-5 shadow-sm animate-pulse">
 				<div className="space-y-2.5 pt-1">
 					<div className="h-5 w-1/2 rounded-md bg-white/10" />
 					<div className="h-3 w-1/3 rounded-md bg-white/5" />
@@ -80,20 +102,18 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 		);
 	}
 
-	const rarityKey = (item.rarity || "comum")
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "");
+	const rarityKey = normalizeRarityKey(item.rarity);
 	const rarity = rarityStyles[rarityKey] ?? rarityStyles.comum;
 	const itemImageUrl = resolveItemImageUrl(
 		item,
 		imageAssetLookup,
 		activeCampaignRole,
 	);
+	const hasMiniInfo = Boolean(item.weight || item.value || item.charges);
 
 	return (
 		<div
-			className={`group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl border bg-black/40 shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5 active:scale-[0.985] active:translate-y-0 ${rarity.border} hover:border-primary/45`}
+			className={`group relative flex min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl border bg-card/65 backdrop-blur-md shadow-sm shadow-black/5 transition-all duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 active:scale-[0.985] active:translate-y-0 ${rarity.border} hover:border-primary/45`}
 		>
 			{/* Accessible anchor covering the entire card background */}
 			<Link
@@ -137,12 +157,12 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 					</h3>
 					<div className="mt-1 flex flex-wrap items-center gap-1.5">
 						<span
-							className={`rounded bg-background/50 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${rarity.border} ${rarity.tone}`}
+							className={`rounded bg-background/60 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${rarity.border} ${rarity.tone}`}
 						>
 							{item.rarity || "comum"}
 						</span>
 						{item.type && (
-							<span className="text-xs text-white/70 font-medium">
+							<span className="text-xs text-white/80 font-medium">
 								· {item.type}
 								{item.subtype && ` (${item.subtype})`}
 							</span>
@@ -162,27 +182,35 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 					)}
 				</div>
 
-				<div className="space-y-3.5 p-4.5 pb-5">
+				<div className="space-y-3 p-4.5 pb-5">
 					{item.stats && (
-						<p className="font-mono rounded-xl bg-background/45 p-2 text-xs text-white/80 ring-1 ring-white/10 leading-relaxed line-clamp-3 break-words">
+						<p className="font-mono rounded-xl bg-background/50 p-2 text-xs text-white/90 ring-1 ring-white/10 leading-relaxed line-clamp-3 break-words">
 							{item.stats}
 						</p>
 					)}
 
-					<div className="grid grid-cols-3 gap-1.5 text-xs">
-						{item.weight && (
-							<MiniInfo Icon={Weight} label="Peso" value={item.weight} />
-						)}
-						{item.value && (
-							<MiniInfo Icon={Coins} label="Valor" value={item.value} />
-						)}
-						{item.charges && (
-							<MiniInfo Icon={Gem} label="Cargas" value={item.charges} />
-						)}
-					</div>
+					{hasMiniInfo && (
+						<div className="grid grid-cols-3 gap-1.5 text-xs">
+							{item.weight ? (
+								<MiniInfo Icon={Weight} label="Peso" value={item.weight} />
+							) : (
+								<div />
+							)}
+							{item.value ? (
+								<MiniInfo Icon={Coins} label="Valor" value={item.value} />
+							) : (
+								<div />
+							)}
+							{item.charges ? (
+								<MiniInfo Icon={Gem} label="Cargas" value={item.charges} />
+							) : (
+								<div />
+							)}
+						</div>
+					)}
 
 					{item.description && (
-						<p className="line-clamp-2 border-t border-white/10 pt-3 text-xs italic leading-relaxed text-white/60 break-words">
+						<p className="line-clamp-2 border-t border-white/10 pt-2.5 text-xs italic leading-relaxed text-white/70 break-words">
 							“{item.description}”
 						</p>
 					)}
@@ -200,10 +228,10 @@ interface MiniInfoProps {
 
 function MiniInfo({ Icon, label, value }: MiniInfoProps) {
 	return (
-		<div className="flex items-center gap-1.5 rounded-xl bg-black/45 px-1.5 py-1 border border-white/10">
-			<Icon className="h-3.5 w-3.5 shrink-0 text-white/50" />
+		<div className="flex items-center gap-1.5 rounded-xl bg-black/50 px-2 py-1.5 border border-white/10">
+			<Icon className="h-3.5 w-3.5 shrink-0 text-white/60" />
 			<div className="min-w-0">
-				<div className="text-[7px] uppercase tracking-wider text-white/50 font-bold leading-none">
+				<div className="text-[7px] uppercase tracking-wider text-white/60 font-bold leading-none">
 					{label}
 				</div>
 				<div className="truncate text-[10px] font-bold text-white leading-tight mt-0.5">
