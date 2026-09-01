@@ -1,59 +1,63 @@
-# Cursor AI Rules — Arkhiveon (RPG Notes)
+# Cursor Rules — Arkhiveon (RPG Notes)
 
-Always adhere to these guidelines when suggesting code, creating components, or refactoring in this repository.
+Este projeto segue as diretrizes do design system do Arkhiveon e as **Web Interface Guidelines** (por Rauno Freiberg - https://interfaces.rauno.me/).
 
-## 1. Design System Check (Mandatory)
-- Before creating or modifying UI components, inspect the Design System in `src/routes/design-system.tsx`.
-- Use global semantic HSL tokens: `bg-background`, `bg-card`, `bg-card-elevated`, `text-primary`, `text-foreground`, `text-muted-foreground`, `border-border/70`.
-- DO NOT hardcode solid arbitrary colors (e.g. `bg-[#1a1a1a]`, `text-[#ff0000]`).
-- Include glassmorphism (`backdrop-blur-md`), smooth hover states (`transition-all duration-150 ease-out active:scale-[0.98]`), and responsive touch targets (min 44px on mobile).
+---
 
-## 2. Anti-useEffect Rule
-- STRICTLY MINIMIZE / AVOID `useEffect`. Multiple `useEffect` hooks create exponential cognitive complexity, stale closures, race conditions, and infinite re-render loops.
-- Use derived state during render or `useMemo`.
-- Handle side effects directly inside user event handlers (`onClick`, `onChange`, `onSubmit`).
-- Use Zustand actions or TanStack Router loaders/subscribers for store synchronization.
-- Use `useDeferredValue` for input filtering instead of custom effects.
+## 1. 🎨 Design System & Estética (Arkhiveon UI)
+- **Design Tokens Globais**: Use semantic tokens HSL (`bg-background`, `bg-card`, `bg-card-elevated`, `text-primary`, `text-foreground`, `text-muted-foreground`, `border-border/70`).
+- **PROIBIDO**: Não declare cores sólidas arbitrárias ou ad-hoc (ex: `bg-[#121212]`, `text-[#ff0000]`).
+- **Glassmorphism & Acabamento**: Bordas sutis, `backdrop-blur-md` e micro-interações táteis.
 
-## 3. Zustand Performance & Selectors
-- Selectors must return primitive values or stable references (`useRPGStore(state => state.characters)`).
-- NEVER create new objects/arrays inside selector functions (e.g. `useRPGStore(state => state.items.filter(...))`), as this triggers infinite React render loops.
-- Wrap heavy list filtering in `useMemo`.
+---
 
-## 4. Mobile-First Responsiveness
-- All sheets, modals, forms, and cards must work seamlessly on mobile viewports (`grid-cols-1 sm:grid-cols-2`).
-- Touch targets must be at least 44px in height/width.
-- Prevent horizontal scrollbars (`overflow-x`).
+## 2. 💎 Fundamentos de Interfaces Web (Web Interface Guidelines — Rauno Freiberg)
 
-## 5. TypeScript & Biome Standards
-- Avoid `any` types; define explicit TypeScript interfaces (`Character`, `SheetModuleConfig`, `Faction`, `Item`, `Npc`, `Lore`).
-- Always run Biome check before completing changes: `npx @biomejs/biome check --write <modified_files>`.
-- Ensure `pnpm run build` (`tsc`) completes with zero errors.
+### A. Interatividade & Formulários
+- **Foco do Input**: Clicar na `<label>` DEVE focar o campo `<input>`.
+- **Formulários Semânticos**: Inputs devem estar encapsulados em `<form>` para suportar submissão nativa via tecla `Enter`.
+- **Tipagem de Input**: Use sempre o `type` semântico adequado (`type="email"`, `type="password"`, `type="search"`, etc.).
+- **Desabilitar Ruídos em Inputs**: Desative `spellcheck={false}` e `autoComplete="off"` na maioria dos inputs operacionais/jogos.
+- **Ícones em Inputs**: Ícones e decorações de prefixo/sufixo devem ser posicionados absolutamente sobre o input com padding interno (`pl-9`, `pr-9`), nunca ao lado, e clicar no ícone deve focar o input.
+- **Toggles Imediatos**: Switches e toggles devem ter efeito imediato e otimista, sem exigir diálogo de confirmação extra.
+- **Prevenção de Duplo Clique**: Botões de ação e submit devem desabilitar durante a submissão de rede para evitar requisições duplicadas.
+- **Seleção de Texto**: Elementos interativos (botões, badges, chips, tabs) devem desabilitar seleção de texto (`select-none` / `user-select: none`).
+- **Elementos Decorativos**: Gradientes de fundo, glows, halos e shaders devem SEMPRE ter `pointer-events-none` (`pointer-events: none`) para nunca interceptar cliques.
+- **Sem Áreas Mortas**: Listas verticais ou horizontais não devem ter áreas mortas entre itens clicáveis — prefira `p-2` ou `p-3` sobre `m-2`.
 
-## 6. Package Manager & Git Rules
-- Package manager: EXCLUSIVELY use `pnpm`. Never run `npm` or `yarn`.
-- Branch prefixes: `garbini/*` for Luiz Garbini (`garbasneto@gmail.com`) and `arroyo/*` for Gabriel Arroyo (`gabrielarroyoc18@gmail.com`).
+### B. Tipografia & Legibilidade
+- **Font Smoothing**: Garanta `antialiased` e `text-rendering: optimizeLegibility`.
+- **Sem Layout Shift (CLS) no Hover**: O peso da fonte (`font-weight`) NUNCA deve mudar no estado de hover ou active para evitar layout shifts.
+- **Pesos Mínimos**: Não utilize pesos de fonte abaixo de 400 (`font-normal`). Títulos médios funcionam melhor com peso 500-600 (`font-semibold` / `font-bold`).
+- **Números Tabulares**: Use sempre `tabular-nums` (`font-variant-numeric: tabular-nums` ou `font-mono`) em contadores, dados numéricos, cronômetros e tabelas para evitar que a interface trema quando os números mudarem.
 
-## 7. Automated E2E Video / Screenshot Preview Testing
-Whenever completing any frontend feature or UI component, execute:
-```bash
-pnpm preview:record
-```
-This generates `docs/previews/latest-preview.webm` and `latest-preview.png` via Playwright.
-- Note: `docs/previews/` is ignored by `.gitignore` to prevent Git bloat.
-- Drag & drop the recorded video directly into GitHub PR description box to embed.
+### C. Movimento, Micro-interações & Transições
+- **Duração Instantânea**: Transições de micro-interações devem ter no máximo **200ms** (`duration-150` ou `duration-200`) com curva de saída (`ease-out`) para resposta tátil imediata.
+- **Escalas Proporcionais**: Animações de clique devem ter escala sutil (`active:scale-[0.98]` em botões, `scale-[0.99]` em cards). Diálogos e modais devem entrar com `scale-[0.95] -> scale-100` e opacidade suave.
+- **Sem Animações Excessivas**: Ações frequentes e de baixa novidade (menus de contexto, deleção rápida de linhas, hover em botões triviais) não devem ter animações lentas.
+- **Troca de Tema Limpa**: A troca entre tema claro/escuro não deve disparar animações residuais nos elementos.
+- **Pausar em Background**: Animações em loop ou shaders devem pausar quando saírem do viewport ou quando a aba estiver inativa.
 
-## 8. Mandatory Pull Request Description Format
-Whenever pushing changes, completing a task, or preparing a branch for review, the AI MUST ALWAYS automatically provide a formatted, copy-paste ready Pull Request description following `.github/PULL_REQUEST_TEMPLATE.md`:
+### D. Touch & Dispositivos Móveis
+- **Prevenção de Sticky Hover**: Estados de hover devem estar condicionados a `@media (hover: hover)` para não travarem como estado ativo em toques no celular.
+- **Tamanho Mínimo de Input**: Inputs nunca devem ter `font-size < 16px` em mobile para evitar o zoom involuntário do iOS.
+- **Sem Auto-focus em Mobile**: Não force auto-focus de inputs em dispositivos touch para não abrir o teclado virtual cobrindo a tela.
+- **Área de Toque**: Alvos interativos devem respeitar o mínimo de 44x44px em mobile.
 
-```markdown
-## ✨ What was added
+### E. Acessibilidade & Feedback
+- **Anéis de Foco**: Use `box-shadow` / `ring` do Tailwind para anéis de foco (`focus-visible:ring-2`), pois o `outline` nativo pode não respeitar o `border-radius`.
+- **Feedback Próximo ao Gatilho**: Mostre feedback contextual direto no elemento (ex: ícone de check temporário inline ao copiar, destaque na borda do campo com erro), em vez de apenas notificações globais distantes.
+- **Empty States Acolhedores**: Todo estado vazio deve conter uma ação primária clara para criação do item.
 
-- Clearly describe what was added or implemented in this PR.
-Be specific and concise with bullet points.
+---
 
-## 📷 Implementation preview
+## 3. ⚡ Anti-`useEffect` & Zustand Performance
+- **Zero `useEffect` Desnecessário**: Não use `useEffect` para calcular estados derivados. Use `useMemo` ou calcule diretamente no render. Efeitos colaterais devem rodar nos manipuladores de evento (`onClick`, `onSubmit`).
+- **Seletores Estáveis**: Seletores de Zustand devem retornar primitivos ou referências estáveis. Nunca retorne novos arrays/objetos inline dentro do seletor.
 
-<!-- Add screenshots or a short video showing the implemented feature.
-Make sure the preview reflects the final behavior. -->
-```
+---
+
+## 4. 🛠️ Ferramental & Qualidade
+- **Gerenciador**: Use **exclusivamente `pnpm`**.
+- **Linter & Formatter**: Execute sempre o Biome (`npx @biomejs/biome check --write <arquivos>`).
+- **Validação de Build**: Sempre valide com `pnpm run build` e testes automatizados (`pnpm vitest run`).

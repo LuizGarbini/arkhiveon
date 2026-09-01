@@ -18,7 +18,7 @@ async function recordPreview() {
 
 	const port = 4173;
 	const baseUrl = `http://127.0.0.1:${port}`;
-	const devUrl = `${baseUrl}/campaigns/demo-tabletop/vtt`;
+	const devUrl = `${baseUrl}/dashboard`;
 
 	console.log(`⚡ Iniciando servidor Vite Preview nativo na porta ${port}...`);
 	const previewServer = await preview({
@@ -29,17 +29,17 @@ async function recordPreview() {
 	});
 	console.log("✅ Servidor Vite Preview pronto!");
 
-	console.log("🎬 Iniciando gravação de demonstração completa com Playwright...");
+	console.log("🎬 Iniciando gravação do Dashboard com Playwright...");
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
-		viewport: { width: 1280, height: 720 },
+		viewport: { width: 1366, height: 820 },
 		recordVideo: {
 			dir: outputDir,
-			size: { width: 1280, height: 720 },
+			size: { width: 1366, height: 820 },
 		},
 	});
 
-	// Inject authentication and campaign state before any script execution
+	// Inject rich mock campaign data
 	await context.addInitScript(() => {
 		localStorage.setItem("arkhiveon_preview_auth", "true");
 		localStorage.setItem(
@@ -50,7 +50,9 @@ async function recordPreview() {
 						{
 							id: "demo-tabletop",
 							name: "A Forja dos Deuses",
-							description: "Campanha Épica de Demonstração",
+							description:
+								"Uma crônica sombria onde relíquias arcanas despertam nas profundezas de Valência. O destino do reino repousa nas mãos da guilda.",
+							system: "ordem",
 							ownerId: "preview-gm-user",
 							myRole: "owner",
 						},
@@ -58,6 +60,165 @@ async function recordPreview() {
 					activeCampaignId: "demo-tabletop",
 					hasLoadedCampaigns: true,
 					campaignLoadStatus: "ready",
+					characters: [
+						{
+							id: "c1",
+							campaignId: "demo-tabletop",
+							characterName: "Carrara",
+							playerName: "Gabriel Arroyo",
+							class: "Especialista",
+							race: "Investigador",
+							level: 7,
+							health: 48,
+							healthMax: 48,
+							armorClass: 16,
+							initiative: 3,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c2",
+							campaignId: "demo-tabletop",
+							characterName: 'Moura "Fênix" Carvalho',
+							playerName: "Luiz Garbini",
+							class: "Combatente",
+							race: "Operações Especiais",
+							level: 7,
+							health: 72,
+							healthMax: 84,
+							armorClass: 18,
+							initiative: 2,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c3",
+							campaignId: "demo-tabletop",
+							characterName: "Elysia Corvo",
+							playerName: "Helena Prado",
+							class: "Ocultista",
+							race: "Graduado",
+							level: 6,
+							health: 32,
+							healthMax: 38,
+							armorClass: 13,
+							initiative: 1,
+							speed: 9,
+							imageUrl:
+								"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80",
+						},
+						{
+							id: "c4",
+							campaignId: "demo-tabletop",
+							characterName: "Kaelen Vane",
+							playerName: "Lucas Mendes",
+							class: "Infiltrador",
+							race: "Sobrevivente",
+							level: 6,
+							health: 41,
+							healthMax: 50,
+							armorClass: 15,
+							initiative: 4,
+							speed: 12,
+							imageUrl:
+								"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
+						},
+					],
+					npcs: [
+						{
+							id: "n1",
+							campaignId: "demo-tabletop",
+							name: "Valerius, o Herege",
+							role: "Líder de Seita",
+							race: "Humano",
+							importance: "boss",
+							disposition: "hostile",
+							isAlive: true,
+						},
+						{
+							id: "n2",
+							campaignId: "demo-tabletop",
+							name: "Comandante Verena",
+							role: "Líder da Ordem Local",
+							race: "Humano",
+							importance: "major",
+							disposition: "friendly",
+							isAlive: true,
+						},
+					],
+					sessions: [
+						{
+							id: "s1",
+							campaignId: "demo-tabletop",
+							sessionNumber: 12,
+							title: "O Ritual no Observatório Esquecido",
+							date: "2026-08-15",
+							inGameDate: "14 de Outono, Ano 412",
+							summary:
+								"O grupo invadiu o observatório selado a tempo de conter a primeira fase da invocação. Elysia decifrou o glifo de contenção enquanto Moura e Carrara seguravam os cultistas nas escadarias.",
+							cliffhanger:
+								"O sino da torre começou a dobrar sozinho e uma névoa púrpura cobriu os arredores.",
+						},
+					],
+					quests: [
+						{
+							id: "q1",
+							campaignId: "demo-tabletop",
+							title: "Conter o Despertar do Observatório",
+							category: "main",
+							status: "active",
+							description:
+								"Investigar as anomalias dimensionais e selar a fenda antes do solstício.",
+							giverNpcName: "Comandante Verena",
+						},
+						{
+							id: "q2",
+							campaignId: "demo-tabletop",
+							title: "Recuperar o Tomo de Selamento",
+							category: "secondary",
+							status: "active",
+							description:
+								"Localizar as páginas arrancadas na biblioteca subterrânea.",
+						},
+					],
+					items: [
+						{
+							id: "i1",
+							campaignId: "demo-tabletop",
+							name: "Lâmina Rúnica da Aurora",
+							type: "Arma Mágica",
+							rarity: "very_rare",
+							equipped: true,
+							owner: "Moura",
+						},
+						{
+							id: "i2",
+							campaignId: "demo-tabletop",
+							name: "Amuleto de Proteção Mental",
+							type: "Acessório",
+							rarity: "rare",
+							equipped: true,
+							owner: "Carrara",
+						},
+					],
+					partyLoot: [
+						{
+							id: "pl1",
+							campaignId: "demo-tabletop",
+							name: "3x Poções de Vitalidade Maior",
+							quantity: 3,
+							notes: "Recuperadas no cofre do observatório",
+						},
+						{
+							id: "pl2",
+							campaignId: "demo-tabletop",
+							name: "Grimório com Glifos Antigos",
+							quantity: 1,
+							notes: "Aguardando tradução por Elysia",
+						},
+					],
 				},
 				version: 0,
 			}),
@@ -266,16 +427,17 @@ async function recordPreview() {
 			await page.waitForTimeout(600);
 		}
 
-		// Take Final High-Res Screenshot
+		// Retorna suavemente ao topo
+		await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+		await page.waitForTimeout(1500);
+
+		// Captura screenshot em alta resolução
 		const screenshotPath = path.join(outputDir, "latest-preview.png");
 		await page.screenshot({ path: screenshotPath, fullPage: false });
 		console.log(`📸 Screenshot de alta resolução salva: ${screenshotPath}`);
-
-		await page.waitForTimeout(2000);
 	} catch (err) {
-		console.warn("⚠️ Aviso durante gravação:", err);
+		console.error("❌ Erro durante gravação de demonstração:", err);
 	} finally {
-		await page.close();
 		await context.close();
 		await browser.close();
 
@@ -283,20 +445,21 @@ async function recordPreview() {
 			await previewServer.close();
 		} catch {}
 
-		const files = fs.readdirSync(outputDir).filter((f) => f.endsWith(".webm"));
-		if (files.length > 0) {
-			const originalVideoPath = path.join(outputDir, files[0]);
-			const cleanVideoPath = path.join(outputDir, "latest-preview.webm");
-			if (originalVideoPath !== cleanVideoPath) {
-				fs.renameSync(originalVideoPath, cleanVideoPath);
-			}
-			console.log(`\n✨ Vídeo de demonstração inteligente gravado com sucesso!`);
-			console.log(`📁 Arquivo: ${cleanVideoPath}`);
-			console.log(
-				"💡 Dica: Arraste e solte o arquivo acima direto na caixa de texto da PR no GitHub!\n",
-			);
-		}
+	// 5. Rename generated video
+	const files = fs.readdirSync(outputDir);
+	const videoFile = files.find((f) => f.endsWith(".webm"));
+	if (videoFile && videoFile !== "latest-preview.webm") {
+		const oldPath = path.join(outputDir, videoFile);
+		const newPath = path.join(outputDir, "latest-preview.webm");
+		if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+		fs.renameSync(oldPath, newPath);
 	}
+
+	console.log("\n✨ Vídeo de demonstração do Dashboard gravado com sucesso!");
+	console.log(`📁 Arquivo: ${path.join(outputDir, "latest-preview.webm")}`);
 }
 
-void recordPreview();
+recordPreview().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});

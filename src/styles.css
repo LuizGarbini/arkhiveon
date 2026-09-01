@@ -1017,14 +1017,51 @@
 }
 
 
-/* 11. Avatar Group Hover */
+/* 11. Avatar Group Hover & Interactive Springs */
 .t-avatar {
   transform-origin: center;
   transform:
     translateY(var(--shift, 0px))
     scale(var(--scale-active, 1));
-  transition: transform var(--avatar-dur) var(--avatar-ease-in);
+  transition: transform var(--avatar-dur, 260ms) var(--avatar-ease-in, cubic-bezier(0.22, 1, 0.36, 1));
   will-change: transform;
+}
+
+.t-hover-lift {
+  transition: transform var(--avatar-dur, 260ms) cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 180ms ease,
+              box-shadow 220ms ease,
+              background-color 180ms ease;
+  will-change: transform;
+}
+.t-hover-lift:hover {
+  transform: translateY(var(--avatar-lift, -3px)) scale(var(--avatar-scale, 1.02));
+}
+.t-hover-lift:active {
+  transform: translateY(0px) scale(0.985);
+  transition-duration: 100ms;
+}
+
+.t-icon-spring {
+  transition: transform 240ms cubic-bezier(0.34, 1.45, 0.64, 1),
+              background-color 180ms ease,
+              color 180ms ease,
+              border-color 180ms ease;
+  will-change: transform;
+}
+.group:hover .t-icon-spring {
+  transform: scale(1.1) translateY(-1px);
+}
+
+.t-arrow-reveal {
+  transform: translate(-3px, 3px);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+  will-change: transform, opacity;
+}
+.group:hover .t-arrow-reveal {
+  transform: translate(0, 0);
+  opacity: 1;
 }
 
 /* Prefers Reduced Motion (Global Guard) */
@@ -1039,7 +1076,10 @@
   .t-stagger-item,
   .t-tab-slide-left,
   .t-tab-slide-right,
-  .t-avatar {
+  .t-avatar,
+  .t-hover-lift,
+  .t-icon-spring,
+  .t-arrow-reveal {
     animation: none !important;
     transition: none !important;
     transform: none !important;

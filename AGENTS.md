@@ -9,6 +9,12 @@ This document establishes development standards and workflow rules for ALL AI ag
 - Use global semantic HSL design tokens (`bg-background`, `bg-card`, `bg-card-elevated`, `text-primary`, `text-foreground`, `text-muted-foreground`, `border-border/70`).
 - Never introduce arbitrary hardcoded hex colors (e.g., `#1a1a1a`).
 - Follow glassmorphism (`backdrop-blur-md`), micro-interactions (`active:scale-[0.98]`), and mobile touch target guidelines (minimum 44px).
+- Adhere strictly to the **Web Interface Guidelines** (by Rauno Freiberg — https://interfaces.rauno.me/):
+  - **Interactivity**: Input label focus, `<form>` submit on Enter, `select-none` on interactive elements, `pointer-events-none` on decorative background glows/shaders, no dead zones in list padding.
+  - **Typography**: `-webkit-font-smoothing: antialiased`, `text-rendering: optimizeLegibility`, no font weight shifts on hover, `tabular-nums` for counters/timers/data.
+  - **Motion**: Duration <= 200ms with snappy easing, scale transforms proportional to trigger size (`active:scale-[0.98]`), pause off-screen animations.
+  - **Touch**: `@media (hover: hover)` for hover states, input font-size >= 16px to prevent iOS auto-zoom, 44x44px minimum touch targets.
+  - **Accessibility**: Tailwind focus rings (`focus-visible:ring-2`), inline feedback near triggers, clear empty states with creation CTA.
 
 ---
 

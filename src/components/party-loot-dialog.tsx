@@ -1,4 +1,4 @@
-import { Gift, Package, Plus, Sparkles, UserCheck, Trash2 } from "lucide-react";
+import { Gift, Package, Plus, Sparkles, Trash2, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRPGStore } from "@/lib/store";
 
-export function PartyLootDialog() {
+interface PartyLootDialogProps {
+	trigger?: React.ReactElement;
+}
+
+export function PartyLootDialog({ trigger }: PartyLootDialogProps = {}) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isAdding, setIsAdding] = useState(false);
 
@@ -54,17 +58,21 @@ export function PartyLootDialog() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<DialogTrigger>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					className="gap-2 border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
-				>
-					<Package className="h-4 w-4" />
-					Mochila do Grupo ({unclaimedLoot.length})
-				</Button>
-			</DialogTrigger>
+			<DialogTrigger
+				render={
+					trigger || (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="gap-2 border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
+						>
+							<Package className="h-4 w-4" />
+							Mochila do Grupo ({unclaimedLoot.length})
+						</Button>
+					)
+				}
+			/>
 
 			<DialogContent className="max-w-3xl! max-h-[85vh] flex flex-col overflow-hidden">
 				<DialogHeader className="shrink-0">
@@ -73,7 +81,8 @@ export function PartyLootDialog() {
 						Mochila Coletiva do Grupo & Drops de Batalha
 					</DialogTitle>
 					<DialogDescription>
-						Gerencie saques de combate, tesouros não atribuídos e distribua itens aos personagens.
+						Gerencie saques de combate, tesouros não atribuídos e distribua
+						itens aos personagens.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -102,7 +111,8 @@ export function PartyLootDialog() {
 							className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 animate-in fade-in duration-150"
 						>
 							<h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-								<Sparkles className="h-3.5 w-3.5" /> Registrar Novo Item Encontrado
+								<Sparkles className="h-3.5 w-3.5" /> Registrar Novo Item
+								Encontrado
 							</h4>
 
 							<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -124,7 +134,9 @@ export function PartyLootDialog() {
 											type="number"
 											min={1}
 											value={newItemQuantity}
-											onChange={(e) => setNewItemQuantity(Number(e.target.value))}
+											onChange={(e) =>
+												setNewItemQuantity(Number(e.target.value))
+											}
 										/>
 									</Field>
 								</div>
@@ -207,9 +219,15 @@ export function PartyLootDialog() {
 											size="sm"
 											disabled={!selectedCharId}
 											onClick={() => {
-												const char = characters.find((c) => c.id === selectedCharId);
+												const char = characters.find(
+													(c) => c.id === selectedCharId,
+												);
 												if (char) {
-													claimPartyLootItem(item.id, char.id, char.characterName);
+													claimPartyLootItem(
+														item.id,
+														char.id,
+														char.characterName,
+													);
 													setSelectedCharId("");
 												}
 											}}
