@@ -32,7 +32,7 @@ describe("Zustand Store Persistence Partialization", () => {
 		expect(persistedStr).toBeDefined();
 		expect(persistedStr).not.toBeNull();
 
-		const parsed = JSON.parse(persistedStr!);
+		const parsed = JSON.parse(persistedStr || "{}");
 		expect(parsed.state).toBeDefined();
 
 		// Verify that active campaign and jam info are in the persisted state structure
@@ -58,6 +58,40 @@ describe("Zustand Store Persistence Partialization", () => {
 		// Verify both are cleared in memory
 		expect(useRPGStore.getState().spotifyToken).toBeNull();
 		expect(useRPGStore.getState().spotifyUser).toBeNull();
+	});
+
+	it("prevents unnecessary re-renders when setting identical Spotify track or participants", () => {
+		const track = {
+			title: "Song A",
+			artist: "Artist A",
+			albumArt: "https://example.com/art.jpg",
+			isPlaying: true,
+		};
+
+		useRPGStore.getState().setCurrentTrack(track);
+		const stateAfterFirstSet = useRPGStore.getState();
+
+		// Set identical track data in a new object reference
+		useRPGStore.getState().setCurrentTrack({
+			title: "Song A",
+			artist: "Artist A",
+			albumArt: "https://example.com/art.jpg",
+			isPlaying: true,
+		});
+
+		// State reference should be preserved (no spurious re-render)
+		expect(useRPGStore.getState()).toBe(stateAfterFirstSet);
+
+		// Set participants
+		const participants = [{ id: "u1", name: "User 1", image: "img.jpg" }];
+		useRPGStore.getState().setJamParticipants(participants);
+		const stateAfterParticipants = useRPGStore.getState();
+
+		// Set identical participants in new array reference
+		useRPGStore
+			.getState()
+			.setJamParticipants([{ id: "u1", name: "User 1", image: "img.jpg" }]);
+		expect(useRPGStore.getState()).toBe(stateAfterParticipants);
 	});
 
 	it("resets campaign bootstrap flag when clearing local data", () => {

@@ -1,15 +1,15 @@
 import type { UserPlan } from "../user-plan";
 export type { UserPlan };
 export type {
-	VTTGridType,
-	VTTGridScaleUnit,
-	VTTLayer,
-	VTTScene,
 	VTTAura,
-	VTTToken,
-	VTTRevealedPath,
 	VTTFogState,
+	VTTGridScaleUnit,
+	VTTGridType,
+	VTTLayer,
 	VTTPingEvent,
+	VTTRevealedPath,
+	VTTScene,
+	VTTToken,
 } from "../vtt/types";
 
 export type CampaignLoadStatus = "idle" | "loading" | "ready" | "error";
@@ -828,6 +828,8 @@ export interface RPGState {
 	spotifyJamLink: string | null;
 	spotifyJamActive: boolean;
 	spotifyToken: string | null;
+	spotifyRefreshToken: string | null;
+	spotifyExpiresAt: number | null;
 	spotifyUser: { name: string; email?: string; image?: string } | null;
 	currentTrack: {
 		title: string;
@@ -840,7 +842,9 @@ export interface RPGState {
 	clearSpotifyJam: () => void;
 	setSpotifyAuth: (
 		token: string,
-		user?: { name: string; email?: string; image?: string },
+		user?: { name: string; email?: string; image?: string } | null,
+		refreshToken?: string | null,
+		expiresIn?: number,
 	) => void;
 	logoutSpotify: () => void;
 	setCurrentTrack: (

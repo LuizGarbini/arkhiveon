@@ -14,13 +14,27 @@ import {
 	Sparkles,
 	User,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+	lazy,
+	type ReactNode,
+	Suspense,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
-import { SpotifyJamCard } from "@/components/spotify-jam-card";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const SpotifyJamCard = lazy(() =>
+	import("@/components/spotify-jam-card").then((m) => ({
+		default: m.SpotifyJamCard,
+	})),
+);
+
 import { useToast } from "@/components/ui/toast";
 import { CHANGELOG_DATA } from "@/data/updates";
 import { useAuth } from "@/lib/auth";
@@ -35,7 +49,7 @@ import {
 	NAVIGATION_SHORTCUTS,
 	SHORTCUT_HELP_SHORTCUT_ARIA,
 } from "@/lib/keyboard-shortcuts";
-import { useRPGStore } from "@/lib/store";
+import { useIsCampaignMaster, useRPGStore } from "@/lib/store";
 import { useShortcutViewport } from "@/lib/use-shortcut-viewport";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -58,6 +72,9 @@ interface AppHeaderProps {
 
 export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const { user, signOut } = useAuth();
+	const isMaster = useIsCampaignMaster();
+	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const isDM = isMaster || !activeCampaignId;
 	const clearLocalData = useRPGStore((state) => state.clearLocalData);
 	const spotifyJamLink = useRPGStore((state) => state.spotifyJamLink);
 	const spotifyUser = useRPGStore((state) => state.spotifyUser);
@@ -76,6 +93,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 	const [isSigningOut, setIsSigningOut] = useState(false);
 	const [isChangelogOpen, setIsChangelogOpen] = useState(false);
 	const [hasUnreadUpdates, setHasUnreadUpdates] = useState(false);
+	const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
 	const latestUpdateId = CHANGELOG_DATA[0]?.id;
 
 	useEffect(() => {
@@ -419,7 +437,7 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 						</PopoverContent>
 					</Popover>
 
-					<Popover>
+					<Popover open={isSpotifyOpen} onOpenChange={setIsSpotifyOpen}>
 						<PopoverTrigger
 							className={cn(
 								buttonVariants({ variant: "ghost", size: "icon" }),
@@ -437,7 +455,20 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							className="w-[380px] overflow-hidden p-0"
 							align="end"
 						>
-							<SpotifyJamCard isDM={true} />
+							{isSpotifyOpen && (
+								<Suspense
+									fallback={
+										<div className="flex h-56 w-full flex-col items-center justify-center gap-3 bg-card-elevated p-6 text-center">
+											<div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+											<span className="text-xs font-medium text-muted-foreground">
+												Carregando Spotify Jam...
+											</span>
+										</div>
+									}
+								>
+									<SpotifyJamCard isDM={isDM} />
+								</Suspense>
+							)}
 						</PopoverContent>
 					</Popover>
 

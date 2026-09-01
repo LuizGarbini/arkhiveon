@@ -11,10 +11,25 @@ export function JamPresenceSync() {
 
 	useEffect(() => {
 		const supabase = getSupabase();
-		if (!supabase || !jamLink || !spotifyUser || !user) {
+		if (!supabase || !jamLink || !user) {
 			setJamParticipants([]);
 			return;
 		}
+
+		const participantName =
+			spotifyUser?.name ||
+			(typeof user.user_metadata?.name === "string" &&
+			user.user_metadata.name.trim()
+				? user.user_metadata.name
+				: user.email?.split("@")[0] || "Aventureiro");
+
+		const participantImage =
+			spotifyUser?.image ||
+			(typeof user.user_metadata?.avatar_url === "string"
+				? user.user_metadata.avatar_url
+				: typeof user.user_metadata?.picture === "string"
+					? user.user_metadata.picture
+					: undefined);
 
 		// Criar um nome de canal único baseado no link da Jam
 		// Usamos uma sanitização simples para o link
@@ -25,11 +40,15 @@ export function JamPresenceSync() {
 		channel
 			.on("presence", { event: "sync" }, () => {
 				const newState = channel.presenceState();
-				const participants: any[] = [];
+				const participants: { id: string; name: string; image?: string }[] = [];
 
 				for (const id in newState) {
-					const presence = newState[id] as any;
-					if (presence[0]) {
+					const presence = newState[id] as unknown as Array<{
+						user_id?: string;
+						name?: string;
+						image?: string;
+					}>;
+					if (presence?.[0]?.user_id && presence[0]?.name) {
 						participants.push({
 							id: presence[0].user_id,
 							name: presence[0].name,
@@ -49,8 +68,8 @@ export function JamPresenceSync() {
 				if (status === "SUBSCRIBED") {
 					await channel.track({
 						user_id: user.id,
-						name: spotifyUser.name,
-						image: spotifyUser.image,
+						name: participantName,
+						image: participantImage,
 						online_at: new Date().toISOString(),
 					});
 				}
