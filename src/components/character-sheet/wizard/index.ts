@@ -1,3 +1,4 @@
+export * from "./ordem-agent-gallery";
 export * from "./types";
 export * from "./wizard-progress-header";
 export * from "./wizard-step-details";

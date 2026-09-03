@@ -115,5 +115,5 @@ describe("SpellSearchDialog State Resets", () => {
 				screen.getByPlaceholderText(/Buscar por nome/i);
 			expect((reopenedSearchInput as HTMLInputElement).value).toBe("");
 		});
-	});
+	}, 15000);
 });

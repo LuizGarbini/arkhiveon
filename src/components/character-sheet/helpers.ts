@@ -109,9 +109,15 @@ export function sanitizeCharacterFormValues(
 		"spellAttackBonus",
 	];
 	const sanitized = { ...values };
+	if (typeof sanitized.characterName === "string") {
+		sanitized.characterName = sanitized.characterName.trim();
+	}
 	for (const key of numericKeys) {
 		const value = sanitized[key];
-		if (typeof value === "number" && Number.isNaN(value)) {
+		if (
+			value === undefined ||
+			(typeof value === "number" && Number.isNaN(value))
+		) {
 			(sanitized as Record<string, unknown>)[key] = options?.emptyToZero
 				? 0
 				: (characterDefaults[key as keyof typeof characterDefaults] ?? 0);

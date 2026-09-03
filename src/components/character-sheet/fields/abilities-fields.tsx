@@ -98,24 +98,37 @@ export function AbilitiesFields({
 						? "Cthulhu/Ordem: pontos podem ir até 99 (escala percentual)."
 						: "Pontuações de 1 a 30."
 				}
-				action={
+			>
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+					<div className="text-xs text-muted-foreground">
+						Ajuste manualmente ou use os dados para rolar os atributos do seu
+						personagem.
+					</div>
 					<Button
 						type="button"
 						variant="outline"
 						size="sm"
 						onClick={handleRollAll}
-						className="text-xs gap-1.5 h-8 font-semibold shrink-0 cursor-pointer"
+						className="min-h-[44px] gap-2 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer self-start sm:self-auto"
 					>
-						<Sparkles className="h-3.5 w-3.5 text-primary" />
-						Rolar Atributos
+						<Sparkles className="h-4 w-4" />
+						Rolar Todos (
+						{config.value === "coc" || config.value === "ordem"
+							? "3d6*5"
+							: "4d6 drop 1"}
+						)
 					</Button>
-				}
-			>
+				</div>
+
 				<div
-					className={`grid gap-4 ${fields.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
+					className={`grid gap-3 ${
+						fields.length >= 8
+							? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+							: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+					}`}
 				>
 					{fields.map((field) => (
-						<AbilityField
+						<AbilityInputField
 							key={field.key}
 							label={field.label}
 							name={field.key}
@@ -127,7 +140,26 @@ export function AbilitiesFields({
 						/>
 					))}
 				</div>
+
+				{config.customFields?.some((f) => f.section === "abilities") && (
+					<div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+						{config.customFields
+							.filter((f) => f.section === "abilities")
+							.map((field) => (
+								<Field key={field.key} label={field.label}>
+									<Input
+										placeholder="..."
+										className="min-h-[44px]"
+										{...register(
+											`systemFields.${field.key}` as Path<CharacterFormValues>,
+										)}
+									/>
+								</Field>
+							))}
+					</div>
+				)}
 			</FormSection>
+
 			<DiceRollOverlay
 				open={rollState.open}
 				attributeLabel={rollState.label}
@@ -135,40 +167,11 @@ export function AbilitiesFields({
 				onComplete={handleRollComplete}
 				onClose={() => setRollState((s) => ({ ...s, open: false }))}
 			/>
-
-			<FormSection title="Proficiências">
-				<Field
-					label="Salvaguardas proficientes"
-					hint="Separe por vírgula. Ex: FOR, CON"
-				>
-					<Input placeholder="FOR, DES..." {...register("savingThrows")} />
-				</Field>
-				<Field
-					label="Perícias treinadas"
-					hint="Ex: Atletismo, Furtividade, Persuasão"
-				>
-					<Input
-						placeholder="Atletismo, Furtividade..."
-						{...register("skills")}
-					/>
-				</Field>
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<Field label="Idiomas">
-						<Input placeholder="Comum, Élfico..." {...register("languages")} />
-					</Field>
-					<Field label="Outras proficiências">
-						<Input
-							placeholder="Ferramentas, armas..."
-							{...register("proficiencies")}
-						/>
-					</Field>
-				</div>
-			</FormSection>
 		</>
 	);
 }
 
-function AbilityField({
+function AbilityInputField({
 	label,
 	name,
 	register,
@@ -229,29 +232,31 @@ function AbilityField({
 				variant="ghost"
 				size="icon-xs"
 				onClick={handleRollSingle}
-				className="absolute top-1.5 right-1.5 h-5.5 w-5.5 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 rounded-md shrink-0 md:opacity-40 group-hover/tooltip:opacity-100 hover:!opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+				className="absolute -top-1 -right-1 min-h-[44px] min-w-[44px] text-muted-foreground/60 hover:text-primary hover:bg-primary/10 rounded-md shrink-0 md:opacity-40 group-hover/tooltip:opacity-100 hover:!opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
 				title="Rolar este atributo"
+				aria-label={`Rolar dado para ${fullName}`}
 			>
-				<Dices className="h-3.5 w-3.5" />
+				<Dices className="h-4 w-4" />
 			</Button>
 
 			<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover/tooltip:text-primary">
 				{label}
 			</span>
 
-			<div className="flex w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-muted/20 p-0.5 focus-within:border-primary/45 transition-all">
+			<div className="flex w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-muted/20 min-h-[44px] p-1 focus-within:border-primary/45 transition-all">
 				<Button
 					type="button"
 					variant="ghost"
 					size="icon-xs"
 					disabled={numeric <= min}
 					onClick={() => handleAdjustment(-1)}
-					className="h-6 w-6 rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0"
+					className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0 cursor-pointer"
+					aria-label={`Diminuir ${label}`}
 				>
-					<Minus className="h-3 w-3" />
+					<Minus className="h-3.5 w-3.5" />
 				</Button>
 
-				<div className="relative flex-1 h-6 flex items-center justify-center min-w-0">
+				<div className="relative flex-1 h-8 flex items-center justify-center min-w-0">
 					<span
 						key={numeric}
 						className="t-digit-group is-animating text-[15px] font-extrabold text-foreground pointer-events-none select-none"
@@ -289,9 +294,10 @@ function AbilityField({
 					size="icon-xs"
 					disabled={numeric >= max}
 					onClick={() => handleAdjustment(1)}
-					className="h-6 w-6 rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0"
+					className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 select-none shrink-0 cursor-pointer"
+					aria-label={`Aumentar ${label}`}
 				>
-					<Plus className="h-3 w-3" />
+					<Plus className="h-3.5 w-3.5" />
 				</Button>
 			</div>
 

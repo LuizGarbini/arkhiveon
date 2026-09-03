@@ -1,12 +1,17 @@
 import { BookOpen, Eye, Heart, Shield, Sparkles, Zap } from "lucide-react";
 import type { ComponentType } from "react";
 import { CharacterInventoryModule } from "@/components/character-inventory-module";
-import { SkillsFields } from "@/components/character-sheet/fields";
+import { SkillsFieldsReadOnly } from "@/components/character-sheet/fields";
 import { CharacterTrainingFields } from "@/components/character-training-fields";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
+import {
+	calculateEffectiveHealthMax,
+	calculateHitPointPercentage,
+	calculateProficiencyBonus,
+	formatModifier,
+} from "@/core/rules";
 import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
 import {
-	formatModifier,
 	getAttributeExtraInfo,
 	getAttributeFullName,
 	useRPGStore,
@@ -23,6 +28,7 @@ export function SheetModuleContent({
 	character: Character;
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 }) {
+	const updateCharacter = useRPGStore((state) => state.updateCharacter);
 	const customFields =
 		config.customFields?.filter((f) => f.section === module.kind) || [];
 
@@ -98,30 +104,26 @@ export function SheetModuleContent({
 			>
 				{abilities.map((ability) => {
 					const fullName = getAttributeFullName(ability.label);
-					const extraInfo = getAttributeExtraInfo(
-						ability.value,
-						character.system,
-					);
+					const extra = getAttributeExtraInfo(ability.value, character.system);
 					return (
 						<div
 							key={ability.label}
-							className="group/tooltip relative rounded-2xl border border-border/70 bg-background/45 py-4 px-1 text-center transition-all hover:border-primary/20 hover:bg-background/60 hover:translate-y-[-2px] hover:shadow-md hover:shadow-primary/5 cursor-default"
+							className="rounded-2xl border border-border/70 bg-background/45 p-3 text-center transition-all hover:bg-background/70"
 						>
-							<div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 scale-75 rounded-lg border border-border bg-card-elevated px-2 py-1 text-[10px] font-bold text-foreground opacity-0 shadow-md backdrop-blur-md transition-all duration-150 group-hover/tooltip:-top-10 group-hover/tooltip:scale-100 group-hover/tooltip:opacity-100 whitespace-nowrap">
-								{fullName}
-							</div>
-
 							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 								{ability.label}
 							</p>
-							<p className="font-display mt-1.5 text-2xl sm:text-3xl font-bold text-foreground leading-none">
+							<p className="font-display mt-1 text-2xl font-bold text-foreground">
 								{ability.value}
 							</p>
-							{extraInfo && (
-								<p className="font-mono text-[12px] font-bold text-primary mt-1">
-									{extraInfo}
+							{extra && (
+								<p className="mt-0.5 text-[11px] font-bold text-primary">
+									{extra}
 								</p>
 							)}
+							<p className="text-[9px] text-muted-foreground/80 truncate">
+								{fullName}
+							</p>
 						</div>
 					);
 				})}
@@ -130,24 +132,28 @@ export function SheetModuleContent({
 	}
 
 	if (module.kind === "skills") {
-		return <SkillsFields character={character} config={config} />;
+		const pb = calculateProficiencyBonus(character.level || 1);
+		return (
+			<SkillsFieldsReadOnly
+				character={character}
+				proficiencyBonus={character.proficiencyBonus || pb}
+			/>
+		);
 	}
 
 	if (module.kind === "combat") {
-		const hasTough = character.featsList?.some(
-			(f) =>
-				f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
+		const effectiveHealthMax = calculateEffectiveHealthMax({
+			baseHealthMax: character.healthMax || 0,
+			level: character.level,
+			featsList: character.featsList,
+			system: character.system,
+		});
+		const toughBonus = effectiveHealthMax - (character.healthMax || 0);
+		const hpPercent = calculateHitPointPercentage(
+			character.health,
+			effectiveHealthMax,
 		);
-		const toughBonus =
-			hasTough &&
-			(character.system === "dnd5e" || character.system === "dnd2024")
-				? 2 * (character.level || 1)
-				: 0;
-		const effectiveHealthMax = (character.healthMax || 0) + toughBonus;
 
-		const hpPercent = effectiveHealthMax
-			? Math.min(100, Math.round((character.health / effectiveHealthMax) * 100))
-			: 0;
 		return (
 			<div className="grid gap-4">
 				<div className="rounded-2xl border border-border/70 bg-background/45 p-4">
@@ -198,13 +204,28 @@ export function SheetModuleContent({
 						/>
 					))}
 				</div>
+				{character.tempHealth ? (
+					<div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-300">
+						HP Temporário: <strong>{character.tempHealth}</strong>
+					</div>
+				) : null}
 			</div>
 		);
 	}
 
 	if (module.kind === "sanity") {
 		return (
-			<div className="grid gap-3 sm:grid-cols-3">
+			<div className="grid gap-3 sm:grid-cols-2">
+				<MetricCard
+					Icon={Eye}
+					label="Sanidade"
+					value={`${character.sanity ?? 50}/${character.sanityMax ?? 99}`}
+				/>
+				<MetricCard
+					Icon={Sparkles}
+					label="Pontos de Magia / Esforço"
+					value={`${character.effort ?? 0}/${character.effortMax ?? 0}`}
+				/>
 				{customFields.map((field) => (
 					<MetricCard
 						key={field.key}
@@ -213,89 +234,91 @@ export function SheetModuleContent({
 						value={character.systemFields?.[field.key] || "-"}
 					/>
 				))}
-				<MetricCard Icon={Eye} label="Sanidade" value={character.sanity} />
-				<MetricCard
-					Icon={Eye}
-					label="Sanidade Máx."
-					value={character.sanityMax}
-				/>
-				<MetricCard Icon={Sparkles} label="Poder" value={character.power} />
 			</div>
 		);
 	}
 
 	if (module.kind === "magic") {
-		const spellsList = character.spellsList || [];
-
-		const groupedSpells: Record<number, Spell[]> = {};
-		for (const spell of spellsList) {
-			const lvl = spell.level;
-			if (!groupedSpells[lvl]) groupedSpells[lvl] = [];
-			groupedSpells[lvl].push(spell);
-		}
-
-		const formatLevelName = (lvl: number) => {
-			if (lvl === 0) return "Truques";
-			return `${lvl}º Círculo / Nível`;
-		};
+		const spellsList = (character.spellsList || []) as Spell[];
+		const spellsByLevel = spellsList.reduce<Record<number, Spell[]>>(
+			(acc, spell) => {
+				const lvl = spell.level ?? 0;
+				if (!acc[lvl]) acc[lvl] = [];
+				acc[lvl].push(spell);
+				return acc;
+			},
+			{},
+		);
+		const sortedLevels = Object.keys(spellsByLevel)
+			.map(Number)
+			.sort((a, b) => a - b);
 
 		return (
-			<div className="grid gap-3">
-				<div className="grid gap-3 sm:grid-cols-3">
-					<MetricCard
-						Icon={BookOpen}
-						label="Classe"
-						value={character.spellcastingClass || "-"}
+			<div className="space-y-4">
+				<div className="grid gap-3 sm:grid-cols-2">
+					<InfoRow
+						label="Habilidade de Conjuração"
+						value={character.spellAbility || "Não informada"}
 					/>
-					<MetricCard Icon={Shield} label="CD" value={character.spellSaveDc} />
-					<MetricCard
-						Icon={Sparkles}
-						label="Ataque"
-						value={formatModifier(character.spellAttackBonus)}
+					<InfoRow
+						label="CD da Magia"
+						value={character.spellSaveDc ? String(character.spellSaveDc) : "-"}
+					/>
+					<InfoRow
+						label="Bônus de Ataque Mágico"
+						value={
+							character.spellAttackBonus !== undefined &&
+							character.spellAttackBonus !== null
+								? formatModifier(character.spellAttackBonus)
+								: "-"
+						}
 					/>
 				</div>
-				{customFields.map((field) => (
-					<TextBlock
-						key={field.key}
-						title={field.label}
-						value={character.systemFields?.[field.key]}
-					/>
-				))}
+				{customFields.length > 0 && (
+					<div className="grid gap-3 sm:grid-cols-2">
+						{customFields.map((field) => (
+							<InfoRow
+								key={field.key}
+								label={field.label}
+								value={character.systemFields?.[field.key] || "-"}
+							/>
+						))}
+					</div>
+				)}
 
-				<TextBlock title="Espaços" value={character.spellSlots} />
+				<div className="mt-4 pt-4 border-t border-border/40 space-y-4">
+					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
+						<Sparkles className="h-4 w-4 text-primary" />
+						Grimório de Magias ({spellsList.length})
+					</h4>
 
-				{spellsList.length > 0 && (
-					<div className="space-y-4 border-t border-border/30 pt-4 mt-2">
-						<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-							<BookOpen className="h-4 w-4 text-primary" />
-							Grimório de Magias
-						</h4>
+					{spellsList.length === 0 ? (
+						<p className="text-xs text-muted-foreground italic">
+							Nenhuma magia adicionada à ficha ainda. Edite o módulo para
+							adicionar magias do compêndio.
+						</p>
+					) : (
 						<div className="space-y-4">
-							{Object.keys(groupedSpells)
-								.map(Number)
-								.sort((a, b) => a - b)
-								.map((level) => (
-									<div key={level} className="space-y-2">
-										<h5 className="text-xs font-bold text-muted-foreground border-b border-border/20 pb-1">
-											{formatLevelName(level)}
-										</h5>
+							{sortedLevels.map((lvl) => {
+								const levelSpells = spellsByLevel[lvl];
+								const label =
+									lvl === 0 ? "Truques (Nível 0)" : `${lvl}º Círculo / Nível`;
+								return (
+									<div key={lvl} className="space-y-1.5">
+										<div className="text-[11px] font-bold text-primary uppercase tracking-wider">
+											{label} ({levelSpells.length})
+										</div>
 										<div className="grid gap-1.5">
-											{groupedSpells[level].map((spell) => (
+											{levelSpells.map((spell) => (
 												<SpellRow key={spell.id} spell={spell} />
 											))}
 										</div>
 									</div>
-								))}
+								);
+							})}
 						</div>
-					</div>
-				)}
-
-				{character.spells?.trim() && (
-					<TextBlock
-						title={spellsList.length > 0 ? "Magias (Legado)" : "Magias"}
-						value={character.spells}
-					/>
-				)}
+					)}
+				</div>
 			</div>
 		);
 	}
@@ -305,52 +328,55 @@ export function SheetModuleContent({
 		const featsLabel = getFeatsLabel(character.system);
 
 		return (
-			<div className="grid gap-3">
-				{customFields.map((field) => (
-					<TextBlock
-						key={field.key}
-						title={field.label}
-						value={character.systemFields?.[field.key]}
-					/>
-				))}
+			<div className="space-y-4">
+				{customFields.length > 0 && (
+					<div className="grid gap-3 sm:grid-cols-2">
+						{customFields.map((field) => (
+							<InfoRow
+								key={field.key}
+								label={field.label}
+								value={character.systemFields?.[field.key] || "-"}
+							/>
+						))}
+					</div>
+				)}
 
-				{featsList.length > 0 ? (
-					<div className="space-y-4">
-						<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
-							<Sparkles className="h-4 w-4 text-primary" />
-							{featsLabel}
-						</h4>
+				<div className="space-y-3">
+					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
+						<BookOpen className="h-4 w-4 text-primary" />
+						{featsLabel} Selecionados ({featsList.length})
+					</h4>
+
+					{featsList.length === 0 ? (
+						<p className="text-xs text-muted-foreground italic">
+							Nenhum {featsLabel.toLowerCase()} adicionado à ficha ainda. Edite
+							o módulo para adicionar talentos do compêndio.
+						</p>
+					) : (
 						<div className="grid gap-2">
 							{featsList.map((feat) => (
 								<FeatRow key={feat.id} feat={feat} />
 							))}
 						</div>
-					</div>
-				) : (
-					<div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-6 text-center text-xs text-muted-foreground">
-						Nenhum(a) {featsLabel.toLowerCase()} adicionado(a) ainda.
-					</div>
-				)}
+					)}
+				</div>
 			</div>
 		);
 	}
 
 	if (module.kind === "inventory") {
 		return (
-			<div className="grid gap-4">
-				{customFields.map((field) => (
-					<TextBlock
-						key={field.key}
-						title={field.label}
-						value={character.systemFields?.[field.key]}
-					/>
-				))}
+			<div className="space-y-6">
 				<CharacterInventoryModule
 					character={character}
-					onUpdateCharacter={(patch) =>
-						useRPGStore.getState().updateCharacter(character.id, patch)
-					}
+					onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
 				/>
+				<div className="pt-4 border-t border-border/40">
+					<CharacterTrainingFields
+						character={character}
+						onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
+					/>
+				</div>
 			</div>
 		);
 	}
@@ -358,48 +384,64 @@ export function SheetModuleContent({
 	if (module.kind === "personality") {
 		return (
 			<div className="grid gap-3">
-				{customFields.map((field) => (
-					<TextBlock
-						key={field.key}
-						title={field.label}
-						value={character.systemFields?.[field.key]}
-					/>
-				))}
-				<TextBlock title="Traços" value={character.personalityTraits} />
-				<TextBlock title="Ideais" value={character.ideals} />
-				<TextBlock title="Vínculos" value={character.bonds} />
-				<TextBlock title="Defeitos" value={character.flaws} />
+				<TextBlock
+					title="Traços de Personalidade"
+					value={character.personalityTraits || "Não informados"}
+				/>
+				<TextBlock
+					title="Ideais"
+					value={character.ideals || "Não informados"}
+				/>
+				<TextBlock
+					title="Vínculos"
+					value={character.bonds || "Não informados"}
+				/>
+				<TextBlock
+					title="Defeitos"
+					value={character.flaws || "Não informados"}
+				/>
 			</div>
 		);
 	}
 
 	if (module.kind === "notes") {
 		return (
-			<div className="grid gap-4">
+			<div className="space-y-3">
+				<TextBlock
+					title="Anotações Gerais"
+					value={character.notes || "Sem anotações"}
+				/>
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
 						title={field.label}
-						value={character.systemFields?.[field.key]}
+						value={character.systemFields?.[field.key] || "-"}
 					/>
 				))}
-				<TextBlock title="Anotações" value={character.notes} />
-				<CharacterTrainingFields
-					character={character}
-					onUpdateCharacter={(patch) =>
-						useRPGStore.getState().updateCharacter(character.id, patch)
-					}
-				/>
 			</div>
 		);
 	}
 
-	return (
-		<TextBlock
-			title={module.kind === "customStats" ? "Stats customizados" : "Conteúdo"}
-			value={module.content}
-		/>
-	);
+	if (module.kind === "customText") {
+		return (
+			<TextBlock
+				title={module.title}
+				value={module.content || "Sem conteúdo"}
+			/>
+		);
+	}
+
+	if (module.kind === "customStats") {
+		return (
+			<div className="rounded-2xl border border-border/70 bg-background/45 p-4">
+				<p className="text-sm text-muted-foreground">
+					{module.content || "Bloco de status personalizado"}
+				</p>
+			</div>
+		);
+	}
+
+	return null;
 }
 
 function MetricCard({
@@ -409,16 +451,18 @@ function MetricCard({
 }: {
 	Icon: ComponentType<{ className?: string }>;
 	label: string;
-	value: string | number;
+	value?: string | number | null;
 }) {
 	return (
 		<div className="rounded-2xl border border-border/70 bg-background/45 p-3">
-			<Icon className="h-4 w-4 text-primary" />
+			<div className="flex items-center justify-between gap-2">
+				<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground truncate">
+					{label}
+				</span>
+				<Icon className="h-4 w-4 text-primary shrink-0" />
+			</div>
 			<p className="font-display mt-2 text-xl font-bold text-foreground">
-				{value}
-			</p>
-			<p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-				{label}
+				{value ?? "-"}
 			</p>
 		</div>
 	);

@@ -51,3 +51,34 @@ export function isSkillValueValid(
 	}
 	return value >= -10 && value <= 50;
 }
+
+export interface SkillItemFilterable {
+	key: string;
+	label: string;
+	attr: string;
+}
+
+/**
+ * Pure filter function for skill lists based on search string and attribute filter.
+ */
+export function filterSkillsList<T extends SkillItemFilterable>(
+	skills: T[],
+	searchQuery: string,
+	activeAttrFilter?: string | null,
+): T[] {
+	const normalizedQuery = searchQuery.trim().toLowerCase();
+
+	return skills.filter((skill) => {
+		if (activeAttrFilter && skill.attr !== activeAttrFilter) {
+			return false;
+		}
+		if (!normalizedQuery) {
+			return true;
+		}
+		return (
+			skill.label.toLowerCase().includes(normalizedQuery) ||
+			skill.key.toLowerCase().includes(normalizedQuery) ||
+			skill.attr.toLowerCase().includes(normalizedQuery)
+		);
+	});
+}

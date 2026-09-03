@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import {
 	buildCharacterFormDefaults,
+	CHARACTER_NAME_REQUIRED_MESSAGE,
 	type CharacterFormValues,
 	sanitizeCharacterFormValues,
 } from "@/components/character-sheet/fields";
@@ -168,7 +169,7 @@ function NewSheetPage() {
 			"sheetLayout",
 			{
 				version: 1,
-				template: (selectedLayoutTemplateId || system) as RpgSystem | "custom",
+				template: system,
 				modules: nextModules,
 			},
 			{ shouldDirty: true },
@@ -182,13 +183,12 @@ function NewSheetPage() {
 		if (step === "essential") {
 			const nameVal = form.getValues("characterName");
 			if (!nameVal?.trim()) {
-				setStepError("Informe o nome do personagem para continuar.");
+				setStepError(CHARACTER_NAME_REQUIRED_MESSAGE);
 				return false;
 			}
 			setStepError(null);
 			return trigger("characterName");
 		}
-		setStepError(null);
 		return true;
 	}
 
@@ -200,6 +200,7 @@ function NewSheetPage() {
 		if (currentIndex < WIZARD_STEPS.length - 1) {
 			const nextStep = WIZARD_STEPS[currentIndex + 1];
 			if (nextStep) {
+				setStepError(null);
 				setActiveStep(nextStep.id);
 				scrollToTop();
 			}
@@ -220,11 +221,17 @@ function NewSheetPage() {
 
 	async function handleStepSelect(targetStep: WizardStep) {
 		const targetIndex = WIZARD_STEPS.findIndex((s) => s.id === targetStep);
-		const currentIndex = WIZARD_STEPS.findIndex((s) => s.id === activeStep);
+		const essentialIndex = WIZARD_STEPS.findIndex((s) => s.id === "essential");
 
-		if (targetIndex > currentIndex) {
-			const isValid = await validateStep(activeStep);
-			if (!isValid) return;
+		// If user is navigating to essential or earlier, allowed freely
+		if (targetIndex > essentialIndex) {
+			const nameVal = form.getValues("characterName");
+			if (!nameVal?.trim()) {
+				setStepError(CHARACTER_NAME_REQUIRED_MESSAGE);
+				setActiveStep("essential");
+				scrollToTop();
+				return;
+			}
 		}
 
 		setStepError(null);
@@ -233,16 +240,26 @@ function NewSheetPage() {
 	}
 
 	const onSubmit = async (data: CharacterFormValues) => {
-		const sanitized = sanitizeCharacterFormValues({
-			...data,
-			sheetLayout: {
-				version: 1,
-				template: (selectedLayoutTemplateId || system) as RpgSystem | "custom",
-				modules: normalizeModuleOrders(modules),
-			},
+		if (!data.characterName?.trim()) {
+			setStepError(CHARACTER_NAME_REQUIRED_MESSAGE);
+			setActiveStep("essential");
+			scrollToTop();
+			return;
+		}
+
+		const sanitized = sanitizeCharacterFormValues(data, {
+			emptyToZero: true,
 		});
 
-		const newCharacter = addCharacter(sanitized);
+		const newCharacter = addCharacter({
+			...sanitized,
+			sheetLayout: {
+				version: 1,
+				template: system,
+				modules: normalizeModuleOrders(modules),
+			},
+			customTemplateId: selectedLayoutTemplateId,
+		});
 
 		if (newCharacter?.id) {
 			void navigate({
@@ -260,7 +277,7 @@ function NewSheetPage() {
 			<div className="flex items-center justify-between">
 				<Link
 					to="/characters"
-					className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+					className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
 				>
 					<ArrowLeft className="h-4 w-4" />
 					Voltar para Personagens
@@ -284,6 +301,12 @@ function NewSheetPage() {
 							system={system}
 							selectedLayoutTemplateId={selectedLayoutTemplateId}
 							onSelectSystem={handleSelectSystem}
+							onImportSuccess={(characterId) => {
+								void navigate({
+									to: "/sheets/$characterId",
+									params: { characterId },
+								});
+							}}
 						/>
 					)}
 
@@ -292,6 +315,7 @@ function NewSheetPage() {
 							register={register}
 							control={control}
 							setValue={setValue}
+							system={system}
 							errors={errors}
 						/>
 					)}
@@ -333,14 +357,14 @@ function NewSheetPage() {
 					)}
 				</div>
 
-				{/* Bottom Navigation Buttons */}
+				{/* Bottom Navigation Buttons (Accessible touch targets >= 44px) */}
 				<div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4">
 					<Button
 						type="button"
 						variant="outline"
 						onClick={handlePrevStep}
 						disabled={activeStep === "system" || isSubmitting}
-						className="gap-2 cursor-pointer"
+						className="min-h-[44px] gap-2 cursor-pointer"
 					>
 						<ArrowLeft className="h-4 w-4" />
 						Voltar
@@ -350,7 +374,7 @@ function NewSheetPage() {
 						<Button
 							type="submit"
 							disabled={isSubmitting}
-							className="gap-2 bg-primary text-white font-bold px-6 shadow-md shadow-primary/20 cursor-pointer"
+							className="min-h-[44px] gap-2 bg-primary text-white font-bold px-6 shadow-md shadow-primary/20 cursor-pointer"
 						>
 							{isSubmitting ? (
 								"Criando Ficha..."
@@ -365,7 +389,7 @@ function NewSheetPage() {
 						<Button
 							type="button"
 							onClick={handleNextStep}
-							className="gap-2 bg-primary text-white font-bold px-6 cursor-pointer"
+							className="min-h-[44px] gap-2 bg-primary text-white font-bold px-6 cursor-pointer"
 						>
 							Avançar
 							<ArrowRight className="h-4 w-4" />

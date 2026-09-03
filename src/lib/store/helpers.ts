@@ -1,3 +1,8 @@
+import {
+	calculateAbilityModifier,
+	formatModifier as coreFormatModifier,
+} from "@/core/rules";
+import { getSupabase } from "../supabase";
 import type { ActivityEntry } from "./types";
 import { RPG_SYSTEMS } from "./types";
 
@@ -12,8 +17,6 @@ export const generateEntry = <T extends object>(
 	id: crypto.randomUUID(),
 	createdAt: Date.now(),
 });
-
-import { getSupabase } from "../supabase";
 
 export function pushLog(
 	log: ActivityEntry[],
@@ -57,13 +60,8 @@ export function entityNameOf(e: object, fallback = "Sem nome"): string {
 	return fallback;
 }
 
-export function abilityModifier(score: number): number {
-	return Math.floor((score - 10) / 2);
-}
-
-export function formatModifier(mod: number): string {
-	return mod >= 0 ? `+${mod}` : `${mod}`;
-}
+export const abilityModifier = calculateAbilityModifier;
+export const formatModifier = coreFormatModifier;
 
 export function getAttributeExtraInfo(
 	score: number,
@@ -79,8 +77,8 @@ export function getAttributeExtraInfo(
 			"cosmere",
 		].includes(system)
 	) {
-		const mod = Math.floor((score - 10) / 2);
-		return mod >= 0 ? `+${mod}` : `${mod}`;
+		const mod = calculateAbilityModifier(score);
+		return coreFormatModifier(mod);
 	}
 	if (system === "coc") {
 		const half = Math.floor(score / 2);

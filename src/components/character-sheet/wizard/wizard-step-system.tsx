@@ -9,10 +9,12 @@ export function WizardStepSystem({
 	system,
 	selectedLayoutTemplateId,
 	onSelectSystem,
+	onImportSuccess,
 }: {
 	system: RpgSystem;
 	selectedLayoutTemplateId?: string;
 	onSelectSystem: (selection: SystemPickerSelection) => void;
+	onImportSuccess?: (characterId: string) => void;
 }) {
 	return (
 		<div className="space-y-6">
@@ -26,7 +28,9 @@ export function WizardStepSystem({
 						ficha.
 					</p>
 				</div>
-				{system === "ordem" && <CrisImportDialog />}
+				{system === "ordem" && (
+					<CrisImportDialog onImportSuccess={onImportSuccess} />
+				)}
 			</div>
 
 			<SystemPicker

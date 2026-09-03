@@ -18,100 +18,99 @@ import { PersonalityFields } from "./personality-fields";
 import { SanityFields } from "./sanity-fields";
 import { SkillsFields } from "./skills-fields";
 
-export function CharacterModuleFields({
-	kind,
-	register,
-	control,
-	setValue,
-	config,
-	errors,
-}: {
-	kind: SheetModuleKind;
+export interface ModuleFieldRendererProps {
 	register: CharacterRegister;
 	control: CharacterControl;
 	setValue: CharacterSetValue;
 	config: SystemConfig;
 	errors?: FieldErrors<CharacterFormValues>;
-}) {
-	if (kind === "identity") {
-		return (
-			<IdentityFields
-				register={register}
-				control={control}
-				setValue={setValue}
-				errors={errors}
-			/>
-		);
+}
+
+const MODULE_REGISTRY: Record<
+	SheetModuleKind,
+	React.ComponentType<ModuleFieldRendererProps> | null
+> = {
+	identity: (props) => (
+		<IdentityFields
+			register={props.register}
+			control={props.control}
+			setValue={props.setValue}
+			errors={props.errors}
+		/>
+	),
+	abilities: (props) => (
+		<AbilitiesFields
+			register={props.register}
+			control={props.control}
+			setValue={props.setValue}
+			config={props.config}
+		/>
+	),
+	combat: (props) => (
+		<CombatFields
+			register={props.register}
+			control={props.control}
+			setValue={props.setValue}
+			config={props.config}
+			errors={props.errors}
+		/>
+	),
+	sanity: (props) => (
+		<SanityFields
+			register={props.register}
+			control={props.control}
+			setValue={props.setValue}
+			config={props.config}
+		/>
+	),
+	skills: (props) => (
+		<SkillsFields
+			register={props.register}
+			control={props.control}
+			setValue={props.setValue}
+			config={props.config}
+		/>
+	),
+	magic: (props) => (
+		<MagicFields
+			register={props.register}
+			config={props.config}
+			control={props.control}
+			setValue={props.setValue}
+		/>
+	),
+	feats: (props) => (
+		<FeatsFields
+			register={props.register}
+			config={props.config}
+			control={props.control}
+			setValue={props.setValue}
+		/>
+	),
+	inventory: (props) => (
+		<InventoryFields register={props.register} config={props.config} />
+	),
+	personality: (props) => (
+		<PersonalityFields register={props.register} config={props.config} />
+	),
+	notes: (props) => (
+		<NotesFields register={props.register} config={props.config} />
+	),
+	customText: null,
+	customStats: null,
+	custom_template_fields: null,
+};
+
+export function CharacterModuleFields({
+	kind,
+	...props
+}: {
+	kind: SheetModuleKind;
+} & ModuleFieldRendererProps) {
+	const Renderer = MODULE_REGISTRY[kind];
+	if (!Renderer) {
+		return null;
 	}
-	if (kind === "abilities") {
-		return (
-			<AbilitiesFields
-				register={register}
-				control={control}
-				setValue={setValue}
-				config={config}
-			/>
-		);
-	}
-	if (kind === "combat") {
-		return (
-			<CombatFields
-				register={register}
-				control={control}
-				setValue={setValue}
-				config={config}
-				errors={errors}
-			/>
-		);
-	}
-	if (kind === "sanity") {
-		return (
-			<SanityFields
-				register={register}
-				control={control}
-				setValue={setValue}
-				config={config}
-			/>
-		);
-	}
-	if (kind === "skills") {
-		return (
-			<SkillsFields
-				register={register}
-				control={control}
-				setValue={setValue}
-				config={config}
-			/>
-		);
-	}
-	if (kind === "magic") {
-		return (
-			<MagicFields
-				register={register}
-				config={config}
-				control={control}
-				setValue={setValue}
-			/>
-		);
-	}
-	if (kind === "feats") {
-		return (
-			<FeatsFields
-				register={register}
-				config={config}
-				control={control}
-				setValue={setValue}
-			/>
-		);
-	}
-	if (kind === "inventory") {
-		return <InventoryFields register={register} config={config} />;
-	}
-	if (kind === "personality") {
-		return <PersonalityFields register={register} config={config} />;
-	}
-	if (kind === "notes" || kind === "customText" || kind === "customStats") {
-		return <NotesFields register={register} config={config} />;
-	}
-	return null;
+
+	return <Renderer {...props} />;
 }

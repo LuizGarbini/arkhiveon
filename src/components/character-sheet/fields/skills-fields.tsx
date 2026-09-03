@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { FormSection } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
+import {
+	calculateProficiencyBonus,
+	calculateSavingThrowModifier,
+	calculateSkillModifier,
+	formatModifier,
+} from "@/core/rules";
 import type { Character } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
@@ -172,7 +178,64 @@ export const SAVING_THROWS_LIST: Array<{
 	{ key: "charisma", label: "Carisma", short: "CAR" },
 ];
 
-interface SkillsFieldsViewProps {
+export interface SkillsFieldsProps {
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+	register?: CharacterRegister;
+	config?: SystemConfig;
+}
+
+export function SkillsFields({ control, setValue }: SkillsFieldsProps) {
+	const level = useWatch({ control, name: "level" }) ?? 1;
+	const strength = useWatch({ control, name: "strength" }) ?? 10;
+	const dexterity = useWatch({ control, name: "dexterity" }) ?? 10;
+	const constitution = useWatch({ control, name: "constitution" }) ?? 10;
+	const intelligence = useWatch({ control, name: "intelligence" }) ?? 10;
+	const wisdom = useWatch({ control, name: "wisdom" }) ?? 10;
+	const charisma = useWatch({ control, name: "charisma" }) ?? 10;
+
+	const skillProficiencies =
+		useWatch({ control, name: "skillProficiencies" }) ?? {};
+	const savingThrowProficiencies =
+		useWatch({ control, name: "savingThrowProficiencies" }) ?? {};
+
+	const proficiencyBonus = calculateProficiencyBonus(Number(level) || 1);
+
+	const handleToggleSavingThrow = (key: string) => {
+		const current = !!savingThrowProficiencies[key];
+		setValue(`savingThrowProficiencies.${key}`, !current, {
+			shouldDirty: true,
+		});
+	};
+
+	const handleCycleSkillProficiency = (skillId: string) => {
+		const current = skillProficiencies[skillId] || "none";
+		let next: "none" | "proficient" | "expertise" = "none";
+		if (current === "none") next = "proficient";
+		else if (current === "proficient") next = "expertise";
+		else next = "none";
+
+		setValue(`skillProficiencies.${skillId}`, next, { shouldDirty: true });
+	};
+
+	return (
+		<SkillsFieldsView
+			proficiencyBonus={proficiencyBonus}
+			strength={Number(strength) || 10}
+			dexterity={Number(dexterity) || 10}
+			constitution={Number(constitution) || 10}
+			intelligence={Number(intelligence) || 10}
+			wisdom={Number(wisdom) || 10}
+			charisma={Number(charisma) || 10}
+			skillProficiencies={skillProficiencies}
+			savingThrowProficiencies={savingThrowProficiencies}
+			onToggleSavingThrow={handleToggleSavingThrow}
+			onCycleSkillProficiency={handleCycleSkillProficiency}
+		/>
+	);
+}
+
+export interface SkillsFieldsViewProps {
 	proficiencyBonus: number;
 	strength: number;
 	dexterity: number;
@@ -180,8 +243,8 @@ interface SkillsFieldsViewProps {
 	intelligence: number;
 	wisdom: number;
 	charisma: number;
+	skillProficiencies: Record<string, string>;
 	savingThrowProficiencies: Record<string, boolean>;
-	skillProficiencies: Record<string, "none" | "proficient" | "expertise">;
 	onToggleSavingThrow?: (key: string) => void;
 	onCycleSkillProficiency?: (skillId: string) => void;
 }
@@ -194,12 +257,13 @@ export function SkillsFieldsView({
 	intelligence,
 	wisdom,
 	charisma,
-	savingThrowProficiencies,
 	skillProficiencies,
+	savingThrowProficiencies,
 	onToggleSavingThrow,
 	onCycleSkillProficiency,
 }: SkillsFieldsViewProps) {
 	const [searchQuery, setSearchQuery] = useState("");
+	const deferredSearch = useDeferredValue(searchQuery);
 	const [filterType, setFilterType] = useState<
 		"all" | "proficient" | "expertise"
 	>("all");
@@ -208,7 +272,7 @@ export function SkillsFieldsView({
 		bonus: number;
 	} | null>(null);
 
-	const getAttrScore = (key: string) => {
+	const getAttrScore = (key: string): number => {
 		switch (key) {
 			case "strength":
 				return strength;
@@ -227,32 +291,33 @@ export function SkillsFieldsView({
 		}
 	};
 
-	const getAttrMod = (key: string) => Math.floor((getAttrScore(key) - 10) / 2);
+	const filteredSkills = useMemo(() => {
+		const query = deferredSearch.trim().toLowerCase();
+		return (DND5E_SKILLS || []).filter((skill) => {
+			const status = skillProficiencies[skill.id] || "none";
+			const matchesFilter =
+				filterType === "all" ||
+				(filterType === "proficient" &&
+					(status === "proficient" || status === "expertise")) ||
+				(filterType === "expertise" && status === "expertise");
 
-	const filteredSkills = (DND5E_SKILLS || []).filter((skill) => {
-		const status = skillProficiencies[skill.id] || "none";
-		const matchesFilter =
-			filterType === "all" ||
-			(filterType === "proficient" &&
-				(status === "proficient" || status === "expertise")) ||
-			(filterType === "expertise" && status === "expertise");
+			if (!matchesFilter) return false;
+			if (!query) return true;
 
-		const query = searchQuery.trim().toLowerCase();
-		const matchesQuery =
-			!query ||
-			skill.name.toLowerCase().includes(query) ||
-			skill.attributeName.toLowerCase().includes(query) ||
-			skill.attributeShort.toLowerCase().includes(query);
-
-		return matchesFilter && matchesQuery;
-	});
+			return (
+				skill.name.toLowerCase().includes(query) ||
+				skill.attributeName.toLowerCase().includes(query) ||
+				skill.attributeShort.toLowerCase().includes(query)
+			);
+		});
+	}, [deferredSearch, filterType, skillProficiencies]);
 
 	return (
 		<div className="space-y-6">
 			{rollOverlay && (
 				<DiceRollOverlay
 					open={true}
-					attributeLabel={`${rollOverlay.name} (${rollOverlay.bonus >= 0 ? `+${rollOverlay.bonus}` : rollOverlay.bonus})`}
+					attributeLabel={`${rollOverlay.name} (${formatModifier(rollOverlay.bonus)})`}
 					diceType="d20"
 					onComplete={() => {}}
 					onClose={() => setRollOverlay(null)}
@@ -262,15 +327,19 @@ export function SkillsFieldsView({
 			<FormSection title="Testes de Resistência (Salvaguardas)">
 				<div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-6">
 					{SAVING_THROWS_LIST.map((st) => {
-						const attrMod = getAttrMod(st.key);
+						const attrScore = getAttrScore(st.key);
 						const isProficient = !!savingThrowProficiencies[st.key];
-						const totalBonus = attrMod + (isProficient ? proficiencyBonus : 0);
+						const totalBonus = calculateSavingThrowModifier({
+							abilityScore: attrScore,
+							proficiencyBonus,
+							isProficient,
+						});
 
 						return (
 							<div
 								key={st.key}
 								className={cn(
-									"flex flex-col items-center justify-between rounded-xl border p-3 text-center transition-all select-none",
+									"flex flex-col items-center justify-between rounded-xl border p-3 text-center transition-all select-none min-h-[110px]",
 									isProficient
 										? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
 										: "border-border/60 bg-card/40 hover:border-border hover:bg-card/70",
@@ -284,32 +353,32 @@ export function SkillsFieldsView({
 										<button
 											type="button"
 											onClick={() => onToggleSavingThrow(st.key)}
-											className="cursor-pointer p-0.5 rounded focus:outline-none"
+											className="cursor-pointer min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center rounded focus:outline-none"
 											aria-label={`Alternar proficiência em ${st.label}`}
 										>
 											<span
 												className={cn(
-													"h-2.5 w-2.5 rounded-full border transition-all block",
+													"h-3 w-3 rounded-full border transition-all block",
 													isProficient
 														? "border-primary bg-primary shadow-[0_0_8px_var(--primary)]"
-														: "border-muted-foreground/30 bg-transparent",
+														: "border-muted-foreground/40 bg-transparent",
 												)}
 											/>
 										</button>
 									) : (
 										<span
 											className={cn(
-												"h-2.5 w-2.5 rounded-full border transition-all",
+												"h-3 w-3 rounded-full border transition-all",
 												isProficient
 													? "border-primary bg-primary shadow-[0_0_8px_var(--primary)]"
-													: "border-muted-foreground/30 bg-transparent",
+													: "border-muted-foreground/40 bg-transparent",
 											)}
 										/>
 									)}
 								</div>
-								<div className="my-1.5">
+								<div className="my-1">
 									<span className="font-display text-lg font-bold text-foreground">
-										{totalBonus >= 0 ? `+${totalBonus}` : totalBonus}
+										{formatModifier(totalBonus)}
 									</span>
 								</div>
 								<button
@@ -320,7 +389,7 @@ export function SkillsFieldsView({
 											bonus: totalBonus,
 										});
 									}}
-									className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+									className="min-h-[44px] flex items-center justify-center text-[11px] font-bold text-primary hover:underline cursor-pointer"
 								>
 									Rolar d20 🎲
 								</button>
@@ -337,15 +406,15 @@ export function SkillsFieldsView({
 							placeholder="🔍 Buscar perícia..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className="sm:max-w-xs text-xs h-9"
+							className="sm:max-w-xs text-xs min-h-[44px]"
 						/>
 
-						<div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+						<div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
 							<button
 								type="button"
 								onClick={() => setFilterType("all")}
 								className={cn(
-									"px-2.5 py-1 rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
+									"px-3 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
 									filterType === "all"
 										? "border-primary bg-primary/15 text-primary"
 										: "border-border/50 bg-card/40 text-muted-foreground",
@@ -357,7 +426,7 @@ export function SkillsFieldsView({
 								type="button"
 								onClick={() => setFilterType("proficient")}
 								className={cn(
-									"px-2.5 py-1 rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
+									"px-3 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
 									filterType === "proficient"
 										? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
 										: "border-border/50 bg-card/40 text-muted-foreground",
@@ -369,7 +438,7 @@ export function SkillsFieldsView({
 								type="button"
 								onClick={() => setFilterType("expertise")}
 								className={cn(
-									"px-2.5 py-1 rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
+									"px-3 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-bold transition-all border whitespace-nowrap cursor-pointer",
 									filterType === "expertise"
 										? "border-purple-500 bg-purple-500/15 text-purple-300"
 										: "border-border/50 bg-card/40 text-muted-foreground",
@@ -382,17 +451,23 @@ export function SkillsFieldsView({
 
 					<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
 						{filteredSkills.map((skill) => {
-							const attrMod = getAttrMod(skill.attributeKey);
-							const status = skillProficiencies[skill.id] || "none";
-							const multiplier =
-								status === "expertise" ? 2 : status === "proficient" ? 1 : 0;
-							const totalBonus = attrMod + multiplier * proficiencyBonus;
+							const attrScore = getAttrScore(skill.attributeKey);
+							const status = (skillProficiencies[skill.id] || "none") as
+								| "none"
+								| "proficient"
+								| "expertise"
+								| "half";
+							const totalBonus = calculateSkillModifier({
+								attributeScore: attrScore,
+								proficiencyBonus,
+								proficiencyLevel: status,
+							});
 
 							return (
 								<div
 									key={skill.id}
 									className={cn(
-										"flex items-center justify-between p-3 rounded-xl border transition-all",
+										"flex items-center justify-between p-3 rounded-xl border transition-all min-h-[64px]",
 										status === "expertise"
 											? "border-purple-500/40 bg-purple-950/20 ring-1 ring-purple-500/20"
 											: status === "proficient"
@@ -405,7 +480,7 @@ export function SkillsFieldsView({
 											type="button"
 											onClick={() => onCycleSkillProficiency?.(skill.id)}
 											className={cn(
-												"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-extrabold transition-all",
+												"flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border text-xs font-extrabold transition-all",
 												onCycleSkillProficiency
 													? "cursor-pointer"
 													: "cursor-default opacity-80",
@@ -435,7 +510,7 @@ export function SkillsFieldsView({
 
 									<div className="flex items-center gap-2 shrink-0">
 										<span className="font-display font-extrabold text-sm text-foreground">
-											{totalBonus >= 0 ? `+${totalBonus}` : totalBonus}
+											{formatModifier(totalBonus)}
 										</span>
 										<button
 											type="button"
@@ -445,7 +520,7 @@ export function SkillsFieldsView({
 													bonus: totalBonus,
 												})
 											}
-											className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+											className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer text-base"
 											title="Rolar d20"
 										>
 											🎲
@@ -461,100 +536,27 @@ export function SkillsFieldsView({
 	);
 }
 
-function SkillsFieldsForm({
-	control,
-	setValue,
+export function SkillsFieldsReadOnly({
+	character,
+	proficiencyBonus = 2,
 }: {
-	control: CharacterControl;
-	setValue: CharacterSetValue;
+	character: Character;
+	proficiencyBonus?: number;
 }) {
-	const proficiencyBonus = useWatch({ control, name: "proficiencyBonus" }) || 2;
-	const strength = useWatch({ control, name: "strength" }) || 10;
-	const dexterity = useWatch({ control, name: "dexterity" }) || 10;
-	const constitution = useWatch({ control, name: "constitution" }) || 10;
-	const intelligence = useWatch({ control, name: "intelligence" }) || 10;
-	const wisdom = useWatch({ control, name: "wisdom" }) || 10;
-	const charisma = useWatch({ control, name: "charisma" }) || 10;
-
-	const savingThrowProficiencies =
-		useWatch({ control, name: "savingThrowProficiencies" }) || {};
-	const skillProficiencies =
-		useWatch({ control, name: "skillProficiencies" }) || {};
-
-	const toggleSavingThrow = (key: string) => {
-		const current = !!savingThrowProficiencies[key];
-		setValue(
-			"savingThrowProficiencies",
-			{
-				...savingThrowProficiencies,
-				[key]: !current,
-			},
-			{ shouldDirty: true },
-		);
-	};
-
-	const cycleSkillProficiency = (skillId: string) => {
-		const current = skillProficiencies[skillId] || "none";
-		const nextState: "none" | "proficient" | "expertise" =
-			current === "none"
-				? "proficient"
-				: current === "proficient"
-					? "expertise"
-					: "none";
-
-		setValue(
-			"skillProficiencies",
-			{
-				...skillProficiencies,
-				[skillId]: nextState,
-			},
-			{ shouldDirty: true },
-		);
-	};
+	const skillProficiencies = character.skillProficiencies || {};
+	const savingThrowProficiencies = character.savingThrowProficiencies || {};
 
 	return (
 		<SkillsFieldsView
 			proficiencyBonus={proficiencyBonus}
-			strength={strength}
-			dexterity={dexterity}
-			constitution={constitution}
-			intelligence={intelligence}
-			wisdom={wisdom}
-			charisma={charisma}
-			savingThrowProficiencies={savingThrowProficiencies}
+			strength={character.strength || 10}
+			dexterity={character.dexterity || 10}
+			constitution={character.constitution || 10}
+			intelligence={character.intelligence || 10}
+			wisdom={character.wisdom || 10}
+			charisma={character.charisma || 10}
 			skillProficiencies={skillProficiencies}
-			onToggleSavingThrow={toggleSavingThrow}
-			onCycleSkillProficiency={cycleSkillProficiency}
-		/>
-	);
-}
-
-export function SkillsFields({
-	control,
-	setValue,
-	character,
-}: {
-	register?: CharacterRegister;
-	control?: CharacterControl;
-	setValue?: CharacterSetValue;
-	config?: SystemConfig;
-	character?: Character;
-}) {
-	if (control && setValue) {
-		return <SkillsFieldsForm control={control} setValue={setValue} />;
-	}
-
-	return (
-		<SkillsFieldsView
-			proficiencyBonus={character?.proficiencyBonus ?? 2}
-			strength={character?.strength ?? 10}
-			dexterity={character?.dexterity ?? 10}
-			constitution={character?.constitution ?? 10}
-			intelligence={character?.intelligence ?? 10}
-			wisdom={character?.wisdom ?? 10}
-			charisma={character?.charisma ?? 10}
-			savingThrowProficiencies={character?.savingThrowProficiencies ?? {}}
-			skillProficiencies={character?.skillProficiencies ?? {}}
+			savingThrowProficiencies={savingThrowProficiencies}
 		/>
 	);
 }

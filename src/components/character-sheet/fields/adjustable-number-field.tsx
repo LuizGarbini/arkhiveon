@@ -59,7 +59,7 @@ export function AdjustableNumberField({
 	return (
 		<div
 			className={cn(
-				"relative flex items-center w-full max-w-[140px] rounded-lg border border-border bg-input/10 focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15 transition-all p-0.5",
+				"relative flex items-center w-full max-w-[140px] min-h-[44px] rounded-lg border border-border bg-input/10 focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15 transition-all p-1",
 				className,
 			)}
 		>
@@ -69,12 +69,13 @@ export function AdjustableNumberField({
 				size="icon-xs"
 				disabled={numeric <= min}
 				onClick={() => handleAdjustment(-1)}
-				className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0"
+				className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0 cursor-pointer"
+				aria-label="Diminuir valor"
 			>
-				<Minus className="h-3 w-3" />
+				<Minus className="h-3.5 w-3.5" />
 			</Button>
 
-			<div className="relative flex-1 h-7 flex items-center justify-center min-w-0">
+			<div className="relative flex-1 h-8 flex items-center justify-center min-w-0">
 				<span
 					key={numeric}
 					className="t-digit-group is-animating text-[13.5px] font-extrabold text-foreground pointer-events-none select-none"
@@ -101,7 +102,12 @@ export function AdjustableNumberField({
 					step={step}
 					placeholder={placeholder}
 					className="absolute inset-0 w-full h-full opacity-0 cursor-default outline-none border-none p-0 text-center text-[13.5px] font-extrabold text-foreground focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-					{...register(fieldName, { valueAsNumber: true, validate })}
+					{...register(fieldName, {
+						valueAsNumber: true,
+						min,
+						max,
+						validate,
+					})}
 				/>
 			</div>
 
@@ -111,9 +117,10 @@ export function AdjustableNumberField({
 				size="icon-xs"
 				disabled={numeric >= max}
 				onClick={() => handleAdjustment(1)}
-				className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0"
+				className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground active:scale-90 transition-all select-none disabled:opacity-30 disabled:pointer-events-none shrink-0 cursor-pointer"
+				aria-label="Aumentar valor"
 			>
-				<Plus className="h-3 w-3" />
+				<Plus className="h-3.5 w-3.5" />
 			</Button>
 		</div>
 	);

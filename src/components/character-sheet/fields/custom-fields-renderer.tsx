@@ -59,6 +59,7 @@ export function CustomFieldsRenderer({
 							<Input
 								type={field.type}
 								placeholder={placeholder}
+								className="min-h-[44px]"
 								min={
 									field.type === "number" ? numberConstraints?.min : undefined
 								}

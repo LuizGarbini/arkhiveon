@@ -14,6 +14,7 @@ import { SaveSheetLayoutPanel } from "@/components/save-sheet-layout-panel";
 import { SheetModuleEditor } from "@/components/sheet-module-editor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { calculateEffectiveHealthMax } from "@/core/rules";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import {
 	isCharacterImageHidden,
@@ -68,15 +69,14 @@ function CharacterSheetPage() {
 
 	useDocumentMetadata(
 		character ? `${character.characterName} - Arkhiveon` : "Ficha - Arkhiveon",
-		"",
-		false,
+		"Ficha de personagem no Arkhiveon",
 	);
-	const isLoading = useRPGStore((state) => state.isLoadingRemote);
+
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
-	const imageAssetLookup = useImageAssetLookup();
-	const activeCampaignRole = useActiveCampaignRole();
 	const activeCampaignId = useActiveCampaignId();
-	const isViewer = activeCampaignRole === "viewer";
+	const activeCampaignRole = useActiveCampaignRole();
+	const imageAssetLookup = useImageAssetLookup();
+	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
 	const [isEditingLayout, setIsEditingLayout] = useState(edit || false);
 	const [editingModule, setEditingModule] = useState<SheetModuleConfig | null>(
@@ -139,7 +139,7 @@ function CharacterSheetPage() {
 					</p>
 				</div>
 				<Link to="/characters">
-					<Button variant="outline" size="sm">
+					<Button variant="outline" size="sm" className="min-h-[44px]">
 						<ArrowLeft className="h-3.5 w-3.5" />
 						Voltar para Personagens
 					</Button>
@@ -149,17 +149,12 @@ function CharacterSheetPage() {
 	}
 
 	const currentCharacter = character;
-	const hasTough = currentCharacter.featsList?.some(
-		(f) =>
-			f.name.toLowerCase() === "robusto" || f.name.toLowerCase() === "tough",
-	);
-	const toughBonus =
-		hasTough &&
-		(currentCharacter.system === "dnd5e" ||
-			currentCharacter.system === "dnd2024")
-			? 2 * (currentCharacter.level || 1)
-			: 0;
-	const effectiveHealthMax = (currentCharacter.healthMax || 0) + toughBonus;
+	const effectiveHealthMax = calculateEffectiveHealthMax({
+		baseHealthMax: currentCharacter.healthMax,
+		level: currentCharacter.level,
+		featsList: currentCharacter.featsList,
+		system: currentCharacter.system,
+	});
 
 	const characterImageUrl = resolveCharacterImageUrl(
 		currentCharacter,
@@ -209,8 +204,10 @@ function CharacterSheetPage() {
 		});
 	}
 
+	const isViewer = activeCampaignRole === "viewer";
+
 	return (
-		<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6 sm:px-8">
+		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 sm:px-8">
 			<SheetHeader
 				character={currentCharacter}
 				config={config}
@@ -223,101 +220,170 @@ function CharacterSheetPage() {
 				onOpenNameDialog={() => setIsNameDialogOpen(true)}
 				onOpenTransferDialog={() => setIsTransferDialogOpen(true)}
 				onOpenExportDialog={() => setIsExportDialogOpen(true)}
-				onToggleEditLayout={() => setIsEditingLayout((curr) => !curr)}
+				onToggleEditLayout={() => setIsEditingLayout((current) => !current)}
 			/>
 
-			<SheetModuleEditor
-				mode={isEditingLayout ? "layout" : "view"}
-				modules={layout.modules}
-				onChange={
-					isEditingLayout
-						? (nextModules) =>
-								updateLayout({
-									...layout,
-									modules: normalizeModuleOrders(nextModules),
-								})
-						: undefined
-				}
-				onAddCustom={isEditingLayout ? handleAddCustomModule : undefined}
-				renderBlockContent={(module) => (
-					<SheetModuleContent
-						module={module}
-						character={currentCharacter}
-						config={config}
+			{isEditingLayout ? (
+				<section className="space-y-6 rounded-2xl border border-primary/20 bg-card p-6 shadow-sm">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
+						<div>
+							<h2 className="font-display text-lg font-bold text-foreground">
+								Editor de Layout da Ficha
+							</h2>
+							<p className="text-xs text-muted-foreground">
+								Arraste para reordenar, oculte blocos ou adicione módulos
+								customizados.
+							</p>
+						</div>
+						<Button
+							type="button"
+							size="sm"
+							onClick={() => setIsEditingLayout(false)}
+							className="min-h-[44px] cursor-pointer"
+						>
+							Concluir Edição
+						</Button>
+					</div>
+
+					<SheetModuleEditor
+						mode="layout"
+						modules={layout.modules}
+						onChange={(modules) => updateLayout({ ...layout, modules })}
+						onEditBlock={(module) => setEditingModule(module)}
+						onAddCustom={handleAddCustomModule}
 					/>
-				)}
-				onEditBlock={(module) => setEditingModule(module)}
-			/>
 
-			{isEditingLayout && (
-				<SaveSheetLayoutPanel
-					baseSystem={currentCharacter.system}
-					modules={layout.modules}
-				/>
+					<SaveSheetLayoutPanel
+						baseSystem={currentCharacter.system}
+						modules={layout.modules}
+					/>
+				</section>
+			) : (
+				<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+					<div className="space-y-6 lg:col-span-8">
+						{layout.modules
+							.filter((m) => m.enabled !== false && m.column !== "side")
+							.map((module) => (
+								<section
+									key={module.id}
+									className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 shadow-xs space-y-4"
+								>
+									<div className="flex items-center justify-between border-b border-border/40 pb-3">
+										<h3 className="font-display text-base font-bold text-foreground">
+											{module.title}
+										</h3>
+										{!isViewer && (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onClick={() => setEditingModule(module)}
+												className="min-h-[44px] text-xs text-primary cursor-pointer hover:bg-primary/10"
+											>
+												Editar
+											</Button>
+										)}
+									</div>
+									<SheetModuleContent
+										module={module}
+										character={currentCharacter}
+										config={config}
+									/>
+								</section>
+							))}
+					</div>
+
+					<div className="space-y-6 lg:col-span-4">
+						{layout.modules
+							.filter((m) => m.enabled !== false && m.column === "side")
+							.map((module) => (
+								<section
+									key={module.id}
+									className="rounded-2xl border border-border/70 bg-card p-5 shadow-xs space-y-4"
+								>
+									<div className="flex items-center justify-between border-b border-border/40 pb-3">
+										<h3 className="font-display text-base font-bold text-foreground">
+											{module.title}
+										</h3>
+										{!isViewer && (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onClick={() => setEditingModule(module)}
+												className="min-h-[44px] text-xs text-primary cursor-pointer hover:bg-primary/10"
+											>
+												Editar
+											</Button>
+										)}
+									</div>
+									<SheetModuleContent
+										module={module}
+										character={currentCharacter}
+										config={config}
+									/>
+								</section>
+							))}
+					</div>
+				</div>
 			)}
 
 			<ModuleEditorDialog
 				character={currentCharacter}
 				module={editingModule}
 				layout={layout}
-				open={!!editingModule}
+				open={Boolean(editingModule)}
 				onOpenChange={(open) => {
 					if (!open) setEditingModule(null);
 				}}
-				onSave={(patch, values) => {
-					if (!editingModule) return;
-					const nextModules = layout.modules.map((module) =>
-						module.id === editingModule.id ? { ...module, ...patch } : module,
-					);
-					updateCharacter(currentCharacter.id, {
-						...sanitizeCharacterFormValues(values),
-						sheetLayout: {
-							...layout,
-							modules: nextModules,
-						},
-					});
+				onSave={(_patch, values) => {
+					const sanitized = sanitizeCharacterFormValues(values);
+					updateCharacter(currentCharacter.id, sanitized);
 					setEditingModule(null);
 				}}
-			/>
-
-			<EntityImageDialog
-				open={isImageDialogOpen}
-				onOpenChange={setIsImageDialogOpen}
-				title="Editar imagem da ficha"
-				description="Troque ou remova o avatar usado no cabecalho, nos cards e na exportacao em PDF. Ajuste o recorte antes de salvar."
-				value={{
-					imageUrl: currentCharacter.imageUrl ?? "",
-					imageAssetId: currentCharacter.imageAssetId,
-					imageFocusX: currentCharacter.imageFocusX,
-					imageFocusY: currentCharacter.imageFocusY,
-					imageZoom: currentCharacter.imageZoom,
-				}}
-				onChange={(patch) => updateCharacter(currentCharacter.id, patch)}
-				folder="characters"
-				campaignId={activeCampaignId ?? undefined}
-				libraryName={currentCharacter.characterName}
-				previewShape="circle"
 			/>
 
 			<CharacterNameDialog
 				character={currentCharacter}
 				open={isNameDialogOpen}
 				onOpenChange={setIsNameDialogOpen}
-				onSave={(characterName) =>
-					updateCharacter(currentCharacter.id, { characterName })
-				}
+				onSave={(characterName) => {
+					updateCharacter(currentCharacter.id, { characterName });
+				}}
 			/>
 
-			<CharacterTransferDialog
-				character={currentCharacter}
-				open={isTransferDialogOpen}
-				onOpenChange={setIsTransferDialogOpen}
+			{activeCampaignId && (
+				<CharacterTransferDialog
+					character={currentCharacter}
+					open={isTransferDialogOpen}
+					onOpenChange={setIsTransferDialogOpen}
+				/>
+			)}
+
+			<EntityImageDialog
+				open={isImageDialogOpen}
+				onOpenChange={setIsImageDialogOpen}
+				title="Imagem do Personagem"
+				description="Envie ou selecione uma imagem para o personagem."
+				folder="characters"
+				libraryName={currentCharacter.characterName}
+				campaignId={activeCampaignId ?? undefined}
+				value={{
+					imageUrl: currentCharacter.imageUrl,
+					imageAssetId: currentCharacter.imageAssetId,
+					imageFocusX: currentCharacter.imageFocusX,
+					imageFocusY: currentCharacter.imageFocusY,
+					imageZoom: currentCharacter.imageZoom,
+				}}
+				onChange={(patch) => {
+					updateCharacter(currentCharacter.id, patch);
+				}}
 			/>
 
 			{isExportDialogOpen && (
 				<Suspense fallback={null}>
 					<CharacterExportDialog
-						character={{ ...currentCharacter, imageUrl: characterImageUrl }}
+						character={currentCharacter}
 						open={isExportDialogOpen}
 						onOpenChange={setIsExportDialogOpen}
 					/>

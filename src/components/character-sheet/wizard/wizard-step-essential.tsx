@@ -1,4 +1,5 @@
 import type { FieldErrors } from "react-hook-form";
+import type { RpgSystem } from "@/lib/store";
 import { IdentityFields, SystemFields } from "../fields";
 import type {
 	CharacterControl,
@@ -6,16 +7,19 @@ import type {
 	CharacterRegister,
 	CharacterSetValue,
 } from "../types";
+import { OrdemAgentGallery } from "./ordem-agent-gallery";
 
 export function WizardStepEssential({
 	register,
 	control,
 	setValue,
+	system,
 	errors,
 }: {
 	register: CharacterRegister;
 	control: CharacterControl;
 	setValue: CharacterSetValue;
+	system: RpgSystem;
 	errors?: FieldErrors<CharacterFormValues>;
 }) {
 	return (
@@ -29,6 +33,8 @@ export function WizardStepEssential({
 					avatar temático.
 				</p>
 			</div>
+
+			{system === "ordem" && <OrdemAgentGallery setValue={setValue} />}
 
 			<SystemFields register={register} />
 			<IdentityFields

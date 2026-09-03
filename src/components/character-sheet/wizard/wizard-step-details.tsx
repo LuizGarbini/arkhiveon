@@ -50,6 +50,10 @@ export function WizardStepDetails({
 		setDetailsTab(nextTab);
 	};
 
+	const shouldShowMagic =
+		config.showSpells ||
+		config.customFields?.some((field) => field.section === "magic");
+
 	return (
 		<div className="space-y-6">
 			<div className="border-b border-border/40 pb-4">
@@ -91,7 +95,7 @@ export function WizardStepDetails({
 				)}
 
 				{detailsTab === "combat" && (
-					<>
+					<div className="space-y-6">
 						<CombatFields
 							register={register}
 							control={control}
@@ -107,12 +111,7 @@ export function WizardStepDetails({
 								config={config}
 							/>
 						)}
-					</>
-				)}
-
-				{detailsTab === "extra" && (
-					<div className="space-y-6">
-						{config.showSpells && (
+						{shouldShowMagic && (
 							<MagicFields
 								register={register}
 								config={config}
@@ -120,12 +119,19 @@ export function WizardStepDetails({
 								setValue={setValue}
 							/>
 						)}
-						<FeatsFields
-							register={register}
-							config={config}
-							control={control}
-							setValue={setValue}
-						/>
+						{config.showFeats && (
+							<FeatsFields
+								register={register}
+								config={config}
+								control={control}
+								setValue={setValue}
+							/>
+						)}
+					</div>
+				)}
+
+				{detailsTab === "extra" && (
+					<div className="space-y-6">
 						<InventoryFields register={register} config={config} />
 						<PersonalityFields register={register} config={config} />
 						<NotesFields register={register} config={config} />
