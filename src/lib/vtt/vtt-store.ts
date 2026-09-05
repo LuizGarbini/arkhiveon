@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
 import type {
+	VTTDiagonalRule,
 	VTTFogMode,
 	VTTFogPath,
 	VTTFogShapeType,
@@ -9,20 +11,14 @@ import type {
 	VTTPresenceUser,
 	VTTRemoteCursor,
 	VTTRemoteMeasurement,
+	VTTRulerMeasurement,
 	VTTScene,
 	VTTToken,
 } from "./types";
 
-export type VTTTool = "select" | "pan" | "ruler" | "ping" | "fog" | "draw";
+export type VTTTool = "select" | "pan" | "ruler" | "ping" | "fog" | "template";
 
-export interface VTTRulerMeasurement {
-	startX: number;
-	startY: number;
-	currentX: number;
-	currentY: number;
-	distance: number;
-	unit: string;
-}
+export type { VTTRulerMeasurement } from "./types";
 
 // Default vibrant palette for player colors
 export const VTT_PLAYER_COLORS = [
@@ -52,6 +48,12 @@ interface VTTState {
 	// Active tool & layer
 	activeTool: VTTTool;
 	activeLayer: VTTLayer;
+	diagonalRule: VTTDiagonalRule;
+	activeTemplateKind: VTTTemplateKind;
+	previewTemplate: VTTSpellTemplate | null;
+	placedTemplates: VTTSpellTemplate[];
+	remoteTemplates: Record<string, VTTSpellTemplate>;
+	showTemplateControls: boolean;
 
 	// Tokens & Fog for current scene
 	tokens: VTTToken[];
@@ -96,6 +98,16 @@ interface VTTState {
 
 	setActiveTool: (tool: VTTTool) => void;
 	setActiveLayer: (layer: VTTLayer) => void;
+	setDiagonalRule: (rule: VTTDiagonalRule) => void;
+	setActiveTemplateKind: (kind: VTTTemplateKind) => void;
+	setPreviewTemplate: (template: VTTSpellTemplate | null) => void;
+	addPlacedTemplate: (template: VTTSpellTemplate) => void;
+	clearPlacedTemplates: () => void;
+	setRemoteTemplate: (
+		userId: string,
+		template: VTTSpellTemplate | null,
+	) => void;
+	setShowTemplateControls: (show: boolean) => void;
 
 	setTokens: (tokens: VTTToken[]) => void;
 	addToken: (token: VTTToken) => void;
@@ -155,6 +167,12 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	activeTool: "select",
 	activeLayer: "token",
+	diagonalRule: "5105",
+	activeTemplateKind: "cone60",
+	previewTemplate: null,
+	placedTemplates: [],
+	remoteTemplates: {},
+	showTemplateControls: false,
 
 	tokens: [],
 	selectedTokenIds: [],
@@ -193,6 +211,9 @@ export const useVTTStore = create<VTTState>((set) => ({
 			fogState: null,
 			remoteCursors: {},
 			remoteMeasurements: {},
+			placedTemplates: [],
+			previewTemplate: null,
+			remoteTemplates: {},
 		}),
 	addScene: (scene) =>
 		set((state) => ({
@@ -226,8 +247,37 @@ export const useVTTStore = create<VTTState>((set) => ({
 			viewport: { x: 0, y: 0, scale: 1 },
 		}),
 
-	setActiveTool: (tool) => set({ activeTool: tool }),
+	setActiveTool: (tool) =>
+		set((state) => ({
+			activeTool: tool,
+			showTemplateControls: tool === "template",
+			showFogControls: tool === "fog",
+			showGridSettings:
+				tool === "fog" || tool === "template" ? false : state.showGridSettings,
+		})),
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
+	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
+	setActiveTemplateKind: (kind) => set({ activeTemplateKind: kind }),
+	setPreviewTemplate: (template) => set({ previewTemplate: template }),
+	addPlacedTemplate: (template) =>
+		set((state) => ({
+			placedTemplates: [...state.placedTemplates, template],
+			previewTemplate: null,
+		})),
+	clearPlacedTemplates: () =>
+		set({ placedTemplates: [], previewTemplate: null }),
+	setRemoteTemplate: (userId, template) =>
+		set((state) => {
+			if (!template) {
+				const next = { ...state.remoteTemplates };
+				delete next[userId];
+				return { remoteTemplates: next };
+			}
+			return {
+				remoteTemplates: { ...state.remoteTemplates, [userId]: template },
+			};
+		}),
+	setShowTemplateControls: (show) => set({ showTemplateControls: show }),
 
 	setTokens: (tokens) => set({ tokens }),
 	addToken: (token) =>
@@ -371,7 +421,11 @@ export const useVTTStore = create<VTTState>((set) => ({
 			activePings: state.activePings.filter((p) => p.timestamp !== timestamp),
 		})),
 
-	setShowGridSettings: (show) => set({ showGridSettings: show }),
+	setShowGridSettings: (show) =>
+		set({
+			showGridSettings: show,
+			...(show ? { showFogControls: false, showTemplateControls: false } : {}),
+		}),
 	setShowSceneManager: (show) => set({ showSceneManager: show }),
 	setShowRosterDrawer: (show) => set({ showRosterDrawer: show }),
 	setShowCharacterSheetId: (id) => set({ showCharacterSheetId: id }),

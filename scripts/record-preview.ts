@@ -18,7 +18,7 @@ async function recordPreview() {
 
 	const port = 4173;
 	const baseUrl = `http://127.0.0.1:${port}`;
-	const devUrl = `${baseUrl}/dashboard`;
+	const vttUrl = `${baseUrl}/campaigns/demo-tabletop/vtt`;
 
 	console.log(`⚡ Iniciando servidor Vite Preview nativo na porta ${port}...`);
 	const previewServer = await preview({
@@ -29,7 +29,7 @@ async function recordPreview() {
 	});
 	console.log("✅ Servidor Vite Preview pronto!");
 
-	console.log("🎬 Iniciando gravação do Dashboard com Playwright...");
+	console.log("🎬 Iniciando gravação do VTT com Playwright...");
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
 		viewport: { width: 1366, height: 820 },
@@ -42,6 +42,24 @@ async function recordPreview() {
 	// Inject rich mock campaign data
 	await context.addInitScript(() => {
 		localStorage.setItem("arkhiveon_preview_auth", "true");
+		localStorage.setItem(
+			"arkhiveon-storage",
+			JSON.stringify({
+				state: {
+					activeCampaignId: "demo-tabletop",
+					campaigns: [
+						{
+							id: "demo-tabletop",
+							name: "A Forja dos Deuses",
+							description:
+								"Uma crônica sombria onde relíquias arcanas despertam nas profundezas de Valência.",
+							myRole: "owner",
+						},
+					],
+				},
+				version: 2,
+			}),
+		);
 		localStorage.setItem(
 			"rpg-notes-storage",
 			JSON.stringify({
@@ -228,8 +246,8 @@ async function recordPreview() {
 	const page = await context.newPage();
 
 	try {
-		console.log(`🌐 Navegando para o VTT autenticado: ${devUrl}...`);
-		await page.goto(devUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+		console.log(`🌐 Navegando para o VTT autenticado: ${vttUrl}...`);
+		await page.goto(vttUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
 		await page.waitForFunction(() => (window as any).__vtt_store__ !== undefined, { timeout: 30000 }).catch(() => {});
 		await page.waitForTimeout(2500);
 
@@ -296,6 +314,7 @@ async function recordPreview() {
 				{
 					id: "token-1",
 					sceneId: "scene-1",
+					characterId: "char-arthur",
 					name: "Arthur Pendelton",
 					layer: "token",
 					x: 525,
@@ -351,6 +370,31 @@ async function recordPreview() {
 					controlledBy: [],
 				},
 			]);
+			const rpgStore = (window as any).__rpg_store__;
+			if (rpgStore?.setState) {
+				rpgStore.setState({
+					characters: [
+						{
+							id: "char-arthur",
+							system: "dnd5e",
+							characterName: "Arthur Pendelton",
+							class: "Paladino",
+							level: 5,
+							strength: 16,
+							dexterity: 10,
+							constitution: 14,
+							intelligence: 8,
+							wisdom: 12,
+							charisma: 16,
+							health: 45,
+							healthMax: 50,
+							armorClass: 18,
+							speed: 9,
+							sheetLayout: { template: "dnd5e", modules: [] },
+						},
+					],
+				});
+			}
 		});
 
 		await page.waitForTimeout(1500);
@@ -389,42 +433,70 @@ async function recordPreview() {
 			await page.waitForTimeout(1200);
 		}
 
-		// --- ACTION 4: Switch to GM Layer & Select GM Token ---
-		console.log("🛡️ Testando Camada do Mestre (GM Layer) e revelação de segredo...");
-		const gmLayerBtn = page.locator("button[title*='Mestre']").first();
-		if (await gmLayerBtn.isVisible()) {
-			await gmLayerBtn.click();
+		// --- ACTION 4: Ruler with scale ticks ---
+		console.log("📏 Testando régua de medição com marcadores de escala...");
+		const rulerBtn = page.locator("button[title*='Régua']").first();
+		if (await rulerBtn.isVisible()) {
+			await rulerBtn.click();
+			await page.waitForTimeout(400);
+			await page.mouse.move(520, 400);
+			await page.mouse.down();
+			await page.mouse.move(820, 520, { steps: 12 });
+			await page.waitForTimeout(800);
+			await page.mouse.up();
+			await page.waitForTimeout(600);
+		}
+
+		// --- ACTION 5: Spell template cone ---
+		console.log("✨ Testando molde de cone de magia...");
+		const templateBtn = page.locator("button[title*='Moldes']").first();
+		if (await templateBtn.isVisible()) {
+			await templateBtn.click();
+			await page.waitForTimeout(500);
+			const coneBtn = page.locator("button:has-text('Cone 60')").first();
+			if (await coneBtn.isVisible()) {
+				await coneBtn.click();
+			}
+			await page.mouse.move(525, 400);
+			await page.mouse.down();
+			await page.mouse.move(780, 280, { steps: 12 });
+			await page.waitForTimeout(700);
+			await page.mouse.up();
 			await page.waitForTimeout(800);
 		}
 
-		// Switch back to select tool
+		// --- ACTION 6: Radial token menu + character sheet drawer ---
+		console.log("🎯 Abrindo menu radial e gaveta de ficha...");
 		const selectBtn = page.locator("button[title*='Selecionar']").first();
 		if (await selectBtn.isVisible()) {
 			await selectBtn.click();
-			await page.waitForTimeout(600);
+			await page.waitForTimeout(400);
 		}
 
-		// Open GM Token Menu
 		await page.evaluate(() => {
 			const vttStore = (window as any).__vtt_store__?.getState();
 			if (vttStore) {
-				vttStore.setActiveTokenIdForMenu("token-gm-2");
+				vttStore.setActiveTool("select");
+				vttStore.setActiveTokenIdForMenu("token-1");
 			}
 		});
-		await page.waitForTimeout(1000);
+		await page.waitForTimeout(900);
 
-		// Click "Mover para Camada de Jogadores"
-		const moveLayerBtn = page.locator("button[title*='Mover para Camada de Jogadores']").first();
-		if (await moveLayerBtn.isVisible()) {
-			await moveLayerBtn.click();
-			await page.waitForTimeout(800);
+		const sheetBtn = page.locator("button[title='Ficha']").first();
+		if (await sheetBtn.isVisible()) {
+			await sheetBtn.click();
+			await page.waitForTimeout(1200);
+			const rollFor = page.locator("button:has-text('FOR')").first();
+			if (await rollFor.isVisible()) {
+				await rollFor.click();
+				await page.waitForTimeout(1800);
+			}
 		}
 
-		// Close token menu
-		const closeMenuBtn = page.locator("button[title*='Fechar Menu']").first();
+		const closeMenuBtn = page.locator("button[title='Fechar']").first();
 		if (await closeMenuBtn.isVisible()) {
 			await closeMenuBtn.click();
-			await page.waitForTimeout(600);
+			await page.waitForTimeout(400);
 		}
 
 		// Retorna suavemente ao topo
@@ -444,6 +516,7 @@ async function recordPreview() {
 		try {
 			await previewServer.close();
 		} catch {}
+	}
 
 	// 5. Rename generated video
 	const files = fs.readdirSync(outputDir);
@@ -455,7 +528,7 @@ async function recordPreview() {
 		fs.renameSync(oldPath, newPath);
 	}
 
-	console.log("\n✨ Vídeo de demonstração do Dashboard gravado com sucesso!");
+	console.log("\n✨ Vídeo de demonstração do VTT gravado com sucesso!");
 	console.log(`📁 Arquivo: ${path.join(outputDir, "latest-preview.webm")}`);
 }
 

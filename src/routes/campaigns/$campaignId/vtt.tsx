@@ -7,6 +7,8 @@ import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
+import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
+import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
@@ -15,6 +17,7 @@ import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
+import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTAura,
 	VTTFogPath,
@@ -68,6 +71,7 @@ function VTTPage() {
 		setViewport,
 		setIsGM,
 		isGM,
+		setRemoteTemplate,
 	} = useVTTStore();
 
 	const [isLoading, setIsLoading] = useState(true);
@@ -95,14 +99,28 @@ function VTTPage() {
 	// 1. Determine GM vs Player permissions
 	useEffect(() => {
 		if (!activeCampaign || !user) return;
-		const isOwner = activeCampaign.ownerId === user.id;
+		const isOwner =
+			activeCampaign.ownerId === user.id ||
+			activeCampaign.myRole === "owner" ||
+			activeCampaign.myRole === "editor";
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
 
 	// 2. Fetch scenes for this campaign from Supabase
 	const fetchScenes = useCallback(async () => {
+		if (
+			typeof window !== "undefined" &&
+			localStorage.getItem("arkhiveon_preview_auth") === "true"
+		) {
+			setIsLoading(false);
+			return;
+		}
+
 		const client = getSupabase();
-		if (!client || !campaignId) return;
+		if (!client || !campaignId) {
+			setIsLoading(false);
+			return;
+		}
 
 		try {
 			const { data, error } = await client
@@ -156,6 +174,13 @@ function VTTPage() {
 	// 3. Fetch tokens whenever activeSceneId changes
 	const fetchTokens = useCallback(
 		async (sceneId: string) => {
+			if (
+				typeof window !== "undefined" &&
+				localStorage.getItem("arkhiveon_preview_auth") === "true"
+			) {
+				return;
+			}
+
 			const client = getSupabase();
 			if (!client || !sceneId) return;
 
@@ -531,6 +556,21 @@ function VTTPage() {
 					}
 				},
 			)
+			.on(
+				"broadcast",
+				{ event: "template_move" },
+				(payload: {
+					payload: {
+						userId?: string;
+						template?: VTTSpellTemplate | null;
+					};
+				}) => {
+					const data = payload.payload;
+					if (data?.userId) {
+						setRemoteTemplate(data.userId, data.template || null);
+					}
+				},
+			)
 			.subscribe(async (status: string) => {
 				if (status === "SUBSCRIBED") {
 					await roomChannel.track({
@@ -560,6 +600,7 @@ function VTTPage() {
 		addPing,
 		addFogPath,
 		setFogPaths,
+		setRemoteTemplate,
 	]);
 
 	// Update user presence when color changes without tearing down the room channel
@@ -650,6 +691,18 @@ function VTTPage() {
 			payload: { path: fogPath },
 		});
 	}, []);
+
+	const handleBroadcastTemplate = useCallback(
+		(template: VTTSpellTemplate | null) => {
+			if (!roomChannelRef.current || !user) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "template_move",
+				payload: { userId: user.id, template },
+			});
+		},
+		[user],
+	);
 
 	const handlePersistFog = useCallback(
 		async (paths: VTTFogPath[]) => {
@@ -953,7 +1006,7 @@ function VTTPage() {
 		tokens.find((t) => t.id === activeTokenIdForMenu) || null;
 
 	return (
-		<div className="relative h-screen w-screen overflow-hidden bg-[#090a0f] select-none">
+		<div className="relative h-screen w-screen overflow-hidden bg-background select-none">
 			{/* Top Header / Scene Tabs & Presence */}
 			<VTTSceneBar
 				campaignId={campaignId}
@@ -973,6 +1026,8 @@ function VTTPage() {
 				onClearFog={handleClearFog}
 			/>
 
+			<VTTTemplateControls />
+
 			{/* Grid Settings Popover */}
 			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />
 
@@ -986,17 +1041,18 @@ function VTTPage() {
 					onBroadcastRuler={handleBroadcastRuler}
 					onBroadcastPing={handleBroadcastPing}
 					onBroadcastFog={handleBroadcastFog}
+					onBroadcastTemplate={handleBroadcastTemplate}
 					onPersistFog={handlePersistFog}
 				/>
 			) : !isLoading ? (
-				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white/70">
-					<div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl mb-4 shadow-2xl">
-						<Compass className="h-10 w-10 text-primary animate-pulse" />
+				<div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+					<div className="mb-4 rounded-3xl border border-border/70 bg-card/80 p-4 shadow-lg backdrop-blur-md">
+						<Compass className="h-10 w-10 animate-pulse text-primary" />
 					</div>
-					<h3 className="font-display text-xl font-bold text-white">
+					<h3 className="font-display text-xl font-bold text-foreground">
 						Nenhuma cena criada ainda
 					</h3>
-					<p className="text-xs text-white/50 max-w-sm mt-1 mb-5">
+					<p className="mb-5 mt-1 max-w-sm text-xs text-muted-foreground">
 						{isGM
 							? "Crie a primeira cena de combate ou exploração da mesa para carregar o mapa e posicionar os tokens."
 							: "Aguardando o Mestre ativar uma cena para a sessão de hoje..."}
@@ -1013,7 +1069,7 @@ function VTTPage() {
 					)}
 				</div>
 			) : (
-				<div className="absolute inset-0 flex items-center justify-center text-white/60">
+				<div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
 					<Sparkles className="h-8 w-8 text-primary animate-spin" />
 				</div>
 			)}
@@ -1023,6 +1079,8 @@ function VTTPage() {
 				scene={currentActiveScene}
 				onSpawnToken={handleSpawnToken}
 			/>
+
+			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
 
 			{/* Token Contextual / Health & Status Edit Popover */}
 			<VTTTokenMenu

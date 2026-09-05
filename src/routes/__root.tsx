@@ -160,6 +160,34 @@ function ProtectedLayout() {
 			return;
 		}
 		if (
+			typeof window !== "undefined" &&
+			window.localStorage.getItem("arkhiveon_preview_auth") === "true"
+		) {
+			const current = useRPGStore.getState();
+			useRPGStore.setState({
+				hasLoadedCampaigns: true,
+				campaignLoadStatus: "ready",
+				activeCampaignId: current.activeCampaignId ?? "demo-tabletop",
+				campaigns:
+					current.campaigns.length > 0
+						? current.campaigns
+						: [
+								{
+									id: "demo-tabletop",
+									name: "A Forja dos Deuses",
+									description:
+										"Uma crônica sombria onde relíquias arcanas despertam nas profundezas de Valência.",
+									ownerId: authenticatedUserId,
+									worldId: "",
+									system: "ordem",
+									myRole: "owner",
+									createdAt: Date.now(),
+								},
+							],
+			});
+			return;
+		}
+		if (
 			bootstrappedUserIdRef.current === authenticatedUserId &&
 			useRPGStore.getState().campaignLoadStatus !== "idle"
 		) {

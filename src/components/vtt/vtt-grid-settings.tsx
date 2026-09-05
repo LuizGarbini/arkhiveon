@@ -1,8 +1,16 @@
 import { Sliders, X } from "lucide-react";
 import { Field } from "@/components/ui/form-tabs";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { VTTGridScaleUnit, VTTGridType } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import {
+	vttChipClass,
+	vttIconButtonClass,
+	vttIconButtonIdleClass,
+	vttPanelClass,
+} from "./vtt-chrome";
 
 interface VTTGridSettingsProps {
 	onUpdateSceneSettings: (settings: {
@@ -15,11 +23,41 @@ interface VTTGridSettingsProps {
 	}) => void;
 }
 
-export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps) {
-	const { scenes, activeSceneId, showGridSettings, setShowGridSettings } = useVTTStore();
+export function VTTGridSettings({
+	onUpdateSceneSettings,
+}: VTTGridSettingsProps) {
+	const {
+		scenes,
+		activeSceneId,
+		showGridSettings,
+		setShowGridSettings,
+		diagonalRule,
+		setDiagonalRule,
+	} = useVTTStore();
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	if (!showGridSettings || !activeScene) return null;
+
+	const patch = (
+		updates: Partial<{
+			gridType: VTTGridType;
+			gridSize: number;
+			gridColor: string;
+			gridOpacity: number;
+			gridScaleDistance: number;
+			gridScaleUnit: VTTGridScaleUnit;
+		}>,
+	) => {
+		onUpdateSceneSettings({
+			gridType: activeScene.gridType,
+			gridSize: activeScene.gridSize,
+			gridColor: activeScene.gridColor,
+			gridOpacity: activeScene.gridOpacity,
+			gridScaleDistance: activeScene.gridScaleDistance,
+			gridScaleUnit: activeScene.gridScaleUnit,
+			...updates,
+		});
+	};
 
 	const presetColors = [
 		"#ffffff",
@@ -32,53 +70,111 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 	];
 
 	return (
-		<div className="absolute left-18 top-20 z-40 w-72 p-4 rounded-2xl border border-white/15 bg-black/85 backdrop-blur-2xl shadow-2xl text-foreground pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-150 space-y-3.5">
-			<div className="flex items-center justify-between pb-2 border-b border-white/10">
+		<div
+			className={cn(
+				vttPanelClass,
+				"absolute left-16 top-16 z-40 w-72 space-y-3.5 p-4 pointer-events-auto select-none",
+			)}
+		>
+			<div className="flex items-center justify-between border-b border-border/60 pb-2">
 				<div className="flex items-center gap-2">
 					<Sliders className="h-4 w-4 text-primary" />
-					<h4 className="font-display text-xs font-bold text-white tracking-wide">
-						Ajuste do Grid
+					<h4 className="font-display text-xs font-bold tracking-wide">
+						Ajuste do grid
 					</h4>
 				</div>
 				<button
 					type="button"
 					onClick={() => setShowGridSettings(false)}
-					className="text-white/50 hover:text-white transition-colors cursor-pointer"
+					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
 				>
 					<X className="h-4 w-4" />
 				</button>
 			</div>
 
-			{/* Grid Type */}
-			<Field label="Tipo de Grid">
+			<Field label="Tipo de grid">
 				<Select
 					value={activeScene.gridType}
-					onChange={(e) =>
-						onUpdateSceneSettings({
-							gridType: e.target.value as VTTGridType,
-							gridSize: activeScene.gridSize,
-							gridColor: activeScene.gridColor,
-							gridOpacity: activeScene.gridOpacity,
-							gridScaleDistance: activeScene.gridScaleDistance,
-							gridScaleUnit: activeScene.gridScaleUnit,
-						})
-					}
-					className="h-8 text-xs"
+					onChange={(e) => patch({ gridType: e.target.value as VTTGridType })}
+					className="h-11 text-xs"
 				>
-					<option value="square">Quadrado (Padrão)</option>
-					<option value="hex_pointy">Hexagonal (Pontudo)</option>
-					<option value="hex_flat">Hexagonal (Plano)</option>
-					<option value="none">Desativado (Livre)</option>
+					<option value="square">Quadrado (padrão)</option>
+					<option value="hex_pointy">Hexagonal (pontudo)</option>
+					<option value="hex_flat">Hexagonal (plano)</option>
+					<option value="none">Desativado (livre)</option>
 				</Select>
 			</Field>
 
-			{/* Grid Size Slider */}
+			<div className="grid grid-cols-2 gap-2">
+				<Field label="Escala">
+					<Input
+						type="number"
+						step="0.5"
+						min="0.5"
+						value={activeScene.gridScaleDistance}
+						onChange={(e) =>
+							patch({ gridScaleDistance: Number(e.target.value) || 1 })
+						}
+						className="h-11 text-xs"
+					/>
+				</Field>
+				<Field label="Unidade">
+					<Select
+						value={activeScene.gridScaleUnit}
+						onChange={(e) =>
+							patch({
+								gridScaleUnit: e.target.value as VTTGridScaleUnit,
+							})
+						}
+						className="h-11 text-xs"
+					>
+						<option value="m">Metros</option>
+						<option value="ft">Pés</option>
+						<option value="sq">Quadrados</option>
+					</Select>
+				</Field>
+			</div>
+
+			<div className="space-y-1.5">
+				<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+					Diagonal
+				</span>
+				<div className="grid grid-cols-2 gap-1.5">
+					<button
+						type="button"
+						onClick={() => setDiagonalRule("5105")}
+						className={cn(
+							vttChipClass,
+							diagonalRule === "5105"
+								? "border-primary/40 bg-primary/15"
+								: "border-border/70 bg-background/50 text-muted-foreground",
+						)}
+					>
+						5-10-5
+					</button>
+					<button
+						type="button"
+						onClick={() => setDiagonalRule("euclidean")}
+						className={cn(
+							vttChipClass,
+							diagonalRule === "euclidean"
+								? "border-primary/40 bg-primary/15"
+								: "border-border/70 bg-background/50 text-muted-foreground",
+						)}
+					>
+						Euclidiano
+					</button>
+				</div>
+			</div>
+
 			{activeScene.gridType !== "none" && (
 				<>
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-							<span>Tamanho da Célula</span>
-							<span className="font-mono text-white">{activeScene.gridSize}px</span>
+							<span>Tamanho da célula</span>
+							<span className="font-mono text-foreground">
+								{activeScene.gridSize}px
+							</span>
 						</div>
 						<input
 							type="range"
@@ -86,25 +182,14 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 							max={180}
 							step={5}
 							value={activeScene.gridSize}
-							onChange={(e) =>
-								onUpdateSceneSettings({
-									gridType: activeScene.gridType,
-									gridSize: Number(e.target.value),
-									gridColor: activeScene.gridColor,
-									gridOpacity: activeScene.gridOpacity,
-									gridScaleDistance: activeScene.gridScaleDistance,
-									gridScaleUnit: activeScene.gridScaleUnit,
-								})
-							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-white/10 rounded-lg"
+							onChange={(e) => patch({ gridSize: Number(e.target.value) })}
+							className="h-11 w-full accent-primary"
 						/>
 					</div>
-
-					{/* Grid Opacity Slider */}
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-							<span>Opacidade do Grid</span>
-							<span className="font-mono text-white">
+							<span>Opacidade</span>
+							<span className="font-mono text-foreground">
 								{Math.round(activeScene.gridOpacity * 100)}%
 							</span>
 						</div>
@@ -114,44 +199,27 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 							max={1}
 							step={0.05}
 							value={activeScene.gridOpacity}
-							onChange={(e) =>
-								onUpdateSceneSettings({
-									gridType: activeScene.gridType,
-									gridSize: activeScene.gridSize,
-									gridColor: activeScene.gridColor,
-									gridOpacity: Number(e.target.value),
-									gridScaleDistance: activeScene.gridScaleDistance,
-									gridScaleUnit: activeScene.gridScaleUnit,
-								})
-							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-white/10 rounded-lg"
+							onChange={(e) => patch({ gridOpacity: Number(e.target.value) })}
+							className="h-11 w-full accent-primary"
 						/>
 					</div>
-
-					{/* Grid Color Palette */}
 					<div className="space-y-1.5">
-						<span className="text-[10px] font-bold text-muted-foreground">Cor do Grid</span>
+						<span className="text-[10px] font-bold text-muted-foreground">
+							Cor do grid
+						</span>
 						<div className="flex items-center gap-2">
 							{presetColors.map((color) => (
 								<button
 									type="button"
 									key={color}
-									onClick={() =>
-										onUpdateSceneSettings({
-											gridType: activeScene.gridType,
-											gridSize: activeScene.gridSize,
-											gridColor: color,
-											gridOpacity: activeScene.gridOpacity,
-											gridScaleDistance: activeScene.gridScaleDistance,
-											gridScaleUnit: activeScene.gridScaleUnit,
-										})
-									}
+									onClick={() => patch({ gridColor: color })}
 									style={{ backgroundColor: color }}
-									className={`h-5 w-5 rounded-full border transition-all cursor-pointer ${
+									className={cn(
+										"h-8 w-8 rounded-full border transition-all",
 										activeScene.gridColor === color
-											? "border-primary scale-110 shadow-xs"
-											: "border-white/20 opacity-70 hover:opacity-100"
-									}`}
+											? "scale-110 border-primary"
+											: "border-border/70 opacity-70 hover:opacity-100",
+									)}
 								/>
 							))}
 						</div>

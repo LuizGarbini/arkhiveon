@@ -1,6 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Compass, Eye, Plus, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -13,9 +13,9 @@ import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
+import { cn } from "@/lib/utils";
 import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import { cn } from "@/lib/utils";
 
 interface VTTSceneBarProps {
 	campaignId: string;
@@ -81,21 +81,21 @@ export function VTTSceneBar({
 
 	return (
 		<>
-			<div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-white/10 bg-black/60 backdrop-blur-xl pointer-events-auto select-none">
+			<div className="absolute top-0 inset-x-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border/70 bg-card/80 px-4 py-2 backdrop-blur-md pointer-events-auto select-none">
 				{/* Left: Back Link & Campaign Name */}
 				<div className="flex items-center gap-2.5 shrink-0">
 					<Link
 						to="/dashboard"
-						className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all text-xs font-semibold"
+						className="flex min-h-11 items-center gap-1.5 rounded-xl border border-border/70 bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted"
 					>
 						<ArrowLeft className="h-3.5 w-3.5" />
 						<span className="hidden sm:inline">Voltar</span>
 					</Link>
 
-					<div className="h-4 w-px bg-white/10" />
+					<div className="h-4 w-px bg-border/70" />
 
 					<div className="flex items-center gap-2">
-						<span className="font-display font-bold text-sm text-white truncate max-w-[140px] sm:max-w-[200px]">
+						<span className="font-display font-bold text-sm text-foreground truncate max-w-[140px] sm:max-w-[200px]">
 							{campaignName}
 						</span>
 						<span className="px-2 py-0.5 rounded-full border border-primary/40 bg-primary/20 text-primary text-[9px] font-extrabold tracking-wider uppercase">
@@ -116,13 +116,13 @@ export function VTTSceneBar({
 								className={cn(
 									"flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 border cursor-pointer",
 									isSelected
-										? "border-primary/60 bg-primary/20 text-white shadow-xs"
-										: "border-transparent bg-white/5 text-white/60 hover:bg-white/10 hover:text-white",
+										? "border-primary/60 bg-primary/15 text-foreground shadow-xs"
+										: "border-transparent bg-background/40 text-muted-foreground hover:bg-muted hover:text-foreground",
 								)}
 							>
 								{scene.isActive && (
 									<span
-										className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"
+										className="h-2 w-2 rounded-full bg-primary"
 										title="Cena Ativa para os Jogadores"
 									/>
 								)}
@@ -143,10 +143,10 @@ export function VTTSceneBar({
 							size="sm"
 							onClick={() => setShowRosterDrawer(!showRosterDrawer)}
 							className={cn(
-								"text-xs h-8 gap-1.5 rounded-xl border-white/15 transition-all",
+								"h-11 gap-1.5 rounded-xl text-xs transition-all duration-150 ease-out",
 								showRosterDrawer
-									? "bg-primary text-primary-foreground border-primary"
-									: "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white",
+									? "border-primary bg-primary text-primary-foreground"
+									: "border-border/70 bg-background/50 text-foreground hover:bg-muted",
 							)}
 						>
 							<Users className="h-3.5 w-3.5" />
@@ -162,7 +162,7 @@ export function VTTSceneBar({
 									variant="outline"
 									size="sm"
 									onClick={() => onActivateScene(activeScene.id)}
-									className="text-xs h-8 gap-1.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/15"
+									className="h-11 gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
 								>
 									<Eye className="h-3.5 w-3.5" />
 									<span className="hidden md:inline">Ativar p/ Jogadores</span>
@@ -173,7 +173,7 @@ export function VTTSceneBar({
 								type="button"
 								size="sm"
 								onClick={() => setIsCreateModalOpen(true)}
-								className="text-xs h-8 gap-1.5 rounded-xl font-bold shadow-md shadow-primary/20"
+								className="h-11 gap-1.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20"
 							>
 								<Plus className="h-3.5 w-3.5" />
 								<span className="hidden sm:inline">Nova Cena</span>
@@ -192,7 +192,8 @@ export function VTTSceneBar({
 							Criar Nova Cena de Combate
 						</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
-							Defina o nome, imagem do mapa e configurações de grid para a nova cena.
+							Defina o nome, imagem do mapa e configurações de grid para a nova
+							cena.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -220,7 +221,9 @@ export function VTTSceneBar({
 							<Field label="Tipo de Grid">
 								<Select
 									value={newGridType}
-									onChange={(e) => setNewGridType(e.target.value as VTTGridType)}
+									onChange={(e) =>
+										setNewGridType(e.target.value as VTTGridType)
+									}
 									className="h-9 text-xs"
 								>
 									<option value="square">Quadrado (Padrão)</option>
@@ -257,7 +260,9 @@ export function VTTSceneBar({
 							<Field label="Unidade de Medida">
 								<Select
 									value={newScaleUnit}
-									onChange={(e) => setNewScaleUnit(e.target.value as VTTGridScaleUnit)}
+									onChange={(e) =>
+										setNewScaleUnit(e.target.value as VTTGridScaleUnit)
+									}
 									className="h-9 text-xs"
 								>
 									<option value="m">Metros (m)</option>

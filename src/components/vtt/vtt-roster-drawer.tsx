@@ -8,15 +8,20 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRPGStore } from "@/lib/store";
 import type { Character, Npc } from "@/lib/store/types";
+import { cn } from "@/lib/utils";
 import { snapToGrid } from "@/lib/vtt/grid-math";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import { cn } from "@/lib/utils";
+import {
+	vttChipClass,
+	vttIconButtonClass,
+	vttIconButtonIdleClass,
+} from "./vtt-chrome";
 
 interface VTTRosterDrawerProps {
 	scene: VTTScene | null;
@@ -24,11 +29,16 @@ interface VTTRosterDrawerProps {
 }
 
 export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
-	const { showRosterDrawer, setShowRosterDrawer, viewport, isGM } = useVTTStore();
+	const { showRosterDrawer, setShowRosterDrawer, viewport, isGM } =
+		useVTTStore();
 	const characters = useRPGStore((s) => s.characters);
 	const npcs = useRPGStore((s) => s.npcs);
 
-	const [activeTab, setActiveTab] = useState<"characters" | "npcs" | "custom">("characters");
+	const nameFieldId = useId();
+	const hpFieldId = useId();
+	const [activeTab, setActiveTab] = useState<"characters" | "npcs" | "custom">(
+		"characters",
+	);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [spawningId, setSpawningId] = useState<string | null>(null);
 
@@ -174,34 +184,32 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 	};
 
 	return (
-		<div className="absolute right-4 top-16 bottom-16 z-40 w-80 sm:w-96 flex flex-col rounded-3xl border border-white/15 bg-black/85 backdrop-blur-2xl shadow-2xl overflow-hidden pointer-events-auto select-none animate-in fade-in slide-in-from-right-4 duration-200">
-			{/* Drawer Header */}
-			<div className="flex items-center justify-between p-4 border-b border-white/10">
+		<div className="absolute right-4 top-16 bottom-16 z-40 flex w-80 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md pointer-events-auto select-none sm:w-96">
+			<div className="flex items-center justify-between border-b border-border/60 p-4">
 				<div className="flex items-center gap-2">
 					<Users className="h-5 w-5 text-primary" />
-					<h3 className="font-display text-sm font-bold text-white tracking-wide">
+					<h3 className="font-display text-sm font-bold tracking-wide text-foreground">
 						Personagens & Bestiário
 					</h3>
 				</div>
 				<button
 					type="button"
 					onClick={() => setShowRosterDrawer(false)}
-					className="h-8 w-8 flex items-center justify-center rounded-xl text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
 				>
 					<X className="h-4 w-4" />
 				</button>
 			</div>
 
-			{/* Tab Switcher */}
-			<div className="grid grid-cols-3 p-2 gap-1.5 border-b border-white/10 bg-white/5">
+			<div className="grid grid-cols-3 gap-1.5 border-b border-border/60 bg-background/40 p-2">
 				<button
 					type="button"
 					onClick={() => setActiveTab("characters")}
 					className={cn(
-						"flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer",
+						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "characters"
 							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-							: "text-white/60 hover:bg-white/5 hover:text-white",
+							: "text-muted-foreground hover:bg-muted hover:text-foreground",
 					)}
 				>
 					<Shield className="h-3 w-3" />
@@ -212,10 +220,10 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 					type="button"
 					onClick={() => setActiveTab("npcs")}
 					className={cn(
-						"flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer",
+						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "npcs"
-							? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-							: "text-white/60 hover:bg-white/5 hover:text-white",
+							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+							: "text-muted-foreground hover:bg-muted hover:text-foreground",
 					)}
 				>
 					<Skull className="h-3 w-3" />
@@ -226,10 +234,10 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 					type="button"
 					onClick={() => setActiveTab("custom")}
 					className={cn(
-						"flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer",
+						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "custom"
-							? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
-							: "text-white/60 hover:bg-white/5 hover:text-white",
+							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+							: "text-muted-foreground hover:bg-muted hover:text-foreground",
 					)}
 				>
 					<Sparkles className="h-3 w-3" />
@@ -241,28 +249,44 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 			{activeTab === "custom" ? (
 				<div className="p-4 space-y-3.5 overflow-y-auto">
 					<div className="space-y-1.5">
-						<label className="text-[11px] font-bold text-white/70">Nome da Criatura / Monstro</label>
+						<label
+							htmlFor={nameFieldId}
+							className="text-[11px] font-bold text-muted-foreground"
+						>
+							Nome da criatura
+						</label>
 						<Input
+							id={nameFieldId}
 							value={customName}
 							onChange={(e) => setCustomName(e.target.value)}
 							placeholder="Ex: Dragão Vermelho Jovem, Goblin..."
-							className="h-8.5 text-xs bg-white/5 border-white/10 rounded-xl"
+							className="h-11 text-xs"
 						/>
 					</div>
 
 					<div className="grid grid-cols-2 gap-2">
 						<div className="space-y-1.5">
-							<label className="text-[11px] font-bold text-white/70">Pontos de Vida (PV)</label>
+							<label
+								htmlFor={hpFieldId}
+								className="text-[11px] font-bold text-muted-foreground"
+							>
+								Pontos de vida
+							</label>
 							<Input
+								id={hpFieldId}
 								type="number"
 								value={customHp}
-								onChange={(e) => setCustomHp(Number.parseInt(e.target.value, 10) || 1)}
-								className="h-8.5 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
+								onChange={(e) =>
+									setCustomHp(Number.parseInt(e.target.value, 10) || 1)
+								}
+								className="h-11 text-xs font-mono"
 							/>
 						</div>
 
-						<div className="space-y-1.5">
-							<label className="text-[11px] font-bold text-white/70">Tamanho no Grid</label>
+						<fieldset className="space-y-1.5">
+							<legend className="text-[11px] font-bold text-muted-foreground">
+								Tamanho no grid
+							</legend>
 							<div className="grid grid-cols-4 gap-1">
 								{[1, 2, 3, 4].map((sz) => (
 									<button
@@ -270,24 +294,25 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										key={sz}
 										onClick={() => setCustomSize(sz)}
 										className={cn(
-											"h-8.5 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+											vttChipClass,
+											"px-0",
 											customSize === sz
-												? "bg-amber-600 border-amber-500 text-white"
-												: "border-white/10 bg-white/5 text-white/60 hover:bg-white/10",
+												? "border-primary/40 bg-primary text-primary-foreground"
+												: "border-border/70 bg-background/50 text-muted-foreground hover:bg-muted hover:text-foreground",
 										)}
 									>
 										{sz}x
 									</button>
 								))}
 							</div>
-						</div>
+						</fieldset>
 					</div>
 
 					<Button
 						type="button"
 						disabled={!customName.trim() || spawningId === "custom"}
 						onClick={handleSpawnCustomToken}
-						className="w-full h-9 rounded-2xl font-bold text-xs gap-1.5 bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-600/20 mt-2"
+						className="mt-2 h-11 w-full gap-1.5 rounded-2xl text-xs font-bold"
 					>
 						<Plus className="h-4 w-4" />
 						<span>Instanciar Monstro no Campo de Visão</span>
@@ -296,9 +321,9 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 			) : (
 				<>
 					{/* Search Input */}
-					<div className="p-3 border-b border-white/10">
+					<div className="border-b border-border/60 p-3">
 						<div className="relative">
-							<Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40" />
+							<Search className="absolute top-3.5 left-3 h-3.5 w-3.5 text-muted-foreground" />
 							<Input
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
@@ -307,7 +332,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										? "Buscar por nome ou classe..."
 										: "Buscar por NPC ou ameaça..."
 								}
-								className="h-8.5 pl-8.5 text-xs bg-white/5 border-white/10 rounded-xl"
+								className="h-11 rounded-xl pl-9 text-xs"
 							/>
 						</div>
 					</div>
@@ -319,7 +344,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 								filteredCharacters.map((char) => (
 									<div
 										key={char.id}
-										className="group flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+										className="group flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/50 p-2.5 transition-all duration-150 hover:bg-muted"
 									>
 										<div className="flex items-center gap-3 min-w-0">
 											<div className="relative h-10 w-10 shrink-0 rounded-full border border-primary/40 bg-primary/20 overflow-hidden flex items-center justify-center">
@@ -334,11 +359,13 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 												)}
 											</div>
 											<div className="min-w-0">
-												<h4 className="font-bold text-xs text-white truncate group-hover:text-primary transition-colors">
+												<h4 className="truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
 													{char.characterName}
 												</h4>
-												<p className="text-[10px] text-white/50 truncate">
-													{char.class ? `${char.class} Lv.${char.level || 1}` : char.race || "Aventureiro"}
+												<p className="truncate text-[10px] text-muted-foreground">
+													{char.class
+														? `${char.class} Lv.${char.level || 1}`
+														: char.race || "Aventureiro"}
 												</p>
 											</div>
 										</div>
@@ -348,7 +375,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 											size="sm"
 											disabled={spawningId === char.id}
 											onClick={() => handleSpawnCharacter(char)}
-											className="h-8 px-2.5 text-[11px] font-bold rounded-xl gap-1 shrink-0"
+											className="h-11 shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
 										>
 											<Plus className="h-3 w-3" />
 											<span>Colocar</span>
@@ -356,8 +383,8 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 									</div>
 								))
 							) : (
-								<div className="flex flex-col items-center justify-center py-10 text-center text-white/50 text-xs">
-									<User className="h-8 w-8 text-white/20 mb-2" />
+								<div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
+									<User className="mb-2 h-8 w-8 text-muted-foreground/40" />
 									<span>Nenhum personagem encontrado</span>
 								</div>
 							)
@@ -365,10 +392,10 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 							filteredNPCs.map((npc) => (
 								<div
 									key={npc.id}
-									className="group flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+									className="group flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/50 p-2.5 transition-all duration-150 hover:bg-muted"
 								>
-									<div className="flex items-center gap-3 min-w-0">
-										<div className="relative h-10 w-10 shrink-0 rounded-full border border-purple-500/40 bg-purple-500/20 overflow-hidden flex items-center justify-center">
+									<div className="flex min-w-0 items-center gap-3">
+										<div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/40 bg-primary/20">
 											{npc.imageUrl ? (
 												<img
 													src={npc.imageUrl}
@@ -376,14 +403,14 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 													className="h-full w-full object-cover"
 												/>
 											) : (
-												<Skull className="h-5 w-5 text-purple-300" />
+												<Skull className="h-5 w-5 text-primary" />
 											)}
 										</div>
 										<div className="min-w-0">
-											<h4 className="font-bold text-xs text-white truncate group-hover:text-purple-300 transition-colors">
+											<h4 className="truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
 												{npc.name}
 											</h4>
-											<p className="text-[10px] text-white/50 truncate">
+											<p className="truncate text-[10px] text-muted-foreground">
 												{npc.role || npc.kind || "NPC"}
 											</p>
 										</div>
@@ -394,7 +421,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										size="sm"
 										disabled={spawningId === npc.id}
 										onClick={() => handleSpawnNPC(npc)}
-										className="h-8 px-2.5 text-[11px] font-bold rounded-xl gap-1 shrink-0 bg-purple-600 hover:bg-purple-500 text-white"
+										className="h-11 shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
 									>
 										<Plus className="h-3 w-3" />
 										<span>Colocar</span>
@@ -402,8 +429,8 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 								</div>
 							))
 						) : (
-							<div className="flex flex-col items-center justify-center py-10 text-center text-white/50 text-xs">
-								<Skull className="h-8 w-8 text-white/20 mb-2" />
+							<div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
+								<Skull className="mb-2 h-8 w-8 text-muted-foreground/40" />
 								<span>Nenhum NPC encontrado</span>
 							</div>
 						)}
