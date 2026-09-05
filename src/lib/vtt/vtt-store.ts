@@ -320,7 +320,11 @@ export const useVTTStore = create<VTTState>((set) => ({
 			}
 			return { selectedTokenIds: [id] };
 		}),
-	setActiveTokenIdForMenu: (id) => set({ activeTokenIdForMenu: id }),
+	setActiveTokenIdForMenu: (id) =>
+		set({
+			activeTokenIdForMenu: id,
+			...(id ? { showRosterDrawer: false } : {}),
+		}),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -427,7 +431,11 @@ export const useVTTStore = create<VTTState>((set) => ({
 			...(show ? { showFogControls: false, showTemplateControls: false } : {}),
 		}),
 	setShowSceneManager: (show) => set({ showSceneManager: show }),
-	setShowRosterDrawer: (show) => set({ showRosterDrawer: show }),
+	setShowRosterDrawer: (show) =>
+		set({
+			showRosterDrawer: show,
+			...(show ? { activeTokenIdForMenu: null } : {}),
+		}),
 	setShowCharacterSheetId: (id) => set({ showCharacterSheetId: id }),
 	setIsGM: (isGM) => set({ isGM }),
 }));

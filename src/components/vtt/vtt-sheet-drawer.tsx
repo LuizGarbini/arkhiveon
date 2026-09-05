@@ -49,13 +49,15 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	const [rollState, setRollState] = useState<{
 		open: boolean;
 		label: string;
+		modifier: number;
 		diceType: "d20" | "d100" | "d10" | "d6";
-	}>({ open: false, label: "", diceType: "d20" });
+	}>({ open: false, label: "", modifier: 0, diceType: "d20" });
+	const [lastRoll, setLastRoll] = useState<string | null>(null);
 
 	return (
 		<>
 			<aside
-				className="t-panel-slide-x pointer-events-none absolute bottom-4 right-4 top-16 z-40 w-[min(100%-2rem,22rem)]"
+				className="t-panel-slide-x pointer-events-none absolute z-40 inset-x-3 bottom-[5.75rem] top-auto h-[min(72vh,36rem)] w-auto md:inset-x-auto md:right-4 md:top-16 md:bottom-4 md:h-auto md:w-[min(100%-2rem,22rem)]"
 				data-open={isOpen}
 			>
 				{isOpen && token ? (
@@ -66,12 +68,14 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 						hpCurrent={token.hpCurrent ?? character?.health ?? 0}
 						hpMax={token.hpMax ?? character?.healthMax ?? 0}
 						armorClass={character?.armorClass ?? 10}
+						lastRoll={lastRoll}
 						onClose={() => setShowCharacterSheetId(null)}
 						onUpdateToken={onUpdateToken}
-						onStartRoll={(label) =>
+						onStartRoll={(label, modifier) =>
 							setRollState({
 								open: true,
 								label,
+								modifier,
 								diceType: config.defaultDice || "d20",
 							})
 						}
@@ -82,9 +86,22 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 				open={rollState.open}
 				attributeLabel={rollState.label}
 				diceType={rollState.diceType}
-				onComplete={() => undefined}
+				modifier={rollState.modifier}
+				onComplete={(natural) => {
+					const total = natural + rollState.modifier;
+					const signed =
+						rollState.modifier === 0
+							? ""
+							: ` ${rollState.modifier > 0 ? "+" : "−"} ${Math.abs(rollState.modifier)}`;
+					setLastRoll(`${rollState.label}: ${natural}${signed} = ${total}`);
+				}}
 				onClose={() =>
-					setRollState({ open: false, label: "", diceType: "d20" })
+					setRollState({
+						open: false,
+						label: "",
+						modifier: 0,
+						diceType: "d20",
+					})
 				}
 			/>
 		</>
@@ -98,6 +115,7 @@ function SheetBody({
 	hpCurrent,
 	hpMax,
 	armorClass,
+	lastRoll,
 	onClose,
 	onUpdateToken,
 	onStartRoll,
@@ -108,9 +126,10 @@ function SheetBody({
 	hpCurrent: number;
 	hpMax: number;
 	armorClass: number;
+	lastRoll: string | null;
 	onClose: () => void;
 	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
-	onStartRoll: (label: string) => void;
+	onStartRoll: (label: string, modifier: number) => void;
 }) {
 	const config = character
 		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
@@ -224,9 +243,7 @@ function SheetBody({
 								<button
 									type="button"
 									key={attr.key}
-									onClick={() =>
-										onStartRoll(`${attr.label} ${formatModifier(mod)}`)
-									}
+									onClick={() => onStartRoll(attr.label, mod)}
 									className={cn(
 										vttChipClass,
 										"h-auto min-h-14 flex-col border-border/70 bg-background/70 py-2 hover:border-primary/40 hover:bg-primary/10",
@@ -245,12 +262,17 @@ function SheetBody({
 				</div>
 			</div>
 
-			<div className="border-t border-border/60 px-4 py-3">
+			<div className="border-t border-border/60 px-4 py-3 space-y-2">
+				{lastRoll ? (
+					<p className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-foreground">
+						{lastRoll}
+					</p>
+				) : null}
 				<Button
 					type="button"
 					variant="outline"
 					className="h-11 w-full gap-2"
-					onClick={() => onStartRoll("Teste livre")}
+					onClick={() => onStartRoll("Teste livre", 0)}
 				>
 					<Dices className="h-4 w-4" />
 					Rolar {config.defaultDice || "d20"}

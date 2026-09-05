@@ -184,7 +184,14 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 	};
 
 	return (
-		<div className="absolute right-4 top-16 bottom-16 z-40 flex w-80 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md pointer-events-auto select-none sm:w-96">
+		<div
+			className={cn(
+				"pointer-events-auto absolute z-40 flex flex-col overflow-hidden select-none",
+				"rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md",
+				"inset-x-3 bottom-[5.75rem] top-auto h-[min(68vh,32rem)]",
+				"md:inset-x-auto md:right-4 md:top-16 md:bottom-16 md:h-auto md:w-80 lg:w-96",
+			)}
+		>
 			<div className="flex items-center justify-between border-b border-border/60 p-4">
 				<div className="flex items-center gap-2">
 					<Users className="h-5 w-5 text-primary" />
@@ -260,7 +267,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 							value={customName}
 							onChange={(e) => setCustomName(e.target.value)}
 							placeholder="Ex: Dragão Vermelho Jovem, Goblin..."
-							className="h-11 text-xs"
+							className="h-11"
 						/>
 					</div>
 
@@ -279,7 +286,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 								onChange={(e) =>
 									setCustomHp(Number.parseInt(e.target.value, 10) || 1)
 								}
-								className="h-11 text-xs font-mono"
+								className="h-11 font-mono tabular-nums"
 							/>
 						</div>
 
@@ -332,7 +339,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										? "Buscar por nome ou classe..."
 										: "Buscar por NPC ou ameaça..."
 								}
-								className="h-11 rounded-xl pl-9 text-xs"
+								className="h-11 rounded-xl pl-9"
 							/>
 						</div>
 					</div>

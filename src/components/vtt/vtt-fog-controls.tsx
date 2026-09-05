@@ -15,9 +15,9 @@ import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import {
 	vttChipClass,
+	vttDockPanelClass,
 	vttIconButtonClass,
 	vttIconButtonIdleClass,
-	vttPanelClass,
 } from "./vtt-chrome";
 
 interface VTTFogControlsProps {
@@ -80,12 +80,7 @@ export function VTTFogControls({
 	];
 
 	return (
-		<div
-			className={cn(
-				vttPanelClass,
-				"absolute left-16 top-16 z-30 flex min-w-[260px] flex-col gap-2.5 p-3 pointer-events-auto select-none",
-			)}
-		>
+		<div className={cn(vttDockPanelClass, "flex flex-col gap-2.5")}>
 			<div className="flex items-center justify-between border-b border-border/60 pb-2">
 				<div className="flex items-center gap-2 text-xs font-bold text-foreground">
 					<Eye className="h-4 w-4 text-primary" />

@@ -1052,7 +1052,7 @@ function VTTPage() {
 					<h3 className="font-display text-xl font-bold text-foreground">
 						Nenhuma cena criada ainda
 					</h3>
-					<p className="mb-5 mt-1 max-w-sm text-xs text-muted-foreground">
+					<p className="mb-5 mt-1 max-w-sm text-sm text-muted-foreground">
 						{isGM
 							? "Crie a primeira cena de combate ou exploração da mesa para carregar o mapa e posicionar os tokens."
 							: "Aguardando o Mestre ativar uma cena para a sessão de hoje..."}
@@ -1061,7 +1061,7 @@ function VTTPage() {
 						<Button
 							type="button"
 							onClick={() => handleCreateScene({ name: "Cena Inicial 1" })}
-							className="gap-2 font-bold text-xs h-10 px-5 rounded-2xl shadow-lg shadow-primary/20"
+							className="gap-2 font-bold h-11 px-5 rounded-2xl shadow-lg shadow-primary/20"
 						>
 							<Sparkles className="h-4 w-4" />
 							Criar Primeira Cena

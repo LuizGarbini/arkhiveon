@@ -32,7 +32,7 @@ export function VTTZoomControls() {
 	return (
 		<>
 			{(activeMeasurement || activeTool === "ruler") && (
-				<div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
+				<div className="absolute bottom-24 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 md:bottom-6">
 					{activeMeasurement && (
 						<div
 							className={cn(
@@ -55,7 +55,7 @@ export function VTTZoomControls() {
 								vttChipClass,
 								diagonalRule === "5105"
 									? "border-primary/40 bg-primary/15 text-foreground"
-									: "border-transparent text-muted-foreground hover:bg-muted",
+									: "border-transparent text-muted-foreground [@media(hover:hover)]:hover:bg-muted",
 							)}
 						>
 							5-10-5
@@ -67,7 +67,7 @@ export function VTTZoomControls() {
 								vttChipClass,
 								diagonalRule === "euclidean"
 									? "border-primary/40 bg-primary/15 text-foreground"
-									: "border-transparent text-muted-foreground hover:bg-muted",
+									: "border-transparent text-muted-foreground [@media(hover:hover)]:hover:bg-muted",
 							)}
 						>
 							Euclidiano
@@ -79,7 +79,7 @@ export function VTTZoomControls() {
 			<div
 				className={cn(
 					vttHudClass,
-					"absolute bottom-6 right-6 z-30 flex items-center gap-1 p-1 pointer-events-auto select-none",
+					"absolute bottom-[5.75rem] right-3 z-30 flex items-center gap-1 p-1 pointer-events-auto select-none md:bottom-6 md:right-6",
 				)}
 			>
 				<button
@@ -94,7 +94,7 @@ export function VTTZoomControls() {
 					type="button"
 					onClick={resetViewport}
 					title="Redefinir zoom para 100%"
-					className="flex h-11 min-w-11 items-center justify-center rounded-xl px-2 font-mono text-xs font-bold text-foreground hover:bg-muted"
+					className="flex h-11 min-w-11 items-center justify-center rounded-xl px-2 font-mono text-xs font-bold tabular-nums text-foreground [@media(hover:hover)]:hover:bg-muted"
 				>
 					{zoomPercent}%
 				</button>

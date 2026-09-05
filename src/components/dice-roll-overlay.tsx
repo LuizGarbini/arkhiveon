@@ -6,6 +6,7 @@ interface DiceRollOverlayProps {
 	open: boolean;
 	attributeLabel: string;
 	diceType: "d20" | "d100" | "d10" | "d6";
+	modifier?: number;
 	onComplete: (value: number) => void;
 	onClose: () => void;
 }
@@ -195,7 +196,10 @@ function createD10Geometry() {
 /** Calcula o centro e a normal corretos para as texturas na face (kite) correspondente do D10 */
 function getD10FaceData(f: number, isTop: boolean) {
 	const { equator, top, bot } = createD10GeometryData();
-	let eLeft, eMid, eRight, tip;
+	let eLeft: THREE.Vector3;
+	let eMid: THREE.Vector3;
+	let eRight: THREE.Vector3;
+	let tip: THREE.Vector3;
 
 	if (isTop) {
 		eMid = equator[f * 2];
@@ -235,6 +239,7 @@ export function DiceRollOverlay({
 	open,
 	attributeLabel,
 	diceType,
+	modifier = 0,
 	onComplete,
 	onClose,
 }: DiceRollOverlayProps) {
@@ -783,26 +788,57 @@ export function DiceRollOverlay({
 			</div>
 
 			{/* Status / Resultado */}
-			<div className="mt-6 text-center h-12 flex items-center justify-center">
+			<div className="mt-6 text-center h-16 flex flex-col items-center justify-center gap-1">
 				{phase !== "result" ? (
 					<div className="flex items-center gap-2 text-muted-foreground text-sm tracking-wide">
 						<Dices className="h-4 w-4 animate-spin text-primary" />
 						Aguardando destino...
 					</div>
-				) : diceType === "d20" && displayVal === 20 ? (
-					<div className="animate-bounce text-amber-400 font-extrabold text-xl tracking-wider flex items-center gap-2 bg-amber-500/15 px-6 py-3 rounded-full border border-amber-500/30 shadow-[0_0_25px_rgba(251,191,36,0.3)]">
-						🎉 ACERTO CRÍTICO! 20!
-					</div>
-				) : diceType === "d20" && displayVal === 1 ? (
-					<div className="animate-shake text-red-400 font-extrabold text-xl tracking-wider flex items-center gap-2 bg-red-500/15 px-6 py-3 rounded-full border border-red-500/30 shadow-[0_0_25px_rgba(239,68,68,0.3)]">
-						💀 Falha Crítica! 1
-					</div>
 				) : (
-					<div className="animate-bounce text-emerald-400 font-extrabold text-lg tracking-wider flex items-center gap-1.5 bg-emerald-500/10 px-5 py-2.5 rounded-full border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-						Resultado: {displayVal}!
-					</div>
+					<DiceResultBanner
+						diceType={diceType}
+						natural={displayVal}
+						modifier={modifier}
+					/>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function formatRollTotal(natural: number, modifier: number) {
+	if (modifier === 0) return String(natural);
+	const sign = modifier > 0 ? "+" : "−";
+	return `${natural} ${sign} ${Math.abs(modifier)} = ${natural + modifier}`;
+}
+
+function DiceResultBanner({
+	diceType,
+	natural,
+	modifier,
+}: {
+	diceType: "d20" | "d100" | "d10" | "d6";
+	natural: number;
+	modifier: number;
+}) {
+	const totalLabel = formatRollTotal(natural, modifier);
+	if (diceType === "d20" && natural === 20) {
+		return (
+			<div className="animate-bounce rounded-full border border-primary/40 bg-primary/15 px-6 py-3 text-xl font-extrabold tracking-wider text-primary">
+				Acerto crítico · {totalLabel}
+			</div>
+		);
+	}
+	if (diceType === "d20" && natural === 1) {
+		return (
+			<div className="animate-shake rounded-full border border-destructive/40 bg-destructive/15 px-6 py-3 text-xl font-extrabold tracking-wider text-destructive">
+				Falha crítica · {totalLabel}
+			</div>
+		);
+	}
+	return (
+		<div className="animate-bounce rounded-full border border-primary/30 bg-primary/10 px-5 py-2.5 text-lg font-extrabold tracking-wider text-foreground">
+			Resultado: {totalLabel}
 		</div>
 	);
 }

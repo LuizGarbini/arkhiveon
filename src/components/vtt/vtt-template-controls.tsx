@@ -5,9 +5,9 @@ import type { VTTTemplateKind } from "@/lib/vtt/template-math";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import {
 	vttChipClass,
+	vttDockPanelClass,
 	vttIconButtonClass,
 	vttIconButtonIdleClass,
-	vttPanelClass,
 } from "./vtt-chrome";
 
 const KINDS: {
@@ -43,12 +43,7 @@ export function VTTTemplateControls() {
 	};
 
 	return (
-		<div
-			className={cn(
-				vttPanelClass,
-				"absolute left-16 top-16 z-30 flex min-w-[260px] flex-col gap-3 p-3 pointer-events-auto select-none",
-			)}
-		>
+		<div className={cn(vttDockPanelClass, "flex flex-col gap-3")}>
 			<div className="flex items-center justify-between border-b border-border/60 pb-2">
 				<div className="flex items-center gap-2 text-xs font-bold">
 					<Hexagon className="h-4 w-4 text-primary" />

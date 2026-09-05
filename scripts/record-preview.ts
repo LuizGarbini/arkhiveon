@@ -3,6 +3,149 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { preview } from "vite";
 
+function seedDemoVtt(viewport = { x: 180, y: 50, scale: 1 }) {
+	const vttStore = (window as any).__vtt_store__?.getState();
+	if (!vttStore) return;
+
+	vttStore.setIsGM(true);
+	vttStore.setScenes([
+		{
+			id: "scene-1",
+			campaignId: "demo-tabletop",
+			name: "Masmorra Antiga dos Titãs",
+			gridType: "square",
+			gridSize: 70,
+			gridColor: "#c4b5fd",
+			gridOpacity: 0.45,
+			gridScaleDistance: 1.5,
+			gridScaleUnit: "m",
+			width: 3200,
+			height: 2400,
+			fogEnabled: true,
+			fogExploration: true,
+			isActive: true,
+			orderIndex: 0,
+		},
+	]);
+	vttStore.setActiveSceneId("scene-1");
+	vttStore.setViewport(viewport);
+
+	vttStore.setFogPaths([
+		{
+			id: "fog-start-1",
+			type: "circle",
+			mode: "reveal",
+			x: 525,
+			y: 390,
+			radius: 160,
+		},
+	]);
+
+	vttStore.setOnlineUsers([
+		{
+			userId: "preview-gm-user",
+			userName: "Mestre (Você)",
+			color: "#a855f7",
+			isGM: true,
+			onlineAt: Date.now(),
+		},
+		{
+			userId: "player-1",
+			userName: "Arthur (Paladino)",
+			color: "#38bdf8",
+			isGM: false,
+			onlineAt: Date.now(),
+		},
+	]);
+
+	vttStore.setTokens([
+		{
+			id: "token-1",
+			sceneId: "scene-1",
+			characterId: "char-arthur",
+			name: "Arthur Pendelton",
+			layer: "token",
+			x: 525,
+			y: 390,
+			sizeCells: 1,
+			rotation: 0,
+			hpCurrent: 45,
+			hpMax: 50,
+			elevation: 0,
+			conditions: [],
+			auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
+			visionRange: 6,
+			isLocked: false,
+			isHidden: false,
+			controlledBy: ["player-1"],
+		},
+		{
+			id: "token-gm-1",
+			sceneId: "scene-1",
+			name: "Armadilha de Espinhos (Oculta)",
+			layer: "gm",
+			x: 735,
+			y: 390,
+			sizeCells: 1,
+			rotation: 0,
+			hpCurrent: 10,
+			hpMax: 10,
+			elevation: 0,
+			conditions: [],
+			auras: [],
+			visionRange: 0,
+			isLocked: true,
+			isHidden: false,
+			controlledBy: [],
+		},
+		{
+			id: "token-gm-2",
+			sceneId: "scene-1",
+			name: "Espectro das Sombras (Emboscada)",
+			layer: "gm",
+			x: 875,
+			y: 460,
+			sizeCells: 1.5,
+			rotation: 0,
+			hpCurrent: 35,
+			hpMax: 35,
+			elevation: 1.5,
+			conditions: ["invisivel"],
+			auras: [{ radius: 2, color: "#a855f7", opacity: 0.25 }],
+			visionRange: 8,
+			isLocked: false,
+			isHidden: false,
+			controlledBy: [],
+		},
+	]);
+
+	const rpgStore = (window as any).__rpg_store__;
+	if (rpgStore?.setState) {
+		rpgStore.setState({
+			characters: [
+				{
+					id: "char-arthur",
+					system: "dnd5e",
+					characterName: "Arthur Pendelton",
+					class: "Paladino",
+					level: 5,
+					strength: 16,
+					dexterity: 10,
+					constitution: 14,
+					intelligence: 8,
+					wisdom: 12,
+					charisma: 16,
+					health: 45,
+					healthMax: 50,
+					armorClass: 18,
+					speed: 9,
+					sheetLayout: { template: "dnd5e", modules: [] },
+				},
+			],
+		});
+	}
+}
+
 async function recordPreview() {
 	const outputDir = path.resolve(process.cwd(), "docs/previews");
 	if (!fs.existsSync(outputDir)) {
@@ -17,17 +160,19 @@ async function recordPreview() {
 	}
 
 	const port = 4173;
-	const baseUrl = `http://127.0.0.1:${port}`;
-	const vttUrl = `${baseUrl}/campaigns/demo-tabletop/vtt`;
-
 	console.log(`⚡ Iniciando servidor Vite Preview nativo na porta ${port}...`);
 	const previewServer = await preview({
 		preview: {
 			port,
 			host: "127.0.0.1",
+			strictPort: false,
 		},
 	});
-	console.log("✅ Servidor Vite Preview pronto!");
+	const previewOrigin =
+		previewServer.resolvedUrls?.local?.[0]?.replace(/\/$/, "") ??
+		`http://127.0.0.1:${port}`;
+	const vttUrl = `${previewOrigin}/campaigns/demo-tabletop/vtt`;
+	console.log(`✅ Servidor Vite Preview pronto em ${previewOrigin}`);
 
 	console.log("🎬 Iniciando gravação do VTT com Playwright...");
 	const browser = await chromium.launch({ headless: true });
@@ -253,149 +398,7 @@ async function recordPreview() {
 
 		// Seed rich demo tabletop data
 		console.log("🎲 Injetando dados de demonstração no VTT (Cena com Névoa, GM Layer, Tokens)...");
-		await page.evaluate(() => {
-			const vttStore = (window as any).__vtt_store__?.getState();
-			if (!vttStore) return;
-
-			vttStore.setIsGM(true);
-			vttStore.setScenes([
-				{
-					id: "scene-1",
-					campaignId: "demo-tabletop",
-					name: "Masmorra Antiga dos Titãs",
-					gridType: "square",
-					gridSize: 70,
-					gridColor: "#ffffff",
-					gridOpacity: 0.25,
-					gridScaleDistance: 1.5,
-					gridScaleUnit: "m",
-					width: 3200,
-					height: 2400,
-					fogEnabled: true,
-					fogExploration: true,
-					isActive: true,
-					orderIndex: 0,
-				},
-			]);
-			vttStore.setActiveSceneId("scene-1");
-
-			// Seed initial fog reveal path around player start
-			vttStore.setFogPaths([
-				{
-					id: "fog-start-1",
-					type: "circle",
-					mode: "reveal",
-					x: 525,
-					y: 390,
-					radius: 160,
-				},
-			]);
-
-			// Seed Online Users
-			vttStore.setOnlineUsers([
-				{
-					userId: "preview-gm-user",
-					userName: "Mestre (Você)",
-					color: "#a855f7",
-					isGM: true,
-					onlineAt: Date.now(),
-				},
-				{
-					userId: "player-1",
-					userName: "Arthur (Paladino)",
-					color: "#38bdf8",
-					isGM: false,
-					onlineAt: Date.now(),
-				},
-			]);
-
-			// Seed Tokens (Player tokens & GM secret layer tokens)
-			vttStore.setTokens([
-				{
-					id: "token-1",
-					sceneId: "scene-1",
-					characterId: "char-arthur",
-					name: "Arthur Pendelton",
-					layer: "token",
-					x: 525,
-					y: 390,
-					sizeCells: 1,
-					rotation: 0,
-					hpCurrent: 45,
-					hpMax: 50,
-					elevation: 0,
-					conditions: [],
-					auras: [{ radius: 2, color: "#38bdf8", opacity: 0.2 }],
-					visionRange: 6,
-					isLocked: false,
-					isHidden: false,
-					controlledBy: ["player-1"],
-				},
-				{
-					id: "token-gm-1",
-					sceneId: "scene-1",
-					name: "Armadilha de Espinhos (Oculta)",
-					layer: "gm",
-					x: 735,
-					y: 390,
-					sizeCells: 1,
-					rotation: 0,
-					hpCurrent: 10,
-					hpMax: 10,
-					elevation: 0,
-					conditions: [],
-					auras: [],
-					visionRange: 0,
-					isLocked: true,
-					isHidden: false,
-					controlledBy: [],
-				},
-				{
-					id: "token-gm-2",
-					sceneId: "scene-1",
-					name: "Espectro das Sombras (Emboscada)",
-					layer: "gm",
-					x: 875,
-					y: 460,
-					sizeCells: 1.5,
-					rotation: 0,
-					hpCurrent: 35,
-					hpMax: 35,
-					elevation: 1.5,
-					conditions: ["invisivel"],
-					auras: [{ radius: 2, color: "#a855f7", opacity: 0.25 }],
-					visionRange: 8,
-					isLocked: false,
-					isHidden: false,
-					controlledBy: [],
-				},
-			]);
-			const rpgStore = (window as any).__rpg_store__;
-			if (rpgStore?.setState) {
-				rpgStore.setState({
-					characters: [
-						{
-							id: "char-arthur",
-							system: "dnd5e",
-							characterName: "Arthur Pendelton",
-							class: "Paladino",
-							level: 5,
-							strength: 16,
-							dexterity: 10,
-							constitution: 14,
-							intelligence: 8,
-							wisdom: 12,
-							charisma: 16,
-							health: 45,
-							healthMax: 50,
-							armorClass: 18,
-							speed: 9,
-							sheetLayout: { template: "dnd5e", modules: [] },
-						},
-					],
-				});
-			}
-		});
+		await page.evaluate(seedDemoVtt);
 
 		await page.waitForTimeout(1500);
 
@@ -503,15 +506,87 @@ async function recordPreview() {
 		await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 		await page.waitForTimeout(1500);
 
+		await page.evaluate(() => {
+			const vttStore = (window as any).__vtt_store__?.getState();
+			vttStore?.setActiveTokenIdForMenu(null);
+			vttStore?.setShowCharacterSheetId(null);
+			vttStore?.setShowFogControls(false);
+			vttStore?.setShowTemplateControls(false);
+			vttStore?.setActiveTool("select");
+		});
+		await page.waitForTimeout(400);
+
 		// Captura screenshot em alta resolução
 		const screenshotPath = path.join(outputDir, "latest-preview.png");
 		await page.screenshot({ path: screenshotPath, fullPage: false });
 		console.log(`📸 Screenshot de alta resolução salva: ${screenshotPath}`);
+		await context.close();
+
+		console.log("📱 Capturando HUD no viewport mobile...");
+		const mobileContext = await browser.newContext({
+			viewport: { width: 390, height: 844 },
+		});
+		await mobileContext.addInitScript(() => {
+			localStorage.setItem("arkhiveon_preview_auth", "true");
+			localStorage.setItem(
+				"arkhiveon-storage",
+				JSON.stringify({
+					state: {
+						activeCampaignId: "demo-tabletop",
+						campaigns: [
+							{
+								id: "demo-tabletop",
+								name: "A Forja dos Deuses",
+								myRole: "owner",
+							},
+						],
+					},
+					version: 2,
+				}),
+			);
+		});
+		const mobilePage = await mobileContext.newPage();
+		await mobilePage.goto(vttUrl, {
+			waitUntil: "domcontentloaded",
+			timeout: 60000,
+		});
+		await mobilePage
+			.waitForFunction(
+				() => (window as any).__vtt_store__ !== undefined,
+				{ timeout: 30000 },
+			)
+			.catch(() => {});
+		await mobilePage.evaluate(seedDemoVtt, {
+			x: -330,
+			y: 80,
+			scale: 1,
+		});
+		await mobilePage.waitForTimeout(2500);
+		await mobilePage.screenshot({
+			path: path.join(outputDir, "latest-preview-mobile.png"),
+			fullPage: false,
+		});
+		await mobilePage.evaluate(() => {
+			(window as any).__vtt_store__
+				?.getState()
+				?.setActiveTokenIdForMenu("token-1");
+		});
+		await mobilePage.waitForTimeout(700);
+		await mobilePage.screenshot({
+			path: path.join(outputDir, "latest-preview-mobile-menu.png"),
+			fullPage: false,
+		});
+		await mobileContext.close();
+		console.log("📸 Screenshots mobile salvas.");
 	} catch (err) {
 		console.error("❌ Erro durante gravação de demonstração:", err);
 	} finally {
-		await context.close();
-		await browser.close();
+		try {
+			await context.close();
+		} catch {}
+		try {
+			await browser.close();
+		} catch {}
 
 		try {
 			await previewServer.close();

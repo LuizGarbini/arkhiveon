@@ -90,6 +90,12 @@ export function VTTCanvas({
 
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
+	const pendingTokenDragRef = useRef<{
+		id: string;
+		startX: number;
+		startY: number;
+		offset: { x: number; y: number };
+	} | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
@@ -174,20 +180,10 @@ export function VTTCanvas({
 			gridLayerRef.current = gridLayer;
 			world.addChild(gridLayer);
 
-			const tokensLayer = new Container();
-			tokensLayerRef.current = tokensLayer;
-			world.addChild(tokensLayer);
-
-			const gmTokensLayer = new Container();
-			gmTokensLayerRef.current = gmTokensLayer;
-			world.addChild(gmTokensLayer);
-
-			// Exploration Penumbra overlay (intermediate layer for visited regions)
 			const fogExplorationLayer = new Graphics();
 			fogExplorationLayerRef.current = fogExplorationLayer;
 			world.addChild(fogExplorationLayer);
 
-			// Solid Fog of War mask layer
 			const fogOfWarLayer = new Graphics();
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
@@ -195,6 +191,14 @@ export function VTTCanvas({
 			const fogBrushPreviewLayer = new Graphics();
 			fogBrushPreviewLayerRef.current = fogBrushPreviewLayer;
 			world.addChild(fogBrushPreviewLayer);
+
+			const tokensLayer = new Container();
+			tokensLayerRef.current = tokensLayer;
+			world.addChild(tokensLayer);
+
+			const gmTokensLayer = new Container();
+			gmTokensLayerRef.current = gmTokensLayer;
+			world.addChild(gmTokensLayer);
 
 			const remoteRulersLayer = new Graphics();
 			remoteRulersLayerRef.current = remoteRulersLayer;
@@ -316,7 +320,7 @@ export function VTTCanvas({
 		} else {
 			const bg = new Graphics();
 			bg.rect(0, 0, width, height);
-			bg.fill({ color: 0x12141c, alpha: 1 });
+			bg.fill({ color: 0x262033, alpha: 1 });
 			mapLayer.addChild(bg);
 		}
 
@@ -638,25 +642,27 @@ export function VTTCanvas({
 					if (lastTap && lastTap.id === token.id && now - lastTap.time < 320) {
 						setActiveTokenIdForMenu(token.id);
 						lastTokenTapRef.current = null;
+						pendingTokenDragRef.current = null;
 						return;
 					}
-					lastTokenTapRef.current = { id: token.id, time: now };
 
 					if (!token.isLocked) {
-						draggingTokenIdRef.current = token.id;
-						setDraggedTokenId(token.id);
-
 						const rect = containerRef.current?.getBoundingClientRect();
+						const offset = { x: 0, y: 0 };
 						if (rect) {
 							const clientX = e.clientX - rect.left;
 							const clientY = e.clientY - rect.top;
 							const worldX = (clientX - viewport.x) / viewport.scale;
 							const worldY = (clientY - viewport.y) / viewport.scale;
-							tokenDragOffsetRef.current = {
-								x: worldX - token.x,
-								y: worldY - token.y,
-							};
+							offset.x = worldX - token.x;
+							offset.y = worldY - token.y;
 						}
+						pendingTokenDragRef.current = {
+							id: token.id,
+							startX: e.clientX,
+							startY: e.clientY,
+							offset,
+						};
 					}
 				}
 			});
@@ -679,7 +685,6 @@ export function VTTCanvas({
 		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
-		setDraggedTokenId,
 	]);
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
@@ -704,10 +709,9 @@ export function VTTCanvas({
 		const height = scene.height || 4000;
 		const gridSize = scene.gridSize || 70;
 
-		// GM mode: semi-transparent blue-tinted dark fog (~45% opacity)
-		// Player mode: solid pitch black fog (100% opacity)
+		const hasMap = Boolean(scene.mapImageUrl);
 		const fogColor = isGM ? 0x0f172a : 0x090a0f;
-		const fogAlpha = isGM ? 0.45 : 1.0;
+		const fogAlpha = hasMap ? (isGM ? 0.45 : 1.0) : isGM ? 0.14 : 0.32;
 
 		// 5.1 Base Solid Fog Covering Scene
 		fogLayer.rect(0, 0, width, height);
@@ -1100,6 +1104,22 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Promote a pending token tap into a drag after the pointer actually moves
+			if (pendingTokenDragRef.current && !draggingTokenIdRef.current) {
+				const pending = pendingTokenDragRef.current;
+				const dist = Math.hypot(
+					e.clientX - pending.startX,
+					e.clientY - pending.startY,
+				);
+				if (dist > 8) {
+					draggingTokenIdRef.current = pending.id;
+					tokenDragOffsetRef.current = pending.offset;
+					setDraggedTokenId(pending.id);
+					pendingTokenDragRef.current = null;
+					lastTokenTapRef.current = null;
+				}
+			}
+
 			// Handle Token Dragging with Realtime Broadcast
 			if (draggingTokenIdRef.current && scene) {
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
@@ -1175,6 +1195,7 @@ export function VTTCanvas({
 					scene.gridScaleDistance,
 					scene.gridScaleUnit,
 					userColor,
+					diagonalRule,
 				);
 			}
 
@@ -1263,6 +1284,14 @@ export function VTTCanvas({
 				}
 				fogCurrentPointsRef.current = [];
 				return;
+			}
+
+			if (pendingTokenDragRef.current) {
+				lastTokenTapRef.current = {
+					id: pendingTokenDragRef.current.id,
+					time: Date.now(),
+				};
+				pendingTokenDragRef.current = null;
 			}
 
 			// Finish Token Dragging with Magnetic Grid Snapping & Persistence

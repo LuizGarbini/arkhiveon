@@ -7,9 +7,9 @@ import type { VTTGridScaleUnit, VTTGridType } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import {
 	vttChipClass,
+	vttDockPanelClass,
 	vttIconButtonClass,
 	vttIconButtonIdleClass,
-	vttPanelClass,
 } from "./vtt-chrome";
 
 interface VTTGridSettingsProps {
@@ -70,12 +70,7 @@ export function VTTGridSettings({
 	];
 
 	return (
-		<div
-			className={cn(
-				vttPanelClass,
-				"absolute left-16 top-16 z-40 w-72 space-y-3.5 p-4 pointer-events-auto select-none",
-			)}
-		>
+		<div className={cn(vttDockPanelClass, "z-40 space-y-3.5 p-4")}>
 			<div className="flex items-center justify-between border-b border-border/60 pb-2">
 				<div className="flex items-center gap-2">
 					<Sliders className="h-4 w-4 text-primary" />
@@ -96,7 +91,7 @@ export function VTTGridSettings({
 				<Select
 					value={activeScene.gridType}
 					onChange={(e) => patch({ gridType: e.target.value as VTTGridType })}
-					className="h-11 text-xs"
+					className="h-11"
 				>
 					<option value="square">Quadrado (padrão)</option>
 					<option value="hex_pointy">Hexagonal (pontudo)</option>
@@ -115,7 +110,7 @@ export function VTTGridSettings({
 						onChange={(e) =>
 							patch({ gridScaleDistance: Number(e.target.value) || 1 })
 						}
-						className="h-11 text-xs"
+						className="h-11"
 					/>
 				</Field>
 				<Field label="Unidade">
@@ -126,7 +121,7 @@ export function VTTGridSettings({
 								gridScaleUnit: e.target.value as VTTGridScaleUnit,
 							})
 						}
-						className="h-11 text-xs"
+						className="h-11"
 					>
 						<option value="m">Metros</option>
 						<option value="ft">Pés</option>
