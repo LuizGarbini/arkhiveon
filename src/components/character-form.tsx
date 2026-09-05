@@ -18,6 +18,9 @@ import {
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import {
+	type CharacterControl,
+	type CharacterRegister,
+	type CharacterSetValue,
 	FeatsFields,
 	getAttributeConstraints,
 	InventoryFields,
@@ -193,8 +196,9 @@ function CharacterFormDialog({
 		}
 	};
 
-	useEffect(() => {
-		const index = config.sections.indexOf(activeSection);
+	const handleSectionChange = (nextSection: string) => {
+		const section = nextSection as CharacterSection;
+		const index = config.sections.indexOf(section);
 		if (index !== -1) {
 			if (prevIndex !== -1 && index < prevIndex) {
 				setSlideDirection("right");
@@ -203,7 +207,8 @@ function CharacterFormDialog({
 			}
 			setPrevIndex(index);
 		}
-	}, [activeSection, config.sections, prevIndex]);
+		setActiveSection(section);
+	};
 
 	// Inicializa e reseta o formulário ao abrir ou trocar de personagem
 	useEffect(() => {
@@ -212,21 +217,20 @@ function CharacterFormDialog({
 			setActiveSection("identity");
 			setSelectedLayoutTemplateId(character?.customTemplateId);
 		}
-	}, [open, character?.id, isEdit]);
+	}, [open, isEdit, character?.customTemplateId]);
 
 	// Garante que a aba ativa exista no sistema escolhido
 	useEffect(() => {
 		if (!config.sections.includes(activeSection)) {
 			setActiveSection(config.sections[0]);
 		}
-	}, [system, config.sections, activeSection]);
+	}, [config.sections, activeSection]);
 
 	// Resetar valores do formulário (react-hook-form) quando abrir o dialog ou trocar a entidade
 	useEffect(() => {
 		if (!open) return;
 		reset(buildDefaults(character ?? undefined));
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- character fields intentionally omitted
-	}, [open, character?.id, reset]);
+	}, [open, character, reset]);
 
 	const tabs = useMemo(
 		() =>
@@ -351,7 +355,7 @@ function CharacterFormDialog({
 								<FormTabs
 									tabs={tabs}
 									value={activeSection}
-									onChange={(id) => setActiveSection(id as CharacterSection)}
+									onChange={handleSectionChange}
 								/>
 							</div>
 						)}
@@ -1008,13 +1012,13 @@ function MagicSection({
 	control,
 	setValue,
 }: {
-	register: any;
-	config: any;
-	control: any;
-	setValue: any;
+	register: CharacterRegister;
+	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
+	control: CharacterControl;
+	setValue: CharacterSetValue;
 }) {
 	const hasCustomMagic = config.customFields?.some(
-		(f: any) => f.section === "magic",
+		(f) => f.section === "magic",
 	);
 	const shouldShowSpells = config.showSpells || hasCustomMagic;
 
@@ -1095,8 +1099,10 @@ function AbilityField({
 		"education",
 	].includes(name);
 
-	const fieldName = isStandardKey ? name : `systemAttributes.${name}`;
-	const value = useWatch({ control, name: fieldName as any });
+	const fieldName = (
+		isStandardKey ? name : `systemAttributes.${name}`
+	) as keyof CharacterFormValues;
+	const value = useWatch({ control, name: fieldName as never });
 	const numeric = Number(value);
 	const mod = Number.isFinite(numeric) ? abilityModifier(numeric) : 0;
 	const { min, max, placeholder } = getAttributeConstraints(config);
@@ -1129,7 +1135,7 @@ function AbilityField({
 				max={max}
 				placeholder={placeholder}
 				className="h-8 w-full text-center text-[14px] font-bold"
-				{...register(fieldName as any, { valueAsNumber: true })}
+				{...register(fieldName, { valueAsNumber: true })}
 			/>
 			<span className="font-mono text-[11px] tabular-nums text-primary">
 				{formatModifier(mod)}
