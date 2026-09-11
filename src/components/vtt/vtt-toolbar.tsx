@@ -4,7 +4,6 @@ import {
 	Hand,
 	Map as MapIcon,
 	MousePointer2,
-	Pencil,
 	Radio,
 	Ruler,
 	ShieldAlert,
@@ -16,23 +15,26 @@ import type { VTTLayer } from "@/lib/vtt/types";
 import { useVTTStore, type VTTTool } from "@/lib/vtt/vtt-store";
 
 export function VTTToolbar() {
-	const {
-		activeTool,
-		setActiveTool,
-		activeLayer,
-		setActiveLayer,
-		isGM,
-		showGridSettings,
-		setShowGridSettings,
-		setShowFogControls,
-	} = useVTTStore();
+	const activeTool = useVTTStore((s) => s.activeTool);
+	const setActiveTool = useVTTStore((s) => s.setActiveTool);
+	const activeLayer = useVTTStore((s) => s.activeLayer);
+	const setActiveLayer = useVTTStore((s) => s.setActiveLayer);
+	const isGM = useVTTStore((s) => s.isGM);
+	const showGridSettings = useVTTStore((s) => s.showGridSettings);
+	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
+	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
 
 	// Global Keyboard Shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (
 				e.target instanceof HTMLInputElement ||
-				e.target instanceof HTMLTextAreaElement
+				e.target instanceof HTMLTextAreaElement ||
+				e.target instanceof HTMLSelectElement ||
+				(e.target instanceof HTMLElement && e.target.isContentEditable) ||
+				e.ctrlKey ||
+				e.metaKey ||
+				e.altKey
 			) {
 				return;
 			}
@@ -46,7 +48,6 @@ export function VTTToolbar() {
 				setActiveTool("fog");
 				setShowFogControls(true);
 			}
-			if (key === "d") setActiveTool("draw");
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
@@ -76,7 +77,6 @@ export function VTTToolbar() {
 			shortcut: "F",
 			gmOnly: true,
 		},
-		{ id: "draw", label: "Desenhar Formas", icon: Pencil, shortcut: "D" },
 	];
 
 	const layers: {
@@ -90,7 +90,7 @@ export function VTTToolbar() {
 	];
 
 	return (
-		<div className="absolute left-3 sm:left-4 top-14 sm:top-16 z-30 flex flex-col items-center w-12 p-1 rounded-2xl border border-white/15 bg-black/80 backdrop-blur-2xl shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200">
+		<div className="absolute left-3 top-32 overflow-y-auto max-h-[calc(100dvh-14rem)] z-30 flex flex-col items-center w-14 p-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200">
 			{/* Main Toolset */}
 			<div className="flex flex-col items-center gap-1 w-full">
 				{tools
@@ -104,16 +104,19 @@ export function VTTToolbar() {
 								key={tool.id}
 								onClick={() => {
 									setActiveTool(tool.id);
+									setShowFogControls(tool.id === "fog");
 									if (tool.id === "fog") {
 										setShowFogControls(true);
 									}
 								}}
+								aria-label={tool.label}
+								aria-pressed={isActive}
 								title={`${tool.label} (${tool.shortcut})`}
 								className={cn(
-									"group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 cursor-pointer",
+									"group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
 									isActive
 										? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-										: "text-white/70 hover:bg-white/10 hover:text-white",
+										: "text-muted-foreground hover:bg-accent hover:text-foreground",
 								)}
 							>
 								<Icon className="h-4.5 w-4.5" />
@@ -121,7 +124,9 @@ export function VTTToolbar() {
 								<span
 									className={cn(
 										"absolute bottom-1 right-1 text-[8px] font-extrabold font-mono leading-none opacity-60",
-										isActive ? "text-primary-foreground" : "text-white/50",
+										isActive
+											? "text-primary-foreground"
+											: "text-muted-foreground",
 									)}
 								>
 									{tool.shortcut}
@@ -134,7 +139,7 @@ export function VTTToolbar() {
 			{/* Divider for Layers (GM Only) */}
 			{isGM && (
 				<>
-					<div className="w-6 h-px bg-white/15 my-0.5" />
+					<div className="w-6 h-px bg-border/70 my-0.5" />
 
 					{/* Layer Switcher */}
 					<div className="flex flex-col items-center gap-1 w-full">
@@ -146,12 +151,14 @@ export function VTTToolbar() {
 									type="button"
 									key={layer.id}
 									onClick={() => setActiveLayer(layer.id)}
+									aria-label={layer.label}
+									aria-pressed={isActive}
 									title={layer.label}
 									className={cn(
-										"flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 cursor-pointer",
+										"flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
 										isActive
-											? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-											: "text-white/60 hover:bg-white/10 hover:text-white",
+											? "bg-primary/15 text-primary ring-1 ring-primary/40"
+											: "text-muted-foreground hover:bg-accent hover:text-foreground",
 									)}
 								>
 									<Icon className="h-4 w-4" />
@@ -160,18 +167,20 @@ export function VTTToolbar() {
 						})}
 					</div>
 
-					<div className="w-6 h-px bg-white/15 my-0.5" />
+					<div className="w-6 h-px bg-border/70 my-0.5" />
 
 					{/* Grid Settings Toggle */}
 					<button
 						type="button"
 						onClick={() => setShowGridSettings(!showGridSettings)}
+						aria-label="Configurações do Grid"
+						aria-expanded={showGridSettings}
 						title="Configurações do Grid"
 						className={cn(
-							"flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 cursor-pointer",
+							"flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
 							showGridSettings
 								? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-								: "text-white/70 hover:bg-white/10 hover:text-white",
+								: "text-muted-foreground hover:bg-accent hover:text-foreground",
 						)}
 					>
 						<Grid className="h-4.5 w-4.5" />

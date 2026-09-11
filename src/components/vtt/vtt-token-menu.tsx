@@ -122,21 +122,25 @@ export function VTTTokenMenu({
 	const screenY = token.y * viewport.scale + viewport.y;
 
 	// Clamp to keep inside screen boundaries
-	const leftPos = Math.min(Math.max(screenX + 50, 20), window.innerWidth - 340);
+	const leftPos = Math.max(12, Math.min(screenX + 50, window.innerWidth - 332));
 	const topPos = Math.min(
-		Math.max(screenY - 100, 70),
-		window.innerHeight - 450,
+		Math.max(screenY - 100, 128),
+		Math.max(128, window.innerHeight - 500),
 	);
 
 	return (
 		<div
-			style={{ left: `${leftPos}px`, top: `${topPos}px` }}
-			className="fixed z-50 w-80 p-4 rounded-3xl border border-white/15 bg-black/90 backdrop-blur-2xl shadow-2xl space-y-3.5 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
+			style={{
+				left: `${leftPos}px`,
+				top: `${topPos}px`,
+				maxHeight: window.innerHeight - topPos - 12,
+			}}
+			className="fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] max-h-[calc(100dvh-10rem)] overflow-y-auto p-4 rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl space-y-3.5 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
 		>
 			{/* Token Header */}
-			<div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+			<div className="flex items-center justify-between pb-2.5 border-b border-border/70">
 				<div className="flex items-center gap-2.5 min-w-0">
-					<div className="h-8 w-8 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
+					<div className="h-11 w-11 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
 						{token.avatarUrl ? (
 							<img
 								src={token.avatarUrl}
@@ -150,10 +154,10 @@ export function VTTTokenMenu({
 						)}
 					</div>
 					<div className="min-w-0">
-						<h4 className="font-display font-bold text-xs text-white truncate">
+						<h4 className="font-display font-bold text-xs text-foreground truncate">
 							{token.name}
 						</h4>
-						<p className="text-[10px] text-white/50">
+						<p className="text-[10px] text-muted-foreground">
 							{token.sizeCells === 1
 								? "Médio (1x1)"
 								: token.sizeCells === 2
@@ -168,7 +172,7 @@ export function VTTTokenMenu({
 				<button
 					type="button"
 					onClick={() => setActiveTokenIdForMenu(null)}
-					className="h-7 w-7 flex items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+					className="h-11 w-11 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
 				>
 					<X className="h-3.5 w-3.5" />
 				</button>
@@ -181,7 +185,7 @@ export function VTTTokenMenu({
 						<Heart className="h-3.5 w-3.5 fill-rose-500/20" />
 						Pontos de Vida
 					</span>
-					<span className="font-mono text-white">
+					<span className="font-mono text-foreground">
 						{token.hpCurrent ?? 0} / {token.hpMax ?? 0}
 					</span>
 				</div>
@@ -191,28 +195,28 @@ export function VTTTokenMenu({
 					<button
 						type="button"
 						onClick={() => handleModifyHp(-5)}
-						className="py-1 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-95 transition-all"
+						className="py-1 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
 					>
 						-5
 					</button>
 					<button
 						type="button"
 						onClick={() => handleModifyHp(-1)}
-						className="py-1 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-95 transition-all"
+						className="py-1 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
 					>
 						-1
 					</button>
 					<button
 						type="button"
 						onClick={() => handleModifyHp(1)}
-						className="py-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-95 transition-all"
+						className="py-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
 					>
 						+1
 					</button>
 					<button
 						type="button"
 						onClick={() => handleModifyHp(5)}
-						className="py-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-95 transition-all"
+						className="py-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
 					>
 						+5
 					</button>
@@ -225,7 +229,7 @@ export function VTTTokenMenu({
 						placeholder="Valor..."
 						value={customHpMod}
 						onChange={(e) => setCustomHpMod(e.target.value)}
-						className="h-8 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
+						className="h-8 text-xs bg-card-elevated border-border/70 rounded-xl font-mono"
 					/>
 					<Button
 						type="button"
@@ -250,7 +254,7 @@ export function VTTTokenMenu({
 
 			{/* Status Conditions */}
 			<div className="space-y-1.5">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-white/50">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
 					Condições & Status
 				</span>
 				<div className="flex flex-wrap gap-1">
@@ -265,7 +269,7 @@ export function VTTTokenMenu({
 									"flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
 									isApplied
 										? cond.color
-										: "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white",
+										: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground",
 								)}
 							>
 								<span>{cond.icon}</span>
@@ -277,10 +281,10 @@ export function VTTTokenMenu({
 			</div>
 
 			{/* Size & Elevation Controls */}
-			<div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/10">
+			<div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/70">
 				{/* Size */}
 				<div className="space-y-1">
-					<span className="text-[9px] font-bold text-white/50 uppercase">
+					<span className="text-[9px] font-bold text-muted-foreground uppercase">
 						Tamanho
 					</span>
 					<div className="flex items-center gap-1">
@@ -293,7 +297,7 @@ export function VTTTokenMenu({
 									"flex-1 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
 									token.sizeCells === sz
 										? "bg-primary text-primary-foreground border-primary"
-										: "border-white/10 bg-white/5 text-white/60 hover:bg-white/10",
+										: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
 								)}
 							>
 								{sz}x
@@ -304,21 +308,21 @@ export function VTTTokenMenu({
 
 				{/* Elevation / Flight */}
 				<div className="space-y-1">
-					<span className="text-[9px] font-bold text-white/50 uppercase">
+					<span className="text-[9px] font-bold text-muted-foreground uppercase">
 						Elevação: {token.elevation || 0}m
 					</span>
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
 							onClick={() => handleElevation(-1.5)}
-							className="flex-1 py-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 cursor-pointer"
+							className="flex-1 py-1 flex items-center justify-center rounded-lg border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent cursor-pointer"
 						>
 							<Minus className="h-3 w-3" />
 						</button>
 						<button
 							type="button"
 							onClick={() => handleElevation(1.5)}
-							className="flex-1 py-1 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 cursor-pointer"
+							className="flex-1 py-1 flex items-center justify-center rounded-lg border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent cursor-pointer"
 						>
 							<Plus className="h-3 w-3" />
 						</button>
@@ -327,13 +331,13 @@ export function VTTTokenMenu({
 			</div>
 
 			{/* Quick Actions (Rotate, Hide, Lock, Delete) */}
-			<div className="flex items-center justify-between pt-2 border-t border-white/10">
+			<div className="flex items-center justify-between pt-2 border-t border-border/70">
 				<div className="flex items-center gap-1">
 					<button
 						type="button"
 						onClick={handleRotate}
 						title="Girar Token (45º)"
-						className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+						className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
 					>
 						<RotateCw className="h-3.5 w-3.5" />
 					</button>
@@ -351,10 +355,10 @@ export function VTTTokenMenu({
 										: "Ocultar dos Jogadores"
 								}
 								className={cn(
-									"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+									"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
 									token.isHidden
 										? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-										: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+										: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
 								)}
 							>
 								{token.isHidden ? (
@@ -377,10 +381,10 @@ export function VTTTokenMenu({
 										: "Mover para Camada do Mestre (GM Layer)"
 								}
 								className={cn(
-									"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+									"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
 									token.layer === "gm"
 										? "border-purple-500/50 bg-purple-500/30 text-purple-300 shadow-md shadow-purple-500/20"
-										: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+										: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
 								)}
 							>
 								<ShieldAlert className="h-3.5 w-3.5" />
@@ -397,10 +401,10 @@ export function VTTTokenMenu({
 							token.isLocked ? "Destravar Movimentação" : "Travar no Lugar"
 						}
 						className={cn(
-							"h-8 w-8 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+							"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
 							token.isLocked
 								? "border-primary/40 bg-primary/20 text-primary"
-								: "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+								: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
 						)}
 					>
 						{token.isLocked ? (

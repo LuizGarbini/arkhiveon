@@ -22,3 +22,6 @@ docs/previews/
 
 
 
+
+# Local pnpm package cache
+.pnpm-store/

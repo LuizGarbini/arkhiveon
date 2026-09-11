@@ -1,65 +1,89 @@
-import { Minus, Plus, Ruler } from "lucide-react";
+import { Maximize, Minus, Plus, Ruler } from "lucide-react";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 export function VTTZoomControls() {
-	const { viewport, setViewport, resetViewport, activeMeasurement } = useVTTStore();
-
-	const handleZoomIn = () => {
-		const newScale = Math.min(viewport.scale * 1.25, 5.0);
-		setViewport({ scale: newScale });
+	const viewport = useVTTStore((s) => s.viewport);
+	const setViewport = useVTTStore((s) => s.setViewport);
+	const activeMeasurement = useVTTStore((s) => s.activeMeasurement);
+	const scenes = useVTTStore((s) => s.scenes);
+	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const scene = scenes.find((s) => s.id === activeSceneId);
+	const zoom = (scale: number) => {
+		const x = window.innerWidth / 2;
+		const y = window.innerHeight / 2;
+		const next = Math.min(5, Math.max(0.1, scale));
+		setViewport({
+			scale: next,
+			x: x - ((x - viewport.x) / viewport.scale) * next,
+			y: y - ((y - viewport.y) / viewport.scale) * next,
+		});
 	};
-
-	const handleZoomOut = () => {
-		const newScale = Math.max(viewport.scale * 0.8, 0.1);
-		setViewport({ scale: newScale });
+	const fit = () => {
+		if (!scene) return;
+		const width = window.innerWidth - 100;
+		const height = Math.max(100, window.innerHeight - 220);
+		const scale = Math.max(
+			0.1,
+			Math.min(5, width / scene.width, height / scene.height),
+		);
+		setViewport({
+			scale,
+			x: 80 + (width - scene.width * scale) / 2,
+			y: 135 + (height - scene.height * scale) / 2,
+		});
 	};
-
-	const zoomPercent = Math.round(viewport.scale * 100);
-
+	const button =
+		"flex size-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]";
 	return (
 		<>
-			{/* Floating Active Measurement Badge (Bottom Center) */}
 			{activeMeasurement && (
-				<div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-					<div className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-sky-400/40 bg-black/80 backdrop-blur-xl shadow-2xl text-sky-300 font-bold text-sm">
-						<Ruler className="h-4 w-4 animate-pulse text-sky-400" />
-						<span>Distância:</span>
-						<span className="font-mono text-base text-white">
-							{activeMeasurement.distance} {activeMeasurement.unit}
-						</span>
-					</div>
+				<output className="pointer-events-none absolute bottom-20 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-4 py-3 text-sm shadow-lg backdrop-blur-md">
+					<Ruler className="size-4 text-primary" />
+					<span className="tabular-nums">
+						{activeMeasurement.distance} {activeMeasurement.unit}
+					</span>
+				</output>
+			)}
+			{scene && (
+				<div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none">
+					<button
+						type="button"
+						className={button}
+						onClick={fit}
+						title="Enquadrar mapa"
+						aria-label="Enquadrar mapa"
+					>
+						<Maximize className="size-4" />
+					</button>
+					<span className="h-5 w-px bg-border/70" />
+					<button
+						type="button"
+						className={button}
+						onClick={() => zoom(viewport.scale * 0.8)}
+						title="Diminuir Zoom"
+						aria-label="Diminuir zoom"
+					>
+						<Minus className="size-4" />
+					</button>
+					<button
+						type="button"
+						className="h-11 min-w-14 rounded-xl px-2 text-xs font-medium tabular-nums focus-visible:ring-2 focus-visible:ring-primary hover:bg-accent"
+						onClick={() => zoom(1)}
+						title="Redefinir Zoom para 100%"
+					>
+						{Math.round(viewport.scale * 100)}%
+					</button>
+					<button
+						type="button"
+						className={button}
+						onClick={() => zoom(viewport.scale * 1.25)}
+						title="Aumentar Zoom"
+						aria-label="Aumentar zoom"
+					>
+						<Plus className="size-4" />
+					</button>
 				</div>
 			)}
-
-			{/* Zoom Controls (Bottom Right) */}
-			<div className="absolute bottom-6 right-6 z-30 flex items-center gap-1.5 p-1.5 rounded-2xl border border-white/15 bg-black/60 backdrop-blur-xl shadow-2xl pointer-events-auto select-none">
-				<button
-					type="button"
-					onClick={handleZoomOut}
-					title="Diminuir Zoom"
-					className="flex h-8 w-8 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer active:scale-95"
-				>
-					<Minus className="h-4 w-4" />
-				</button>
-
-				<button
-					type="button"
-					onClick={resetViewport}
-					title="Redefinir Zoom para 100%"
-					className="px-2 h-8 flex items-center justify-center rounded-xl text-xs font-mono font-bold text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
-				>
-					{zoomPercent}%
-				</button>
-
-				<button
-					type="button"
-					onClick={handleZoomIn}
-					title="Aumentar Zoom"
-					className="flex h-8 w-8 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer active:scale-95"
-				>
-					<Plus className="h-4 w-4" />
-				</button>
-			</div>
 		</>
 	);
 }

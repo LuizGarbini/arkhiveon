@@ -15,8 +15,13 @@ interface VTTGridSettingsProps {
 	}) => void;
 }
 
-export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps) {
-	const { scenes, activeSceneId, showGridSettings, setShowGridSettings } = useVTTStore();
+export function VTTGridSettings({
+	onUpdateSceneSettings,
+}: VTTGridSettingsProps) {
+	const scenes = useVTTStore((s) => s.scenes);
+	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const showGridSettings = useVTTStore((s) => s.showGridSettings);
+	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	if (!showGridSettings || !activeScene) return null;
@@ -32,18 +37,19 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 	];
 
 	return (
-		<div className="absolute left-18 top-20 z-40 w-72 p-4 rounded-2xl border border-white/15 bg-black/85 backdrop-blur-2xl shadow-2xl text-foreground pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-150 space-y-3.5">
-			<div className="flex items-center justify-between pb-2 border-b border-white/10">
+		<div className="absolute left-3 top-32 z-40 max-h-[calc(100dvh-13rem)] overflow-y-auto w-[min(20rem,calc(100%-1.5rem))] sm:left-20 p-4 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl text-foreground pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-150 space-y-3.5">
+			<div className="flex items-center justify-between pb-2 border-b border-border/70">
 				<div className="flex items-center gap-2">
 					<Sliders className="h-4 w-4 text-primary" />
-					<h4 className="font-display text-xs font-bold text-white tracking-wide">
+					<h4 className="font-display text-xs font-bold text-foreground tracking-wide">
 						Ajuste do Grid
 					</h4>
 				</div>
 				<button
 					type="button"
+					aria-label="Fechar configurações do grid"
 					onClick={() => setShowGridSettings(false)}
-					className="text-white/50 hover:text-white transition-colors cursor-pointer"
+					className="flex size-11 items-center justify-center rounded-xl text-muted-foreground focus-visible:ring-2 hover:text-foreground"
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -63,7 +69,7 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 							gridScaleUnit: activeScene.gridScaleUnit,
 						})
 					}
-					className="h-8 text-xs"
+					className="h-11 text-base"
 				>
 					<option value="square">Quadrado (Padrão)</option>
 					<option value="hex_pointy">Hexagonal (Pontudo)</option>
@@ -78,7 +84,9 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
 							<span>Tamanho da Célula</span>
-							<span className="font-mono text-white">{activeScene.gridSize}px</span>
+							<span className="font-mono text-foreground">
+								{activeScene.gridSize}px
+							</span>
 						</div>
 						<input
 							type="range"
@@ -96,7 +104,7 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 									gridScaleUnit: activeScene.gridScaleUnit,
 								})
 							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-white/10 rounded-lg"
+							className="w-full accent-primary cursor-pointer h-1.5 bg-accent rounded-lg"
 						/>
 					</div>
 
@@ -104,7 +112,7 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
 							<span>Opacidade do Grid</span>
-							<span className="font-mono text-white">
+							<span className="font-mono text-foreground">
 								{Math.round(activeScene.gridOpacity * 100)}%
 							</span>
 						</div>
@@ -124,18 +132,21 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 									gridScaleUnit: activeScene.gridScaleUnit,
 								})
 							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-white/10 rounded-lg"
+							className="w-full accent-primary cursor-pointer h-1.5 bg-accent rounded-lg"
 						/>
 					</div>
 
 					{/* Grid Color Palette */}
 					<div className="space-y-1.5">
-						<span className="text-[10px] font-bold text-muted-foreground">Cor do Grid</span>
-						<div className="flex items-center gap-2">
+						<span className="text-[10px] font-bold text-muted-foreground">
+							Cor do Grid
+						</span>
+						<div className="flex flex-wrap items-center gap-2">
 							{presetColors.map((color) => (
 								<button
 									type="button"
 									key={color}
+									aria-label={`Cor do grid ${color}`}
 									onClick={() =>
 										onUpdateSceneSettings({
 											gridType: activeScene.gridType,
@@ -147,10 +158,10 @@ export function VTTGridSettings({ onUpdateSceneSettings }: VTTGridSettingsProps)
 										})
 									}
 									style={{ backgroundColor: color }}
-									className={`h-5 w-5 rounded-full border transition-all cursor-pointer ${
+									className={`h-11 w-11 rounded-full border transition-all cursor-pointer ${
 										activeScene.gridColor === color
 											? "border-primary scale-110 shadow-xs"
-											: "border-white/20 opacity-70 hover:opacity-100"
+											: "border-border opacity-70 hover:opacity-100"
 									}`}
 								/>
 							))}

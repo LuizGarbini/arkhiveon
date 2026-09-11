@@ -1,3 +1,4 @@
+import "@/components/vtt/vtt.css";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Compass, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
+import { VTTJournal } from "@/components/vtt/vtt-journal";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
@@ -40,37 +42,37 @@ function VTTPage() {
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const activeCampaign = campaigns.find((c) => c.id === campaignId);
 
-	const {
-		scenes,
-		setScenes,
-		activeSceneId,
-		setActiveSceneId,
-		addScene,
-		updateScene,
-		tokens,
-		setTokens,
-		addToken,
-		updateToken,
-		setTokenTargetPosition,
-		removeToken,
-		activeTokenIdForMenu,
-		setOnlineUsers,
-		setRemoteCursor,
-		removeRemoteCursor,
-		setRemoteMeasurement,
-		addPing,
-		userColor,
-		setFogPaths,
-		addFogPath,
-		setFogState,
-		clearFog,
-		viewport,
-		setViewport,
-		setIsGM,
-		isGM,
-	} = useVTTStore();
+	const scenes = useVTTStore((s) => s.scenes);
+	const setScenes = useVTTStore((s) => s.setScenes);
+	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const setActiveSceneId = useVTTStore((s) => s.setActiveSceneId);
+	const addScene = useVTTStore((s) => s.addScene);
+	const updateScene = useVTTStore((s) => s.updateScene);
+	const tokens = useVTTStore((s) => s.tokens);
+	const setTokens = useVTTStore((s) => s.setTokens);
+	const addToken = useVTTStore((s) => s.addToken);
+	const updateToken = useVTTStore((s) => s.updateToken);
+	const setTokenTargetPosition = useVTTStore((s) => s.setTokenTargetPosition);
+	const removeToken = useVTTStore((s) => s.removeToken);
+	const activeTokenIdForMenu = useVTTStore((s) => s.activeTokenIdForMenu);
+	const setOnlineUsers = useVTTStore((s) => s.setOnlineUsers);
+	const setRemoteCursor = useVTTStore((s) => s.setRemoteCursor);
+	const removeRemoteCursor = useVTTStore((s) => s.removeRemoteCursor);
+	const setRemoteMeasurement = useVTTStore((s) => s.setRemoteMeasurement);
+	const addPing = useVTTStore((s) => s.addPing);
+	const userColor = useVTTStore((s) => s.userColor);
+	const setFogPaths = useVTTStore((s) => s.setFogPaths);
+	const addFogPath = useVTTStore((s) => s.addFogPath);
+	const setFogState = useVTTStore((s) => s.setFogState);
+	const clearFog = useVTTStore((s) => s.clearFog);
+	const viewport = useVTTStore((s) => s.viewport);
+	const setViewport = useVTTStore((s) => s.setViewport);
+	const setIsGM = useVTTStore((s) => s.setIsGM);
+	const isGM = useVTTStore((s) => s.isGM);
 
 	const [isLoading, setIsLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
+	const [isJournalOpen, setIsJournalOpen] = useState(false);
 	const roomChannelRef = useRef<ReturnType<
 		NonNullable<ReturnType<typeof getSupabase>>["channel"]
 	> | null>(null);
@@ -94,15 +96,22 @@ function VTTPage() {
 
 	// 1. Determine GM vs Player permissions
 	useEffect(() => {
-		if (!activeCampaign || !user) return;
-		const isOwner = activeCampaign.ownerId === user.id;
+		const isOwner = Boolean(
+			activeCampaign && user && activeCampaign.ownerId === user.id,
+		);
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
 
 	// 2. Fetch scenes for this campaign from Supabase
 	const fetchScenes = useCallback(async () => {
 		const client = getSupabase();
-		if (!client || !campaignId) return;
+		setIsLoading(true);
+		setLoadError(null);
+		if (!client || !campaignId) {
+			setLoadError("A conexão com a mesa não está configurada.");
+			setIsLoading(false);
+			return;
+		}
 
 		try {
 			const { data, error } = await client
@@ -138,16 +147,24 @@ function VTTPage() {
 			setScenes(mapped);
 
 			// Automatically select active scene or first scene
-			if (mapped.length > 0) {
-				const active = mapped.find((s) => s.isActive);
-				setActiveSceneId(active ? active.id : mapped[0].id);
-			}
+			const active = mapped.find((s) => s.isActive);
+			const owner = activeCampaign?.ownerId === user?.id;
+			setActiveSceneId(active?.id ?? (owner ? mapped[0]?.id : null) ?? null);
 		} catch (err) {
 			console.error("Erro ao carregar cenas do VTT:", err);
+			setLoadError(
+				"Não foi possível carregar a mesa. Verifique sua conexão e tente novamente.",
+			);
 		} finally {
 			setIsLoading(false);
 		}
-	}, [campaignId, setScenes, setActiveSceneId]);
+	}, [
+		campaignId,
+		activeCampaign?.ownerId,
+		user?.id,
+		setScenes,
+		setActiveSceneId,
+	]);
 
 	useEffect(() => {
 		void fetchScenes();
@@ -193,7 +210,8 @@ function VTTPage() {
 					updatedAt: row.updated_at,
 				}));
 
-				setTokens(mappedTokens);
+				if (useVTTStore.getState().activeSceneId === sceneId)
+					setTokens(mappedTokens);
 			} catch (err) {
 				console.error("Erro ao carregar tokens da cena:", err);
 			}
@@ -705,7 +723,10 @@ function VTTPage() {
 	// Scene Management Handlers
 	const handleCreateScene = async (sceneData: Partial<VTTScene>) => {
 		const client = getSupabase();
-		if (!client) return;
+		if (!client || !isGM)
+			throw new Error(
+				"É necessário estar conectado como mestre para criar uma cena.",
+			);
 
 		const insertData: Database["public"]["Tables"]["vtt_scenes"]["Insert"] = {
 			campaign_id: campaignId,
@@ -717,7 +738,7 @@ function VTTPage() {
 			grid_scale_unit: sceneData.gridScaleUnit || "m",
 			width: sceneData.width || 4000,
 			height: sceneData.height || 4000,
-			is_active: sceneData.isActive || false,
+			is_active: sceneData.isActive ?? scenes.length === 0,
 			order_index: scenes.length,
 		};
 
@@ -729,7 +750,9 @@ function VTTPage() {
 
 		if (error) {
 			console.error("Erro ao criar cena:", error);
-			return;
+			throw new Error(
+				"Não foi possível criar a cena. Seus dados foram mantidos; tente novamente.",
+			);
 		}
 
 		if (data) {
@@ -760,23 +783,37 @@ function VTTPage() {
 
 	const handleActivateScene = async (sceneId: string) => {
 		const client = getSupabase();
-		if (!client || !campaignId) return;
-
-		await client
+		if (!client || !campaignId || !isGM)
+			throw new Error("É necessário estar conectado como mestre.");
+		const previous = scenes.find((scene) => scene.isActive);
+		const { error: clearError } = await client
 			.from("vtt_scenes")
 			.update({ is_active: false })
 			.eq("campaign_id", campaignId);
-
-		await client
+		if (clearError)
+			throw new Error(
+				"Não foi possível trocar a cena dos jogadores. Tente novamente.",
+			);
+		const { error } = await client
 			.from("vtt_scenes")
 			.update({ is_active: true })
+			.eq("campaign_id", campaignId)
 			.eq("id", sceneId);
-
+		if (error) {
+			if (previous)
+				await client
+					.from("vtt_scenes")
+					.update({ is_active: true })
+					.eq("id", previous.id);
+			await fetchScenes();
+			throw new Error(
+				"Não foi possível exibir a cena. Confira a cena em jogo e tente novamente.",
+			);
+		}
 		setScenes(
-			scenes.map((s) => ({
-				...s,
-				isActive: s.id === sceneId,
-			})),
+			useVTTStore
+				.getState()
+				.scenes.map((scene) => ({ ...scene, isActive: scene.id === sceneId })),
 		);
 	};
 
@@ -845,7 +882,10 @@ function VTTPage() {
 	// Token Management Handlers
 	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
 		const client = getSupabase();
-		if (!client || !activeSceneId) return;
+		if (!client || !activeSceneId || !isGM)
+			throw new Error(
+				"É necessário estar conectado como mestre para colocar tokens.",
+			);
 
 		const insertPayload: Database["public"]["Tables"]["vtt_tokens"]["Insert"] =
 			{
@@ -878,7 +918,7 @@ function VTTPage() {
 
 		if (error) {
 			console.error("Erro ao criar token:", error);
-			return;
+			throw new Error("Não foi possível colocar o token. Tente novamente.");
 		}
 
 		if (data) {
@@ -948,12 +988,14 @@ function VTTPage() {
 		await client.from("vtt_tokens").delete().eq("id", tokenId);
 	};
 
-	const currentActiveScene = scenes.find((s) => s.id === activeSceneId) || null;
+	const currentActiveScene =
+		scenes.find((s) => s.id === activeSceneId && s.campaignId === campaignId) ||
+		null;
 	const activeTokenForMenu =
 		tokens.find((t) => t.id === activeTokenIdForMenu) || null;
 
 	return (
-		<div className="relative h-screen w-screen overflow-hidden bg-[#090a0f] select-none">
+		<div className="vtt-surface relative h-dvh w-full overflow-hidden bg-background text-foreground select-none">
 			{/* Top Header / Scene Tabs & Presence */}
 			<VTTSceneBar
 				campaignId={campaignId}
@@ -961,10 +1003,21 @@ function VTTPage() {
 				onCreateScene={handleCreateScene}
 				onActivateScene={handleActivateScene}
 				onFocusPoint={handleFocusPoint}
+				onOpenJournal={() => {
+					useVTTStore.getState().setShowRosterDrawer(false);
+					setIsJournalOpen(true);
+				}}
 			/>
+			{isGM && (
+				<VTTJournal
+					campaignId={campaignId}
+					open={isJournalOpen}
+					onOpenChange={setIsJournalOpen}
+				/>
+			)}
 
 			{/* Left Floating Toolbar */}
-			<VTTToolbar />
+			{currentActiveScene && <VTTToolbar />}
 
 			{/* Fog of War Contextual Controls */}
 			<VTTFogControls
@@ -977,7 +1030,19 @@ function VTTPage() {
 			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />
 
 			{/* Canvas Viewport */}
-			{currentActiveScene ? (
+			{loadError ? (
+				<div
+					role="alert"
+					className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
+				>
+					<Compass className="size-10 text-primary" />
+					<h2 className="font-display text-xl font-bold">
+						Não foi possível abrir a mesa
+					</h2>
+					<p className="max-w-sm text-sm text-muted-foreground">{loadError}</p>
+					<Button onClick={() => void fetchScenes()}>Tentar novamente</Button>
+				</div>
+			) : currentActiveScene ? (
 				<VTTCanvas
 					scene={currentActiveScene}
 					onUpdateToken={handleUpdateToken}
@@ -989,14 +1054,14 @@ function VTTPage() {
 					onPersistFog={handlePersistFog}
 				/>
 			) : !isLoading ? (
-				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-white/70">
-					<div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl mb-4 shadow-2xl">
+				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+					<div className="p-4 rounded-3xl border border-border/70 bg-card-elevated backdrop-blur-md mb-4 shadow-2xl">
 						<Compass className="h-10 w-10 text-primary animate-pulse" />
 					</div>
-					<h3 className="font-display text-xl font-bold text-white">
+					<h3 className="font-display text-xl font-bold text-foreground">
 						Nenhuma cena criada ainda
 					</h3>
-					<p className="text-xs text-white/50 max-w-sm mt-1 mb-5">
+					<p className="text-xs text-muted-foreground max-w-sm mt-1 mb-5">
 						{isGM
 							? "Crie a primeira cena de combate ou exploração da mesa para carregar o mapa e posicionar os tokens."
 							: "Aguardando o Mestre ativar uma cena para a sessão de hoje..."}
@@ -1004,8 +1069,12 @@ function VTTPage() {
 					{isGM && (
 						<Button
 							type="button"
-							onClick={() => handleCreateScene({ name: "Cena Inicial 1" })}
-							className="gap-2 font-bold text-xs h-10 px-5 rounded-2xl shadow-lg shadow-primary/20"
+							onClick={() => {
+								void handleCreateScene({ name: "Cena Inicial 1" }).catch(
+									(error) => setLoadError(error.message),
+								);
+							}}
+							className="gap-2 font-bold text-sm h-11 px-5 rounded-2xl shadow-lg shadow-primary/20"
 						>
 							<Sparkles className="h-4 w-4" />
 							Criar Primeira Cena
@@ -1013,7 +1082,7 @@ function VTTPage() {
 					)}
 				</div>
 			) : (
-				<div className="absolute inset-0 flex items-center justify-center text-white/60">
+				<div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
 					<Sparkles className="h-8 w-8 text-primary animate-spin" />
 				</div>
 			)}
@@ -1022,6 +1091,7 @@ function VTTPage() {
 			<VTTRosterDrawer
 				scene={currentActiveScene}
 				onSpawnToken={handleSpawnToken}
+				onFocusPoint={handleFocusPoint}
 			/>
 
 			{/* Token Contextual / Health & Status Edit Popover */}
