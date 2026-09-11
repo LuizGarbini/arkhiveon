@@ -25,7 +25,7 @@ async function main() {
 			);
 		});
 		console.log(
-			"Preview validado: docs/previews/latest-preview.png e latest-preview.webm",
+			"Preview validado: docs/previews/latest-preview.png, latest-preview.webm e vtt-mobile-preview.webm",
 		);
 	} finally {
 		await new Promise<void>((resolve, reject) =>

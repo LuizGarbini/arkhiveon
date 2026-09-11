@@ -2,6 +2,7 @@ const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { startPreviewRecorder } = require("./vtt-preview-recorder.cjs");
 
 async function main() {
 	const { createServer } = await import("vite");
@@ -16,14 +17,6 @@ async function main() {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
 		viewport: { width: 1440, height: 900 },
-		...(process.env.VTT_RECORD
-			? {
-					recordVideo: {
-						dir: path.resolve("docs/previews"),
-						size: { width: 1440, height: 900 },
-					},
-				}
-			: {}),
 	});
 	await context.routeWebSocket("**/realtime/v1/**", (route) => route.close());
 	const output = path.resolve("docs/previews");
@@ -58,6 +51,8 @@ async function main() {
 	});
 	const page = await context.newPage();
 	const errors = [];
+	let recording;
+	const chapter = async (text, ms) => recording?.chapter(text, ms);
 	page.on("pageerror", (error) => errors.push(error.message));
 	try {
 		await page.goto(
@@ -187,6 +182,11 @@ async function main() {
 			path: path.join(output, "vtt-desktop.png"),
 		});
 		console.log("Mesa real carregada; erros:", errors);
+		if (process.env.VTT_RECORD) {
+			recording = await startPreviewRecorder(page, path.join(output, "latest-preview.webm"), "01 / Mesa carregada - dados de teste");
+			await chapter("01 / Mesa carregada - dados de teste", 3500);
+		}
+		await chapter("02 / Selecionar a mesma cena preserva o personagem", 1800);
 		await page.getByRole("button", { name: /Observatório esquecido/ }).click();
 		const count = await page.evaluate(
 			() => window.__vtt_store__.getState().tokens.length,
@@ -197,6 +197,7 @@ async function main() {
 			"Clicar novamente na cena selecionada não pode apagar seus tokens",
 		);
 		console.log("PASS: selecionar a mesma cena preserva tokens");
+		await chapter("Verificado: Carrara permanece na cena", 2500);
 		await page.evaluate(() => {
 			const s = window.__vtt_store__.getState();
 			s.addScene(s.scenes[0]);
@@ -208,6 +209,7 @@ async function main() {
 			1,
 			"Evento repetido não duplica cena",
 		);
+		await chapter("03 / Biblioteca: localizar um personagem", 1800);
 		await page
 			.getByRole("button", { name: "Personagens e NPCs", exact: true })
 			.click();
@@ -218,8 +220,11 @@ async function main() {
 			animations: "disabled",
 			path: path.join(output, "latest-preview.png"),
 		});
+		await chapter("Personagens presentes na cena, em um só lugar", 3500);
 		await page.getByRole("button", { name: "Localizar Carrara" }).click();
 		assert.equal(await page.getByRole("complementary").count(), 0);
+		await chapter("Verificado: personagem localizado e biblioteca recolhida", 2800);
+		await chapter("04 / Diário: consultar a sessão sem sair da mesa", 1800);
 		await page
 			.getByRole("button", { name: "Diário da campanha", exact: true })
 			.click();
@@ -230,6 +235,7 @@ async function main() {
 			animations: "disabled",
 			path: path.join(output, "vtt-journal.png"),
 		});
+		await chapter("Resumo e gancho da última sessão", 5000);
 		await page.keyboard.press("Escape");
 		await context.route("**/rest/v1/vtt_scenes*", (route) =>
 			route.request().method() === "POST"
@@ -244,10 +250,12 @@ async function main() {
 						body: "[]",
 					}),
 		);
+		await chapter("05 / Falha de rede simulada: preservar o texto digitado", 2500);
 		await page.getByRole("button", { name: "Nova cena", exact: true }).click();
 		await page
 			.getByPlaceholder("Ex: Taverna do Javali Bêbado")
 			.fill("Cena que deve ser preservada");
+		await chapter("Criar cena - formulário preenchido", 2500);
 		await page.getByRole("button", { name: "Criar Cena", exact: true }).click();
 		await page
 			.getByRole("alert")
@@ -257,6 +265,7 @@ async function main() {
 			await page.getByPlaceholder("Ex: Taverna do Javali Bêbado").inputValue(),
 			"Cena que deve ser preservada",
 		);
+		await chapter("Verificado: erro visível e nome da cena preservado", 4000);
 		await page.getByRole("button", { name: "Cancelar", exact: true }).click();
 		assert.equal(
 			await page.getByRole("alert").count(),
@@ -280,7 +289,15 @@ async function main() {
 			);
 		}
 		console.log("PASS: alvos de toque medidos em 44px");
+		await chapter("Cancelar limpa o erro. Testes desktop aprovados.", 3000);
+		await recording?.stop();
+		recording = null;
 		await page.setViewportSize({ width: 390, height: 844 });
+		await page.waitForTimeout(500);
+		if (process.env.VTT_RECORD) {
+			recording = await startPreviewRecorder(page, path.join(output, "vtt-mobile-preview.webm"), "Mobile / Mesa pronta - dados de teste");
+			await chapter("Mobile / Mesa pronta - dados de teste", 3000);
+		}
 		await page
 			.getByRole("button", { name: "Personagens e NPCs", exact: true })
 			.click();
@@ -297,6 +314,7 @@ async function main() {
 			animations: "disabled",
 			path: path.join(output, "vtt-mobile.png"),
 		});
+		await chapter("Biblioteca cabe na tela do celular", 4000);
 		await page.getByRole("button", { name: "Fechar biblioteca" }).click();
 		await page
 			.getByRole("button", { name: "Configurações do Grid", exact: true })
@@ -305,6 +323,7 @@ async function main() {
 			animations: "disabled",
 			path: path.join(output, "vtt-mobile-grid.png"),
 		});
+		await chapter("Configurações do grid acessíveis", 4000);
 		await page
 			.getByRole("button", { name: "Fechar configurações do grid" })
 			.click();
@@ -322,6 +341,9 @@ async function main() {
 		);
 		assert.deepEqual(errors, [], "Sem exceções no navegador");
 		console.log("PASS: layout mobile e controles separados para jogador");
+		await chapter("Jogador: cenas em preparação ficam ocultas", 4000);
+		await recording?.stop();
+		recording = null;
 	} catch (error) {
 		console.log(await page.locator("body").innerText());
 		console.log(errors);
@@ -332,8 +354,7 @@ async function main() {
 		throw error;
 	} finally {
 		await context.close();
-		if (process.env.VTT_RECORD && page.video())
-			await page.video().saveAs(path.join(output, "latest-preview.webm"));
+
 		await browser.close();
 		await server?.close();
 	}
