@@ -184,19 +184,28 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setScenes: (scenes) => set({ scenes }),
 	setActiveSceneId: (sceneId) =>
-		set({
-			activeSceneId: sceneId,
-			selectedTokenIds: [],
-			activeTokenIdForMenu: null,
-			tokens: [],
-			fogPaths: [],
-			fogState: null,
-			remoteCursors: {},
-			remoteMeasurements: {},
-		}),
+		set((state) =>
+			state.activeSceneId === sceneId
+				? state
+				: {
+						activeSceneId: sceneId,
+						selectedTokenIds: [],
+						activeTokenIdForMenu: null,
+						tokens: [],
+						fogPaths: [],
+						fogState: null,
+						remoteCursors: {},
+						remoteMeasurements: {},
+						draggedTokenId: null,
+						activeMeasurement: null,
+						activePings: [],
+					},
+		),
 	addScene: (scene) =>
 		set((state) => ({
-			scenes: [...state.scenes, scene],
+			scenes: state.scenes.some((s) => s.id === scene.id)
+				? state.scenes.map((s) => (s.id === scene.id ? scene : s))
+				: [...state.scenes, scene],
 			activeSceneId: state.activeSceneId || scene.id,
 		})),
 	updateScene: (sceneId, updates) =>
@@ -358,7 +367,16 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setActiveFogTool: (tool) => set({ activeFogTool: tool }),
 	setActiveFogMode: (mode) => set({ activeFogMode: mode }),
 	setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
-	setShowFogControls: (show) => set({ showFogControls: show }),
+	setShowFogControls: (show) =>
+		set(
+			show
+				? {
+						showFogControls: true,
+						showGridSettings: false,
+						showRosterDrawer: false,
+					}
+				: { showFogControls: false },
+		),
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),
@@ -371,9 +389,27 @@ export const useVTTStore = create<VTTState>((set) => ({
 			activePings: state.activePings.filter((p) => p.timestamp !== timestamp),
 		})),
 
-	setShowGridSettings: (show) => set({ showGridSettings: show }),
+	setShowGridSettings: (show) =>
+		set(
+			show
+				? {
+						showGridSettings: true,
+						showFogControls: false,
+						showRosterDrawer: false,
+					}
+				: { showGridSettings: false },
+		),
 	setShowSceneManager: (show) => set({ showSceneManager: show }),
-	setShowRosterDrawer: (show) => set({ showRosterDrawer: show }),
+	setShowRosterDrawer: (show) =>
+		set(
+			show
+				? {
+						showRosterDrawer: true,
+						showGridSettings: false,
+						showFogControls: false,
+					}
+				: { showRosterDrawer: false },
+		),
 	setShowCharacterSheetId: (id) => set({ showCharacterSheetId: id }),
 	setIsGM: (isGM) => set({ isGM }),
 }));

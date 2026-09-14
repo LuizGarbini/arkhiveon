@@ -5,16 +5,20 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import type { VTTPresenceUser } from "@/lib/vtt/types";
-import { VTT_PLAYER_COLORS, useVTTStore } from "@/lib/vtt/vtt-store";
 import { cn } from "@/lib/utils";
+import type { VTTPresenceUser } from "@/lib/vtt/types";
+import { useVTTStore, VTT_PLAYER_COLORS } from "@/lib/vtt/vtt-store";
 
 interface VTTPresenceBarProps {
 	onFocusPoint?: (x: number, y: number) => void;
 }
 
 export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
-	const { onlineUsers, userColor, setUserColor, remoteCursors, tokens } = useVTTStore();
+	const onlineUsers = useVTTStore((s) => s.onlineUsers);
+	const userColor = useVTTStore((s) => s.userColor);
+	const setUserColor = useVTTStore((s) => s.setUserColor);
+	const remoteCursors = useVTTStore((s) => s.remoteCursors);
+	const tokens = useVTTStore((s) => s.tokens);
 	const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
 	const handleUserClick = (u: VTTPresenceUser) => {
@@ -31,15 +35,22 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 	};
 
 	return (
-		<div className="flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-lg select-none">
+		<div className="flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-lg select-none">
 			{/* Online Presence Count Indicator */}
-			<div className="flex items-center gap-1.5 pr-2 border-r border-white/10 text-white/70">
+			<div className="flex items-center gap-1.5 pr-2 border-r border-border/70 text-muted-foreground">
 				<div className="relative flex h-2 w-2">
-					<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-					<span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+					{onlineUsers.length > 0 && (
+						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+					)}
+					<span
+						className={cn(
+							"relative inline-flex rounded-full h-2 w-2",
+							onlineUsers.length > 0 ? "bg-primary" : "bg-muted-foreground",
+						)}
+					/>
 				</div>
-				<span className="text-[11px] font-mono font-bold text-white">
-					{Math.max(1, onlineUsers.length)}
+				<span className="text-[11px] font-mono font-bold text-foreground">
+					{onlineUsers.length}
 				</span>
 			</div>
 
@@ -53,11 +64,15 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 						title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
 						style={{ borderColor: u.color }}
 						className={cn(
-							"relative h-7 w-7 rounded-full border-2 bg-zinc-900 overflow-hidden shrink-0 transition-transform hover:scale-125 hover:z-20 cursor-pointer shadow-md",
+							"relative h-11 w-11 rounded-full border-2 bg-card-elevated overflow-hidden shrink-0 transition-transform hover:scale-125 hover:z-20 cursor-pointer shadow-md",
 						)}
 					>
 						{u.avatarUrl ? (
-							<img src={u.avatarUrl} alt={u.userName} className="h-full w-full object-cover" />
+							<img
+								src={u.avatarUrl}
+								alt={u.userName}
+								className="h-full w-full object-cover"
+							/>
 						) : (
 							<div
 								style={{ backgroundColor: `${u.color}33`, color: u.color }}
@@ -79,16 +94,21 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 			{/* User Color Picker Popover */}
 			<Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
 				<PopoverTrigger
-					style={{ backgroundColor: userColor }}
+					aria-label="Alterar minha cor de ping e cursor"
 					title="Alterar Minha Cor de Ping e Cursor"
-					className="h-5 w-5 rounded-full border border-white/40 shadow-xs hover:scale-110 active:scale-95 transition-all cursor-pointer ml-1 inline-block"
-				/>
+					className="flex size-11 items-center justify-center rounded-xl hover:bg-accent active:scale-[0.98]"
+				>
+					<span
+						style={{ backgroundColor: userColor }}
+						className="size-4 rounded-full border border-border"
+					/>
+				</PopoverTrigger>
 				<PopoverContent
 					side="bottom"
 					align="end"
-					className="w-44 p-2.5 rounded-2xl border border-white/15 bg-black/90 backdrop-blur-xl shadow-2xl space-y-2"
+					className="vtt-dialog w-60 p-2.5 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-2xl space-y-2"
 				>
-					<div className="flex items-center gap-1.5 text-white/70 text-[11px] font-bold">
+					<div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold">
 						<Palette className="h-3.5 w-3.5 text-primary" />
 						<span>Cor do seu Cursor</span>
 					</div>
@@ -97,15 +117,16 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 							<button
 								type="button"
 								key={c}
+								aria-label={`Usar cor ${c}`}
 								onClick={() => {
 									setUserColor(c);
 									setIsColorPickerOpen(false);
 								}}
 								style={{ backgroundColor: c }}
 								className={cn(
-									"h-7 w-7 rounded-xl transition-all cursor-pointer",
+									"h-11 w-11 rounded-xl transition-all cursor-pointer",
 									userColor === c
-										? "ring-2 ring-white ring-offset-2 ring-offset-black scale-105"
+										? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-105"
 										: "hover:scale-105 opacity-80 hover:opacity-100",
 								)}
 							/>
