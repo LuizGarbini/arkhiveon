@@ -8,6 +8,7 @@ import {
 	TextStyle,
 } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
@@ -16,6 +17,10 @@ import {
 	getPointyHexCorners,
 	snapToGrid,
 } from "@/lib/vtt/grid-math";
+import {
+	canControlVTTToken,
+	type VTTCharacterOwner,
+} from "@/lib/vtt/permissions";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -27,6 +32,7 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
+	characterOwners?: readonly VTTCharacterOwner[];
 	onUpdateToken?: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
@@ -39,8 +45,11 @@ interface VTTCanvasProps {
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
+const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
+
 export function VTTCanvas({
 	scene,
+	characterOwners = EMPTY_CHARACTER_OWNERS,
 	onUpdateToken,
 	onBroadcastDrag,
 	onBroadcastCursor,
@@ -49,6 +58,7 @@ export function VTTCanvas({
 	onBroadcastFog,
 	onPersistFog,
 }: VTTCanvasProps) {
+	const { user } = useAuth();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const appRef = useRef<Application | null>(null);
 	const [rendererReady, setRendererReady] = useState(false);
@@ -441,7 +451,14 @@ export function VTTCanvas({
 			const tokenContainer = new Container();
 			tokenContainer.position.set(token.x, token.y);
 			tokenContainer.eventMode = "static";
-			tokenContainer.cursor = token.isLocked ? "default" : "grab";
+			const canControl = canControlVTTToken(
+				token,
+				user?.id,
+				isGM,
+				characterOwners,
+			);
+			tokenContainer.cursor =
+				token.isLocked || !canControl ? "default" : "grab";
 			tokenContainer.alpha = isGMLayer ? 0.55 : token.isHidden ? 0.5 : 1;
 
 			// Register in display objects map for zero-thrash GPU interpolation
@@ -599,6 +616,7 @@ export function VTTCanvas({
 
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
+				if (!canControl) return;
 				if (e.button === 2) {
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
@@ -651,6 +669,8 @@ export function VTTCanvas({
 	}, [
 		rendererReady,
 		tokens,
+		characterOwners,
+		user?.id,
 		scene,
 		selectedTokenIds,
 		isGM,

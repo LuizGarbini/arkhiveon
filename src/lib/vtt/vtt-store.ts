@@ -142,6 +142,19 @@ interface VTTState {
 	setIsGM: (isGM: boolean) => void;
 }
 
+const emptySceneContents = () => ({
+	selectedTokenIds: [],
+	activeTokenIdForMenu: null,
+	tokens: [],
+	fogPaths: [],
+	fogState: null,
+	remoteCursors: {},
+	remoteMeasurements: {},
+	draggedTokenId: null,
+	activeMeasurement: null,
+	activePings: [],
+});
+
 export const useVTTStore = create<VTTState>((set) => ({
 	scenes: [],
 	activeSceneId: null,
@@ -189,25 +202,25 @@ export const useVTTStore = create<VTTState>((set) => ({
 				? state
 				: {
 						activeSceneId: sceneId,
-						selectedTokenIds: [],
-						activeTokenIdForMenu: null,
-						tokens: [],
-						fogPaths: [],
-						fogState: null,
-						remoteCursors: {},
-						remoteMeasurements: {},
-						draggedTokenId: null,
-						activeMeasurement: null,
-						activePings: [],
+						...emptySceneContents(),
 					},
 		),
 	addScene: (scene) =>
-		set((state) => ({
-			scenes: state.scenes.some((s) => s.id === scene.id)
+		set((state) => {
+			if (!state.isGM && !scene.isActive) return state;
+			const scenes = state.scenes.some((s) => s.id === scene.id)
 				? state.scenes.map((s) => (s.id === scene.id ? scene : s))
-				: [...state.scenes, scene],
-			activeSceneId: state.activeSceneId || scene.id,
-		})),
+				: [...state.scenes, scene];
+			const nextId =
+				!state.isGM && scene.isActive
+					? scene.id
+					: state.activeSceneId || scene.id;
+			return {
+				scenes: !state.isGM ? scenes.filter((s) => s.id === scene.id) : scenes,
+				...(nextId !== state.activeSceneId ? emptySceneContents() : {}),
+				activeSceneId: nextId,
+			};
+		}),
 	updateScene: (sceneId, updates) =>
 		set((state) => ({
 			scenes: state.scenes.map((s) =>
@@ -217,12 +230,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 	removeScene: (sceneId) =>
 		set((state) => {
 			const remaining = state.scenes.filter((s) => s.id !== sceneId);
+			if (state.activeSceneId !== sceneId) return { scenes: remaining };
 			return {
 				scenes: remaining,
+				...emptySceneContents(),
 				activeSceneId:
-					state.activeSceneId === sceneId
-						? remaining[0]?.id || null
-						: state.activeSceneId,
+					(state.isGM ? remaining[0] : remaining.find((s) => s.isActive))?.id ||
+					null,
 			};
 		}),
 
@@ -238,13 +252,20 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setActiveTool: (tool) => set({ activeTool: tool }),
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
 
-	setTokens: (tokens) => set({ tokens }),
-	addToken: (token) =>
+	setTokens: (tokens) =>
 		set((state) => ({
-			tokens: state.tokens.some((t) => t.id === token.id)
-				? state.tokens.map((t) => (t.id === token.id ? token : t))
-				: [...state.tokens, token],
+			tokens: tokens.filter((t) => t.sceneId === state.activeSceneId),
 		})),
+	addToken: (token) =>
+		set((state) =>
+			token.sceneId !== state.activeSceneId
+				? state
+				: {
+						tokens: state.tokens.some((t) => t.id === token.id)
+							? state.tokens.map((t) => (t.id === token.id ? token : t))
+							: [...state.tokens, token],
+					},
+		),
 	updateToken: (tokenId, updates) =>
 		set((state) => ({
 			tokens: state.tokens.map((t) =>
@@ -313,10 +334,14 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setUserColor: (color) => set({ userColor: color }),
 
 	setFogState: (fogState) =>
-		set({
-			fogState,
-			fogPaths: fogState?.revealedPaths || [],
-		}),
+		set((state) =>
+			fogState && fogState.sceneId !== state.activeSceneId
+				? state
+				: {
+						fogState,
+						fogPaths: fogState?.revealedPaths || [],
+					},
+		),
 	setFogPaths: (paths) =>
 		set((state) => ({
 			fogPaths: paths,

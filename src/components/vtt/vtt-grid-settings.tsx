@@ -58,6 +58,7 @@ export function VTTGridSettings({
 			{/* Grid Type */}
 			<Field label="Tipo de Grid">
 				<Select
+					aria-label="Tipo de Grid"
 					value={activeScene.gridType}
 					onChange={(e) =>
 						onUpdateSceneSettings({
@@ -94,6 +95,8 @@ export function VTTGridSettings({
 							max={180}
 							step={5}
 							value={activeScene.gridSize}
+							aria-label="Tamanho da célula"
+							aria-valuetext={`${activeScene.gridSize} pixels`}
 							onChange={(e) =>
 								onUpdateSceneSettings({
 									gridType: activeScene.gridType,
@@ -104,7 +107,7 @@ export function VTTGridSettings({
 									gridScaleUnit: activeScene.gridScaleUnit,
 								})
 							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-accent rounded-lg"
+							className="vtt-range w-full cursor-pointer"
 						/>
 					</div>
 
@@ -122,6 +125,8 @@ export function VTTGridSettings({
 							max={1}
 							step={0.05}
 							value={activeScene.gridOpacity}
+							aria-label="Opacidade do grid"
+							aria-valuetext={`${Math.round(activeScene.gridOpacity * 100)}%`}
 							onChange={(e) =>
 								onUpdateSceneSettings({
 									gridType: activeScene.gridType,
@@ -132,7 +137,7 @@ export function VTTGridSettings({
 									gridScaleUnit: activeScene.gridScaleUnit,
 								})
 							}
-							className="w-full accent-primary cursor-pointer h-1.5 bg-accent rounded-lg"
+							className="vtt-range w-full cursor-pointer"
 						/>
 					</div>
 
@@ -147,6 +152,7 @@ export function VTTGridSettings({
 									type="button"
 									key={color}
 									aria-label={`Cor do grid ${color}`}
+									aria-pressed={activeScene.gridColor === color}
 									onClick={() =>
 										onUpdateSceneSettings({
 											gridType: activeScene.gridType,
