@@ -83,6 +83,16 @@ function VTTSession() {
 	const [characterOwners, setCharacterOwners] = useState<VTTCharacterOwner[]>(
 		[],
 	);
+	const [ownershipError, setOwnershipError] = useState<string | null>(null);
+	const [ownershipLoading, setOwnershipLoading] = useState(false);
+	const ownershipRequestRef = useRef(0);
+	const sessionGenerationRef = useRef(0);
+	useEffect(
+		() => () => {
+			sessionGenerationRef.current += 1;
+		},
+		[],
+	);
 	const sceneRequestRef = useRef(0);
 	const tokenRequestRef = useRef(0);
 	const tokenMutationRef = useRef(new Map<string, number>());
@@ -121,28 +131,42 @@ function VTTSession() {
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
 
-	useEffect(() => {
+	const fetchCharacterOwners = useCallback(async () => {
+		const requestId = ++ownershipRequestRef.current;
 		const client = getSupabase();
 		if (!client || !user) return;
-		let cancelled = false;
-		void client
-			.from("characters")
-			.select("id,user_id,created_by")
-			.eq("campaign_id", campaignId)
-			.then(({ data, error }) => {
-				if (!cancelled && !error)
-					setCharacterOwners(
-						(data || []).map((row) => ({
-							id: row.id,
-							userId: row.user_id,
-							createdBy: row.created_by,
-						})),
-					);
-			});
-		return () => {
-			cancelled = true;
-		};
+		setOwnershipLoading(true);
+		setOwnershipError(null);
+		try {
+			const { data, error } = await client
+				.from("characters")
+				.select("id,user_id,created_by")
+				.eq("campaign_id", campaignId);
+			if (error) throw error;
+			if (requestId !== ownershipRequestRef.current) return;
+			setCharacterOwners(
+				(data || []).map((row) => ({
+					id: row.id,
+					userId: row.user_id,
+					createdBy: row.created_by,
+				})),
+			);
+		} catch {
+			if (requestId === ownershipRequestRef.current)
+				setOwnershipError(
+					"Não foi possível carregar as permissões das fichas. Alguns tokens podem ficar indisponíveis.",
+				);
+		} finally {
+			if (requestId === ownershipRequestRef.current) setOwnershipLoading(false);
+		}
 	}, [campaignId, user]);
+	useEffect(() => {
+		setCharacterOwners([]);
+		void fetchCharacterOwners();
+		return () => {
+			ownershipRequestRef.current += 1;
+		};
+	}, [fetchCharacterOwners]);
 
 	// 2. Fetch scenes for this campaign from Supabase
 	const fetchScenes = useCallback(async () => {
@@ -1021,6 +1045,7 @@ function VTTSession() {
 
 	// Token Management Handlers
 	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
+		const sessionGeneration = sessionGenerationRef.current;
 		const client = getSupabase();
 		if (!client || !activeSceneId || !isGM)
 			throw new Error(
@@ -1061,7 +1086,7 @@ function VTTSession() {
 			throw new Error("Não foi possível colocar o token. Tente novamente.");
 		}
 
-		if (data) {
+		if (data && sessionGenerationRef.current === sessionGeneration) {
 			const spawned: VTTToken = {
 				id: data.id,
 				sceneId: data.scene_id,
@@ -1097,6 +1122,7 @@ function VTTSession() {
 			return;
 		}
 		setMutationError(null);
+		const sessionGeneration = sessionGenerationRef.current;
 		const mutationId = (tokenMutationRef.current.get(tokenId) || 0) + 1;
 		tokenMutationRef.current.set(tokenId, mutationId);
 
@@ -1131,12 +1157,21 @@ function VTTSession() {
 				.single();
 			if (error || !data) throw error || new Error("Token não atualizado");
 			if (
+				sessionGenerationRef.current === sessionGeneration &&
 				tokenMutationRef.current.get(tokenId) === mutationId &&
 				useVTTStore.getState().activeSceneId === activeSceneId
-			)
-				updateToken(tokenId, updates);
+			) {
+				// A completed write must not rewind a newer pointer gesture.
+				const acceptedUpdates = { ...updates };
+				if (useVTTStore.getState().draggedTokenId === tokenId) {
+					delete acceptedUpdates.x;
+					delete acceptedUpdates.y;
+				}
+				updateToken(tokenId, acceptedUpdates);
+			}
 		} catch {
 			if (
+				sessionGenerationRef.current !== sessionGeneration ||
 				tokenMutationRef.current.get(tokenId) !== mutationId ||
 				useVTTStore.getState().activeSceneId !== activeSceneId
 			)
@@ -1149,6 +1184,7 @@ function VTTSession() {
 	};
 
 	const handleDeleteToken = async (tokenId: string) => {
+		const sessionGeneration = sessionGenerationRef.current;
 		if (!canEditToken(tokenId)) {
 			setMutationError("Você não controla este token.");
 			return;
@@ -1167,9 +1203,13 @@ function VTTSession() {
 				.select("id")
 				.single();
 			if (error || !data) throw error || new Error("Token não removido");
-			if (useVTTStore.getState().activeSceneId === activeSceneId)
+			if (
+				sessionGenerationRef.current === sessionGeneration &&
+				useVTTStore.getState().activeSceneId === activeSceneId
+			)
 				removeToken(tokenId);
 		} catch {
+			if (sessionGenerationRef.current !== sessionGeneration) return;
 			setMutationError(
 				"Não foi possível remover o token. Ele foi mantido na mesa.",
 			);
@@ -1208,12 +1248,22 @@ function VTTSession() {
 				/>
 			)}
 
-			{(mutationError || sceneDataError) && (
+			{(mutationError || sceneDataError || ownershipError) && (
 				<div
 					role="alert"
-					className="absolute bottom-20 left-1/2 z-[60] flex w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-xl border border-destructive/50 bg-card p-3 shadow-lg"
+					className="absolute bottom-20 left-1/2 z-[60] flex flex-wrap w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-xl border border-destructive/50 bg-card p-3 shadow-lg"
 				>
-					<p className="flex-1 text-sm">{mutationError || sceneDataError}</p>
+					<p className="min-w-40 flex-1 text-sm">
+						{mutationError || sceneDataError || ownershipError}
+					</p>
+					{ownershipError && (
+						<Button
+							disabled={ownershipLoading}
+							onClick={() => void fetchCharacterOwners()}
+						>
+							Recarregar permissões
+						</Button>
+					)}
 					{sceneDataError && (
 						<Button
 							onClick={() => activeSceneId && void fetchTokens(activeSceneId)}
@@ -1221,16 +1271,18 @@ function VTTSession() {
 							Tentar novamente
 						</Button>
 					)}
-					<Button
-						aria-label="Fechar aviso da mesa"
-						variant="ghost"
-						onClick={() => {
-							setMutationError(null);
-							setSceneDataError(null);
-						}}
-					>
-						Fechar
-					</Button>
+					{(mutationError || sceneDataError) && (
+						<Button
+							aria-label="Fechar aviso da mesa"
+							variant="ghost"
+							onClick={() => {
+								setMutationError(null);
+								setSceneDataError(null);
+							}}
+						>
+							Fechar
+						</Button>
+					)}
 				</div>
 			)}
 			{/* Left Floating Toolbar */}

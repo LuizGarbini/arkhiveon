@@ -36,3 +36,11 @@ As correções são verificadas localmente, mas os testes usam dados e respostas
 Build, 9 testes unitários e preview Playwright de desktop/celular passaram. O teste de exclusão rejeitada também detectou um aviso encoberto pelo menu; a sobreposição foi corrigida e o fluxo passou na repetição.
 
 Acompanhamento: #81 (autorização), #82 (persistência e reconexão), #83 (fichas e combate).
+
+## Revisão externa — três P2 corrigidos
+
+Os três relatos foram reproduzidos no componente real da rota com Supabase simulado: ausência de recuperação de autoria, PV de 8 voltando para 10 após reabrir a sessão e posição de 200 voltando para 100 durante outro arraste.
+
+A consulta de autoria agora trata erros e permite repetir. Mutações de tokens capturam a geração da sessão, invalidada no cleanup; respostas antigas não alteram a nova mesa. Durante arraste ativo, conclusões de atualização preservam x/y e aplicam os demais campos.
+
+Cinco testes de integração cobrem esses casos, falha tardia após desmontagem e atualização de PV durante arraste. Executar com `pnpm test src/lib/vtt`; o plugin de rotas desativa apenas o code splitting no modo de teste para exercitar o componente real.

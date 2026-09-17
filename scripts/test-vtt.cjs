@@ -24,7 +24,9 @@ async function main() {
 	await context.route("**/rest/v1/**", (route) =>
 		route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
 	);
-	await context.addInitScript(() => {
+	let ownershipUnavailable = true;
+ await context.route("**/rest/v1/characters*", route => route.fulfill({ status: ownershipUnavailable ? 500 : 200, contentType: "application/json", body: ownershipUnavailable ? JSON.stringify({message: "Falha simulada de autoria"}) : "[]" }));
+ await context.addInitScript(() => {
 		localStorage.setItem("arkhiveon_preview_auth", "true");
 		localStorage.setItem(
 			"rpg-notes-storage",
@@ -186,7 +188,14 @@ async function main() {
 			recording = await startPreviewRecorder(page, path.join(output, "latest-preview.webm"), "01 / Mesa carregada - dados de teste");
 			await chapter("01 / Mesa carregada - dados de teste", 3500);
 		}
-		await chapter("02 / Selecionar a mesma cena preserva o personagem", 1800);
+		await page.getByRole("button", { name: "Recarregar permissões", exact: true }).waitFor();
+ await chapter("Falha de autoria: aviso visível e recuperação na própria mesa", 3000);
+ ownershipUnavailable = false;
+ await page.getByRole("button", { name: "Recarregar permissões", exact: true }).click();
+ await page.getByRole("button", { name: "Recarregar permissões", exact: true }).waitFor({state: "hidden"});
+ await chapter("Permissões recarregadas sem sair da cena", 2000);
+ console.log("PASS: falha de autoria visível e consulta repetida");
+ await chapter("02 / Selecionar a mesma cena preserva o personagem", 1800);
 		await page.getByRole("button", { name: /Observatório esquecido/ }).click();
 		const count = await page.evaluate(
 			() => window.__vtt_store__.getState().tokens.length,
