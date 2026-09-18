@@ -106,7 +106,7 @@ export function VTTFogControls({
 					type="button"
 					onClick={handleToggleFog}
 					className={cn(
-						"flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 font-semibold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer touch-manipulation",
+						"flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 font-semibold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer touch-manipulation",
 						scene?.fogEnabled
 							? "border border-primary/40 bg-primary/15 text-foreground"
 							: "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -125,7 +125,7 @@ export function VTTFogControls({
 					onClick={handleToggleExploration}
 					title="Modo Exploração: Áreas visitadas ficam em penumbra com mapa visível"
 					className={cn(
-						"flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-semibold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer touch-manipulation",
+						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-semibold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer touch-manipulation",
 						scene?.fogExploration
 							? "border border-primary/40 bg-primary/15 text-foreground"
 							: "text-muted-foreground hover:bg-muted hover:text-foreground",

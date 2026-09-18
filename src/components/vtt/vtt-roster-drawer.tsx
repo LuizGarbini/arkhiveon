@@ -206,7 +206,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 					type="button"
 					onClick={() => setActiveTab("characters")}
 					className={cn(
-						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
+						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "characters"
 							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
 							: "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -220,7 +220,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 					type="button"
 					onClick={() => setActiveTab("npcs")}
 					className={cn(
-						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
+						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "npcs"
 							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
 							: "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -234,7 +234,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 					type="button"
 					onClick={() => setActiveTab("custom")}
 					className={cn(
-						"flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
+						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
 						activeTab === "custom"
 							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
 							: "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -260,7 +260,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 							value={customName}
 							onChange={(e) => setCustomName(e.target.value)}
 							placeholder="Ex: Dragão Vermelho Jovem, Goblin..."
-							className="h-11 text-xs"
+							className="h-[44px] text-xs"
 						/>
 					</div>
 
@@ -279,7 +279,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 								onChange={(e) =>
 									setCustomHp(Number.parseInt(e.target.value, 10) || 1)
 								}
-								className="h-11 text-xs font-mono"
+								className="h-[44px] text-xs font-mono"
 							/>
 						</div>
 
@@ -312,7 +312,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 						type="button"
 						disabled={!customName.trim() || spawningId === "custom"}
 						onClick={handleSpawnCustomToken}
-						className="mt-2 h-11 w-full gap-1.5 rounded-2xl text-xs font-bold"
+						className="mt-2 h-[44px] w-full gap-1.5 rounded-2xl text-xs font-bold"
 					>
 						<Plus className="h-4 w-4" />
 						<span>Instanciar Monstro no Campo de Visão</span>
@@ -332,7 +332,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										? "Buscar por nome ou classe..."
 										: "Buscar por NPC ou ameaça..."
 								}
-								className="h-11 rounded-xl pl-9 text-xs"
+								className="h-[44px] rounded-xl pl-9 text-xs"
 							/>
 						</div>
 					</div>
@@ -375,7 +375,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 											size="sm"
 											disabled={spawningId === char.id}
 											onClick={() => handleSpawnCharacter(char)}
-											className="h-11 shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
+											className="h-[44px] shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
 										>
 											<Plus className="h-3 w-3" />
 											<span>Colocar</span>
@@ -421,7 +421,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
 										size="sm"
 										disabled={spawningId === npc.id}
 										onClick={() => handleSpawnNPC(npc)}
-										className="h-11 shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
+										className="h-[44px] shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
 									>
 										<Plus className="h-3 w-3" />
 										<span>Colocar</span>

@@ -38,7 +38,10 @@ interface VTTCanvasProps {
 	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
 	onBroadcastPing?: (ping: VTTPingEvent) => void;
 	onBroadcastFog?: (path: VTTFogPath) => void;
-	onBroadcastTemplate?: (template: VTTSpellTemplate | null) => void;
+	onBroadcastTemplate?: (
+		template: VTTSpellTemplate | null,
+		placed?: boolean,
+	) => void;
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
@@ -123,6 +126,7 @@ export function VTTCanvas({
 		previewTemplate,
 		placedTemplates,
 		remoteTemplates,
+		remoteTemplatePreviews,
 		setPreviewTemplate,
 		addPlacedTemplate,
 		setActiveTool,
@@ -855,13 +859,20 @@ export function VTTCanvas({
 		const allTemplates: VTTSpellTemplate[] = [
 			...placedTemplates,
 			...Object.values(remoteTemplates),
+			...Object.values(remoteTemplatePreviews),
 		];
 		if (previewTemplate) allTemplates.push(previewTemplate);
 
 		for (const template of allTemplates) {
 			drawSpellTemplate(layer, template, scene.gridSize);
 		}
-	}, [placedTemplates, remoteTemplates, previewTemplate, scene]);
+	}, [
+		placedTemplates,
+		remoteTemplates,
+		remoteTemplatePreviews,
+		previewTemplate,
+		scene,
+	]);
 
 	// 8. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
@@ -1324,7 +1335,7 @@ export function VTTCanvas({
 					scene.gridSize,
 				);
 				const placed: VTTSpellTemplate = {
-					id: `tpl-${Date.now()}`,
+					id: crypto.randomUUID(),
 					kind: activeTemplateKind,
 					originX: start.x,
 					originY: start.y,
@@ -1333,7 +1344,7 @@ export function VTTCanvas({
 					color: userColor,
 				};
 				addPlacedTemplate(placed);
-				if (onBroadcastTemplate) onBroadcastTemplate(placed);
+				if (onBroadcastTemplate) onBroadcastTemplate(placed, true);
 			}
 		};
 

@@ -53,6 +53,12 @@ interface VTTState {
 	previewTemplate: VTTSpellTemplate | null;
 	placedTemplates: VTTSpellTemplate[];
 	remoteTemplates: Record<string, VTTSpellTemplate>;
+	remoteTemplatePreviews: Record<string, VTTSpellTemplate>;
+	setRemoteTemplatePreview: (
+		userId: string,
+		template: VTTSpellTemplate | null,
+	) => void;
+	removeRemoteTemplates: (userId: string, ids: string[]) => void;
 	showTemplateControls: boolean;
 
 	// Tokens & Fog for current scene
@@ -172,6 +178,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	previewTemplate: null,
 	placedTemplates: [],
 	remoteTemplates: {},
+	remoteTemplatePreviews: {},
 	showTemplateControls: false,
 
 	tokens: [],
@@ -214,6 +221,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 			placedTemplates: [],
 			previewTemplate: null,
 			remoteTemplates: {},
+			remoteTemplatePreviews: {},
 		}),
 	addScene: (scene) =>
 		set((state) => ({
@@ -261,7 +269,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setPreviewTemplate: (template) => set({ previewTemplate: template }),
 	addPlacedTemplate: (template) =>
 		set((state) => ({
-			placedTemplates: [...state.placedTemplates, template],
+			placedTemplates: [
+				...state.placedTemplates.filter((t) => t.id !== template.id),
+				template,
+			],
 			previewTemplate: null,
 		})),
 	clearPlacedTemplates: () =>
@@ -270,13 +281,33 @@ export const useVTTStore = create<VTTState>((set) => ({
 		set((state) => {
 			if (!template) {
 				const next = { ...state.remoteTemplates };
-				delete next[userId];
+				for (const [id, placed] of Object.entries(next)) {
+					if (placed.userId === userId) delete next[id];
+				}
 				return { remoteTemplates: next };
 			}
 			return {
-				remoteTemplates: { ...state.remoteTemplates, [userId]: template },
+				remoteTemplates: {
+					...state.remoteTemplates,
+					[template.id]: { ...template, userId },
+				},
 			};
 		}),
+	setRemoteTemplatePreview: (userId, template) =>
+		set((state) => {
+			const next = { ...state.remoteTemplatePreviews };
+			if (template) next[userId] = { ...template, userId };
+			else delete next[userId];
+			return { remoteTemplatePreviews: next };
+		}),
+	removeRemoteTemplates: (userId, ids) =>
+		set((state) => ({
+			remoteTemplates: Object.fromEntries(
+				Object.entries(state.remoteTemplates).filter(
+					([id, template]) => template.userId !== userId || !ids.includes(id),
+				),
+			),
+		})),
 	setShowTemplateControls: (show) => set({ showTemplateControls: show }),
 
 	setTokens: (tokens) => set({ tokens }),

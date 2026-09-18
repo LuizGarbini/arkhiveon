@@ -86,7 +86,7 @@ export function VTTSceneBar({
 				<div className="flex items-center gap-2.5 shrink-0">
 					<Link
 						to="/dashboard"
-						className="flex min-h-11 items-center gap-1.5 rounded-xl border border-border/70 bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted"
+						className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border/70 bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted"
 					>
 						<ArrowLeft className="h-3.5 w-3.5" />
 						<span className="hidden sm:inline">Voltar</span>
@@ -143,7 +143,7 @@ export function VTTSceneBar({
 							size="sm"
 							onClick={() => setShowRosterDrawer(!showRosterDrawer)}
 							className={cn(
-								"h-11 gap-1.5 rounded-xl text-xs transition-all duration-150 ease-out",
+								"h-[44px] gap-1.5 rounded-xl text-xs transition-all duration-150 ease-out",
 								showRosterDrawer
 									? "border-primary bg-primary text-primary-foreground"
 									: "border-border/70 bg-background/50 text-foreground hover:bg-muted",
@@ -162,7 +162,7 @@ export function VTTSceneBar({
 									variant="outline"
 									size="sm"
 									onClick={() => onActivateScene(activeScene.id)}
-									className="h-11 gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+									className="h-[44px] gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
 								>
 									<Eye className="h-3.5 w-3.5" />
 									<span className="hidden md:inline">Ativar p/ Jogadores</span>
@@ -173,7 +173,7 @@ export function VTTSceneBar({
 								type="button"
 								size="sm"
 								onClick={() => setIsCreateModalOpen(true)}
-								className="h-11 gap-1.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20"
+								className="h-[44px] gap-1.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20"
 							>
 								<Plus className="h-3.5 w-3.5" />
 								<span className="hidden sm:inline">Nova Cena</span>

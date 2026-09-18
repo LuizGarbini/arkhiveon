@@ -36,7 +36,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 		<div
 			className={cn(
 				vttHudClass,
-				"flex min-h-11 items-center gap-1.5 px-2.5 py-1 select-none",
+				"flex min-h-[44px] items-center gap-1.5 px-2.5 py-1 select-none",
 			)}
 		>
 			<div className="flex items-center gap-1.5 border-r border-border/70 pr-2 text-muted-foreground">
@@ -57,7 +57,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 						onClick={() => handleUserClick(u)}
 						title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
 						style={{ borderColor: u.color }}
-						className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 bg-card shadow-md transition-all duration-150 ease-out hover:z-20 hover:scale-110 active:scale-[0.98] cursor-pointer"
+						className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-full border-2 bg-card shadow-md transition-all duration-150 ease-out hover:z-20 hover:scale-110 active:scale-[0.98] cursor-pointer"
 					>
 						{u.avatarUrl ? (
 							<img
@@ -87,7 +87,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 				<PopoverTrigger
 					style={{ backgroundColor: userColor }}
 					title="Alterar Minha Cor de Ping e Cursor"
-					className="ml-1 inline-flex h-11 w-11 cursor-pointer rounded-full border border-border/70 shadow-xs transition-all duration-150 ease-out hover:scale-105 active:scale-[0.98]"
+					className="ml-1 inline-flex h-[44px] w-[44px] cursor-pointer rounded-full border border-border/70 shadow-xs transition-all duration-150 ease-out hover:scale-105 active:scale-[0.98]"
 				/>
 				<PopoverContent
 					side="bottom"
@@ -109,7 +109,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 								}}
 								style={{ backgroundColor: c }}
 								className={cn(
-									"h-11 w-11 cursor-pointer rounded-xl transition-all duration-150 ease-out active:scale-[0.98]",
+									"h-[44px] w-[44px] cursor-pointer rounded-xl transition-all duration-150 ease-out active:scale-[0.98]",
 									userColor === c
 										? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-105"
 										: "opacity-80 hover:scale-105 hover:opacity-100",

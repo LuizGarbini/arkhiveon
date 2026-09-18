@@ -563,11 +563,28 @@ function VTTPage() {
 					payload: {
 						userId?: string;
 						template?: VTTSpellTemplate | null;
+						sceneId?: string;
+						placed?: boolean;
+						removedIds?: string[];
 					};
 				}) => {
 					const data = payload.payload;
-					if (data?.userId) {
-						setRemoteTemplate(data.userId, data.template || null);
+					if (
+						data?.userId &&
+						data.sceneId === useVTTStore.getState().activeSceneId
+					) {
+						const store = useVTTStore.getState();
+						if (data.removedIds) {
+							store.removeRemoteTemplates(data.userId, data.removedIds);
+							store.setRemoteTemplatePreview(data.userId, null);
+						} else if (data.placed && data.template) {
+							setRemoteTemplate(data.userId, data.template);
+							store.setRemoteTemplatePreview(data.userId, null);
+						} else
+							store.setRemoteTemplatePreview(
+								data.userId,
+								data.template || null,
+							);
 					}
 				},
 			)
@@ -693,12 +710,17 @@ function VTTPage() {
 	}, []);
 
 	const handleBroadcastTemplate = useCallback(
-		(template: VTTSpellTemplate | null) => {
+		(template: VTTSpellTemplate | null, placed = false) => {
 			if (!roomChannelRef.current || !user) return;
 			roomChannelRef.current.send({
 				type: "broadcast",
 				event: "template_move",
-				payload: { userId: user.id, template },
+				payload: {
+					userId: user.id,
+					sceneId: useVTTStore.getState().activeSceneId,
+					template,
+					placed,
+				},
 			});
 		},
 		[user],
@@ -1026,7 +1048,16 @@ function VTTPage() {
 				onClearFog={handleClearFog}
 			/>
 
-			<VTTTemplateControls />
+			<VTTTemplateControls
+				onClearTemplates={(removedIds) => {
+					if (user)
+						roomChannelRef.current?.send({
+							type: "broadcast",
+							event: "template_move",
+							payload: { userId: user.id, sceneId: activeSceneId, removedIds },
+						});
+				}}
+			/>
 
 			{/* Grid Settings Popover */}
 			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />

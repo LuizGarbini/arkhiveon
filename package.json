@@ -20,7 +20,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:check": "drizzle-kit check",
-    "preview:record": "npx tsx scripts/record-preview.ts"
+    "preview:record": "tsx scripts/record-preview.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1052.0",

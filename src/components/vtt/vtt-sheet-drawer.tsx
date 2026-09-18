@@ -1,5 +1,5 @@
 import { Dices, Heart, Shield, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button } from "@/components/ui/button";
 import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
@@ -25,12 +25,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	const characters = useRPGStore((s) => s.characters);
 
 	const token = useMemo(
-		() =>
-			tokens.find(
-				(t) =>
-					t.id === showCharacterSheetId ||
-					t.characterId === showCharacterSheetId,
-			) ?? null,
+		() => tokens.find((t) => t.id === showCharacterSheetId) ?? null,
 		[tokens, showCharacterSheetId],
 	);
 
@@ -52,6 +47,11 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 		diceType: "d20" | "d100" | "d10" | "d6";
 	}>({ open: false, label: "", diceType: "d20" });
 
+	const handleRollComplete = useCallback(() => undefined, []);
+	const handleRollClose = useCallback(
+		() => setRollState({ open: false, label: "", diceType: "d20" }),
+		[],
+	);
 	return (
 		<>
 			<aside
@@ -82,10 +82,8 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 				open={rollState.open}
 				attributeLabel={rollState.label}
 				diceType={rollState.diceType}
-				onComplete={() => undefined}
-				onClose={() =>
-					setRollState({ open: false, label: "", diceType: "d20" })
-				}
+				onComplete={handleRollComplete}
+				onClose={handleRollClose}
 			/>
 		</>
 	);
@@ -177,7 +175,7 @@ function SheetBody({
 								onClick={() => handleModifyHp(delta)}
 								className={cn(
 									vttChipClass,
-									"min-h-11 border-border/70 bg-background/80 font-mono",
+									"min-h-[44px] border-border/70 bg-background/80 font-mono",
 									delta < 0
 										? "text-destructive hover:bg-destructive/10"
 										: "text-primary hover:bg-primary/10",
@@ -249,7 +247,7 @@ function SheetBody({
 				<Button
 					type="button"
 					variant="outline"
-					className="h-11 w-full gap-2"
+					className="h-[44px] w-full gap-2"
 					onClick={() => onStartRoll("Teste livre")}
 				>
 					<Dices className="h-4 w-4" />

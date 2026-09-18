@@ -23,7 +23,11 @@ const KINDS: {
 	{ id: "cube", label: "Cubo", hint: "Área quadrada", icon: Square },
 ];
 
-export function VTTTemplateControls() {
+export function VTTTemplateControls({
+	onClearTemplates,
+}: {
+	onClearTemplates: (ids: string[]) => void;
+}) {
 	const {
 		activeTool,
 		showTemplateControls,
@@ -100,7 +104,10 @@ export function VTTTemplateControls() {
 
 			<button
 				type="button"
-				onClick={() => clearPlacedTemplates()}
+				onClick={() => {
+					onClearTemplates(placedTemplates.map((template) => template.id));
+					clearPlacedTemplates();
+				}}
 				disabled={placedTemplates.length === 0}
 				className={cn(
 					vttChipClass,

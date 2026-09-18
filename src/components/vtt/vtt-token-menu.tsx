@@ -11,7 +11,7 @@ import {
 	Unlock,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -54,12 +54,51 @@ export function VTTTokenMenu({
 	} = useVTTStore();
 	const [showConditions, setShowConditions] = useState(false);
 
+	const isOpen = Boolean(token && activeTokenIdForMenu === token.id);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const [bounds, setBounds] = useState({
+		height: 298,
+		width: window.innerWidth,
+		heightAvailable: window.innerHeight,
+	});
+	useLayoutEffect(() => {
+		if (!isOpen) return;
+		const panel = panelRef.current;
+		if (!panel) return;
+		const measure = () =>
+			setBounds((old) => {
+				const next = {
+					height: panel.getBoundingClientRect().height || old.height,
+					width: window.innerWidth,
+					heightAvailable: window.innerHeight,
+				};
+				return old.height === next.height &&
+					old.width === next.width &&
+					old.heightAvailable === next.heightAvailable
+					? old
+					: next;
+			});
+		measure();
+		const observer =
+			typeof ResizeObserver !== "undefined"
+				? new ResizeObserver(measure)
+				: null;
+		observer?.observe(panel);
+		window.addEventListener("resize", measure);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener("resize", measure);
+		};
+	}, [isOpen]);
 	if (!token || activeTokenIdForMenu !== token.id) return null;
 
 	const centerX = token.x * viewport.scale + viewport.x;
 	const centerY = token.y * viewport.scale + viewport.y;
-	const left = Math.min(Math.max(centerX, 96), window.innerWidth - 96);
-	const top = Math.min(Math.max(centerY, 120), window.innerHeight - 120);
+	const left = Math.max(8, Math.min(centerX - 120, bounds.width - 248));
+	const top = Math.max(
+		8,
+		Math.min(centerY - 120, bounds.heightAvailable - bounds.height - 8),
+	);
 
 	const handleModifyHp = (amount: number) => {
 		const current = token.hpCurrent ?? 0;
@@ -126,7 +165,7 @@ export function VTTTokenMenu({
 			angle: 135,
 			icon: ScrollText,
 			onClick: () => {
-				setShowCharacterSheetId(token.characterId || token.id);
+				setShowCharacterSheetId(token.id);
 				setActiveTokenIdForMenu(null);
 			},
 		},
@@ -153,10 +192,11 @@ export function VTTTokenMenu({
 
 	return (
 		<div
-			style={{ left: `${left}px`, top: `${top}px` }}
-			className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2"
+			ref={panelRef}
+			style={{ left, top, transform: "none", maxHeight: "calc(100dvh - 16px)" }}
+			className="pointer-events-auto fixed z-50 w-[240px] max-w-[calc(100vw-16px)] overflow-y-auto"
 		>
-			<div className="relative h-56 w-56">
+			<div className="relative h-[240px] w-full">
 				<div className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-border/70 bg-card/95 text-foreground shadow-lg backdrop-blur-md">
 					<span className="flex items-center gap-1 font-mono text-xs font-bold">
 						<Heart className="h-3 w-3 text-primary" />
@@ -205,10 +245,11 @@ export function VTTTokenMenu({
 							<button
 								type="button"
 								key={cond.id}
+								aria-pressed={isApplied}
 								onClick={() => handleToggleCondition(cond.id)}
 								className={cn(
 									vttChipClass,
-									"min-h-11 px-2.5 text-[11px]",
+									"min-h-[44px] px-2.5 text-[11px]",
 									isApplied
 										? "border-primary/40 bg-primary/15 text-foreground"
 										: "border-border/70 bg-background/60 text-muted-foreground hover:bg-muted",

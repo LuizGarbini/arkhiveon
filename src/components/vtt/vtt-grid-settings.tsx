@@ -1,4 +1,5 @@
 import { Sliders, X } from "lucide-react";
+import { useId } from "react";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -26,6 +27,9 @@ interface VTTGridSettingsProps {
 export function VTTGridSettings({
 	onUpdateSceneSettings,
 }: VTTGridSettingsProps) {
+	const gridTypeId = useId();
+	const gridScaleId = useId();
+	const gridUnitId = useId();
 	const {
 		scenes,
 		activeSceneId,
@@ -92,11 +96,12 @@ export function VTTGridSettings({
 				</button>
 			</div>
 
-			<Field label="Tipo de grid">
+			<Field label="Tipo de grid" htmlFor={gridTypeId}>
 				<Select
+					id={gridTypeId}
 					value={activeScene.gridType}
 					onChange={(e) => patch({ gridType: e.target.value as VTTGridType })}
-					className="h-11 text-xs"
+					className="h-[44px] text-[16px] md:text-[16px]"
 				>
 					<option value="square">Quadrado (padrão)</option>
 					<option value="hex_pointy">Hexagonal (pontudo)</option>
@@ -106,8 +111,9 @@ export function VTTGridSettings({
 			</Field>
 
 			<div className="grid grid-cols-2 gap-2">
-				<Field label="Escala">
+				<Field label="Escala" htmlFor={gridScaleId}>
 					<Input
+						id={gridScaleId}
 						type="number"
 						step="0.5"
 						min="0.5"
@@ -115,18 +121,19 @@ export function VTTGridSettings({
 						onChange={(e) =>
 							patch({ gridScaleDistance: Number(e.target.value) || 1 })
 						}
-						className="h-11 text-xs"
+						className="h-[44px] text-[16px] md:text-[16px]"
 					/>
 				</Field>
-				<Field label="Unidade">
+				<Field label="Unidade" htmlFor={gridUnitId}>
 					<Select
+						id={gridUnitId}
 						value={activeScene.gridScaleUnit}
 						onChange={(e) =>
 							patch({
 								gridScaleUnit: e.target.value as VTTGridScaleUnit,
 							})
 						}
-						className="h-11 text-xs"
+						className="h-[44px] text-[16px] md:text-[16px]"
 					>
 						<option value="m">Metros</option>
 						<option value="ft">Pés</option>
@@ -183,7 +190,7 @@ export function VTTGridSettings({
 							step={5}
 							value={activeScene.gridSize}
 							onChange={(e) => patch({ gridSize: Number(e.target.value) })}
-							className="h-11 w-full accent-primary"
+							className="h-[44px] w-full accent-primary"
 						/>
 					</div>
 					<div className="space-y-1">
@@ -200,7 +207,7 @@ export function VTTGridSettings({
 							step={0.05}
 							value={activeScene.gridOpacity}
 							onChange={(e) => patch({ gridOpacity: Number(e.target.value) })}
-							className="h-11 w-full accent-primary"
+							className="h-[44px] w-full accent-primary"
 						/>
 					</div>
 					<div className="space-y-1.5">

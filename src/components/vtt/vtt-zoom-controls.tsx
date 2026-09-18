@@ -94,7 +94,7 @@ export function VTTZoomControls() {
 					type="button"
 					onClick={resetViewport}
 					title="Redefinir zoom para 100%"
-					className="flex h-11 min-w-11 items-center justify-center rounded-xl px-2 font-mono text-xs font-bold text-foreground hover:bg-muted"
+					className="flex h-[44px] min-w-[44px] items-center justify-center rounded-xl px-2 font-mono text-xs font-bold text-foreground hover:bg-muted"
 				>
 					{zoomPercent}%
 				</button>
