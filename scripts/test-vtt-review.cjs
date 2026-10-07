@@ -130,6 +130,7 @@ const MENU_CONTROLS = [
 		await page.getByRole("button", { name: /Esfera/ }).click();
 		await page.mouse.move(245, 665);
 		await page.mouse.down();
+
 		await page.mouse.move(315, 665, { steps: 4 });
 		await page.mouse.move(385, 665, { steps: 4 });
 		await page.mouse.up();
@@ -140,6 +141,11 @@ const MENU_CONTROLS = [
 			window.__vtt_store__.getState().setShowTemplateControls(false),
 		);
 		await page.waitForTimeout(250);
+		assert.equal(
+			await page.evaluate(() => document.querySelector(".vtt-surface").scrollLeft),
+			0,
+			`${label}: a mesa não pode deslocar horizontalmente`,
+		);
 		await page.screenshot({
 			path: path.join(output, `vtt-review-template-${label}.png`),
 		});

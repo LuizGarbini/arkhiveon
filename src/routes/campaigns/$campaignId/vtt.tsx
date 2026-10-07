@@ -1282,7 +1282,7 @@ function VTTSession() {
 		) || null;
 
 	return (
-		<div className="vtt-surface relative h-dvh w-full overflow-hidden bg-background text-foreground select-none">
+		<div className="vtt-surface relative h-dvh w-full overflow-clip bg-background text-foreground select-none">
 			{/* Top Header / Scene Tabs & Presence */}
 			<VTTSceneBar
 				campaignId={campaignId}
