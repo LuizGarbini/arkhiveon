@@ -95,6 +95,49 @@ const MENU_CONTROLS = [
 	// The elevation −/+ row must be fully visible as soon as the panel opens:
 	// not clipped by the panel and not hidden behind the pinned action footer.
 	// Wait for the panel's zoom-in entrance to finish before measuring it.
+	// The dice overlay must not paint a box between the die and the result:
+	// the strip at the bottom of the dice canvas has to match the overlay
+	// background beside it (median luminance, robust to stray particles).
+	async function assertNoEmptyBoxUnderDie() {
+		const rects = await page.evaluate(() => {
+			const overlay = document.querySelector(".fixed.inset-0.z-\\[100\\]");
+			const canvas = overlay?.querySelector("canvas");
+			if (!canvas) return null;
+			const r = canvas.getBoundingClientRect();
+			const h = 48;
+			const band = { x: r.left, y: r.bottom - h, width: r.width, height: h };
+			const ref = { ...band, x: Math.max(0, r.left - r.width - 24) };
+			return { band, ref };
+		});
+		assert.ok(rects, "overlay do dado não encontrado");
+		const luminance = async (clip) => {
+			const png = await page.screenshot({ clip });
+			return page.evaluate(async (b64) => {
+				const img = new Image();
+				img.src = `data:image/png;base64,${b64}`;
+				await img.decode();
+				const c = document.createElement("canvas");
+				c.width = img.width;
+				c.height = img.height;
+				const ctx = c.getContext("2d");
+				ctx.drawImage(img, 0, 0);
+				const { data } = ctx.getImageData(0, 0, c.width, c.height);
+				const values = [];
+				for (let i = 0; i < data.length; i += 4)
+					values.push(0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]);
+				values.sort((a, b) => a - b);
+				return values[Math.floor(values.length / 2)];
+			}, png.toString("base64"));
+		};
+		const band = await luminance(rects.band);
+		const ref = await luminance(rects.ref);
+		console.log(`dice band luminance ${band.toFixed(2)} vs background ${ref.toFixed(2)}`);
+		assert.ok(
+			Math.abs(band - ref) <= 1.5,
+			`caixa vazia sob o dado (luminância ${band.toFixed(1)} vs fundo ${ref.toFixed(1)})`,
+		);
+	}
+
 	async function waitMenuSettled() {
 		await page.waitForFunction(() => {
 			const panel = document
@@ -408,6 +451,7 @@ const MENU_CONTROLS = [
 		await page.getByRole("button", { name: /^FOR\s*\+3$/ }).click();
 		const banner = page.getByText(/(Resultado:|Acerto crítico ·|Falha crítica ·) \d+ \+ 3 = \d+/);
 		await banner.waitFor({ timeout: 15000 });
+		await assertNoEmptyBoxUnderDie();
 		await recording.chapter("Rolagem de FOR soma o modificador +3 ao resultado", 1200);
 		await page.getByText(/^FOR: \d+ \+ 3 = \d+$/).waitFor({ timeout: 15000 });
 		await page.getByRole("button", { name: "Fechar ficha" }).click();

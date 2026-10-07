@@ -311,22 +311,6 @@ export function DiceRollOverlay({
 		scene.add(topGlow);
 
 		// ========================================================
-		// Chão semi-transparente para profundidade
-		// ========================================================
-		const groundGeo = new THREE.PlaneGeometry(8, 8);
-		const groundMat = new THREE.MeshStandardMaterial({
-			color: 0x0a0a14,
-			transparent: true,
-			opacity: 0.35,
-			roughness: 0.9,
-			metalness: 0.0,
-		});
-		const ground = new THREE.Mesh(groundGeo, groundMat);
-		ground.rotation.x = -Math.PI / 2;
-		ground.position.y = -2.6;
-		scene.add(ground);
-
-		// ========================================================
 		// Grupo do dado
 		// ========================================================
 		const diceGroup = new THREE.Group();
