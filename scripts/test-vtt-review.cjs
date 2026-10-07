@@ -95,6 +95,61 @@ const MENU_CONTROLS = [
 		}
 	}
 
+	// Deterministic frames for the PR: ruler (5-10-5 diagonal) and a placed
+	// spell template, same world framing on desktop and phone.
+	async function captureFrames(label) {
+		await store(() => {
+			const s = window.__vtt_store__.getState();
+			s.setActiveTokenIdForMenu(null);
+			s.setShowGridSettings(false);
+			s.setShowCharacterSheetId(null);
+			s.setSelectedTokenIds([]);
+			s.updateToken("b", { x: 595, y: 245 });
+			s.updateScene("scene", { gridScaleDistance: 1.5, gridScaleUnit: "m" });
+			s.setViewport({ x: 0, y: 0, scale: 1 });
+			s.setActiveTool("select");
+		});
+		await page.evaluate(() => document.activeElement?.blur?.());
+		await page.waitForTimeout(250);
+
+		await page.keyboard.press("r");
+		await page.mouse.move(105, 385);
+		await page.mouse.down();
+		await page.mouse.move(210, 490, { steps: 4 });
+		await page.mouse.move(315, 595, { steps: 4 });
+		const readout = page.locator("output", { hasText: "Distância" });
+		await readout.waitFor();
+		assert.match(await readout.innerText(), /6 m/, `${label}: 5-10-5 = 6 m`);
+		await page.waitForTimeout(150);
+		await page.screenshot({
+			path: path.join(output, `vtt-review-ruler-${label}.png`),
+		});
+		await page.mouse.up();
+
+		await page.keyboard.press("t");
+		await page.getByRole("button", { name: /Esfera/ }).click();
+		await page.mouse.move(245, 665);
+		await page.mouse.down();
+		await page.mouse.move(315, 665, { steps: 4 });
+		await page.mouse.move(385, 665, { steps: 4 });
+		await page.mouse.up();
+		await page.waitForFunction(
+			() => window.__vtt_store__.getState().placedTemplates.length === 1,
+		);
+		await store(() =>
+			window.__vtt_store__.getState().setShowTemplateControls(false),
+		);
+		await page.waitForTimeout(250);
+		await page.screenshot({
+			path: path.join(output, `vtt-review-template-${label}.png`),
+		});
+		await store(() => {
+			const s = window.__vtt_store__.getState();
+			s.clearPlacedTemplates();
+			s.setActiveTool("select");
+		});
+	}
+
 	try {
 		await page.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
 		await page.waitForFunction(() => window.__vtt_store__);
@@ -253,6 +308,30 @@ const MENU_CONTROLS = [
 			path.join(output, "vtt-review-mobile.webm"),
 			"Celular / Painel e alvos de toque",
 		);
+		// The action row is pinned: Excluir is on screen without scrolling,
+		// and the panel stops above the zoom dock.
+		{
+			const size = page.viewportSize();
+			const del = await page
+				.getByRole("button", { name: "Excluir", exact: true })
+				.boundingBox();
+			assert.ok(del && del.y + del.height <= size.height, "Excluir visível sem rolar");
+			const hit = await page.evaluate(
+				({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.textContent ?? "",
+				{ x: del.x + del.width / 2, y: del.y + del.height / 2 },
+			);
+			assert.match(hit, /Excluir/, "Excluir não pode estar recortado nem coberto");
+			const panel = await page
+				.getByRole("button", { name: "Fechar menu do token" })
+				.evaluate((el) => el.closest(".fixed").getBoundingClientRect().bottom);
+			const zoom = await page
+				.getByRole("button", { name: "Enquadrar mapa" })
+				.boundingBox();
+			assert.ok(panel <= zoom.y, "Painel não cobre os controles de zoom");
+			await page.screenshot({
+				path: path.join(output, "vtt-review-menu-mobile.png"),
+			});
+		}
 		await checkMenu();
 		await recording.chapter("Ações e condições acessíveis na tela estreita", 2200);
 		await page.getByRole("button", { name: "Fechar menu do token", exact: true }).click();
@@ -266,9 +345,13 @@ const MENU_CONTROLS = [
 		await page.screenshot({ path: path.join(output, "vtt-review-mobile.png") });
 		await recording.stop();
 		recording = null;
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await captureFrames("desktop");
+		await page.setViewportSize({ width: 390, height: 844 });
+		await captureFrames("mobile");
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: ficha na mesa, régua 5-10-5, moldes de magia, painel nas bordas e campos acessíveis",
+			"PASS: ficha na mesa, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});
