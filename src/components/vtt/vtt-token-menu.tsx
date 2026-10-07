@@ -144,10 +144,14 @@ export function VTTTokenMenu({
 	// Clamp to keep inside screen boundaries. The bottom reserve keeps the
 	// zoom dock (bottom-3, 44px buttons) visible below the panel.
 	const BOTTOM_RESERVE = 76;
+	// Room for the whole panel (header, HP, conditions, size, elevation and the
+	// pinned action row) so nothing sits behind the sticky footer on common
+	// phone and desktop heights; shorter screens scroll the body instead.
+	const PANEL_HEIGHT_BUDGET = 640;
 	const leftPos = Math.max(12, Math.min(screenX + 50, window.innerWidth - 332));
 	const topPos = Math.min(
 		Math.max(screenY - 100, 128),
-		Math.max(128, window.innerHeight - BOTTOM_RESERVE - 560),
+		Math.max(128, window.innerHeight - BOTTOM_RESERVE - PANEL_HEIGHT_BUDGET),
 	);
 
 	return (
@@ -157,7 +161,7 @@ export function VTTTokenMenu({
 				top: `${topPos}px`,
 				maxHeight: Math.max(240, window.innerHeight - topPos - BOTTOM_RESERVE),
 			}}
-			className="fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-3.5 overflow-y-auto overscroll-contain p-4 rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
+			className="fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-3 overflow-y-auto overscroll-contain scroll-pb-24 p-4 rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
 		>
 			{/* Token Header */}
 			<div className="flex items-center justify-between pb-2.5 border-b border-border/70">
@@ -224,9 +228,9 @@ export function VTTTokenMenu({
 			<fieldset
 				disabled={saving}
 				aria-busy={saving}
-				className="min-w-0 space-y-3.5 disabled:opacity-60"
+				className="min-w-0 space-y-3 disabled:opacity-60"
 			>
-				<div className="space-y-3.5">
+				<div className="space-y-3">
 					{/* HP Adjustment Section */}
 					<div className="space-y-2">
 						<div className="flex items-center justify-between text-[11px] font-bold">
@@ -388,7 +392,7 @@ export function VTTTokenMenu({
 				</div>
 
 				{/* Quick Actions (Rotate, Hide, Lock, Delete) — sticky footer so they stay reachable */}
-				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex items-center justify-between border-t border-border/70 bg-card px-4 pt-2 pb-4">
+				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex items-center justify-between border-t border-border/70 bg-card px-4 pt-2 pb-3">
 					<div className="flex items-center gap-1">
 						<button
 							type="button"

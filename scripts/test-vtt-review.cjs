@@ -7,6 +7,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { startPreviewRecorder } = require("./vtt-preview-recorder.cjs");
 
+// Every control of the #84 token panel (plus "Ficha"); checkMenu fails if
+// any is missing, under 44px, off screen or covered (e.g. by the footer).
 const MENU_CONTROLS = [
 	"Abrir ficha na mesa",
 	"Fechar menu do token",
@@ -14,11 +16,24 @@ const MENU_CONTROLS = [
 	"-1",
 	"+1",
 	"+5",
+	"Dano",
+	"Cura",
 	"Envenenado",
+	"Caído",
+	"Cego",
+	"Atordoado",
+	"Invisível",
+	"Em Chamas",
 	"Concentração",
+	"Tamanho 1 por 1 células",
 	"Tamanho 2 por 2 células",
+	"Tamanho 3 por 3 células",
+	"Tamanho 4 por 4 células",
 	"Diminuir elevação em 1,5 metro",
+	"Aumentar elevação em 1,5 metro",
 	"Girar Token (45º)",
+	"Ocultar dos Jogadores",
+	"Mover para Camada do Mestre (GM Layer)",
 	"Travar no Lugar",
 	"Excluir",
 ];
@@ -77,6 +92,38 @@ const MENU_CONTROLS = [
 	page.on("pageerror", (e) => errors.push(e.message));
 	const store = (fn, arg) => page.evaluate(fn, arg);
 
+	// The elevation −/+ row must be fully visible as soon as the panel opens:
+	// not clipped by the panel and not hidden behind the pinned action footer.
+	async function assertElevationVisibleOnOpen(where) {
+		for (const name of ["Diminuir elevação em 1,5 metro", "Aumentar elevação em 1,5 metro"]) {
+			const btn = page.getByRole("button", { name, exact: true });
+			assert.equal(await btn.count(), 1, `${name} ausente (${where})`);
+			const state = await btn.evaluate((el) => {
+				const panel = el.closest(".fixed");
+				const footer = [...panel.querySelectorAll("button")]
+					.find((b) => b.textContent.includes("Excluir"))
+					.closest("div.sticky");
+				const r = el.getBoundingClientRect();
+				const p = panel.getBoundingClientRect();
+				const limit = Math.min(p.bottom, footer.getBoundingClientRect().top, window.innerHeight);
+				const hits = [r.top + 4, r.top + r.height / 2, r.bottom - 4].map((y) => {
+					const hit = document.elementFromPoint(r.left + r.width / 2, y);
+					return Boolean(hit && (hit === el || el.contains(hit)));
+				});
+				return {
+					scrollTop: panel.scrollTop,
+					height: r.height,
+					inside: r.top >= p.top && r.bottom <= limit,
+					hits,
+				};
+			});
+			assert.equal(state.scrollTop, 0, `painel deve abrir sem rolagem (${where})`);
+			assert.ok(state.height >= 44, `${name} precisa ter 44px (${where})`);
+			assert.ok(state.inside, `${name} escondido atrás do rodapé ou recortado (${where})`);
+			assert.ok(state.hits.every(Boolean), `${name} coberto por outro elemento (${where})`);
+		}
+	}
+
 	async function checkMenu() {
 		const size = page.viewportSize();
 		for (const name of MENU_CONTROLS) {
@@ -92,7 +139,21 @@ const MENU_CONTROLS = [
 					b.y + b.height <= size.height,
 				`${name} fora da tela`,
 			);
+			const onTop = await btn.evaluate((el, point) => {
+				const hit = document.elementFromPoint(point.x, point.y);
+				return Boolean(hit && (hit === el || el.contains(hit)));
+			}, { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+			assert.ok(onTop, `${name} está coberto por outro elemento`);
 		}
+		const field = page.getByLabel("Quantidade de dano ou cura", { exact: true });
+		await field.scrollIntoViewIfNeeded();
+		const fieldBox = await field.boundingBox();
+		assert.ok(fieldBox && fieldBox.height >= 44, "Campo de dano/cura precisa ter 44px");
+		const fieldOnTop = await field.evaluate((el, point) => {
+			const hit = document.elementFromPoint(point.x, point.y);
+			return Boolean(hit && (hit === el || el.contains(hit)));
+		}, { x: fieldBox.x + fieldBox.width / 2, y: fieldBox.y + fieldBox.height / 2 });
+		assert.ok(fieldOnTop, "Campo de dano/cura está coberto por outro elemento");
 	}
 
 	// Deterministic frames for the PR: ruler (5-10-5 diagonal) and a placed
@@ -296,7 +357,25 @@ const MENU_CONTROLS = [
 			s.setActiveTokenIdForMenu("b");
 		});
 		await page.getByRole("button", { name: "Fechar menu do token" }).waitFor();
+		await assertElevationVisibleOnOpen("1280x800");
 		await checkMenu();
+		for (const [name, expected] of [
+			["Aumentar elevação em 1,5 metro", 1.5],
+			["Diminuir elevação em 1,5 metro", 0],
+		]) {
+			const elevationSaved = page.waitForResponse(
+				(r) => r.request().method() === "PATCH" && r.url().includes("/vtt_tokens"),
+			);
+			await page.getByRole("button", { name, exact: true }).click();
+			await elevationSaved;
+			assert.equal(writes.at(-1).elevation, expected, `${name} grava ${expected}`);
+			await page.waitForFunction(
+				(value) =>
+					window.__vtt_store__.getState().tokens.find((t) => t.id === "b")?.elevation === value,
+				expected,
+			);
+			await page.getByText(`Elevação: ${expected}m`).waitFor();
+		}
 		await recording.chapter("Painel do token permanece dentro da borda", 2200);
 		await page.screenshot({ path: path.join(output, "vtt-review-preview.png") });
 		await recording.stop();
@@ -314,6 +393,7 @@ const MENU_CONTROLS = [
 			path.join(output, "vtt-review-mobile.webm"),
 			"Celular / Painel e alvos de toque",
 		);
+		await assertElevationVisibleOnOpen("390x844");
 		// The action row is pinned: Excluir is on screen without scrolling,
 		// and the panel stops above the zoom dock.
 		{
