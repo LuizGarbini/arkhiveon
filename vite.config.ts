@@ -14,7 +14,7 @@ export default defineConfig(({ command, mode }) => {
       : []),
     tanstackRouter({
       target: 'react',
-      autoCodeSplitting: true,
+      autoCodeSplitting: mode !== 'test',
     }),
     viteReact(),
     tailwindcss(),

@@ -8,11 +8,9 @@ import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import {
-	vttChipClass,
-	vttIconButtonClass,
-	vttIconButtonIdleClass,
-} from "./vtt-chrome";
+
+const chipClass =
+	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer touch-manipulation";
 
 interface VTTSheetDrawerProps {
 	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
@@ -55,8 +53,11 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	return (
 		<>
 			<aside
-				className="t-panel-slide-x pointer-events-none absolute bottom-4 right-4 top-16 z-40 w-[min(100%-2rem,22rem)]"
+				className="t-panel-slide-x pointer-events-none absolute bottom-4 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
 				data-open={isOpen}
+				aria-label="Ficha na mesa"
+				aria-hidden={!isOpen}
+				inert={!isOpen}
 			>
 				{isOpen && token ? (
 					<SheetBody
@@ -143,8 +144,9 @@ function SheetBody({
 				<button
 					type="button"
 					onClick={onClose}
-					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
+					className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
 					title="Fechar ficha"
+					aria-label="Fechar ficha"
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -174,7 +176,7 @@ function SheetBody({
 								key={delta}
 								onClick={() => handleModifyHp(delta)}
 								className={cn(
-									vttChipClass,
+									chipClass,
 									"min-h-[44px] border-border/70 bg-background/80 font-mono",
 									delta < 0
 										? "text-destructive hover:bg-destructive/10"
@@ -226,7 +228,7 @@ function SheetBody({
 										onStartRoll(`${attr.label} ${formatModifier(mod)}`)
 									}
 									className={cn(
-										vttChipClass,
+										chipClass,
 										"h-auto min-h-14 flex-col border-border/70 bg-background/70 py-2 hover:border-primary/40 hover:bg-primary/10",
 									)}
 								>

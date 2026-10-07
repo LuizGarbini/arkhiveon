@@ -3,12 +3,9 @@ import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import type { VTTTemplateKind } from "@/lib/vtt/template-math";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import {
-	vttChipClass,
-	vttIconButtonClass,
-	vttIconButtonIdleClass,
-	vttPanelClass,
-} from "./vtt-chrome";
+
+const chipClass =
+	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer touch-manipulation";
 
 const KINDS: {
 	id: VTTTemplateKind;
@@ -28,18 +25,16 @@ export function VTTTemplateControls({
 }: {
 	onClearTemplates: (ids: string[]) => void;
 }) {
-	const {
-		activeTool,
-		showTemplateControls,
-		setShowTemplateControls,
-		setActiveTool,
-		activeTemplateKind,
-		setActiveTemplateKind,
-		clearPlacedTemplates,
-		placedTemplates,
-	} = useVTTStore();
+	const activeTool = useVTTStore((s) => s.activeTool);
+	const showTemplateControls = useVTTStore((s) => s.showTemplateControls);
+	const setShowTemplateControls = useVTTStore((s) => s.setShowTemplateControls);
+	const setActiveTool = useVTTStore((s) => s.setActiveTool);
+	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
+	const setActiveTemplateKind = useVTTStore((s) => s.setActiveTemplateKind);
+	const clearPlacedTemplates = useVTTStore((s) => s.clearPlacedTemplates);
+	const placedTemplates = useVTTStore((s) => s.placedTemplates);
 
-	if (!showTemplateControls && activeTool !== "template") return null;
+	if (!showTemplateControls) return null;
 
 	const handleClose = () => {
 		setShowTemplateControls(false);
@@ -47,12 +42,7 @@ export function VTTTemplateControls({
 	};
 
 	return (
-		<div
-			className={cn(
-				vttPanelClass,
-				"absolute left-16 top-16 z-30 flex min-w-[260px] flex-col gap-3 p-3 pointer-events-auto select-none",
-			)}
-		>
+		<div className="absolute left-3 top-32 z-40 flex max-h-[calc(100dvh-13rem)] w-[min(20rem,calc(100%-1.5rem))] flex-col gap-3 overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-3 text-foreground shadow-2xl backdrop-blur-md pointer-events-auto select-none animate-in fade-in slide-in-from-left-4 duration-200 sm:left-20">
 			<div className="flex items-center justify-between border-b border-border/60 pb-2">
 				<div className="flex items-center gap-2 text-xs font-bold">
 					<Hexagon className="h-4 w-4 text-primary" />
@@ -62,7 +52,11 @@ export function VTTTemplateControls({
 					type="button"
 					onClick={handleClose}
 					title="Fechar moldes"
-					className={cn(vttIconButtonClass, vttIconButtonIdleClass, "-mr-1")}
+					aria-label="Fechar moldes de magia"
+					className={cn(
+						"flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer",
+						"-mr-1",
+					)}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -80,16 +74,17 @@ export function VTTTemplateControls({
 						<button
 							type="button"
 							key={kind.id}
+							aria-pressed={isActive}
 							onClick={() => {
 								setActiveTemplateKind(kind.id);
 								setActiveTool("template");
 							}}
 							className={cn(
-								vttChipClass,
+								chipClass,
 								"w-full justify-start",
 								isActive
 									? "border-primary/50 bg-primary/15 text-foreground"
-									: "border-border/70 bg-background/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+									: "border-border/70 bg-background/50 text-muted-foreground hover:bg-accent hover:text-foreground",
 							)}
 						>
 							<Icon className="h-4 w-4 text-primary" />
@@ -110,8 +105,8 @@ export function VTTTemplateControls({
 				}}
 				disabled={placedTemplates.length === 0}
 				className={cn(
-					vttChipClass,
-					"w-full border-border/70 bg-background/50 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40",
+					chipClass,
+					"w-full border-border/70 bg-background/50 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40",
 				)}
 			>
 				<Minus className="h-4 w-4" />

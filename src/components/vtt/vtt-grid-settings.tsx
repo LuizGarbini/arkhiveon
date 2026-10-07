@@ -4,14 +4,12 @@ import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { VTTGridScaleUnit, VTTGridType } from "@/lib/vtt/types";
+import type {
+	VTTDiagonalRule,
+	VTTGridScaleUnit,
+	VTTGridType,
+} from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import {
-	vttChipClass,
-	vttIconButtonClass,
-	vttIconButtonIdleClass,
-	vttPanelClass,
-} from "./vtt-chrome";
 
 interface VTTGridSettingsProps {
 	onUpdateSceneSettings: (settings: {
@@ -27,41 +25,17 @@ interface VTTGridSettingsProps {
 export function VTTGridSettings({
 	onUpdateSceneSettings,
 }: VTTGridSettingsProps) {
-	const gridTypeId = useId();
+	const scenes = useVTTStore((s) => s.scenes);
+	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const showGridSettings = useVTTStore((s) => s.showGridSettings);
+	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
+	const diagonalRule = useVTTStore((s) => s.diagonalRule);
+	const setDiagonalRule = useVTTStore((s) => s.setDiagonalRule);
 	const gridScaleId = useId();
 	const gridUnitId = useId();
-	const {
-		scenes,
-		activeSceneId,
-		showGridSettings,
-		setShowGridSettings,
-		diagonalRule,
-		setDiagonalRule,
-	} = useVTTStore();
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	if (!showGridSettings || !activeScene) return null;
-
-	const patch = (
-		updates: Partial<{
-			gridType: VTTGridType;
-			gridSize: number;
-			gridColor: string;
-			gridOpacity: number;
-			gridScaleDistance: number;
-			gridScaleUnit: VTTGridScaleUnit;
-		}>,
-	) => {
-		onUpdateSceneSettings({
-			gridType: activeScene.gridType,
-			gridSize: activeScene.gridSize,
-			gridColor: activeScene.gridColor,
-			gridOpacity: activeScene.gridOpacity,
-			gridScaleDistance: activeScene.gridScaleDistance,
-			gridScaleUnit: activeScene.gridScaleUnit,
-			...updates,
-		});
-	};
 
 	const presetColors = [
 		"#ffffff",
@@ -74,42 +48,49 @@ export function VTTGridSettings({
 	];
 
 	return (
-		<div
-			className={cn(
-				vttPanelClass,
-				"absolute left-16 top-16 z-40 w-72 space-y-3.5 p-4 pointer-events-auto select-none",
-			)}
-		>
-			<div className="flex items-center justify-between border-b border-border/60 pb-2">
+		<div className="absolute left-3 top-32 z-40 max-h-[calc(100dvh-13rem)] overflow-y-auto w-[min(20rem,calc(100%-1.5rem))] sm:left-20 p-4 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl text-foreground pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-150 space-y-3.5">
+			<div className="flex items-center justify-between pb-2 border-b border-border/70">
 				<div className="flex items-center gap-2">
 					<Sliders className="h-4 w-4 text-primary" />
-					<h4 className="font-display text-xs font-bold tracking-wide">
-						Ajuste do grid
+					<h4 className="font-display text-xs font-bold text-foreground tracking-wide">
+						Ajuste do Grid
 					</h4>
 				</div>
 				<button
 					type="button"
+					aria-label="Fechar configurações do grid"
 					onClick={() => setShowGridSettings(false)}
-					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
+					className="flex size-11 items-center justify-center rounded-xl text-muted-foreground focus-visible:ring-2 hover:text-foreground"
 				>
 					<X className="h-4 w-4" />
 				</button>
 			</div>
 
-			<Field label="Tipo de grid" htmlFor={gridTypeId}>
+			{/* Grid Type */}
+			<Field label="Tipo de Grid">
 				<Select
-					id={gridTypeId}
+					aria-label="Tipo de Grid"
 					value={activeScene.gridType}
-					onChange={(e) => patch({ gridType: e.target.value as VTTGridType })}
-					className="h-[44px] text-[16px] md:text-[16px]"
+					onChange={(e) =>
+						onUpdateSceneSettings({
+							gridType: e.target.value as VTTGridType,
+							gridSize: activeScene.gridSize,
+							gridColor: activeScene.gridColor,
+							gridOpacity: activeScene.gridOpacity,
+							gridScaleDistance: activeScene.gridScaleDistance,
+							gridScaleUnit: activeScene.gridScaleUnit,
+						})
+					}
+					className="h-11 text-base"
 				>
-					<option value="square">Quadrado (padrão)</option>
-					<option value="hex_pointy">Hexagonal (pontudo)</option>
-					<option value="hex_flat">Hexagonal (plano)</option>
-					<option value="none">Desativado (livre)</option>
+					<option value="square">Quadrado (Padrão)</option>
+					<option value="hex_pointy">Hexagonal (Pontudo)</option>
+					<option value="hex_flat">Hexagonal (Plano)</option>
+					<option value="none">Desativado (Livre)</option>
 				</Select>
 			</Field>
 
+			{/* Scale & unit used by the ruler and templates */}
 			<div className="grid grid-cols-2 gap-2">
 				<Field label="Escala" htmlFor={gridScaleId}>
 					<Input
@@ -117,11 +98,19 @@ export function VTTGridSettings({
 						type="number"
 						step="0.5"
 						min="0.5"
+						inputMode="decimal"
 						value={activeScene.gridScaleDistance}
 						onChange={(e) =>
-							patch({ gridScaleDistance: Number(e.target.value) || 1 })
+							onUpdateSceneSettings({
+								gridType: activeScene.gridType,
+								gridSize: activeScene.gridSize,
+								gridColor: activeScene.gridColor,
+								gridOpacity: activeScene.gridOpacity,
+								gridScaleDistance: Number(e.target.value) || 1,
+								gridScaleUnit: activeScene.gridScaleUnit,
+							})
 						}
-						className="h-[44px] text-[16px] md:text-[16px]"
+						className="h-11 text-base tabular-nums"
 					/>
 				</Field>
 				<Field label="Unidade" htmlFor={gridUnitId}>
@@ -129,11 +118,16 @@ export function VTTGridSettings({
 						id={gridUnitId}
 						value={activeScene.gridScaleUnit}
 						onChange={(e) =>
-							patch({
+							onUpdateSceneSettings({
+								gridType: activeScene.gridType,
+								gridSize: activeScene.gridSize,
+								gridColor: activeScene.gridColor,
+								gridOpacity: activeScene.gridOpacity,
+								gridScaleDistance: activeScene.gridScaleDistance,
 								gridScaleUnit: e.target.value as VTTGridScaleUnit,
 							})
 						}
-						className="h-[44px] text-[16px] md:text-[16px]"
+						className="h-11 text-base"
 					>
 						<option value="m">Metros</option>
 						<option value="ft">Pés</option>
@@ -142,43 +136,42 @@ export function VTTGridSettings({
 				</Field>
 			</div>
 
-			<div className="space-y-1.5">
-				<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+			{/* Diagonal rule used by the ruler distance */}
+			<fieldset className="space-y-1.5">
+				<legend className="text-[10px] font-bold text-muted-foreground">
 					Diagonal
-				</span>
+				</legend>
 				<div className="grid grid-cols-2 gap-1.5">
-					<button
-						type="button"
-						onClick={() => setDiagonalRule("5105")}
-						className={cn(
-							vttChipClass,
-							diagonalRule === "5105"
-								? "border-primary/40 bg-primary/15"
-								: "border-border/70 bg-background/50 text-muted-foreground",
-						)}
-					>
-						5-10-5
-					</button>
-					<button
-						type="button"
-						onClick={() => setDiagonalRule("euclidean")}
-						className={cn(
-							vttChipClass,
-							diagonalRule === "euclidean"
-								? "border-primary/40 bg-primary/15"
-								: "border-border/70 bg-background/50 text-muted-foreground",
-						)}
-					>
-						Euclidiano
-					</button>
+					{(
+						[
+							{ id: "5105", label: "5-10-5" },
+							{ id: "euclidean", label: "Euclidiano" },
+						] satisfies { id: VTTDiagonalRule; label: string }[]
+					).map((rule) => (
+						<button
+							type="button"
+							key={rule.id}
+							aria-pressed={diagonalRule === rule.id}
+							onClick={() => setDiagonalRule(rule.id)}
+							className={cn(
+								"min-h-11 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+								diagonalRule === rule.id
+									? "border-primary/40 bg-primary/15 text-foreground"
+									: "border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground",
+							)}
+						>
+							{rule.label}
+						</button>
+					))}
 				</div>
-			</div>
+			</fieldset>
 
+			{/* Grid Size Slider */}
 			{activeScene.gridType !== "none" && (
 				<>
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-							<span>Tamanho da célula</span>
+							<span>Tamanho da Célula</span>
 							<span className="font-mono text-foreground">
 								{activeScene.gridSize}px
 							</span>
@@ -189,13 +182,26 @@ export function VTTGridSettings({
 							max={180}
 							step={5}
 							value={activeScene.gridSize}
-							onChange={(e) => patch({ gridSize: Number(e.target.value) })}
-							className="h-[44px] w-full accent-primary"
+							aria-label="Tamanho da célula"
+							aria-valuetext={`${activeScene.gridSize} pixels`}
+							onChange={(e) =>
+								onUpdateSceneSettings({
+									gridType: activeScene.gridType,
+									gridSize: Number(e.target.value),
+									gridColor: activeScene.gridColor,
+									gridOpacity: activeScene.gridOpacity,
+									gridScaleDistance: activeScene.gridScaleDistance,
+									gridScaleUnit: activeScene.gridScaleUnit,
+								})
+							}
+							className="vtt-range w-full cursor-pointer"
 						/>
 					</div>
+
+					{/* Grid Opacity Slider */}
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-							<span>Opacidade</span>
+							<span>Opacidade do Grid</span>
 							<span className="font-mono text-foreground">
 								{Math.round(activeScene.gridOpacity * 100)}%
 							</span>
@@ -206,27 +212,50 @@ export function VTTGridSettings({
 							max={1}
 							step={0.05}
 							value={activeScene.gridOpacity}
-							onChange={(e) => patch({ gridOpacity: Number(e.target.value) })}
-							className="h-[44px] w-full accent-primary"
+							aria-label="Opacidade do grid"
+							aria-valuetext={`${Math.round(activeScene.gridOpacity * 100)}%`}
+							onChange={(e) =>
+								onUpdateSceneSettings({
+									gridType: activeScene.gridType,
+									gridSize: activeScene.gridSize,
+									gridColor: activeScene.gridColor,
+									gridOpacity: Number(e.target.value),
+									gridScaleDistance: activeScene.gridScaleDistance,
+									gridScaleUnit: activeScene.gridScaleUnit,
+								})
+							}
+							className="vtt-range w-full cursor-pointer"
 						/>
 					</div>
+
+					{/* Grid Color Palette */}
 					<div className="space-y-1.5">
 						<span className="text-[10px] font-bold text-muted-foreground">
-							Cor do grid
+							Cor do Grid
 						</span>
-						<div className="flex items-center gap-2">
+						<div className="flex flex-wrap items-center gap-2">
 							{presetColors.map((color) => (
 								<button
 									type="button"
 									key={color}
-									onClick={() => patch({ gridColor: color })}
+									aria-label={`Cor do grid ${color}`}
+									aria-pressed={activeScene.gridColor === color}
+									onClick={() =>
+										onUpdateSceneSettings({
+											gridType: activeScene.gridType,
+											gridSize: activeScene.gridSize,
+											gridColor: color,
+											gridOpacity: activeScene.gridOpacity,
+											gridScaleDistance: activeScene.gridScaleDistance,
+											gridScaleUnit: activeScene.gridScaleUnit,
+										})
+									}
 									style={{ backgroundColor: color }}
-									className={cn(
-										"h-8 w-8 rounded-full border transition-all",
+									className={`h-11 w-11 rounded-full border transition-all cursor-pointer ${
 										activeScene.gridColor === color
-											? "scale-110 border-primary"
-											: "border-border/70 opacity-70 hover:opacity-100",
-									)}
+											? "border-primary scale-110 shadow-xs"
+											: "border-border opacity-70 hover:opacity-100"
+									}`}
 								/>
 							))}
 						</div>

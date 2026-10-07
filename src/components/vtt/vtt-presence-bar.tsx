@@ -8,15 +8,17 @@ import {
 import { cn } from "@/lib/utils";
 import type { VTTPresenceUser } from "@/lib/vtt/types";
 import { useVTTStore, VTT_PLAYER_COLORS } from "@/lib/vtt/vtt-store";
-import { vttHudClass } from "./vtt-chrome";
 
 interface VTTPresenceBarProps {
 	onFocusPoint?: (x: number, y: number) => void;
 }
 
 export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
-	const { onlineUsers, userColor, setUserColor, remoteCursors, tokens } =
-		useVTTStore();
+	const onlineUsers = useVTTStore((s) => s.onlineUsers);
+	const userColor = useVTTStore((s) => s.userColor);
+	const setUserColor = useVTTStore((s) => s.setUserColor);
+	const remoteCursors = useVTTStore((s) => s.remoteCursors);
+	const tokens = useVTTStore((s) => s.tokens);
 	const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
 	const handleUserClick = (u: VTTPresenceUser) => {
@@ -33,23 +35,27 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 	};
 
 	return (
-		<div
-			className={cn(
-				vttHudClass,
-				"flex min-h-[44px] items-center gap-1.5 px-2.5 py-1 select-none",
-			)}
-		>
-			<div className="flex items-center gap-1.5 border-r border-border/70 pr-2 text-muted-foreground">
+		<div className="flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-lg select-none">
+			{/* Online Presence Count Indicator */}
+			<div className="flex items-center gap-1.5 pr-2 border-r border-border/70 text-muted-foreground">
 				<div className="relative flex h-2 w-2">
-					<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-					<span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+					{onlineUsers.length > 0 && (
+						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+					)}
+					<span
+						className={cn(
+							"relative inline-flex rounded-full h-2 w-2",
+							onlineUsers.length > 0 ? "bg-primary" : "bg-muted-foreground",
+						)}
+					/>
 				</div>
-				<span className="font-mono text-[11px] font-bold text-foreground">
-					{Math.max(1, onlineUsers.length)}
+				<span className="text-[11px] font-mono font-bold text-foreground">
+					{onlineUsers.length}
 				</span>
 			</div>
 
-			<div className="flex max-w-[180px] items-center -space-x-1.5 overflow-hidden py-0.5 sm:max-w-[260px]">
+			{/* Connected Avatars Stack */}
+			<div className="flex items-center -space-x-1.5 overflow-hidden py-0.5 max-w-[180px] sm:max-w-[260px]">
 				{onlineUsers.map((u) => (
 					<button
 						type="button"
@@ -57,7 +63,9 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 						onClick={() => handleUserClick(u)}
 						title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
 						style={{ borderColor: u.color }}
-						className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-full border-2 bg-card shadow-md transition-all duration-150 ease-out hover:z-20 hover:scale-110 active:scale-[0.98] cursor-pointer"
+						className={cn(
+							"relative h-11 w-11 rounded-full border-2 bg-card-elevated overflow-hidden shrink-0 transition-transform hover:scale-125 hover:z-20 cursor-pointer shadow-md",
+						)}
 					>
 						{u.avatarUrl ? (
 							<img
@@ -68,33 +76,39 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 						) : (
 							<div
 								style={{ backgroundColor: `${u.color}33`, color: u.color }}
-								className="flex h-full w-full items-center justify-center text-[10px] font-bold"
+								className="h-full w-full flex items-center justify-center text-[10px] font-bold"
 							>
 								{u.userName.slice(0, 2).toUpperCase()}
 							</div>
 						)}
 
 						{u.isGM && (
-							<div className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
-								<Crown className="h-2.5 w-2.5" />
+							<div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-xs">
+								<Crown className="h-2 w-2 fill-black" />
 							</div>
 						)}
 					</button>
 				))}
 			</div>
 
+			{/* User Color Picker Popover */}
 			<Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
 				<PopoverTrigger
-					style={{ backgroundColor: userColor }}
+					aria-label="Alterar minha cor de ping e cursor"
 					title="Alterar Minha Cor de Ping e Cursor"
-					className="ml-1 inline-flex h-[44px] w-[44px] cursor-pointer rounded-full border border-border/70 shadow-xs transition-all duration-150 ease-out hover:scale-105 active:scale-[0.98]"
-				/>
+					className="flex size-11 items-center justify-center rounded-xl hover:bg-accent active:scale-[0.98]"
+				>
+					<span
+						style={{ backgroundColor: userColor }}
+						className="size-4 rounded-full border border-border"
+					/>
+				</PopoverTrigger>
 				<PopoverContent
 					side="bottom"
 					align="end"
-					className="w-44 space-y-2 rounded-2xl border border-border/70 bg-card/95 p-2.5 shadow-2xl backdrop-blur-md"
+					className="vtt-dialog w-60 p-2.5 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-2xl space-y-2"
 				>
-					<div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
+					<div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold">
 						<Palette className="h-3.5 w-3.5 text-primary" />
 						<span>Cor do seu Cursor</span>
 					</div>
@@ -103,16 +117,17 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 							<button
 								type="button"
 								key={c}
+								aria-label={`Usar cor ${c}`}
 								onClick={() => {
 									setUserColor(c);
 									setIsColorPickerOpen(false);
 								}}
 								style={{ backgroundColor: c }}
 								className={cn(
-									"h-[44px] w-[44px] cursor-pointer rounded-xl transition-all duration-150 ease-out active:scale-[0.98]",
+									"h-11 w-11 rounded-xl transition-all cursor-pointer",
 									userColor === c
 										? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-105"
-										: "opacity-80 hover:scale-105 hover:opacity-100",
+										: "hover:scale-105 opacity-80 hover:opacity-100",
 								)}
 							/>
 						))}

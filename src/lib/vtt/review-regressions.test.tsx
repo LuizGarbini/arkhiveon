@@ -95,7 +95,7 @@ it("preserves multiple remote placed templates by ID", () => {
 			.sort(),
 	).toEqual(["one", "two"]);
 });
-it("edits the exact token opened from the radial menu", () => {
+it("edits the exact token opened from the token panel", () => {
 	useVTTStore.setState({ tokens: [a, b], activeTokenIdForMenu: "b" });
 	const update = vi.fn().mockResolvedValue(undefined);
 	render(
@@ -104,7 +104,8 @@ it("edits the exact token opened from the radial menu", () => {
 			<VTTSheetDrawer onUpdateToken={update} />
 		</>,
 	);
-	fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+	fireEvent.click(screen.getByRole("button", { name: "Abrir ficha na mesa" }));
+	expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
 	fireEvent.click(screen.getByRole("button", { name: "-1" }));
 	expect(update).toHaveBeenCalledWith("b", { hpCurrent: 9 });
 });
@@ -145,18 +146,25 @@ it("associates grid scale and unit labels with inputs", () => {
 	expect(screen.getByRole("combobox", { name: "Unidade" })).toBeTruthy();
 });
 
-it("keeps radial actions inside the left viewport edge", () => {
-	useVTTStore.setState({ tokens: [a], activeTokenIdForMenu: "a" });
-	render(
-		<VTTTokenMenu token={a} onUpdateToken={vi.fn()} onDeleteToken={vi.fn()} />,
-	);
-	const button = screen.getByRole("button", { name: "Travar" });
-	const panel = button.closest(".fixed") as HTMLElement;
-	// The ring extends 92px plus half a 44px touch target from its center.
-	const center = panel.style.transform
-		? parseFloat(panel.style.left) + 120
-		: parseFloat(panel.style.left);
-	expect(center - 114).toBeGreaterThanOrEqual(0);
+it("keeps the token panel inside both horizontal viewport edges", () => {
+	for (const x of [-500, 0, 5000]) {
+		const token = { ...a, x };
+		useVTTStore.setState({ tokens: [token], activeTokenIdForMenu: "a" });
+		const { unmount } = render(
+			<VTTTokenMenu
+				token={token}
+				onUpdateToken={vi.fn()}
+				onDeleteToken={vi.fn()}
+			/>,
+		);
+		const button = screen.getByRole("button", { name: "Travar no Lugar" });
+		const panel = button.closest(".fixed") as HTMLElement;
+		const left = Number.parseFloat(panel.style.left);
+		expect(left).toBeGreaterThanOrEqual(12);
+		// The panel is at most 20rem (320px) wide.
+		expect(left + 320).toBeLessThanOrEqual(window.innerWidth);
+		unmount();
+	}
 });
 
 it("broadcasts IDs when clearing local templates and removes only the author copies", () => {

@@ -1,442 +1,444 @@
+import { Link } from "@tanstack/react-router";
 import {
+	Crosshair,
+	FileText,
 	Plus,
 	Search,
-	Shield,
 	Skull,
-	Sparkles,
-	User,
 	Users,
 	X,
 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useDeferredValue, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRPGStore } from "@/lib/store";
-import type { Character, Npc } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { snapToGrid } from "@/lib/vtt/grid-math";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import {
-	vttChipClass,
-	vttIconButtonClass,
-	vttIconButtonIdleClass,
-} from "./vtt-chrome";
+import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
-interface VTTRosterDrawerProps {
+interface Props {
 	scene: VTTScene | null;
-	onSpawnToken: (tokenData: Partial<VTTToken>) => Promise<void>;
+	onSpawnToken: (data: Partial<VTTToken>) => Promise<void>;
+	onFocusPoint: (x: number, y: number) => void;
 }
-
-export function VTTRosterDrawer({ scene, onSpawnToken }: VTTRosterDrawerProps) {
-	const { showRosterDrawer, setShowRosterDrawer, viewport, isGM } =
-		useVTTStore();
+export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
+	const open = useVTTStore((s) => s.showRosterDrawer);
+	const close = useVTTStore((s) => s.setShowRosterDrawer);
+	const isGM = useVTTStore((s) => s.isGM);
+	const tokens = useVTTStore((s) => s.tokens);
 	const characters = useRPGStore((s) => s.characters);
 	const npcs = useRPGStore((s) => s.npcs);
-
-	const nameFieldId = useId();
-	const hpFieldId = useId();
-	const [activeTab, setActiveTab] = useState<"characters" | "npcs" | "custom">(
-		"characters",
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const campaignId = useRPGStore((s) => s.activeCampaignId);
+	const campaign = campaigns.find((c) => c.id === scene?.campaignId);
+	const [tab, setTab] = useState<"scene" | "characters" | "npcs" | "custom">(
+		"scene",
 	);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [spawningId, setSpawningId] = useState<string | null>(null);
+	const [query, setQuery] = useState("");
+	const search = useDeferredValue(query.trim().toLocaleLowerCase());
+	const [pending, setPending] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const formId = useId();
+	const [name, setName] = useState("");
+	const [hp, setHp] = useState(25);
+	const [size, setSize] = useState(1);
+	const visibleCharacters = useMemo(
+		() =>
+			campaignId === scene?.campaignId
+				? characters.filter((c) =>
+						c.characterName.toLocaleLowerCase().includes(search),
+					)
+				: [],
+		[characters, campaignId, scene?.campaignId, search],
+	);
+	const visibleNpcs = useMemo(
+		() =>
+			npcs.filter(
+				(n) =>
+					canViewScopedContent(n, campaign, campaign?.myRole, campaigns) &&
+					n.name.toLocaleLowerCase().includes(search),
+			),
+		[npcs, campaign, campaigns, search],
+	);
+	const visibleTokens = useMemo(
+		() =>
+			tokens.filter(
+				(t) =>
+					(isGM || (!t.isHidden && t.layer !== "gm")) &&
+					t.name.toLocaleLowerCase().includes(search),
+			),
+		[tokens, isGM, search],
+	);
+	if (!open || !scene) return null;
 
-	// Quick Custom Token Form
-	const [customName, setCustomName] = useState("");
-	const [customHp, setCustomHp] = useState(25);
-	const [customSize, setCustomSize] = useState(1);
-
-	const filteredCharacters = useMemo(() => {
-		if (!searchQuery.trim()) return characters;
-		const q = searchQuery.toLowerCase();
-		return characters.filter(
-			(c) =>
-				(c.characterName || "").toLowerCase().includes(q) ||
-				(c.class || "").toLowerCase().includes(q) ||
-				(c.race || "").toLowerCase().includes(q),
+	async function spawn(id: string, data: Partial<VTTToken>) {
+		if (!scene || !isGM || pending) return;
+		setPending(id);
+		setError(null);
+		const { viewport } = useVTTStore.getState();
+		const position = snapToGrid(
+			{
+				x: Math.max(
+					scene.gridSize,
+					Math.min(
+						(window.innerWidth / 2 - viewport.x) / viewport.scale,
+						scene.width - scene.gridSize,
+					),
+				),
+				y: Math.max(
+					scene.gridSize,
+					Math.min(
+						(window.innerHeight / 2 - viewport.y) / viewport.scale,
+						scene.height - scene.gridSize,
+					),
+				),
+			},
+			scene.gridType,
+			scene.gridSize,
+			data.sizeCells ?? 1,
 		);
-	}, [characters, searchQuery]);
-
-	const filteredNPCs = useMemo(() => {
-		if (!searchQuery.trim()) return npcs;
-		const q = searchQuery.toLowerCase();
-		return npcs.filter(
-			(n) =>
-				(n.name || "").toLowerCase().includes(q) ||
-				(n.role || "").toLowerCase().includes(q) ||
-				(n.kind || "").toLowerCase().includes(q),
-		);
-	}, [npcs, searchQuery]);
-
-	if (!showRosterDrawer) return null;
-
-	// Calculate center of current camera viewport in world coordinates
-	const getSpawnPosition = (tokenSizeCells = 1) => {
-		const screenCenterX = window.innerWidth / 2;
-		const screenCenterY = window.innerHeight / 2;
-		const worldX = (screenCenterX - viewport.x) / viewport.scale;
-		const worldY = (screenCenterY - viewport.y) / viewport.scale;
-
-		const gridSize = scene?.gridSize || 70;
-		const maxX = (scene?.width || 4000) - gridSize;
-		const maxY = (scene?.height || 4000) - gridSize;
-
-		const clampedX = Math.max(gridSize, Math.min(worldX, maxX));
-		const clampedY = Math.max(gridSize, Math.min(worldY, maxY));
-
-		return snapToGrid(
-			{ x: clampedX, y: clampedY },
-			scene?.gridType || "square",
-			gridSize,
-			tokenSizeCells,
-		);
-	};
-
-	const handleSpawnCharacter = async (char: Character) => {
-		if (!scene) return;
-		setSpawningId(char.id);
 		try {
-			const pos = getSpawnPosition(1);
 			await onSpawnToken({
+				...data,
+				...position,
 				sceneId: scene.id,
-				characterId: char.id,
-				name: char.characterName || "Personagem",
-				avatarUrl: char.imageUrl || null,
 				layer: "token",
-				x: pos.x,
-				y: pos.y,
-				sizeCells: 1.0,
-				rotation: 0,
-				hpCurrent: char.health ?? 20,
-				hpMax: char.healthMax ?? 20,
-				elevation: 0,
-				conditions: [],
-				auras: [],
-				visionRange: 6,
-				isLocked: false,
-				isHidden: false,
-				controlledBy: [],
 			});
+			if (id === "custom") setName("");
+			setTab("scene");
+		} catch (error) {
+			setError(
+				error instanceof Error
+					? error.message
+					: "Não foi possível colocar o token. Tente novamente.",
+			);
 		} finally {
-			setSpawningId(null);
+			setPending(null);
 		}
-	};
-
-	const handleSpawnNPC = async (npc: Npc) => {
-		if (!scene) return;
-		setSpawningId(npc.id);
-		try {
-			const pos = getSpawnPosition(1);
-			await onSpawnToken({
-				sceneId: scene.id,
-				npcId: npc.id,
-				name: npc.name || "NPC",
-				avatarUrl: npc.imageUrl || null,
-				layer: isGM ? "token" : "token",
-				x: pos.x,
-				y: pos.y,
-				sizeCells: 1.0,
-				rotation: 0,
-				hpCurrent: 30,
-				hpMax: 30,
-				elevation: 0,
-				conditions: [],
-				auras: [],
-				visionRange: 6,
-				isLocked: false,
-				isHidden: false,
-				controlledBy: [],
-			});
-		} finally {
-			setSpawningId(null);
-		}
-	};
-
-	const handleSpawnCustomToken = async () => {
-		if (!scene || !customName.trim()) return;
-		setSpawningId("custom");
-		try {
-			const pos = getSpawnPosition(customSize);
-			await onSpawnToken({
-				sceneId: scene.id,
-				name: customName.trim(),
-				avatarUrl: null,
-				layer: "token",
-				x: pos.x,
-				y: pos.y,
-				sizeCells: customSize,
-				rotation: 0,
-				hpCurrent: customHp,
-				hpMax: customHp,
-				elevation: 0,
-				conditions: [],
-				auras: [],
-				visionRange: 6,
-				isLocked: false,
-				isHidden: false,
-				controlledBy: [],
-			});
-			setCustomName("");
-		} finally {
-			setSpawningId(null);
-		}
-	};
-
+	}
+	const tabs: { id: typeof tab; label: string }[] = [
+		{ id: "scene", label: "Na cena" },
+		{ id: "characters", label: "Fichas" },
+		...(isGM
+			? [
+					{ id: "npcs" as const, label: "NPCs" },
+					{ id: "custom" as const, label: "Criar" },
+				]
+			: []),
+	];
 	return (
-		<div className="absolute right-4 top-16 bottom-16 z-40 flex w-80 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md pointer-events-auto select-none sm:w-96">
-			<div className="flex items-center justify-between border-b border-border/60 p-4">
-				<div className="flex items-center gap-2">
-					<Users className="h-5 w-5 text-primary" />
-					<h3 className="font-display text-sm font-bold tracking-wide text-foreground">
-						Personagens & Bestiário
-					</h3>
+		<aside
+			aria-label="Biblioteca da mesa"
+			className="absolute right-3 top-32 bottom-20 z-40 flex w-[min(24rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-xl backdrop-blur-md"
+		>
+			<div className="flex items-center justify-between gap-3 border-b border-border/70 p-4">
+				<div>
+					<p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+						Sua campanha, à mão
+					</p>
+					<h2 className="mt-1 font-display text-lg font-bold">
+						Biblioteca da mesa
+					</h2>
 				</div>
-				<button
-					type="button"
-					onClick={() => setShowRosterDrawer(false)}
-					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
+				<Button
+					variant="ghost"
+					aria-label="Fechar biblioteca"
+					className="size-11 shrink-0 px-0"
+					onClick={() => close(false)}
 				>
-					<X className="h-4 w-4" />
-				</button>
+					<X className="size-4" />
+				</Button>
 			</div>
-
-			<div className="grid grid-cols-3 gap-1.5 border-b border-border/60 bg-background/40 p-2">
-				<button
-					type="button"
-					onClick={() => setActiveTab("characters")}
-					className={cn(
-						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
-						activeTab === "characters"
-							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-							: "text-muted-foreground hover:bg-muted hover:text-foreground",
-					)}
-				>
-					<Shield className="h-3 w-3" />
-					<span>Heróis ({characters.length})</span>
-				</button>
-
-				<button
-					type="button"
-					onClick={() => setActiveTab("npcs")}
-					className={cn(
-						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
-						activeTab === "npcs"
-							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-							: "text-muted-foreground hover:bg-muted hover:text-foreground",
-					)}
-				>
-					<Skull className="h-3 w-3" />
-					<span>NPCs ({npcs.length})</span>
-				</button>
-
-				<button
-					type="button"
-					onClick={() => setActiveTab("custom")}
-					className={cn(
-						"flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer",
-						activeTab === "custom"
-							? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-							: "text-muted-foreground hover:bg-muted hover:text-foreground",
-					)}
-				>
-					<Sparkles className="h-3 w-3" />
-					<span>Criar Monstro</span>
-				</button>
-			</div>
-
-			{/* Content Area */}
-			{activeTab === "custom" ? (
-				<div className="p-4 space-y-3.5 overflow-y-auto">
-					<div className="space-y-1.5">
-						<label
-							htmlFor={nameFieldId}
-							className="text-[11px] font-bold text-muted-foreground"
-						>
-							Nome da criatura
-						</label>
-						<Input
-							id={nameFieldId}
-							value={customName}
-							onChange={(e) => setCustomName(e.target.value)}
-							placeholder="Ex: Dragão Vermelho Jovem, Goblin..."
-							className="h-[44px] text-xs"
-						/>
-					</div>
-
-					<div className="grid grid-cols-2 gap-2">
-						<div className="space-y-1.5">
-							<label
-								htmlFor={hpFieldId}
-								className="text-[11px] font-bold text-muted-foreground"
-							>
-								Pontos de vida
-							</label>
-							<Input
-								id={hpFieldId}
-								type="number"
-								value={customHp}
-								onChange={(e) =>
-									setCustomHp(Number.parseInt(e.target.value, 10) || 1)
-								}
-								className="h-[44px] text-xs font-mono"
-							/>
-						</div>
-
-						<fieldset className="space-y-1.5">
-							<legend className="text-[11px] font-bold text-muted-foreground">
-								Tamanho no grid
-							</legend>
-							<div className="grid grid-cols-4 gap-1">
-								{[1, 2, 3, 4].map((sz) => (
-									<button
-										type="button"
-										key={sz}
-										onClick={() => setCustomSize(sz)}
-										className={cn(
-											vttChipClass,
-											"px-0",
-											customSize === sz
-												? "border-primary/40 bg-primary text-primary-foreground"
-												: "border-border/70 bg-background/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-										)}
-									>
-										{sz}x
-									</button>
-								))}
-							</div>
-						</fieldset>
-					</div>
-
-					<Button
+			<nav
+				aria-label="Conteúdo da biblioteca"
+				className="flex gap-1 border-b border-border/70 p-2"
+			>
+				{tabs.map((item) => (
+					<button
 						type="button"
-						disabled={!customName.trim() || spawningId === "custom"}
-						onClick={handleSpawnCustomToken}
-						className="mt-2 h-[44px] w-full gap-1.5 rounded-2xl text-xs font-bold"
+						key={item.id}
+						aria-pressed={tab === item.id}
+						onClick={() => {
+							setTab(item.id);
+							setError(null);
+						}}
+						className={cn(
+							"min-h-11 flex-1 rounded-xl px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+							tab === item.id
+								? "bg-primary/15 text-primary"
+								: "text-muted-foreground hover:bg-accent",
+						)}
 					>
-						<Plus className="h-4 w-4" />
-						<span>Instanciar Monstro no Campo de Visão</span>
-					</Button>
+						{item.label}
+					</button>
+				))}
+			</nav>
+			{error && (
+				<p role="alert" className="px-4 pt-3 text-sm text-destructive">
+					{error}
+				</p>
+			)}
+			{tab !== "custom" && (
+				<div className="relative m-4">
+					<Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" />
+					<Input
+						aria-label="Buscar na biblioteca"
+						placeholder="Buscar na biblioteca…"
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						className="h-11 pl-9 text-base"
+					/>
 				</div>
-			) : (
-				<>
-					{/* Search Input */}
-					<div className="border-b border-border/60 p-3">
-						<div className="relative">
-							<Search className="absolute top-3.5 left-3 h-3.5 w-3.5 text-muted-foreground" />
-							<Input
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								placeholder={
-									activeTab === "characters"
-										? "Buscar por nome ou classe..."
-										: "Buscar por NPC ou ameaça..."
-								}
-								className="h-[44px] rounded-xl pl-9 text-xs"
-							/>
-						</div>
-					</div>
-
-					{/* Entity List */}
-					<div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-						{activeTab === "characters" ? (
-							filteredCharacters.length > 0 ? (
-								filteredCharacters.map((char) => (
-									<div
-										key={char.id}
-										className="group flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/50 p-2.5 transition-all duration-150 hover:bg-muted"
-									>
-										<div className="flex items-center gap-3 min-w-0">
-											<div className="relative h-10 w-10 shrink-0 rounded-full border border-primary/40 bg-primary/20 overflow-hidden flex items-center justify-center">
-												{char.imageUrl ? (
-													<img
-														src={char.imageUrl}
-														alt={char.characterName}
-														className="h-full w-full object-cover"
-													/>
-												) : (
-													<User className="h-5 w-5 text-primary" />
-												)}
-											</div>
-											<div className="min-w-0">
-												<h4 className="truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
-													{char.characterName}
-												</h4>
-												<p className="truncate text-[10px] text-muted-foreground">
-													{char.class
-														? `${char.class} Lv.${char.level || 1}`
-														: char.race || "Aventureiro"}
-												</p>
-											</div>
-										</div>
-
-										<Button
-											type="button"
-											size="sm"
-											disabled={spawningId === char.id}
-											onClick={() => handleSpawnCharacter(char)}
-											className="h-[44px] shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
-										>
-											<Plus className="h-3 w-3" />
-											<span>Colocar</span>
-										</Button>
-									</div>
-								))
-							) : (
-								<div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
-									<User className="mb-2 h-8 w-8 text-muted-foreground/40" />
-									<span>Nenhum personagem encontrado</span>
-								</div>
-							)
-						) : filteredNPCs.length > 0 ? (
-							filteredNPCs.map((npc) => (
-								<div
-									key={npc.id}
-									className="group flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/50 p-2.5 transition-all duration-150 hover:bg-muted"
+			)}
+			<div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
+				{tab === "scene" && (
+					<>
+						<p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+							Encontre um token no mapa ou abra sua ficha. Use o botão direito
+							no token para editar.
+						</p>
+						{visibleTokens.map((token) => (
+							<div
+								key={token.id}
+								className="flex items-center gap-2 rounded-xl border border-border/70 bg-card-elevated p-2"
+							>
+								<button
+									type="button"
+									onClick={() => {
+										onFocusPoint(token.x, token.y);
+										close(false);
+									}}
+									aria-label={`Localizar ${token.name}`}
+									className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:ring-2 focus-visible:ring-primary"
 								>
-									<div className="flex min-w-0 items-center gap-3">
-										<div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/40 bg-primary/20">
-											{npc.imageUrl ? (
-												<img
-													src={npc.imageUrl}
-													alt={npc.name}
-													className="h-full w-full object-cover"
-												/>
-											) : (
-												<Skull className="h-5 w-5 text-primary" />
-											)}
-										</div>
-										<div className="min-w-0">
-											<h4 className="truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
-												{npc.name}
-											</h4>
-											<p className="truncate text-[10px] text-muted-foreground">
-												{npc.role || npc.kind || "NPC"}
-											</p>
-										</div>
-									</div>
-
-									<Button
-										type="button"
-										size="sm"
-										disabled={spawningId === npc.id}
-										onClick={() => handleSpawnNPC(npc)}
-										className="h-[44px] shrink-0 gap-1 rounded-xl px-2.5 text-[11px] font-bold"
+									<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-primary">
+										{token.name.slice(0, 2).toUpperCase()}
+									</span>
+									<span className="min-w-0">
+										<span className="block truncate text-sm font-semibold">
+											{token.name}
+										</span>
+										<span className="text-xs tabular-nums text-muted-foreground">
+											{token.hpCurrent ?? "—"} / {token.hpMax ?? "—"} PV
+											{token.layer === "gm" || token.isHidden
+												? " · Oculto"
+												: ""}
+										</span>
+									</span>
+									<Crosshair className="ml-auto size-4 shrink-0 text-muted-foreground" />
+								</button>
+								{token.characterId && (
+									<Link
+										to="/sheets/$characterId"
+										params={{ characterId: token.characterId }}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={`Abrir ficha de ${token.name} em outra aba`}
+										className="flex size-11 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-accent focus-visible:ring-2"
 									>
-										<Plus className="h-3 w-3" />
-										<span>Colocar</span>
+										<FileText className="size-4" />
+									</Link>
+								)}
+							</div>
+						))}
+						{visibleTokens.length === 0 && (
+							<div className="rounded-xl border border-dashed border-border/70 p-5 text-center">
+								<Users className="mx-auto mb-3 size-7 text-primary" />
+								<p className="text-sm font-medium">
+									{search
+										? "Nenhum token encontrado"
+										: "A cena está pronta para seu grupo"}
+								</p>
+								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+									{isGM
+										? "Coloque personagens da campanha ou crie um token para começar."
+										: "Aguarde o mestre colocar os personagens na cena."}
+								</p>
+								{isGM && (
+									<Button
+										variant="outline"
+										className="mt-4 h-11"
+										onClick={() => setTab("characters")}
+									>
+										Escolher personagens
 									</Button>
-								</div>
-							))
-						) : (
-							<div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
-								<Skull className="mb-2 h-8 w-8 text-muted-foreground/40" />
-								<span>Nenhum NPC encontrado</span>
+								)}
 							</div>
 						)}
-					</div>
-				</>
-			)}
-		</div>
+					</>
+				)}
+				{tab === "characters" && (
+					<>
+						{visibleCharacters.map((char) => (
+							<div
+								key={char.id}
+								className="rounded-xl border border-border/70 bg-card-elevated p-3"
+							>
+								<div className="flex items-center gap-3">
+									<Users className="size-5 shrink-0 text-primary" />
+									<div className="min-w-0">
+										<h3 className="truncate text-sm font-semibold">
+											{char.characterName}
+										</h3>
+										<p className="text-xs text-muted-foreground">
+											{char.class} · {char.health ?? "—"}/
+											{char.healthMax ?? "—"} PV
+										</p>
+									</div>
+								</div>
+								<div className="mt-3 flex gap-2">
+									<Link
+										to="/sheets/$characterId"
+										params={{ characterId: char.id }}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border/70 text-xs font-medium focus-visible:ring-2"
+									>
+										<FileText className="size-4" />
+										Abrir ficha ↗
+									</Link>
+									{isGM && (
+										<Button
+											disabled={pending !== null}
+											className="h-11"
+											onClick={() =>
+												void spawn(char.id, {
+													characterId: char.id,
+													name: char.characterName,
+													avatarUrl: char.imageUrl,
+													hpCurrent: char.health,
+													hpMax: char.healthMax,
+												})
+											}
+										>
+											<Plus className="size-4" />
+											Colocar
+										</Button>
+									)}
+								</div>
+							</div>
+						))}
+						{visibleCharacters.length === 0 && (
+							<p className="py-8 text-center text-sm text-muted-foreground">
+								Nenhuma ficha disponível nesta campanha.
+							</p>
+						)}
+					</>
+				)}
+				{tab === "npcs" && isGM && (
+					<>
+						{visibleNpcs.map((npc) => (
+							<div
+								key={npc.id}
+								className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-3"
+							>
+								<Skull className="size-5 shrink-0 text-primary" />
+								<div className="min-w-0 flex-1">
+									<h3 className="truncate text-sm font-semibold">{npc.name}</h3>
+									<p className="truncate text-xs text-muted-foreground">
+										{npc.role || npc.kind}
+									</p>
+								</div>
+								<Button
+									disabled={pending !== null}
+									className="h-11"
+									onClick={() =>
+										void spawn(npc.id, {
+											npcId: npc.id,
+											name: npc.name,
+											avatarUrl: npc.imageUrl,
+										})
+									}
+								>
+									Colocar
+								</Button>
+							</div>
+						))}
+						{visibleNpcs.length === 0 && (
+							<p className="py-8 text-center text-sm text-muted-foreground">
+								Nenhum NPC disponível nesta campanha.
+							</p>
+						)}
+					</>
+				)}
+				{tab === "custom" && isGM && (
+					<form
+						className="space-y-4 pt-4"
+						onSubmit={(e) => {
+							e.preventDefault();
+							if (name.trim())
+								void spawn("custom", {
+									name: name.trim(),
+									hpCurrent: hp,
+									hpMax: hp,
+									sizeCells: size,
+								});
+						}}
+					>
+						<p className="text-sm leading-relaxed text-muted-foreground">
+							Crie um figurante ou criatura para este encontro.
+						</p>
+						<div className="space-y-2">
+							<label htmlFor={`${formId}-name`} className="text-sm font-medium">
+								Nome
+							</label>
+							<Input
+								id={`${formId}-name`}
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								required
+								className="h-11 text-base"
+								placeholder="Ex.: Guardião das ruínas"
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="space-y-2">
+								<label htmlFor={`${formId}-hp`} className="text-sm">
+									Pontos de vida
+								</label>
+								<Input
+									id={`${formId}-hp`}
+									type="number"
+									min={1}
+									required
+									value={hp}
+									onChange={(e) => setHp(Number(e.target.value))}
+									className="h-11 text-base"
+								/>
+							</div>
+							<div className="space-y-2">
+								<label htmlFor={`${formId}-size`} className="text-sm">
+									Tamanho (células)
+								</label>
+								<Input
+									id={`${formId}-size`}
+									type="number"
+									min={0.5}
+									max={10}
+									step={0.5}
+									required
+									value={size}
+									onChange={(e) => setSize(Number(e.target.value))}
+									className="h-11 text-base"
+								/>
+							</div>
+						</div>
+						<Button
+							type="submit"
+							disabled={pending !== null}
+							className="h-11 w-full"
+						>
+							<Plus className="size-4" />
+							{pending ? "Colocando…" : "Colocar na cena"}
+						</Button>
+					</form>
+				)}
+			</div>
+			<p className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+				{scene.name} · {isGM ? "Visão do mestre" : "Visão do jogador"}
+			</p>
+		</aside>
 	);
 }

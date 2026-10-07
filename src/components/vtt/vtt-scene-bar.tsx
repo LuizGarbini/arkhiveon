@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Compass, Eye, Plus, Sparkles, Users } from "lucide-react";
+import {
+	ArrowLeft,
+	BookOpen,
+	Compass,
+	Eye,
+	Plus,
+	Sparkles,
+	Users,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +30,7 @@ interface VTTSceneBarProps {
 	campaignName: string;
 	onCreateScene: (sceneData: Partial<VTTScene>) => Promise<void>;
 	onActivateScene: (sceneId: string) => Promise<void>;
+	onOpenJournal: () => void;
 	onFocusPoint?: (x: number, y: number) => void;
 }
 
@@ -31,15 +40,14 @@ export function VTTSceneBar({
 	onCreateScene,
 	onActivateScene,
 	onFocusPoint,
+	onOpenJournal,
 }: VTTSceneBarProps) {
-	const {
-		scenes,
-		activeSceneId,
-		setActiveSceneId,
-		isGM,
-		showRosterDrawer,
-		setShowRosterDrawer,
-	} = useVTTStore();
+	const scenes = useVTTStore((s) => s.scenes);
+	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const setActiveSceneId = useVTTStore((s) => s.setActiveSceneId);
+	const isGM = useVTTStore((s) => s.isGM);
+	const showRosterDrawer = useVTTStore((s) => s.showRosterDrawer);
+	const setShowRosterDrawer = useVTTStore((s) => s.setShowRosterDrawer);
 
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [newSceneName, setNewSceneName] = useState("");
@@ -49,6 +57,8 @@ export function VTTSceneBar({
 	const [newScaleDistance, setNewScaleDistance] = useState(1.5);
 	const [newScaleUnit, setNewScaleUnit] = useState<VTTGridScaleUnit>("m");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [isActivating, setIsActivating] = useState(false);
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 
@@ -57,6 +67,7 @@ export function VTTSceneBar({
 		if (!newSceneName.trim()) return;
 
 		setIsSubmitting(true);
+		setError(null);
 		try {
 			await onCreateScene({
 				campaignId,
@@ -74,6 +85,12 @@ export function VTTSceneBar({
 			setIsCreateModalOpen(false);
 			setNewSceneName("");
 			setNewMapUrl("");
+		} catch (error) {
+			setError(
+				error instanceof Error
+					? error.message
+					: "Não foi possível criar a cena. Tente novamente.",
+			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -81,115 +98,164 @@ export function VTTSceneBar({
 
 	return (
 		<>
-			<div className="absolute top-0 inset-x-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border/70 bg-card/80 px-4 py-2 backdrop-blur-md pointer-events-auto select-none">
-				{/* Left: Back Link & Campaign Name */}
-				<div className="flex items-center gap-2.5 shrink-0">
-					<Link
-						to="/dashboard"
-						className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border/70 bg-background/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted"
-					>
-						<ArrowLeft className="h-3.5 w-3.5" />
-						<span className="hidden sm:inline">Voltar</span>
-					</Link>
-
-					<div className="h-4 w-px bg-border/70" />
-
-					<div className="flex items-center gap-2">
-						<span className="font-display font-bold text-sm text-foreground truncate max-w-[140px] sm:max-w-[200px]">
-							{campaignName}
-						</span>
-						<span className="px-2 py-0.5 rounded-full border border-primary/40 bg-primary/20 text-primary text-[9px] font-extrabold tracking-wider uppercase">
-							Tabletop
-						</span>
+			<header className="absolute inset-x-0 top-0 z-30 border-b border-border/70 bg-card/95 backdrop-blur-md select-none">
+				<div className="flex h-16 items-center justify-between gap-2 px-3 sm:px-5">
+					<div className="flex min-w-0 items-center gap-3">
+						<Link
+							to="/dashboard"
+							aria-label="Voltar à campanha"
+							className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/70 text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+						>
+							<ArrowLeft className="size-4" />
+						</Link>
+						<div className="min-w-0">
+							<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+								Arkhiveon · Table Top
+							</p>
+							<h1 className="truncate font-display text-base font-bold sm:text-lg">
+								{campaignName}
+							</h1>
+						</div>
+					</div>
+					<div className="flex shrink-0 items-center gap-2">
+						<div className="hidden lg:block">
+							<VTTPresenceBar onFocusPoint={onFocusPoint} />
+						</div>
+						{isGM && (
+							<Button
+								variant="outline"
+								onClick={onOpenJournal}
+								aria-label="Diário da campanha"
+								className="size-11 rounded-xl px-0 sm:w-auto sm:px-3"
+							>
+								<BookOpen className="size-4" />
+								<span className="hidden sm:inline">Diário</span>
+							</Button>
+						)}
+						{activeScene && (
+							<Button
+								variant={showRosterDrawer ? "default" : "outline"}
+								onClick={() => setShowRosterDrawer(!showRosterDrawer)}
+								aria-label="Personagens e NPCs"
+								aria-expanded={showRosterDrawer}
+								className="size-11 rounded-xl px-0 sm:w-auto sm:px-3"
+							>
+								<Users className="size-4" />
+								<span className="hidden sm:inline">Biblioteca</span>
+							</Button>
+						)}
 					</div>
 				</div>
-
-				{/* Center: Scenes Tabs (Horizontal list) */}
-				<div className="flex items-center gap-1.5 overflow-x-auto max-w-xl scrollbar-none py-0.5">
-					{scenes.map((scene) => {
-						const isSelected = scene.id === activeSceneId;
-						return (
-							<button
-								type="button"
-								key={scene.id}
-								onClick={() => setActiveSceneId(scene.id)}
-								className={cn(
-									"flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 border cursor-pointer",
-									isSelected
-										? "border-primary/60 bg-primary/15 text-foreground shadow-xs"
-										: "border-transparent bg-background/40 text-muted-foreground hover:bg-muted hover:text-foreground",
-								)}
-							>
-								{scene.isActive && (
+				<div className="flex h-14 items-center gap-2 border-t border-border/50 px-3 sm:px-5">
+					<span className="hidden text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:block">
+						Cenas
+					</span>
+					<nav
+						aria-label="Cenas da mesa"
+						className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
+					>
+						{scenes
+							.filter((scene) => isGM || scene.isActive)
+							.map((scene) => (
+								<button
+									type="button"
+									key={scene.id}
+									onClick={() => setActiveSceneId(scene.id)}
+									aria-pressed={scene.id === activeSceneId}
+									className={cn(
+										"flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+										scene.id === activeSceneId
+											? "border-primary/40 bg-primary/10 text-foreground"
+											: "border-transparent text-muted-foreground hover:bg-accent",
+									)}
+								>
+									<Compass className="size-4 shrink-0" />
+									<span className="max-w-36 truncate">{scene.name}</span>
 									<span
-										className="h-2 w-2 rounded-full bg-primary"
-										title="Cena Ativa para os Jogadores"
-									/>
-								)}
-								<span className="truncate max-w-[120px]">{scene.name}</span>
-							</button>
-						);
-					})}
-				</div>
-
-				{/* Right: GM Scene Actions & Roster Toggle */}
-				<div className="flex items-center gap-2 shrink-0">
-					<VTTPresenceBar onFocusPoint={onFocusPoint} />
-
-					{activeScene && (
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() => setShowRosterDrawer(!showRosterDrawer)}
-							className={cn(
-								"h-[44px] gap-1.5 rounded-xl text-xs transition-all duration-150 ease-out",
-								showRosterDrawer
-									? "border-primary bg-primary text-primary-foreground"
-									: "border-border/70 bg-background/50 text-foreground hover:bg-muted",
-							)}
-						>
-							<Users className="h-3.5 w-3.5" />
-							<span className="hidden md:inline">Personagens & NPCs</span>
-						</Button>
-					)}
-
+										className={cn(
+											"hidden rounded-md px-1.5 py-1 text-[10px] sm:inline",
+											scene.isActive
+												? "bg-primary/15 text-primary"
+												: "bg-muted text-muted-foreground",
+										)}
+									>
+										{scene.isActive ? "Em jogo" : "Preparação"}
+									</span>
+								</button>
+							))}
+						{scenes.length === 0 && (
+							<span className="text-xs text-muted-foreground">
+								Sua história começa com uma cena
+							</span>
+						)}
+					</nav>
 					{isGM && (
 						<>
 							{activeScene && !activeScene.isActive && (
 								<Button
-									type="button"
 									variant="outline"
-									size="sm"
-									onClick={() => onActivateScene(activeScene.id)}
-									className="h-[44px] gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+									aria-label="Exibir cena aos jogadores"
+									disabled={isActivating}
+									className="h-11 shrink-0 rounded-xl px-3"
+									onClick={async () => {
+										setIsActivating(true);
+										setError(null);
+										try {
+											await onActivateScene(activeScene.id);
+										} catch (error) {
+											setError(
+												error instanceof Error
+													? error.message
+													: "Não foi possível exibir a cena.",
+											);
+										} finally {
+											setIsActivating(false);
+										}
+									}}
 								>
-									<Eye className="h-3.5 w-3.5" />
-									<span className="hidden md:inline">Ativar p/ Jogadores</span>
+									<Eye className="size-4" />
+									<span className="hidden md:inline">
+										{isActivating ? "Exibindo…" : "Exibir aos jogadores"}
+									</span>
 								</Button>
 							)}
-
 							<Button
-								type="button"
-								size="sm"
-								onClick={() => setIsCreateModalOpen(true)}
-								className="h-[44px] gap-1.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20"
+								aria-label="Nova cena"
+								onClick={() => {
+									setError(null);
+									setIsCreateModalOpen(true);
+								}}
+								className="h-11 shrink-0 rounded-xl px-3"
 							>
-								<Plus className="h-3.5 w-3.5" />
-								<span className="hidden sm:inline">Nova Cena</span>
+								<Plus className="size-4" />
+								<span className="hidden sm:inline">Nova cena</span>
 							</Button>
 						</>
 					)}
 				</div>
-			</div>
+				{error && !isCreateModalOpen && (
+					<p
+						role="alert"
+						className="border-t border-destructive/30 bg-card px-4 py-2 text-sm text-destructive"
+					>
+						{error}
+					</p>
+				)}
+			</header>
 
 			{/* Create Scene Modal */}
-			<Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-				<DialogContent className="max-w-md">
+			<Dialog
+				open={isCreateModalOpen}
+				onOpenChange={(open) => {
+					setIsCreateModalOpen(open);
+					if (!open) setError(null);
+				}}
+			>
+				<DialogContent className="vtt-dialog max-w-md">
 					<DialogHeader>
 						<DialogTitle className="font-display text-lg flex items-center gap-2">
 							<Compass className="h-5 w-5 text-primary" />
-							Criar Nova Cena de Combate
+							Preparar uma nova cena
 						</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
 							Defina o nome, imagem do mapa e configurações de grid para a nova
@@ -204,7 +270,7 @@ export function VTTSceneBar({
 								value={newSceneName}
 								onChange={(e) => setNewSceneName(e.target.value)}
 								required
-								className="h-9 text-xs"
+								className="h-11 text-base"
 							/>
 						</Field>
 
@@ -213,7 +279,7 @@ export function VTTSceneBar({
 								placeholder="https://exemplo.com/mapa.jpg"
 								value={newMapUrl}
 								onChange={(e) => setNewMapUrl(e.target.value)}
-								className="h-9 text-xs"
+								className="h-11 text-base"
 							/>
 						</Field>
 
@@ -224,7 +290,7 @@ export function VTTSceneBar({
 									onChange={(e) =>
 										setNewGridType(e.target.value as VTTGridType)
 									}
-									className="h-9 text-xs"
+									className="h-11 text-base"
 								>
 									<option value="square">Quadrado (Padrão)</option>
 									<option value="hex_pointy">Hexagonal (Pontudo)</option>
@@ -240,7 +306,7 @@ export function VTTSceneBar({
 									max={200}
 									value={newGridSize}
 									onChange={(e) => setNewGridSize(Number(e.target.value))}
-									className="h-9 text-xs"
+									className="h-11 text-base"
 								/>
 							</Field>
 						</div>
@@ -253,7 +319,7 @@ export function VTTSceneBar({
 									min="0.5"
 									value={newScaleDistance}
 									onChange={(e) => setNewScaleDistance(Number(e.target.value))}
-									className="h-9 text-xs"
+									className="h-11 text-base"
 								/>
 							</Field>
 
@@ -263,7 +329,7 @@ export function VTTSceneBar({
 									onChange={(e) =>
 										setNewScaleUnit(e.target.value as VTTGridScaleUnit)
 									}
-									className="h-9 text-xs"
+									className="h-11 text-base"
 								>
 									<option value="m">Metros (m)</option>
 									<option value="ft">Pés (ft)</option>
@@ -272,12 +338,20 @@ export function VTTSceneBar({
 							</Field>
 						</div>
 
+						{error && (
+							<p role="alert" className="text-sm text-destructive">
+								{error}
+							</p>
+						)}
 						<div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
 							<Button
 								type="button"
 								variant="ghost"
 								size="sm"
-								onClick={() => setIsCreateModalOpen(false)}
+								onClick={() => {
+									setIsCreateModalOpen(false);
+									setError(null);
+								}}
 								disabled={isSubmitting}
 							>
 								Cancelar

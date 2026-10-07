@@ -7,7 +7,8 @@ import {
 	Text,
 	TextStyle,
 } from "pixi.js";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
@@ -16,6 +17,10 @@ import {
 	getPointyHexCorners,
 	snapToGrid,
 } from "@/lib/vtt/grid-math";
+import {
+	canControlVTTToken,
+	type VTTCharacterOwner,
+} from "@/lib/vtt/permissions";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTFogPath,
@@ -29,6 +34,7 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
+	characterOwners?: readonly VTTCharacterOwner[];
 	onUpdateToken?: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
@@ -45,8 +51,11 @@ interface VTTCanvasProps {
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
+const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
+
 export function VTTCanvas({
 	scene,
+	characterOwners = EMPTY_CHARACTER_OWNERS,
 	onUpdateToken,
 	onBroadcastDrag,
 	onBroadcastCursor,
@@ -56,8 +65,10 @@ export function VTTCanvas({
 	onBroadcastTemplate,
 	onPersistFog,
 }: VTTCanvasProps) {
+	const { user } = useAuth();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const appRef = useRef<Application | null>(null);
+	const [rendererReady, setRendererReady] = useState(false);
 	const worldContainerRef = useRef<Container | null>(null);
 	const mapLayerRef = useRef<Container | null>(null);
 	const gridLayerRef = useRef<Graphics | null>(null);
@@ -97,42 +108,37 @@ export function VTTCanvas({
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
 
-	const {
-		viewport,
-		setViewport,
-		activeTool,
-		activeLayer,
-		tokens,
-		selectedTokenIds,
-		setSelectedTokenIds,
-		setActiveTokenIdForMenu,
-		updateToken,
-		setActiveMeasurement,
-		activePings,
-		addPing,
-		removePing,
-		setDraggedTokenId,
-		fogPaths,
-		addFogPath,
-		activeFogTool,
-		activeFogMode,
-		fogBrushRadius,
-		remoteCursors,
-		remoteMeasurements,
-		userColor,
-		isGM,
-		diagonalRule,
-		activeTemplateKind,
-		previewTemplate,
-		placedTemplates,
-		remoteTemplates,
-		remoteTemplatePreviews,
-		setPreviewTemplate,
-		addPlacedTemplate,
-		setActiveTool,
-		setShowFogControls,
-		setShowTemplateControls,
-	} = useVTTStore();
+	const viewport = useVTTStore((s) => s.viewport);
+	const setViewport = useVTTStore((s) => s.setViewport);
+	const activeTool = useVTTStore((s) => s.activeTool);
+	const activeLayer = useVTTStore((s) => s.activeLayer);
+	const tokens = useVTTStore((s) => s.tokens);
+	const selectedTokenIds = useVTTStore((s) => s.selectedTokenIds);
+	const setSelectedTokenIds = useVTTStore((s) => s.setSelectedTokenIds);
+	const setActiveTokenIdForMenu = useVTTStore((s) => s.setActiveTokenIdForMenu);
+	const updateToken = useVTTStore((s) => s.updateToken);
+	const setActiveMeasurement = useVTTStore((s) => s.setActiveMeasurement);
+	const activePings = useVTTStore((s) => s.activePings);
+	const addPing = useVTTStore((s) => s.addPing);
+	const removePing = useVTTStore((s) => s.removePing);
+	const setDraggedTokenId = useVTTStore((s) => s.setDraggedTokenId);
+	const fogPaths = useVTTStore((s) => s.fogPaths);
+	const addFogPath = useVTTStore((s) => s.addFogPath);
+	const activeFogTool = useVTTStore((s) => s.activeFogTool);
+	const activeFogMode = useVTTStore((s) => s.activeFogMode);
+	const fogBrushRadius = useVTTStore((s) => s.fogBrushRadius);
+	const remoteCursors = useVTTStore((s) => s.remoteCursors);
+	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
+	const userColor = useVTTStore((s) => s.userColor);
+	const isGM = useVTTStore((s) => s.isGM);
+	const diagonalRule = useVTTStore((s) => s.diagonalRule);
+	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
+	const previewTemplate = useVTTStore((s) => s.previewTemplate);
+	const placedTemplates = useVTTStore((s) => s.placedTemplates);
+	const remoteTemplates = useVTTStore((s) => s.remoteTemplates);
+	const remoteTemplatePreviews = useVTTStore((s) => s.remoteTemplatePreviews);
+	const setPreviewTemplate = useVTTStore((s) => s.setPreviewTemplate);
+	const addPlacedTemplate = useVTTStore((s) => s.addPlacedTemplate);
 
 	// 1. Initialize PixiJS Application
 	useEffect(() => {
@@ -147,7 +153,7 @@ export function VTTCanvas({
 
 			await app.init({
 				resizeTo: containerRef.current,
-				backgroundColor: 0x090a0f,
+				backgroundAlpha: 0,
 				antialias: true,
 				resolution: window.devicePixelRatio || 1,
 				autoDensity: true,
@@ -257,6 +263,7 @@ export function VTTCanvas({
 			};
 
 			app.ticker.add(tickerCallback);
+			setRendererReady(true);
 		}
 
 		void initPixi();
@@ -275,18 +282,21 @@ export function VTTCanvas({
 
 	// 2. Sync Viewport transformations to PixiJS world container
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!worldContainerRef.current) return;
 		worldContainerRef.current.position.set(viewport.x, viewport.y);
 		worldContainerRef.current.scale.set(viewport.scale);
-	}, [viewport.x, viewport.y, viewport.scale]);
+	}, [viewport.x, viewport.y, viewport.scale, rendererReady]);
 
 	// 3. Render Map & Grid whenever scene configuration changes
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!appRef.current || !gridLayerRef.current || !mapLayerRef.current)
 			return;
 
 		const mapLayer = mapLayerRef.current;
 		const grid = gridLayerRef.current;
+		let cancelled = false;
 
 		mapLayer.removeChildren();
 		grid.clear();
@@ -307,7 +317,7 @@ export function VTTCanvas({
 		if (mapImageUrl) {
 			Assets.load(mapImageUrl)
 				.then((texture) => {
-					if (!mapLayerRef.current) return;
+					if (cancelled || mapLayer.destroyed) return;
 					mapLayer.removeChildren();
 					const sprite = new Sprite(texture);
 					sprite.width = width;
@@ -320,12 +330,21 @@ export function VTTCanvas({
 		} else {
 			const bg = new Graphics();
 			bg.rect(0, 0, width, height);
-			bg.fill({ color: 0x12141c, alpha: 1 });
+			const palette = document.createElement("canvas").getContext("2d");
+			if (palette && containerRef.current) {
+				palette.fillStyle = getComputedStyle(containerRef.current).color;
+				palette.fillRect(0, 0, 1, 1);
+				const [r, g, b] = palette.getImageData(0, 0, 1, 1).data;
+				bg.fill({ color: (r << 16) | (g << 8) | b, alpha: 0.04 });
+			}
 			mapLayer.addChild(bg);
 		}
 
 		// Draw Procedural Grid
-		if (gridType === "none" || gridSize <= 0 || gridOpacity <= 0) return;
+		if (gridType === "none" || gridSize <= 0 || gridOpacity <= 0)
+			return () => {
+				cancelled = true;
+			};
 
 		const colorHex =
 			Number.parseInt(gridColor.replace("#", "0x"), 16) || 0xffffff;
@@ -378,10 +397,14 @@ export function VTTCanvas({
 			}
 			grid.stroke({ width: 1, color: colorHex, alpha: gridOpacity });
 		}
-	}, [scene]);
+		return () => {
+			cancelled = true;
+		};
+	}, [scene, rendererReady]);
 
 	// 4. Render Tokens and Auras on the Stage (with exploration visibility & layer isolation)
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (
 			!tokensLayerRef.current ||
 			!gmTokensLayerRef.current ||
@@ -455,7 +478,14 @@ export function VTTCanvas({
 			const tokenContainer = new Container();
 			tokenContainer.position.set(token.x, token.y);
 			tokenContainer.eventMode = "static";
-			tokenContainer.cursor = token.isLocked ? "default" : "grab";
+			const canControl = canControlVTTToken(
+				token,
+				user?.id,
+				isGM,
+				characterOwners,
+			);
+			tokenContainer.cursor =
+				token.isLocked || !canControl ? "default" : "grab";
 			tokenContainer.alpha = isGMLayer ? 0.55 : token.isHidden ? 0.5 : 1;
 
 			// Register in display objects map for zero-thrash GPU interpolation
@@ -613,6 +643,7 @@ export function VTTCanvas({
 
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
+				if (!canControl) return;
 				if (e.button === 2) {
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
@@ -672,7 +703,10 @@ export function VTTCanvas({
 			}
 		}
 	}, [
+		rendererReady,
 		tokens,
+		characterOwners,
+		user?.id,
 		scene,
 		selectedTokenIds,
 		isGM,
@@ -688,6 +722,7 @@ export function VTTCanvas({
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!fogOfWarLayerRef.current || !fogExplorationLayerRef.current || !scene)
 			return;
 		const fogLayer = fogOfWarLayerRef.current;
@@ -748,10 +783,11 @@ export function VTTCanvas({
 		} else {
 			explorationLayer.visible = false;
 		}
-	}, [scene, fogPaths, tokens, isGM]);
+	}, [scene, fogPaths, tokens, isGM, rendererReady]);
 
 	// 6. Render Remote Multiplayer Cursors
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!remoteCursorsLayerRef.current) return;
 		const layer = remoteCursorsLayerRef.current;
 		layer.removeChildren();
@@ -799,10 +835,11 @@ export function VTTCanvas({
 
 			layer.addChild(cursorContainer);
 		}
-	}, [remoteCursors]);
+	}, [remoteCursors, rendererReady]);
 
 	// 7. Render Remote Multiplayer Measurements (with distance labels)
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!remoteRulersLayerRef.current || !remoteRulersLabelsRef.current) return;
 		const layer = remoteRulersLayerRef.current;
 		const labelsLayer = remoteRulersLabelsRef.current;
@@ -848,10 +885,11 @@ export function VTTCanvas({
 			);
 			labelsLayer.addChild(label);
 		}
-	}, [remoteMeasurements]);
+	}, [remoteMeasurements, rendererReady]);
 
 	// 7b. Render spell templates (local preview, placed, remote)
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!templatesLayerRef.current || !scene) return;
 		const layer = templatesLayerRef.current;
 		layer.clear();
@@ -872,10 +910,12 @@ export function VTTCanvas({
 		remoteTemplatePreviews,
 		previewTemplate,
 		scene,
+		rendererReady,
 	]);
 
 	// 8. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
+		if (!rendererReady) return;
 		if (!pingsLayerRef.current) return;
 		const layer = pingsLayerRef.current;
 		layer.clear();
@@ -900,7 +940,7 @@ export function VTTCanvas({
 			layer.circle(ping.x, ping.y, 6);
 			layer.fill({ color: colorHex, alpha });
 		}
-	}, [activePings, removePing]);
+	}, [activePings, removePing, rendererReady]);
 
 	// 9. Native DOM event listeners for Pan, Zoom, Token Drag, Fog Painting, Alt-Ping & Ruler
 	useEffect(() => {
@@ -928,21 +968,9 @@ export function VTTCanvas({
 			if (e.code === "AltLeft" || e.code === "AltRight") {
 				isAltHeldRef.current = true;
 			}
+			// Tool shortcuts (V/H/R/G/T/F) live in VTTToolbar; only Escape here.
 			if (typing) return;
-			const key = e.key.toLowerCase();
-			if (key === "v") setActiveTool("select");
-			if (key === "h") setActiveTool("pan");
-			if (key === "r") setActiveTool("ruler");
-			if (key === "g") setActiveTool("ping");
-			if (key === "t") {
-				setActiveTool("template");
-				setShowTemplateControls(true);
-			}
-			if (key === "f" && isGM) {
-				setActiveTool("fog");
-				setShowFogControls(true);
-			}
-			if (key === "escape") {
+			if (e.key === "Escape") {
 				setActiveTokenIdForMenu(null);
 				setPreviewTemplate(null);
 				templateStartRef.current = null;
@@ -1396,9 +1424,6 @@ export function VTTCanvas({
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		setDraggedTokenId,
-		setActiveTool,
-		setShowFogControls,
-		setShowTemplateControls,
 		setPreviewTemplate,
 		addPlacedTemplate,
 	]);
