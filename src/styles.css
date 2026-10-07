@@ -1029,7 +1029,10 @@
 .t-panel-slide-x[data-open="true"] {
   transform: translateX(0);
   opacity: 1;
-  filter: blur(0);
+  /* "none", not blur(0): any filter value makes this element a backdrop root,
+     which turns the panel's backdrop-blur into a no-op and lets the table
+     (zoom dock, tokens) read through the sheet. */
+  filter: none;
   pointer-events: auto;
   transition:
     transform var(--panel-open-dur, 180ms) var(--panel-ease, cubic-bezier(0.22, 1, 0.36, 1)),

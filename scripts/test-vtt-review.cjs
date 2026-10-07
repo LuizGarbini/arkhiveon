@@ -94,7 +94,18 @@ const MENU_CONTROLS = [
 
 	// The elevation −/+ row must be fully visible as soon as the panel opens:
 	// not clipped by the panel and not hidden behind the pinned action footer.
+	// Wait for the panel's zoom-in entrance to finish before measuring it.
+	async function waitMenuSettled() {
+		await page.waitForFunction(() => {
+			const panel = document
+				.querySelector('[aria-label="Fechar menu do token"]')
+				?.closest(".fixed");
+			return Boolean(panel?.getAnimations({ subtree: true }).every((a) => a.playState !== "running"));
+		});
+	}
+
 	async function assertElevationVisibleOnOpen(where) {
+		await waitMenuSettled();
 		for (const name of ["Diminuir elevação em 1,5 metro", "Aumentar elevação em 1,5 metro"]) {
 			const btn = page.getByRole("button", { name, exact: true });
 			assert.equal(await btn.count(), 1, `${name} ausente (${where})`);
@@ -124,7 +135,56 @@ const MENU_CONTROLS = [
 		}
 	}
 
+	// The open sheet must hide whatever sits behind it: it stacks above the zoom
+	// dock, and nothing between it and the page root (filter, opacity, mask,
+	// clip-path, blend mode) turns its backdrop-filter into a no-op.
+	async function assertSheetHidesZoom(where) {
+		await page.waitForTimeout(500);
+		const report = await page.evaluate(() => {
+			const aside = document.querySelector('aside[aria-label="Ficha na mesa"]');
+			const glass = aside?.querySelector(".backdrop-blur-md");
+			if (!aside || !glass) return { missing: true };
+			const blur = getComputedStyle(glass).backdropFilter;
+			const roots = [];
+			for (let el = glass.parentElement; el; el = el.parentElement) {
+				const cs = getComputedStyle(el);
+				if (
+					cs.filter !== "none" ||
+					Number(cs.opacity) < 1 ||
+					cs.maskImage !== "none" ||
+					cs.clipPath !== "none" ||
+					cs.mixBlendMode !== "normal" ||
+					cs.backdropFilter !== "none"
+				)
+					roots.push(`${el.tagName}.${el.className}`.slice(0, 80));
+			}
+			const sheet = glass.getBoundingClientRect();
+			const zoom = [
+				...document.querySelectorAll(
+					'[aria-label="Enquadrar mapa"], [title="Redefinir zoom para 100%"]',
+				),
+			].map((el) => {
+				const r = el.getBoundingClientRect();
+				const x = r.left + r.width / 2;
+				const y = r.top + r.height / 2;
+				const under =
+					x >= sheet.left && x <= sheet.right && y >= sheet.top && y <= sheet.bottom;
+				const hit = document.elementFromPoint(x, y);
+				return { under, covered: Boolean(hit && aside.contains(hit)) };
+			});
+			return { blur, roots, zoom };
+		});
+		assert.ok(!report.missing, `ficha aberta não encontrada (${where})`);
+		assert.match(report.blur, /blur/, `ficha sem backdrop-blur (${where})`);
+		assert.deepEqual(report.roots, [], `ancestral anula o desfoque da ficha (${where})`);
+		assert.ok(report.zoom.length > 0, `controles de zoom não encontrados (${where})`);
+		for (const z of report.zoom) {
+			if (z.under) assert.ok(z.covered, `zoom aparece por cima da ficha (${where})`);
+		}
+	}
+
 	async function checkMenu() {
+		await waitMenuSettled();
 		const size = page.viewportSize();
 		for (const name of MENU_CONTROLS) {
 			const btn = page.getByRole("button", { name, exact: true });
@@ -288,6 +348,7 @@ const MENU_CONTROLS = [
 			"Abrir a ficha fecha o menu do token",
 		);
 		await page.getByText("Ficha na mesa").waitFor();
+		await assertSheetHidesZoom("1280x800");
 		const saved = page.waitForResponse(
 			(r) => r.request().method() === "PATCH" && r.url().includes("/vtt_tokens"),
 		);
@@ -453,6 +514,11 @@ const MENU_CONTROLS = [
 		await checkMenu();
 		await recording.chapter("Ações e condições acessíveis na tela estreita", 2200);
 		await page.getByRole("button", { name: "Fechar menu do token", exact: true }).click();
+		await store(() => window.__vtt_store__.getState().setShowCharacterSheetId("b"));
+		await page.getByText("Ficha na mesa").waitFor();
+		await assertSheetHidesZoom("390x844");
+		await page.getByRole("button", { name: "Fechar ficha" }).click();
+		await page.waitForFunction(() => !window.__vtt_store__.getState().showCharacterSheetId);
 		await store(() => window.__vtt_store__.getState().setShowGridSettings(true));
 		const input = page.getByRole("spinbutton", { name: "Escala" });
 		assert.ok(await input.evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize) >= 16));
