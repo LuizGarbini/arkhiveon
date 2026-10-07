@@ -1,5 +1,5 @@
 import { Dices, Heart, Shield, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button } from "@/components/ui/button";
 import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
@@ -8,11 +8,9 @@ import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import {
-	vttChipClass,
-	vttIconButtonClass,
-	vttIconButtonIdleClass,
-} from "./vtt-chrome";
+
+const chipClass =
+	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer touch-manipulation";
 
 interface VTTSheetDrawerProps {
 	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
@@ -25,12 +23,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	const characters = useRPGStore((s) => s.characters);
 
 	const token = useMemo(
-		() =>
-			tokens.find(
-				(t) =>
-					t.id === showCharacterSheetId ||
-					t.characterId === showCharacterSheetId,
-			) ?? null,
+		() => tokens.find((t) => t.id === showCharacterSheetId) ?? null,
 		[tokens, showCharacterSheetId],
 	);
 
@@ -54,11 +47,33 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	}>({ open: false, label: "", modifier: 0, diceType: "d20" });
 	const [lastRoll, setLastRoll] = useState<string | null>(null);
 
+	const rollLabel = rollState.label;
+	const rollModifier = rollState.modifier;
+	const handleRollComplete = useCallback(
+		(natural: number) => {
+			const signed =
+				rollModifier === 0
+					? ""
+					: ` ${rollModifier > 0 ? "+" : "−"} ${Math.abs(rollModifier)}`;
+			setLastRoll(
+				`${rollLabel}: ${natural}${signed} = ${natural + rollModifier}`,
+			);
+		},
+		[rollLabel, rollModifier],
+	);
+	const handleRollClose = useCallback(
+		() =>
+			setRollState({ open: false, label: "", modifier: 0, diceType: "d20" }),
+		[],
+	);
 	return (
 		<>
 			<aside
-				className="t-panel-slide-x pointer-events-none absolute z-40 inset-x-3 bottom-[5.75rem] top-auto h-[min(72vh,36rem)] w-auto md:inset-x-auto md:right-4 md:top-16 md:bottom-4 md:h-auto md:w-[min(100%-2rem,22rem)]"
+				className="t-panel-slide-x pointer-events-none absolute bottom-4 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
 				data-open={isOpen}
+				aria-label="Ficha na mesa"
+				aria-hidden={!isOpen}
+				inert={!isOpen}
 			>
 				{isOpen && token ? (
 					<SheetBody
@@ -87,22 +102,8 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 				attributeLabel={rollState.label}
 				diceType={rollState.diceType}
 				modifier={rollState.modifier}
-				onComplete={(natural) => {
-					const total = natural + rollState.modifier;
-					const signed =
-						rollState.modifier === 0
-							? ""
-							: ` ${rollState.modifier > 0 ? "+" : "−"} ${Math.abs(rollState.modifier)}`;
-					setLastRoll(`${rollState.label}: ${natural}${signed} = ${total}`);
-				}}
-				onClose={() =>
-					setRollState({
-						open: false,
-						label: "",
-						modifier: 0,
-						diceType: "d20",
-					})
-				}
+				onComplete={handleRollComplete}
+				onClose={handleRollClose}
 			/>
 		</>
 	);
@@ -164,8 +165,9 @@ function SheetBody({
 				<button
 					type="button"
 					onClick={onClose}
-					className={cn(vttIconButtonClass, vttIconButtonIdleClass)}
+					className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
 					title="Fechar ficha"
+					aria-label="Fechar ficha"
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -195,8 +197,8 @@ function SheetBody({
 								key={delta}
 								onClick={() => handleModifyHp(delta)}
 								className={cn(
-									vttChipClass,
-									"min-h-11 border-border/70 bg-background/80 font-mono",
+									chipClass,
+									"min-h-[44px] border-border/70 bg-background/80 font-mono",
 									delta < 0
 										? "text-destructive hover:bg-destructive/10"
 										: "text-primary hover:bg-primary/10",
@@ -245,7 +247,7 @@ function SheetBody({
 									key={attr.key}
 									onClick={() => onStartRoll(attr.label, mod)}
 									className={cn(
-										vttChipClass,
+										chipClass,
 										"h-auto min-h-14 flex-col border-border/70 bg-background/70 py-2 hover:border-primary/40 hover:bg-primary/10",
 									)}
 								>
@@ -262,16 +264,19 @@ function SheetBody({
 				</div>
 			</div>
 
-			<div className="border-t border-border/60 px-4 py-3 space-y-2">
+			<div className="space-y-2 border-t border-border/60 px-4 py-3">
 				{lastRoll ? (
-					<p className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-foreground">
+					<p
+						aria-live="polite"
+						className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-foreground"
+					>
 						{lastRoll}
 					</p>
 				) : null}
 				<Button
 					type="button"
 					variant="outline"
-					className="h-11 w-full gap-2"
+					className="h-[44px] w-full gap-2"
 					onClick={() => onStartRoll("Teste livre", 0)}
 				>
 					<Dices className="h-4 w-4" />

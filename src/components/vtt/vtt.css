@@ -1,0 +1,62 @@
+/* The app uses a 14.5px root font. Touch targets must remain 44 CSS px. */
+.vtt-surface :is(button, a),
+.vtt-dialog :is(button, a) {
+	min-width: 44px;
+	min-height: 44px;
+}
+
+.vtt-surface :is(input:not([type="range"]), select),
+.vtt-dialog :is(input:not([type="range"]), select) {
+	min-height: 44px;
+	font-size: 16px;
+}
+
+.vtt-surface :is(button, a, input, select):focus-visible,
+.vtt-dialog :is(button, a, input, select):focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+/* Keep a generous interactive area around the thin slider track. */
+.vtt-range {
+	appearance: none;
+	height: 44px;
+	background: transparent;
+}
+
+.vtt-range::-webkit-slider-runnable-track {
+	height: 6px;
+	border-radius: 999px;
+	background: var(--accent);
+}
+
+.vtt-range::-moz-range-track {
+	height: 6px;
+	border-radius: 999px;
+	background: var(--accent);
+}
+
+.vtt-range::-webkit-slider-thumb {
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	margin-top: -7px;
+	border-radius: 50%;
+	background: var(--primary);
+}
+
+.vtt-range::-moz-range-thumb {
+	width: 20px;
+	height: 20px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vtt-surface *,
+	.vtt-dialog * {
+		animation: none;
+		transition: none;
+	}
+}

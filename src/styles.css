@@ -1037,15 +1037,6 @@
     filter var(--panel-open-dur, 180ms) var(--panel-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-@media (max-width: 767px) {
-  .t-panel-slide-x {
-    transform: translateY(12px);
-  }
-  .t-panel-slide-x[data-open="true"] {
-    transform: translateY(0);
-  }
-}
-
 
 /* 11. Avatar Group Hover & Interactive Springs */
 .t-avatar {

@@ -53,6 +53,12 @@ interface VTTState {
 	previewTemplate: VTTSpellTemplate | null;
 	placedTemplates: VTTSpellTemplate[];
 	remoteTemplates: Record<string, VTTSpellTemplate>;
+	remoteTemplatePreviews: Record<string, VTTSpellTemplate>;
+	setRemoteTemplatePreview: (
+		userId: string,
+		template: VTTSpellTemplate | null,
+	) => void;
+	removeRemoteTemplates: (userId: string, ids: string[]) => void;
 	showTemplateControls: boolean;
 
 	// Tokens & Fog for current scene
@@ -154,6 +160,23 @@ interface VTTState {
 	setIsGM: (isGM: boolean) => void;
 }
 
+const emptySceneContents = () => ({
+	selectedTokenIds: [],
+	activeTokenIdForMenu: null,
+	tokens: [],
+	fogPaths: [],
+	fogState: null,
+	remoteCursors: {},
+	remoteMeasurements: {},
+	draggedTokenId: null,
+	activeMeasurement: null,
+	activePings: [],
+	placedTemplates: [],
+	previewTemplate: null,
+	remoteTemplates: {},
+	remoteTemplatePreviews: {},
+});
+
 export const useVTTStore = create<VTTState>((set) => ({
 	scenes: [],
 	activeSceneId: null,
@@ -172,6 +195,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	previewTemplate: null,
 	placedTemplates: [],
 	remoteTemplates: {},
+	remoteTemplatePreviews: {},
 	showTemplateControls: false,
 
 	tokens: [],
@@ -202,24 +226,30 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setScenes: (scenes) => set({ scenes }),
 	setActiveSceneId: (sceneId) =>
-		set({
-			activeSceneId: sceneId,
-			selectedTokenIds: [],
-			activeTokenIdForMenu: null,
-			tokens: [],
-			fogPaths: [],
-			fogState: null,
-			remoteCursors: {},
-			remoteMeasurements: {},
-			placedTemplates: [],
-			previewTemplate: null,
-			remoteTemplates: {},
-		}),
+		set((state) =>
+			state.activeSceneId === sceneId
+				? state
+				: {
+						activeSceneId: sceneId,
+						...emptySceneContents(),
+					},
+		),
 	addScene: (scene) =>
-		set((state) => ({
-			scenes: [...state.scenes, scene],
-			activeSceneId: state.activeSceneId || scene.id,
-		})),
+		set((state) => {
+			if (!state.isGM && !scene.isActive) return state;
+			const scenes = state.scenes.some((s) => s.id === scene.id)
+				? state.scenes.map((s) => (s.id === scene.id ? scene : s))
+				: [...state.scenes, scene];
+			const nextId =
+				!state.isGM && scene.isActive
+					? scene.id
+					: state.activeSceneId || scene.id;
+			return {
+				scenes: !state.isGM ? scenes.filter((s) => s.id === scene.id) : scenes,
+				...(nextId !== state.activeSceneId ? emptySceneContents() : {}),
+				activeSceneId: nextId,
+			};
+		}),
 	updateScene: (sceneId, updates) =>
 		set((state) => ({
 			scenes: state.scenes.map((s) =>
@@ -229,12 +259,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 	removeScene: (sceneId) =>
 		set((state) => {
 			const remaining = state.scenes.filter((s) => s.id !== sceneId);
+			if (state.activeSceneId !== sceneId) return { scenes: remaining };
 			return {
 				scenes: remaining,
+				...emptySceneContents(),
 				activeSceneId:
-					state.activeSceneId === sceneId
-						? remaining[0]?.id || null
-						: state.activeSceneId,
+					(state.isGM ? remaining[0] : remaining.find((s) => s.isActive))?.id ||
+					null,
 			};
 		}),
 
@@ -254,6 +285,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 			showFogControls: tool === "fog",
 			showGridSettings:
 				tool === "fog" || tool === "template" ? false : state.showGridSettings,
+			showRosterDrawer:
+				tool === "fog" || tool === "template" ? false : state.showRosterDrawer,
 		})),
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
@@ -261,7 +294,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setPreviewTemplate: (template) => set({ previewTemplate: template }),
 	addPlacedTemplate: (template) =>
 		set((state) => ({
-			placedTemplates: [...state.placedTemplates, template],
+			placedTemplates: [
+				...state.placedTemplates.filter((t) => t.id !== template.id),
+				template,
+			],
 			previewTemplate: null,
 		})),
 	clearPlacedTemplates: () =>
@@ -270,22 +306,59 @@ export const useVTTStore = create<VTTState>((set) => ({
 		set((state) => {
 			if (!template) {
 				const next = { ...state.remoteTemplates };
-				delete next[userId];
+				for (const [id, placed] of Object.entries(next)) {
+					if (placed.userId === userId) delete next[id];
+				}
 				return { remoteTemplates: next };
 			}
 			return {
-				remoteTemplates: { ...state.remoteTemplates, [userId]: template },
+				remoteTemplates: {
+					...state.remoteTemplates,
+					[template.id]: { ...template, userId },
+				},
 			};
 		}),
-	setShowTemplateControls: (show) => set({ showTemplateControls: show }),
-
-	setTokens: (tokens) => set({ tokens }),
-	addToken: (token) =>
+	setRemoteTemplatePreview: (userId, template) =>
+		set((state) => {
+			const next = { ...state.remoteTemplatePreviews };
+			if (template) next[userId] = { ...template, userId };
+			else delete next[userId];
+			return { remoteTemplatePreviews: next };
+		}),
+	removeRemoteTemplates: (userId, ids) =>
 		set((state) => ({
-			tokens: state.tokens.some((t) => t.id === token.id)
-				? state.tokens.map((t) => (t.id === token.id ? token : t))
-				: [...state.tokens, token],
+			remoteTemplates: Object.fromEntries(
+				Object.entries(state.remoteTemplates).filter(
+					([id, template]) => template.userId !== userId || !ids.includes(id),
+				),
+			),
 		})),
+	setShowTemplateControls: (show) =>
+		set(
+			show
+				? {
+						showTemplateControls: true,
+						showGridSettings: false,
+						showFogControls: false,
+						showRosterDrawer: false,
+					}
+				: { showTemplateControls: false },
+		),
+
+	setTokens: (tokens) =>
+		set((state) => ({
+			tokens: tokens.filter((t) => t.sceneId === state.activeSceneId),
+		})),
+	addToken: (token) =>
+		set((state) =>
+			token.sceneId !== state.activeSceneId
+				? state
+				: {
+						tokens: state.tokens.some((t) => t.id === token.id)
+							? state.tokens.map((t) => (t.id === token.id ? token : t))
+							: [...state.tokens, token],
+					},
+		),
 	updateToken: (tokenId, updates) =>
 		set((state) => ({
 			tokens: state.tokens.map((t) =>
@@ -320,11 +393,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 			}
 			return { selectedTokenIds: [id] };
 		}),
+	// The token menu and the Biblioteca (roster) close each other.
 	setActiveTokenIdForMenu: (id) =>
-		set({
-			activeTokenIdForMenu: id,
-			...(id ? { showRosterDrawer: false } : {}),
-		}),
+		set(
+			id
+				? { activeTokenIdForMenu: id, showRosterDrawer: false }
+				: { activeTokenIdForMenu: null },
+		),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -358,10 +433,14 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setUserColor: (color) => set({ userColor: color }),
 
 	setFogState: (fogState) =>
-		set({
-			fogState,
-			fogPaths: fogState?.revealedPaths || [],
-		}),
+		set((state) =>
+			fogState && fogState.sceneId !== state.activeSceneId
+				? state
+				: {
+						fogState,
+						fogPaths: fogState?.revealedPaths || [],
+					},
+		),
 	setFogPaths: (paths) =>
 		set((state) => ({
 			fogPaths: paths,
@@ -412,7 +491,17 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setActiveFogTool: (tool) => set({ activeFogTool: tool }),
 	setActiveFogMode: (mode) => set({ activeFogMode: mode }),
 	setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
-	setShowFogControls: (show) => set({ showFogControls: show }),
+	setShowFogControls: (show) =>
+		set(
+			show
+				? {
+						showFogControls: true,
+						showGridSettings: false,
+						showTemplateControls: false,
+						showRosterDrawer: false,
+					}
+				: { showFogControls: false },
+		),
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),
@@ -426,16 +515,35 @@ export const useVTTStore = create<VTTState>((set) => ({
 		})),
 
 	setShowGridSettings: (show) =>
-		set({
-			showGridSettings: show,
-			...(show ? { showFogControls: false, showTemplateControls: false } : {}),
-		}),
+		set(
+			show
+				? {
+						showGridSettings: true,
+						showFogControls: false,
+						showTemplateControls: false,
+						showRosterDrawer: false,
+					}
+				: { showGridSettings: false },
+		),
 	setShowSceneManager: (show) => set({ showSceneManager: show }),
 	setShowRosterDrawer: (show) =>
-		set({
-			showRosterDrawer: show,
-			...(show ? { activeTokenIdForMenu: null } : {}),
-		}),
-	setShowCharacterSheetId: (id) => set({ showCharacterSheetId: id }),
+		set(
+			show
+				? {
+						showRosterDrawer: true,
+						showGridSettings: false,
+						showFogControls: false,
+						showTemplateControls: false,
+						showCharacterSheetId: null,
+						activeTokenIdForMenu: null,
+					}
+				: { showRosterDrawer: false },
+		),
+	setShowCharacterSheetId: (id) =>
+		set(
+			id
+				? { showCharacterSheetId: id, showRosterDrawer: false }
+				: { showCharacterSheetId: null },
+		),
 	setIsGM: (isGM) => set({ isGM }),
 }));
