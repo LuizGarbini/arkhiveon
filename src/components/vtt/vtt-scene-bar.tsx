@@ -8,7 +8,7 @@ import {
 	Sparkles,
 	Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
 import { cn } from "@/lib/utils";
+import { nearestScrollLeft } from "@/lib/vtt/scene-bar-scroll";
 import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -61,6 +62,37 @@ export function VTTSceneBar({
 	const [isActivating, setIsActivating] = useState(false);
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
+	const liveSceneId = scenes.find((s) => s.isActive)?.id ?? null;
+	const sceneNavRef = useRef<HTMLElement>(null);
+
+	// Keep the in-play scene ("Em jogo") visible in the scene bar on load and
+	// whenever another scene goes live; selecting a scene never scrolls. Only
+	// the bar's own scrollLeft changes, so the page and ancestors stay put.
+	useEffect(() => {
+		const nav = sceneNavRef.current;
+		if (!nav || !liveSceneId) return;
+		const frame = requestAnimationFrame(() => {
+			const button = [
+				...nav.querySelectorAll<HTMLElement>("[data-scene-id]"),
+			].find((el) => el.dataset.sceneId === liveSceneId);
+			if (!button) return;
+			const navRect = nav.getBoundingClientRect();
+			const rect = button.getBoundingClientRect();
+			const next = nearestScrollLeft(
+				{
+					scrollLeft: nav.scrollLeft,
+					clientWidth: nav.clientWidth,
+					scrollWidth: nav.scrollWidth,
+				},
+				{
+					left: rect.left - navRect.left - nav.clientLeft + nav.scrollLeft,
+					width: rect.width,
+				},
+			);
+			if (next !== nav.scrollLeft) nav.scrollLeft = next;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [liveSceneId]);
 
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -151,6 +183,7 @@ export function VTTSceneBar({
 						Cenas
 					</span>
 					<nav
+						ref={sceneNavRef}
 						aria-label="Cenas da mesa"
 						className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
 					>
@@ -160,6 +193,7 @@ export function VTTSceneBar({
 								<button
 									type="button"
 									key={scene.id}
+									data-scene-id={scene.id}
 									onClick={() => setActiveSceneId(scene.id)}
 									aria-pressed={scene.id === activeSceneId}
 									className={cn(
@@ -173,7 +207,7 @@ export function VTTSceneBar({
 									<span className="max-w-36 truncate">{scene.name}</span>
 									<span
 										className={cn(
-											"hidden rounded-md px-1.5 py-1 text-[10px] sm:inline",
+											"shrink-0 whitespace-nowrap rounded-md px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-1",
 											scene.isActive
 												? "bg-primary/15 text-primary"
 												: "bg-muted text-muted-foreground",
