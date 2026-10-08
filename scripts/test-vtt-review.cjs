@@ -285,10 +285,11 @@ async function emptyCanvasPoint(page, candidates) {
 		}
 	}
 
-	// The open sheet must hide whatever sits behind it: it stacks above the zoom
-	// dock, and nothing between it and the page root (filter, opacity, mask,
+	// The open sheet stops above the zoom dock: the zoom −/+ buttons stay
+	// uncovered and clickable, "Rolar d20" is fully on screen and uncovered,
+	// and nothing between the sheet and the page root (filter, opacity, mask,
 	// clip-path, blend mode) turns its backdrop-filter into a no-op.
-	async function assertSheetHidesZoom(where) {
+	async function assertSheetClearsZoomDock(where) {
 		await page.waitForTimeout(500);
 		const report = await page.evaluate(() => {
 			const aside = document.querySelector('aside[aria-label="Ficha na mesa"]');
@@ -309,28 +310,46 @@ async function emptyCanvasPoint(page, candidates) {
 					roots.push(`${el.tagName}.${el.className}`.slice(0, 80));
 			}
 			const sheet = glass.getBoundingClientRect();
-			const zoom = [
-				...document.querySelectorAll(
-					'[aria-label="Enquadrar mapa"], [title="Redefinir zoom para 100%"]',
-				),
-			].map((el) => {
+			const probe = (el) => {
 				const r = el.getBoundingClientRect();
-				const x = r.left + r.width / 2;
-				const y = r.top + r.height / 2;
-				const under =
-					x >= sheet.left && x <= sheet.right && y >= sheet.top && y <= sheet.bottom;
-				const hit = document.elementFromPoint(x, y);
-				return { under, covered: Boolean(hit && aside.contains(hit)) };
-			});
-			return { blur, roots, zoom };
+				const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+				return {
+					label: el.getAttribute("aria-label") ?? el.textContent.trim(),
+					top: r.top,
+					bottom: r.bottom,
+					onScreen: r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth,
+					hitSelf: Boolean(hit && hit.closest("button") === el),
+				};
+			};
+			const zoom = [
+				...document.querySelectorAll('[aria-label="Diminuir zoom"], [aria-label="Aumentar zoom"]'),
+			].map(probe);
+			const d20 = [...aside.querySelectorAll("button")].find((el) => /Rolar d20/.test(el.textContent));
+			return { blur, roots, sheetBottom: sheet.bottom, zoom, d20: d20 ? probe(d20) : null };
 		});
 		assert.ok(!report.missing, `ficha aberta não encontrada (${where})`);
 		assert.match(report.blur, /blur/, `ficha sem backdrop-blur (${where})`);
 		assert.deepEqual(report.roots, [], `ancestral anula o desfoque da ficha (${where})`);
-		assert.ok(report.zoom.length > 0, `controles de zoom não encontrados (${where})`);
+		assert.equal(report.zoom.length, 2, `controles de zoom não encontrados (${where})`);
 		for (const z of report.zoom) {
-			if (z.under) assert.ok(z.covered, `zoom aparece por cima da ficha (${where})`);
+			assert.ok(z.onScreen, `${z.label} fora da tela com a ficha aberta (${where})`);
+			assert.ok(z.hitSelf, `${z.label} coberto pela ficha (${where})`);
+			assert.ok(report.sheetBottom <= z.top, `ficha invade o dock de zoom (${where})`);
 		}
+		assert.ok(report.d20, `Rolar d20 ausente na ficha (${where})`);
+		assert.ok(report.d20.onScreen, `Rolar d20 cortado pela borda da tela (${where})`);
+		assert.ok(report.d20.hitSelf, `Rolar d20 coberto por outro elemento (${where})`);
+		// A real click on + with the sheet open must change the zoom level.
+		const pct = page.getByTitle("Redefinir Zoom para 100%");
+		const before = await pct.innerText();
+		await page.getByRole("button", { name: "Aumentar zoom", exact: true }).click();
+		await page.waitForFunction(
+			(prev) => document.querySelector('[title="Redefinir Zoom para 100%"]')?.textContent !== prev,
+			before,
+			{ timeout: 3000 },
+		).catch(() => assert.fail(`+ no zoom não alterou ${before} com a ficha aberta (${where})`));
+		assert.ok(await page.getByText("Ficha na mesa", { exact: true }).isVisible(), `ficha fechou ao usar o zoom (${where})`);
+		await store(() => window.__vtt_store__.getState().setViewport({ x: 0, y: 0, scale: 1 }));
 	}
 
 	async function checkMenu() {
@@ -479,7 +498,7 @@ async function emptyCanvasPoint(page, candidates) {
 			"Abrir a ficha fecha o menu do token",
 		);
 		await page.getByText("Ficha na mesa").waitFor();
-		await assertSheetHidesZoom("1280x800");
+		await assertSheetClearsZoomDock("1280x800");
 		const saved = page.waitForResponse(
 			(r) => r.request().method() === "PATCH" && r.url().includes("/vtt_tokens"),
 		);
@@ -648,7 +667,7 @@ async function emptyCanvasPoint(page, candidates) {
 		await page.getByRole("button", { name: "Fechar menu do token", exact: true }).click();
 		await store(() => window.__vtt_store__.getState().setShowCharacterSheetId("b"));
 		await page.getByText("Ficha na mesa").waitFor();
-		await assertSheetHidesZoom("390x844");
+		await assertSheetClearsZoomDock("390x844");
 		await page.getByRole("button", { name: "Fechar ficha" }).click();
 		await page.waitForFunction(() => !window.__vtt_store__.getState().showCharacterSheetId);
 		await store(() => window.__vtt_store__.getState().setShowGridSettings(true));
@@ -662,6 +681,11 @@ async function emptyCanvasPoint(page, candidates) {
 		await recording.stop();
 		recording = null;
 		await page.setViewportSize({ width: 1440, height: 900 });
+		await store(() => window.__vtt_store__.getState().setShowCharacterSheetId("b"));
+		await page.getByText("Ficha na mesa", { exact: true }).waitFor();
+		await assertSheetClearsZoomDock("1440x900");
+		await page.getByRole("button", { name: "Fechar ficha" }).click();
+		await page.waitForFunction(() => !window.__vtt_store__.getState().showCharacterSheetId);
 		await captureFrames("desktop");
 		await page.setViewportSize({ width: 390, height: 844 });
 		await captureFrames("mobile");
