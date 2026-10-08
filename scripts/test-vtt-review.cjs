@@ -388,6 +388,118 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 	}
 }
 
+// In-memory vtt_scenes behind the fake REST. With deliverTwice every scene
+// POST is applied twice, as when the same request reaches the server again
+// (a network-level retry, or a retry after an error whose insert committed);
+// the client gets the second answer. Postgres rejects a repeated id with
+// 23505, like PostgREST does.
+async function fakeSceneTable(context, { deliverTwice }) {
+	const table = { rows: [], posts: 0 };
+	const now = "2026-10-08T12:00:00Z";
+	const insert = (body) => {
+		const id = body.id ?? `servidor-${table.rows.length + 1}`;
+		if (table.rows.some((row) => row.id === id)) {
+			return {
+				status: 409,
+				body: {
+					code: "23505",
+					details: `Key (id)=(${id}) already exists.`,
+					hint: null,
+					message: 'duplicate key value violates unique constraint "vtt_scenes_pkey"',
+				},
+			};
+		}
+		const row = {
+			grid_color: "white",
+			grid_opacity: 0.2,
+			fog_enabled: false,
+			fog_exploration: false,
+			created_at: now,
+			updated_at: now,
+			...body,
+			id,
+		};
+		table.rows.push(row);
+		return { status: 201, body: row };
+	};
+	await context.route("**/rest/v1/vtt_scenes*", (route) => {
+		const request = route.request();
+		const single = (request.headers().accept ?? "").includes("vnd.pgrst.object");
+		if (request.method() === "POST") {
+			table.posts++;
+			const body = request.postDataJSON();
+			let result = insert(body);
+			if (deliverTwice) result = insert(body);
+			return route.fulfill({
+				status: result.status,
+				contentType: "application/json",
+				body: JSON.stringify(result.body),
+			});
+		}
+		if (request.method() === "GET") {
+			const id = new URL(request.url()).searchParams.get("id")?.replace(/^eq\./, "");
+			const rows = id ? table.rows.filter((row) => row.id === id) : table.rows;
+			return route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(single ? rows[0] : rows),
+			});
+		}
+		return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+	});
+	return table;
+}
+
+// Bug 04: one press creates one scene, even when the create reaches the
+// server twice. First scene from the empty table (double press on desktop),
+// then "Nova cena" → "Criar Cena" with one real click/tap; a reload shows
+// what the database kept.
+async function checkCreateSceneOnce(browser, viewport, extra, errors) {
+	const context = await browser.newContext({ viewport, ...extra });
+	await setupContext(context, []);
+	const table = await fakeSceneTable(context, { deliverTwice: true });
+	const page = await context.newPage();
+	page.on("pageerror", (e) => errors.push(e.message));
+	const where = `${viewport.width}x${viewport.height}`;
+	const press = (locator) => (extra.hasTouch ? locator.tap() : locator.click());
+	const sceneButtons = page.locator('nav[aria-label="Cenas da mesa"] button');
+	try {
+		await page.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
+		const first = page.getByRole("button", { name: "Criar Primeira Cena" });
+		await first.waitFor();
+		if (extra.hasTouch) await first.tap();
+		else await first.dblclick();
+		await sceneButtons.first().waitFor();
+		await page.waitForTimeout(500);
+		assert.equal(table.rows.length, 1, `primeira cena criada ${table.rows.length} vezes (${where})`);
+
+		await press(page.getByRole("button", { name: "Nova cena" }));
+		await page.getByPlaceholder("Ex: Taverna do Javali Bêbado").fill("Smoke Audit 2026-10-08");
+		await press(page.getByRole("button", { name: "Criar Cena" }));
+		await page.getByRole("dialog").waitFor({ state: "detached" });
+		await page.waitForTimeout(500);
+		const copies = table.rows.filter((row) => row.name === "Smoke Audit 2026-10-08");
+		assert.equal(copies.length, 1, `um clique em "Criar Cena" gravou ${copies.length} cenas (${where})`);
+		const inStore = await page.evaluate(
+			() =>
+				window.__vtt_store__
+					.getState()
+					.scenes.filter((scene) => scene.name === "Smoke Audit 2026-10-08").length,
+		);
+		assert.equal(inStore, 1, `${inStore} cenas "Smoke Audit" na mesa (${where})`);
+
+		await page.reload();
+		await sceneButtons.nth(1).waitFor();
+		await page.waitForTimeout(500);
+		const names = await sceneButtons.allTextContents();
+		const shown = names.filter((name) => name.startsWith("Smoke Audit")).length;
+		assert.equal(names.length, 2, `barra com ${names.length} cenas após recarregar (${where}): ${names}`);
+		assert.equal(shown, 1, `${shown} cenas "Smoke Audit" após recarregar (${where})`);
+	} finally {
+		await context.close();
+	}
+}
+
 (async () => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
@@ -962,9 +1074,17 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 			{ hasTouch: true, isMobile: true },
 			errors,
 		);
+		// 8. One press on "Criar Cena" creates one scene (bug 04).
+		await checkCreateSceneOnce(browser, { width: 1440, height: 900 }, {}, errors);
+		await checkCreateSceneOnce(
+			browser,
+			{ width: 390, height: 844 },
+			{ hasTouch: true, isMobile: true },
+			errors,
+		);
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, um clique cria uma cena só, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});
