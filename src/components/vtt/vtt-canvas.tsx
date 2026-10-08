@@ -104,6 +104,14 @@ export function VTTCanvas({
 
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
+	// A press on a token only becomes a drag after the pointer moves past 8px,
+	// so taps (and double-taps that open the token menu) never nudge the token.
+	const pendingTokenDragRef = useRef<{
+		id: string;
+		startX: number;
+		startY: number;
+		offset: { x: number; y: number };
+	} | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
@@ -673,25 +681,28 @@ export function VTTCanvas({
 					if (lastTap && lastTap.id === token.id && now - lastTap.time < 320) {
 						setActiveTokenIdForMenu(token.id);
 						lastTokenTapRef.current = null;
+						pendingTokenDragRef.current = null;
 						return;
 					}
 					lastTokenTapRef.current = { id: token.id, time: now };
 
 					if (!token.isLocked) {
-						draggingTokenIdRef.current = token.id;
-						setDraggedTokenId(token.id);
-
 						const rect = containerRef.current?.getBoundingClientRect();
+						const offset = { x: 0, y: 0 };
 						if (rect) {
 							const clientX = e.clientX - rect.left;
 							const clientY = e.clientY - rect.top;
 							const worldX = (clientX - viewport.x) / viewport.scale;
 							const worldY = (clientY - viewport.y) / viewport.scale;
-							tokenDragOffsetRef.current = {
-								x: worldX - token.x,
-								y: worldY - token.y,
-							};
+							offset.x = worldX - token.x;
+							offset.y = worldY - token.y;
 						}
+						pendingTokenDragRef.current = {
+							id: token.id,
+							startX: e.clientX,
+							startY: e.clientY,
+							offset,
+						};
 					}
 				}
 			});
@@ -717,7 +728,6 @@ export function VTTCanvas({
 		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
-		setDraggedTokenId,
 	]);
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
@@ -1139,6 +1149,22 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Promote a pending token press into a drag once it moves past 8px
+			if (pendingTokenDragRef.current && !draggingTokenIdRef.current) {
+				const pending = pendingTokenDragRef.current;
+				const dist = Math.hypot(
+					e.clientX - pending.startX,
+					e.clientY - pending.startY,
+				);
+				if (dist > 8) {
+					draggingTokenIdRef.current = pending.id;
+					tokenDragOffsetRef.current = pending.offset;
+					setDraggedTokenId(pending.id);
+					pendingTokenDragRef.current = null;
+					lastTokenTapRef.current = null;
+				}
+			}
+
 			// Handle Token Dragging with Realtime Broadcast
 			if (draggingTokenIdRef.current && scene) {
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
@@ -1214,6 +1240,7 @@ export function VTTCanvas({
 					scene.gridScaleDistance,
 					scene.gridScaleUnit,
 					userColor,
+					diagonalRule,
 				);
 			}
 
@@ -1302,6 +1329,14 @@ export function VTTCanvas({
 				}
 				fogCurrentPointsRef.current = [];
 				return;
+			}
+
+			if (pendingTokenDragRef.current) {
+				lastTokenTapRef.current = {
+					id: pendingTokenDragRef.current.id,
+					time: Date.now(),
+				};
+				pendingTokenDragRef.current = null;
 			}
 
 			// Finish Token Dragging with Magnetic Grid Snapping & Persistence

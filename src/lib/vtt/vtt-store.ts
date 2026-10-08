@@ -393,7 +393,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 			}
 			return { selectedTokenIds: [id] };
 		}),
-	setActiveTokenIdForMenu: (id) => set({ activeTokenIdForMenu: id }),
+	// The token menu and the Biblioteca (roster) close each other.
+	setActiveTokenIdForMenu: (id) =>
+		set(
+			id
+				? { activeTokenIdForMenu: id, showRosterDrawer: false }
+				: { activeTokenIdForMenu: null },
+		),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -529,6 +535,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 						showFogControls: false,
 						showTemplateControls: false,
 						showCharacterSheetId: null,
+						activeTokenIdForMenu: null,
 					}
 				: { showRosterDrawer: false },
 		),

@@ -42,12 +42,28 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	const [rollState, setRollState] = useState<{
 		open: boolean;
 		label: string;
+		modifier: number;
 		diceType: "d20" | "d100" | "d10" | "d6";
-	}>({ open: false, label: "", diceType: "d20" });
+	}>({ open: false, label: "", modifier: 0, diceType: "d20" });
+	const [lastRoll, setLastRoll] = useState<string | null>(null);
 
-	const handleRollComplete = useCallback(() => undefined, []);
+	const rollLabel = rollState.label;
+	const rollModifier = rollState.modifier;
+	const handleRollComplete = useCallback(
+		(natural: number) => {
+			const signed =
+				rollModifier === 0
+					? ""
+					: ` ${rollModifier > 0 ? "+" : "−"} ${Math.abs(rollModifier)}`;
+			setLastRoll(
+				`${rollLabel}: ${natural}${signed} = ${natural + rollModifier}`,
+			);
+		},
+		[rollLabel, rollModifier],
+	);
 	const handleRollClose = useCallback(
-		() => setRollState({ open: false, label: "", diceType: "d20" }),
+		() =>
+			setRollState({ open: false, label: "", modifier: 0, diceType: "d20" }),
 		[],
 	);
 	return (
@@ -67,12 +83,14 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 						hpCurrent={token.hpCurrent ?? character?.health ?? 0}
 						hpMax={token.hpMax ?? character?.healthMax ?? 0}
 						armorClass={character?.armorClass ?? 10}
+						lastRoll={lastRoll}
 						onClose={() => setShowCharacterSheetId(null)}
 						onUpdateToken={onUpdateToken}
-						onStartRoll={(label) =>
+						onStartRoll={(label, modifier) =>
 							setRollState({
 								open: true,
 								label,
+								modifier,
 								diceType: config.defaultDice || "d20",
 							})
 						}
@@ -83,6 +101,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 				open={rollState.open}
 				attributeLabel={rollState.label}
 				diceType={rollState.diceType}
+				modifier={rollState.modifier}
 				onComplete={handleRollComplete}
 				onClose={handleRollClose}
 			/>
@@ -97,6 +116,7 @@ function SheetBody({
 	hpCurrent,
 	hpMax,
 	armorClass,
+	lastRoll,
 	onClose,
 	onUpdateToken,
 	onStartRoll,
@@ -107,9 +127,10 @@ function SheetBody({
 	hpCurrent: number;
 	hpMax: number;
 	armorClass: number;
+	lastRoll: string | null;
 	onClose: () => void;
 	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
-	onStartRoll: (label: string) => void;
+	onStartRoll: (label: string, modifier: number) => void;
 }) {
 	const config = character
 		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
@@ -224,9 +245,7 @@ function SheetBody({
 								<button
 									type="button"
 									key={attr.key}
-									onClick={() =>
-										onStartRoll(`${attr.label} ${formatModifier(mod)}`)
-									}
+									onClick={() => onStartRoll(attr.label, mod)}
 									className={cn(
 										chipClass,
 										"h-auto min-h-14 flex-col border-border/70 bg-background/70 py-2 hover:border-primary/40 hover:bg-primary/10",
@@ -245,12 +264,20 @@ function SheetBody({
 				</div>
 			</div>
 
-			<div className="border-t border-border/60 px-4 py-3">
+			<div className="space-y-2 border-t border-border/60 px-4 py-3">
+				{lastRoll ? (
+					<p
+						aria-live="polite"
+						className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 font-mono text-xs font-semibold tabular-nums text-foreground"
+					>
+						{lastRoll}
+					</p>
+				) : null}
 				<Button
 					type="button"
 					variant="outline"
 					className="h-[44px] w-full gap-2"
-					onClick={() => onStartRoll("Teste livre")}
+					onClick={() => onStartRoll("Teste livre", 0)}
 				>
 					<Dices className="h-4 w-4" />
 					Rolar {config.defaultDice || "d20"}

@@ -112,6 +112,7 @@ export interface RulerTick {
 	x: number;
 	y: number;
 	cells: number;
+	distance: number;
 }
 
 /**
@@ -151,11 +152,15 @@ export function calculateGridDistance(
 
 /**
  * Evenly spaced scale ticks along a ruler, one per full grid cell.
+ * Tick labels use the same diagonal rule as the HUD (5-10-5 or Euclidean).
  */
 export function rulerTickPoints(
 	start: Point,
 	end: Point,
 	gridSize: number,
+	scaleDistance = 1,
+	scaleUnit: VTTGridScaleUnit = "ft",
+	diagonalRule: VTTDiagonalRule = "euclidean",
 ): RulerTick[] {
 	if (gridSize <= 0) return [];
 	const dx = end.x - start.x;
@@ -167,10 +172,21 @@ export function rulerTickPoints(
 	const ticks: RulerTick[] = [];
 	for (let i = 1; i <= cells; i++) {
 		const t = (i * gridSize) / length;
-		ticks.push({
+		const point = {
 			x: start.x + dx * t,
 			y: start.y + dy * t,
+		};
+		ticks.push({
+			...point,
 			cells: i,
+			distance: calculateGridDistance(
+				start,
+				point,
+				gridSize,
+				scaleDistance,
+				scaleUnit,
+				diagonalRule,
+			).distance,
 		});
 	}
 	return ticks;
