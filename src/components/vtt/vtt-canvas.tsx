@@ -109,6 +109,9 @@ export function VTTCanvas({
 	// Press that started on a token; shields it from the empty-area deselect
 	// on the same DOM event and decides tap vs. drag when it ends.
 	const tokenPressRef = useRef<TokenPress | null>(null);
+	// Set when a touch tap opens the token panel, so the click the browser
+	// synthesizes after that tap cannot land on the panel that just appeared.
+	const swallowTapClickRef = useRef(false);
 
 	// Fog Drawing refs
 	const fogStrokeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -1290,6 +1293,7 @@ export function VTTCanvas({
 				press &&
 				tokenPressEndAction(press, e.clientX, e.clientY) === "open-panel"
 			) {
+				swallowTapClickRef.current = press.pointerType === "touch";
 				setActiveTokenIdForMenu(press.tokenId);
 			}
 
@@ -1433,11 +1437,19 @@ export function VTTCanvas({
 
 		const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
+		// touchend follows pointerup; cancelling it drops the synthesized click.
+		const handleTouchEnd = (e: TouchEvent) => {
+			if (!swallowTapClickRef.current) return;
+			swallowTapClickRef.current = false;
+			if (e.cancelable) e.preventDefault();
+		};
+
 		window.addEventListener("keydown", handleKeyDown);
 		window.addEventListener("keyup", handleKeyUp);
 		container.addEventListener("wheel", handleWheel, { passive: false });
 		container.addEventListener("pointerdown", handlePointerDown);
 		container.addEventListener("contextmenu", handleContextMenu);
+		container.addEventListener("touchend", handleTouchEnd, { passive: false });
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
 
@@ -1446,6 +1458,7 @@ export function VTTCanvas({
 			window.removeEventListener("keyup", handleKeyUp);
 			container.removeEventListener("wheel", handleWheel);
 			container.removeEventListener("pointerdown", handlePointerDown);
+			container.removeEventListener("touchend", handleTouchEnd);
 			container.removeEventListener("contextmenu", handleContextMenu);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);

@@ -608,6 +608,15 @@ async function emptyCanvasPoint(page, candidates) {
 			);
 			await touchPage.touchscreen.tap(315, 245);
 			await expectSelection(touchPage, ["a"], "a", "toque simples seleciona e abre o painel");
+			// The click synthesized after the tap must not hit the panel under the finger.
+			await touchPage.waitForTimeout(400);
+			assert.equal(
+				await touchPage.evaluate(
+					() => window.__vtt_store__.getState().tokens.find((t) => t.id === "a").hpCurrent,
+				),
+				20,
+				"o clique gerado pelo toque não pode acionar o painel recém-aberto",
+			);
 			await recording.chapter("Um toque seleciona o token e abre o painel", 1500);
 			await touchPage.screenshot({ path: path.join(output, "vtt-selection-tap-mobile.png") });
 			const emptyTouch = await emptyCanvasPoint(touchPage, [
