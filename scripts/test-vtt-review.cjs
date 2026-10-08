@@ -184,8 +184,94 @@ async function emptyCanvasPoint(page, candidates) {
 	return point;
 }
 
+// Scene buttons, badge boxes and scroll state of the scene bar.
+function readSceneBar(page) {
+	return page.evaluate(() => {
+		const nav = document.querySelector('nav[aria-label="Cenas da mesa"]');
+		const navRect = nav.getBoundingClientRect();
+		const box = (r) => ({
+			left: Math.round(r.left * 10) / 10,
+			right: Math.round(r.right * 10) / 10,
+			top: Math.round(r.top * 10) / 10,
+			bottom: Math.round(r.bottom * 10) / 10,
+		});
+		return {
+			nav: box(navRect),
+			scrollLeft: nav.scrollLeft,
+			scrollWidth: nav.scrollWidth,
+			clientWidth: nav.clientWidth,
+			windowScrollY: window.scrollY,
+			needsScroll: nav.scrollWidth > nav.clientWidth,
+			scenes: [...nav.querySelectorAll("button")].map((btn) => {
+				const [name, badge] = btn.querySelectorAll("span");
+				const b = badge.getBoundingClientRect();
+				return {
+					name: name.textContent,
+					height: btn.getBoundingClientRect().height,
+					truncated: name.scrollWidth > name.clientWidth,
+					lines: Math.round(
+						name.getBoundingClientRect().height /
+							Number.parseFloat(getComputedStyle(name).lineHeight),
+					),
+					badge: badge.textContent,
+					badgeBox: box(b),
+					badgeShown: getComputedStyle(badge).display !== "none" && b.width > 0,
+					badgeInNav: b.left >= navRect.left && b.right <= navRect.right,
+				};
+			}),
+			actions: ["Exibir cena aos jogadores", "Nova cena"]
+				.map((label) => document.querySelector(`[aria-label="${label}"]`))
+				.filter(Boolean)
+				.map((el) => el.getBoundingClientRect().height),
+		};
+	});
+}
+
+// Scenes as the REST API returns them, for a real page load of the table.
+function sceneRows(scenes) {
+	return scenes.map(([id, name, isActive], index) => ({
+		id,
+		campaign_id: "demo-tabletop",
+		name,
+		map_image_url: null,
+		grid_type: "square",
+		grid_size: 70,
+		grid_color: "white",
+		grid_opacity: 0.2,
+		grid_scale_distance: 1.5,
+		grid_scale_unit: "m",
+		width: 1600,
+		height: 1200,
+		fog_enabled: false,
+		fog_exploration: false,
+		is_active: isActive,
+		order_index: index,
+		created_at: "2026-10-08T12:00:00Z",
+		updated_at: "2026-10-08T12:00:00Z",
+	}));
+}
+
+const IN_PLAY_LAST = [
+	["taverna", "Taverna", false],
+	["ruinas", "Ruínas da Cidadela Submersa", false],
+	["arena", "Arena do Pântano", true],
+];
+
+function assertLiveBadgeVisible(bar, scrollYBefore, why) {
+	const live = bar.scenes.find((scene) => scene.badge === "Em jogo");
+	assert.ok(live, `nenhum selo "Em jogo" na barra (${why})`);
+	assert.ok(
+		live.badgeInNav,
+		`selo "Em jogo" de "${live.name}" fora da barra visível sem rolar (${why}): selo ${JSON.stringify(live.badgeBox)}, barra ${JSON.stringify(bar.nav)}, scrollLeft ${bar.scrollLeft}`,
+	);
+	assert.equal(bar.windowScrollY, scrollYBefore, `a página rolou na vertical (${why})`);
+}
+
 // Scene bar with one "Em jogo" scene and one "Preparação" scene with a long
-// name, the Preparação one selected (tightest bar for the GM).
+// name, the Preparação one selected (tightest bar for the GM). Then three
+// scenes with the in-play one LAST in order_index: "Em jogo" must be visible
+// without any user scroll, both when another scene goes live and on a real
+// page load, and selecting a scene must not scroll the bar.
 async function checkSceneBadges(browser, viewport, extra, errors) {
 	const context = await browser.newContext({ viewport, ...extra });
 	await setupContext(context, []);
@@ -205,32 +291,7 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 		});
 		await page.getByRole("button", { name: "Exibir cena aos jogadores" }).waitFor();
 		await page.waitForTimeout(300);
-		const bar = await page.evaluate(() => {
-			const nav = document.querySelector('nav[aria-label="Cenas da mesa"]');
-			const navRect = nav.getBoundingClientRect();
-			return {
-				needsScroll: nav.scrollWidth > nav.clientWidth,
-				scenes: [...nav.querySelectorAll("button")].map((btn) => {
-					const [name, badge] = btn.querySelectorAll("span");
-					const b = badge.getBoundingClientRect();
-					return {
-						name: name.textContent,
-						height: btn.getBoundingClientRect().height,
-						truncated: name.scrollWidth > name.clientWidth,
-						lines: Math.round(
-							name.getBoundingClientRect().height /
-								Number.parseFloat(getComputedStyle(name).lineHeight),
-						),
-						badge: badge.textContent,
-						badgeShown: getComputedStyle(badge).display !== "none" && b.width > 0,
-						badgeInNav: b.left >= navRect.left && b.right <= navRect.right,
-					};
-				}),
-				actions: ["Exibir cena aos jogadores", "Nova cena"].map(
-					(label) => document.querySelector(`[aria-label="${label}"]`).getBoundingClientRect().height,
-				),
-			};
-		});
+		const bar = await readSceneBar(page);
 		const [live, prep] = bar.scenes;
 		assert.deepEqual([live.badge, prep.badge], ["Em jogo", "Preparação"], `selos das cenas (${where})`);
 		for (const scene of bar.scenes) {
@@ -256,8 +317,74 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 		} else {
 			assert.ok(prep.badgeInNav, `selo "Preparação" fora da área visível (${where})`);
 		}
+
+		// Three scenes, in-play LAST, a Preparação scene selected: the live
+		// scene changes in the store (as when the GM shows another scene).
+		await loadFixture(page);
+		const scrollYBefore = await page.evaluate(() => window.scrollY);
+		await page.evaluate((scenes) => {
+			const s = window.__vtt_store__.getState();
+			const [base] = s.scenes;
+			s.setScenes(
+				scenes.map(([id, name, isActive], orderIndex) => ({ ...base, id, name, isActive, orderIndex })),
+			);
+			s.setActiveSceneId("ruinas");
+		}, IN_PLAY_LAST);
+		await page.getByRole("button", { name: "Exibir cena aos jogadores" }).waitFor();
+		await page.waitForTimeout(300);
+		const liveChange = await readSceneBar(page);
+		assert.deepEqual(
+			liveChange.scenes.map((scene) => scene.badge),
+			["Preparação", "Preparação", "Em jogo"],
+			`selos das três cenas (${where})`,
+		);
+		for (const scene of liveChange.scenes) {
+			assert.ok(scene.height >= 44, `cena "${scene.name}" com ${scene.height}px de altura (${where})`);
+			assert.equal(scene.lines, 1, `nome da cena "${scene.name}" quebrou linha (${where})`);
+		}
+		assertLiveBadgeVisible(liveChange, scrollYBefore, `cena em jogo por último, ${where}`);
 	} finally {
 		await context.close();
+	}
+
+	// Real page load: the API returns the three scenes, the table picks the
+	// in-play one; nothing scrolls the bar but the bar itself.
+	const loadContext = await browser.newContext({ viewport, ...extra });
+	await setupContext(loadContext, []);
+	await loadContext.route("**/rest/v1/vtt_scenes*", (route) =>
+		route.request().method() === "GET"
+			? route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(sceneRows(IN_PLAY_LAST)),
+				})
+			: route.fallback(),
+	);
+	const loadPage = await loadContext.newPage();
+	loadPage.on("pageerror", (e) => errors.push(e.message));
+	try {
+		await loadPage.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
+		await loadPage.locator('nav[aria-label="Cenas da mesa"] button').nth(2).waitFor();
+		await loadPage.waitForTimeout(500);
+		const loaded = await readSceneBar(loadPage);
+		assert.equal(loaded.scenes.length, 3, `três cenas carregadas (${where})`);
+		assertLiveBadgeVisible(loaded, 0, `carregamento com a cena em jogo por último, ${where}`);
+		// Selecting a scene never scrolls the bar.
+		await loadPage.evaluate(() => window.__vtt_store__.getState().setActiveSceneId("taverna"));
+		await loadPage.waitForTimeout(300);
+		const selected = await readSceneBar(loadPage);
+		assert.equal(selected.scrollLeft, loaded.scrollLeft, `selecionar cena rolou a barra (${where})`);
+		// Another scene going live is revealed again.
+		await loadPage.evaluate(() => {
+			const s = window.__vtt_store__.getState();
+			s.setScenes(s.scenes.map((scene) => ({ ...scene, isActive: scene.id === "taverna" })));
+		});
+		await loadPage.waitForTimeout(300);
+		const relive = await readSceneBar(loadPage);
+		assertLiveBadgeVisible(relive, 0, `nova cena em jogo, ${where}`);
+		assert.equal(relive.scenes[0].badge, "Em jogo", `Taverna em jogo (${where})`);
+	} finally {
+		await loadContext.close();
 	}
 }
 
@@ -837,7 +964,7 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 		);
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});
