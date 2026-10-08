@@ -1,4 +1,4 @@
-import type { VTTGridScaleUnit, VTTGridType } from "./types";
+import type { VTTDiagonalRule, VTTGridScaleUnit, VTTGridType } from "./types";
 
 export interface Point {
 	x: number;
@@ -108,8 +108,15 @@ export function snapToGrid(
 	return point;
 }
 
+export interface RulerTick {
+	x: number;
+	y: number;
+	cells: number;
+}
+
 /**
  * Calculate distance between two points in game world units (meters / feet).
+ * 5-10-5 uses D&D optional diagonals: first diagonal costs 1 cell, second costs 2.
  */
 export function calculateGridDistance(
 	p1: Point,
@@ -117,24 +124,22 @@ export function calculateGridDistance(
 	gridSize: number,
 	scaleDistance: number,
 	scaleUnit: VTTGridScaleUnit,
-	diagonalRule: "euclidean" | "5105" = "5105",
+	diagonalRule: VTTDiagonalRule = "5105",
 ): { distance: number; formatted: string } {
 	if (gridSize <= 0) return { distance: 0, formatted: `0 ${scaleUnit}` };
 
-	const dx = Math.abs(p2.x - p1.x) / gridSize;
-	const dy = Math.abs(p2.y - p1.y) / gridSize;
+	const rawDx = Math.abs(p2.x - p1.x) / gridSize;
+	const rawDy = Math.abs(p2.y - p1.y) / gridSize;
 
 	let cellDistance = 0;
 	if (diagonalRule === "5105") {
+		const dx = Math.round(rawDx);
+		const dy = Math.round(rawDy);
 		const max = Math.max(dx, dy);
 		const min = Math.min(dx, dy);
-		// D&D 5e optional rule: 1st diagonal is 1 cell, 2nd is 2 cells (average 1.5x)
-		const diagonals = Math.floor(min);
-		const straight = max - min;
-		cellDistance = straight + diagonals + Math.floor(diagonals / 2) * 0.5;
+		cellDistance = max + Math.floor(min / 2);
 	} else {
-		// Euclidean distance
-		cellDistance = Math.sqrt(dx * dx + dy * dy);
+		cellDistance = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
 	}
 
 	const realDistance = Number((cellDistance * scaleDistance).toFixed(1));
@@ -145,9 +150,40 @@ export function calculateGridDistance(
 }
 
 /**
+ * Evenly spaced scale ticks along a ruler, one per full grid cell.
+ */
+export function rulerTickPoints(
+	start: Point,
+	end: Point,
+	gridSize: number,
+): RulerTick[] {
+	if (gridSize <= 0) return [];
+	const dx = end.x - start.x;
+	const dy = end.y - start.y;
+	const length = Math.hypot(dx, dy);
+	if (length < gridSize) return [];
+
+	const cells = Math.floor(length / gridSize + 1e-9);
+	const ticks: RulerTick[] = [];
+	for (let i = 1; i <= cells; i++) {
+		const t = (i * gridSize) / length;
+		ticks.push({
+			x: start.x + dx * t,
+			y: start.y + dy * t,
+			cells: i,
+		});
+	}
+	return ticks;
+}
+
+/**
  * Generate corners for a Pointy-topped hexagon.
  */
-export function getPointyHexCorners(centerX: number, centerY: number, radius: number): Point[] {
+export function getPointyHexCorners(
+	centerX: number,
+	centerY: number,
+	radius: number,
+): Point[] {
 	const corners: Point[] = [];
 	for (let i = 0; i < 6; i++) {
 		const angleDeg = 60 * i - 30;
@@ -163,7 +199,11 @@ export function getPointyHexCorners(centerX: number, centerY: number, radius: nu
 /**
  * Generate corners for a Flat-topped hexagon.
  */
-export function getFlatHexCorners(centerX: number, centerY: number, radius: number): Point[] {
+export function getFlatHexCorners(
+	centerX: number,
+	centerY: number,
+	radius: number,
+): Point[] {
 	const corners: Point[] = [];
 	for (let i = 0; i < 6; i++) {
 		const angleDeg = 60 * i;

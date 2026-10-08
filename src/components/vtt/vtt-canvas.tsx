@@ -8,6 +8,7 @@ import {
 	TextStyle,
 } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
@@ -16,6 +17,11 @@ import {
 	getPointyHexCorners,
 	snapToGrid,
 } from "@/lib/vtt/grid-math";
+import {
+	canControlVTTToken,
+	type VTTCharacterOwner,
+} from "@/lib/vtt/permissions";
+import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -23,10 +29,12 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
+import { drawRulerMeasurement, drawSpellTemplate } from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
+	characterOwners?: readonly VTTCharacterOwner[];
 	onUpdateToken?: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
@@ -36,19 +44,28 @@ interface VTTCanvasProps {
 	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
 	onBroadcastPing?: (ping: VTTPingEvent) => void;
 	onBroadcastFog?: (path: VTTFogPath) => void;
+	onBroadcastTemplate?: (
+		template: VTTSpellTemplate | null,
+		placed?: boolean,
+	) => void;
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
+const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
+
 export function VTTCanvas({
 	scene,
+	characterOwners = EMPTY_CHARACTER_OWNERS,
 	onUpdateToken,
 	onBroadcastDrag,
 	onBroadcastCursor,
 	onBroadcastRuler,
 	onBroadcastPing,
 	onBroadcastFog,
+	onBroadcastTemplate,
 	onPersistFog,
 }: VTTCanvasProps) {
+	const { user } = useAuth();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const appRef = useRef<Application | null>(null);
 	const [rendererReady, setRendererReady] = useState(false);
@@ -64,6 +81,8 @@ export function VTTCanvas({
 	const remoteRulersLayerRef = useRef<Graphics | null>(null);
 	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
+	const measurementLabelsRef = useRef<Container | null>(null);
+	const templatesLayerRef = useRef<Graphics | null>(null);
 	const pingsLayerRef = useRef<Graphics | null>(null);
 	const remoteCursorsLayerRef = useRef<Container | null>(null);
 
@@ -76,6 +95,8 @@ export function VTTCanvas({
 	const isSpaceHeldRef = useRef(false);
 	const isAltHeldRef = useRef(false);
 	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
+	const templateStartRef = useRef<{ x: number; y: number } | null>(null);
+	const lastTokenTapRef = useRef<{ id: string; time: number } | null>(null);
 
 	// Fog Drawing refs
 	const fogStrokeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -110,6 +131,14 @@ export function VTTCanvas({
 	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
 	const userColor = useVTTStore((s) => s.userColor);
 	const isGM = useVTTStore((s) => s.isGM);
+	const diagonalRule = useVTTStore((s) => s.diagonalRule);
+	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
+	const previewTemplate = useVTTStore((s) => s.previewTemplate);
+	const placedTemplates = useVTTStore((s) => s.placedTemplates);
+	const remoteTemplates = useVTTStore((s) => s.remoteTemplates);
+	const remoteTemplatePreviews = useVTTStore((s) => s.remoteTemplatePreviews);
+	const setPreviewTemplate = useVTTStore((s) => s.setPreviewTemplate);
+	const addPlacedTemplate = useVTTStore((s) => s.addPlacedTemplate);
 
 	// 1. Initialize PixiJS Application
 	useEffect(() => {
@@ -188,6 +217,14 @@ export function VTTCanvas({
 			const measurementLayer = new Graphics();
 			measurementLayerRef.current = measurementLayer;
 			world.addChild(measurementLayer);
+
+			const measurementLabels = new Container();
+			measurementLabelsRef.current = measurementLabels;
+			world.addChild(measurementLabels);
+
+			const templatesLayer = new Graphics();
+			templatesLayerRef.current = templatesLayer;
+			world.addChild(templatesLayer);
 
 			const pingsLayer = new Graphics();
 			pingsLayerRef.current = pingsLayer;
@@ -441,7 +478,14 @@ export function VTTCanvas({
 			const tokenContainer = new Container();
 			tokenContainer.position.set(token.x, token.y);
 			tokenContainer.eventMode = "static";
-			tokenContainer.cursor = token.isLocked ? "default" : "grab";
+			const canControl = canControlVTTToken(
+				token,
+				user?.id,
+				isGM,
+				characterOwners,
+			);
+			tokenContainer.cursor =
+				token.isLocked || !canControl ? "default" : "grab";
 			tokenContainer.alpha = isGMLayer ? 0.55 : token.isHidden ? 0.5 : 1;
 
 			// Register in display objects map for zero-thrash GPU interpolation
@@ -599,6 +643,7 @@ export function VTTCanvas({
 
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
+				if (!canControl) return;
 				if (e.button === 2) {
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
@@ -622,6 +667,15 @@ export function VTTCanvas({
 
 					e.stopPropagation();
 					setSelectedTokenIds([token.id]);
+
+					const now = Date.now();
+					const lastTap = lastTokenTapRef.current;
+					if (lastTap && lastTap.id === token.id && now - lastTap.time < 320) {
+						setActiveTokenIdForMenu(token.id);
+						lastTokenTapRef.current = null;
+						return;
+					}
+					lastTokenTapRef.current = { id: token.id, time: now };
 
 					if (!token.isLocked) {
 						draggingTokenIdRef.current = token.id;
@@ -651,6 +705,8 @@ export function VTTCanvas({
 	}, [
 		rendererReady,
 		tokens,
+		characterOwners,
+		user?.id,
 		scene,
 		selectedTokenIds,
 		isGM,
@@ -831,6 +887,32 @@ export function VTTCanvas({
 		}
 	}, [remoteMeasurements, rendererReady]);
 
+	// 7b. Render spell templates (local preview, placed, remote)
+	useEffect(() => {
+		if (!rendererReady) return;
+		if (!templatesLayerRef.current || !scene) return;
+		const layer = templatesLayerRef.current;
+		layer.clear();
+
+		const allTemplates: VTTSpellTemplate[] = [
+			...placedTemplates,
+			...Object.values(remoteTemplates),
+			...Object.values(remoteTemplatePreviews),
+		];
+		if (previewTemplate) allTemplates.push(previewTemplate);
+
+		for (const template of allTemplates) {
+			drawSpellTemplate(layer, template, scene.gridSize);
+		}
+	}, [
+		placedTemplates,
+		remoteTemplates,
+		remoteTemplatePreviews,
+		previewTemplate,
+		scene,
+		rendererReady,
+	]);
+
 	// 8. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
 		if (!rendererReady) return;
@@ -876,19 +958,23 @@ export function VTTCanvas({
 		};
 
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (
-				e.code === "Space" &&
-				!e.repeat &&
-				!(
-					e.target instanceof HTMLInputElement ||
-					e.target instanceof HTMLTextAreaElement
-				)
-			) {
+			const typing =
+				e.target instanceof HTMLInputElement ||
+				e.target instanceof HTMLTextAreaElement;
+			if (e.code === "Space" && !e.repeat && !typing) {
 				isSpaceHeldRef.current = true;
 				container.style.cursor = "grab";
 			}
 			if (e.code === "AltLeft" || e.code === "AltRight") {
 				isAltHeldRef.current = true;
+			}
+			// Tool shortcuts (V/H/R/G/T/F) live in VTTToolbar; only Escape here.
+			if (typing) return;
+			if (e.key === "Escape") {
+				setActiveTokenIdForMenu(null);
+				setPreviewTemplate(null);
+				templateStartRef.current = null;
+				if (onBroadcastTemplate) onBroadcastTemplate(null);
 			}
 		};
 
@@ -976,6 +1062,11 @@ export function VTTCanvas({
 			if (activeTool === "ruler" && isLeftClick && scene) {
 				const snapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
 				rulerStartRef.current = snapped;
+			}
+
+			if (activeTool === "template" && isLeftClick && scene) {
+				const snapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
+				templateStartRef.current = snapped;
 			}
 		};
 
@@ -1077,7 +1168,8 @@ export function VTTCanvas({
 				activeTool === "ruler" &&
 				rulerStartRef.current &&
 				scene &&
-				measurementLayerRef.current
+				measurementLayerRef.current &&
+				measurementLabelsRef.current
 			) {
 				const currentSnapped = snapToGrid(
 					worldPoint,
@@ -1092,6 +1184,7 @@ export function VTTCanvas({
 					scene.gridSize,
 					scene.gridScaleDistance,
 					scene.gridScaleUnit,
+					diagonalRule,
 				);
 
 				const measurement: VTTRulerMeasurement = {
@@ -1109,18 +1202,39 @@ export function VTTCanvas({
 				}
 
 				const layer = measurementLayerRef.current;
+				const labels = measurementLabelsRef.current;
 				layer.clear();
+				labels.removeChildren();
+				drawRulerMeasurement(
+					layer,
+					labels,
+					start,
+					currentSnapped,
+					scene.gridSize,
+					scene.gridScaleDistance,
+					scene.gridScaleUnit,
+					userColor,
+				);
+			}
 
-				const colorHex =
-					Number.parseInt(userColor.replace("#", "0x"), 16) || 0x38bdf8;
-				layer.moveTo(start.x, start.y);
-				layer.lineTo(currentSnapped.x, currentSnapped.y);
-				layer.stroke({ width: 3, color: colorHex, alpha: 0.85 });
-
-				layer.circle(start.x, start.y, 6);
-				layer.fill({ color: colorHex });
-				layer.circle(currentSnapped.x, currentSnapped.y, 6);
-				layer.fill({ color: colorHex });
+			if (activeTool === "template" && templateStartRef.current && scene) {
+				const currentSnapped = snapToGrid(
+					worldPoint,
+					scene.gridType,
+					scene.gridSize,
+				);
+				const start = templateStartRef.current;
+				const template: VTTSpellTemplate = {
+					id: "live-template",
+					kind: activeTemplateKind,
+					originX: start.x,
+					originY: start.y,
+					targetX: currentSnapped.x,
+					targetY: currentSnapped.y,
+					color: userColor,
+				};
+				setPreviewTemplate(template);
+				if (onBroadcastTemplate) onBroadcastTemplate(template);
 			}
 		};
 
@@ -1235,6 +1349,30 @@ export function VTTCanvas({
 				if (measurementLayerRef.current) {
 					measurementLayerRef.current.clear();
 				}
+				if (measurementLabelsRef.current) {
+					measurementLabelsRef.current.removeChildren();
+				}
+			}
+
+			if (templateStartRef.current && scene && activeTool === "template") {
+				const start = templateStartRef.current;
+				templateStartRef.current = null;
+				const end = snapToGrid(
+					screenToWorld(e.clientX, e.clientY),
+					scene.gridType,
+					scene.gridSize,
+				);
+				const placed: VTTSpellTemplate = {
+					id: crypto.randomUUID(),
+					kind: activeTemplateKind,
+					originX: start.x,
+					originY: start.y,
+					targetX: end.x,
+					targetY: end.y,
+					color: userColor,
+				};
+				addPlacedTemplate(placed);
+				if (onBroadcastTemplate) onBroadcastTemplate(placed, true);
 			}
 		};
 
@@ -1270,6 +1408,7 @@ export function VTTCanvas({
 		onBroadcastRuler,
 		onBroadcastPing,
 		onBroadcastFog,
+		onBroadcastTemplate,
 		onPersistFog,
 		addPing,
 		fogPaths,
@@ -1279,16 +1418,20 @@ export function VTTCanvas({
 		fogBrushRadius,
 		userColor,
 		isGM,
+		diagonalRule,
+		activeTemplateKind,
 		setActiveMeasurement,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		setDraggedTokenId,
+		setPreviewTemplate,
+		addPlacedTemplate,
 	]);
 
 	return (
 		<div
 			ref={containerRef}
-			className="absolute inset-0 w-full h-full overflow-hidden select-none touch-none bg-[#090a0f]"
+			className="absolute inset-0 h-full w-full touch-none select-none overflow-hidden bg-background"
 		/>
 	);
 }

@@ -24,7 +24,9 @@ async function main() {
 	await context.route("**/rest/v1/**", (route) =>
 		route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
 	);
-	await context.addInitScript(() => {
+	let ownershipUnavailable = true;
+ await context.route("**/rest/v1/characters*", route => route.fulfill({ status: ownershipUnavailable ? 500 : 200, contentType: "application/json", body: ownershipUnavailable ? JSON.stringify({message: "Falha simulada de autoria"}) : "[]" }));
+ await context.addInitScript(() => {
 		localStorage.setItem("arkhiveon_preview_auth", "true");
 		localStorage.setItem(
 			"rpg-notes-storage",
@@ -186,7 +188,14 @@ async function main() {
 			recording = await startPreviewRecorder(page, path.join(output, "latest-preview.webm"), "01 / Mesa carregada - dados de teste");
 			await chapter("01 / Mesa carregada - dados de teste", 3500);
 		}
-		await chapter("02 / Selecionar a mesma cena preserva o personagem", 1800);
+		await page.getByRole("button", { name: "Recarregar permissões", exact: true }).waitFor();
+ await chapter("Falha de autoria: aviso visível e recuperação na própria mesa", 3000);
+ ownershipUnavailable = false;
+ await page.getByRole("button", { name: "Recarregar permissões", exact: true }).click();
+ await page.getByRole("button", { name: "Recarregar permissões", exact: true }).waitFor({state: "hidden"});
+ await chapter("Permissões recarregadas sem sair da cena", 2000);
+ console.log("PASS: falha de autoria visível e consulta repetida");
+ await chapter("02 / Selecionar a mesma cena preserva o personagem", 1800);
 		await page.getByRole("button", { name: /Observatório esquecido/ }).click();
 		const count = await page.evaluate(
 			() => window.__vtt_store__.getState().tokens.length,
@@ -224,6 +233,40 @@ async function main() {
 		await page.getByRole("button", { name: "Localizar Carrara" }).click();
 		assert.equal(await page.getByRole("complementary").count(), 0);
 		await chapter("Verificado: personagem localizado e biblioteca recolhida", 2800);
+		await page.mouse.click(720, 450, { button: "right" });
+		await page.getByRole("button", { name: "Fechar menu do token", exact: true }).waitFor();
+		const sizeButtons = await page.getByRole("button", { name: /^Tamanho [1-4] por [1-4] células$/ }).all();
+		assert.equal(sizeButtons.length, 4);
+		const elevationButton = await page.getByRole("button", { name: "Diminuir elevação em 1,5 metro" }).boundingBox();
+		for (const button of sizeButtons) {
+			const box = await button.boundingBox();
+			assert.ok(box.width >= 44 && box.height >= 44);
+			assert.ok(box.y + box.height <= elevationButton.y, "Tamanhos não sobrepõem elevação");
+		}
+		await chapter("Menu do token: tamanho e elevação sem sobreposição", 2500);
+		await page.screenshot({path: path.join(output, "vtt-token-menu.png")});
+		let pendingTokenWrite;
+		const tokenWriteReceived = new Promise(resolve => { pendingTokenWrite = resolve; });
+		let patchCount = 0;
+		await context.route("**/rest/v1/vtt_tokens*", async route => {
+			if (route.request().method() === "PATCH") { patchCount++; pendingTokenWrite(route); }
+			else if (route.request().method() === "DELETE") await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({message: "Falha simulada"}) });
+			else await route.fulfill({status: 200, contentType: "application/json", body: "[]"});
+		});
+		const size2 = page.getByRole("button", {name: "Tamanho 2 por 2 células", exact: true});
+		await size2.click();
+		const pendingRoute = await tokenWriteReceived;
+		assert.ok(await size2.isDisabled(), "Evita cliques duplicados enquanto salva");
+		await chapter("Salvamento pendente: controles protegidos contra duplicação", 1800);
+		await pendingRoute.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({id: "token-1"})});
+		await page.waitForFunction(() => window.__vtt_store__.getState().tokens[0]?.sizeCells === 2);
+		assert.equal(patchCount, 1);
+		await page.getByRole("button", {name: "Excluir", exact: true}).click();
+		await page.getByRole("alert").filter({hasText:"Não foi possível remover o token"}).waitFor();
+		assert.equal(await page.evaluate(() => window.__vtt_store__.getState().tokens.length), 1);
+		await chapter("Falha simulada: o token permanece na mesa", 1800);
+		await page.getByRole("button", {name: "Fechar aviso da mesa", exact: true}).click();
+		await page.getByRole("button", {name: "Fechar menu do token", exact: true}).click();
 		await chapter("04 / Diário: consultar a sessão sem sair da mesa", 1800);
 		await page
 			.getByRole("button", { name: "Diário da campanha", exact: true })
@@ -323,6 +366,10 @@ async function main() {
 			animations: "disabled",
 			path: path.join(output, "vtt-mobile-grid.png"),
 		});
+		for (const name of ["Tamanho da célula", "Opacidade do grid"]) {
+			const box = await page.getByRole("slider", {name, exact: true}).boundingBox();
+			assert.ok(box.height >= 44, "Slider deve ter alvo de 44px");
+		}
 		await chapter("Configurações do grid acessíveis", 4000);
 		await page
 			.getByRole("button", { name: "Fechar configurações do grid" })

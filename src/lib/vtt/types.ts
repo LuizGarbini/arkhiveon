@@ -1,6 +1,7 @@
 export type VTTGridType = "square" | "hex_pointy" | "hex_flat" | "none";
 export type VTTGridScaleUnit = "m" | "ft" | "sq";
 export type VTTLayer = "map" | "token" | "gm";
+export type VTTDiagonalRule = "euclidean" | "5105";
 
 export interface VTTScene {
 	id: string;
