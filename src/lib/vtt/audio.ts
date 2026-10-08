@@ -10,7 +10,9 @@ function getAudioContext(): AudioContext | null {
 	try {
 		if (!audioCtx) {
 			const AudioContextClass =
-				window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+				window.AudioContext ||
+				(window as unknown as { webkitAudioContext: typeof AudioContext })
+					.webkitAudioContext;
 			if (AudioContextClass) {
 				audioCtx = new AudioContextClass();
 			}

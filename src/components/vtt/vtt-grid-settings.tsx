@@ -1,7 +1,14 @@
 import { Sliders, X } from "lucide-react";
+import { useId } from "react";
 import { Field } from "@/components/ui/form-tabs";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import type { VTTGridScaleUnit, VTTGridType } from "@/lib/vtt/types";
+import { cn } from "@/lib/utils";
+import type {
+	VTTDiagonalRule,
+	VTTGridScaleUnit,
+	VTTGridType,
+} from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTGridSettingsProps {
@@ -22,6 +29,10 @@ export function VTTGridSettings({
 	const activeSceneId = useVTTStore((s) => s.activeSceneId);
 	const showGridSettings = useVTTStore((s) => s.showGridSettings);
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
+	const diagonalRule = useVTTStore((s) => s.diagonalRule);
+	const setDiagonalRule = useVTTStore((s) => s.setDiagonalRule);
+	const gridScaleId = useId();
+	const gridUnitId = useId();
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	if (!showGridSettings || !activeScene) return null;
@@ -78,6 +89,82 @@ export function VTTGridSettings({
 					<option value="none">Desativado (Livre)</option>
 				</Select>
 			</Field>
+
+			{/* Scale & unit used by the ruler and templates */}
+			<div className="grid grid-cols-2 gap-2">
+				<Field label="Escala" htmlFor={gridScaleId}>
+					<Input
+						id={gridScaleId}
+						type="number"
+						step="0.5"
+						min="0.5"
+						inputMode="decimal"
+						value={activeScene.gridScaleDistance}
+						onChange={(e) =>
+							onUpdateSceneSettings({
+								gridType: activeScene.gridType,
+								gridSize: activeScene.gridSize,
+								gridColor: activeScene.gridColor,
+								gridOpacity: activeScene.gridOpacity,
+								gridScaleDistance: Number(e.target.value) || 1,
+								gridScaleUnit: activeScene.gridScaleUnit,
+							})
+						}
+						className="h-11 text-base tabular-nums"
+					/>
+				</Field>
+				<Field label="Unidade" htmlFor={gridUnitId}>
+					<Select
+						id={gridUnitId}
+						value={activeScene.gridScaleUnit}
+						onChange={(e) =>
+							onUpdateSceneSettings({
+								gridType: activeScene.gridType,
+								gridSize: activeScene.gridSize,
+								gridColor: activeScene.gridColor,
+								gridOpacity: activeScene.gridOpacity,
+								gridScaleDistance: activeScene.gridScaleDistance,
+								gridScaleUnit: e.target.value as VTTGridScaleUnit,
+							})
+						}
+						className="h-11 text-base"
+					>
+						<option value="m">Metros</option>
+						<option value="ft">Pés</option>
+						<option value="sq">Quadrados</option>
+					</Select>
+				</Field>
+			</div>
+
+			{/* Diagonal rule used by the ruler distance */}
+			<fieldset className="space-y-1.5">
+				<legend className="text-[10px] font-bold text-muted-foreground">
+					Diagonal
+				</legend>
+				<div className="grid grid-cols-2 gap-1.5">
+					{(
+						[
+							{ id: "5105", label: "5-10-5" },
+							{ id: "euclidean", label: "Euclidiano" },
+						] satisfies { id: VTTDiagonalRule; label: string }[]
+					).map((rule) => (
+						<button
+							type="button"
+							key={rule.id}
+							aria-pressed={diagonalRule === rule.id}
+							onClick={() => setDiagonalRule(rule.id)}
+							className={cn(
+								"min-h-11 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+								diagonalRule === rule.id
+									? "border-primary/40 bg-primary/15 text-foreground"
+									: "border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground",
+							)}
+						>
+							{rule.label}
+						</button>
+					))}
+				</div>
+			</fieldset>
 
 			{/* Grid Size Slider */}
 			{activeScene.gridType !== "none" && (

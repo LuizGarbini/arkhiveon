@@ -2,6 +2,7 @@ import {
 	Eye,
 	Grid,
 	Hand,
+	Hexagon,
 	Map as MapIcon,
 	MousePointer2,
 	Radio,
@@ -44,6 +45,7 @@ export function VTTToolbar() {
 			if (key === "h") setActiveTool("pan");
 			if (key === "r") setActiveTool("ruler");
 			if (key === "g") setActiveTool("ping");
+			if (key === "t") setActiveTool("template");
 			if (key === "f" && isGM) {
 				setActiveTool("fog");
 				setShowFogControls(true);
@@ -70,6 +72,12 @@ export function VTTToolbar() {
 		{ id: "pan", label: "Mão / Mover Câmera", icon: Hand, shortcut: "H" },
 		{ id: "ruler", label: "Régua de Medição", icon: Ruler, shortcut: "R" },
 		{ id: "ping", label: "Ponteiro Laser (Ping)", icon: Radio, shortcut: "G" },
+		{
+			id: "template",
+			label: "Moldes de magia",
+			icon: Hexagon,
+			shortcut: "T",
+		},
 		{
 			id: "fog",
 			label: "Névoa de Guerra",

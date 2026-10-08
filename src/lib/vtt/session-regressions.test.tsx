@@ -45,6 +45,12 @@ vi.mock("@/components/vtt/vtt-roster-drawer", () => ({
 	VTTRosterDrawer: () => null,
 }));
 vi.mock("@/components/vtt/vtt-scene-bar", () => ({ VTTSceneBar: () => null }));
+vi.mock("@/components/vtt/vtt-sheet-drawer", () => ({
+	VTTSheetDrawer: () => null,
+}));
+vi.mock("@/components/vtt/vtt-template-controls", () => ({
+	VTTTemplateControls: () => null,
+}));
 vi.mock("@/components/vtt/vtt-token-menu", () => ({
 	VTTTokenMenu: () => null,
 }));

@@ -9,6 +9,8 @@ import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
+import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
+import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
@@ -21,6 +23,7 @@ import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
+import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTAura,
 	VTTFogPath,
@@ -77,6 +80,7 @@ function VTTSession() {
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const setIsGM = useVTTStore((s) => s.setIsGM);
 	const isGM = useVTTStore((s) => s.isGM);
+	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
 	const [mutationError, setMutationError] = useState<string | null>(null);
 	const [sceneDataError, setSceneDataError] = useState<string | null>(null);
@@ -126,6 +130,7 @@ function VTTSession() {
 			activeCampaign &&
 				user &&
 				(activeCampaign.ownerId === user.id ||
+					activeCampaign.myRole === "owner" ||
 					activeCampaign.myRole === "editor"),
 		);
 		setIsGM(isOwner);
@@ -693,6 +698,38 @@ function VTTSession() {
 					}
 				},
 			)
+			.on(
+				"broadcast",
+				{ event: "template_move" },
+				(payload: {
+					payload: {
+						userId?: string;
+						template?: VTTSpellTemplate | null;
+						sceneId?: string;
+						placed?: boolean;
+						removedIds?: string[];
+					};
+				}) => {
+					const data = payload.payload;
+					if (
+						data?.userId &&
+						data.sceneId === useVTTStore.getState().activeSceneId
+					) {
+						const store = useVTTStore.getState();
+						if (data.removedIds) {
+							store.removeRemoteTemplates(data.userId, data.removedIds);
+							store.setRemoteTemplatePreview(data.userId, null);
+						} else if (data.placed && data.template) {
+							setRemoteTemplate(data.userId, data.template);
+							store.setRemoteTemplatePreview(data.userId, null);
+						} else
+							store.setRemoteTemplatePreview(
+								data.userId,
+								data.template || null,
+							);
+					}
+				},
+			)
 			.subscribe(async (status: string) => {
 				if (cancelled) return;
 				if (status === "SUBSCRIBED") {
@@ -726,6 +763,7 @@ function VTTSession() {
 		addPing,
 		addFogPath,
 		setFogPaths,
+		setRemoteTemplate,
 	]);
 
 	// Update user presence when color changes without tearing down the room channel
@@ -819,6 +857,23 @@ function VTTSession() {
 			payload: { path: fogPath },
 		});
 	}, []);
+
+	const handleBroadcastTemplate = useCallback(
+		(template: VTTSpellTemplate | null, placed = false) => {
+			if (!roomChannelRef.current || !user) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "template_move",
+				payload: {
+					userId: user.id,
+					sceneId: useVTTStore.getState().activeSceneId,
+					template,
+					placed,
+				},
+			});
+		},
+		[user],
+	);
 
 	const handlePersistFog = useCallback(
 		async (paths: VTTFogPath[]) => {
@@ -1227,7 +1282,7 @@ function VTTSession() {
 		) || null;
 
 	return (
-		<div className="vtt-surface relative h-dvh w-full overflow-hidden bg-background text-foreground select-none">
+		<div className="vtt-surface relative h-dvh w-full overflow-clip bg-background text-foreground select-none">
 			{/* Top Header / Scene Tabs & Presence */}
 			<VTTSceneBar
 				campaignId={campaignId}
@@ -1295,6 +1350,17 @@ function VTTSession() {
 				onClearFog={handleClearFog}
 			/>
 
+			<VTTTemplateControls
+				onClearTemplates={(removedIds) => {
+					if (user)
+						roomChannelRef.current?.send({
+							type: "broadcast",
+							event: "template_move",
+							payload: { userId: user.id, sceneId: activeSceneId, removedIds },
+						});
+				}}
+			/>
+
 			{/* Grid Settings Popover */}
 			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />
 
@@ -1321,6 +1387,7 @@ function VTTSession() {
 					onBroadcastRuler={handleBroadcastRuler}
 					onBroadcastPing={handleBroadcastPing}
 					onBroadcastFog={handleBroadcastFog}
+					onBroadcastTemplate={handleBroadcastTemplate}
 					onPersistFog={handlePersistFog}
 				/>
 			) : !isLoading ? (
@@ -1363,6 +1430,8 @@ function VTTSession() {
 				onSpawnToken={handleSpawnToken}
 				onFocusPoint={handleFocusPoint}
 			/>
+
+			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
 
 			{/* Token Contextual / Health & Status Edit Popover */}
 			<VTTTokenMenu
