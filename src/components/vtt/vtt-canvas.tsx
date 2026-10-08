@@ -22,6 +22,14 @@ import {
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import {
+	beginTokenPress,
+	canvasPressAction,
+	isDoublePress,
+	type TokenPress,
+	tokenPressEndAction,
+	trackTokenPressMove,
+} from "@/lib/vtt/token-press";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -97,6 +105,12 @@ export function VTTCanvas({
 	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
 	const templateStartRef = useRef<{ x: number; y: number } | null>(null);
 	const lastTokenTapRef = useRef<{ id: string; time: number } | null>(null);
+	// Press that started on a token; shields it from the empty-area deselect
+	// on the same DOM event and decides tap vs. drag when it ends.
+	const tokenPressRef = useRef<TokenPress | null>(null);
+	// Set when a touch tap opens the token panel, so the click the browser
+	// synthesizes after that tap cannot land on the panel that just appeared.
+	const swallowTapClickRef = useRef(false);
 
 	// Fog Drawing refs
 	const fogStrokeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -104,12 +118,11 @@ export function VTTCanvas({
 
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
-	// A press on a token only becomes a drag after the pointer moves past 8px,
-	// so taps (and double-taps that open the token menu) never nudge the token.
+	// A press on a token only becomes a drag once it leaves the tap slop
+	// (TOKEN_TAP_SLOP_PX, tracked by tokenPressRef), so taps and double-taps
+	// that open the token menu never nudge the token.
 	const pendingTokenDragRef = useRef<{
 		id: string;
-		startX: number;
-		startY: number;
 		offset: { x: number; y: number };
 	} | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
@@ -674,11 +687,25 @@ export function VTTCanvas({
 					if (activeLayer === "token" && isGMLayer) return;
 
 					e.stopPropagation();
-					setSelectedTokenIds([token.id]);
+					tokenPressRef.current = beginTokenPress(
+						token.id,
+						e,
+						e.nativeEvent instanceof Event ? e.nativeEvent : null,
+					);
+					const current = useVTTStore.getState();
+					if (
+						current.selectedTokenIds.length !== 1 ||
+						current.selectedTokenIds[0] !== token.id
+					) {
+						setSelectedTokenIds([token.id]);
+					}
+					const openMenuId = current.activeTokenIdForMenu;
+					if (openMenuId && openMenuId !== token.id) {
+						setActiveTokenIdForMenu(null);
+					}
 
 					const now = Date.now();
-					const lastTap = lastTokenTapRef.current;
-					if (lastTap && lastTap.id === token.id && now - lastTap.time < 320) {
+					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
 						setActiveTokenIdForMenu(token.id);
 						lastTokenTapRef.current = null;
 						pendingTokenDragRef.current = null;
@@ -697,12 +724,7 @@ export function VTTCanvas({
 							offset.x = worldX - token.x;
 							offset.y = worldY - token.y;
 						}
-						pendingTokenDragRef.current = {
-							id: token.id,
-							startX: e.clientX,
-							startY: e.clientY,
-							offset,
-						};
+						pendingTokenDragRef.current = { id: token.id, offset };
 					}
 				}
 			});
@@ -1062,8 +1084,16 @@ export function VTTCanvas({
 				return;
 			}
 
-			// Deselect if clicking on empty canvas
-			if (isLeftClick && activeTool === "select") {
+			// Deselect if clicking on empty canvas. A press on a token reaches this
+			// listener right after the token handler (same DOM event), so it must
+			// not undo the selection/panel that handler just set.
+			if (
+				canvasPressAction(tokenPressRef.current, e, {
+					isLeftClick,
+					activeTool,
+				}) === "deselect"
+			) {
+				tokenPressRef.current = null;
 				setSelectedTokenIds([]);
 				setActiveTokenIdForMenu(null);
 			}
@@ -1083,6 +1113,24 @@ export function VTTCanvas({
 		const handlePointerMove = (e: PointerEvent) => {
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 			const now = Date.now();
+
+			// A press that leaves the tap slop is a drag: no panel, no double-click,
+			// and a pending token press is promoted into an actual drag.
+			const press = tokenPressRef.current;
+			if (press && !press.moved) {
+				const next = trackTokenPressMove(press, e.clientX, e.clientY);
+				tokenPressRef.current = next;
+				const pending = pendingTokenDragRef.current;
+				if (next.moved) {
+					lastTokenTapRef.current = null;
+					if (pending && !draggingTokenIdRef.current) {
+						draggingTokenIdRef.current = pending.id;
+						tokenDragOffsetRef.current = pending.offset;
+						setDraggedTokenId(pending.id);
+						pendingTokenDragRef.current = null;
+					}
+				}
+			}
 
 			// Broadcast Live Cursor movement (throttled to ~30-60fps)
 			if (onBroadcastCursor && now - lastCursorBroadcastRef.current > 30) {
@@ -1147,22 +1195,6 @@ export function VTTCanvas({
 					drawFogGeometry(previewLayer, previewPath, false, previewColor, 0.35);
 				}
 				return;
-			}
-
-			// Promote a pending token press into a drag once it moves past 8px
-			if (pendingTokenDragRef.current && !draggingTokenIdRef.current) {
-				const pending = pendingTokenDragRef.current;
-				const dist = Math.hypot(
-					e.clientX - pending.startX,
-					e.clientY - pending.startY,
-				);
-				if (dist > 8) {
-					draggingTokenIdRef.current = pending.id;
-					tokenDragOffsetRef.current = pending.offset;
-					setDraggedTokenId(pending.id);
-					pendingTokenDragRef.current = null;
-					lastTokenTapRef.current = null;
-				}
 			}
 
 			// Handle Token Dragging with Realtime Broadcast
@@ -1266,6 +1298,17 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			// A touch/pen tap on a token (no drag) selects it and opens its panel.
+			const press = tokenPressRef.current;
+			tokenPressRef.current = null;
+			if (
+				press &&
+				tokenPressEndAction(press, e.clientX, e.clientY) === "open-panel"
+			) {
+				swallowTapClickRef.current = press.pointerType === "touch";
+				setActiveTokenIdForMenu(press.tokenId);
+			}
+
 			// Finish Fog of War Drawing and Commit
 			if (activeTool === "fog" && isGM && fogStrokeStartRef.current) {
 				const start = fogStrokeStartRef.current;
@@ -1413,11 +1456,19 @@ export function VTTCanvas({
 
 		const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
+		// touchend follows pointerup; cancelling it drops the synthesized click.
+		const handleTouchEnd = (e: TouchEvent) => {
+			if (!swallowTapClickRef.current) return;
+			swallowTapClickRef.current = false;
+			if (e.cancelable) e.preventDefault();
+		};
+
 		window.addEventListener("keydown", handleKeyDown);
 		window.addEventListener("keyup", handleKeyUp);
 		container.addEventListener("wheel", handleWheel, { passive: false });
 		container.addEventListener("pointerdown", handlePointerDown);
 		container.addEventListener("contextmenu", handleContextMenu);
+		container.addEventListener("touchend", handleTouchEnd, { passive: false });
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
 
@@ -1426,6 +1477,7 @@ export function VTTCanvas({
 			window.removeEventListener("keyup", handleKeyUp);
 			container.removeEventListener("wheel", handleWheel);
 			container.removeEventListener("pointerdown", handlePointerDown);
+			container.removeEventListener("touchend", handleTouchEnd);
 			container.removeEventListener("contextmenu", handleContextMenu);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);

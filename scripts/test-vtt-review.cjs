@@ -38,15 +38,9 @@ const MENU_CONTROLS = [
 	"Excluir",
 ];
 
-(async () => {
-	const browser = await chromium.launch({ headless: true });
-	const context = await browser.newContext({
-		viewport: { width: 1280, height: 800 },
-	});
-	const output = path.resolve("docs/previews");
-	fs.mkdirSync(output, { recursive: true });
+// Fake REST + realtime and a GM preview session, shared by every context.
+async function setupContext(context, writes) {
 	await context.routeWebSocket("**/realtime/v1/**", (route) => route.close());
-	const writes = [];
 	await context.route("**/rest/v1/**", (route) => {
 		const request = route.request();
 		if (request.method() === "PATCH") {
@@ -86,6 +80,119 @@ const MENU_CONTROLS = [
 			}),
 		);
 	});
+}
+
+// Scene "Arena de testes" with tokens A (315,245) and B (595,245), camera at 0,0 x1.
+async function loadFixture(page, overridesB = {}) {
+	await page.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
+	await page.waitForFunction(() => window.__vtt_store__);
+	await page.waitForTimeout(1000);
+	await page.evaluate(() => {
+		const s = window.__vtt_store__.getState();
+		s.setIsGM(true);
+		s.setScenes([
+			{
+				id: "scene",
+				campaignId: "demo-tabletop",
+				name: "Arena de testes",
+				gridType: "square",
+				gridSize: 70,
+				gridColor: "white",
+				gridOpacity: 0.2,
+				gridScaleDistance: 1.5,
+				gridScaleUnit: "m",
+				width: 1600,
+				height: 1200,
+				fogEnabled: false,
+				fogExploration: false,
+				isActive: true,
+				orderIndex: 0,
+			},
+		]);
+		s.setActiveSceneId("scene");
+	});
+	await page.locator("canvas").first().waitFor();
+	await page.waitForTimeout(500);
+	await page.evaluate((b) => {
+		const s = window.__vtt_store__.getState();
+		const a = {
+			id: "a",
+			sceneId: "scene",
+			characterId: "hero",
+			name: "Sentinela A",
+			x: 315,
+			y: 245,
+			layer: "token",
+			sizeCells: 1,
+			rotation: 0,
+			elevation: 0,
+			conditions: [],
+			auras: [],
+			visionRange: 6,
+			isLocked: false,
+			isHidden: false,
+			controlledBy: [],
+			hpCurrent: 20,
+			hpMax: 20,
+		};
+		s.setTokens([a, { ...a, id: "b", name: "Sentinela B", x: 595, hpCurrent: 10, ...b }]);
+		s.setViewport({ x: 0, y: 0, scale: 1 });
+	}, overridesB);
+}
+
+// Selection and token-panel state read back from the table store.
+function tableState(page) {
+	return page.evaluate(() => {
+		const s = window.__vtt_store__.getState();
+		return {
+			selected: s.selectedTokenIds,
+			menu: s.activeTokenIdForMenu,
+			tokens: Object.fromEntries(s.tokens.map((t) => [t.id, { x: t.x, y: t.y }])),
+		};
+	});
+}
+
+async function expectSelection(page, selected, menu, why) {
+	await page.waitForFunction(
+		({ selected, menu }) => {
+			const s = window.__vtt_store__.getState();
+			return (
+				JSON.stringify(s.selectedTokenIds) === JSON.stringify(selected) &&
+				s.activeTokenIdForMenu === menu
+			);
+		},
+		{ selected, menu },
+		{ timeout: 3000 },
+	).catch(async () => {
+		const state = await tableState(page);
+		assert.fail(`${why}: esperado seleção ${JSON.stringify(selected)} e painel ${menu}, obtido ${JSON.stringify(state)}`);
+	});
+	const panel = page.getByRole("button", { name: "Fechar menu do token" });
+	if (menu) await panel.waitFor();
+	else await panel.waitFor({ state: "detached" });
+}
+
+// First candidate point whose top element is the table canvas (no panel/HUD).
+async function emptyCanvasPoint(page, candidates) {
+	const point = await page.evaluate((points) => {
+		for (const [x, y] of points) {
+			if (document.elementFromPoint(x, y)?.tagName === "CANVAS") return { x, y };
+		}
+		return null;
+	}, candidates);
+	assert.ok(point, "nenhum ponto vazio da mesa disponível");
+	return point;
+}
+
+(async () => {
+	const browser = await chromium.launch({ headless: true });
+	const context = await browser.newContext({
+		viewport: { width: 1280, height: 800 },
+	});
+	const output = path.resolve("docs/previews");
+	fs.mkdirSync(output, { recursive: true });
+	const writes = [];
+	await setupContext(context, writes);
 	const page = await context.newPage();
 	let recording;
 	const errors = [];
@@ -321,66 +428,47 @@ const MENU_CONTROLS = [
 	}
 
 	try {
-		await page.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
-		await page.waitForFunction(() => window.__vtt_store__);
-		await page.waitForTimeout(1000);
-		await store(() => {
-			const s = window.__vtt_store__.getState();
-			s.setIsGM(true);
-			s.setScenes([
-				{
-					id: "scene",
-					campaignId: "demo-tabletop",
-					name: "Arena de testes",
-					gridType: "square",
-					gridSize: 70,
-					gridColor: "white",
-					gridOpacity: 0.2,
-					gridScaleDistance: 1.5,
-					gridScaleUnit: "m",
-					width: 1600,
-					height: 1200,
-					fogEnabled: false,
-					fogExploration: false,
-					isActive: true,
-					orderIndex: 0,
-				},
-			]);
-			s.setActiveSceneId("scene");
-		});
-		await page.locator("canvas").first().waitFor();
-		await page.waitForTimeout(500);
-		await store(() => {
-			const s = window.__vtt_store__.getState();
-			const a = {
-				id: "a",
-				sceneId: "scene",
-				characterId: "hero",
-				name: "Sentinela A",
-				x: 315,
-				y: 245,
-				layer: "token",
-				sizeCells: 1,
-				rotation: 0,
-				elevation: 0,
-				conditions: [],
-				auras: [],
-				visionRange: 6,
-				isLocked: false,
-				isHidden: false,
-				controlledBy: [],
-				hpCurrent: 20,
-				hpMax: 20,
-			};
-			s.setTokens([a, { ...a, id: "b", name: "Sentinela B", x: 595, hpCurrent: 10 }]);
-			s.setViewport({ x: 0, y: 0, scale: 1 });
-		});
+		await loadFixture(page);
 		recording = await startPreviewRecorder(
 			page,
 			path.join(output, "vtt-review-preview.webm"),
 			"PR 77 / Testes com respostas HTTP simuladas",
 		);
 		await recording.chapter("Dois tokens compartilham a mesma ficha", 2000);
+
+		// 0. Real mouse input on the canvas: click selects, double-click and
+		// right-click open the token panel, empty click deselects, drag only moves.
+		await page.mouse.click(315, 245);
+		await expectSelection(page, ["a"], null, "clique simples seleciona sem abrir o painel");
+		await recording.chapter("Clique simples seleciona o token A", 1200);
+		await page.waitForTimeout(450);
+		await page.mouse.dblclick(315, 245);
+		await expectSelection(page, ["a"], "a", "duplo clique abre o painel do token");
+		await recording.chapter("Duplo clique abre o painel do token", 1200);
+		let empty = await emptyCanvasPoint(page, [[900, 620], [1000, 300], [760, 700]]);
+		await page.mouse.click(empty.x, empty.y);
+		await expectSelection(page, [], null, "clique na área vazia desmarca e fecha o painel");
+		await page.mouse.click(595, 245, { button: "right" });
+		await expectSelection(page, ["b"], "b", "botão direito abre o painel do token");
+		await recording.chapter("Botão direito abre o painel; clique vazio fecha", 1200);
+		empty = await emptyCanvasPoint(page, [[900, 620], [1000, 300], [760, 700]]);
+		await page.mouse.click(empty.x, empty.y);
+		await expectSelection(page, [], null, "clique vazio fecha o painel aberto pelo botão direito");
+		await page.waitForTimeout(450);
+		await page.mouse.move(315, 245);
+		await page.mouse.down();
+		await page.mouse.move(385, 315, { steps: 5 });
+		await page.mouse.move(455, 385, { steps: 5 });
+		await page.mouse.up();
+		await expectSelection(page, ["a"], null, "arrastar o token não abre o painel");
+		const dragged = await tableState(page);
+		assert.deepEqual(dragged.tokens.a, { x: 455, y: 385 }, "arrastar move o token para a célula de destino");
+		await recording.chapter("Arrastar move o token sem abrir o painel", 1200);
+		await store(() => {
+			const s = window.__vtt_store__.getState();
+			s.updateToken("a", { x: 315, y: 245 });
+			s.setSelectedTokenIds([]);
+		});
 
 		// 1. "Ficha" in the #84 token panel opens the in-table sheet for that token.
 		await store(() => window.__vtt_store__.getState().setActiveTokenIdForMenu("b"));
@@ -577,9 +665,70 @@ const MENU_CONTROLS = [
 		await captureFrames("desktop");
 		await page.setViewportSize({ width: 390, height: 844 });
 		await captureFrames("mobile");
+		// 6. Touch input on a phone: a single tap selects the token and opens its
+		// panel, a tap on the empty table closes it, a touch drag only moves it.
+		const touchContext = await browser.newContext({
+			viewport: { width: 390, height: 844 },
+			hasTouch: true,
+			isMobile: true,
+		});
+		await setupContext(touchContext, []);
+		const touchPage = await touchContext.newPage();
+		touchPage.on("pageerror", (e) => errors.push(e.message));
+		try {
+			await loadFixture(touchPage, { x: 175, y: 455 });
+			recording = await startPreviewRecorder(
+				touchPage,
+				path.join(output, "vtt-selection-mobile.webm"),
+				"Celular / Toque no token",
+			);
+			await touchPage.touchscreen.tap(315, 245);
+			await expectSelection(touchPage, ["a"], "a", "toque simples seleciona e abre o painel");
+			// The click synthesized after the tap must not hit the panel under the finger.
+			await touchPage.waitForTimeout(400);
+			assert.equal(
+				await touchPage.evaluate(
+					() => window.__vtt_store__.getState().tokens.find((t) => t.id === "a").hpCurrent,
+				),
+				20,
+				"o clique gerado pelo toque não pode acionar o painel recém-aberto",
+			);
+			await recording.chapter("Um toque seleciona o token e abre o painel", 1500);
+			await touchPage.screenshot({ path: path.join(output, "vtt-selection-tap-mobile.png") });
+			const emptyTouch = await emptyCanvasPoint(touchPage, [
+				[200, 790],
+				[60, 790],
+				[350, 110],
+				[20, 700],
+			]);
+			await touchPage.touchscreen.tap(emptyTouch.x, emptyTouch.y);
+			await expectSelection(touchPage, [], null, "toque na área vazia desmarca e fecha o painel");
+			await recording.chapter("Toque na área vazia fecha o painel", 1200);
+			await touchPage.waitForTimeout(450);
+			const cdp = await touchContext.newCDPSession(touchPage);
+			const touch = (type, x, y) =>
+				cdp.send("Input.dispatchTouchEvent", {
+					type,
+					touchPoints: type === "touchEnd" ? [] : [{ x, y }],
+				});
+			await touch("touchStart", 175, 455);
+			for (let i = 1; i <= 6; i++) await touch("touchMove", 175, 455 + i * 12);
+			await touch("touchEnd");
+			await expectSelection(touchPage, ["b"], null, "arrastar com o dedo não abre o painel");
+			assert.deepEqual(
+				(await tableState(touchPage)).tokens.b,
+				{ x: 175, y: 525 },
+				"arrastar com o dedo move o token",
+			);
+			await recording.chapter("Arrastar com o dedo move o token sem abrir o painel", 1200);
+			await recording.stop();
+			recording = null;
+		} finally {
+			await touchContext.close();
+		}
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});

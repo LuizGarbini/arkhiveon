@@ -196,8 +196,13 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 				{tab === "scene" && (
 					<>
 						<p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-							Encontre um token no mapa ou abra sua ficha. Use o botão direito
-							no token para editar.
+							Encontre um token no mapa ou abra sua ficha.{" "}
+							<span className="sm:hidden">
+								Toque no token para selecionar e editar.
+							</span>
+							<span className="hidden sm:inline">
+								Clique duas vezes ou use o botão direito no token para editar.
+							</span>
 						</p>
 						{visibleTokens.map((token) => (
 							<div
