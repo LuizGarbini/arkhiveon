@@ -85,4 +85,16 @@ describe("rulerTickPoints", () => {
 	it("returns no ticks when the line is shorter than one cell", () => {
 		expect(rulerTickPoints(origin, { x: 20, y: 0 }, cell)).toEqual([]);
 	});
+
+	it("labels a 2-east 1-north knight step as 10 ft under 5-10-5, not Euclidean length", () => {
+		const ticks = rulerTickPoints(
+			origin,
+			{ x: cell * 2, y: cell },
+			cell,
+			5,
+			"ft",
+			"5105",
+		);
+		expect(ticks.at(-1)?.distance).toBe(10);
+	});
 });
