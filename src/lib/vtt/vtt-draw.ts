@@ -1,6 +1,7 @@
 import { type Container, type Graphics, Text, TextStyle } from "pixi.js";
 import { type Point, rulerTickPoints } from "./grid-math";
 import { templatePolygon, type VTTSpellTemplate } from "./template-math";
+import type { VTTDiagonalRule, VTTGridScaleUnit } from "./types";
 
 export function parseHexColor(color: string, fallback = 0xa855f7): number {
 	const parsed = Number.parseInt(color.replace("#", "0x"), 16);
@@ -47,12 +48,20 @@ export function drawRulerMeasurement(
 	end: Point,
 	gridSize: number,
 	scaleDistance: number,
-	unit: string,
+	unit: VTTGridScaleUnit,
 	color: string,
+	diagonalRule: VTTDiagonalRule = "euclidean",
 	caption?: string,
 ) {
 	const colorHex = parseHexColor(color, 0x38bdf8);
-	const ticks = rulerTickPoints(start, end, gridSize);
+	const ticks = rulerTickPoints(
+		start,
+		end,
+		gridSize,
+		scaleDistance,
+		unit,
+		diagonalRule,
+	);
 
 	layer.moveTo(start.x, start.y);
 	layer.lineTo(end.x, end.y);
@@ -93,7 +102,7 @@ export function drawRulerMeasurement(
 	for (const tick of ticks) {
 		if (tick.cells % showEvery !== 0) continue;
 		const label = new Text({
-			text: `${Number((tick.cells * scaleDistance).toFixed(1))}${unit}`,
+			text: `${tick.distance}${unit}`,
 			style: labelStyle,
 		});
 		label.anchor.set(0.5);

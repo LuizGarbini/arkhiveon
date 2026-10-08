@@ -87,4 +87,17 @@ describe("VTT scene lifecycle", () => {
 		expect(useVTTStore.getState().tokens).toEqual([]);
 		expect(useVTTStore.getState().selectedTokenIds).toEqual([]);
 	});
+
+	it("closes the Biblioteca when a token menu opens and vice versa", () => {
+		const state = useVTTStore.getState();
+		state.setShowRosterDrawer(true);
+		state.setActiveTokenIdForMenu("token-a");
+		expect(useVTTStore.getState().activeTokenIdForMenu).toBe("token-a");
+		expect(useVTTStore.getState().showRosterDrawer).toBe(false);
+		useVTTStore.getState().setShowRosterDrawer(true);
+		expect(useVTTStore.getState().showRosterDrawer).toBe(true);
+		expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
+		useVTTStore.getState().setActiveTokenIdForMenu(null);
+		expect(useVTTStore.getState().showRosterDrawer).toBe(true);
+	});
 });

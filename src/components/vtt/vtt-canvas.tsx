@@ -26,7 +26,6 @@ import {
 	beginTokenPress,
 	canvasPressAction,
 	isDoublePress,
-	isTokenTap,
 	type TokenPress,
 	tokenPressEndAction,
 	trackTokenPressMove,
@@ -119,6 +118,13 @@ export function VTTCanvas({
 
 	// Token Dragging refs
 	const draggingTokenIdRef = useRef<string | null>(null);
+	// A press on a token only becomes a drag once it leaves the tap slop
+	// (TOKEN_TAP_SLOP_PX, tracked by tokenPressRef), so taps and double-taps
+	// that open the token menu never nudge the token.
+	const pendingTokenDragRef = useRef<{
+		id: string;
+		offset: { x: number; y: number };
+	} | null>(null);
 	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
@@ -702,25 +708,23 @@ export function VTTCanvas({
 					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
 						setActiveTokenIdForMenu(token.id);
 						lastTokenTapRef.current = null;
+						pendingTokenDragRef.current = null;
 						return;
 					}
 					lastTokenTapRef.current = { id: token.id, time: now };
 
 					if (!token.isLocked) {
-						draggingTokenIdRef.current = token.id;
-						setDraggedTokenId(token.id);
-
 						const rect = containerRef.current?.getBoundingClientRect();
+						const offset = { x: 0, y: 0 };
 						if (rect) {
 							const clientX = e.clientX - rect.left;
 							const clientY = e.clientY - rect.top;
 							const worldX = (clientX - viewport.x) / viewport.scale;
 							const worldY = (clientY - viewport.y) / viewport.scale;
-							tokenDragOffsetRef.current = {
-								x: worldX - token.x,
-								y: worldY - token.y,
-							};
+							offset.x = worldX - token.x;
+							offset.y = worldY - token.y;
 						}
+						pendingTokenDragRef.current = { id: token.id, offset };
 					}
 				}
 			});
@@ -746,7 +750,6 @@ export function VTTCanvas({
 		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
-		setDraggedTokenId,
 	]);
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
@@ -1111,12 +1114,22 @@ export function VTTCanvas({
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 			const now = Date.now();
 
-			// A press that leaves the tap slop is a drag: no panel, no double-click.
+			// A press that leaves the tap slop is a drag: no panel, no double-click,
+			// and a pending token press is promoted into an actual drag.
 			const press = tokenPressRef.current;
 			if (press && !press.moved) {
 				const next = trackTokenPressMove(press, e.clientX, e.clientY);
-				if (next.moved) lastTokenTapRef.current = null;
 				tokenPressRef.current = next;
+				const pending = pendingTokenDragRef.current;
+				if (next.moved) {
+					lastTokenTapRef.current = null;
+					if (pending && !draggingTokenIdRef.current) {
+						draggingTokenIdRef.current = pending.id;
+						tokenDragOffsetRef.current = pending.offset;
+						setDraggedTokenId(pending.id);
+						pendingTokenDragRef.current = null;
+					}
+				}
 			}
 
 			// Broadcast Live Cursor movement (throttled to ~30-60fps)
@@ -1186,8 +1199,6 @@ export function VTTCanvas({
 
 			// Handle Token Dragging with Realtime Broadcast
 			if (draggingTokenIdRef.current && scene) {
-				// Inside the tap slop the token stays put; the drag starts past it.
-				if (tokenPressRef.current && !tokenPressRef.current.moved) return;
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 				const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
 
@@ -1261,6 +1272,7 @@ export function VTTCanvas({
 					scene.gridScaleDistance,
 					scene.gridScaleUnit,
 					userColor,
+					diagonalRule,
 				);
 			}
 
@@ -1362,6 +1374,14 @@ export function VTTCanvas({
 				return;
 			}
 
+			if (pendingTokenDragRef.current) {
+				lastTokenTapRef.current = {
+					id: pendingTokenDragRef.current.id,
+					time: Date.now(),
+				};
+				pendingTokenDragRef.current = null;
+			}
+
 			// Finish Token Dragging with Magnetic Grid Snapping & Persistence
 			if (draggingTokenIdRef.current && scene) {
 				const tokenId = draggingTokenIdRef.current;
@@ -1369,8 +1389,7 @@ export function VTTCanvas({
 				draggingTokenIdRef.current = null;
 				setDraggedTokenId(null);
 
-				// A tap or click never moved the token: nothing to snap or persist.
-				if (token && !(press && isTokenTap(press, e.clientX, e.clientY))) {
+				if (token) {
 					const worldPoint = screenToWorld(e.clientX, e.clientY);
 					const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 					const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
