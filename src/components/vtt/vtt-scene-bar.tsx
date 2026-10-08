@@ -173,7 +173,7 @@ export function VTTSceneBar({
 									<span className="max-w-36 truncate">{scene.name}</span>
 									<span
 										className={cn(
-											"hidden rounded-md px-1.5 py-1 text-[10px] sm:inline",
+											"shrink-0 whitespace-nowrap rounded-md px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-1",
 											scene.isActive
 												? "bg-primary/15 text-primary"
 												: "bg-muted text-muted-foreground",

@@ -184,6 +184,83 @@ async function emptyCanvasPoint(page, candidates) {
 	return point;
 }
 
+// Scene bar with one "Em jogo" scene and one "Preparação" scene with a long
+// name, the Preparação one selected (tightest bar for the GM).
+async function checkSceneBadges(browser, viewport, extra, errors) {
+	const context = await browser.newContext({ viewport, ...extra });
+	await setupContext(context, []);
+	const page = await context.newPage();
+	page.on("pageerror", (e) => errors.push(e.message));
+	const where = `${viewport.width}x${viewport.height}`;
+	try {
+		await loadFixture(page);
+		await page.evaluate(() => {
+			const s = window.__vtt_store__.getState();
+			const [base] = s.scenes;
+			s.setScenes([
+				{ ...base, id: "live", name: "Taverna", isActive: true, orderIndex: 0 },
+				{ ...base, id: "prep", name: "Ruínas da Cidadela Submersa", isActive: false, orderIndex: 1 },
+			]);
+			s.setActiveSceneId("prep");
+		});
+		await page.getByRole("button", { name: "Exibir cena aos jogadores" }).waitFor();
+		await page.waitForTimeout(300);
+		const bar = await page.evaluate(() => {
+			const nav = document.querySelector('nav[aria-label="Cenas da mesa"]');
+			const navRect = nav.getBoundingClientRect();
+			return {
+				needsScroll: nav.scrollWidth > nav.clientWidth,
+				scenes: [...nav.querySelectorAll("button")].map((btn) => {
+					const [name, badge] = btn.querySelectorAll("span");
+					const b = badge.getBoundingClientRect();
+					return {
+						name: name.textContent,
+						height: btn.getBoundingClientRect().height,
+						truncated: name.scrollWidth > name.clientWidth,
+						lines: Math.round(
+							name.getBoundingClientRect().height /
+								Number.parseFloat(getComputedStyle(name).lineHeight),
+						),
+						badge: badge.textContent,
+						badgeShown: getComputedStyle(badge).display !== "none" && b.width > 0,
+						badgeInNav: b.left >= navRect.left && b.right <= navRect.right,
+					};
+				}),
+				actions: ["Exibir cena aos jogadores", "Nova cena"].map(
+					(label) => document.querySelector(`[aria-label="${label}"]`).getBoundingClientRect().height,
+				),
+			};
+		});
+		const [live, prep] = bar.scenes;
+		assert.deepEqual([live.badge, prep.badge], ["Em jogo", "Preparação"], `selos das cenas (${where})`);
+		for (const scene of bar.scenes) {
+			assert.ok(scene.height >= 44, `cena "${scene.name}" com ${scene.height}px de altura (${where})`);
+			assert.equal(scene.lines, 1, `nome da cena "${scene.name}" quebrou linha (${where})`);
+			assert.ok(scene.badgeShown, `selo "${scene.badge}" escondido (${where})`);
+		}
+		for (const h of bar.actions) assert.ok(h >= 44, `ação da barra de cenas com ${h}px (${where})`);
+		assert.equal(live.truncated, false, `nome curto "${live.name}" cortado (${where})`);
+		assert.equal(prep.truncated, true, `nome longo deveria terminar em reticências (${where})`);
+		assert.ok(live.badgeInNav, `selo "Em jogo" fora da área visível (${where})`);
+		if (bar.needsScroll) {
+			// Phone: the second scene is reached by scrolling the scene bar.
+			const reachable = await page.evaluate(() => {
+				const nav = document.querySelector('nav[aria-label="Cenas da mesa"]');
+				nav.scrollLeft = nav.scrollWidth;
+				const badge = nav.querySelectorAll("button")[1].querySelectorAll("span")[1];
+				const b = badge.getBoundingClientRect();
+				const n = nav.getBoundingClientRect();
+				return b.left >= n.left && b.right <= n.right;
+			});
+			assert.ok(reachable, `selo "Preparação" inacessível mesmo rolando a barra (${where})`);
+		} else {
+			assert.ok(prep.badgeInNav, `selo "Preparação" fora da área visível (${where})`);
+		}
+	} finally {
+		await context.close();
+	}
+}
+
 (async () => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
@@ -750,9 +827,17 @@ async function emptyCanvasPoint(page, candidates) {
 		} finally {
 			await touchContext.close();
 		}
+		// 7. Scene badges "Em jogo"/"Preparação" on desktop and on the phone.
+		await checkSceneBadges(browser, { width: 1440, height: 900 }, {}, errors);
+		await checkSceneBadges(
+			browser,
+			{ width: 390, height: 844 },
+			{ hasTouch: true, isMobile: true },
+			errors,
+		);
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: seleção por clique/duplo clique/botão direito/toque, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});
