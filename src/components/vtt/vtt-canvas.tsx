@@ -22,6 +22,15 @@ import {
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import {
+	beginTokenPress,
+	canvasPressAction,
+	isDoublePress,
+	isTokenTap,
+	type TokenPress,
+	tokenPressEndAction,
+	trackTokenPressMove,
+} from "@/lib/vtt/token-press";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -97,6 +106,9 @@ export function VTTCanvas({
 	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
 	const templateStartRef = useRef<{ x: number; y: number } | null>(null);
 	const lastTokenTapRef = useRef<{ id: string; time: number } | null>(null);
+	// Press that started on a token; shields it from the empty-area deselect
+	// on the same DOM event and decides tap vs. drag when it ends.
+	const tokenPressRef = useRef<TokenPress | null>(null);
 
 	// Fog Drawing refs
 	const fogStrokeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -666,11 +678,25 @@ export function VTTCanvas({
 					if (activeLayer === "token" && isGMLayer) return;
 
 					e.stopPropagation();
-					setSelectedTokenIds([token.id]);
+					tokenPressRef.current = beginTokenPress(
+						token.id,
+						e,
+						e.nativeEvent instanceof Event ? e.nativeEvent : null,
+					);
+					const current = useVTTStore.getState();
+					if (
+						current.selectedTokenIds.length !== 1 ||
+						current.selectedTokenIds[0] !== token.id
+					) {
+						setSelectedTokenIds([token.id]);
+					}
+					const openMenuId = current.activeTokenIdForMenu;
+					if (openMenuId && openMenuId !== token.id) {
+						setActiveTokenIdForMenu(null);
+					}
 
 					const now = Date.now();
-					const lastTap = lastTokenTapRef.current;
-					if (lastTap && lastTap.id === token.id && now - lastTap.time < 320) {
+					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
 						setActiveTokenIdForMenu(token.id);
 						lastTokenTapRef.current = null;
 						return;
@@ -1052,8 +1078,16 @@ export function VTTCanvas({
 				return;
 			}
 
-			// Deselect if clicking on empty canvas
-			if (isLeftClick && activeTool === "select") {
+			// Deselect if clicking on empty canvas. A press on a token reaches this
+			// listener right after the token handler (same DOM event), so it must
+			// not undo the selection/panel that handler just set.
+			if (
+				canvasPressAction(tokenPressRef.current, e, {
+					isLeftClick,
+					activeTool,
+				}) === "deselect"
+			) {
+				tokenPressRef.current = null;
 				setSelectedTokenIds([]);
 				setActiveTokenIdForMenu(null);
 			}
@@ -1073,6 +1107,14 @@ export function VTTCanvas({
 		const handlePointerMove = (e: PointerEvent) => {
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 			const now = Date.now();
+
+			// A press that leaves the tap slop is a drag: no panel, no double-click.
+			const press = tokenPressRef.current;
+			if (press && !press.moved) {
+				const next = trackTokenPressMove(press, e.clientX, e.clientY);
+				if (next.moved) lastTokenTapRef.current = null;
+				tokenPressRef.current = next;
+			}
 
 			// Broadcast Live Cursor movement (throttled to ~30-60fps)
 			if (onBroadcastCursor && now - lastCursorBroadcastRef.current > 30) {
@@ -1141,6 +1183,8 @@ export function VTTCanvas({
 
 			// Handle Token Dragging with Realtime Broadcast
 			if (draggingTokenIdRef.current && scene) {
+				// Inside the tap slop the token stays put; the drag starts past it.
+				if (tokenPressRef.current && !tokenPressRef.current.moved) return;
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 				const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
 
@@ -1239,6 +1283,16 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			// A touch/pen tap on a token (no drag) selects it and opens its panel.
+			const press = tokenPressRef.current;
+			tokenPressRef.current = null;
+			if (
+				press &&
+				tokenPressEndAction(press, e.clientX, e.clientY) === "open-panel"
+			) {
+				setActiveTokenIdForMenu(press.tokenId);
+			}
+
 			// Finish Fog of War Drawing and Commit
 			if (activeTool === "fog" && isGM && fogStrokeStartRef.current) {
 				const start = fogStrokeStartRef.current;
@@ -1311,7 +1365,8 @@ export function VTTCanvas({
 				draggingTokenIdRef.current = null;
 				setDraggedTokenId(null);
 
-				if (token) {
+				// A tap or click never moved the token: nothing to snap or persist.
+				if (token && !(press && isTokenTap(press, e.clientX, e.clientY))) {
 					const worldPoint = screenToWorld(e.clientX, e.clientY);
 					const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 					const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
