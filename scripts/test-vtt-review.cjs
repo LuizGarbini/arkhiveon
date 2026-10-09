@@ -393,8 +393,8 @@ async function checkSceneBadges(browser, viewport, extra, errors) {
 // (a network-level retry, or a retry after an error whose insert committed);
 // the client gets the second answer. Postgres rejects a repeated id with
 // 23505, like PostgREST does.
-async function fakeSceneTable(context, { deliverTwice }) {
-	const table = { rows: [], posts: 0 };
+async function fakeSceneTable(context, { deliverTwice = false, rows = [] } = {}) {
+	const table = { rows: [...rows], posts: 0, deletes: 0 };
 	const now = "2026-10-08T12:00:00Z";
 	const insert = (body) => {
 		const id = body.id ?? `servidor-${table.rows.length + 1}`;
@@ -434,6 +434,17 @@ async function fakeSceneTable(context, { deliverTwice }) {
 				status: result.status,
 				contentType: "application/json",
 				body: JSON.stringify(result.body),
+			});
+		}
+		if (request.method() === "DELETE") {
+			table.deletes++;
+			const id = new URL(request.url()).searchParams.get("id")?.replace(/^eq\./, "");
+			const gone = table.rows.filter((row) => row.id === id);
+			table.rows = table.rows.filter((row) => row.id !== id);
+			return route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(gone.map((row) => ({ id: row.id }))),
 			});
 		}
 		if (request.method() === "GET") {
@@ -495,6 +506,108 @@ async function checkCreateSceneOnce(browser, viewport, extra, errors) {
 		const shown = names.filter((name) => name.startsWith("Smoke Audit")).length;
 		assert.equal(names.length, 2, `barra com ${names.length} cenas após recarregar (${where}): ${names}`);
 		assert.equal(shown, 1, `${shown} cenas "Smoke Audit" após recarregar (${where})`);
+	} finally {
+		await context.close();
+	}
+}
+
+// Bug 06: the GM deletes a scene after confirming. Two scenes ("Taverna" in
+// play, "Smoke Audit 2026-10-08" in preparation): cancel keeps both, confirm
+// removes only the smoke scene (table, store, bar after reload), and the last
+// scene cannot be deleted. Real click/tap; dialog buttons are 44px or more.
+async function checkDeleteScene(browser, viewport, extra, errors) {
+	const context = await browser.newContext({ viewport, ...extra });
+	await setupContext(context, []);
+	const now = "2026-10-09T12:00:00Z";
+	const scene = (id, name, isActive, order) => ({
+		id,
+		campaign_id: "demo-tabletop",
+		name,
+		map_image_url: null,
+		grid_type: "square",
+		grid_size: 70,
+		grid_color: "white",
+		grid_opacity: 0.2,
+		width: 1600,
+		height: 1200,
+		fog_enabled: false,
+		fog_exploration: false,
+		is_active: isActive,
+		order_index: order,
+		created_at: now,
+		updated_at: now,
+	});
+	const table = await fakeSceneTable(context, {
+		rows: [
+			scene("cena-taverna", "Taverna", true, 0),
+			scene("cena-smoke", "Smoke Audit 2026-10-08", false, 1),
+		],
+	});
+	const page = await context.newPage();
+	page.on("pageerror", (e) => errors.push(e.message));
+	const where = `${viewport.width}x${viewport.height}`;
+	const press = (locator) => (extra.hasTouch ? locator.tap() : locator.click());
+	const sceneButtons = page.locator('nav[aria-label="Cenas da mesa"] button');
+	const names = () => table.rows.map((row) => row.name).join(", ");
+	const openDelete = async () => {
+		const trigger = page.getByRole("button", { name: "Excluir cena" });
+		assert.equal(await trigger.count(), 1, `sem botão "Excluir cena" na barra (${where})`);
+		await press(trigger);
+		const dialog = page.getByRole("dialog");
+		await dialog.waitFor();
+		await page.waitForTimeout(400); // let the open animation (zoom-in) finish
+		return dialog;
+	};
+	const minSide = async (locator) => {
+		const box = await locator.boundingBox();
+		return Math.min(box.width, box.height);
+	};
+	try {
+		await page.goto(`${process.env.VTT_BASE_URL}/campaigns/demo-tabletop/vtt`);
+		await sceneButtons.nth(1).waitFor();
+		await page.waitForTimeout(500);
+		await press(sceneButtons.filter({ hasText: "Smoke Audit" }));
+
+		let dialog = await openDelete();
+		const cancel = dialog.getByRole("button", { name: "Cancelar" });
+		const confirm = dialog.getByRole("button", { name: "Excluir cena" });
+		assert.ok((await minSide(cancel)) >= 44, `Cancelar menor que 44px (${where})`);
+		assert.ok((await minSide(confirm)) >= 44, `Excluir cena menor que 44px (${where})`);
+		await press(cancel);
+		await dialog.waitFor({ state: "detached" });
+		assert.equal(table.deletes, 0, `cancelar apagou cena (${where})`);
+		assert.equal(await sceneButtons.count(), 2, `cancelar mudou a barra (${where})`);
+
+		dialog = await openDelete();
+		await press(dialog.getByRole("button", { name: "Excluir cena" }));
+		await dialog.waitFor({ state: "detached" });
+		await page.waitForTimeout(500);
+		assert.equal(names(), "Taverna", `banco depois de excluir: ${names()} (${where})`);
+		const inStore = await page.evaluate(() =>
+			window.__vtt_store__
+				.getState()
+				.scenes.map((s) => s.name)
+				.join(", "),
+		);
+		assert.equal(inStore, "Taverna", `store depois de excluir: ${inStore} (${where})`);
+
+		await page.reload();
+		await sceneButtons.first().waitFor();
+		await page.waitForTimeout(500);
+		const bar = await sceneButtons.allTextContents();
+		assert.equal(bar.length, 1, `barra após recarregar (${where}): ${bar}`);
+		assert.ok(bar[0].startsWith("Taverna"), `cena que ficou (${where}): ${bar}`);
+
+		dialog = await openDelete();
+		await dialog.getByText("Esta é a única cena da mesa").waitFor();
+		assert.equal(
+			await dialog.getByRole("button", { name: "Excluir cena" }).count(),
+			0,
+			`última cena oferece exclusão (${where})`,
+		);
+		await press(dialog.getByRole("button", { name: "Entendi" }));
+		await dialog.waitFor({ state: "detached" });
+		assert.equal(table.deletes, 1, `última cena apagada (${where})`);
 	} finally {
 		await context.close();
 	}
@@ -1254,9 +1367,17 @@ async function checkSheetMaxHp(browser, viewport, extra, errors) {
 			{ hasTouch: true, isMobile: true },
 			errors,
 		);
+		// 10. The GM deletes a scene only after confirming (bug 06).
+		await checkDeleteScene(browser, { width: 1440, height: 900 }, {}, errors);
+		await checkDeleteScene(
+			browser,
+			{ width: 390, height: 844 },
+			{ hasTouch: true, isMobile: true },
+			errors,
+		);
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, um clique cria uma cena só, PV máximo digitado chega à ficha e ao token, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, um clique cria uma cena só, excluir cena com confirmação, PV máximo digitado chega à ficha e ao token, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});

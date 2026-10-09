@@ -6,6 +6,7 @@ import {
 	Eye,
 	Plus,
 	Sparkles,
+	Trash2,
 	Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
 import { cn } from "@/lib/utils";
 import { nearestScrollLeft } from "@/lib/vtt/scene-bar-scroll";
 import { newSceneId } from "@/lib/vtt/scene-create";
+import { checkSceneDelete } from "@/lib/vtt/scene-delete";
 import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -32,6 +34,7 @@ interface VTTSceneBarProps {
 	campaignName: string;
 	onCreateScene: (sceneData: Partial<VTTScene>) => Promise<void>;
 	onActivateScene: (sceneId: string) => Promise<void>;
+	onDeleteScene: (sceneId: string) => Promise<void>;
 	onOpenJournal: () => void;
 	onFocusPoint?: (x: number, y: number) => void;
 }
@@ -41,6 +44,7 @@ export function VTTSceneBar({
 	campaignName,
 	onCreateScene,
 	onActivateScene,
+	onDeleteScene,
 	onFocusPoint,
 	onOpenJournal,
 }: VTTSceneBarProps) {
@@ -61,6 +65,10 @@ export function VTTSceneBar({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isActivating, setIsActivating] = useState(false);
+	// Scene waiting for the GM to confirm its deletion.
+	const [sceneToDelete, setSceneToDelete] = useState<VTTScene | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 	// Id of the scene being drafted in the dialog, kept across retries so a
 	// create that already landed is not inserted twice.
 	const draftSceneIdRef = useRef<string | null>(null);
@@ -97,6 +105,28 @@ export function VTTSceneBar({
 		});
 		return () => cancelAnimationFrame(frame);
 	}, [liveSceneId]);
+
+	const deleteCheck = sceneToDelete
+		? checkSceneDelete(sceneToDelete, scenes)
+		: null;
+
+	const handleConfirmDelete = async () => {
+		if (!sceneToDelete || !deleteCheck?.allowed || isDeleting) return;
+		setIsDeleting(true);
+		setDeleteError(null);
+		try {
+			await onDeleteScene(sceneToDelete.id);
+			setSceneToDelete(null);
+		} catch (error) {
+			setDeleteError(
+				error instanceof Error
+					? error.message
+					: "Não foi possível excluir a cena. Ela foi mantida na mesa.",
+			);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
 
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -260,6 +290,20 @@ export function VTTSceneBar({
 									</span>
 								</Button>
 							)}
+							{activeScene && (
+								<Button
+									variant="outline"
+									aria-label="Excluir cena"
+									className="size-11 shrink-0 rounded-xl px-0 lg:w-auto lg:px-3"
+									onClick={() => {
+										setDeleteError(null);
+										setSceneToDelete(activeScene);
+									}}
+								>
+									<Trash2 className="size-4" />
+									<span className="hidden lg:inline">Excluir</span>
+								</Button>
+							)}
 							<Button
 								aria-label="Nova cena"
 								onClick={() => {
@@ -284,6 +328,64 @@ export function VTTSceneBar({
 					</p>
 				)}
 			</header>
+
+			{/* Delete Scene Confirmation */}
+			<Dialog
+				open={sceneToDelete !== null}
+				onOpenChange={(open) => {
+					if (!open && !isDeleting) setSceneToDelete(null);
+				}}
+			>
+				<DialogContent className="vtt-dialog max-w-md">
+					<DialogHeader>
+						<DialogTitle className="font-display text-lg flex items-center gap-2 pr-12 break-words">
+							<Trash2 className="h-5 w-5 text-destructive" />
+							Excluir a cena “{sceneToDelete?.name}”?
+						</DialogTitle>
+						<DialogDescription className="text-xs text-muted-foreground">
+							{deleteCheck?.allowed
+								? "Os tokens e a névoa desta cena também são apagados. Não dá para desfazer."
+								: "Esta cena não pode ser excluída agora."}
+						</DialogDescription>
+					</DialogHeader>
+					{deleteCheck && !deleteCheck.allowed && (
+						<p role="alert" className="text-sm text-foreground">
+							{deleteCheck.reason}
+						</p>
+					)}
+					{deleteCheck?.allowed && deleteCheck.warning && (
+						<p className="text-sm text-foreground">{deleteCheck.warning}</p>
+					)}
+					{deleteError && (
+						<p role="alert" className="text-sm text-destructive">
+							{deleteError}
+						</p>
+					)}
+					<div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
+						<Button
+							type="button"
+							variant="ghost"
+							className="h-11 px-4"
+							disabled={isDeleting}
+							onClick={() => setSceneToDelete(null)}
+						>
+							{deleteCheck?.allowed ? "Cancelar" : "Entendi"}
+						</Button>
+						{deleteCheck?.allowed && (
+							<Button
+								type="button"
+								variant="destructive"
+								className="h-11 gap-1.5 px-4"
+								disabled={isDeleting}
+								onClick={handleConfirmDelete}
+							>
+								<Trash2 className="h-3.5 w-3.5" />
+								{isDeleting ? "Excluindo..." : "Excluir cena"}
+							</Button>
+						)}
+					</div>
+				</DialogContent>
+			</Dialog>
 
 			{/* Create Scene Modal */}
 			<Dialog
