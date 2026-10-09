@@ -500,6 +500,170 @@ async function checkCreateSceneOnce(browser, viewport, extra, errors) {
 	}
 }
 
+// Fake characters/vtt_tokens tables (whole sheet kept in `data`) and one
+// active scene, so a sheet saved in the UI can be read back and placed.
+async function fakeSheetTables(context) {
+	const db = { characters: [], tokens: [] };
+	const now = "2026-10-09T12:00:00Z";
+	const scene = {
+		id: "cena-pv",
+		campaign_id: "demo-tabletop",
+		name: "Cena PV",
+		map_image_url: null,
+		grid_type: "square",
+		grid_size: 70,
+		grid_color: "white",
+		grid_opacity: 0.2,
+		width: 1600,
+		height: 1200,
+		fog_enabled: false,
+		fog_exploration: false,
+		is_active: true,
+		order_index: 0,
+		created_at: now,
+		updated_at: now,
+	};
+	const reply = (route, status, body) =>
+		route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+	await context.route(/\/rest\/v1\/(characters|vtt_scenes|vtt_tokens)/, (route) => {
+		const request = route.request();
+		const url = new URL(request.url());
+		const table = url.pathname.split("/").pop();
+		const single = (request.headers().accept ?? "").includes("vnd.pgrst.object");
+		const id = url.searchParams.get("id")?.replace(/^eq\./, "");
+		const rows = table === "characters" ? db.characters : db.tokens;
+		if (table === "vtt_scenes") return reply(route, 200, single ? scene : [scene]);
+		if (request.method() === "POST") {
+			const body = request.postDataJSON();
+			const row = {
+				id: `${table}-${rows.length + 1}`,
+				conditions: [],
+				created_at: now,
+				updated_at: now,
+				...(Array.isArray(body) ? body[0] : body),
+			};
+			rows.push(row);
+			return reply(route, 201, single ? row : [row]);
+		}
+		if (request.method() === "PATCH") {
+			const row = rows.find((r) => r.id === id);
+			if (row) Object.assign(row, request.postDataJSON());
+			return reply(route, 200, single ? row : [row]);
+		}
+		const found = id ? rows.filter((r) => r.id === id) : rows;
+		return reply(route, 200, single ? found[0] : found);
+	});
+	return db;
+}
+
+// Bug 05: a typed max HP is what the sheet and its token get. (1) Wizard with
+// only "HP Máximo" = 12; (2) a 0/0 sheet left by the old wizard, edited to
+// max 12 in "Combate". Both read back from the fake table and the placed token.
+async function checkSheetMaxHp(browser, viewport, extra, errors) {
+	const context = await browser.newContext({ viewport, ...extra });
+	await setupContext(context, []);
+	const db = await fakeSheetTables(context);
+	const page = await context.newPage();
+	page.on("pageerror", (e) => errors.push(e.message));
+	const where = `${viewport.width}x${viewport.height}`;
+	const press = (locator) => (extra.hasTouch ? locator.tap() : locator.click());
+	const go = (to) =>
+		page.evaluate((url) => {
+			history.pushState({}, "", url);
+			dispatchEvent(new PopStateEvent("popstate"));
+		}, to);
+	const saved = (name) => db.characters.find((row) => row.name === name)?.data;
+	const sheetPv = () =>
+		page.evaluate(() => {
+			const label = [...document.querySelectorAll("*")].find(
+				(el) => el.children.length === 0 && el.textContent.trim() === "PV",
+			);
+			return label?.parentElement?.textContent?.replace(/^PV/, "").trim();
+		});
+	const placeToken = async (name) => {
+		await go("/campaigns/demo-tabletop/vtt");
+		await page.locator('nav[aria-label="Cenas da mesa"] button').first().waitFor();
+		await page.waitForTimeout(500);
+		const roster = page.getByRole("button", { name: "Personagens e NPCs" });
+		if ((await roster.getAttribute("aria-expanded")) !== "true") await press(roster);
+		await press(
+			page
+				.getByRole("complementary", { name: "Biblioteca da mesa" })
+				.getByRole("button", { name: "Fichas", exact: true }),
+		);
+		const card = page.locator("div.rounded-xl", { has: page.locator(`h3:text-is("${name}")`) }).first();
+		await press(card.getByRole("button", { name: "Colocar" }));
+		await page.waitForFunction((n) => window.__vtt_store__.getState().tokens.some((t) => t.name === n), name);
+		return page.evaluate((n) => {
+			const token = window.__vtt_store__.getState().tokens.find((t) => t.name === n);
+			return `${token.hpCurrent}/${token.hpMax}`;
+		}, name);
+	};
+	const typeMax = async (scope, value) => {
+		const input = scope.locator('input[name="healthMax"]');
+		await press(input);
+		await input.press("ControlOrMeta+a");
+		await input.pressSequentially(value);
+	};
+	try {
+		await page.goto(`${process.env.VTT_BASE_URL}/sheets/new`);
+		await press(page.getByRole("button", { name: /^D&D 5ª Edição/ }));
+		await press(page.getByRole("button", { name: "Avançar" }));
+		await page.locator('input[name="characterName"]').fill("Guerreiro PV");
+		await press(page.getByRole("button", { name: "Avançar" }));
+		await press(page.getByRole("button", { name: "Avançar" }));
+		await press(page.getByRole("button", { name: "Combate", exact: true }));
+		await typeMax(page, "12");
+		await press(page.getByRole("button", { name: "Avançar" }));
+		await page.waitForTimeout(500);
+		if (page.url().includes("/sheets/new")) {
+			await press(page.getByRole("button", { name: /Criar Ficha de Personagem/ }));
+		}
+		await page.waitForURL(/sheets\/(?!new)/);
+		await page.waitForTimeout(500);
+		const wizard = saved("Guerreiro PV");
+		assert.equal(wizard?.healthMax, 12, `assistente gravou PV máx ${wizard?.healthMax} (${where})`);
+		assert.equal(wizard?.health, 12, `assistente gravou PV atual ${wizard?.health} (${where})`);
+		assert.equal(await sheetPv(), "12/12", `ficha do assistente (${where})`);
+		assert.equal(await placeToken("Guerreiro PV"), "12/12", `token do assistente (${where})`);
+
+		const legacyId = await page.evaluate(
+			() =>
+				window.__rpg_store__.getState().addCharacter({
+					characterName: "Mago PV",
+					system: "dnd5e",
+					health: 0,
+					healthMax: 0,
+				}).id,
+		);
+		await go(`/sheets/${legacyId}`);
+		const combate = page.locator('h2:text-is("Combate"), h3:text-is("Combate")').first();
+		await combate.waitFor();
+		await page.waitForTimeout(500);
+		assert.equal(await sheetPv(), "0/0", `ficha antiga sem PV (${where})`);
+		await press(
+			combate
+				.locator('xpath=ancestor::*[.//button[contains(., "Editar")]][1]')
+				.getByRole("button", { name: /Editar/ })
+				.first(),
+		);
+		const dialog = page.getByRole("dialog");
+		await dialog.waitFor();
+		await page.waitForTimeout(300);
+		await typeMax(dialog, "12");
+		await press(dialog.getByRole("button", { name: /Salvar/ }));
+		await dialog.waitFor({ state: "detached" });
+		await page.waitForTimeout(500);
+		const edited = saved("Mago PV");
+		assert.equal(edited?.healthMax, 12, `edição gravou PV máx ${edited?.healthMax} (${where})`);
+		assert.equal(edited?.health, 12, `edição gravou PV atual ${edited?.health} (${where})`);
+		assert.equal(await sheetPv(), "12/12", `ficha editada (${where})`);
+		assert.equal(await placeToken("Mago PV"), "12/12", `token da ficha editada (${where})`);
+	} finally {
+		await context.close();
+	}
+}
+
 (async () => {
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
@@ -1082,9 +1246,17 @@ async function checkCreateSceneOnce(browser, viewport, extra, errors) {
 			{ hasTouch: true, isMobile: true },
 			errors,
 		);
+		// 9. A typed max HP reaches the sheet and the token (bug 05).
+		await checkSheetMaxHp(browser, { width: 1440, height: 900 }, {}, errors);
+		await checkSheetMaxHp(
+			browser,
+			{ width: 390, height: 844 },
+			{ hasTouch: true, isMobile: true },
+			errors,
+		);
 		assert.deepEqual(errors, []);
 		console.log(
-			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, um clique cria uma cena só, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
+			"PASS: seleção por clique/duplo clique/botão direito/toque, selos de cena no celular com a cena em jogo sempre à vista, um clique cria uma cena só, PV máximo digitado chega à ficha e ao token, ficha na mesa, rolagem com modificador, régua 5-10-5, moldes de magia, painel nas bordas, campos acessíveis e quadros de régua/moldes",
 		);
 	} catch (error) {
 		await page.screenshot({ path: path.join(output, "vtt-review-failure.png") }).catch(() => {});

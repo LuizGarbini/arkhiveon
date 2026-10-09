@@ -6,6 +6,7 @@ import {
 	buildCharacterFormDefaults,
 	CHARACTER_NAME_REQUIRED_MESSAGE,
 	type CharacterFormValues,
+	resolveSheetHealth,
 	sanitizeCharacterFormValues,
 } from "@/components/character-sheet/fields";
 import {
@@ -253,6 +254,8 @@ function NewSheetPage() {
 
 		const newCharacter = addCharacter({
 			...sanitized,
+			// Empty HP fields must not become 0/0 or 0/max (bug 05).
+			...resolveSheetHealth(data),
 			sheetLayout: {
 				version: 1,
 				template: system,

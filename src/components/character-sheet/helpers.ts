@@ -149,3 +149,43 @@ export function sanitizeCharacterFormValues(
 
 	return sanitized;
 }
+
+const isFilledNumber = (value: unknown): value is number =>
+	typeof value === "number" && Number.isFinite(value);
+
+/**
+ * HP pair to store when a sheet is saved (bug 05). The creation wizard turned
+ * every empty number into 0, so a sheet saved with only "HP Máximo" filled
+ * started at 0/12, one saved with the HP fields empty at 0/0 (the field shows
+ * "0" while empty), and the token placed from it copied that. Now:
+ * - a typed value is always kept;
+ * - an empty current HP starts at the max (full HP);
+ * - an empty max uses the typed current HP, or the default max when both are
+ *   empty, so a new sheet never stores max HP 0;
+ * - a sheet that never had a max (0/0) starts at full HP once it gets one.
+ */
+export function resolveSheetHealth(
+	values: { health?: number; healthMax?: number },
+	previous?: { health: number; healthMax: number },
+): { health: number; healthMax: number } {
+	const typedMax = isFilledNumber(values.healthMax)
+		? values.healthMax
+		: undefined;
+	const typedHealth = isFilledNumber(values.health) ? values.health : undefined;
+	const healthMax =
+		typedMax ??
+		(typedHealth !== undefined && typedHealth > 0
+			? typedHealth
+			: characterDefaults.healthMax);
+	let health = typedHealth ?? healthMax;
+	if (
+		previous &&
+		previous.healthMax <= 0 &&
+		previous.health <= 0 &&
+		health === 0 &&
+		healthMax > 0
+	) {
+		health = healthMax;
+	}
+	return { health, healthMax };
+}
