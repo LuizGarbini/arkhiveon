@@ -1049,6 +1049,26 @@ function VTTSession() {
 		);
 	};
 
+	// Bug 06: the GM deletes a scene after confirming in the scene bar. RLS
+	// ("GM can delete scenes") allows it; tokens and fog go with it (on delete
+	// cascade). A delete that matched no row (e.g. refused by RLS) is an error.
+	const handleDeleteScene = async (sceneId: string) => {
+		const client = getSupabase();
+		if (!client || !campaignId || !isGM)
+			throw new Error("É necessário estar conectado como mestre.");
+		const { data, error } = await client
+			.from("vtt_scenes")
+			.delete()
+			.eq("campaign_id", campaignId)
+			.eq("id", sceneId)
+			.select("id");
+		if (error || !data?.length)
+			throw new Error(
+				"Não foi possível excluir a cena. Ela foi mantida na mesa.",
+			);
+		useVTTStore.getState().removeScene(sceneId);
+	};
+
 	const handleUpdateSceneSettings = async (settings: {
 		gridType: VTTGridType;
 		gridSize: number;
@@ -1311,6 +1331,7 @@ function VTTSession() {
 				campaignName={activeCampaign?.name || "Campanha"}
 				onCreateScene={handleCreateScene}
 				onActivateScene={handleActivateScene}
+				onDeleteScene={handleDeleteScene}
 				onFocusPoint={handleFocusPoint}
 				onOpenJournal={() => {
 					useVTTStore.getState().setShowRosterDrawer(false);
