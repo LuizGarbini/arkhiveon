@@ -23,6 +23,11 @@ import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
+import {
+	isRepeatedCreate,
+	newSceneId,
+	singleFlight,
+} from "@/lib/vtt/scene-create";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTAura,
@@ -98,6 +103,7 @@ function VTTSession() {
 		[],
 	);
 	const sceneRequestRef = useRef(0);
+	const sceneCreateFlightRef = useRef(singleFlight<void>());
 	const tokenRequestRef = useRef(0);
 	const tokenMutationRef = useRef(new Map<string, number>());
 	const [isLoading, setIsLoading] = useState(true);
@@ -931,14 +937,22 @@ function VTTSession() {
 	);
 
 	// Scene Management Handlers
-	const handleCreateScene = async (sceneData: Partial<VTTScene>) => {
+	// One create at a time, and each create carries its own id so a repeat of
+	// the same create (network retry, retry after an error, double press) reads
+	// the scene back instead of inserting a copy. See lib/vtt/scene-create.ts.
+	const handleCreateScene = (sceneData: Partial<VTTScene>) =>
+		sceneCreateFlightRef.current(() => createScene(sceneData));
+
+	const createScene = async (sceneData: Partial<VTTScene>) => {
 		const client = getSupabase();
 		if (!client || !isGM)
 			throw new Error(
 				"É necessário estar conectado como mestre para criar uma cena.",
 			);
 
+		const sceneId = sceneData.id ?? newSceneId();
 		const insertData: Database["public"]["Tables"]["vtt_scenes"]["Insert"] = {
+			id: sceneId,
 			campaign_id: campaignId,
 			name: sceneData.name || "Nova Cena",
 			map_image_url: sceneData.mapImageUrl || null,
@@ -952,11 +966,19 @@ function VTTSession() {
 			order_index: scenes.length,
 		};
 
-		const { data, error } = await client
+		let { data, error } = await client
 			.from("vtt_scenes")
 			.insert(insertData)
 			.select()
 			.single();
+		if (isRepeatedCreate(error)) {
+			({ data, error } = await client
+				.from("vtt_scenes")
+				.select("*")
+				.eq("campaign_id", campaignId)
+				.eq("id", sceneId)
+				.single());
+		}
 
 		if (error) {
 			console.error("Erro ao criar cena:", error);

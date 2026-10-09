@@ -23,6 +23,7 @@ import { Select } from "@/components/ui/select";
 import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
 import { cn } from "@/lib/utils";
 import { nearestScrollLeft } from "@/lib/vtt/scene-bar-scroll";
+import { newSceneId } from "@/lib/vtt/scene-create";
 import type { VTTGridScaleUnit, VTTGridType, VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -60,6 +61,9 @@ export function VTTSceneBar({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isActivating, setIsActivating] = useState(false);
+	// Id of the scene being drafted in the dialog, kept across retries so a
+	// create that already landed is not inserted twice.
+	const draftSceneIdRef = useRef<string | null>(null);
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	const liveSceneId = scenes.find((s) => s.isActive)?.id ?? null;
@@ -96,12 +100,14 @@ export function VTTSceneBar({
 
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!newSceneName.trim()) return;
+		if (!newSceneName.trim() || isSubmitting) return;
 
+		draftSceneIdRef.current ??= newSceneId();
 		setIsSubmitting(true);
 		setError(null);
 		try {
 			await onCreateScene({
+				id: draftSceneIdRef.current,
 				campaignId,
 				name: newSceneName.trim(),
 				mapImageUrl: newMapUrl.trim() || null,
@@ -114,6 +120,7 @@ export function VTTSceneBar({
 				isActive: scenes.length === 0,
 			});
 
+			draftSceneIdRef.current = null;
 			setIsCreateModalOpen(false);
 			setNewSceneName("");
 			setNewMapUrl("");
@@ -257,6 +264,7 @@ export function VTTSceneBar({
 								aria-label="Nova cena"
 								onClick={() => {
 									setError(null);
+									draftSceneIdRef.current = null;
 									setIsCreateModalOpen(true);
 								}}
 								className="h-11 shrink-0 rounded-xl px-3"
