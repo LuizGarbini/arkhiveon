@@ -338,9 +338,11 @@ export function VTTSceneBar({
 			>
 				<DialogContent className="vtt-dialog max-w-md">
 					<DialogHeader>
-						<DialogTitle className="font-display text-lg flex items-center gap-2 pr-12 break-words">
-							<Trash2 className="h-5 w-5 text-destructive" />
-							Excluir a cena “{sceneToDelete?.name}”?
+						<DialogTitle className="font-display text-lg flex items-center gap-2 pr-12">
+							<Trash2 className="h-5 w-5 shrink-0 text-destructive" />
+							<span className="min-w-0 break-words">
+								Excluir a cena “{sceneToDelete?.name}”?
+							</span>
 						</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
 							{deleteCheck?.allowed
