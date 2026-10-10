@@ -231,24 +231,6 @@
     min-height: 100vh;
   }
 
-  button, 
-  a, 
-  select,
-  input,
-  label, 
-  summary, 
-  [role="button"],
-  [role="link"],
-  [role="menuitem"],
-  [role="tab"],
-  [tabindex]:not([tabindex="-1"]),
-  [aria-label],
-  .cursor-pointer,
-  .hover\:cursor-pointer:hover {
-    cursor: pointer !important;
-    -webkit-tap-highlight-color: transparent !important;
-  }
-
   ::selection {
     background: var(--primary-muted);
     color: var(--foreground);
@@ -277,17 +259,34 @@
     background: var(--primary-dark);
   }
 
-  /* Interactive elements cursor */
-  button, 
-  a, 
-  [role="button"],
-  input[type="submit"],
-  input[type="reset"],
-  input[type="button"],
+  /* Interactive elements cursor: pointer only on real click targets.
+     Text fields keep the default text cursor; disabled controls never show pointer. */
+  button:not(:disabled),
+  a,
+  [role="button"]:not([aria-disabled="true"]),
+  [role="link"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="tab"]:not([aria-disabled="true"]):not([data-disabled]),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="button"]:not(:disabled),
   label,
-  select,
+  select:not(:disabled),
   summary {
     cursor: pointer;
+  }
+
+  button,
+  a,
+  select,
+  input,
+  label,
+  summary,
+  [role="button"],
+  [role="link"],
+  [role="menuitem"],
+  [role="tab"] {
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Prevent image dragging */
