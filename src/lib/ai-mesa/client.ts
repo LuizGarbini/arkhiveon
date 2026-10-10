@@ -4,6 +4,7 @@ import {
 	type IaMesaHistoryItem,
 	type IaMesaResult,
 	isBlockedRequest,
+	isIaMesaPilotCampaign,
 	normalizeResponse,
 } from "./proposal";
 
@@ -13,6 +14,9 @@ export async function askMesaAssistant(input: {
 	message: string;
 	history: IaMesaHistoryItem[];
 }): Promise<IaMesaResult> {
+	if (!isIaMesaPilotCampaign(input.campaignId)) {
+		return { ok: false, code: "not_allowed" };
+	}
 	if (isBlockedRequest(input.message)) {
 		return { ok: true, reply: IA_MESA_REFUSAL, proposal: null };
 	}
@@ -26,7 +30,15 @@ export async function askMesaAssistant(input: {
 			const status = (error as { context?: { status?: number } }).context
 				?.status;
 			if (status === 401) return { ok: false, code: "unauthorized" };
-			if (status === 403) return { ok: false, code: "forbidden" };
+			if (status === 403) {
+				const code =
+					data &&
+					typeof data === "object" &&
+					(data as { code?: unknown }).code === "not_allowed"
+						? "not_allowed"
+						: "forbidden";
+				return { ok: false, code };
+			}
 			if (status === 404) return { ok: false, code: "not_deployed" };
 			return { ok: false, code: "model_error" };
 		}

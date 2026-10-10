@@ -3,7 +3,9 @@ import {
 	buildSystemPrompt,
 	cleanHistory,
 	IA_MESA_ALLOWED_TOOLS,
+	IA_MESA_PILOT_CAMPAIGN_ID,
 	isCampaignId,
+	isIaMesaPilotCampaign,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import {
 	canApply,
@@ -73,6 +75,22 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 		expect(long?.name.length).toBeLessThanOrEqual(80);
 		expect(long?.description).toBe("");
 		expect(long && "extra" in long).toBe(false);
+	});
+});
+
+describe("ia-mesa: piloto allowlist de campanha", () => {
+	it("só libera Rise of Tiamat", () => {
+		expect(IA_MESA_PILOT_CAMPAIGN_ID).toBe(
+			"3e9555fc-085e-43dd-a063-bcd02847032d",
+		);
+		expect(isIaMesaPilotCampaign(IA_MESA_PILOT_CAMPAIGN_ID)).toBe(true);
+		expect(isIaMesaPilotCampaign(CAMPAIGN)).toBe(false);
+		expect(isIaMesaPilotCampaign("")).toBe(false);
+		expect(isIaMesaPilotCampaign("not-a-uuid")).toBe(false);
+	});
+
+	it("mensagem not_allowed em pt-BR", () => {
+		expect(errorMessage("not_allowed")).toMatch(/não está liberado/i);
 	});
 });
 

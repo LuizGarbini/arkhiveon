@@ -16,6 +16,7 @@ import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
+import { isIaMesaPilotCampaign } from "@/lib/ai-mesa/proposal";
 import { useAuth } from "@/lib/auth";
 import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
@@ -1519,8 +1520,8 @@ function VTTSession() {
 			{/* Bottom-Center Zoom & Distance HUD */}
 			<VTTZoomControls />
 
-			{/* Bottom-Right AI assistant (piloto, só mestre/editor) */}
-			{isGM && (
+			{/* Bottom-Right AI assistant (piloto: só Rise of Tiamat + mestre/editor) */}
+			{isGM && isIaMesaPilotCampaign(campaignId) && (
 				<VTTAiChat
 					campaignId={campaignId}
 					campaignName={activeCampaign?.name || "Campanha"}

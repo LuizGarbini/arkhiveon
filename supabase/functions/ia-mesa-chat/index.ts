@@ -2,12 +2,13 @@
 //
 // Segurança (trava do Chefe):
 // 1. Valida o JWT do usuário (verify_jwt + auth.getUser).
-// 2. Valida que o usuário é mestre/editor da campaign_id pedida (RLS do próprio
+// 2. Valida que o campaign_id está na allowlist do piloto (Rise of Tiamat).
+// 3. Valida que o usuário é mestre/editor da campaign_id pedida (RLS do próprio
 //    usuário; nunca service role).
-// 3. Só então chama o modelo, com system prompt fixo e UMA ferramenta
+// 4. Só então chama o modelo, com system prompt fixo e UMA ferramenta
 //    allowlisted (`propose_npc`). Sem código, SQL, segredos, env ou outras
 //    campanhas.
-// 4. NÃO grava nada no banco. Devolve a proposta; o cliente só salva depois de
+// 5. NÃO grava nada no banco. Devolve a proposta; o cliente só salva depois de
 //    Confirmar → Aplicar.
 //
 // Segredos esperados (Supabase → Edge Functions → Secrets):
@@ -24,6 +25,7 @@ import {
 	IA_MESA_TOOL_DECLARATIONS,
 	isBlockedRequest,
 	isCampaignId,
+	isIaMesaPilotCampaign,
 	parseToolCall,
 } from "../_shared/ia-mesa-guard.ts";
 
@@ -64,6 +66,11 @@ serve(async (req) => {
 		const message = cleanUserMessage(body?.message);
 		if (!isCampaignId(campaignId) || !message) {
 			return json({ ok: false, code: "bad_request" }, 400);
+		}
+
+		// Piloto: só Rise of Tiamat (allowlist). Demais campanhas: 403.
+		if (!isIaMesaPilotCampaign(campaignId)) {
+			return json({ ok: false, code: "not_allowed" }, 403);
 		}
 
 		// Escopo: só a campanha pedida, e só se o usuário for mestre/editor dela.

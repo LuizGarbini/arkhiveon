@@ -9,8 +9,10 @@ export type {
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 export {
+	IA_MESA_PILOT_CAMPAIGN_ID,
 	IA_MESA_REFUSAL,
 	isBlockedRequest,
+	isIaMesaPilotCampaign,
 	parseToolCall,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 
@@ -101,6 +103,7 @@ export type IaMesaErrorCode =
 	| "invalid_key"
 	| "rate_limited"
 	| "forbidden"
+	| "not_allowed"
 	| "unauthorized"
 	| "bad_request"
 	| "offline"
@@ -117,6 +120,8 @@ export function errorMessage(code: IaMesaErrorCode | string): string {
 			return "Muitos pedidos seguidos. Espere alguns segundos e tente de novo.";
 		case "forbidden":
 			return "Só o mestre (ou editor) desta campanha pode usar o assistente.";
+		case "not_allowed":
+			return "O assistente ainda não está liberado nesta campanha.";
 		case "unauthorized":
 			return "Sua sessão expirou. Entre de novo para usar o assistente.";
 		case "bad_request":

@@ -3,12 +3,21 @@
  * `ia-mesa-chat` e o cliente. Sem dependências: roda em Deno e no Vite.
  *
  * Trava de segurança:
+ * - Piloto: só a campanha `IA_MESA_PILOT_CAMPAIGN_ID` (Rise of Tiamat).
  * - A IA só pode PROPOR conteúdo de texto/ficha dentro da campanha atual.
  * - A única ferramenta liberada é `propose_npc` (allowlist). Nada de código,
  *   SQL, segredos, variáveis de ambiente ou outras campanhas.
  * - Nada é salvo pela IA: a proposta volta para o cliente e só vira registro
  *   depois de Confirmar → Aplicar.
  */
+
+/** Piloto: só Rise of Tiamat pode usar o assistente da mesa. */
+export const IA_MESA_PILOT_CAMPAIGN_ID =
+	"3e9555fc-085e-43dd-a063-bcd02847032d";
+
+export function isIaMesaPilotCampaign(campaignId: string): boolean {
+	return campaignId === IA_MESA_PILOT_CAMPAIGN_ID;
+}
 
 export const IA_MESA_ALLOWED_TOOLS = ["propose_npc"] as const;
 export type IaMesaToolName = (typeof IA_MESA_ALLOWED_TOOLS)[number];
