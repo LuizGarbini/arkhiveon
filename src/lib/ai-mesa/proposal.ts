@@ -101,6 +101,7 @@ export type IaMesaErrorCode =
 	| "invalid_key"
 	| "rate_limited"
 	| "forbidden"
+	| "not_allowed"
 	| "unauthorized"
 	| "bad_request"
 	| "offline"
@@ -117,6 +118,8 @@ export function errorMessage(code: IaMesaErrorCode | string): string {
 			return "Muitos pedidos seguidos. Espere alguns segundos e tente de novo.";
 		case "forbidden":
 			return "Só o mestre (ou editor) desta campanha pode usar o assistente.";
+		case "not_allowed":
+			return "O assistente ainda não está liberado nesta campanha.";
 		case "unauthorized":
 			return "Sua sessão expirou. Entre de novo para usar o assistente.";
 		case "bad_request":

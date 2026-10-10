@@ -3,7 +3,10 @@ import {
 	buildSystemPrompt,
 	cleanHistory,
 	IA_MESA_ALLOWED_TOOLS,
+	IA_MESA_PILOT_TABLE,
+	type IaMesaPilotLookupClient,
 	isCampaignId,
+	isIaMesaPilotCampaign,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import {
 	canApply,
@@ -73,6 +76,82 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 		expect(long?.name.length).toBeLessThanOrEqual(80);
 		expect(long?.description).toBe("");
 		expect(long && "extra" in long).toBe(false);
+	});
+});
+
+function mockPilotClient(
+	allowed: string[],
+	opts: { error?: boolean; throws?: boolean } = {},
+) {
+	const calls: Array<{ table: string; column: string; value: string }> = [];
+	const client: IaMesaPilotLookupClient = {
+		from(table) {
+			return {
+				select() {
+					return {
+						eq(column, value) {
+							calls.push({ table, column, value });
+							return {
+								maybeSingle: async () => {
+									if (opts.throws) throw new Error("network");
+									if (opts.error)
+										return { data: null, error: { message: "rls" } };
+									return {
+										data: allowed.includes(value)
+											? { campaign_id: value }
+											: null,
+										error: null,
+									};
+								},
+							};
+						},
+					};
+				},
+			};
+		},
+	};
+	return { client, calls };
+}
+
+describe("ia-mesa: piloto allowlist de campanha (Supabase)", () => {
+	const PILOT = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+	it("libera só campanhas presentes na tabela", async () => {
+		const { client, calls } = mockPilotClient([PILOT]);
+		expect(await isIaMesaPilotCampaign(client, PILOT)).toBe(true);
+		expect(await isIaMesaPilotCampaign(client, CAMPAIGN)).toBe(false);
+		expect(calls[0]).toEqual({
+			table: IA_MESA_PILOT_TABLE,
+			column: "campaign_id",
+			value: PILOT,
+		});
+		expect(IA_MESA_PILOT_TABLE).toBe("ia_mesa_pilot_campaigns");
+	});
+
+	it("UUID inválido nem consulta o banco", async () => {
+		const { client, calls } = mockPilotClient([PILOT]);
+		expect(await isIaMesaPilotCampaign(client, "")).toBe(false);
+		expect(await isIaMesaPilotCampaign(client, "not-a-uuid")).toBe(false);
+		expect(calls).toHaveLength(0);
+	});
+
+	it("erro ou falha de rede = não liberado", async () => {
+		expect(
+			await isIaMesaPilotCampaign(
+				mockPilotClient([PILOT], { error: true }).client,
+				PILOT,
+			),
+		).toBe(false);
+		expect(
+			await isIaMesaPilotCampaign(
+				mockPilotClient([PILOT], { throws: true }).client,
+				PILOT,
+			),
+		).toBe(false);
+	});
+
+	it("mensagem not_allowed em pt-BR", () => {
+		expect(errorMessage("not_allowed")).toMatch(/não está liberado/i);
 	});
 });
 

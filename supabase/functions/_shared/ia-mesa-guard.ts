@@ -3,12 +3,59 @@
  * `ia-mesa-chat` e o cliente. Sem dependências: roda em Deno e no Vite.
  *
  * Trava de segurança:
+ * - Piloto: só campanhas na tabela `ia_mesa_pilot_campaigns` (allowlist no
+ *   Supabase; liga/desliga pelo SQL Editor, sem PR).
  * - A IA só pode PROPOR conteúdo de texto/ficha dentro da campanha atual.
  * - A única ferramenta liberada é `propose_npc` (allowlist). Nada de código,
  *   SQL, segredos, variáveis de ambiente ou outras campanhas.
  * - Nada é salvo pela IA: a proposta volta para o cliente e só vira registro
  *   depois de Confirmar → Aplicar.
  */
+
+/** Tabela do Supabase com as campanhas liberadas no piloto. */
+export const IA_MESA_PILOT_TABLE = "ia_mesa_pilot_campaigns";
+
+/**
+ * Cliente mínimo do Supabase usado para consultar a allowlist. Tipado à mão
+ * para não depender de `@supabase/supabase-js` (roda em Deno e no Vite).
+ */
+export interface IaMesaPilotLookupClient {
+	from(table: string): {
+		select(columns: string): {
+			eq(
+				column: string,
+				value: string,
+			): {
+				maybeSingle(): PromiseLike<{
+					data: unknown;
+					error: unknown;
+				}>;
+			};
+		};
+	};
+}
+
+/**
+ * A campanha está liberada no piloto? Consulta `ia_mesa_pilot_campaigns` com
+ * o cliente do próprio usuário (RLS). Qualquer erro = não liberado.
+ */
+export async function isIaMesaPilotCampaign(
+	client: IaMesaPilotLookupClient,
+	campaignId: string,
+): Promise<boolean> {
+	if (!isCampaignId(campaignId)) return false;
+	try {
+		const { data, error } = await client
+			.from(IA_MESA_PILOT_TABLE)
+			.select("campaign_id")
+			.eq("campaign_id", campaignId)
+			.maybeSingle();
+		if (error || !data || typeof data !== "object") return false;
+		return (data as { campaign_id?: unknown }).campaign_id === campaignId;
+	} catch {
+		return false;
+	}
+}
 
 export const IA_MESA_ALLOWED_TOOLS = ["propose_npc"] as const;
 export type IaMesaToolName = (typeof IA_MESA_ALLOWED_TOOLS)[number];
