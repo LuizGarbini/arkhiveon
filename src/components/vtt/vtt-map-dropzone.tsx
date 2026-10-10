@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ImageLibraryPickerDialog } from "@/components/image-library-picker-dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import { readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
@@ -63,6 +64,7 @@ export function useMapUpload(
 	onReady: (map: VTTMapImage) => void | Promise<void>,
 ) {
 	const { session } = useAuth();
+	const toast = useToast();
 	const addImageAsset = useRPGStore((s) => s.addImageAsset);
 	const [state, setState] = useState<UploadState>({ status: "idle" });
 	const controllerRef = useRef<AbortController | null>(null);
@@ -107,15 +109,18 @@ export function useMapUpload(
 			if (controller.signal.aborted) return;
 			const size = mapSceneSize(dimensions.width, dimensions.height);
 			const name = sceneNameFromFile(file.name) || "Mapa";
-			addImageAsset({
-				createdBy: session?.user.id ?? "",
-				name,
-				url,
-				mimeType: "image/webp",
-				sizeBytes: file.size,
-				width: size.width,
-				height: size.height,
-			});
+			addImageAsset(
+				{
+					createdBy: session?.user.id ?? "",
+					name,
+					url,
+					mimeType: "image/webp",
+					sizeBytes: file.size,
+					width: size.width,
+					height: size.height,
+				},
+				{ onSyncError: toast.error },
+			);
 			await onReady({ url, ...size, name });
 			if (controller.signal.aborted) return;
 			setState({ status: "idle" });

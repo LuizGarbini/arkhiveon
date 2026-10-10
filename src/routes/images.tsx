@@ -61,6 +61,7 @@ function ImagesRoute() {
 	const [isUploading, setIsUploading] = useState(false);
 	const [uploadingName, setUploadingName] = useState<string | null>(null);
 
+	const imageSyncNotice = { onSyncError: toast.error };
 	const isMaster = activeCampaign?.myRole === "owner";
 	const canUpload =
 		activeCampaign?.myRole === "owner" || activeCampaign?.myRole === "editor";
@@ -123,15 +124,18 @@ function ImagesRoute() {
 					quality: 0.82,
 				});
 
-				const created = addImageAsset({
-					createdBy: session?.user.id ?? "",
-					name: readableFileName(file.name),
-					url,
-					mimeType: file.type,
-					sizeBytes: file.size,
-					width: dimensions.width,
-					height: dimensions.height,
-				});
+				const created = addImageAsset(
+					{
+						createdBy: session?.user.id ?? "",
+						name: readableFileName(file.name),
+						url,
+						mimeType: file.type,
+						sizeBytes: file.size,
+						width: dimensions.width,
+						height: dimensions.height,
+					},
+					imageSyncNotice,
+				);
 
 				if (created) uploadedCount += 1;
 				if (index < files.length - 1) await delay(UPLOAD_DELAY_MS);
@@ -282,10 +286,16 @@ function ImagesRoute() {
 									(asset.createdBy === session?.user.id && !asset.isPrivate)
 								}
 								onTogglePrivate={() =>
-									updateImageAsset(asset.id, { isPrivate: !asset.isPrivate })
+									updateImageAsset(
+										asset.id,
+										{ isPrivate: !asset.isPrivate },
+										imageSyncNotice,
+									)
 								}
-								onRename={(name) => updateImageAsset(asset.id, { name })}
-								onDelete={() => removeImageAsset(asset.id)}
+								onRename={(name) =>
+									updateImageAsset(asset.id, { name }, imageSyncNotice)
+								}
+								onDelete={() => removeImageAsset(asset.id, imageSyncNotice)}
 							/>
 						))}
 
