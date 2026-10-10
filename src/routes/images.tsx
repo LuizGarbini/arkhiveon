@@ -61,6 +61,7 @@ function ImagesRoute() {
 	const [isUploading, setIsUploading] = useState(false);
 	const [uploadingName, setUploadingName] = useState<string | null>(null);
 
+	const imageSyncNotice = { onSyncError: toast.error };
 	const isMaster = activeCampaign?.myRole === "owner";
 	const canUpload =
 		activeCampaign?.myRole === "owner" || activeCampaign?.myRole === "editor";
@@ -102,7 +103,8 @@ function ImagesRoute() {
 		}
 
 		setIsUploading(true);
-		let uploadedCount = 0;
+		// Só conta como enviada quando a linha entrou em `image_assets`.
+		const saved: Promise<boolean>[] = [];
 
 		try {
 			for (const [index, file] of files.entries()) {
@@ -123,17 +125,29 @@ function ImagesRoute() {
 					quality: 0.82,
 				});
 
-				const created = addImageAsset({
-					createdBy: session?.user.id ?? "",
-					name: readableFileName(file.name),
-					url,
-					mimeType: file.type,
-					sizeBytes: file.size,
-					width: dimensions.width,
-					height: dimensions.height,
-				});
-
-				if (created) uploadedCount += 1;
+				saved.push(
+					new Promise<boolean>((resolve) => {
+						const created = addImageAsset(
+							{
+								createdBy: session?.user.id ?? "",
+								name: readableFileName(file.name),
+								url,
+								mimeType: file.type,
+								sizeBytes: file.size,
+								width: dimensions.width,
+								height: dimensions.height,
+							},
+							{
+								onSynced: () => resolve(true),
+								onSyncError: (notice) => {
+									toast.error(notice);
+									resolve(false);
+								},
+							},
+						);
+						if (!created) resolve(false);
+					}),
+				);
 				if (index < files.length - 1) await delay(UPLOAD_DELAY_MS);
 			}
 		} catch (error) {
@@ -150,6 +164,7 @@ function ImagesRoute() {
 			if (inputRef.current) inputRef.current.value = "";
 		}
 
+		const uploadedCount = (await Promise.all(saved)).filter(Boolean).length;
 		if (uploadedCount > 0) {
 			toast.success({
 				title: "Biblioteca atualizada",
@@ -282,10 +297,16 @@ function ImagesRoute() {
 									(asset.createdBy === session?.user.id && !asset.isPrivate)
 								}
 								onTogglePrivate={() =>
-									updateImageAsset(asset.id, { isPrivate: !asset.isPrivate })
+									updateImageAsset(
+										asset.id,
+										{ isPrivate: !asset.isPrivate },
+										imageSyncNotice,
+									)
 								}
-								onRename={(name) => updateImageAsset(asset.id, { name })}
-								onDelete={() => removeImageAsset(asset.id)}
+								onRename={(name) =>
+									updateImageAsset(asset.id, { name }, imageSyncNotice)
+								}
+								onDelete={() => removeImageAsset(asset.id, imageSyncNotice)}
 							/>
 						))}
 

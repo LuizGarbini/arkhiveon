@@ -527,6 +527,13 @@ export interface PartyLootItem {
 }
 export type MembershipRole = "owner" | "editor" | "viewer";
 
+/** Aviso quando a escrita em `image_assets` falha (ex.: RLS). */
+export interface ImageAssetSyncOptions {
+	/** A escrita em `image_assets` foi confirmada pelo Supabase. */
+	onSynced?: () => void;
+	onSyncError?: (notice: { title: string; description: string }) => void;
+}
+
 export interface Membership {
 	id: string;
 	campaignId: string;
@@ -723,12 +730,14 @@ export interface RPGState {
 	loadImageAssets: () => Promise<void>;
 	addImageAsset: (
 		asset: Partial<Omit<ImageAsset, "id" | "createdAt" | "campaignId">>,
+		options?: ImageAssetSyncOptions,
 	) => ImageAsset | null;
 	updateImageAsset: (
 		id: string,
 		asset: Partial<Pick<ImageAsset, "name" | "isPrivate">>,
+		options?: ImageAssetSyncOptions,
 	) => void;
-	removeImageAsset: (id: string) => void;
+	removeImageAsset: (id: string, options?: ImageAssetSyncOptions) => void;
 
 	characters: Character[];
 	addCharacter: (

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage, isImageUrl } from "@/lib/image-storage";
 import { useRPGStore } from "@/lib/store";
+import { useToast } from "./ui/toast";
 
 interface ImageUploaderProps {
 	value: string;
@@ -38,6 +39,7 @@ export function ImageUploader({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const inputId = useId();
 	const { session } = useAuth();
+	const toast = useToast();
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const addImageAsset = useRPGStore((state) => state.addImageAsset);
 	const [busy, setBusy] = useState(false);
@@ -66,15 +68,18 @@ export function ImageUploader({
 				folder,
 				campaignId: uploadCampaignId,
 			});
-			addImageAsset({
-				createdBy: session?.user.id ?? "",
-				name: libraryName?.trim() || readableFileName(file.name),
-				url,
-				mimeType: file.type || "image/webp",
-				sizeBytes: file.size,
-				width: dimensions.width,
-				height: dimensions.height,
-			});
+			addImageAsset(
+				{
+					createdBy: session?.user.id ?? "",
+					name: libraryName?.trim() || readableFileName(file.name),
+					url,
+					mimeType: file.type || "image/webp",
+					sizeBytes: file.size,
+					width: dimensions.width,
+					height: dimensions.height,
+				},
+				{ onSyncError: toast.error },
+			);
 			onChange(url);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Falha no upload.");
