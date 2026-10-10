@@ -3,6 +3,7 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Compass, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
@@ -1515,8 +1516,17 @@ function VTTSession() {
 				onDeleteToken={handleDeleteToken}
 			/>
 
-			{/* Bottom-Right Zoom & Distance HUD */}
+			{/* Bottom-Center Zoom & Distance HUD */}
 			<VTTZoomControls />
+
+			{/* Bottom-Right AI assistant (piloto, só mestre/editor) */}
+			{isGM && (
+				<VTTAiChat
+					campaignId={campaignId}
+					campaignName={activeCampaign?.name || "Campanha"}
+					sceneName={currentActiveScene?.name}
+				/>
+			)}
 		</div>
 	);
 }
