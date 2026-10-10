@@ -7,6 +7,11 @@
  */
 
 import { supabase } from "./supabase";
+import {
+	describeUploadFailure,
+	UPLOAD_NETWORK_MESSAGE,
+	uploadAbortError,
+} from "./upload-error";
 
 export interface UploadOptions {
 	/** Logical folder, for example "characters" or "npcs". */
@@ -17,6 +22,8 @@ export interface UploadOptions {
 	maxDimension?: number;
 	/** WebP quality from 0 to 1. Defaults to 0.72. */
 	quality?: number;
+	/** Cancels the upload; the promise rejects with an AbortError. */
+	signal?: AbortSignal;
 }
 
 export interface ImageStorage {
@@ -175,6 +182,7 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 		const max = options.maxDimension ?? DEFAULT_MAX_DIMENSION;
 		const quality = options.quality ?? DEFAULT_QUALITY;
 		const blob = await resizeToBlob(file, max, quality);
+		if (options.signal?.aborted) throw uploadAbortError();
 		const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
 			type: "image/webp",
 		});
@@ -210,15 +218,38 @@ async function uploadThroughFunction(
 
 	const { data, error } = await client.functions.invoke<R2UploadResponse>(
 		"r2-upload",
-		{ body },
+		{ body, signal: options.signal },
 	);
 
-	if (error || !data?.key) {
-		console.error("R2 server-side upload failed:", error || data?.error);
+	if (options.signal?.aborted) throw uploadAbortError();
+	if (error) {
+		console.error("R2 server-side upload failed:", error);
+		throw new Error(await uploadErrorMessage(error));
+	}
+	if (!data?.key) {
+		console.error("R2 server-side upload failed:", data?.error);
 		throw new Error(data?.error || "Falha ao enviar imagem para o R2.");
 	}
 
 	return { key: data.key };
+}
+
+async function uploadErrorMessage(error: {
+	name?: string;
+	context?: unknown;
+}): Promise<string> {
+	if (error.name === "FunctionsFetchError") return UPLOAD_NETWORK_MESSAGE;
+	const response = error.context instanceof Response ? error.context : null;
+	let serverMessage: string | undefined;
+	try {
+		const payload = (await response?.clone().json()) as
+			| { error?: string }
+			| undefined;
+		serverMessage = payload?.error;
+	} catch {
+		// Body is not JSON; the status alone decides the message.
+	}
+	return describeUploadFailure(response?.status, serverMessage);
 }
 
 function appendOptionalFormValue(

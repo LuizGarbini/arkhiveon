@@ -7,6 +7,7 @@ import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
+import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
@@ -1131,6 +1132,35 @@ function VTTSession() {
 		await client.from("vtt_scenes").update(dbUpdates).eq("id", sceneId);
 	};
 
+	// Fatia 1: map dropped in the table library. The scene keeps its old map
+	// unless the database accepted the new one.
+	const handleSetSceneMap = async (sceneId: string, map: VTTMapImage) => {
+		const client = getSupabase();
+		if (!client || !campaignId || !isGM)
+			throw new Error(
+				"É necessário estar conectado como mestre para trocar o mapa.",
+			);
+		const { data, error } = await client
+			.from("vtt_scenes")
+			.update({
+				map_image_url: map.url,
+				width: map.width,
+				height: map.height,
+			})
+			.eq("campaign_id", campaignId)
+			.eq("id", sceneId)
+			.select("id");
+		if (error || !data?.length)
+			throw new Error(
+				"Não foi possível aplicar o mapa. A cena foi mantida como estava.",
+			);
+		updateScene(sceneId, {
+			mapImageUrl: map.url,
+			width: map.width,
+			height: map.height,
+		});
+	};
+
 	const canEditToken = (tokenId: string) => {
 		const token = useVTTStore.getState().tokens.find((t) => t.id === tokenId);
 		return (
@@ -1472,6 +1502,7 @@ function VTTSession() {
 				scene={currentActiveScene}
 				onSpawnToken={handleSpawnToken}
 				onFocusPoint={handleFocusPoint}
+				onSetSceneMap={handleSetSceneMap}
 			/>
 
 			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
