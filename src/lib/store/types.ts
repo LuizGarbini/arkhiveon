@@ -529,6 +529,8 @@ export type MembershipRole = "owner" | "editor" | "viewer";
 
 /** Aviso quando a escrita em `image_assets` falha (ex.: RLS). */
 export interface ImageAssetSyncOptions {
+	/** A escrita em `image_assets` foi confirmada pelo Supabase. */
+	onSynced?: () => void;
 	onSyncError?: (notice: { title: string; description: string }) => void;
 }
 

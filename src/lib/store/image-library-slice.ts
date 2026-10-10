@@ -76,13 +76,18 @@ export const createImageLibrarySlice: StateCreator<
 			syncError: null,
 		}));
 
-		void createRemoteImageAsset(created, campaignId).catch((error) => {
-			set((state) => ({
-				imageAssets: state.imageAssets.filter((item) => item.id !== created.id),
-				syncError: remoteErrorMessage(error),
-			}));
-			options?.onSyncError?.(describeImageAssetSyncError(error, "create"));
-		});
+		void createRemoteImageAsset(created, campaignId).then(
+			() => options?.onSynced?.(),
+			(error) => {
+				set((state) => ({
+					imageAssets: state.imageAssets.filter(
+						(item) => item.id !== created.id,
+					),
+					syncError: remoteErrorMessage(error),
+				}));
+				options?.onSyncError?.(describeImageAssetSyncError(error, "create"));
+			},
+		);
 
 		return created;
 	},
