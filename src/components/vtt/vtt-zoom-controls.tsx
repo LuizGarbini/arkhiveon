@@ -79,7 +79,7 @@ export function VTTZoomControls() {
 				</div>
 			)}
 			{scene && (
-				<div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none">
+				<div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none">
 					<button
 						type="button"
 						className={button}

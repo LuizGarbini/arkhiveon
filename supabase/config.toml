@@ -15,3 +15,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/r2-fetch/deno.json"
 entrypoint = "./functions/r2-fetch/index.ts"
+
+[functions.ia-mesa-chat]
+enabled = true
+verify_jwt = true
+import_map = "./functions/ia-mesa-chat/deno.json"
+entrypoint = "./functions/ia-mesa-chat/index.ts"
