@@ -40,9 +40,11 @@ export const createImageLibrarySlice: StateCreator<
 	loadImageAssets: async () => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) return;
+		const worldId = get().campaigns.find((c) => c.id === campaignId)?.worldId;
 
 		try {
-			const imageAssets = await loadRemoteImageAssets(campaignId);
+			// Galeria do mundo: imagens de todas as campanhas que dividem o mundo.
+			const imageAssets = await loadRemoteImageAssets(campaignId, worldId);
 			set({ imageAssets, syncError: null });
 		} catch (error) {
 			set({ syncError: remoteErrorMessage(error) });
@@ -52,13 +54,15 @@ export const createImageLibrarySlice: StateCreator<
 	addImageAsset: (asset, options) => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId || !asset.url) return null;
-		const role = get().campaigns.find((c) => c.id === campaignId)?.myRole;
+		const campaign = get().campaigns.find((c) => c.id === campaignId);
+		const role = campaign?.myRole;
 		// Jogador não grava na Biblioteca (RLS); a imagem continua no lugar onde foi usada.
 		if (!canWriteImageLibrary(role)) return null;
 
 		const created: ImageAsset = {
 			id: crypto.randomUUID(),
 			campaignId,
+			worldId: campaign?.worldId || undefined,
 			createdBy: asset.createdBy ?? "",
 			name: asset.name?.trim() || "Imagem sem nome",
 			url: asset.url,
