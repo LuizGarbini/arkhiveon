@@ -14,6 +14,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ShellAiChat } from "@/components/ai-mesa/shell-ai-chat";
 import { AppHeader } from "@/components/app-header";
 import { GlobalError } from "@/components/global-error";
 import { LegacyWorldNamingGate } from "@/components/legacy-world-naming-gate";
@@ -339,6 +340,8 @@ function ProtectedLayout() {
 				</main>
 			</div>
 			<LegacyWorldNamingGate />
+			{/* Assistente da mesa (piloto): mesma UX do VTT, só campanha ativa na allowlist + mestre/editor */}
+			<ShellAiChat />
 			{showLimitDialog && (
 				<UpgradeLimitDialog
 					onDismiss={() => {

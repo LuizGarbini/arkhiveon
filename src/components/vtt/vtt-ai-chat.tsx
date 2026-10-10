@@ -69,10 +69,16 @@ export function VTTAiChat({
 	campaignId,
 	campaignName,
 	sceneName,
+	placement = "absolute",
 }: {
 	campaignId: string;
 	campaignName: string;
 	sceneName?: string;
+	/**
+	 * `absolute` (padrão): ancorado no container da mesa VTT.
+	 * `fixed`: ancorado na viewport, para o shell logado. Mesmo visual.
+	 */
+	placement?: "absolute" | "fixed";
 }) {
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState("");
@@ -200,7 +206,10 @@ export function VTTAiChat({
 			{open && (
 				<section
 					aria-label="Assistente da mesa"
-					className="vtt-ai-chat fixed inset-0 z-[80] flex flex-col bg-popover text-popover-foreground sm:absolute sm:inset-auto sm:right-4 sm:bottom-24 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:rounded-2xl sm:border sm:border-border/70 sm:bg-popover/95 sm:shadow-2xl sm:backdrop-blur-md"
+					className={cn(
+						"vtt-ai-chat fixed inset-0 z-[80] flex flex-col bg-popover text-popover-foreground sm:inset-auto sm:right-4 sm:bottom-24 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:rounded-2xl sm:border sm:border-border/70 sm:bg-popover/95 sm:shadow-2xl sm:backdrop-blur-md",
+						placement === "fixed" ? "sm:fixed" : "sm:absolute",
+					)}
 				>
 					<header className="flex items-center gap-3 border-b border-border/70 px-4 py-3">
 						<span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
@@ -306,7 +315,8 @@ export function VTTAiChat({
 					if (!open) requestAnimationFrame(() => inputRef.current?.focus());
 				}}
 				className={cn(
-					"absolute right-4 bottom-4 z-[70] size-14 rounded-full shadow-2xl",
+					"right-4 bottom-4 z-[70] size-14 rounded-full shadow-2xl",
+					placement === "fixed" ? "fixed" : "absolute",
 					open && "hidden sm:inline-flex",
 				)}
 			>
