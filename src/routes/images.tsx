@@ -1,34 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-	Check,
-	Eye,
+	ArrowDownWideNarrow,
 	ImageIcon,
 	Images,
-	Loader2,
-	LockKeyhole,
-	Pencil,
 	Search,
-	Trash2,
-	UnlockKeyhole,
 	UploadCloud,
-	X,
 } from "lucide-react";
-import {
-	type ChangeEvent,
-	type DragEvent,
-	type FormEvent,
-	useEffect,
-	useId,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { ImageAssetCard } from "@/components/images/image-asset-card";
+import { ImageLightbox } from "@/components/images/image-lightbox";
+import { ImageUploadDialog } from "@/components/images/image-upload-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
+import {
+	countGalleryFilters,
+	GALLERY_FILTERS,
+	GALLERY_SORTS,
+	type GalleryFilter,
+	type GalleryScope,
+	type GallerySort,
+	roleForAsset,
+	selectGalleryAssets,
+	visibleWorldAssets,
+} from "@/lib/image-gallery";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
 import type { ImageAsset } from "@/lib/store";
@@ -42,46 +41,153 @@ export const Route = createFileRoute("/images")({
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const UPLOAD_DELAY_MS = 5200;
 
+function hasDraggedFiles(event: DragEvent): boolean {
+	return Array.from(event.dataTransfer?.types ?? []).includes("Files");
+}
+
 function ImagesRoute() {
-	const inputId = useId();
-	const inputRef = useRef<HTMLInputElement>(null);
 	const toast = useToast();
 	const { session } = useAuth();
+	const userId = session?.user.id;
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
-	const activeCampaign = useRPGStore((state) =>
-		state.campaigns.find((campaign) => campaign.id === state.activeCampaignId),
-	);
+	const campaigns = useRPGStore((state) => state.campaigns);
+	const worlds = useRPGStore((state) => state.worlds);
 	const imageAssets = useRPGStore((state) => state.imageAssets);
 	const loadImageAssets = useRPGStore((state) => state.loadImageAssets);
 	const addImageAsset = useRPGStore((state) => state.addImageAsset);
 	const updateImageAsset = useRPGStore((state) => state.updateImageAsset);
 	const removeImageAsset = useRPGStore((state) => state.removeImageAsset);
+
 	const [query, setQuery] = useState("");
-	const [isDragging, setIsDragging] = useState(false);
+	const deferredQuery = useDeferredValue(query);
+	const [filter, setFilter] = useState<GalleryFilter>("all");
+	const [sort, setSort] = useState<GallerySort>("recent");
+	const [isUploadOpen, setIsUploadOpen] = useState(false);
+	const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 	const [isUploading, setIsUploading] = useState(false);
 	const [uploadingName, setUploadingName] = useState<string | null>(null);
+	const [lightboxId, setLightboxId] = useState<string | null>(null);
 
-	const imageSyncNotice = { onSyncError: toast.error };
+	const activeCampaign = useMemo(
+		() => campaigns.find((campaign) => campaign.id === activeCampaignId),
+		[campaigns, activeCampaignId],
+	);
+	const worldId = activeCampaign?.worldId;
+	const worldName = useMemo(
+		() => worlds.find((world) => world.id === worldId)?.name,
+		[worlds, worldId],
+	);
 	const isMaster = activeCampaign?.myRole === "owner";
 	const canUpload =
 		activeCampaign?.myRole === "owner" || activeCampaign?.myRole === "editor";
+
+	const scope = useMemo<GalleryScope>(
+		() => ({ activeCampaignId, worldId, campaigns }),
+		[activeCampaignId, worldId, campaigns],
+	);
 
 	useEffect(() => {
 		if (!activeCampaignId) return;
 		void loadImageAssets();
 	}, [activeCampaignId, loadImageAssets]);
 
-	const visibleAssets = useMemo(() => {
-		const normalizedQuery = query.trim().toLowerCase();
-		return imageAssets.filter((asset) => {
-			if (asset.campaignId !== activeCampaignId) return false;
-			if (!isMaster && asset.isPrivate) return false;
-			if (!normalizedQuery) return true;
-			return asset.name.toLowerCase().includes(normalizedQuery);
-		});
-	}, [activeCampaignId, imageAssets, isMaster, query]);
+	// Arrastar um arquivo sobre a página abre o modal de envio (sem faixa de
+	// dropzone na página). Soltar fora do modal também entra na seleção, em vez
+	// de o navegador abrir o arquivo.
+	useEffect(() => {
+		if (!canUpload) return;
+		function handleDragEnter(event: DragEvent) {
+			if (!hasDraggedFiles(event)) return;
+			setIsUploadOpen(true);
+		}
+		function handleDragOver(event: DragEvent) {
+			if (hasDraggedFiles(event)) event.preventDefault();
+		}
+		function handleDrop(event: DragEvent) {
+			if (!hasDraggedFiles(event)) return;
+			event.preventDefault();
+			const dropped = Array.from(event.dataTransfer?.files ?? []);
+			if (dropped.length === 0) return;
+			setPendingFiles((current) => mergeFiles(current, dropped));
+			setIsUploadOpen(true);
+		}
+		window.addEventListener("dragenter", handleDragEnter);
+		window.addEventListener("dragover", handleDragOver);
+		window.addEventListener("drop", handleDrop);
+		return () => {
+			window.removeEventListener("dragenter", handleDragEnter);
+			window.removeEventListener("dragover", handleDragOver);
+			window.removeEventListener("drop", handleDrop);
+		};
+	}, [canUpload]);
 
-	async function uploadFiles(fileList: FileList | File[]) {
+	const worldAssets = useMemo(
+		() => visibleWorldAssets(imageAssets, scope, deferredQuery),
+		[imageAssets, scope, deferredQuery],
+	);
+	const counts = useMemo(() => countGalleryFilters(worldAssets), [worldAssets]);
+	const shownAssets = useMemo(
+		() => selectGalleryAssets(worldAssets, filter, sort),
+		[worldAssets, filter, sort],
+	);
+	const totalInWorld = useMemo(
+		() => visibleWorldAssets(imageAssets, scope).length,
+		[imageAssets, scope],
+	);
+
+	const lightboxIndex = useMemo(() => {
+		if (!lightboxId) return null;
+		const index = shownAssets.findIndex((asset) => asset.id === lightboxId);
+		return index === -1 ? null : index;
+	}, [lightboxId, shownAssets]);
+
+	const imageSyncNotice = { onSyncError: toast.error };
+
+	function permissionsFor(asset: ImageAsset) {
+		const role = roleForAsset(asset, campaigns);
+		const isOwner = role === "owner";
+		const isOwnPublic =
+			role === "editor" && asset.createdBy === userId && !asset.isPrivate;
+		return {
+			canRename: isOwner || isOwnPublic,
+			canDelete: isOwner || isOwnPublic,
+			canTogglePrivate: isOwner,
+		};
+	}
+
+	function handlersFor(asset: ImageAsset) {
+		return {
+			onTogglePrivate: () =>
+				updateImageAsset(
+					asset.id,
+					{ isPrivate: !asset.isPrivate },
+					imageSyncNotice,
+				),
+			onRename: (name: string) =>
+				updateImageAsset(asset.id, { name }, imageSyncNotice),
+			onDelete: () => removeImageAsset(asset.id, imageSyncNotice),
+		};
+	}
+
+	function originLabelFor(asset: ImageAsset): string | null {
+		if (asset.campaignId === activeCampaignId) return null;
+		return (
+			campaigns.find((campaign) => campaign.id === asset.campaignId)?.name ??
+			"outra campanha do mundo"
+		);
+	}
+
+	function openUpload() {
+		if (!canUpload) return;
+		setIsUploadOpen(true);
+	}
+
+	function handleUploadOpenChange(open: boolean) {
+		setIsUploadOpen(open);
+		if (!open) setPendingFiles([]);
+	}
+
+	async function uploadFiles(fileList: File[]) {
 		if (!canUpload || !activeCampaignId) {
 			toast.error({
 				title: "Upload bloqueado",
@@ -90,9 +196,7 @@ function ImagesRoute() {
 			return;
 		}
 
-		const files = Array.from(fileList).filter((file) =>
-			file.type.startsWith("image/"),
-		);
+		const files = fileList.filter((file) => file.type.startsWith("image/"));
 
 		if (files.length === 0) {
 			toast.error({
@@ -129,7 +233,7 @@ function ImagesRoute() {
 					new Promise<boolean>((resolve) => {
 						const created = addImageAsset(
 							{
-								createdBy: session?.user.id ?? "",
+								createdBy: userId ?? "",
 								name: readableFileName(file.name),
 								url,
 								mimeType: file.type,
@@ -161,7 +265,8 @@ function ImagesRoute() {
 		} finally {
 			setIsUploading(false);
 			setUploadingName(null);
-			if (inputRef.current) inputRef.current.value = "";
+			setPendingFiles([]);
+			setIsUploadOpen(false);
 		}
 
 		const uploadedCount = (await Promise.all(saved)).filter(Boolean).length;
@@ -176,100 +281,48 @@ function ImagesRoute() {
 		}
 	}
 
-	function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
-		const files = event.currentTarget.files;
-		if (files) void uploadFiles(files);
-	}
-
-	function handleDragOver(event: DragEvent<HTMLLabelElement>) {
-		event.preventDefault();
-		if (canUpload) setIsDragging(true);
-	}
-
-	function handleDragLeave(event: DragEvent<HTMLLabelElement>) {
-		if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-			setIsDragging(false);
-		}
-	}
-
-	function handleDrop(event: DragEvent<HTMLLabelElement>) {
-		event.preventDefault();
-		setIsDragging(false);
-		void uploadFiles(event.dataTransfer.files);
-	}
+	const visibleFilters = GALLERY_FILTERS.filter(
+		(item) => item.id !== "private" || isMaster,
+	);
+	const isFiltered = deferredQuery.trim() !== "" || filter !== "all";
 
 	return (
 		<div className="w-full">
 			<PageHeader
 				title="Imagens"
-				description="Biblioteca visual da campanha para reutilizar retratos, mapas e referências nas fichas."
+				description={
+					worldName
+						? `Biblioteca visual de ${worldName}: retratos, mapas e referências de todas as campanhas deste mundo.`
+						: "Biblioteca visual da campanha para reutilizar retratos, mapas e referências nas fichas."
+				}
 				Icon={Images}
 				iconColor="text-sky-300"
 				eyebrow="Arquivos"
-				count={visibleAssets.length}
+				count={totalInWorld}
 				action={
 					<Button
 						type="button"
-						size="sm"
-						className="gap-2"
+						className="h-[44px] gap-2 px-4 sm:h-9"
 						loading={isUploading}
 						loadingText="Enviando..."
 						disabled={!canUpload}
-						onClick={() => inputRef.current?.click()}
+						title={
+							canUpload
+								? undefined
+								: "Apenas mestre e editores podem adicionar imagens."
+						}
+						onClick={openUpload}
 					>
-						<UploadCloud className="h-3.5 w-3.5" />
-						Enviar
+						<UploadCloud className="h-4 w-4" />
+						Enviar imagens
 					</Button>
 				}
 			/>
 
-			<div className="px-6 pb-10 sm:px-8">
-				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-					<label
-						htmlFor={canUpload ? inputId : undefined}
-						onDragOver={handleDragOver}
-						onDragLeave={handleDragLeave}
-						onDrop={handleDrop}
-						aria-disabled={!canUpload || isUploading}
-						className={cn(
-							"grid min-h-36 place-items-center rounded-2xl border border-dashed border-border/80 bg-card/80 p-5 text-center shadow-sm shadow-black/5 transition-[border-color,background-color,box-shadow]",
-							canUpload && !isUploading && "cursor-pointer",
-							isDragging &&
-								"border-primary/60 bg-primary/10 shadow-lg shadow-primary/5",
-							!canUpload && "opacity-65",
-						)}
-					>
-						<input
-							ref={inputRef}
-							id={inputId}
-							type="file"
-							accept="image/*"
-							multiple
-							className="hidden"
-							onChange={handleInputChange}
-							disabled={!canUpload || isUploading}
-						/>
-						<span className="flex w-full max-w-xl flex-col items-center gap-3">
-							<span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-								{isUploading ? (
-									<Loader2 className="h-5 w-5 animate-spin" />
-								) : (
-									<UploadCloud className="h-5 w-5" />
-								)}
-							</span>
-							<span className="font-display text-lg font-bold text-foreground">
-								{isUploading ? "Enviando imagem" : "Soltar imagens"}
-							</span>
-							<span className="text-[12px] leading-relaxed text-muted-foreground">
-								{canUpload
-									? (uploadingName ?? "JPG, PNG ou WebP até 8MB.")
-									: "Apenas mestre e editores podem adicionar arquivos."}
-							</span>
-						</span>
-					</label>
-
-					<div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5">
-						<div className="relative flex-1">
+			<div className="px-4 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+					<div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm shadow-black/5 backdrop-blur-md lg:flex-row lg:items-center">
+						<div className="relative lg:w-64">
 							<Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								type="search"
@@ -277,226 +330,131 @@ function ImagesRoute() {
 								value={query}
 								onChange={(event) => setQuery(event.target.value)}
 								placeholder="Buscar imagens..."
-								className="h-10 rounded-2xl bg-background/55 pl-9 text-[13px]"
+								className="h-[44px] rounded-xl bg-background/55 pl-9 text-[16px] sm:h-9 sm:text-[13px]"
 							/>
+						</div>
+						<fieldset className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto border-0 px-1 [scrollbar-width:none]">
+							<legend className="sr-only">Filtrar por tipo</legend>
+							{visibleFilters.map((item) => {
+								const isOn = filter === item.id;
+								return (
+									<button
+										key={item.id}
+										type="button"
+										aria-pressed={isOn}
+										onClick={() => setFilter(item.id)}
+										className={cn(
+											"inline-flex h-[44px] shrink-0 select-none items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-bold transition-[background-color,border-color,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-8",
+											isOn
+												? "border-primary/35 bg-primary/12 text-primary"
+												: "border-transparent bg-background/55 text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
+										)}
+									>
+										{item.label}
+										<span className="tabular-nums opacity-80">
+											{counts[item.id]}
+										</span>
+									</button>
+								);
+							})}
+						</fieldset>
+						<div className="hidden items-center gap-2 sm:flex lg:ml-auto">
+							<ArrowDownWideNarrow className="h-4 w-4 shrink-0 text-muted-foreground" />
+							<Select
+								aria-label="Ordenar imagens"
+								value={sort}
+								onChange={(event) => setSort(event.target.value as GallerySort)}
+								className="h-9 w-44 rounded-xl"
+							>
+								{GALLERY_SORTS.map((item) => (
+									<option key={item.id} value={item.id}>
+										{item.label}
+									</option>
+								))}
+							</Select>
 						</div>
 					</div>
 
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-						{visibleAssets.map((asset) => (
+					<div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+						{shownAssets.map((asset) => (
 							<ImageAssetCard
 								key={asset.id}
 								asset={asset}
-								isMaster={isMaster}
-								canDelete={
-									isMaster ||
-									(asset.createdBy === session?.user.id && !asset.isPrivate)
-								}
-								canRename={
-									isMaster ||
-									(asset.createdBy === session?.user.id && !asset.isPrivate)
-								}
-								onTogglePrivate={() =>
-									updateImageAsset(
-										asset.id,
-										{ isPrivate: !asset.isPrivate },
-										imageSyncNotice,
-									)
-								}
-								onRename={(name) =>
-									updateImageAsset(asset.id, { name }, imageSyncNotice)
-								}
-								onDelete={() => removeImageAsset(asset.id, imageSyncNotice)}
+								permissions={permissionsFor(asset)}
+								handlers={handlersFor(asset)}
+								onOpen={() => setLightboxId(asset.id)}
 							/>
 						))}
 
-						{visibleAssets.length === 0 && (
-							<EmptyState
-								Icon={ImageIcon}
-								title="Nenhuma imagem encontrada"
-								description="Envie uma imagem para montar a biblioteca visual da campanha."
-							/>
-						)}
+						{shownAssets.length === 0 &&
+							(isFiltered ? (
+								<EmptyState
+									Icon={Search}
+									title="Nenhuma imagem encontrada"
+									description="Nada bate com a busca ou o filtro escolhido."
+									actionLabel="Limpar filtros"
+									onAction={() => {
+										setQuery("");
+										setFilter("all");
+									}}
+								/>
+							) : (
+								<EmptyState
+									Icon={ImageIcon}
+									title="Nenhuma imagem ainda"
+									description={
+										canUpload
+											? "Tudo o que você enviar — retratos, mapas da VTT, referências — aparece aqui para reutilizar nas fichas e na mesa. Você também pode arrastar arquivos para esta página."
+											: "Quando o mestre ou um editor enviar imagens para este mundo, elas aparecem aqui."
+									}
+									actionLabel={canUpload ? "Enviar primeira imagem" : undefined}
+									onAction={canUpload ? openUpload : undefined}
+								/>
+							))}
 					</div>
 				</div>
 			</div>
+
+			<ImageUploadDialog
+				open={isUploadOpen}
+				onOpenChange={handleUploadOpenChange}
+				files={pendingFiles}
+				onAddFiles={(files) =>
+					setPendingFiles((current) => mergeFiles(current, files))
+				}
+				onRemoveFile={(index) =>
+					setPendingFiles((current) => current.filter((_, i) => i !== index))
+				}
+				onSubmit={() => void uploadFiles(pendingFiles)}
+				isUploading={isUploading}
+				uploadingName={uploadingName}
+				targetName={activeCampaign?.name ?? "sua campanha"}
+			/>
+
+			<ImageLightbox
+				assets={shownAssets}
+				index={lightboxIndex}
+				onIndexChange={(index) => setLightboxId(shownAssets[index]?.id ?? null)}
+				onClose={() => setLightboxId(null)}
+				permissionsFor={permissionsFor}
+				handlersFor={handlersFor}
+				originLabelFor={originLabelFor}
+			/>
 		</div>
 	);
 }
 
-function ImageAssetCard({
-	asset,
-	isMaster,
-	canDelete,
-	canRename,
-	onTogglePrivate,
-	onRename,
-	onDelete,
-}: {
-	asset: ImageAsset;
-	isMaster: boolean;
-	canDelete: boolean;
-	canRename: boolean;
-	onTogglePrivate: () => void;
-	onRename: (name: string) => void;
-	onDelete: () => void;
-}) {
-	const [isRenaming, setIsRenaming] = useState(false);
-	const [draftName, setDraftName] = useState(asset.name);
-
-	useEffect(() => {
-		if (!isRenaming) setDraftName(asset.name);
-	}, [asset.name, isRenaming]);
-
-	function handleRename(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const nextName = draftName.trim();
-		if (!nextName) return;
-		onRename(nextName);
-		setIsRenaming(false);
+/** Junta seleções sem repetir o mesmo arquivo; ignora o que não é imagem. */
+function mergeFiles(current: File[], incoming: File[]): File[] {
+	const key = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+	const seen = new Set(current.map(key));
+	const next = [...current];
+	for (const file of incoming) {
+		if (!file.type.startsWith("image/") || seen.has(key(file))) continue;
+		seen.add(key(file));
+		next.push(file);
 	}
-
-	return (
-		<article className="group overflow-hidden rounded-2xl border border-border/70 bg-card-elevated shadow-sm shadow-black/5 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg hover:shadow-black/5">
-			<div className="relative aspect-[4/3] overflow-hidden bg-muted">
-				<img
-					src={asset.url}
-					alt={asset.name}
-					loading="lazy"
-					decoding="async"
-					className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-				/>
-				<div className="absolute left-2 top-2 flex items-center gap-1.5">
-					<span
-						className={cn(
-							"inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] backdrop-blur",
-							asset.isPrivate
-								? "border-amber-400/35 bg-amber-400/15 text-amber-200"
-								: "border-emerald-400/30 bg-emerald-400/12 text-emerald-200",
-						)}
-					>
-						{asset.isPrivate ? (
-							<LockKeyhole className="h-3 w-3" />
-						) : (
-							<Eye className="h-3 w-3" />
-						)}
-						{asset.isPrivate ? "Privada" : "Mesa"}
-					</span>
-				</div>
-			</div>
-
-			<div className="space-y-3 p-4">
-				{isRenaming ? (
-					<form onSubmit={handleRename} className="space-y-2">
-						<Input
-							value={draftName}
-							onChange={(event) => setDraftName(event.target.value)}
-							aria-label="Nome da imagem"
-							className="h-9 rounded-xl bg-background/70 text-[12px]"
-							autoFocus
-						/>
-						<div className="flex items-center gap-2">
-							<Button
-								type="submit"
-								variant="outline"
-								size="icon-sm"
-								title="Salvar nome"
-								aria-label="Salvar nome da imagem"
-							>
-								<Check className="h-4 w-4" />
-							</Button>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-sm"
-								title="Cancelar"
-								aria-label="Cancelar renomeação"
-								onClick={() => {
-									setDraftName(asset.name);
-									setIsRenaming(false);
-								}}
-							>
-								<X className="h-4 w-4" />
-							</Button>
-						</div>
-					</form>
-				) : (
-					<div className="min-w-0">
-						<h2 className="truncate text-[13px] font-bold text-foreground">
-							{asset.name}
-						</h2>
-						<p className="mt-1 text-[11px] text-muted-foreground">
-							{asset.width && asset.height
-								? `${asset.width}×${asset.height} · ${formatBytes(asset.sizeBytes)}`
-								: formatBytes(asset.sizeBytes)}
-						</p>
-					</div>
-				)}
-
-				<div className="flex items-center gap-2">
-					{canRename && !isRenaming && (
-						<Button
-							type="button"
-							variant="outline"
-							size="icon-sm"
-							title="Renomear imagem"
-							aria-label="Renomear imagem"
-							onClick={() => setIsRenaming(true)}
-						>
-							<Pencil className="h-4 w-4" />
-						</Button>
-					)}
-					{isMaster && (
-						<Button
-							type="button"
-							variant="outline"
-							size="icon-sm"
-							title={
-								asset.isPrivate
-									? "Imagem privada. Clique para mostrar para a mesa"
-									: "Imagem visível para a mesa. Clique para privar"
-							}
-							aria-label={
-								asset.isPrivate
-									? "Imagem privada. Mostrar para a mesa"
-									: "Imagem visível para a mesa. Privar imagem"
-							}
-							onClick={onTogglePrivate}
-						>
-							{asset.isPrivate ? (
-								<LockKeyhole className="h-4 w-4" />
-							) : (
-								<UnlockKeyhole className="h-4 w-4" />
-							)}
-						</Button>
-					)}
-					{canDelete && (
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							title="Remover imagem"
-							aria-label="Remover imagem"
-							onClick={onDelete}
-						>
-							<Trash2 className="h-4 w-4 text-destructive" />
-						</Button>
-					)}
-				</div>
-			</div>
-		</article>
-	);
-}
-
-function formatBytes(bytes: number): string {
-	if (!bytes) return "0 KB";
-	const units = ["B", "KB", "MB", "GB"];
-	const index = Math.min(
-		Math.floor(Math.log(bytes) / Math.log(1024)),
-		units.length - 1,
-	);
-	const value = bytes / 1024 ** index;
-	return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+	return next;
 }
 
 function delay(ms: number): Promise<void> {
