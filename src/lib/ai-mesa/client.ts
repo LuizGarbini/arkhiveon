@@ -1,12 +1,30 @@
+import {
+	type IaMesaPilotLookupClient,
+	isIaMesaPilotCampaign,
+} from "../../../supabase/functions/_shared/ia-mesa-guard";
 import { getSupabase } from "../supabase";
 import {
 	IA_MESA_REFUSAL,
 	type IaMesaHistoryItem,
 	type IaMesaResult,
 	isBlockedRequest,
-	isIaMesaPilotCampaign,
 	normalizeResponse,
 } from "./proposal";
+
+/**
+ * A campanha está na allowlist do piloto (`ia_mesa_pilot_campaigns`)?
+ * Sem Supabase ou com erro = não liberado (o botão não aparece).
+ */
+export async function fetchMesaPilotEnabled(
+	campaignId: string,
+): Promise<boolean> {
+	const client = getSupabase();
+	if (!client) return false;
+	return isIaMesaPilotCampaign(
+		client as unknown as IaMesaPilotLookupClient,
+		campaignId,
+	);
+}
 
 /** Chama a Edge Function `ia-mesa-chat`. Nunca lança: devolve erro tipado. */
 export async function askMesaAssistant(input: {
@@ -14,9 +32,6 @@ export async function askMesaAssistant(input: {
 	message: string;
 	history: IaMesaHistoryItem[];
 }): Promise<IaMesaResult> {
-	if (!isIaMesaPilotCampaign(input.campaignId)) {
-		return { ok: false, code: "not_allowed" };
-	}
 	if (isBlockedRequest(input.message)) {
 		return { ok: true, reply: IA_MESA_REFUSAL, proposal: null };
 	}

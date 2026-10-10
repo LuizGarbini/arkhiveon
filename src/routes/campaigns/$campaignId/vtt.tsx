@@ -16,7 +16,7 @@ import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
-import { isIaMesaPilotCampaign } from "@/lib/ai-mesa/proposal";
+import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
 import { useAuth } from "@/lib/auth";
 import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
@@ -144,6 +144,21 @@ function VTTSession() {
 		);
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
+
+	// Assistente da mesa (piloto): só aparece se a campanha estiver na allowlist
+	// `ia_mesa_pilot_campaigns` do Supabase. Fora dela: nenhuma UI.
+	const [iaMesaEnabled, setIaMesaEnabled] = useState(false);
+	useEffect(() => {
+		let cancelled = false;
+		setIaMesaEnabled(false);
+		if (!isGM || !campaignId || !user) return;
+		void fetchMesaPilotEnabled(campaignId).then((enabled) => {
+			if (!cancelled) setIaMesaEnabled(enabled);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [campaignId, isGM, user]);
 
 	const fetchCharacterOwners = useCallback(async () => {
 		const requestId = ++ownershipRequestRef.current;
@@ -1520,8 +1535,8 @@ function VTTSession() {
 			{/* Bottom-Center Zoom & Distance HUD */}
 			<VTTZoomControls />
 
-			{/* Bottom-Right AI assistant (piloto: só Rise of Tiamat + mestre/editor) */}
-			{isGM && isIaMesaPilotCampaign(campaignId) && (
+			{/* Bottom-Right AI assistant (piloto: campanha em ia_mesa_pilot_campaigns + mestre/editor) */}
+			{isGM && iaMesaEnabled && (
 				<VTTAiChat
 					campaignId={campaignId}
 					campaignName={activeCampaign?.name || "Campanha"}

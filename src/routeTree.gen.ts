@@ -9,111 +9,46 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AccountRouteImport } from './routes/account'
-import { Route as ArquivosSecretosRouteImport } from './routes/arquivos-secretos'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as BillingRouteImport } from './routes/billing'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as DesignSystemRouteImport } from './routes/design-system'
-import { Route as ErrorPreviewRouteImport } from './routes/error-preview'
-import { Route as FamilyTreeRouteImport } from './routes/family-tree'
-import { Route as ImagesRouteImport } from './routes/images'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SpotifyCallbackRouteImport } from './routes/spotify-callback'
-import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorldRouteImport } from './routes/world'
-import { Route as CharactersIndexRouteImport } from './routes/characters/index'
-import { Route as FactionsIndexRouteImport } from './routes/factions/index'
-import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
-import { Route as ItemsIndexRouteImport } from './routes/items/index'
-import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
-import { Route as JoinCampaignIdRouteImport } from './routes/join/$campaignId'
-import { Route as LocationsIndexRouteImport } from './routes/locations/index'
-import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
-import { Route as LoreIndexRouteImport } from './routes/lore/index'
-import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
-import { Route as NewsIndexRouteImport } from './routes/news/index'
-import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
-import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
-import { Route as QuestsIndexRouteImport } from './routes/quests/index'
-import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
-import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SpotifyCallbackRouteImport } from './routes/spotify-callback'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ImagesRouteImport } from './routes/images'
+import { Route as FamilyTreeRouteImport } from './routes/family-tree'
+import { Route as ErrorPreviewRouteImport } from './routes/error-preview'
+import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BillingRouteImport } from './routes/billing'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ArquivosSecretosRouteImport } from './routes/arquivos-secretos'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as SheetsIndexRouteImport } from './routes/sheets/index'
-import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
+import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
+import { Route as QuestsIndexRouteImport } from './routes/quests/index'
+import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
+import { Route as NewsIndexRouteImport } from './routes/news/index'
+import { Route as LoreIndexRouteImport } from './routes/lore/index'
+import { Route as LocationsIndexRouteImport } from './routes/locations/index'
+import { Route as ItemsIndexRouteImport } from './routes/items/index'
+import { Route as FactionsIndexRouteImport } from './routes/factions/index'
+import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as SheetsNewRouteImport } from './routes/sheets/new'
+import { Route as SheetsCharacterIdRouteImport } from './routes/sheets/$characterId'
+import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
+import { Route as NpcsNpcIdRouteImport } from './routes/npcs/$npcId'
+import { Route as LoreLoreIdRouteImport } from './routes/lore/$loreId'
+import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
+import { Route as JoinCampaignIdRouteImport } from './routes/join/$campaignId'
+import { Route as ItemsItemIdRouteImport } from './routes/items/$itemId'
+import { Route as FactionsFactionIdRouteImport } from './routes/factions/$factionId'
 import { Route as CampaignsCampaignIdVttRouteImport } from './routes/campaigns/$campaignId/vtt'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArquivosSecretosRoute = ArquivosSecretosRouteImport.update({
-  id: '/arquivos-secretos',
-  path: '/arquivos-secretos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BillingRoute = BillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignSystemRoute = DesignSystemRouteImport.update({
-  id: '/design-system',
-  path: '/design-system',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ErrorPreviewRoute = ErrorPreviewRouteImport.update({
-  id: '/error-preview',
-  path: '/error-preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FamilyTreeRoute = FamilyTreeRouteImport.update({
-  id: '/family-tree',
-  path: '/family-tree',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImagesRoute = ImagesRouteImport.update({
-  id: '/images',
-  path: '/images',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
-  id: '/spotify-callback',
-  path: '/spotify-callback',
+const WorldRoute = WorldRouteImport.update({
+  id: '/world',
+  path: '/world',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -121,89 +56,74 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorldRoute = WorldRouteImport.update({
-  id: '/world',
-  path: '/world',
+const SpotifyCallbackRoute = SpotifyCallbackRouteImport.update({
+  id: '/spotify-callback',
+  path: '/spotify-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CharactersIndexRoute = CharactersIndexRouteImport.update({
-  id: '/characters/',
-  path: '/characters/',
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FactionsIndexRoute = FactionsIndexRouteImport.update({
-  id: '/factions/',
-  path: '/factions/',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FactionsFactionIdRoute = FactionsFactionIdRouteImport.update({
-  id: '/factions/$factionId',
-  path: '/factions/$factionId',
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ItemsIndexRoute = ItemsIndexRouteImport.update({
-  id: '/items/',
-  path: '/items/',
+const ImagesRoute = ImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
-  id: '/items/$itemId',
-  path: '/items/$itemId',
+const FamilyTreeRoute = FamilyTreeRouteImport.update({
+  id: '/family-tree',
+  path: '/family-tree',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinCampaignIdRoute = JoinCampaignIdRouteImport.update({
-  id: '/join/$campaignId',
-  path: '/join/$campaignId',
+const ErrorPreviewRoute = ErrorPreviewRouteImport.update({
+  id: '/error-preview',
+  path: '/error-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LocationsIndexRoute = LocationsIndexRouteImport.update({
-  id: '/locations/',
-  path: '/locations/',
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
-  id: '/locations/$locationId',
-  path: '/locations/$locationId',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoreIndexRoute = LoreIndexRouteImport.update({
-  id: '/lore/',
-  path: '/lore/',
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoreLoreIdRoute = LoreLoreIdRouteImport.update({
-  id: '/lore/$loreId',
-  path: '/lore/$loreId',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NewsIndexRoute = NewsIndexRouteImport.update({
-  id: '/news/',
-  path: '/news/',
+const ArquivosSecretosRoute = ArquivosSecretosRouteImport.update({
+  id: '/arquivos-secretos',
+  path: '/arquivos-secretos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NpcsIndexRoute = NpcsIndexRouteImport.update({
-  id: '/npcs/',
-  path: '/npcs/',
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NpcsNpcIdRoute = NpcsNpcIdRouteImport.update({
-  id: '/npcs/$npcId',
-  path: '/npcs/$npcId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QuestsIndexRoute = QuestsIndexRouteImport.update({
-  id: '/quests/',
-  path: '/quests/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SessionsIndexRoute = SessionsIndexRouteImport.update({
-  id: '/sessions/',
-  path: '/sessions/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SessionsSessionIdRoute = SessionsSessionIdRouteImport.update({
-  id: '/sessions/$sessionId',
-  path: '/sessions/$sessionId',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SheetsIndexRoute = SheetsIndexRouteImport.update({
@@ -211,14 +131,94 @@ const SheetsIndexRoute = SheetsIndexRouteImport.update({
   path: '/sheets/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SheetsCharacterIdRoute = SheetsCharacterIdRouteImport.update({
-  id: '/sheets/$characterId',
-  path: '/sheets/$characterId',
+const SessionsIndexRoute = SessionsIndexRouteImport.update({
+  id: '/sessions/',
+  path: '/sessions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuestsIndexRoute = QuestsIndexRouteImport.update({
+  id: '/quests/',
+  path: '/quests/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NpcsIndexRoute = NpcsIndexRouteImport.update({
+  id: '/npcs/',
+  path: '/npcs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsIndexRoute = NewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoreIndexRoute = LoreIndexRouteImport.update({
+  id: '/lore/',
+  path: '/lore/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsIndexRoute = LocationsIndexRouteImport.update({
+  id: '/locations/',
+  path: '/locations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItemsIndexRoute = ItemsIndexRouteImport.update({
+  id: '/items/',
+  path: '/items/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FactionsIndexRoute = FactionsIndexRouteImport.update({
+  id: '/factions/',
+  path: '/factions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIndexRoute = CharactersIndexRouteImport.update({
+  id: '/characters/',
+  path: '/characters/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SheetsNewRoute = SheetsNewRouteImport.update({
   id: '/sheets/new',
   path: '/sheets/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SheetsCharacterIdRoute = SheetsCharacterIdRouteImport.update({
+  id: '/sheets/$characterId',
+  path: '/sheets/$characterId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionsSessionIdRoute = SessionsSessionIdRouteImport.update({
+  id: '/sessions/$sessionId',
+  path: '/sessions/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NpcsNpcIdRoute = NpcsNpcIdRouteImport.update({
+  id: '/npcs/$npcId',
+  path: '/npcs/$npcId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoreLoreIdRoute = LoreLoreIdRouteImport.update({
+  id: '/lore/$loreId',
+  path: '/lore/$loreId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
+  id: '/locations/$locationId',
+  path: '/locations/$locationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinCampaignIdRoute = JoinCampaignIdRouteImport.update({
+  id: '/join/$campaignId',
+  path: '/join/$campaignId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ItemsItemIdRoute = ItemsItemIdRouteImport.update({
+  id: '/items/$itemId',
+  path: '/items/$itemId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FactionsFactionIdRoute = FactionsFactionIdRouteImport.update({
+  id: '/factions/$factionId',
+  path: '/factions/$factionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsCampaignIdVttRoute = CampaignsCampaignIdVttRouteImport.update({
@@ -253,16 +253,16 @@ export interface FileRoutesByFullPath {
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/sheets/$characterId': typeof SheetsCharacterIdRoute
   '/sheets/new': typeof SheetsNewRoute
-  '/characters/': typeof CharactersIndexRoute
-  '/factions/': typeof FactionsIndexRoute
-  '/items/': typeof ItemsIndexRoute
-  '/locations/': typeof LocationsIndexRoute
-  '/lore/': typeof LoreIndexRoute
-  '/news/': typeof NewsIndexRoute
-  '/npcs/': typeof NpcsIndexRoute
-  '/quests/': typeof QuestsIndexRoute
-  '/sessions/': typeof SessionsIndexRoute
-  '/sheets/': typeof SheetsIndexRoute
+  '/characters': typeof CharactersIndexRoute
+  '/factions': typeof FactionsIndexRoute
+  '/items': typeof ItemsIndexRoute
+  '/locations': typeof LocationsIndexRoute
+  '/lore': typeof LoreIndexRoute
+  '/news': typeof NewsIndexRoute
+  '/npcs': typeof NpcsIndexRoute
+  '/quests': typeof QuestsIndexRoute
+  '/sessions': typeof SessionsIndexRoute
+  '/sheets': typeof SheetsIndexRoute
   '/campaigns/$campaignId/vtt': typeof CampaignsCampaignIdVttRoute
 }
 export interface FileRoutesByTo {
@@ -370,16 +370,16 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/sheets/$characterId'
     | '/sheets/new'
-    | '/characters/'
-    | '/factions/'
-    | '/items/'
-    | '/locations/'
-    | '/lore/'
-    | '/news/'
-    | '/npcs/'
-    | '/quests/'
-    | '/sessions/'
-    | '/sheets/'
+    | '/characters'
+    | '/factions'
+    | '/items'
+    | '/locations'
+    | '/lore'
+    | '/news'
+    | '/npcs'
+    | '/quests'
+    | '/sessions'
+    | '/sheets'
     | '/campaigns/$campaignId/vtt'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -500,102 +500,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/arquivos-secretos': {
-      id: '/arquivos-secretos'
-      path: '/arquivos-secretos'
-      fullPath: '/arquivos-secretos'
-      preLoaderRoute: typeof ArquivosSecretosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/billing': {
-      id: '/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof BillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design-system': {
-      id: '/design-system'
-      path: '/design-system'
-      fullPath: '/design-system'
-      preLoaderRoute: typeof DesignSystemRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/error-preview': {
-      id: '/error-preview'
-      path: '/error-preview'
-      fullPath: '/error-preview'
-      preLoaderRoute: typeof ErrorPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/family-tree': {
-      id: '/family-tree'
-      path: '/family-tree'
-      fullPath: '/family-tree'
-      preLoaderRoute: typeof FamilyTreeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/images': {
-      id: '/images'
-      path: '/images'
-      fullPath: '/images'
-      preLoaderRoute: typeof ImagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/spotify-callback': {
-      id: '/spotify-callback'
-      path: '/spotify-callback'
-      fullPath: '/spotify-callback'
-      preLoaderRoute: typeof SpotifyCallbackRouteImport
+    '/world': {
+      id: '/world'
+      path: '/world'
+      fullPath: '/world'
+      preLoaderRoute: typeof WorldRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -605,130 +514,179 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/world': {
-      id: '/world'
-      path: '/world'
-      fullPath: '/world'
-      preLoaderRoute: typeof WorldRouteImport
+    '/spotify-callback': {
+      id: '/spotify-callback'
+      path: '/spotify-callback'
+      fullPath: '/spotify-callback'
+      preLoaderRoute: typeof SpotifyCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/characters/': {
-      id: '/characters/'
-      path: '/characters'
-      fullPath: '/characters/'
-      preLoaderRoute: typeof CharactersIndexRouteImport
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/factions/': {
-      id: '/factions/'
-      path: '/factions'
-      fullPath: '/factions/'
-      preLoaderRoute: typeof FactionsIndexRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/factions/$factionId': {
-      id: '/factions/$factionId'
-      path: '/factions/$factionId'
-      fullPath: '/factions/$factionId'
-      preLoaderRoute: typeof FactionsFactionIdRouteImport
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/items/': {
-      id: '/items/'
-      path: '/items'
-      fullPath: '/items/'
-      preLoaderRoute: typeof ItemsIndexRouteImport
+    '/images': {
+      id: '/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof ImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/items/$itemId': {
-      id: '/items/$itemId'
-      path: '/items/$itemId'
-      fullPath: '/items/$itemId'
-      preLoaderRoute: typeof ItemsItemIdRouteImport
+    '/family-tree': {
+      id: '/family-tree'
+      path: '/family-tree'
+      fullPath: '/family-tree'
+      preLoaderRoute: typeof FamilyTreeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/join/$campaignId': {
-      id: '/join/$campaignId'
-      path: '/join/$campaignId'
-      fullPath: '/join/$campaignId'
-      preLoaderRoute: typeof JoinCampaignIdRouteImport
+    '/error-preview': {
+      id: '/error-preview'
+      path: '/error-preview'
+      fullPath: '/error-preview'
+      preLoaderRoute: typeof ErrorPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/locations/': {
-      id: '/locations/'
-      path: '/locations'
-      fullPath: '/locations/'
-      preLoaderRoute: typeof LocationsIndexRouteImport
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/locations/$locationId': {
-      id: '/locations/$locationId'
-      path: '/locations/$locationId'
-      fullPath: '/locations/$locationId'
-      preLoaderRoute: typeof LocationsLocationIdRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lore/': {
-      id: '/lore/'
-      path: '/lore'
-      fullPath: '/lore/'
-      preLoaderRoute: typeof LoreIndexRouteImport
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lore/$loreId': {
-      id: '/lore/$loreId'
-      path: '/lore/$loreId'
-      fullPath: '/lore/$loreId'
-      preLoaderRoute: typeof LoreLoreIdRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/news/': {
-      id: '/news/'
-      path: '/news'
-      fullPath: '/news/'
-      preLoaderRoute: typeof NewsIndexRouteImport
+    '/arquivos-secretos': {
+      id: '/arquivos-secretos'
+      path: '/arquivos-secretos'
+      fullPath: '/arquivos-secretos'
+      preLoaderRoute: typeof ArquivosSecretosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/npcs/': {
-      id: '/npcs/'
-      path: '/npcs'
-      fullPath: '/npcs/'
-      preLoaderRoute: typeof NpcsIndexRouteImport
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/npcs/$npcId': {
-      id: '/npcs/$npcId'
-      path: '/npcs/$npcId'
-      fullPath: '/npcs/$npcId'
-      preLoaderRoute: typeof NpcsNpcIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/quests/': {
-      id: '/quests/'
-      path: '/quests'
-      fullPath: '/quests/'
-      preLoaderRoute: typeof QuestsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sessions/': {
-      id: '/sessions/'
-      path: '/sessions'
-      fullPath: '/sessions/'
-      preLoaderRoute: typeof SessionsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sessions/$sessionId': {
-      id: '/sessions/$sessionId'
-      path: '/sessions/$sessionId'
-      fullPath: '/sessions/$sessionId'
-      preLoaderRoute: typeof SessionsSessionIdRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sheets/': {
       id: '/sheets/'
       path: '/sheets'
-      fullPath: '/sheets/'
+      fullPath: '/sheets'
       preLoaderRoute: typeof SheetsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sessions/': {
+      id: '/sessions/'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof SessionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quests/': {
+      id: '/quests/'
+      path: '/quests'
+      fullPath: '/quests'
+      preLoaderRoute: typeof QuestsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/npcs/': {
+      id: '/npcs/'
+      path: '/npcs'
+      fullPath: '/npcs'
+      preLoaderRoute: typeof NpcsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news/': {
+      id: '/news/'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lore/': {
+      id: '/lore/'
+      path: '/lore'
+      fullPath: '/lore'
+      preLoaderRoute: typeof LoreIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations/': {
+      id: '/locations/'
+      path: '/locations'
+      fullPath: '/locations'
+      preLoaderRoute: typeof LocationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/items/': {
+      id: '/items/'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof ItemsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/factions/': {
+      id: '/factions/'
+      path: '/factions'
+      fullPath: '/factions'
+      preLoaderRoute: typeof FactionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/': {
+      id: '/characters/'
+      path: '/characters'
+      fullPath: '/characters'
+      preLoaderRoute: typeof CharactersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sheets/new': {
+      id: '/sheets/new'
+      path: '/sheets/new'
+      fullPath: '/sheets/new'
+      preLoaderRoute: typeof SheetsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sheets/$characterId': {
@@ -738,11 +696,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SheetsCharacterIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sheets/new': {
-      id: '/sheets/new'
-      path: '/sheets/new'
-      fullPath: '/sheets/new'
-      preLoaderRoute: typeof SheetsNewRouteImport
+    '/sessions/$sessionId': {
+      id: '/sessions/$sessionId'
+      path: '/sessions/$sessionId'
+      fullPath: '/sessions/$sessionId'
+      preLoaderRoute: typeof SessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/npcs/$npcId': {
+      id: '/npcs/$npcId'
+      path: '/npcs/$npcId'
+      fullPath: '/npcs/$npcId'
+      preLoaderRoute: typeof NpcsNpcIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lore/$loreId': {
+      id: '/lore/$loreId'
+      path: '/lore/$loreId'
+      fullPath: '/lore/$loreId'
+      preLoaderRoute: typeof LoreLoreIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations/$locationId': {
+      id: '/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof LocationsLocationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$campaignId': {
+      id: '/join/$campaignId'
+      path: '/join/$campaignId'
+      fullPath: '/join/$campaignId'
+      preLoaderRoute: typeof JoinCampaignIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/items/$itemId': {
+      id: '/items/$itemId'
+      path: '/items/$itemId'
+      fullPath: '/items/$itemId'
+      preLoaderRoute: typeof ItemsItemIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/factions/$factionId': {
+      id: '/factions/$factionId'
+      path: '/factions/$factionId'
+      fullPath: '/factions/$factionId'
+      preLoaderRoute: typeof FactionsFactionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns/$campaignId/vtt': {

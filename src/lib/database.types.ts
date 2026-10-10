@@ -294,6 +294,29 @@ export type Database = {
 					},
 				];
 			};
+			ia_mesa_pilot_campaigns: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "ia_mesa_pilot_campaigns_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: true;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			image_assets: {
 				Row: {
 					campaign_id: string;

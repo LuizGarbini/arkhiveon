@@ -9,10 +9,8 @@ export type {
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 export {
-	IA_MESA_PILOT_CAMPAIGN_ID,
 	IA_MESA_REFUSAL,
 	isBlockedRequest,
-	isIaMesaPilotCampaign,
 	parseToolCall,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 

@@ -2,7 +2,8 @@
 //
 // Segurança (trava do Chefe):
 // 1. Valida o JWT do usuário (verify_jwt + auth.getUser).
-// 2. Valida que o campaign_id está na allowlist do piloto (Rise of Tiamat).
+// 2. Valida que o campaign_id está na allowlist do piloto (tabela
+//    `ia_mesa_pilot_campaigns`, lida com o cliente do usuário).
 // 3. Valida que o usuário é mestre/editor da campaign_id pedida (RLS do próprio
 //    usuário; nunca service role).
 // 4. Só então chama o modelo, com system prompt fixo e UMA ferramenta
@@ -68,8 +69,8 @@ serve(async (req) => {
 			return json({ ok: false, code: "bad_request" }, 400);
 		}
 
-		// Piloto: só Rise of Tiamat (allowlist). Demais campanhas: 403.
-		if (!isIaMesaPilotCampaign(campaignId)) {
+		// Piloto: só campanhas em `ia_mesa_pilot_campaigns`. Demais: 403.
+		if (!(await isIaMesaPilotCampaign(userClient, campaignId))) {
 			return json({ ok: false, code: "not_allowed" }, 403);
 		}
 

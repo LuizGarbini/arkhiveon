@@ -3,7 +3,8 @@
  * `ia-mesa-chat` e o cliente. Sem dependências: roda em Deno e no Vite.
  *
  * Trava de segurança:
- * - Piloto: só a campanha `IA_MESA_PILOT_CAMPAIGN_ID` (Rise of Tiamat).
+ * - Piloto: só campanhas na tabela `ia_mesa_pilot_campaigns` (allowlist no
+ *   Supabase; liga/desliga pelo SQL Editor, sem PR).
  * - A IA só pode PROPOR conteúdo de texto/ficha dentro da campanha atual.
  * - A única ferramenta liberada é `propose_npc` (allowlist). Nada de código,
  *   SQL, segredos, variáveis de ambiente ou outras campanhas.
@@ -11,12 +12,49 @@
  *   depois de Confirmar → Aplicar.
  */
 
-/** Piloto: só Rise of Tiamat pode usar o assistente da mesa. */
-export const IA_MESA_PILOT_CAMPAIGN_ID =
-	"3e9555fc-085e-43dd-a063-bcd02847032d";
+/** Tabela do Supabase com as campanhas liberadas no piloto. */
+export const IA_MESA_PILOT_TABLE = "ia_mesa_pilot_campaigns";
 
-export function isIaMesaPilotCampaign(campaignId: string): boolean {
-	return campaignId === IA_MESA_PILOT_CAMPAIGN_ID;
+/**
+ * Cliente mínimo do Supabase usado para consultar a allowlist. Tipado à mão
+ * para não depender de `@supabase/supabase-js` (roda em Deno e no Vite).
+ */
+export interface IaMesaPilotLookupClient {
+	from(table: string): {
+		select(columns: string): {
+			eq(
+				column: string,
+				value: string,
+			): {
+				maybeSingle(): PromiseLike<{
+					data: unknown;
+					error: unknown;
+				}>;
+			};
+		};
+	};
+}
+
+/**
+ * A campanha está liberada no piloto? Consulta `ia_mesa_pilot_campaigns` com
+ * o cliente do próprio usuário (RLS). Qualquer erro = não liberado.
+ */
+export async function isIaMesaPilotCampaign(
+	client: IaMesaPilotLookupClient,
+	campaignId: string,
+): Promise<boolean> {
+	if (!isCampaignId(campaignId)) return false;
+	try {
+		const { data, error } = await client
+			.from(IA_MESA_PILOT_TABLE)
+			.select("campaign_id")
+			.eq("campaign_id", campaignId)
+			.maybeSingle();
+		if (error || !data || typeof data !== "object") return false;
+		return (data as { campaign_id?: unknown }).campaign_id === campaignId;
+	} catch {
+		return false;
+	}
 }
 
 export const IA_MESA_ALLOWED_TOOLS = ["propose_npc"] as const;
