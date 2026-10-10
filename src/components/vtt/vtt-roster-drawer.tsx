@@ -11,9 +11,15 @@ import {
 import { useDeferredValue, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+	useMapUpload,
+	VTTMapDropzone,
+	type VTTMapImage,
+} from "@/components/vtt/vtt-map-dropzone";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { snapToGrid } from "@/lib/vtt/grid-math";
+import { dragHasFiles } from "@/lib/vtt/map-upload";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
@@ -22,8 +28,14 @@ interface Props {
 	scene: VTTScene | null;
 	onSpawnToken: (data: Partial<VTTToken>) => Promise<void>;
 	onFocusPoint: (x: number, y: number) => void;
+	onSetSceneMap: (sceneId: string, map: VTTMapImage) => Promise<void>;
 }
-export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
+export function VTTRosterDrawer({
+	scene,
+	onSpawnToken,
+	onFocusPoint,
+	onSetSceneMap,
+}: Props) {
 	const open = useVTTStore((s) => s.showRosterDrawer);
 	const close = useVTTStore((s) => s.setShowRosterDrawer);
 	const isGM = useVTTStore((s) => s.isGM);
@@ -33,9 +45,9 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const campaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaign = campaigns.find((c) => c.id === scene?.campaignId);
-	const [tab, setTab] = useState<"scene" | "characters" | "npcs" | "custom">(
-		"scene",
-	);
+	const [tab, setTab] = useState<
+		"scene" | "characters" | "npcs" | "custom" | "map"
+	>("scene");
 	const [query, setQuery] = useState("");
 	const search = useDeferredValue(query.trim().toLocaleLowerCase());
 	const [pending, setPending] = useState<string | null>(null);
@@ -125,12 +137,20 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 			? [
 					{ id: "npcs" as const, label: "NPCs" },
 					{ id: "custom" as const, label: "Criar" },
+					{ id: "map" as const, label: "Mapa" },
 				]
 			: []),
 	];
 	return (
 		<aside
 			aria-label="Biblioteca da mesa"
+			onDragEnter={(event) => {
+				// A file dragged over the library opens the map tab, where it lands.
+				if (isGM && tab !== "map" && dragHasFiles(event.dataTransfer.types)) {
+					setTab("map");
+					setError(null);
+				}
+			}}
 			className="absolute right-3 top-32 bottom-20 z-40 flex w-[min(24rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-xl backdrop-blur-md"
 		>
 			<div className="flex items-center justify-between gap-3 border-b border-border/70 p-4">
@@ -180,7 +200,7 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 					{error}
 				</p>
 			)}
-			{tab !== "custom" && (
+			{tab !== "custom" && tab !== "map" && (
 				<div className="relative m-4">
 					<Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" />
 					<Input
@@ -368,6 +388,9 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 						)}
 					</>
 				)}
+				{tab === "map" && isGM && (
+					<SceneMapTab scene={scene} onSetSceneMap={onSetSceneMap} />
+				)}
 				{tab === "custom" && isGM && (
 					<form
 						className="space-y-4 pt-4"
@@ -445,5 +468,48 @@ export function VTTRosterDrawer({ scene, onSpawnToken, onFocusPoint }: Props) {
 				{scene.name} · {isGM ? "Visão do mestre" : "Visão do jogador"}
 			</p>
 		</aside>
+	);
+}
+
+function SceneMapTab({
+	scene,
+	onSetSceneMap,
+}: {
+	scene: VTTScene;
+	onSetSceneMap: Props["onSetSceneMap"];
+}) {
+	const [applied, setApplied] = useState<string | null>(null);
+	const upload = useMapUpload(scene.campaignId, async (map) => {
+		setApplied(null);
+		await onSetSceneMap(scene.id, map);
+		setApplied(map.name);
+	});
+	const current: VTTMapImage | null = scene.mapImageUrl
+		? {
+				url: scene.mapImageUrl,
+				width: scene.width,
+				height: scene.height,
+				name: "Mapa atual",
+			}
+		: null;
+	return (
+		<div className="space-y-4 pt-4">
+			<p className="text-sm leading-relaxed text-muted-foreground">
+				{current
+					? `Troque o mapa de “${scene.name}”. Os tokens ficam onde estão.`
+					: `“${scene.name}” ainda não tem mapa. Envie uma imagem para começar.`}
+			</p>
+			<VTTMapDropzone
+				campaignId={scene.campaignId}
+				upload={upload}
+				value={current}
+				label={`Enviar mapa da cena ${scene.name}`}
+			/>
+			{applied && upload.state.status === "idle" && (
+				<output className="block text-sm text-primary">
+					Mapa aplicado na cena.
+				</output>
+			)}
+		</div>
 	);
 }

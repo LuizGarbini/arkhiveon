@@ -21,6 +21,11 @@ import {
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+	useMapUpload,
+	VTTMapDropzone,
+	type VTTMapImage,
+} from "@/components/vtt/vtt-map-dropzone";
 import { VTTPresenceBar } from "@/components/vtt/vtt-presence-bar";
 import { cn } from "@/lib/utils";
 import { nearestScrollLeft } from "@/lib/vtt/scene-bar-scroll";
@@ -57,7 +62,7 @@ export function VTTSceneBar({
 
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [newSceneName, setNewSceneName] = useState("");
-	const [newMapUrl, setNewMapUrl] = useState("");
+	const [newMap, setNewMap] = useState<VTTMapImage | null>(null);
 	const [newGridType, setNewGridType] = useState<VTTGridType>("square");
 	const [newGridSize, setNewGridSize] = useState(70);
 	const [newScaleDistance, setNewScaleDistance] = useState(1.5);
@@ -72,6 +77,19 @@ export function VTTSceneBar({
 	// Id of the scene being drafted in the dialog, kept across retries so a
 	// create that already landed is not inserted twice.
 	const draftSceneIdRef = useRef<string | null>(null);
+	// Map file dropped or picked in the create dialog. The scene is only
+	// created on "Criar Cena"; cancelling mid-upload creates nothing.
+	const mapUpload = useMapUpload(campaignId, (map) => {
+		setNewMap(map);
+		setNewSceneName((name) => name || map.name);
+	});
+
+	const closeCreateModal = () => {
+		mapUpload.cancel();
+		setIsCreateModalOpen(false);
+		setError(null);
+		setNewMap(null);
+	};
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
 	const liveSceneId = scenes.find((s) => s.isActive)?.id ?? null;
@@ -130,7 +148,7 @@ export function VTTSceneBar({
 
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!newSceneName.trim() || isSubmitting) return;
+		if (!newSceneName.trim() || isSubmitting || mapUpload.isUploading) return;
 
 		draftSceneIdRef.current ??= newSceneId();
 		setIsSubmitting(true);
@@ -140,20 +158,20 @@ export function VTTSceneBar({
 				id: draftSceneIdRef.current,
 				campaignId,
 				name: newSceneName.trim(),
-				mapImageUrl: newMapUrl.trim() || null,
+				mapImageUrl: newMap?.url ?? null,
 				gridType: newGridType,
 				gridSize: Number(newGridSize) || 70,
 				gridScaleDistance: Number(newScaleDistance) || 1.5,
 				gridScaleUnit: newScaleUnit,
-				width: 4000,
-				height: 4000,
+				width: newMap?.width ?? 4000,
+				height: newMap?.height ?? 4000,
 				isActive: scenes.length === 0,
 			});
 
 			draftSceneIdRef.current = null;
 			setIsCreateModalOpen(false);
 			setNewSceneName("");
-			setNewMapUrl("");
+			setNewMap(null);
 		} catch (error) {
 			setError(
 				error instanceof Error
@@ -393,8 +411,8 @@ export function VTTSceneBar({
 			<Dialog
 				open={isCreateModalOpen}
 				onOpenChange={(open) => {
-					setIsCreateModalOpen(open);
-					if (!open) setError(null);
+					if (open) setIsCreateModalOpen(true);
+					else if (!isSubmitting) closeCreateModal();
 				}}
 			>
 				<DialogContent className="vtt-dialog max-w-md">
@@ -404,8 +422,7 @@ export function VTTSceneBar({
 							Preparar uma nova cena
 						</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
-							Defina o nome, imagem do mapa e configurações de grid para a nova
-							cena.
+							Defina o nome, o mapa e as configurações de grid da nova cena.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -420,12 +437,13 @@ export function VTTSceneBar({
 							/>
 						</Field>
 
-						<Field label="URL da Imagem do Mapa (Opcional)">
-							<Input
-								placeholder="https://exemplo.com/mapa.jpg"
-								value={newMapUrl}
-								onChange={(e) => setNewMapUrl(e.target.value)}
-								className="h-11 text-base"
+						<Field label="Mapa (opcional)">
+							<VTTMapDropzone
+								campaignId={campaignId}
+								upload={mapUpload}
+								value={newMap}
+								onRemove={() => setNewMap(null)}
+								label="Enviar mapa da nova cena"
 							/>
 						</Field>
 
@@ -493,20 +511,16 @@ export function VTTSceneBar({
 							<Button
 								type="button"
 								variant="ghost"
-								size="sm"
-								onClick={() => {
-									setIsCreateModalOpen(false);
-									setError(null);
-								}}
+								className="h-11 px-4"
+								onClick={closeCreateModal}
 								disabled={isSubmitting}
 							>
 								Cancelar
 							</Button>
 							<Button
 								type="submit"
-								size="sm"
-								disabled={isSubmitting}
-								className="gap-1.5"
+								disabled={isSubmitting || mapUpload.isUploading}
+								className="h-11 gap-1.5 px-4"
 							>
 								<Sparkles className="h-3.5 w-3.5" />
 								{isSubmitting ? "Criando..." : "Criar Cena"}
