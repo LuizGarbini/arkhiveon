@@ -33,6 +33,8 @@ export interface RemoteActivityEntry {
 export interface RemoteImageAsset {
 	id: string;
 	campaignId: string;
+	/** Mundo da campanha dona (preenchido pela migração 0036). */
+	worldId?: string;
 	createdBy: string;
 	name: string;
 	url: string;
@@ -193,6 +195,7 @@ function fromImageAssetRow(row: Record<string, unknown>): RemoteImageAsset {
 	return {
 		id: stringValue(row.id, crypto.randomUUID()),
 		campaignId: stringValue(row.campaign_id, ""),
+		worldId: typeof row.world_id === "string" ? row.world_id : undefined,
 		createdBy: stringValue(row.created_by, ""),
 		name: stringValue(row.name, "Imagem sem nome"),
 		url: stringValue(row.url, ""),
@@ -478,15 +481,46 @@ async function selectWorldEntities(
 	);
 }
 
+const IMAGE_ASSET_COLUMNS =
+	"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,created_at,updated_at";
+
+/** `image_assets.world_id` ainda não existe (migração 0036 não aplicada). */
+function isMissingImageAssetWorldColumn(error: unknown): boolean {
+	if (typeof error !== "object" || error === null) return false;
+	const record = error as { code?: unknown; message?: unknown };
+	if (record.code === "42703") return true;
+	const message = typeof record.message === "string" ? record.message : "";
+	return message.includes("world_id");
+}
+
+/**
+ * Imagens da galeria. Com `worldId`, traz as imagens de todas as campanhas do
+ * mundo (a RLS decide o que cada um vê). Sem a coluna `world_id` no banco,
+ * cai para as imagens da campanha ativa.
+ */
 export async function loadRemoteImageAssets(
 	campaignId: string,
+	worldId?: string | null,
 ): Promise<RemoteImageAsset[]> {
 	const supabase = requireSupabase();
+
+	if (worldId) {
+		const { data, error } = await supabase
+			.from(SUPABASE_TABLES.imageAssets)
+			.select(`${IMAGE_ASSET_COLUMNS},world_id`)
+			.eq("world_id", worldId)
+			.order("updated_at", { ascending: false });
+
+		if (!error) {
+			return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
+		}
+		if (isMissingImageAssetsTableError(error)) return [];
+		if (!isMissingImageAssetWorldColumn(error)) throw error;
+	}
+
 	const { data, error } = await supabase
 		.from(SUPABASE_TABLES.imageAssets)
-		.select(
-			"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,created_at,updated_at",
-		)
+		.select(IMAGE_ASSET_COLUMNS)
 		.eq("campaign_id", campaignId)
 		.order("updated_at", { ascending: false });
 
@@ -522,7 +556,7 @@ export async function loadRemoteState(
 		selectEntities(SUPABASE_TABLES.characters, campaignId),
 		selectEntities(SUPABASE_TABLES.sessions, campaignId),
 		selectEntities(SUPABASE_TABLES.customTemplates, campaignId),
-		loadRemoteImageAssets(campaignId),
+		loadRemoteImageAssets(campaignId, worldId),
 		activityQuery.order("created_at", { ascending: false }).limit(200),
 		worldId
 			? selectWorldEntities(SUPABASE_TABLES.npcs, worldId)

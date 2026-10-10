@@ -423,6 +423,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						"lores",
 						"factions",
 						"world_news",
+						// Galeria de imagens é do mundo (migração 0036 traz `world_id`).
+						"image_assets",
 					]);
 
 					const rowCampaignId =
@@ -591,6 +593,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 								processed = {
 									id: newRow.id,
 									campaignId: newRow.campaign_id,
+									worldId: newRow.world_id ?? undefined,
 									createdBy: newRow.created_by,
 									name: newRow.name,
 									url: newRow.url,

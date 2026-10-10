@@ -643,6 +643,8 @@ export interface NewsComment {
 export interface ImageAsset {
 	id: string;
 	campaignId: string;
+	/** Mundo da campanha dona (preenchido pela migração 0036). */
+	worldId?: string;
 	createdBy: string;
 	name: string;
 	url: string;
