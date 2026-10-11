@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { canLinkOnSheet } from "@/core/rules";
+import {
+	canLinkOnSheet,
+	computeArmorClass,
+	computeInitiative,
+	resolveLinkedEntries,
+} from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import type { Character, Item } from "@/lib/store/types";
@@ -29,4 +34,20 @@ export function useCanLinkOnSheet(character: Pick<Character, "createdBy">) {
 		characterCreatedBy: character.createdBy,
 		userId: user?.id,
 	});
+}
+
+/** CA e iniciativa efetivas (manual quando nenhum item vinculado mexe no número). */
+export function useCombatStats(character: Character) {
+	const { byId } = useCampaignItems();
+	return useMemo(() => {
+		const linked =
+			character.system === "dnd5e"
+				? resolveLinkedEntries(character.inventoryList, byId)
+				: [];
+		return {
+			itemsById: byId,
+			ac: computeArmorClass(character, linked),
+			initiative: computeInitiative(character, linked),
+		};
+	}, [character, byId]);
 }

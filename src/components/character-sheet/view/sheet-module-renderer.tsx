@@ -5,10 +5,14 @@ import { SkillsFieldsReadOnly } from "@/components/character-sheet/fields";
 import { CharacterTrainingFields } from "@/components/character-training-fields";
 import { CustomSheetRenderer } from "@/components/custom-sheet-renderer";
 import {
+	armorClassCaption,
 	calculateEffectiveHealthMax,
 	calculateHitPointPercentage,
 	calculateProficiencyBonus,
+	explainArmorClass,
+	explainInitiative,
 	formatModifier,
+	initiativeCaption,
 } from "@/core/rules";
 import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
 import {
@@ -17,6 +21,8 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { getFeatsLabel, type SYSTEM_CONFIG } from "@/lib/systems";
+import { useCombatStats } from "../use-linked-items";
+import { CombatMetricCard } from "./combat-metric-detail";
 import { FeatRow, InfoRow, SpellRow, TextBlock } from "./ui-primitives";
 import { WeaponAttacksSection } from "./weapon-attacks";
 
@@ -30,6 +36,7 @@ export function SheetModuleContent({
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 }) {
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
+	const combat = useCombatStats(character);
 	const customFields =
 		config.customFields?.filter((f) => f.section === module.kind) || [];
 
@@ -185,11 +192,25 @@ export function SheetModuleContent({
 					</div>
 				</div>
 				<div className="grid gap-3 sm:grid-cols-3">
-					<MetricCard Icon={Shield} label="CA" value={character.armorClass} />
-					<MetricCard
+					<CombatMetricCard
+						Icon={Shield}
+						label="CA"
+						value={String(combat.ac.total)}
+						caption={armorClassCaption(combat.ac)}
+						stat={combat.ac}
+						explanation={explainArmorClass(combat.ac)}
+						detailTitle={`CA ${combat.ac.total}`}
+						detailSubtitle="Classe de armadura"
+					/>
+					<CombatMetricCard
 						Icon={Zap}
 						label="Iniciativa"
-						value={formatModifier(character.initiative)}
+						value={formatModifier(combat.initiative.total)}
+						caption={initiativeCaption(combat.initiative)}
+						stat={combat.initiative}
+						explanation={explainInitiative(combat.initiative)}
+						detailTitle={`Iniciativa ${formatModifier(combat.initiative.total)}`}
+						detailSubtitle="Quem age primeiro no combate"
 					/>
 					<MetricCard
 						Icon={Sparkles}
@@ -211,7 +232,10 @@ export function SheetModuleContent({
 					</div>
 				) : null}
 				{character.system === "dnd5e" && (
-					<WeaponAttacksSection character={character} />
+					<WeaponAttacksSection
+						character={character}
+						itemsById={combat.itemsById}
+					/>
 				)}
 			</div>
 		);
