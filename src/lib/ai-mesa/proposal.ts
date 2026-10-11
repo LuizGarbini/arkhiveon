@@ -1,11 +1,15 @@
+import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
 import type {
 	IaMesaHistoryItem,
+	IaMesaNpcProposal,
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import type { Npc } from "../store/types";
 
 export type {
+	IaMesaCharacterPatchProposal,
 	IaMesaHistoryItem,
+	IaMesaNpcProposal,
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 export {
@@ -51,7 +55,7 @@ export function canApply(status: ProposalStatus): boolean {
 
 /** O que o Aplicar grava: um NPC restrito à campanha atual (Diário › NPCs). */
 export function proposalToNpcInput(
-	proposal: IaMesaProposal,
+	proposal: IaMesaNpcProposal,
 	campaignId: string,
 ): Partial<Omit<Npc, "id" | "createdAt">> {
 	return {
@@ -74,7 +78,7 @@ export interface ProposalLine {
 	preview: string;
 }
 
-export function describeProposal(proposal: IaMesaProposal): ProposalLine[] {
+export function describeProposal(proposal: IaMesaNpcProposal): ProposalLine[] {
 	const statsLines = proposal.stats
 		? proposal.stats.split("\n").filter((l) => l.trim()).length
 		: 0;
@@ -148,6 +152,10 @@ export function normalizeResponse(data: unknown): IaMesaResult {
 	}
 	const reply = typeof raw.reply === "string" ? raw.reply : "";
 	const p = raw.proposal as Record<string, unknown> | null | undefined;
+	if (p && typeof p === "object" && p.kind === "character_patch") {
+		// Re-saneia no cliente: nunca confia no formato vindo da rede.
+		return { ok: true, reply, proposal: parseCharacterPatch(p) };
+	}
 	const proposal =
 		p && typeof p === "object" && p.kind === "npc" && typeof p.name === "string"
 			? ({

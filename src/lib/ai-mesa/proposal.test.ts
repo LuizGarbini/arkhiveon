@@ -4,6 +4,7 @@ import {
 	cleanHistory,
 	IA_MESA_ALLOWED_TOOLS,
 	IA_MESA_PILOT_TABLE,
+	type IaMesaNpcProposal,
 	type IaMesaPilotLookupClient,
 	isCampaignId,
 	isIaMesaPilotCampaign,
@@ -28,7 +29,7 @@ const proposal = parseToolCall("propose_npc", {
 	location: "Porto de Maré Alta",
 	description: "Sacerdotisa do Templo da Maré. Guiou o grupo.",
 	stats: "PV 27\nCA 13\nFOR 10",
-});
+}) as IaMesaNpcProposal | null;
 
 describe("ia-mesa: fluxo Confirmar → Aplicar", () => {
 	it("só libera Aplicar depois de Confirmar", () => {
@@ -54,8 +55,12 @@ describe("ia-mesa: fluxo Confirmar → Aplicar", () => {
 });
 
 describe("ia-mesa: allowlist de ferramentas", () => {
-	it("só aceita propose_npc", () => {
-		expect(IA_MESA_ALLOWED_TOOLS).toEqual(["propose_npc"]);
+	it("só aceita as ferramentas da allowlist", () => {
+		expect(IA_MESA_ALLOWED_TOOLS).toEqual([
+			"propose_npc",
+			"read_character",
+			"propose_character_patch",
+		]);
 		expect(proposal?.name).toBe("Irmã Morwen");
 		expect(parseToolCall("run_sql", { name: "x" })).toBeNull();
 		expect(parseToolCall("read_env", { name: "x" })).toBeNull();
@@ -72,7 +77,7 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 			name: `A${"b".repeat(500)}\u0000`,
 			description: 42,
 			extra: "ignorado",
-		});
+		}) as IaMesaNpcProposal | null;
 		expect(long?.name.length).toBeLessThanOrEqual(80);
 		expect(long?.description).toBe("");
 		expect(long && "extra" in long).toBe(false);
