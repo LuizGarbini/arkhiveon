@@ -3,6 +3,7 @@
  * Funções puras: montam o diff (antes → depois) e o objeto que o Aplicar grava.
  * Nada aqui escreve no store; quem chama decide (só depois de Confirmar).
  */
+import { normalizeWeaponAbility } from "@/core/rules/weapon-damage";
 import {
 	CHARACTER_NUMERIC_FIELD_KEYS,
 	CHARACTER_NUMERIC_FIELDS,
@@ -135,7 +136,7 @@ function toWeapon(
 	return {
 		damageDice: weapon.damageDice,
 		damageType: weapon.damageType,
-		ability: weapon.ability,
+		ability: normalizeWeaponAbility(weapon.ability),
 		...(weapon.magicBonus ? { magicBonus: weapon.magicBonus } : {}),
 		...(weapon.proficient !== undefined
 			? { proficient: weapon.proficient }

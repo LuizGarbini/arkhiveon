@@ -66,7 +66,14 @@ const ITEM_CATEGORIES = [
 	"treasure",
 	"custom",
 ] as const;
-const WEAPON_ABILITIES = ["strength", "dexterity", "finesse"] as const;
+const WEAPON_ABILITIES = [
+	"strength",
+	"dexterity",
+	"constitution",
+	"intelligence",
+	"wisdom",
+	"charisma",
+] as const;
 
 export type PatchItemLocation = (typeof ITEM_LOCATIONS)[number];
 export type PatchItemCategory = (typeof ITEM_CATEGORIES)[number];
@@ -202,7 +209,11 @@ function parseWeapon(raw: unknown): PatchWeaponStats | undefined {
 	const weapon: PatchWeaponStats = {
 		damageDice,
 		damageType,
-		ability: oneOf(WEAPON_ABILITIES, r.ability) ?? "strength",
+		// "finesse" legado (Acuidade virou propriedade) → Destreza.
+		ability:
+			r.ability === "finesse"
+				? "dexterity"
+				: (oneOf(WEAPON_ABILITIES, r.ability) ?? "strength"),
 	};
 	const magic = clampInt(r.magicBonus, 0, 3);
 	if (magic !== null && magic > 0) weapon.magicBonus = magic;
