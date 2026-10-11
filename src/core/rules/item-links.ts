@@ -22,7 +22,12 @@ import {
 	itemCategoryKind,
 } from "./item-mechanics";
 import { calculateProficiencyBonus, formatModifier } from "./modifier-engine";
-import { buildWeaponAttack, DAMAGE_TYPE_LABELS } from "./weapon-damage";
+import {
+	buildWeaponAttack,
+	DAMAGE_TYPE_LABELS,
+	normalizeWeaponAbility,
+	weaponAbilityScores,
+} from "./weapon-damage";
 
 export type InventoryLocation = InventoryItem["location"];
 
@@ -97,7 +102,7 @@ export function weaponStatsFromItem(
 	return {
 		damageDice: w.damageDice.replace(/\s+/g, ""),
 		damageType: w.damageType,
-		ability: w.ability,
+		ability: normalizeWeaponAbility(w.ability),
 		magicBonus: w.magicBonus,
 		proficient,
 		extraDamage: (w.extraDamage ?? []).filter((e) => e.amount.trim()),
@@ -299,6 +304,10 @@ export function previewLinkEffect(
 		Character,
 		| "strength"
 		| "dexterity"
+		| "constitution"
+		| "intelligence"
+		| "wisdom"
+		| "charisma"
 		| "level"
 		| "proficiencyBonus"
 		| "armorClass"
@@ -325,10 +334,7 @@ export function previewLinkEffect(
 				category: "weapon",
 				weapon,
 			},
-			{
-				strength: Number(character.strength) || 10,
-				dexterity: Number(character.dexterity) || 10,
-			},
+			weaponAbilityScores(character),
 			prof,
 		);
 		const single = attack.types.length === 1 ? attack.types[0] : undefined;
