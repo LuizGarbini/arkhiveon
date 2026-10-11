@@ -196,22 +196,20 @@ export function makeLinkedEntry(
 }
 
 /**
- * Quem pode vincular itens nesta ficha (o servidor confere a mesma regra):
- * mestre (owner) em qualquer ficha; co-mestre/jogador só na ficha que criou.
- * Viewer não salva ficha nenhuma hoje (RLS de UPDATE), então não vincula.
+ * Quem pode vincular itens nesta ficha: mestre (owner) ou editor da campanha,
+ * em qualquer ficha dela — mesmo criada por outra pessoa. Alinha com a policy
+ * de UPDATE de characters (owner/editor salvam qualquer ficha da campanha).
+ * Viewer não salva ficha nenhuma (RLS de UPDATE), então não vincula.
+ * characterCreatedBy/userId ficam na assinatura por compatibilidade.
  */
 export function canLinkOnSheet({
 	role,
-	characterCreatedBy,
-	userId,
 }: {
 	role: MembershipRole | undefined;
 	characterCreatedBy: string | undefined;
 	userId: string | undefined;
 }): boolean {
-	if (role === "owner") return true;
-	if (role !== "editor") return false;
-	return Boolean(userId && characterCreatedBy && characterCreatedBy === userId);
+	return role === "owner" || role === "editor";
 }
 
 function signed(value: number): string {

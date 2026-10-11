@@ -160,7 +160,7 @@ describe("canLinkOnSheet", () => {
 			}),
 		).toBe(true);
 	});
-	it("co-mestre só na ficha que criou", () => {
+	it("editor vincula na própria ficha e na de outra pessoa", () => {
 		expect(
 			canLinkOnSheet({
 				role: "editor",
@@ -174,20 +174,34 @@ describe("canLinkOnSheet", () => {
 				characterCreatedBy: "outro",
 				userId: "eu",
 			}),
-		).toBe(false);
+		).toBe(true);
 		expect(
 			canLinkOnSheet({
 				role: "editor",
 				characterCreatedBy: undefined,
 				userId: "eu",
 			}),
-		).toBe(false);
+		).toBe(true);
 	});
-	it("viewer não vincula em ficha alheia", () => {
+	it("viewer não vincula, nem na ficha que criou", () => {
 		expect(
 			canLinkOnSheet({
 				role: "viewer",
 				characterCreatedBy: "outro",
+				userId: "eu",
+			}),
+		).toBe(false);
+		expect(
+			canLinkOnSheet({
+				role: "viewer",
+				characterCreatedBy: "eu",
+				userId: "eu",
+			}),
+		).toBe(false);
+		expect(
+			canLinkOnSheet({
+				role: undefined,
+				characterCreatedBy: "eu",
 				userId: "eu",
 			}),
 		).toBe(false);
