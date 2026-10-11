@@ -13,14 +13,23 @@ import {
 	type FormEvent,
 	type KeyboardEvent,
 	useId,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import {
+	applyCharacterPatch,
+	buildCharacterPatchDiff,
+	type CharacterDiffRow,
+	missingPatchItems,
+} from "@/lib/ai-mesa/character-patch";
 import { askMesaAssistant } from "@/lib/ai-mesa/client";
 import {
 	describeProposal,
 	errorMessage,
+	type IaMesaCharacterPatchProposal,
+	type IaMesaNpcProposal,
 	type IaMesaProposal,
 	nextProposalStatus,
 	type ProposalAction,
@@ -29,6 +38,7 @@ import {
 	toHistory,
 } from "@/lib/ai-mesa/proposal";
 import { useRPGStore } from "@/lib/store";
+import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -40,11 +50,13 @@ interface ChatMessage {
 	proposal?: IaMesaProposal;
 	status?: ProposalStatus;
 	npcId?: string;
+	/** Valores da ficha antes do Aplicar (para Desfazer um patch). */
+	undoPatch?: Partial<Character>;
 	applyError?: string;
 }
 
 const WELCOME =
-	"Oi! Posso propor NPCs com bio curta e ficha básica para esta campanha. Nada é salvo sem sua confirmação.";
+	"Oi! Posso propor NPCs novos ou alterações numa ficha desta campanha (atributos, PV, CA, itens e dano de arma). Nada é salvo sem sua confirmação.";
 
 function nowLabel(): string {
 	return new Date().toLocaleTimeString("pt-BR", {
@@ -62,7 +74,8 @@ function newId(): string {
 /**
  * Assistente da mesa (piloto, modelo-a-limpo).
  * FAB no canto inferior direito → janela flutuante de 400 px (tela cheia no
- * celular). A IA só propõe; Confirmar → Aplicar grava um NPC desta campanha.
+ * celular). A IA só propõe; Confirmar → Aplicar grava um NPC desta campanha
+ * ou o patch numa ficha existente dela. Ignorar não grava nada.
  * Estado da conversa é local à sessão (não persiste).
  */
 export function VTTAiChat({
@@ -176,6 +189,31 @@ export function VTTAiChat({
 				});
 				return;
 			}
+			if (message.proposal.kind === "character_patch") {
+				const proposal = message.proposal;
+				const character = store.characters.find(
+					(c) => c.id === proposal.characterId,
+				);
+				if (!character) {
+					patch(message.id, {
+						applyError:
+							"Ficha não encontrada nesta campanha. Nada foi alterado.",
+					});
+					return;
+				}
+				const result = applyCharacterPatch(character, proposal);
+				if (!result.ok) {
+					patch(message.id, { applyError: result.error });
+					return;
+				}
+				store.updateCharacter(character.id, result.changes);
+				patch(message.id, {
+					status: next,
+					undoPatch: result.before,
+					applyError: undefined,
+				});
+				return;
+			}
 			const created = store.addNpc(
 				proposalToNpcInput(message.proposal, campaignId),
 			);
@@ -197,6 +235,15 @@ export function VTTAiChat({
 
 		if (action === "undo" && message.npcId) {
 			useRPGStore.getState().removeNpc(message.npcId);
+		}
+		if (
+			action === "undo" &&
+			message.undoPatch &&
+			message.proposal.kind === "character_patch"
+		) {
+			useRPGStore
+				.getState()
+				.updateCharacter(message.proposal.characterId, message.undoPatch);
 		}
 		patch(message.id, { status: next, applyError: undefined });
 	};
@@ -374,8 +421,19 @@ function ProposalCard({
 }) {
 	const proposal = message.proposal as IaMesaProposal;
 	const status = message.status as ProposalStatus;
-	const lines = describeProposal(proposal);
-	const [expanded, setExpanded] = useState<number | null>(0);
+	const isPatch = proposal.kind === "character_patch";
+	const character = useRPGStore((s) =>
+		proposal.kind === "character_patch"
+			? s.characters.find((c) => c.id === proposal.characterId)
+			: undefined,
+	);
+	const patchState = useMemo(() => {
+		if (proposal.kind !== "character_patch" || !character) return null;
+		return {
+			rows: buildCharacterPatchDiff(character, proposal),
+			missing: missingPatchItems(character, proposal).length,
+		};
+	}, [proposal, character]);
 	const statusChip =
 		status === "applied"
 			? { dot: "bg-emerald-400", label: "Salvo" }
@@ -386,6 +444,14 @@ function ProposalCard({
 					}
 				: { dot: "bg-amber-400", label: "Não salvo" };
 	const isOpen = status === "pending" || status === "confirmed";
+	// Patch sem ficha visível, com item sumido ou sem mudança real: não aplica.
+	const patchBlocked =
+		isPatch &&
+		isOpen &&
+		(!patchState || patchState.missing > 0 || patchState.rows.length === 0);
+	const count = isPatch
+		? (patchState?.rows.length ?? 0)
+		: describeProposal(proposal as IaMesaNpcProposal).length;
 
 	return (
 		<div
@@ -395,7 +461,11 @@ function ProposalCard({
 			)}
 		>
 			<div className="flex items-center justify-between gap-2 border-b border-border/70 px-3.5 py-2.5">
-				<p className="text-sm font-semibold">Proposta · {lines.length} itens</p>
+				<p className="text-sm font-semibold">
+					{isPatch
+						? `Alterar ficha · ${count} ${count === 1 ? "mudança" : "mudanças"}`
+						: `Proposta · ${count} itens`}
+				</p>
 				<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
 					<span
 						className={cn("size-1.5 rounded-full", statusChip.dot)}
@@ -404,51 +474,16 @@ function ProposalCard({
 					{statusChip.label}
 				</span>
 			</div>
-			<ul className="divide-y divide-border/70">
-				{lines.map((line, index) => {
-					const Icon = index === 0 ? FileText : IdCard;
-					const isExpanded = expanded === index;
-					return (
-						<li key={line.meta}>
-							<button
-								type="button"
-								aria-expanded={isExpanded}
-								onClick={() => setExpanded(isExpanded ? null : index)}
-								className="flex min-h-11 w-full items-start gap-3 px-3.5 py-2.5 text-left focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none [@media(hover:hover)]:hover:bg-muted/40"
-							>
-								<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-									<Icon className="size-3.5" aria-hidden />
-								</span>
-								<span className="min-w-0 flex-1">
-									<span className="block truncate text-sm font-semibold">
-										{line.title}
-									</span>
-									<span className="block truncate text-xs text-muted-foreground">
-										{line.meta}
-									</span>
-									{line.preview && (
-										<span
-											className={cn(
-												"mt-1.5 block whitespace-pre-wrap text-xs text-muted-foreground",
-												!isExpanded && "line-clamp-2",
-											)}
-										>
-											{line.preview}
-										</span>
-									)}
-								</span>
-								<ChevronDown
-									className={cn(
-										"mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150",
-										isExpanded && "rotate-180",
-									)}
-									aria-hidden
-								/>
-							</button>
-						</li>
-					);
-				})}
-			</ul>
+			{proposal.kind === "character_patch" ? (
+				<CharacterPatchBody
+					proposal={proposal}
+					found={!!character}
+					rows={patchState?.rows ?? []}
+					missing={patchState?.missing ?? 0}
+				/>
+			) : (
+				<NpcProposalBody proposal={proposal} />
+			)}
 
 			{message.applyError && (
 				<p
@@ -475,6 +510,7 @@ function ProposalCard({
 								<Button
 									type="button"
 									className="min-h-11"
+									disabled={patchBlocked}
 									onClick={() => onAct(message, "confirm")}
 								>
 									Confirmar alteração
@@ -494,7 +530,7 @@ function ProposalCard({
 								type="button"
 								variant={status === "confirmed" ? "default" : "outline"}
 								className="min-h-11"
-								disabled={status !== "confirmed"}
+								disabled={status !== "confirmed" || patchBlocked}
 								title={
 									status === "pending"
 										? "Confirme a alteração antes de aplicar"
@@ -511,7 +547,9 @@ function ProposalCard({
 					<>
 						<p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
 							<Check className="size-3.5 text-emerald-400" aria-hidden />
-							Aplicado por você · agora — NPC salvo no Diário
+							{isPatch
+								? `Aplicado por você · agora — ficha de ${(proposal as IaMesaCharacterPatchProposal).characterName} atualizada`
+								: "Aplicado por você · agora — NPC salvo no Diário"}
 						</p>
 						<Button
 							type="button"
@@ -531,10 +569,161 @@ function ProposalCard({
 				)}
 				{status === "undone" && (
 					<p className="text-xs text-muted-foreground">
-						Desfeito. O NPC foi removido.
+						{isPatch
+							? "Desfeito. A ficha voltou ao que era."
+							: "Desfeito. O NPC foi removido."}
 					</p>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function NpcProposalBody({ proposal }: { proposal: IaMesaNpcProposal }) {
+	const lines = describeProposal(proposal);
+	const [expanded, setExpanded] = useState<number | null>(0);
+	return (
+		<ul className="divide-y divide-border/70">
+			{lines.map((line, index) => {
+				const Icon = index === 0 ? FileText : IdCard;
+				const isExpanded = expanded === index;
+				return (
+					<li key={line.meta}>
+						<button
+							type="button"
+							aria-expanded={isExpanded}
+							onClick={() => setExpanded(isExpanded ? null : index)}
+							className="flex min-h-11 w-full items-start gap-3 px-3.5 py-2.5 text-left focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none [@media(hover:hover)]:hover:bg-muted/40"
+						>
+							<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+								<Icon className="size-3.5" aria-hidden />
+							</span>
+							<span className="min-w-0 flex-1">
+								<span className="block truncate text-sm font-semibold">
+									{line.title}
+								</span>
+								<span className="block truncate text-xs text-muted-foreground">
+									{line.meta}
+								</span>
+								{line.preview && (
+									<span
+										className={cn(
+											"mt-1.5 block whitespace-pre-wrap text-xs text-muted-foreground",
+											!isExpanded && "line-clamp-2",
+										)}
+									>
+										{line.preview}
+									</span>
+								)}
+							</span>
+							<ChevronDown
+								className={cn(
+									"mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150",
+									isExpanded && "rotate-180",
+								)}
+								aria-hidden
+							/>
+						</button>
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
+const DIFF_TAG: Record<CharacterDiffRow["kind"], string | null> = {
+	field: null,
+	"item-add": "Novo item",
+	"item-update": "Item",
+	"item-remove": "Remover item",
+};
+
+function CharacterPatchBody({
+	proposal,
+	found,
+	rows,
+	missing,
+}: {
+	proposal: IaMesaCharacterPatchProposal;
+	found: boolean;
+	rows: CharacterDiffRow[];
+	missing: number;
+}) {
+	return (
+		<div className="space-y-2 px-3.5 py-2.5">
+			<div className="flex items-start gap-3">
+				<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+					<IdCard className="size-3.5" aria-hidden />
+				</span>
+				<div className="min-w-0 flex-1">
+					<p className="truncate text-sm font-semibold">
+						{proposal.characterName}
+					</p>
+					<p className="truncate text-xs text-muted-foreground">
+						Ficha existente · só muda o que está abaixo
+					</p>
+					{proposal.summary && (
+						<p className="mt-1.5 whitespace-pre-wrap text-xs text-muted-foreground">
+							{proposal.summary}
+						</p>
+					)}
+				</div>
+			</div>
+			{!found ? (
+				<p role="alert" className="text-xs text-destructive">
+					Esta ficha não está na campanha ativa. Nada pode ser aplicado aqui.
+				</p>
+			) : missing > 0 ? (
+				<p role="alert" className="text-xs text-destructive">
+					A ficha mudou desde a proposta (item não encontrado). Peça de novo.
+				</p>
+			) : rows.length === 0 ? (
+				<p className="text-xs text-muted-foreground">
+					Nada muda em relação à ficha atual.
+				</p>
+			) : (
+				<ul className="divide-y divide-border/70 rounded-lg border border-border/70">
+					{rows.map((row, index) => (
+						<li
+							key={`${row.kind}-${row.label}-${index}`}
+							className="grid gap-0.5 px-3 py-2 text-xs"
+						>
+							<span className="flex items-center gap-2">
+								<span className="truncate font-semibold text-foreground">
+									{row.label}
+								</span>
+								{DIFF_TAG[row.kind] && (
+									<span className="shrink-0 rounded-full border border-border/70 px-1.5 text-[11px] text-muted-foreground">
+										{DIFF_TAG[row.kind]}
+									</span>
+								)}
+							</span>
+							<span className="flex flex-wrap items-baseline gap-x-1.5 tabular-nums">
+								<span
+									className={cn(
+										"text-muted-foreground",
+										row.before !== "—" && "line-through",
+									)}
+								>
+									{row.before}
+								</span>
+								<span className="text-muted-foreground" aria-hidden>
+									→
+								</span>
+								<span className="sr-only">para</span>
+								<span
+									className={cn(
+										"text-foreground",
+										row.kind === "item-remove" && "text-muted-foreground",
+									)}
+								>
+									{row.after}
+								</span>
+							</span>
+						</li>
+					))}
+				</ul>
+			)}
 		</div>
 	);
 }
