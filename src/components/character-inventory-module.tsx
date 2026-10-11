@@ -1,5 +1,6 @@
 import {
 	Coins,
+	Link2,
 	Package,
 	Pencil,
 	Plus,
@@ -8,7 +9,16 @@ import {
 	Trash2,
 	Weight,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { LinkCampaignItemDialog } from "@/components/character-sheet/link-campaign-item-dialog";
+import {
+	LinkedInventoryRow,
+	LocationToggle,
+} from "@/components/character-sheet/linked-inventory-row";
+import {
+	useCampaignItems,
+	useCanLinkOnSheet,
+} from "@/components/character-sheet/use-linked-items";
 import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -19,6 +29,7 @@ import {
 	DAMAGE_TYPE_LABELS,
 	DAMAGE_TYPES,
 	parseDamageFormula,
+	resolveLinkedEntries,
 } from "@/core/rules";
 import type {
 	Character,
@@ -59,6 +70,23 @@ export function CharacterInventoryModule({
 
 	// D&D 5e: dados de arma (só aparecem quando a categoria é Arma)
 	const isDnd5e = character.system === "dnd5e";
+
+	// Itens da campanha vinculados (vínculo vivo; o servidor confere quem pode).
+	const campaignItems = useCampaignItems();
+	const canLinkRule = useCanLinkOnSheet(character);
+	const canLink = isDnd5e && canLinkRule;
+	const [isLinking, setIsLinking] = useState(false);
+	const linkedEntries = useMemo(
+		() => resolveLinkedEntries(inventoryList, campaignItems.byId),
+		[inventoryList, campaignItems.byId],
+	);
+	const patchEntry = (id: string, patch: Partial<InventoryItem>) => {
+		onUpdateCharacter({
+			inventoryList: inventoryList.map((i) =>
+				i.id === id ? { ...i, ...patch } : i,
+			),
+		});
+	};
 	const [damageDice, setDamageDice] = useState("");
 	const [damageType, setDamageType] = useState<DamageType>("slashing");
 	const [weaponAbility, setWeaponAbility] =
@@ -278,6 +306,18 @@ export function CharacterInventoryModule({
 
 					<div className="flex items-center gap-2 shrink-0">
 						<PartyLootDialog />
+						{canLink && (
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								onClick={() => setIsLinking(true)}
+								className="gap-1.5 text-xs"
+							>
+								<Link2 className="h-3.5 w-3.5" />
+								Da campanha
+							</Button>
+						)}
 						<Button
 							type="button"
 							size="sm"
@@ -712,6 +752,19 @@ export function CharacterInventoryModule({
 						</div>
 					) : (
 						filteredList.map((item) => {
+							if (item.campaignItemId) {
+								return (
+									<LinkedInventoryRow
+										key={item.id}
+										entry={item}
+										item={campaignItems.byId.get(item.campaignItemId) ?? null}
+										canEditLink={canLink}
+										onChange={(patch) => patchEntry(item.id, patch)}
+										onQuantity={(delta) => handleUpdateQuantity(item.id, delta)}
+										onUnlink={() => handleRemoveItem(item.id)}
+									/>
+								);
+							}
 							const itemTotalWeight =
 								(item.weightLbs || 0) * (item.quantity || 1);
 
@@ -784,17 +837,11 @@ export function CharacterInventoryModule({
 										</div>
 
 										{/* Mover entre Mochilas */}
-										<Select
+										<LocationToggle
+											label={`Onde fica ${item.name}`}
 											value={item.location}
-											onChange={(e) =>
-												handleSwitchLocation(item.id, e.target.value as any)
-											}
-											className="h-7 text-[11px] py-0 px-2 rounded-lg"
-										>
-											<option value="equipped">No Corpo</option>
-											<option value="backpack">Mochila Pessoal</option>
-											<option value="mount_stash">Carga / Montaria</option>
-										</Select>
+											onChange={(next) => handleSwitchLocation(item.id, next)}
+										/>
 
 										{/* Editar Item */}
 										<Button
@@ -825,6 +872,19 @@ export function CharacterInventoryModule({
 					)}
 				</div>
 			</div>
+
+			{canLink && (
+				<LinkCampaignItemDialog
+					open={isLinking}
+					onOpenChange={setIsLinking}
+					character={character}
+					items={campaignItems.items}
+					current={linkedEntries}
+					onLink={(entry) =>
+						onUpdateCharacter({ inventoryList: [...inventoryList, entry] })
+					}
+				/>
+			)}
 
 			{/* Anotações Legado (Equipamento & Moedas) */}
 			{(character.equipment?.trim() || character.currency?.trim()) && (
