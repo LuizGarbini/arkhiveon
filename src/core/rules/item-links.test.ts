@@ -231,6 +231,20 @@ describe("previewLinkEffect", () => {
 		expect(e.text).toBe("Acerto +6 · Dano 1d8+4 cortante");
 		expect(e.short).toBe("Acerto +6 · Dano 1d8+4");
 	});
+	it("arma com Carisma usa o CAR da ficha (CA-A6-7)", () => {
+		const pact = {
+			...longsword,
+			weapon: {
+				...longsword.weapon,
+				ability: "charisma",
+				magicBonus: 0,
+			} as Item["weapon"],
+		};
+		const warlock = { ...thalia, charisma: 18, proficiencyBonus: 2 };
+		expect(previewLinkEffect(pact, warlock, onBody).short).toBe(
+			"Acerto +6 · Dano 1d8+4",
+		);
+	});
 	it("muda com a proficiência", () => {
 		expect(
 			previewLinkEffect(longsword, thalia, { ...onBody, proficient: false })

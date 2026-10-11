@@ -110,6 +110,75 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(payload.origin).toEqual({ kind: "blank" });
 	});
 
+	it("Atributo é um Select com os 6 atributos (sem Acuidade) e salva Carisma", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Lâmina do Pacto" },
+		});
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Ataque/ }));
+		const select = screen.getByRole("combobox", {
+			name: "Atributo de ataque",
+		}) as HTMLSelectElement;
+		expect(select.tagName).toBe("SELECT");
+		expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+			"Força",
+			"Destreza",
+			"Constituição",
+			"Inteligência",
+			"Sabedoria",
+			"Carisma",
+		]);
+		expect(screen.getByRole("button", { name: "Acuidade" })).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Dados"), {
+			target: { value: "1d8" },
+		});
+		fireEvent.change(select, { target: { value: "charisma" } });
+		fireEvent.click(screen.getByRole("button", { name: /Criar arma/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.weapon?.ability).toBe("charisma");
+	});
+
+	it("arma antiga com Acuidade abre como Destreza + chip Acuidade e salva dexterity", async () => {
+		const legacy: Item = {
+			...itemDefaults,
+			id: "rap-1",
+			createdAt: 1,
+			createdBy: "u1",
+			name: "Rapieira",
+			type: "Arma",
+			campaignIds: ["camp-1"],
+			weapon: {
+				damageDice: "1d8",
+				damageType: "piercing",
+				ability: "finesse" as never,
+				weaponCategory: "martial",
+				properties: [],
+				customProperties: [],
+				extraDamage: [],
+			},
+		};
+		render(<ItemEditButton item={legacy} open onOpenChange={() => {}} />);
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Ataque/ }));
+		const select = screen.getByRole("combobox", {
+			name: "Atributo de ataque",
+		}) as HTMLSelectElement;
+		expect(select.value).toBe("dexterity");
+		expect(
+			screen
+				.getByRole("button", { name: "Acuidade" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		fireEvent.click(screen.getByRole("button", { name: /Salvar alterações/i }));
+		await vi.waitFor(() => expect(updateItem).toHaveBeenCalledTimes(1));
+		const [, patch] = updateItem.mock.calls[0] as [string, Item];
+		expect(patch.weapon?.ability).toBe("dexterity");
+		expect(patch.weapon?.properties).toEqual(["finesse"]);
+	});
+
 	it("dado inválido mostra erro e não salva", async () => {
 		render(<ItemForm />);
 		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));

@@ -11,6 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.1-atributo-de-ataque",
+		version: "1.6.1",
+		date: "11/10/2026",
+		title: "Armas com qualquer atributo",
+		description:
+			"Agora a arma pode usar qualquer um dos seis atributos no acerto e no dano — não só Força ou Destreza.",
+		bullets: [
+			"No cadastro da arma (aba Ataque), o campo Atributo virou uma lista com Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma.",
+			"Exemplo: a Lâmina do Pacto do bruxo pode somar Carisma; uma arma de mago, Inteligência.",
+			"Acuidade agora é uma propriedade da arma (em Propriedades), e não mais uma opção de atributo.",
+			"Armas antigas marcadas como Acuidade passam a usar Destreza. Se o personagem é mais forte que ágil, é só trocar para Força.",
+			"Vale também para armas cadastradas direto no Inventário da ficha.",
+		],
+	},
+	{
 		id: "v1.6.0-itens-na-ficha",
 		version: "1.6.0",
 		date: "11/10/2026",

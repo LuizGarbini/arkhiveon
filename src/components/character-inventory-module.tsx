@@ -26,10 +26,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+	ABILITY_LABELS,
 	DAMAGE_TYPE_LABELS,
 	DAMAGE_TYPES,
+	normalizeWeaponAbility,
 	parseDamageFormula,
 	resolveLinkedEntries,
+	WEAPON_ABILITIES,
 } from "@/core/rules";
 import type {
 	Character,
@@ -236,7 +239,7 @@ export function CharacterInventoryModule({
 		setDescription(item.description ?? "");
 		setDamageDice(item.weapon?.damageDice ?? "");
 		setDamageType(item.weapon?.damageType ?? "slashing");
-		setWeaponAbility(item.weapon?.ability ?? "strength");
+		setWeaponAbility(normalizeWeaponAbility(item.weapon?.ability));
 		setMagicBonus(item.weapon?.magicBonus ?? 0);
 		setProficient(item.weapon?.proficient !== false);
 		setExtraDamage(item.weapon?.extraDamage ?? []);
@@ -525,6 +528,7 @@ export function CharacterInventoryModule({
 									<Field>
 										<FieldLabel>Atributo</FieldLabel>
 										<Select
+											aria-label="Atributo de ataque"
 											value={weaponAbility}
 											onChange={(e) =>
 												setWeaponAbility(
@@ -532,9 +536,11 @@ export function CharacterInventoryModule({
 												)
 											}
 										>
-											<option value="strength">Força</option>
-											<option value="dexterity">Destreza</option>
-											<option value="finesse">Acuidade (maior)</option>
+											{WEAPON_ABILITIES.map((a) => (
+												<option key={a} value={a}>
+													{ABILITY_LABELS[a]}
+												</option>
+											))}
 										</Select>
 									</Field>
 									<Field>

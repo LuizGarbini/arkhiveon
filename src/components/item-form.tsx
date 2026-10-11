@@ -9,6 +9,7 @@ import {
 	emptyWeaponStats,
 	type ItemFormTabId,
 	itemCategoryKind,
+	normalizeItemWeapon,
 	tabStatus,
 	validateItemDraft,
 } from "@/core/rules/item-mechanics";
@@ -181,6 +182,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 			? {
 					...itemDefaults,
 					...item,
+					weapon: normalizeItemWeapon(item.weapon),
 					campaignIds: item.campaignIds?.length
 						? item.campaignIds
 						: initialCampaignIds,

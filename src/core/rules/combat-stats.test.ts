@@ -215,6 +215,38 @@ describe("prosa (mocks 03)", () => {
 		expect(e.total).toBe("+6");
 	});
 
+	it('Carisma: prosa diz "seu Carisma" (bruxo, CA-A6-2)', () => {
+		const [pact] = getEquippedWeaponAttacks(
+			[
+				{
+					id: "pact",
+					name: "Lâmina do Pacto",
+					quantity: 1,
+					weightLbs: 0,
+					location: "equipped",
+					category: "weapon",
+					weapon: {
+						damageDice: "1d8",
+						damageType: "slashing",
+						ability: "charisma",
+					},
+				},
+			],
+			{ charisma: 18 },
+			2,
+		);
+		expect(proseText(explainAttack(pact).sentence)).toBe(
+			"Seu acerto é +6 porque você soma proficiência +2 e seu Carisma +4.",
+		);
+		expect(proseText(explainDamage(pact).sentence)).toBe(
+			"Seu dano é 1d8+4 cortante porque a Lâmina do Pacto rola 1d8 e você soma seu Carisma +4.",
+		);
+		expect(explainDamage(pact).blocks[1]).toEqual({
+			value: "+4",
+			label: "Carisma",
+		});
+	});
+
 	it("CA: frase exata + nota do mock", () => {
 		const stat = computeArmorClass(thalia, [linked(studdedLeather)]);
 		const e = explainArmorClass(stat);

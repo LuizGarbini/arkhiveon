@@ -96,6 +96,25 @@ describe("ia-mesa: propose_character_patch (servidor)", () => {
 		expect(p?.removeItemIds).toEqual(["rope"]);
 	});
 
+	it("atributo de arma: aceita os 6 e finesse legado vira Destreza", () => {
+		const withAbility = (ability: string) =>
+			parseCharacterPatch(
+				{
+					...rawPatch,
+					updateItems: [
+						{
+							itemId: "sword",
+							weapon: { ...rawPatch.updateItems[0].weapon, ability },
+						},
+					],
+				},
+				scope,
+			)?.updateItems[0].weapon?.ability;
+		expect(withAbility("charisma")).toBe("charisma");
+		expect(withAbility("finesse")).toBe("dexterity");
+		expect(withAbility("nope")).toBe("strength");
+	});
+
 	it("limita faixas (FOR 1–30, nível 1–20)", () => {
 		const p = parseCharacterPatch(
 			{ characterId: "dante-1", fields: { strength: 99, level: 0 } },

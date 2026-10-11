@@ -284,8 +284,9 @@ function partValue(part: DamagePart): string {
 		: formatDamageFormula(part.dice, part.flat);
 }
 
-function abilityShort(label: string): string {
-	return label.replace(/\s*\(acuidade\)/, "");
+/** "sua Força", mas "seu Carisma". */
+function possessive(abilityLabel: string): string {
+	return abilityLabel === "Carisma" ? "seu " : "sua ";
 }
 
 export function explainDamage(attack: WeaponAttack): Explanation {
@@ -302,7 +303,7 @@ export function explainDamage(attack: WeaponAttack): Explanation {
 	for (const p of counted) {
 		if (p.origin === "ability")
 			clauses.push([
-				s("você soma sua "),
+				s(`você soma ${possessive(p.label)}`),
 				b(`${p.label} ${formatModifier(p.flat)}`),
 			]);
 		else if (p.origin === "magic")
@@ -333,7 +334,7 @@ export function explainDamage(attack: WeaponAttack): Explanation {
 			p.origin === "weapon"
 				? shortName(attack.name)
 				: p.origin === "ability"
-					? abilityShort(p.label)
+					? p.label
 					: p.origin === "magic"
 						? "Mágica"
 						: p.label,
@@ -358,8 +359,8 @@ export function explainAttack(attack: WeaponAttack): Explanation {
 			clauses.push([s("a magia da arma dá "), b(v)]);
 			blocks.push({ value: v, label: "Mágica" });
 		} else {
-			clauses.push([s("sua "), b(`${p.label} ${v}`)]);
-			blocks.push({ value: v, label: abilityShort(p.label) });
+			clauses.push([s(possessive(p.label)), b(`${p.label} ${v}`)]);
+			blocks.push({ value: v, label: p.label });
 		}
 	}
 	const notes = attack.attackParts.some((p) => p.label === "Proficiência")

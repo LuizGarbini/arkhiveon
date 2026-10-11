@@ -12,7 +12,15 @@ import type {
 	ItemWeaponStats,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
-import { DAMAGE_TYPE_LABELS, parseDamageFormula } from "./weapon-damage";
+import {
+	ABILITY_LABELS,
+	DAMAGE_TYPE_LABELS,
+	normalizeWeaponAbility,
+	parseDamageFormula,
+	WEAPON_ABILITIES,
+} from "./weapon-damage";
+
+export { normalizeWeaponAbility, WEAPON_ABILITIES };
 
 export type ItemCategoryKind = "weapon" | "armor" | "other";
 
@@ -52,7 +60,7 @@ export const WEAPON_PROPERTY_LABELS: Record<WeaponPropertyKey, string> = {
 	loading: "Recarga",
 };
 
-/** Chips mostrados na aba Ataque (Acuidade fica no seletor de atributo). */
+/** Chips mostrados na aba Ataque. Acuidade é propriedade (não muda a conta ainda). */
 export const WEAPON_PROPERTY_CHIPS: WeaponPropertyKey[] = [
 	"versatile",
 	"light",
@@ -60,22 +68,45 @@ export const WEAPON_PROPERTY_CHIPS: WeaponPropertyKey[] = [
 	"two_handed",
 	"thrown",
 	"reach",
+	"finesse",
 	"ammunition",
 	"loading",
 ];
 
 export const WEAPON_ABILITY_LABELS: Record<ItemWeaponStats["ability"], string> =
-	{
-		strength: "Força",
-		dexterity: "Destreza",
-		finesse: "Acuidade",
-	};
+	ABILITY_LABELS;
 
 const WEAPON_ABILITY_SHORT: Record<ItemWeaponStats["ability"], string> = {
 	strength: "FOR",
 	dexterity: "DES",
-	finesse: "DES/FOR",
+	constitution: "CON",
+	intelligence: "INT",
+	wisdom: "SAB",
+	charisma: "CAR",
 };
+
+/**
+ * Arma do Item lida do banco: atributo legado "finesse"/"acuidade" vira
+ * Destreza e a arma ganha a propriedade Acuidade (se ainda não tinha).
+ */
+export function normalizeItemWeapon<T extends ItemWeaponStats | undefined>(
+	weapon: T,
+): T {
+	if (!weapon) return weapon;
+	const raw = (weapon as { ability?: unknown }).ability;
+	const ability = normalizeWeaponAbility(raw);
+	const legacyFinesse = raw === "finesse" || raw === "acuidade";
+	const properties = weapon.properties ?? [];
+	if (ability === raw && weapon.properties) return weapon;
+	return {
+		...weapon,
+		ability,
+		properties:
+			legacyFinesse && !properties.includes("finesse")
+				? [...properties, "finesse"]
+				: properties,
+	};
+}
 
 export const WEAPON_CATEGORY_LABELS: Record<
 	ItemWeaponStats["weaponCategory"],
@@ -225,7 +256,7 @@ export function summarizeItemForSheet(
 	weapon: ItemWeaponStats | undefined,
 ): ItemSheetSummary | null {
 	if (!weapon || !isValidDamageDice(weapon.damageDice)) return null;
-	const ability = WEAPON_ABILITY_SHORT[weapon.ability];
+	const ability = WEAPON_ABILITY_SHORT[normalizeWeaponAbility(weapon.ability)];
 	const magic = weapon.magicBonus ? signed(weapon.magicBonus) : "";
 	const extras = weapon.extraDamage
 		.filter((e) => e.amount.trim() && isValidDamageAmount(e.amount))
@@ -261,7 +292,9 @@ export function copyItemMechanics(
 	Item,
 	"type" | "subtype" | "rarity" | "weapon" | "armor" | "bonuses" | "origin"
 > {
-	const weapon = from.weapon ? structuredClone(from.weapon) : undefined;
+	const weapon = from.weapon
+		? normalizeItemWeapon(structuredClone(from.weapon))
+		: undefined;
 	if (weapon) {
 		weapon.properties ??= [];
 		weapon.customProperties ??= [];

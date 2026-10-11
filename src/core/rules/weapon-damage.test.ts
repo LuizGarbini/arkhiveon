@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { InventoryItem, InventoryWeaponStats } from "@/lib/store/types";
+import type {
+	InventoryItem,
+	InventoryWeaponStats,
+	WeaponAbility,
+} from "@/lib/store/types";
 import {
 	averageDamage,
 	buildWeaponAttack,
@@ -7,6 +11,7 @@ import {
 	getEquippedWeaponAttacks,
 	isEquippedWeapon,
 	parseDamageFormula,
+	weaponAbilityScores,
 } from "./weapon-damage";
 
 const longswordStats = {
@@ -129,23 +134,94 @@ describe("buildWeaponAttack", () => {
 		]);
 	});
 
-	it("acuidade usa o maior entre FOR e DES; sem proficiência não soma PB", () => {
+	it("atributo legado finesse lê como Destreza (sem max FOR/DES); sem proficiência não soma PB", () => {
 		const rapier = {
 			...longsword,
 			name: "Rapieira",
 			weapon: {
 				damageDice: "1d8",
 				damageType: "piercing" as const,
-				ability: "finesse" as const,
+				ability: "finesse" as never,
 				proficient: false,
 			},
 		};
-		const attack = buildWeaponAttack(rapier, { strength: 8, dexterity: 18 }, 2);
-		expect(attack.attackBonus).toBe(4);
+		const attack = buildWeaponAttack(
+			rapier,
+			{ strength: 18, dexterity: 12 },
+			2,
+		);
+		expect(attack.attackBonus).toBe(1);
+		expect(attack.attackParts).toEqual([{ label: "Destreza", value: 1 }]);
+		expect(attack.formula).toBe("1d8+1");
+	});
+
+	const pactBlade = {
+		...longsword,
+		name: "Lâmina do Pacto",
+		weapon: {
+			damageDice: "1d8",
+			damageType: "slashing" as const,
+			ability: "charisma" as WeaponAbility,
+		},
+	};
+	const warlock = weaponAbilityScores({
+		strength: 8,
+		dexterity: 14,
+		intelligence: 10,
+		charisma: 18,
+	});
+
+	it("bruxo com Carisma 18: acerto +6, dano 1d8+4 (CA-A6-2)", () => {
+		const attack = buildWeaponAttack(pactBlade, warlock, 2);
+		expect(attack.attackBonus).toBe(6);
 		expect(attack.attackParts).toEqual([
-			{ label: "Destreza (acuidade)", value: 4 },
+			{ label: "Proficiência", value: 2 },
+			{ label: "Carisma", value: 4 },
 		]);
 		expect(attack.formula).toBe("1d8+4");
+	});
+
+	it("mesma arma com Inteligência 10: acerto +2, dano 1d8 (CA-A6-3)", () => {
+		const attack = buildWeaponAttack(
+			{
+				...pactBlade,
+				weapon: { ...pactBlade.weapon, ability: "intelligence" },
+			},
+			warlock,
+			2,
+		);
+		expect(attack.attackBonus).toBe(2);
+		expect(attack.formula).toBe("1d8");
+	});
+
+	it("cada um dos 6 atributos usa o próprio modificador e rótulo", () => {
+		const s = weaponAbilityScores({
+			strength: 12,
+			dexterity: 14,
+			constitution: 16,
+			intelligence: 8,
+			wisdom: 20,
+			charisma: 6,
+		});
+		const expected: [WeaponAbility, string, number][] = [
+			["strength", "Força", 1],
+			["dexterity", "Destreza", 2],
+			["constitution", "Constituição", 3],
+			["intelligence", "Inteligência", -1],
+			["wisdom", "Sabedoria", 5],
+			["charisma", "Carisma", -2],
+		];
+		for (const [ability, label, mod] of expected) {
+			const a = buildWeaponAttack(
+				{
+					...pactBlade,
+					weapon: { ...pactBlade.weapon, ability, proficient: false },
+				},
+				s,
+				2,
+			);
+			expect(a.attackParts).toEqual([{ label, value: mod }]);
+		}
 	});
 
 	it("modificador negativo reduz o dano; dado extra entra no tipo certo", () => {

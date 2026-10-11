@@ -6,6 +6,7 @@ import type {
 	DamageType,
 	InventoryItem,
 	InventoryWeaponStats,
+	WeaponAbility,
 } from "@/lib/store/types";
 import { calculateAbilityModifier } from "./modifier-engine";
 
@@ -70,9 +71,53 @@ export interface WeaponAttack {
 	types: DamageType[];
 }
 
-export interface WeaponAbilityScores {
-	strength: number;
-	dexterity: number;
+/** Ordem do seletor: FOR, DES, CON, INT, SAB, CAR. */
+export const WEAPON_ABILITIES: readonly WeaponAbility[] = [
+	"strength",
+	"dexterity",
+	"constitution",
+	"intelligence",
+	"wisdom",
+	"charisma",
+];
+
+export const ABILITY_LABELS: Record<WeaponAbility, string> = {
+	strength: "Força",
+	dexterity: "Destreza",
+	constitution: "Constituição",
+	intelligence: "Inteligência",
+	wisdom: "Sabedoria",
+	charisma: "Carisma",
+};
+
+/**
+ * Lê o atributo salvo. Dado antigo "finesse"/"acuidade" vira Destreza
+ * (Acuidade agora é propriedade da arma). Ausente ou inválido → Força.
+ */
+export function normalizeWeaponAbility(value: unknown): WeaponAbility {
+	if (
+		typeof value === "string" &&
+		(WEAPON_ABILITIES as readonly string[]).includes(value)
+	)
+		return value as WeaponAbility;
+	if (value === "finesse" || value === "acuidade") return "dexterity";
+	return "strength";
+}
+
+export type WeaponAbilityScores = Record<WeaponAbility, number>;
+
+/** Os 6 valores de atributo da ficha (10 quando vazio). */
+export function weaponAbilityScores(
+	character: Partial<Record<WeaponAbility, unknown>>,
+): WeaponAbilityScores {
+	return {
+		strength: Number(character.strength) || 10,
+		dexterity: Number(character.dexterity) || 10,
+		constitution: Number(character.constitution) || 10,
+		intelligence: Number(character.intelligence) || 10,
+		wisdom: Number(character.wisdom) || 10,
+		charisma: Number(character.charisma) || 10,
+	};
 }
 
 const DICE_RE = /^(\d*)d(\d+)$/i;
@@ -158,24 +203,21 @@ export function isEquippedWeapon(
 	return !!base && base.dice.length > 0;
 }
 
+/** Acuidade (propriedade) não muda a conta aqui — "maior entre FOR/DES" é fatia futura. */
 function abilityFor(
-	ability: InventoryWeaponStats["ability"],
-	scores: WeaponAbilityScores,
+	ability: unknown,
+	scores: Partial<WeaponAbilityScores>,
 ): { label: string; mod: number } {
-	const str = calculateAbilityModifier(scores.strength);
-	const dex = calculateAbilityModifier(scores.dexterity);
-	if (ability === "dexterity") return { label: "Destreza", mod: dex };
-	if (ability === "finesse") {
-		return dex > str
-			? { label: "Destreza (acuidade)", mod: dex }
-			: { label: "Força (acuidade)", mod: str };
-	}
-	return { label: "Força", mod: str };
+	const key = normalizeWeaponAbility(ability);
+	return {
+		label: ABILITY_LABELS[key],
+		mod: calculateAbilityModifier(Number(scores[key]) || 10),
+	};
 }
 
 export function buildWeaponAttack(
 	item: InventoryItem & { weapon: InventoryWeaponStats },
-	scores: WeaponAbilityScores,
+	scores: Partial<WeaponAbilityScores>,
 	proficiencyBonus: number,
 ): WeaponAttack {
 	const w = item.weapon;
@@ -276,7 +318,7 @@ export function buildWeaponAttack(
 /** Ataques derivados das armas equipadas. Vazio se não houver arma equipada com dano. */
 export function getEquippedWeaponAttacks(
 	inventory: InventoryItem[] | undefined,
-	scores: WeaponAbilityScores,
+	scores: Partial<WeaponAbilityScores>,
 	proficiencyBonus: number,
 ): WeaponAttack[] {
 	return (inventory ?? [])

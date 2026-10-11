@@ -1,4 +1,5 @@
 import type { StateCreator } from "zustand";
+import { normalizeItemWeapon } from "@/core/rules/item-mechanics";
 import { fetchGlobalTotalCount, loadRemoteState } from "../remote-store";
 import { getSupabase } from "../supabase";
 import type { UserPlan } from "../user-plan";
@@ -320,10 +321,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					...sessionDefaults,
 					...(s as Partial<Session>),
 				})) as Session[],
-				items: ensureArray(remote.items).map((i) => ({
-					...itemDefaults,
-					...(i as Partial<Item>),
-				})) as Item[],
+				items: ensureArray(remote.items).map((i) => {
+					const item = { ...itemDefaults, ...(i as Partial<Item>) } as Item;
+					return item.weapon
+						? { ...item, weapon: normalizeItemWeapon(item.weapon) }
+						: item;
+				}) as Item[],
 				locations: ensureArray(remote.locations).map((l) => ({
 					...locationDefaults,
 					...(l as Partial<GameLocation>),
@@ -574,10 +577,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 											),
 									);
 									return {
-										[storeKey]: [processed, ...withoutLocalSeed].slice(
-											0,
-											1000,
-										),
+										[storeKey]: [processed, ...withoutLocalSeed].slice(0, 1000),
 									};
 								}
 							} else if (table === "activity_log") {

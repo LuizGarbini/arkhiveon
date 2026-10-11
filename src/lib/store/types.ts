@@ -303,12 +303,21 @@ export interface InventoryWeaponExtraDamage {
 	type: DamageType;
 }
 
+/** Atributo usado no acerto/dano da arma (qualquer um dos 6). */
+export type WeaponAbility =
+	| "strength"
+	| "dexterity"
+	| "constitution"
+	| "intelligence"
+	| "wisdom"
+	| "charisma";
+
 export interface InventoryWeaponStats {
 	/** Dado base da arma, ex.: "1d8" ou "2d6". */
 	damageDice: string;
 	damageType: DamageType;
-	/** Atributo usado no acerto/dano. "finesse" = maior entre FOR e DES. */
-	ability: "strength" | "dexterity" | "finesse";
+	/** Atributo usado no acerto/dano. */
+	ability: WeaponAbility;
 	/** Bônus mágico (+1/+2/+3): soma no acerto e no dano. */
 	magicBonus?: number;
 	/** Proficiente com a arma (soma proficiência no acerto). Padrão: true. */
@@ -536,8 +545,8 @@ export interface ItemWeaponStats {
 	damageType: DamageType;
 	/** Bônus mágico (+1/+2/+3): soma no acerto e no dano. */
 	magicBonus?: number;
-	/** "finesse" = Acuidade (maior entre FOR e DES). */
-	ability: "strength" | "dexterity" | "finesse";
+	/** Atributo usado no acerto/dano. Acuidade é propriedade (`properties`), não atributo. */
+	ability: WeaponAbility;
 	weaponCategory: "simple" | "martial";
 	/** Texto livre: "1,5 m", "24/96 m". */
 	range?: string;

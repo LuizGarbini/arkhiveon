@@ -5,9 +5,14 @@ import {
 	describeItemLine,
 	isValidDamageDice,
 	itemCategoryKind,
+	normalizeItemWeapon,
+	normalizeWeaponAbility,
 	summarizeItemForSheet,
 	tabStatus,
 	validateItemDraft,
+	WEAPON_ABILITIES,
+	WEAPON_ABILITY_LABELS,
+	WEAPON_PROPERTY_CHIPS,
 } from "./item-mechanics";
 
 const aurora: ItemWeaponStats = {
@@ -92,18 +97,27 @@ describe("summarizeItemForSheet", () => {
 			extra: "+1d6 rad.",
 		});
 	});
-	it("Acuidade vira DES/FOR e sem bônus some o +N", () => {
+	it("Carisma vira CAR e sem bônus some o +N", () => {
 		const s = summarizeItemForSheet({
 			...aurora,
-			ability: "finesse",
+			ability: "charisma",
 			magicBonus: undefined,
 			extraDamage: [],
 		});
 		expect(s).toEqual({
-			attack: "Prof+DES/FOR",
-			damage: "1d8+DES/FOR",
+			attack: "Prof+CAR",
+			damage: "1d8+CAR",
 			extra: undefined,
 		});
+	});
+	it("Acuidade legada resume como DES", () => {
+		const s = summarizeItemForSheet({
+			...aurora,
+			ability: "finesse" as never,
+			magicBonus: 1,
+			extraDamage: [],
+		});
+		expect(s?.attack).toBe("Prof+DES+1");
 	});
 	it("sem dado válido não resume", () => {
 		expect(summarizeItemForSheet(undefined)).toBeNull();
@@ -186,5 +200,45 @@ describe("describeItemLine", () => {
 		expect(describeItemLine({ type: "Arma", weapon: aurora })).toBe(
 			"Marcial · corpo a corpo",
 		);
+	});
+});
+
+describe("atributo da arma (6 atributos)", () => {
+	it("seletor tem exatamente os 6, na ordem, sem Acuidade", () => {
+		expect(WEAPON_ABILITIES.map((a) => WEAPON_ABILITY_LABELS[a])).toEqual([
+			"Força",
+			"Destreza",
+			"Constituição",
+			"Inteligência",
+			"Sabedoria",
+			"Carisma",
+		]);
+	});
+	it("Acuidade é chip de propriedade", () => {
+		expect(WEAPON_PROPERTY_CHIPS).toContain("finesse");
+	});
+	it("normalizeWeaponAbility: 6 passam, finesse/acuidade → DES, lixo → FOR", () => {
+		for (const a of WEAPON_ABILITIES) expect(normalizeWeaponAbility(a)).toBe(a);
+		expect(normalizeWeaponAbility("finesse")).toBe("dexterity");
+		expect(normalizeWeaponAbility("acuidade")).toBe("dexterity");
+		expect(normalizeWeaponAbility("xyz")).toBe("strength");
+		expect(normalizeWeaponAbility(undefined)).toBe("strength");
+	});
+	it("arma legada com finesse vira Destreza e ganha a propriedade Acuidade", () => {
+		const legacy = {
+			...aurora,
+			ability: "finesse",
+			properties: ["light"],
+		} as unknown as ItemWeaponStats;
+		const n = normalizeItemWeapon(legacy);
+		expect(n.ability).toBe("dexterity");
+		expect(n.properties).toEqual(["light", "finesse"]);
+		expect(
+			normalizeItemWeapon({ ...legacy, properties: ["finesse"] }).properties,
+		).toEqual(["finesse"]);
+	});
+	it("arma já válida volta igual (mesma referência)", () => {
+		expect(normalizeItemWeapon(aurora)).toBe(aurora);
+		expect(normalizeItemWeapon(undefined)).toBeUndefined();
 	});
 });

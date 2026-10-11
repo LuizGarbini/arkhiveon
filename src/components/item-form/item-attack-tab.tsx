@@ -8,6 +8,8 @@ import {
 	emptyWeaponStats,
 	type ItemDraftErrors,
 	makeExtraDamage,
+	normalizeWeaponAbility,
+	WEAPON_ABILITIES,
 	WEAPON_ABILITY_LABELS,
 	WEAPON_PROPERTY_CHIPS,
 	WEAPON_PROPERTY_LABELS,
@@ -17,6 +19,7 @@ import type {
 	DamageType,
 	ItemArmorStats,
 	ItemWeaponStats,
+	WeaponAbility,
 	WeaponPropertyKey,
 } from "@/lib/store";
 import { Button } from "../ui/button";
@@ -75,6 +78,7 @@ export function ItemAttackTab({ form, errors }: ItemAttackTabProps) {
 	const weapon: ItemWeaponStats = { ...emptyWeaponStats(), ...raw };
 	const ids = {
 		dice: useId(),
+		ability: useId(),
 		type: useId(),
 		magic: useId(),
 		range: useId(),
@@ -156,16 +160,23 @@ export function ItemAttackTab({ form, errors }: ItemAttackTabProps) {
 			</FormSection>
 
 			<FormSection title="Como ataca">
-				<Field label="Atributo">
-					<Segmented
-						ariaLabel="Atributo de ataque"
-						value={weapon.ability}
-						onChange={(ability) => update({ ability })}
-						options={(["strength", "dexterity", "finesse"] as const).map(
-							(v) => ({ value: v, label: WEAPON_ABILITY_LABELS[v] }),
-						)}
-					/>
+				<Field label="Atributo" htmlFor={ids.ability}>
+					<Select
+						id={ids.ability}
+						aria-label="Atributo de ataque"
+						value={normalizeWeaponAbility(weapon.ability)}
+						onChange={(e) =>
+							update({ ability: e.target.value as WeaponAbility })
+						}
+					>
+						{WEAPON_ABILITIES.map((a) => (
+							<option key={a} value={a}>
+								{WEAPON_ABILITY_LABELS[a]}
+							</option>
+						))}
+					</Select>
 				</Field>
+				<HelpText>Soma no acerto e no dano. Ex.: bruxo usa Carisma.</HelpText>
 				<div className="grid grid-cols-2 gap-3">
 					<Field label="Alcance" htmlFor={ids.range}>
 						<Input
