@@ -26,8 +26,15 @@ import {
 	canCreateCampaignItem,
 	canManageOwnItem,
 } from "@/lib/worldbuilding/item-ownership";
+import { ItemAttackTab, ItemDefenseTab } from "./item-form/item-attack-tab";
+import { ItemBonusTab } from "./item-form/item-bonus-tab";
+import { ItemDescriptionTab } from "./item-form/item-description-tab";
 import type { ItemFormValues } from "./item-form/item-form-controls";
-import { buildItemTabs, ItemFormSidebar } from "./item-form/item-form-sidebar";
+import {
+	buildItemTabs,
+	ItemFormMobileHeader,
+	ItemFormSidebar,
+} from "./item-form/item-form-sidebar";
 import { ItemIdentityTab } from "./item-form/item-identity-tab";
 import { Button } from "./ui/button";
 import {
@@ -107,7 +114,11 @@ interface ItemFormDialogProps {
  * Mobile (< sm): sheet de altura cheia ancorado embaixo, sem X, footer fixo.
  */
 const DIALOG_LAYOUT =
-	"flex flex-col gap-0 overflow-hidden p-0 h-[min(85vh,720px)] w-[calc(100%-2rem)] sm:max-w-[920px]";
+	"flex flex-col gap-0 overflow-hidden p-0 " +
+	// mobile: sheet
+	"top-auto bottom-0 left-0 h-[calc(100dvh-2.5rem)] w-full max-w-none translate-x-0 translate-y-0 rounded-t-3xl rounded-b-none border-x-0 border-b-0 " +
+	// desktop: dialog centralizado
+	"sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:h-[min(85vh,720px)] sm:w-[calc(100%-2rem)] sm:max-w-[920px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border";
 
 function ItemFormDialog({
 	item,
@@ -161,6 +172,9 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 
 	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
 	const [activeTab, setActiveTab] = useState<ItemFormTabId>("identity");
+	const [showLegacyNotes] = useState(() =>
+		Boolean(item?.stats?.trim() || item?.properties?.trim()),
+	);
 
 	const form = useForm<ItemFormValues>({
 		defaultValues: item
@@ -195,7 +209,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const currentTab: ItemFormTabId =
 		activeTab === "mechanics" && kind === "other" ? "identity" : activeTab;
 	const statuses = tabStatus(watched, mode);
-	const { errors: _errors } = validateItemDraft(watched);
+	const { errors } = validateItemDraft(watched);
 	const canSubmit = Boolean(name.trim());
 	const imageSrc =
 		resolveItemImageUrl(
@@ -297,6 +311,16 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 			onSubmit={handleSubmit(onSubmit)}
 			className="flex h-full min-h-0 flex-col"
 		>
+			<ItemFormMobileHeader
+				name={name}
+				placeholderName={placeholderName}
+				category={watched.type ?? ""}
+				rarity={watched.rarity ?? "comum"}
+				imageSrc={imageSrc}
+				tabs={tabs}
+				activeTab={currentTab}
+				onTabChange={setActiveTab}
+			/>
 			<div className="flex min-h-0 flex-1 border-t border-border/60 sm:border-t-0">
 				<ItemFormSidebar
 					name={name}
@@ -345,10 +369,19 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 								onCategoryChange={handleCategoryChange}
 							/>
 						) : null}
-						{currentTab !== "identity" ? (
-							<p className="text-[13px] text-muted-foreground">
-								Em construção.
-							</p>
+						{currentTab === "mechanics" && kind === "weapon" ? (
+							<ItemAttackTab form={form} errors={errors} />
+						) : null}
+						{currentTab === "mechanics" && kind === "armor" ? (
+							<ItemDefenseTab form={form} />
+						) : null}
+						{currentTab === "bonus" ? <ItemBonusTab form={form} /> : null}
+						{currentTab === "description" ? (
+							<ItemDescriptionTab
+								form={form}
+								itemId={item?.id}
+								showLegacyNotes={showLegacyNotes}
+							/>
 						) : null}
 					</div>
 

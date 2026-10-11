@@ -20,6 +20,7 @@ import {
 import type { ItemArmorStats, ItemWeaponStats } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { normalizeRarityKey, rarityStyleFor } from "../item-rarity";
+import { Segmented } from "./item-form-controls";
 
 export interface ItemTabDef {
 	id: ItemFormTabId;
@@ -275,5 +276,58 @@ export function ItemFormSidebar({
 				<SheetPreview kind={kind} weapon={weapon} armor={armor} />
 			</div>
 		</aside>
+	);
+}
+
+interface ItemFormMobileHeaderProps {
+	name: string;
+	placeholderName: string;
+	category: string;
+	rarity: string;
+	imageSrc?: string;
+	tabs: ItemTabDef[];
+	activeTab: ItemFormTabId;
+	onTabChange: (tab: ItemFormTabId) => void;
+}
+
+/** Topo do sheet mobile: alça, miniatura + nome + badges e abas no topo. */
+export function ItemFormMobileHeader({
+	name,
+	placeholderName,
+	category,
+	rarity,
+	imageSrc,
+	tabs,
+	activeTab,
+	onTabChange,
+}: ItemFormMobileHeaderProps) {
+	const displayName = name.trim() || placeholderName;
+	return (
+		<div className="shrink-0 space-y-3 px-4 pt-2.5 pb-3 sm:hidden">
+			<div
+				className="mx-auto h-1 w-10 rounded-full bg-muted-foreground/40"
+				aria-hidden="true"
+			/>
+			<div className="flex items-center gap-3">
+				<ItemThumb src={imageSrc} name={displayName} />
+				<div className="min-w-0 space-y-1.5">
+					<p
+						className={cn(
+							"truncate font-display text-lg leading-tight",
+							name.trim() ? "text-foreground" : "text-muted-foreground",
+						)}
+					>
+						{displayName}
+					</p>
+					<ItemBadges category={category} rarity={rarity} />
+				</div>
+			</div>
+			<Segmented
+				ariaLabel="Seções do item"
+				value={activeTab}
+				onChange={onTabChange}
+				options={tabs.map((t) => ({ value: t.id, label: t.label }))}
+			/>
+		</div>
 	);
 }
