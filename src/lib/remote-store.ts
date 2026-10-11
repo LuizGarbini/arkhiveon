@@ -255,12 +255,16 @@ function rowFor(
 	};
 
 	switch (kind) {
-		case "character":
+		case "character": {
+			// `createdBy` é só leitura (coluna created_by); não vai para `data`.
+			const { createdBy: _createdBy, ...characterData } = entity;
 			return {
 				...base,
+				data: toJson(characterData),
 				name: entityName(kind, entity),
 				system: stringValue(entity.system, "generic"),
 			};
+		}
 		case "npc":
 			return {
 				...base,
@@ -454,13 +458,27 @@ async function selectEntities(
 	campaignId: string,
 ): Promise<unknown[]> {
 	const supabase = requireSupabase();
+	const isCharacters = table === SUPABASE_TABLES.characters;
 	const { data, error } = await supabase
 		.from(table)
-		.select("id,data,created_at,updated_at")
+		.select(
+			isCharacters
+				? "id,data,created_at,updated_at,created_by"
+				: "id,data,created_at,updated_at",
+		)
 		.eq("campaign_id", campaignId)
 		.order("updated_at", { ascending: false });
 	if (error) throw error;
-	return ((data ?? []) as EntityRow[]).map(fromEntityRow);
+	const rows = (data ?? []) as unknown as (EntityRow & {
+		created_by?: string | null;
+	})[];
+	if (!isCharacters) return rows.map(fromEntityRow);
+	// Ficha: `createdBy` vem só da coluna (quem pode vincular itens).
+	return rows.map((row) => {
+		const entity = fromEntityRow(row) as Record<string, unknown>;
+		delete entity.createdBy;
+		return row.created_by ? { ...entity, createdBy: row.created_by } : entity;
+	});
 }
 
 async function selectWorldEntities(
