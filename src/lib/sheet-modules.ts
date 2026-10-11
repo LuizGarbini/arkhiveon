@@ -174,6 +174,41 @@ export function createDefaultSheetLayout(
 	};
 }
 
+/**
+ * Kinds whose title is chosen by the user. Every other kind is a system module
+ * and its title is locked to SHEET_MODULE_LABELS[kind].
+ */
+const USER_TITLED_KINDS = new Set<SheetModuleKind>([
+	"customText",
+	"customStats",
+	"custom_template_fields",
+]);
+
+export function hasLockedSheetModuleTitle(kind: SheetModuleKind) {
+	return !USER_TITLED_KINDS.has(kind) && kind in SHEET_MODULE_LABELS;
+}
+
+/**
+ * System modules (abilities, skills, combat, inventory…) always carry their
+ * canonical label. Prevents a stale/other module's title from being persisted
+ * onto a system module (Elbereth bug: abilities="Combate",
+ * skills/feats/magic="Inventário").
+ */
+export function lockSheetModuleTitle<
+	T extends Pick<SheetModuleConfig, "kind" | "title">,
+>(module: T): T {
+	if (!hasLockedSheetModuleTitle(module.kind)) return module;
+	const label = SHEET_MODULE_LABELS[module.kind];
+	return module.title === label ? module : { ...module, title: label };
+}
+
+export function lockSheetLayoutTitles(
+	layout: SheetLayoutConfig,
+): SheetLayoutConfig {
+	if (!Array.isArray(layout?.modules)) return layout;
+	return { ...layout, modules: layout.modules.map(lockSheetModuleTitle) };
+}
+
 export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 	const fallback = createDefaultSheetLayout(character.system);
 	const layout = character.sheetLayout;
@@ -192,11 +227,13 @@ export function normalizeSheetLayout(character: Character): SheetLayoutConfig {
 				typeof module.order === "number"
 			);
 		})
-		.map((module) => ({
-			...(knownFallbacks.get(module.kind) ?? {}),
-			...module,
-			enabled: module.enabled !== false,
-		}));
+		.map((module) =>
+			lockSheetModuleTitle({
+				...(knownFallbacks.get(module.kind) ?? {}),
+				...module,
+				enabled: module.enabled !== false,
+			}),
+		);
 
 	for (const fallbackModule of fallback.modules) {
 		if (
@@ -310,7 +347,7 @@ export function cloneSheetLayout(
 		version: 1,
 		template: baseSystem,
 		modules: layout.modules.map((module) => ({
-			...module,
+			...lockSheetModuleTitle(module),
 			id:
 				module.kind === "customText" || module.kind === "customStats"
 					? `${module.kind}-${crypto.randomUUID()}`
@@ -326,7 +363,9 @@ export function createSavedSheetTemplate(input: {
 	modules: SheetModuleConfig[];
 	author?: string;
 }): CustomTemplate {
-	const sheetLayout = normalizeModuleOrders(input.modules);
+	const sheetLayout = normalizeModuleOrders(
+		input.modules.map(lockSheetModuleTitle),
+	);
 	return {
 		id: `custom_${crypto.randomUUID()}`,
 		name: input.name.trim(),
