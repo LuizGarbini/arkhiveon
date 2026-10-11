@@ -138,19 +138,24 @@ serve(async (req) => {
 					},
 					contents,
 					tools: [{ functionDeclarations: IA_MESA_TOOL_DECLARATIONS }],
-					toolConfig: {
-						functionCallingConfig: {
-							mode: "AUTO",
-							allowedFunctionNames: ["propose_npc"],
-						},
-					},
+					// allowedFunctionNames só é aceito com mode ANY/VALIDATED (doc da
+					// Gemini API). Em AUTO a API responde 400. A única ferramenta
+					// declarada já é `propose_npc`, então a restrição continua.
+					toolConfig: { functionCallingConfig: { mode: "AUTO" } },
 					generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
 				}),
 			},
 		);
 
 		if (!response.ok) {
-			console.error("ia-mesa-chat: model error", response.status);
+			// Loga o corpo do erro da Gemini (sem a chave) para diagnóstico.
+			const errorBody = await response.text().catch(() => "");
+			console.error(
+				"ia-mesa-chat: model error",
+				response.status,
+				`model=${model}`,
+				errorBody.slice(0, 2000),
+			);
 			const code =
 				response.status === 401 || response.status === 403
 					? "invalid_key"
