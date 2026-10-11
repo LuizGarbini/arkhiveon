@@ -493,7 +493,74 @@ export interface Item extends WorldEntityFields {
 	imageZoom?: number;
 	equipped: boolean;
 	entityLinks: EntityLink[];
+	/** Dados de arma (cadastro rico). Opcional: itens antigos só têm texto livre. */
+	weapon?: ItemWeaponStats;
+	/** Dados de armadura/escudo (cadastro rico). */
+	armor?: ItemArmorStats;
+	/** Bônus que o item soma em quem o usa (só cadastro; o cálculo entra depois). */
+	bonuses?: ItemBonus[];
+	/** De onde o item nasceu no cadastro: em branco ou cópia independente de outro item. */
+	origin?: ItemOrigin;
 }
+
+/** Propriedades padrão de arma (D&D 5e). */
+export type WeaponPropertyKey =
+	| "versatile"
+	| "light"
+	| "heavy"
+	| "two_handed"
+	| "thrown"
+	| "reach"
+	| "finesse"
+	| "ammunition"
+	| "loading";
+
+export interface ItemWeaponStats {
+	/** Dado base, ex.: "1d8" ou "2d6". */
+	damageDice: string;
+	damageType: DamageType;
+	/** Bônus mágico (+1/+2/+3): soma no acerto e no dano. */
+	magicBonus?: number;
+	/** "finesse" = Acuidade (maior entre FOR e DES). */
+	ability: "strength" | "dexterity" | "finesse";
+	weaponCategory: "simple" | "martial";
+	/** Texto livre: "1,5 m", "24/96 m". */
+	range?: string;
+	/** Arma base equivalente para proficiência (opcional). */
+	countsAs?: string;
+	properties: WeaponPropertyKey[];
+	/** Dado com as duas mãos quando a arma é versátil. */
+	versatileDice?: string;
+	/** Propriedades personalizadas, só texto (ex.: "Luz 6 m"). */
+	customProperties: string[];
+	/** Dano extra; `label` = condição (ex.: "Contra mortos-vivos"). */
+	extraDamage: InventoryWeaponExtraDamage[];
+}
+
+export interface ItemArmorStats {
+	baseAc: number;
+	dexMode: "full" | "max2" | "none";
+	armorCategory: "light" | "medium" | "heavy" | "shield";
+}
+
+export type ItemBonusTarget =
+	| "attack"
+	| "damage"
+	| "ac"
+	| "initiative"
+	| "saves"
+	| "speed";
+
+export interface ItemBonus {
+	id: string;
+	target: ItemBonusTarget;
+	value: number;
+	when?: string;
+}
+
+export type ItemOrigin =
+	| { kind: "blank" }
+	| { kind: "copy"; fromItemId: string; fromName: string };
 
 export interface GameLocation extends WorldEntityFields {
 	id: string;
