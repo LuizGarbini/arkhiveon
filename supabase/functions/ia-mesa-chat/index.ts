@@ -14,7 +14,7 @@
 //
 // Segredos esperados (Supabase → Edge Functions → Secrets):
 //   GEMINI_API_KEY   (obrigatório; sem ele a função responde code=missing_key)
-//   GEMINI_MODEL     (opcional; padrão gemini-2.5-flash)
+//   GEMINI_MODEL     (opcional; padrão gemini-3.5-flash-lite)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
@@ -106,7 +106,7 @@ serve(async (req) => {
 		if (!apiKey) {
 			return json({ ok: false, code: "missing_key" }, 200);
 		}
-		const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+		const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
 
 		const history = cleanHistory(body?.history);
 		const contents = [
