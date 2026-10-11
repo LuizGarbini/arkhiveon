@@ -261,6 +261,46 @@ export interface InventoryItem {
 	category?: "weapon" | "armor" | "potion" | "gear" | "treasure" | "custom";
 	description?: string;
 	isAttuned?: boolean;
+	/** D&D 5e: dados de arma. Só lido quando category === "weapon" e o item está equipado. */
+	weapon?: InventoryWeaponStats;
+}
+
+/** Tipos de dano do D&D 5e (chaves estáveis; rótulos em pt-BR ficam em core/rules). */
+export type DamageType =
+	| "slashing"
+	| "piercing"
+	| "bludgeoning"
+	| "acid"
+	| "cold"
+	| "fire"
+	| "force"
+	| "lightning"
+	| "necrotic"
+	| "poison"
+	| "psychic"
+	| "radiant"
+	| "thunder";
+
+export interface InventoryWeaponExtraDamage {
+	id: string;
+	/** Origem exibida no breakdown (ex.: "Runa da tempestade"). */
+	label: string;
+	/** "2", "1d6" ou "1d6+2". Valor 0/vazio não entra no total. */
+	amount: string;
+	type: DamageType;
+}
+
+export interface InventoryWeaponStats {
+	/** Dado base da arma, ex.: "1d8" ou "2d6". */
+	damageDice: string;
+	damageType: DamageType;
+	/** Atributo usado no acerto/dano. "finesse" = maior entre FOR e DES. */
+	ability: "strength" | "dexterity" | "finesse";
+	/** Bônus mágico (+1/+2/+3): soma no acerto e no dano. */
+	magicBonus?: number;
+	/** Proficiente com a arma (soma proficiência no acerto). Padrão: true. */
+	proficient?: boolean;
+	extraDamage?: InventoryWeaponExtraDamage[];
 }
 
 export interface TrainingActivity {
