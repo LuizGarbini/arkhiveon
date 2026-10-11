@@ -22,6 +22,8 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Agora dá pra ligar um item da aba Itens à ficha do personagem: abra o Inventário, toque em Da campanha, escolha o item e onde ele fica (No Corpo, Mochila ou Montaria).",
 			'Antes de confirmar, a janela já mostra o que muda: por exemplo "Acerto +6 · Dano 1d8+4".',
 			"O item fica ligado de verdade: se o mestre mudar o item na aba Itens, a ficha acompanha sozinha. Tirou o item? É só Desvincular.",
+			"Armadura, escudo e anéis contam: a CA e a Iniciativa passam a somar o que você está usando, e as armas ligadas aparecem em Ataques.",
+			'Toque em Acerto, Dano, CA ou Iniciativa e a ficha explica a conta em uma frase, tipo "Sua CA é 15 porque você veste Couro batido (base 12) e soma toda a sua Destreza +3".',
 			"Cada jogador liga itens só na própria ficha; o mestre pode em qualquer uma.",
 			"Itens antigos e o inventário que você já tinha continuam do mesmo jeito.",
 		],
