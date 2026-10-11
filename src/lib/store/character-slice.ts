@@ -7,6 +7,7 @@ import {
 } from "../remote-store";
 import {
 	createDefaultSheetLayout,
+	lockSheetLayoutTitles,
 	normalizeSheetLayout,
 } from "../sheet-modules";
 import {
@@ -269,7 +270,14 @@ export const createCharacterSlice: StateCreator<
 		const originalCharacters = get().characters;
 		const existing = originalCharacters.find((c) => c.id === id);
 		if (!existing) return;
-		const updated = { ...existing, ...character, updatedAt: Date.now() };
+		const updated = {
+			...existing,
+			...character,
+			...(character.sheetLayout
+				? { sheetLayout: lockSheetLayoutTitles(character.sheetLayout) }
+				: {}),
+			updatedAt: Date.now(),
+		};
 		const log = {
 			action: "update" as const,
 			entityKind: "character" as const,

@@ -17,7 +17,11 @@ import { Field, FormTabs } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { isCustomSheetModule, SHEET_MODULE_LABELS } from "@/lib/sheet-modules";
+import {
+	isCustomSheetModule,
+	lockSheetModuleTitle,
+	SHEET_MODULE_LABELS,
+} from "@/lib/sheet-modules";
 import type {
 	Character,
 	SheetLayoutConfig,
@@ -164,10 +168,11 @@ function ModuleEditorDialogForm({
 			}
 		}
 
+		const patch = buildModuleSavePatch(activeModule, draft);
 		const nextModules = layout.modules.map((m) =>
-			m.id === activeModule.id ? { ...m, ...draft } : m,
+			lockSheetModuleTitle(m.id === activeModule.id ? { ...m, ...patch } : m),
 		);
-		onSave(draft, {
+		onSave(patch, {
 			...values,
 			sheetLayout: {
 				...layout,
@@ -319,4 +324,19 @@ function ModuleEditorDialogForm({
 			</form>
 		</DialogContent>
 	);
+}
+
+/**
+ * Patch persisted when saving a module in the editor. System modules never
+ * persist a title from the draft: it is locked to SHEET_MODULE_LABELS[kind].
+ */
+export function buildModuleSavePatch(
+	module: SheetModuleConfig,
+	draft: Partial<SheetModuleConfig>,
+): Partial<SheetModuleConfig> {
+	if (isCustomSheetModule(module) || module.kind === "custom_template_fields") {
+		return draft;
+	}
+	const { title: _ignored, ...rest } = draft;
+	return { ...rest, title: SHEET_MODULE_LABELS[module.kind] };
 }
