@@ -16,6 +16,7 @@ import { formatModifier } from "@/core/rules";
 import type { Character } from "@/lib/store";
 import { systemLabel } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
+import { useCombatStats } from "../use-linked-items";
 import { QuickStat } from "./ui-primitives";
 
 export interface SheetHeaderProps {
@@ -47,6 +48,8 @@ export function SheetHeader({
 	onOpenExportDialog,
 	onToggleEditLayout,
 }: SheetHeaderProps) {
+	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
+	const combat = useCombatStats(character);
 	return (
 		<header className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-br from-card via-card/95 to-primary-muted/25 p-6 shadow-xl shadow-black/5">
 			<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -221,12 +224,12 @@ export function SheetHeader({
 				/>
 				<QuickStat
 					label="CA"
-					value={String(character.armorClass)}
+					value={String(combat.ac.total)}
 					color="text-blue-400"
 				/>
 				<QuickStat
 					label="INIT"
-					value={formatModifier(character.initiative)}
+					value={formatModifier(combat.initiative.total)}
 					color="text-amber-400"
 				/>
 				<QuickStat
