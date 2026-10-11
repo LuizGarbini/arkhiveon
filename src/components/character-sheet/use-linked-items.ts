@@ -25,7 +25,7 @@ export function useCampaignItems(): {
 	);
 }
 
-/** Mesma regra do servidor (migration 0038). */
+/** Mestre ou editor da campanha (mesma regra do UPDATE de characters). */
 export function useCanLinkOnSheet(character: Pick<Character, "createdBy">) {
 	const role = useActiveCampaignRole();
 	const { user } = useAuth();
