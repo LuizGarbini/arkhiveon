@@ -11,6 +11,7 @@ import {
 	parseDamageFormula,
 	resolveLinkedInventory,
 	type WeaponAttack,
+	weaponAbilityScores,
 } from "@/core/rules";
 import { WEAPON_PROPERTY_LABELS } from "@/core/rules/item-mechanics";
 import type { Character } from "@/lib/store";
@@ -167,17 +168,23 @@ export function WeaponAttacksSection({
 		() => resolveLinkedInventory(character.inventoryList, itemsById),
 		[character.inventoryList, itemsById],
 	);
-	const attacks = useMemo(
+	const { strength, dexterity, constitution, intelligence, wisdom, charisma } =
+		character;
+	const scores = useMemo(
 		() =>
-			getEquippedWeaponAttacks(
-				resolved,
-				{
-					strength: Number(character.strength) || 10,
-					dexterity: Number(character.dexterity) || 10,
-				},
-				proficiencyBonus,
-			),
-		[resolved, character.strength, character.dexterity, proficiencyBonus],
+			weaponAbilityScores({
+				strength,
+				dexterity,
+				constitution,
+				intelligence,
+				wisdom,
+				charisma,
+			}),
+		[strength, dexterity, constitution, intelligence, wisdom, charisma],
+	);
+	const attacks = useMemo(
+		() => getEquippedWeaponAttacks(resolved, scores, proficiencyBonus),
+		[resolved, scores, proficiencyBonus],
 	);
 	const entryById = useMemo(
 		() => new Map(resolved.map((e) => [e.id, e])),
