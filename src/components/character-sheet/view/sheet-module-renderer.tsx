@@ -18,6 +18,7 @@ import {
 } from "@/lib/store";
 import { getFeatsLabel, type SYSTEM_CONFIG } from "@/lib/systems";
 import { FeatRow, InfoRow, SpellRow, TextBlock } from "./ui-primitives";
+import { WeaponAttacksSection } from "./weapon-attacks";
 
 export function SheetModuleContent({
 	module,
@@ -209,6 +210,9 @@ export function SheetModuleContent({
 						HP Temporário: <strong>{character.tempHealth}</strong>
 					</div>
 				) : null}
+				{character.system === "dnd5e" && (
+					<WeaponAttacksSection character={character} />
+				)}
 			</div>
 		);
 	}
