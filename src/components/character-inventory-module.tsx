@@ -298,7 +298,7 @@ export function CharacterInventoryModule({
 						</div>
 						<div>
 							<h3 className="font-display text-sm font-bold text-foreground">
-								Inventário & Capacidade de Carga (FOR {strScore})
+								Capacidade de carga (FOR {strScore})
 							</h3>
 							<p className="text-[11px] text-muted-foreground">
 								Carga normal até {encumberedThreshold} lbs • Máximo{" "}

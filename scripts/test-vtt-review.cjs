@@ -1267,7 +1267,9 @@ async function checkSheetMaxHp(browser, viewport, extra, errors) {
 		const input = page.getByRole("spinbutton", { name: "Escala" });
 		assert.ok(await input.evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize) >= 16));
 		await input.fill("3");
-		await page.getByRole("combobox", { name: "Unidade" }).selectOption("ft");
+		// Select do DS (shadcn/Base UI): abre o popup e escolhe a opção.
+		await page.getByRole("combobox", { name: "Unidade" }).click();
+		await page.getByRole("option", { name: "Pés", exact: true }).click();
 		await page.getByRole("button", { name: "Euclidiano", exact: true }).waitFor();
 		await recording.chapter("Escala, unidade e diagonal com rótulos e fonte de 16px", 2200);
 		await page.screenshot({ path: path.join(output, "vtt-review-mobile.png") });
