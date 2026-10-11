@@ -239,4 +239,22 @@ describe("ia-mesa: patch no cliente (diff + aplicar)", () => {
 			applyCharacterPatch({ ...dante, id: "outro" } as Character, proposal).ok,
 		).toBe(false);
 	});
+
+	it("patch preserva o vínculo com o item da campanha", () => {
+		const linked = {
+			...dante,
+			inventoryList: (dante.inventoryList ?? []).map((i) =>
+				i.id === "sword"
+					? { ...i, campaignItemId: "item-espada", proficient: false }
+					: i,
+			),
+		} as Character;
+		const result = applyCharacterPatch(linked, proposal, () => "new-x");
+		if (!result.ok) throw new Error(result.error);
+		const sword = (result.changes.inventoryList ?? []).find(
+			(i) => i.id === "sword",
+		);
+		expect(sword?.campaignItemId).toBe("item-espada");
+		expect(sword?.proficient).toBe(false);
+	});
 });

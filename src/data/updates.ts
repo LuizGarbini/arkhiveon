@@ -11,6 +11,22 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.0-itens-na-ficha",
+		version: "1.6.0",
+		date: "11/10/2026",
+		title: "Itens da campanha direto na ficha",
+		description:
+			"Os itens da aba Itens agora têm números de verdade (dano, CA, bônus) e podem ser ligados à ficha do personagem, sem cadastrar tudo de novo no Inventário.",
+		bullets: [
+			"Cadastro de item mais completo: abas de Ataque, Defesa e Bônus para armas, armaduras, escudos e anéis.",
+			"Agora dá pra ligar um item da aba Itens à ficha do personagem: abra o Inventário, toque em Da campanha, escolha o item e onde ele fica (No Corpo, Mochila ou Montaria).",
+			'Antes de confirmar, a janela já mostra o que muda: por exemplo "Acerto +6 · Dano 1d8+4".',
+			"O item fica ligado de verdade: se o mestre mudar o item na aba Itens, a ficha acompanha sozinha. Tirou o item? É só Desvincular.",
+			"Cada jogador liga itens só na própria ficha; o mestre pode em qualquer uma.",
+			"Itens antigos e o inventário que você já tinha continuam do mesmo jeito.",
+		],
+	},
+	{
 		id: "v1.5.0-worldbuilding",
 		version: "1.5.0",
 		date: "20/07/2026",

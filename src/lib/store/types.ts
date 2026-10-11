@@ -250,6 +250,11 @@ export interface Character {
 	trainingList?: TrainingActivity[];
 	tempBonusesList?: TempBonus[];
 	inventoryList?: InventoryItem[];
+	/**
+	 * Quem criou a ficha (`characters.created_by`). Só leitura: vem da coluna,
+	 * nunca é gravado em `data`. Define quem pode vincular itens da campanha.
+	 */
+	createdBy?: string;
 }
 
 export interface InventoryItem {
@@ -263,6 +268,14 @@ export interface InventoryItem {
 	isAttuned?: boolean;
 	/** D&D 5e: dados de arma. Só lido quando category === "weapon" e o item está equipado. */
 	weapon?: InventoryWeaponStats;
+	/**
+	 * Vínculo vivo com um Item da aba Itens. Quando presente, os números
+	 * (arma, armadura, bônus) vêm sempre do Item; `name`/`category` são só
+	 * um retrato para exibir se o item sumir.
+	 */
+	campaignItemId?: string;
+	/** Proficiência marcada no vínculo (depende do personagem). Padrão: true. */
+	proficient?: boolean;
 }
 
 /** Tipos de dano do D&D 5e (chaves estáveis; rótulos em pt-BR ficam em core/rules). */
@@ -301,6 +314,8 @@ export interface InventoryWeaponStats {
 	/** Proficiente com a arma (soma proficiência no acerto). Padrão: true. */
 	proficient?: boolean;
 	extraDamage?: InventoryWeaponExtraDamage[];
+	/** Dado com as duas mãos (arma versátil). Só usado no texto do detalhe. */
+	versatileDice?: string;
 }
 
 export interface TrainingActivity {
