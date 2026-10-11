@@ -13,6 +13,7 @@ import {
 	type FormEvent,
 	type KeyboardEvent,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -101,6 +102,15 @@ export function VTTAiChat({
 	]);
 	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+
+	// Composer cresce com o texto até o `max-h-52` do CSS; depois rola dentro.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: recalcula a cada texto/abertura.
+	useLayoutEffect(() => {
+		const el = inputRef.current;
+		if (!el) return;
+		el.style.height = "auto";
+		el.style.height = `${el.scrollHeight}px`;
+	}, [draft, open]);
 	const inputId = useId();
 
 	const scrollToEnd = () => {
@@ -321,7 +331,7 @@ export function VTTAiChat({
 								rows={2}
 								maxLength={1200}
 								placeholder="Peça algo para a IA..."
-								className="block w-full resize-none bg-transparent px-3 pt-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 sm:text-sm"
+								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 sm:text-sm"
 							/>
 							<div className="flex items-center justify-between gap-2 px-2 pb-2">
 								{sceneName ? (
