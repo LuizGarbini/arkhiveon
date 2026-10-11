@@ -1,13 +1,24 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Pencil, Plus } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { Info, Pencil, Plus, XIcon } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
+import {
+	describeItemLine,
+	emptyArmorStats,
+	emptyWeaponStats,
+	type ItemFormTabId,
+	itemCategoryKind,
+	tabStatus,
+	validateItemDraft,
+} from "@/core/rules/item-mechanics";
 import { useAuth } from "@/lib/auth";
+import { resolveItemImageUrl } from "@/lib/character-images";
 import type { Item } from "@/lib/store";
 import {
 	itemDefaults,
 	useActiveCampaignRole,
+	useImageAssetLookup,
 	useIsWorldStaff,
 	useRPGStore,
 } from "@/lib/store";
@@ -15,24 +26,26 @@ import {
 	canCreateCampaignItem,
 	canManageOwnItem,
 } from "@/lib/worldbuilding/item-ownership";
-import { EntityImagePicker } from "./entity-image-picker";
-import { EntityLinkManager } from "./entity-links";
+import { ItemAttackTab, ItemDefenseTab } from "./item-form/item-attack-tab";
+import { ItemBonusTab } from "./item-form/item-bonus-tab";
+import { ItemDescriptionTab } from "./item-form/item-description-tab";
+import type { ItemFormValues } from "./item-form/item-form-controls";
+import {
+	buildItemTabs,
+	ItemFormMobileHeader,
+	ItemFormSidebar,
+} from "./item-form/item-form-sidebar";
+import { ItemIdentityTab } from "./item-form/item-identity-tab";
 import { Button } from "./ui/button";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
 } from "./ui/dialog";
-import { Field, FormSection } from "./ui/form-tabs";
-import { Input } from "./ui/input";
-import { Select } from "./ui/select";
-import { Textarea } from "./ui/textarea";
-import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
-
-type ItemFormValues = Omit<Item, "id" | "createdAt" | "updatedAt">;
 
 export function ItemForm() {
 	const role = useActiveCampaignRole();
@@ -96,6 +109,17 @@ interface ItemFormDialogProps {
 	onOpenChange?: (open: boolean) => void;
 }
 
+/**
+ * Desktop: Dialog ~920 px com coluna lateral e uma aba por vez.
+ * Mobile (< sm): sheet de altura cheia ancorado embaixo, sem X, footer fixo.
+ */
+const DIALOG_LAYOUT =
+	"flex flex-col gap-0 overflow-hidden p-0 " +
+	// mobile: sheet
+	"top-auto bottom-0 left-0 h-[calc(100dvh-2.5rem)] w-full max-w-none translate-x-0 translate-y-0 rounded-t-3xl rounded-b-none border-x-0 border-b-0 " +
+	// desktop: dialog centralizado
+	"sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:h-[min(85vh,720px)] sm:w-[calc(100%-2rem)] sm:max-w-[920px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border";
+
 function ItemFormDialog({
 	item,
 	trigger,
@@ -109,7 +133,7 @@ function ItemFormDialog({
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			{trigger && <DialogTrigger render={trigger as React.ReactElement} />}
-			<DialogContent className="max-w-2xl! h-auto max-h-[90dvh] sm:max-h-[85vh] flex flex-col p-0 overflow-hidden">
+			<DialogContent className={DIALOG_LAYOUT} showCloseButton={false}>
 				{open && (
 					<ItemFormContent
 						key={item?.id ?? "new"}
@@ -127,10 +151,16 @@ interface ItemFormContentProps {
 	setOpen: (open: boolean) => void;
 }
 
+const TAB_SUBTITLES: Record<ItemFormTabId, string> = {
+	identity: "Nome, imagem e classificação.",
+	mechanics: "Como a arma ataca e quanto dano causa.",
+	bonus: "O que o item soma em quem o usa.",
+	description: "História, sintonização, publicação e conexões.",
+};
+
 function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const isEdit = Boolean(item);
-	const nameId = useId();
-	const typeListId = useId();
+	const mode = isEdit ? "edit" : "create";
 	const toast = useToast();
 
 	const addItem = useRPGStore((state) => state.addItem);
@@ -138,35 +168,107 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
 	const navigate = useNavigate();
 	const { user } = useAuth();
+	const imageAssets = useImageAssetLookup();
 
 	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
+	const [activeTab, setActiveTab] = useState<ItemFormTabId>("identity");
+	const [showLegacyNotes] = useState(() =>
+		Boolean(item?.stats?.trim() || item?.properties?.trim()),
+	);
 
+	const form = useForm<ItemFormValues>({
+		defaultValues: item
+			? {
+					...itemDefaults,
+					...item,
+					campaignIds: item.campaignIds?.length
+						? item.campaignIds
+						: initialCampaignIds,
+				}
+			: {
+					...itemDefaults,
+					campaignIds: initialCampaignIds,
+					type: "Arma",
+					weapon: emptyWeaponStats(),
+					bonuses: [],
+					origin: { kind: "blank" },
+				},
+	});
 	const {
-		register,
 		handleSubmit,
 		control,
 		setValue,
+		getValues,
 		formState: { isSubmitting },
-	} = useForm<ItemFormValues>({
-		defaultValues: {
-			...itemDefaults,
-			campaignIds: item?.campaignIds?.length
-				? item.campaignIds
-				: initialCampaignIds,
-			...(item ?? {}),
-		},
-	});
+	} = form;
 
-	const imageUrl = useWatch({ control, name: "imageUrl" });
-	const imageAssetId = useWatch({ control, name: "imageAssetId" });
-	const imageFocusY = useWatch({ control, name: "imageFocusY" });
-	const imageZoom = useWatch({ control, name: "imageZoom" });
-	const watchedValues = useWatch({ control });
+	const watched = useWatch({ control }) as ItemFormValues;
+	const name = watched.name ?? "";
+	const kind = itemCategoryKind(watched.type);
+	const tabs = buildItemTabs(kind);
+	const currentTab: ItemFormTabId =
+		activeTab === "mechanics" && kind === "other" ? "identity" : activeTab;
+	const statuses = tabStatus(watched, mode);
+	const { errors } = validateItemDraft(watched);
+	const canSubmit = Boolean(name.trim());
+	const imageSrc =
+		resolveItemImageUrl(
+			{
+				imageUrl: watched.imageUrl ?? "",
+				imageAssetId: watched.imageAssetId,
+			} as Item,
+			imageAssets,
+		) || undefined;
+
+	const placeholderName = kind === "weapon" ? "Arma sem nome" : "Item sem nome";
+	const title = isEdit
+		? kind === "weapon"
+			? "Editar arma"
+			: "Editar item"
+		: kind === "weapon"
+			? "Criar arma personalizada"
+			: "Novo item";
+	const subtitle =
+		currentTab === "identity" && !isEdit && kind === "weapon"
+			? "Comece pelo nome e pela imagem. Dano e propriedades ficam na aba Ataque."
+			: currentTab === "mechanics" && kind === "armor"
+				? "Quanto a armadura protege."
+				: TAB_SUBTITLES[currentTab];
+
+	function handleCategoryChange(type: string) {
+		setValue("type", type, { shouldDirty: true });
+		const nextKind = itemCategoryKind(type);
+		const values = getValues();
+		if (nextKind === "weapon" && !values.weapon)
+			setValue("weapon", emptyWeaponStats(), { shouldDirty: true });
+		if (nextKind === "armor" && !values.armor)
+			setValue("armor", emptyArmorStats(type === "Escudo"), {
+				shouldDirty: true,
+			});
+	}
 
 	function onSubmit(data: ItemFormValues) {
+		const check = validateItemDraft(data);
+		if (!check.ok) {
+			setActiveTab(check.errors.name ? "identity" : "mechanics");
+			return;
+		}
+		const dataKind = itemCategoryKind(data.type);
+		const payload: ItemFormValues = {
+			...data,
+			weapon:
+				dataKind === "weapon" && data.weapon
+					? {
+							...data.weapon,
+							customProperties: data.weapon.customProperties.filter(Boolean),
+						}
+					: undefined,
+			armor: dataKind === "armor" ? data.armor : undefined,
+			bonuses: data.bonuses?.length ? data.bonuses : undefined,
+		};
 		let createdId: string | null = null;
 		if (isEdit && item) {
-			updateItem(item.id, data, user?.id);
+			updateItem(item.id, payload, user?.id);
 			const syncError = useRPGStore.getState().syncError;
 			if (syncError) {
 				toast.error({
@@ -176,7 +278,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 				return;
 			}
 		} else {
-			const created = addItem(data, user?.id);
+			const created = addItem(payload, user?.id);
 			if (created?.id) {
 				createdId = created.id;
 			} else {
@@ -200,205 +302,128 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 		}
 	}
 
+	const footerMessage = !canSubmit
+		? `Dê um nome para criar ${kind === "weapon" ? "a arma" : "o item"}.`
+		: null;
+
 	return (
 		<form
 			onSubmit={handleSubmit(onSubmit)}
 			className="flex h-full min-h-0 flex-col"
 		>
-			<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
-				<DialogTitle className="font-display text-lg">
-					{isEdit ? `Editar: ${item?.name || "Item"}` : "Novo Item"}
-				</DialogTitle>
-				<DialogDescription>
-					Registre uma arma, armadura, poção ou relíquia.
-				</DialogDescription>
-			</DialogHeader>
-
-			<div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-				<FormSection title="Identificação">
-					<EntityImagePicker
-						value={{
-							imageUrl: imageUrl ?? "",
-							imageAssetId,
-							imageFocusY,
-							imageZoom,
-						}}
-						onChange={(patch) => {
-							for (const [key, val] of Object.entries(patch)) {
-								setValue(key as keyof ItemFormValues, val as never, {
-									shouldDirty: true,
-								});
-							}
-						}}
-						uploadLabel="Ilustração"
-						folder="items"
-						libraryName={watchedValues.name}
-					/>
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<Field label="Nome" htmlFor={nameId} className="sm:col-span-2">
-							<Input
-								id={nameId}
-								placeholder="Ex: Espada Longa Flamejante"
-								{...register("name", { required: true })}
-							/>
-						</Field>
-						<Field label="Tipo">
-							<Input
-								list={typeListId}
-								placeholder="Arma, Armadura, Poção..."
-								{...register("type")}
-							/>
-							<datalist id={typeListId}>
-								<option value="Arma" />
-								<option value="Armadura" />
-								<option value="Escudo" />
-								<option value="Poção" />
-								<option value="Anel" />
-								<option value="Amuleto" />
-								<option value="Pergaminho" />
-								<option value="Varinha" />
-								<option value="Cajado" />
-								<option value="Foco Arcano" />
-								<option value="Item Maravilhoso" />
-								<option value="Utilitário" />
-							</datalist>
-						</Field>
-						<Field label="Subtipo">
-							<Input
-								placeholder="Ex: espada longa, escudo..."
-								{...register("subtype")}
-							/>
-						</Field>
-						<Field label="Raridade">
-							<Select {...register("rarity")}>
-								<option value="comum">Comum</option>
-								<option value="incomum">Incomum</option>
-								<option value="raro">Raro</option>
-								<option value="muito raro">Muito Raro</option>
-								<option value="lendário">Lendário</option>
-								<option value="artefato">Artefato</option>
-							</Select>
-						</Field>
-						<Field label="Fonte / Livro">
-							<Input placeholder="Ex: PHB pg.150" {...register("source")} />
-						</Field>
-					</div>
-				</FormSection>
-
-				<WorldEntityPublicationFields control={control} setValue={setValue} />
-
-				<FormSection title="Mecânica">
-					<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-						<Field label="Peso">
-							<Input placeholder="Ex: 1,5 kg" {...register("weight")} />
-						</Field>
-						<Field label="Valor">
-							<Input placeholder="Ex: 50 PO" {...register("value")} />
-						</Field>
-						<Field label="Cargas">
-							<Input placeholder="Ex: 3/7" {...register("charges")} />
-						</Field>
-					</div>
-					<Field label="Atributos / Efeitos mecânicos">
-						<Textarea
-							rows={3}
-							placeholder="1d8 cortante + 1d6 fogo, +1 em Persuasão..."
-							{...register("stats")}
-						/>
-					</Field>
-					<Field label="Propriedades" hint="Ex: Versátil (1d10), Alcance">
-						<Input
-							placeholder="Versátil, Alcance..."
-							{...register("properties")}
-						/>
-					</Field>
-				</FormSection>
-
-				<FormSection title="Posse & Sintonização">
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<Field label="Pertence a">
-							<Input placeholder="Personagem ou local" {...register("owner")} />
-						</Field>
-						<Field label="Sintonizado com">
-							<Input
-								placeholder="Quem está sintonizado"
-								{...register("attunedTo")}
-							/>
-						</Field>
-					</div>
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-						<label className="flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-xl border border-border/80 bg-background/50 px-3.5 py-2.5 transition-colors hover:bg-card-elevated hover:border-primary/30">
-							<input
-								type="checkbox"
-								className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-								{...register("requiresAttunement")}
-							/>
-							<div className="flex flex-col">
-								<span className="text-[13px] font-semibold text-foreground">
-									Requer sintonização
-								</span>
-								<span className="text-[11px] text-muted-foreground">
-									Necessita vínculo místico para ativar efeitos
-								</span>
-							</div>
-						</label>
-						<label className="flex min-h-[44px] cursor-pointer select-none items-center gap-3 rounded-xl border border-border/80 bg-background/50 px-3.5 py-2.5 transition-colors hover:bg-card-elevated hover:border-primary/30">
-							<input
-								type="checkbox"
-								className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-								{...register("equipped")}
-							/>
-							<div className="flex flex-col">
-								<span className="text-[13px] font-semibold text-foreground">
-									Equipado
-								</span>
-								<span className="text-[11px] text-muted-foreground">
-									Em uso ativo por um personagem
-								</span>
-							</div>
-						</label>
-					</div>
-				</FormSection>
-
-				<FormSection title="Descrição">
-					<Field label="Descrição / Lore">
-						<Textarea
-							rows={4}
-							placeholder="Forjada nas profundezas de..."
-							{...register("description")}
-						/>
-					</Field>
-				</FormSection>
-				<EntityLinkManager
-					value={watchedValues.entityLinks ?? []}
-					onChange={(links) =>
-						setValue("entityLinks", links, { shouldDirty: true })
-					}
-					sourceValues={watchedValues as Record<string, unknown>}
-					currentEntity={{
-						entityKind: "item",
-						entityId: item?.id,
-					}}
+			<ItemFormMobileHeader
+				name={name}
+				placeholderName={placeholderName}
+				category={watched.type ?? ""}
+				rarity={watched.rarity ?? "comum"}
+				imageSrc={imageSrc}
+				tabs={tabs}
+				activeTab={currentTab}
+				onTabChange={setActiveTab}
+			/>
+			<div className="flex min-h-0 flex-1 border-t border-border/60 sm:border-t-0">
+				<ItemFormSidebar
+					name={name}
+					placeholderName={placeholderName}
+					line={describeItemLine(watched)}
+					category={watched.type ?? ""}
+					rarity={watched.rarity ?? "comum"}
+					imageSrc={imageSrc}
+					tabs={tabs}
+					activeTab={currentTab}
+					onTabChange={setActiveTab}
+					statuses={statuses}
+					kind={kind}
+					weapon={watched.weapon}
+					armor={watched.armor}
 				/>
-			</div>
+				<div className="flex min-w-0 flex-1 flex-col">
+					<DialogHeader className="relative shrink-0 gap-1 border-b border-border/60 max-sm:sr-only sm:px-6 sm:pt-5 sm:pb-4">
+						<DialogTitle className="font-display text-lg">{title}</DialogTitle>
+						<DialogDescription className="text-[13px]">
+							{subtitle}
+						</DialogDescription>
+						<DialogClose
+							render={
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon-sm"
+									className="absolute top-4 right-4 hidden text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground sm:inline-flex"
+								/>
+							}
+						>
+							<XIcon />
+							<span className="sr-only">Fechar</span>
+						</DialogClose>
+					</DialogHeader>
 
-			<div className="flex items-center justify-end gap-2 border-t border-border bg-card-elevated/40 px-6 py-3">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => setOpen(false)}
-				>
-					Cancelar
-				</Button>
-				<Button
-					type="submit"
-					size="sm"
-					loading={isSubmitting}
-					loadingText="Salvando..."
-				>
-					{isEdit ? "Salvar alterações" : "Criar Item"}
-				</Button>
+					<div
+						className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6"
+						data-testid={`item-tab-${currentTab}`}
+					>
+						{currentTab === "identity" ? (
+							<ItemIdentityTab
+								form={form}
+								mode={mode}
+								onCategoryChange={handleCategoryChange}
+							/>
+						) : null}
+						{currentTab === "mechanics" && kind === "weapon" ? (
+							<ItemAttackTab form={form} errors={errors} />
+						) : null}
+						{currentTab === "mechanics" && kind === "armor" ? (
+							<ItemDefenseTab form={form} />
+						) : null}
+						{currentTab === "bonus" ? <ItemBonusTab form={form} /> : null}
+						{currentTab === "description" ? (
+							<ItemDescriptionTab
+								form={form}
+								itemId={item?.id}
+								showLegacyNotes={showLegacyNotes}
+							/>
+						) : null}
+					</div>
+
+					<div className="flex shrink-0 items-center gap-3 border-t border-border/60 bg-card-elevated/40 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+						{footerMessage ? (
+							<p
+								className="hidden items-center gap-1.5 text-[12px] text-muted-foreground sm:flex"
+								aria-live="polite"
+							>
+								<Info className="h-3.5 w-3.5 text-primary" />
+								{footerMessage}
+							</p>
+						) : null}
+						<div className="flex flex-1 items-center gap-2 sm:flex-none sm:ml-auto">
+							<Button
+								type="button"
+								variant="outline"
+								className="h-12 flex-1 sm:h-9 sm:flex-none"
+								onClick={() => setOpen(false)}
+							>
+								Cancelar
+							</Button>
+							<Button
+								type="submit"
+								className="h-12 flex-1 sm:h-9 sm:flex-none"
+								disabled={!canSubmit}
+								title={footerMessage ?? undefined}
+								loading={isSubmitting}
+								loadingText="Salvando..."
+							>
+								<span className="sm:hidden">{isEdit ? "Salvar" : "Criar"}</span>
+								<span className="hidden sm:inline">
+									{isEdit
+										? "Salvar alterações"
+										: kind === "weapon"
+											? "Criar arma"
+											: "Criar item"}
+								</span>
+							</Button>
+						</div>
+					</div>
+				</div>
 			</div>
 		</form>
 	);

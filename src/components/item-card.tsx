@@ -12,70 +12,11 @@ import {
 import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { normalizeRarityKey, rarityStyles } from "./item-rarity";
 
 interface ItemCardProps {
 	item?: Item;
 	isLoading?: boolean;
-}
-
-const rarityStyles: Record<
-	string,
-	{ tone: string; border: string; glow: string }
-> = {
-	comum: {
-		tone: "text-slate-300",
-		border: "border-border/70",
-		glow: "from-slate-500/10",
-	},
-	incomum: {
-		tone: "text-emerald-300",
-		border: "border-emerald-500/35",
-		glow: "from-emerald-500/15",
-	},
-	raro: {
-		tone: "text-blue-300",
-		border: "border-blue-500/35",
-		glow: "from-blue-500/15",
-	},
-	"muito raro": {
-		tone: "text-fuchsia-300",
-		border: "border-fuchsia-500/35",
-		glow: "from-fuchsia-500/15",
-	},
-	lendario: {
-		tone: "text-amber-300",
-		border: "border-amber-500/35",
-		glow: "from-amber-500/15",
-	},
-	artefato: {
-		tone: "text-rose-300",
-		border: "border-rose-500/40",
-		glow: "from-rose-500/15",
-	},
-};
-
-function normalizeRarityKey(value?: string): string {
-	if (!value) return "comum";
-	const normalized = value
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.replace(/[_-]/g, " ")
-		.trim();
-
-	if (normalized === "common" || normalized === "comum") return "comum";
-	if (normalized === "uncommon" || normalized === "incomum") return "incomum";
-	if (normalized === "rare" || normalized === "raro") return "raro";
-	if (normalized === "very rare" || normalized === "muito raro")
-		return "muito raro";
-	if (
-		normalized === "legendary" ||
-		normalized === "lendario" ||
-		normalized === "lendaria"
-	)
-		return "lendario";
-	if (normalized === "artifact" || normalized === "artefato") return "artefato";
-	return normalized;
 }
 
 export function ItemCard({ item, isLoading }: ItemCardProps) {
