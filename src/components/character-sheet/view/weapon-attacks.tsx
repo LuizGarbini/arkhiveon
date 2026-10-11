@@ -1,5 +1,18 @@
 import { Info, Swords } from "lucide-react";
-import { useMemo } from "react";
+import {
+	type PointerEvent,
+	type ReactNode,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Popover,
 	PopoverContent,
@@ -46,37 +59,151 @@ function partValue(part: DamagePart): string {
 const numberTrigger =
 	"rounded-lg px-1 -mx-1 text-left font-display text-xl font-bold tabular-nums text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-4 transition-colors select-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-11 sm:min-h-0 hover:text-primary";
 
+const MOBILE_QUERY = "(max-width: 639px)";
+
+function subscribeMobile(onChange: () => void) {
+	const mql = window.matchMedia(MOBILE_QUERY);
+	mql.addEventListener("change", onChange);
+	return () => mql.removeEventListener("change", onChange);
+}
+
+function useIsMobile() {
+	return useSyncExternalStore(
+		subscribeMobile,
+		() => window.matchMedia(MOBILE_QUERY).matches,
+		() => false,
+	);
+}
+
+/** Arrastar para baixo além disso fecha o sheet. */
+const DRAG_CLOSE_PX = 80;
+
+/**
+ * Detalhe do número: Popover do DS no desktop; no mobile, Dialog do DS ancorado
+ * embaixo (sheet), sem X. Fecha tocando fora (overlay), arrastando para baixo ou Esc.
+ */
+function BreakdownSurface({
+	triggerText,
+	triggerLabel,
+	title,
+	subtitle,
+	children,
+}: {
+	triggerText: string;
+	triggerLabel: string;
+	title: string;
+	subtitle: string;
+	children: ReactNode;
+}) {
+	const isMobile = useIsMobile();
+	const [open, setOpen] = useState(false);
+	const [dragY, setDragY] = useState(0);
+	const dragStart = useRef<number | null>(null);
+
+	if (!isMobile) {
+		return (
+			<Popover>
+				<PopoverTrigger className={numberTrigger} aria-label={triggerLabel}>
+					{triggerText}
+				</PopoverTrigger>
+				<PopoverContent align="start" className="w-80 gap-3">
+					<div>
+						<p className="font-semibold text-foreground">{title}</p>
+						<p className="text-xs text-muted-foreground">{subtitle}</p>
+					</div>
+					{children}
+				</PopoverContent>
+			</Popover>
+		);
+	}
+
+	const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+		dragStart.current = e.clientY;
+		e.currentTarget.setPointerCapture(e.pointerId);
+	};
+	const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+		if (dragStart.current === null) return;
+		setDragY(Math.max(0, e.clientY - dragStart.current));
+	};
+	const onPointerEnd = () => {
+		if (dragStart.current === null) return;
+		dragStart.current = null;
+		if (dragY > DRAG_CLOSE_PX) setOpen(false);
+		setDragY(0);
+	};
+
+	return (
+		<>
+			<button
+				type="button"
+				className={numberTrigger}
+				aria-label={triggerLabel}
+				onClick={() => setOpen(true)}
+			>
+				{triggerText}
+			</button>
+			<Dialog
+				open={open}
+				onOpenChange={(next) => {
+					setOpen(next);
+					if (!next) setDragY(0);
+				}}
+			>
+				<DialogContent
+					showCloseButton={false}
+					style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
+					className={cn(
+						"top-auto bottom-0 left-0 max-h-[85dvh] max-w-full translate-x-0 translate-y-0 gap-3 overflow-y-auto rounded-b-none rounded-t-2xl px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] data-open:slide-in-from-bottom-4 data-open:zoom-in-100 data-closed:zoom-out-100",
+						dragY === 0 && "transition-transform duration-150",
+					)}
+				>
+					<div
+						className="-mx-4 -mt-2 flex h-8 cursor-grab touch-none items-center justify-center select-none"
+						onPointerDown={onPointerDown}
+						onPointerMove={onPointerMove}
+						onPointerUp={onPointerEnd}
+						onPointerCancel={onPointerEnd}
+						aria-hidden="true"
+					>
+						<span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+					</div>
+					<div>
+						<DialogTitle className="font-semibold text-foreground">
+							{title}
+						</DialogTitle>
+						<DialogDescription className="text-xs">
+							{subtitle}
+						</DialogDescription>
+					</div>
+					{children}
+				</DialogContent>
+			</Dialog>
+		</>
+	);
+}
+
 function AttackBreakdown({ attack }: { attack: WeaponAttack }) {
 	return (
-		<Popover>
-			<PopoverTrigger
-				className={numberTrigger}
-				aria-label={`Acerto ${formatModifier(attack.attackBonus)}: ver a conta`}
-			>
-				{formatModifier(attack.attackBonus)}
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-72 gap-3 sm:w-80">
-				<div>
-					<p className="font-semibold text-foreground">
-						Acerto {formatModifier(attack.attackBonus)}
-					</p>
-					<p className="text-xs text-muted-foreground">{attack.name}</p>
-				</div>
-				<ul className="divide-y divide-border/50 text-xs">
-					{attack.attackParts.map((part) => (
-						<li
-							key={part.label}
-							className="flex items-center justify-between gap-3 py-2"
-						>
-							<span className="text-muted-foreground">{part.label}</span>
-							<span className="font-semibold tabular-nums text-foreground">
-								{formatModifier(part.value)}
-							</span>
-						</li>
-					))}
-				</ul>
-			</PopoverContent>
-		</Popover>
+		<BreakdownSurface
+			triggerText={formatModifier(attack.attackBonus)}
+			triggerLabel={`Acerto ${formatModifier(attack.attackBonus)}: ver a conta`}
+			title={`Acerto ${formatModifier(attack.attackBonus)}`}
+			subtitle={attack.name}
+		>
+			<ul className="divide-y divide-border/50 text-xs">
+				{attack.attackParts.map((part) => (
+					<li
+						key={part.label}
+						className="flex items-center justify-between gap-3 py-2"
+					>
+						<span className="text-muted-foreground">{part.label}</span>
+						<span className="font-semibold tabular-nums text-foreground">
+							{formatModifier(part.value)}
+						</span>
+					</li>
+				))}
+			</ul>
+		</BreakdownSurface>
 	);
 }
 
@@ -85,61 +212,52 @@ function DamageBreakdown({ attack }: { attack: WeaponAttack }) {
 		(p) => p.excluded && p.origin === "extra",
 	);
 	return (
-		<Popover>
-			<PopoverTrigger
-				className={numberTrigger}
-				aria-label={`Dano ${attack.formula}: ver a conta`}
-			>
-				{attack.formula}
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-72 gap-3 sm:w-80">
-				<div>
-					<p className="font-semibold text-foreground">Dano {attack.formula}</p>
-					<p className="text-xs text-muted-foreground">
-						{attack.name} · média {attack.average.toLocaleString("pt-BR")}
-					</p>
-				</div>
-				<ul className="divide-y divide-border/50 text-xs">
-					{attack.damageParts.map((part, i) => (
-						<li
-							key={`${part.origin}-${i}`}
+		<BreakdownSurface
+			triggerText={attack.formula}
+			triggerLabel={`Dano ${attack.formula}: ver a conta`}
+			title={`Dano ${attack.formula}`}
+			subtitle={`${attack.name} · média ${attack.average.toLocaleString("pt-BR")}`}
+		>
+			<ul className="divide-y divide-border/50 text-xs">
+				{attack.damageParts.map((part, i) => (
+					<li
+						key={`${part.origin}-${i}`}
+						className={cn(
+							"grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2",
+							part.excluded && "opacity-60",
+						)}
+					>
+						<span
 							className={cn(
-								"grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2",
-								part.excluded && "opacity-60",
+								"truncate text-muted-foreground",
+								part.excluded && "line-through",
 							)}
 						>
-							<span
-								className={cn(
-									"truncate text-muted-foreground",
-									part.excluded && "line-through",
-								)}
-							>
-								{part.origin === "weapon" ? "Dado da arma" : part.label}
-							</span>
-							<span className="font-semibold tabular-nums text-foreground">
-								{partValue(part)}
-							</span>
-							<DamageTypeTag type={part.type} />
-						</li>
-					))}
-				</ul>
-				{excluded.length > 0 && (
-					<p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-						<Info className="mt-0.5 h-3 w-3 shrink-0" />
-						{excluded.map((p) => p.label).join(", ")} está em +0, não entra no
-						total.
-					</p>
-				)}
-				<div className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 text-xs">
-					<span className="text-muted-foreground">Por tipo</span>
-					<span className="text-right font-semibold tabular-nums text-foreground">
-						{attack.byType
-							.map((t) => `${DAMAGE_TYPE_LABELS[t.type]} ${t.formula}`)
-							.join(" · ")}
-					</span>
-				</div>
-			</PopoverContent>
-		</Popover>
+							{part.origin === "weapon" ? "Dado da arma" : part.label}
+						</span>
+						<span className="font-semibold tabular-nums text-foreground">
+							{partValue(part)}
+						</span>
+						<DamageTypeTag type={part.type} />
+					</li>
+				))}
+			</ul>
+			{excluded.length > 0 && (
+				<p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+					<Info className="mt-0.5 h-3 w-3 shrink-0" />
+					{excluded.map((p) => p.label).join(", ")} está em +0, não entra no
+					total.
+				</p>
+			)}
+			<div className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 text-xs">
+				<span className="text-muted-foreground">Por tipo</span>
+				<span className="text-right font-semibold tabular-nums text-foreground">
+					{attack.byType
+						.map((t) => `${DAMAGE_TYPE_LABELS[t.type]} ${t.formula}`)
+						.join(" · ")}
+				</span>
+			</div>
+		</BreakdownSurface>
 	);
 }
 
