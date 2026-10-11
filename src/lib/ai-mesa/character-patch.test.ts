@@ -173,6 +173,23 @@ describe("ia-mesa: propose_character_patch (servidor)", () => {
 		expect(prompt).toContain("id=dante-1");
 		expect(prompt).toMatch(/multiclasse/);
 	});
+
+	it("system prompt força read_character + propose_character_patch em ficha existente", () => {
+		const prompt = buildSystemPrompt({ name: "Rise", system: "dnd5e" }, [
+			{ id: "dante-1", name: "Dante Diavolo", class: "Guerreiro", level: 5 },
+		]);
+		expect(prompt).toMatch(/REGRA OBRIGATÓRIA/);
+		expect(prompt).toMatch(/nunca responda que só pode usar propose_npc/i);
+		expect(prompt).toMatch(/Nunca use propose_npc para isso/);
+		expect(prompt).toMatch(/TUDO o que o usuário pediu até agora/);
+		expect(prompt).toMatch(/Não espere um "aplica tudo"/);
+		expect(prompt).toContain('"atualiza Dante Diavolo: CAR 26"');
+		expect(prompt).toMatch(/não invente valores, itens nem regras/);
+		// A regra vem antes da lista de fichas.
+		expect(prompt.indexOf("REGRA OBRIGATÓRIA")).toBeLessThan(
+			prompt.indexOf("Personagens desta campanha:"),
+		);
+	});
 });
 
 describe("ia-mesa: patch no cliente (diff + aplicar)", () => {
