@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { byId, longsword, thalia } from "@/core/rules/thalia.fixture";
 import type { Character } from "@/lib/store";
 import { WeaponAttacksSection } from "./weapon-attacks";
 
@@ -87,5 +88,54 @@ describe("WeaponAttacksSection", () => {
 		expect(dialog.textContent).toContain("Raio 2");
 		expect(dialog.querySelector('[data-slot="dialog-close"]')).toBeNull();
 		expect(screen.queryByRole("button", { name: /close|fechar/i })).toBeNull();
+	});
+
+	it("arma vinculada da campanha: números do Item vivo + frase do porquê", async () => {
+		mockViewport(true);
+		const linked = {
+			...thalia,
+			inventoryList: [
+				{
+					id: "inv-1",
+					name: "retrato",
+					quantity: 1,
+					weightLbs: 3,
+					location: "equipped",
+					campaignItemId: longsword.id,
+					proficient: true,
+				},
+			],
+		} as Character;
+		render(
+			<WeaponAttacksSection character={linked} itemsById={byId(longsword)} />,
+		);
+		expect(screen.getByText("Corpo a corpo · 1,5 m · Versátil")).toBeTruthy();
+		expect(screen.getByLabelText("Acerto +6: ver a conta")).toBeTruthy();
+		fireEvent.click(screen.getByLabelText("Dano 1d8+4: ver a conta"));
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain(
+			"Seu dano é 1d8+4 cortante porque a Espada longa +1 rola 1d8, você soma sua Força +3 e a magia da arma dá +1.",
+		);
+		expect(dialog.textContent).toContain("vira 1d10+4");
+	});
+
+	it("vínculo com item indisponível não vira ataque", () => {
+		mockViewport(false);
+		const broken = {
+			...thalia,
+			inventoryList: [
+				{
+					id: "inv-1",
+					name: "Espada longa +1",
+					quantity: 1,
+					weightLbs: 3,
+					location: "equipped",
+					category: "weapon",
+					campaignItemId: "sumiu",
+				},
+			],
+		} as Character;
+		render(<WeaponAttacksSection character={broken} itemsById={byId()} />);
+		expect(screen.getByText(/Nenhuma arma equipada/)).toBeTruthy();
 	});
 });

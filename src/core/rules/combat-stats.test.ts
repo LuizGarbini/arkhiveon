@@ -1,16 +1,27 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryItem, Item } from "@/lib/store/types";
 import {
+	armorClassCaption,
 	computeArmorClass,
 	computeInitiative,
+	explainArmorClass,
+	explainAttack,
+	explainDamage,
+	explainInitiative,
+	initiativeCaption,
 	type LinkedEntry,
+	proseText,
 } from "./combat-stats";
+import { resolveLinkedInventory } from "./item-links";
 import {
+	byId,
+	longsword,
 	ringOfAlertness,
 	shield,
 	studdedLeather,
 	thalia,
 } from "./thalia.fixture";
+import { getEquippedWeaponAttacks } from "./weapon-damage";
 
 function linked(
 	item: Item,
@@ -152,5 +163,79 @@ describe("computeInitiative", () => {
 		]);
 		expect(init.source).toBe("manual");
 		expect(init.notes[0]).toContain("sintonização");
+	});
+});
+
+describe("prosa (mocks 03)", () => {
+	const [attack] = getEquippedWeaponAttacks(
+		resolveLinkedInventory(
+			[
+				{
+					id: "inv-sword",
+					name: "x",
+					quantity: 1,
+					weightLbs: 0,
+					location: "equipped",
+					campaignItemId: longsword.id,
+					proficient: true,
+				},
+			],
+			byId(longsword),
+		),
+		{ strength: 16, dexterity: 16 },
+		2,
+	);
+
+	it("Dano: frase exata + blocos", () => {
+		const e = explainDamage(attack);
+		expect(proseText(e.sentence)).toBe(
+			"Seu dano é 1d8+4 cortante porque a Espada longa +1 rola 1d8, você soma sua Força +3 e a magia da arma dá +1.",
+		);
+		expect(e.sentence.filter((p) => p.strong).map((p) => p.text)).toEqual([
+			"1d8+4 cortante",
+			"Espada longa +1",
+			"1d8",
+			"Força +3",
+			"+1",
+		]);
+		expect(e.blocks).toEqual([
+			{ value: "1d8", label: "Espada" },
+			{ value: "+3", label: "Força" },
+			{ value: "+1", label: "Mágica" },
+		]);
+		expect(e.total).toBe("1d8+4");
+	});
+
+	it("Acerto: +6 = Prof. +2 + Força +3 + Mágica +1", () => {
+		const e = explainAttack(attack);
+		expect(proseText(e.sentence)).toBe(
+			"Seu acerto é +6 porque você soma proficiência +2, sua Força +3 e a magia da arma dá +1.",
+		);
+		expect(e.blocks.map((b) => b.value)).toEqual(["+2", "+3", "+1"]);
+		expect(e.total).toBe("+6");
+	});
+
+	it("CA: frase exata + nota do mock", () => {
+		const stat = computeArmorClass(thalia, [linked(studdedLeather)]);
+		const e = explainArmorClass(stat);
+		expect(proseText(e.sentence)).toBe(
+			"Sua CA é 15 porque você veste Couro batido (base 12) e soma toda a sua Destreza +3.",
+		);
+		expect(e.blocks).toEqual([
+			{ value: "12", label: "Couro batido" },
+			{ value: "+3", label: "Destreza" },
+		]);
+		expect(e.notes).toEqual(["Sem armadura seria 13. Escudo somaria +2."]);
+		expect(armorClassCaption(stat)).toBe("Couro batido");
+	});
+
+	it("Iniciativa: +4 com o Anel", () => {
+		const stat = computeInitiative(thalia, [
+			linked(ringOfAlertness, "equipped", { isAttuned: true }),
+		]);
+		expect(proseText(explainInitiative(stat).sentence)).toBe(
+			"Sua iniciativa é +4 porque você soma sua Destreza +3 e o Anel da prontidão dá +1.",
+		);
+		expect(initiativeCaption(stat)).toBe("+1 do Anel");
 	});
 });
