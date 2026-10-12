@@ -9,7 +9,8 @@ export type BonusDieSides = (typeof BONUS_DIE_SIDES)[number];
 
 export const BONUS_DIE_ORIGIN_MAX = 24;
 export const BONUS_DIE_QUANTITY_MAX = 9;
-export const DEFAULT_FATE_MAX = 3;
+/** Destino tem teto fixo 10 (modelo-a-qty). Fichas antigas com 3 viram 10. */
+export const FATE_MAX = 10;
 
 export interface BonusDie {
 	id: string;
@@ -19,16 +20,19 @@ export interface BonusDie {
 }
 
 export interface TableResources {
-	inspiration: boolean;
+	/** Quantidade de Inspiração (inteiro ≥ 0, sem teto). */
+	inspiration: number;
+	/** Pontos de Destino, 0..FATE_MAX. */
 	fate: number;
+	/** Sempre FATE_MAX; mantido no JSONB para compatibilidade. */
 	fateMax: number;
 	bonusDice: BonusDie[];
 }
 
 export const EMPTY_TABLE_RESOURCES: TableResources = {
-	inspiration: false,
+	inspiration: 0,
 	fate: 0,
-	fateMax: DEFAULT_FATE_MAX,
+	fateMax: FATE_MAX,
 	bonusDice: [],
 };
 
@@ -55,7 +59,7 @@ export function cleanOrigin(origin: unknown) {
 export function normalizeTableResources(raw: unknown): TableResources {
 	if (!raw || typeof raw !== "object") return EMPTY_TABLE_RESOURCES;
 	const r = raw as Record<string, unknown>;
-	const fateMax = clamp(toInt(r.fateMax, DEFAULT_FATE_MAX), 1, 10);
+	const fateMax = FATE_MAX;
 	const bonusDice: BonusDie[] = [];
 	if (Array.isArray(r.bonusDice)) {
 		for (const item of r.bonusDice) {
@@ -73,7 +77,7 @@ export function normalizeTableResources(raw: unknown): TableResources {
 		}
 	}
 	return {
-		inspiration: r.inspiration === true,
+		inspiration: normalizeInspiration(r.inspiration),
 		fate: clamp(toInt(r.fate, 0), 0, fateMax),
 		fateMax,
 		bonusDice,
@@ -86,12 +90,29 @@ function newId() {
 		: `bd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function toggleInspiration(res: TableResources): TableResources {
-	return { ...res, inspiration: !res.inspiration };
+/** Ficha antiga guardava boolean: true → 1, false/ausente → 0. */
+function normalizeInspiration(value: unknown): number {
+	if (value === true) return 1;
+	if (value === false || value == null) return 0;
+	return Math.max(0, toInt(value, 0));
+}
+
+export function setInspiration(
+	res: TableResources,
+	inspiration: number,
+): TableResources {
+	const n = Number.isFinite(inspiration) ? Math.trunc(inspiration) : 0;
+	return { ...res, inspiration: Math.max(0, n) };
+}
+
+/** "Usar 1 · vantagem": gasta 1 Inspiração; em 0 não muda nada. */
+export function spendInspiration(res: TableResources): TableResources {
+	return res.inspiration >= 1 ? setInspiration(res, res.inspiration - 1) : res;
 }
 
 export function setFate(res: TableResources, fate: number): TableResources {
-	return { ...res, fate: clamp(Math.trunc(fate), 0, res.fateMax) };
+	const n = Number.isFinite(fate) ? Math.trunc(fate) : 0;
+	return { ...res, fate: clamp(n, 0, FATE_MAX), fateMax: FATE_MAX };
 }
 
 /** Soma na entrada que já tem o mesmo dado e a mesma origem. */

@@ -3,11 +3,13 @@ import {
 	addBonusDie,
 	BONUS_DIE_ORIGIN_MAX,
 	EMPTY_TABLE_RESOURCES,
+	FATE_MAX,
 	normalizeTableResources,
 	rollDie,
 	setFate,
+	setInspiration,
 	spendBonusDie,
-	toggleInspiration,
+	spendInspiration,
 } from "./table-resources";
 
 describe("table resources", () => {
@@ -24,18 +26,47 @@ describe("table resources", () => {
 				null,
 			],
 		});
-		expect(res.inspiration).toBe(true);
-		expect(res.fate).toBe(3);
+		expect(res.inspiration).toBe(1);
+		expect(res.fate).toBe(10);
+		expect(res.fateMax).toBe(10);
 		expect(res.bonusDice).toEqual([
 			{ id: "a", sides: 6, quantity: 2, origin: "dormiu bem" },
 		]);
 	});
 
-	it("inspiração alterna e destino fica entre 0 e o máximo", () => {
-		expect(toggleInspiration(EMPTY_TABLE_RESOURCES).inspiration).toBe(true);
-		expect(setFate(EMPTY_TABLE_RESOURCES, 2).fate).toBe(2);
-		expect(setFate(EMPTY_TABLE_RESOURCES, 5).fate).toBe(3);
+	it("migra inspiração boolean → número e destino antigo (máx 3) → 10", () => {
+		expect(normalizeTableResources({ inspiration: true }).inspiration).toBe(1);
+		expect(normalizeTableResources({ inspiration: false }).inspiration).toBe(0);
+		expect(normalizeTableResources({}).inspiration).toBe(0);
+		expect(normalizeTableResources({ inspiration: 3 }).inspiration).toBe(3);
+		expect(normalizeTableResources({ inspiration: -2 }).inspiration).toBe(0);
+		expect(normalizeTableResources({ inspiration: "x" }).inspiration).toBe(0);
+		const old = normalizeTableResources({ fate: 2, fateMax: 3 });
+		expect(old.fate).toBe(2);
+		expect(old.fateMax).toBe(FATE_MAX);
+		expect(normalizeTableResources({ fate: -4 }).fate).toBe(0);
+		expect(normalizeTableResources({ fate: 7.9, fateMax: 99 })).toMatchObject({
+			fate: 7,
+			fateMax: 10,
+		});
+	});
+
+	it("inspiração é quantidade sem teto; usar 1 não baixa de 0", () => {
+		expect(setInspiration(EMPTY_TABLE_RESOURCES, 12).inspiration).toBe(12);
+		expect(setInspiration(EMPTY_TABLE_RESOURCES, -1).inspiration).toBe(0);
+		const two = setInspiration(EMPTY_TABLE_RESOURCES, 2);
+		expect(spendInspiration(two).inspiration).toBe(1);
+		expect(spendInspiration(EMPTY_TABLE_RESOURCES).inspiration).toBe(0);
+	});
+
+	it("destino fica entre 0 e 10", () => {
+		expect(setFate(EMPTY_TABLE_RESOURCES, 4).fate).toBe(4);
+		expect(setFate(EMPTY_TABLE_RESOURCES, 11).fate).toBe(10);
 		expect(setFate(EMPTY_TABLE_RESOURCES, -1).fate).toBe(0);
+		expect(setFate({ ...EMPTY_TABLE_RESOURCES, fateMax: 3 }, 8)).toMatchObject({
+			fate: 8,
+			fateMax: 10,
+		});
 	});
 
 	it("adiciona dado, corta origem em 24 e soma no mesmo dado+origem", () => {
