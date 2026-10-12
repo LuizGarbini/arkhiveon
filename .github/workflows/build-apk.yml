@@ -25,7 +25,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Check Supabase env (set/missing, no values)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+        run: |
+          missing=0
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_KEY; do
+            if [ -n "${!name}" ]; then
+              echo "$name: set"
+            else
+              echo "::error::$name: missing (crie em Settings > Secrets and variables > Actions)"
+              missing=1
+            fi
+          done
+          exit $missing
+
       - name: Build Web Application
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
         run: pnpm run build
 
       - name: Sync Capacitor Android
