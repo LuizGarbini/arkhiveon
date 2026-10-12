@@ -7,8 +7,10 @@ android {
         applicationId "com.arkhiveon.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI injeta ARKHIVEON_VERSION_CODE (run_number) — precisa sempre crescer pro updater.
+        def ciVersionCode = (System.getenv("ARKHIVEON_VERSION_CODE") ?: "1").toInteger()
+        versionCode ciVersionCode
+        versionName "1.0.${ciVersionCode}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,7 +18,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Assinatura fixa: sem isso cada runner do CI gera um debug.keystore novo e o Android
+    // recusa instalar por cima ("conflito de pacote").
+    def ksPath = System.getenv("ARKHIVEON_KEYSTORE_PATH")
+    signingConfigs {
+        if (ksPath) {
+            arkhiveon {
+                storeFile file(ksPath)                storeType "pkcs12"
+                storePassword System.getenv("ARKHIVEON_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ARKHIVEON_KEY_ALIAS")
+                keyPassword System.getenv("ARKHIVEON_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (ksPath) signingConfig signingConfigs.arkhiveon
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
