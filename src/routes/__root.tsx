@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ShellAiChat } from "@/components/ai-mesa/shell-ai-chat";
+import { ApkUpdateBanner } from "@/components/apk-update-banner";
 import { AppHeader } from "@/components/app-header";
 import { GlobalError } from "@/components/global-error";
 import { LegacyWorldNamingGate } from "@/components/legacy-world-naming-gate";
@@ -65,6 +66,7 @@ function RootLayout() {
 		<ToastProvider>
 			<AuthProvider>
 				<RootContent />
+				<ApkUpdateBanner />
 			</AuthProvider>
 		</ToastProvider>
 	);

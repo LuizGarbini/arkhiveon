@@ -5,9 +5,19 @@ on:
     branches: [ main, garbini/* ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      # versionCode sempre crescente (o updater do app compara isso)
+      ARKHIVEON_VERSION_CODE: ${{ github.run_number }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -67,7 +77,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Restore signing keystore (assinatura fixa p/ atualizar por cima)
+        env:
+          KS_B64: ${{ secrets.ARKHIVEON_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/arkhiveon.keystore"
+            echo "ARKHIVEON_KEYSTORE_PATH=$RUNNER_TEMP/arkhiveon.keystore" >> "$GITHUB_ENV"
+            echo "keystore: set"
+          else
+            echo "::warning::ARKHIVEON_KEYSTORE_B64 missing — APK assinado com debug key aleatória (não atualiza por cima)"
+          fi
+
       - name: Build Android APK with Gradle
+        env:
+          ARKHIVEON_KEYSTORE_PASSWORD: ${{ secrets.ARKHIVEON_KEYSTORE_PASSWORD }}
+          ARKHIVEON_KEY_ALIAS: ${{ secrets.ARKHIVEON_KEY_ALIAS }}
+          ARKHIVEON_KEY_PASSWORD: ${{ secrets.ARKHIVEON_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
@@ -78,3 +104,34 @@ jobs:
         with:
           name: Arkhiveon-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish release apk-latest (só main + keystore fixa)
+        if: github.ref == 'refs/heads/main' && env.ARKHIVEON_KEYSTORE_PATH != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/Arkhiveon.apk
+          SHA=$(sha256sum out/Arkhiveon.apk | cut -d' ' -f1)
+          REPO="${{ github.repository }}"
+          cat > out/latest.json <<JSON
+          {
+            "versionCode": ${ARKHIVEON_VERSION_CODE},
+            "versionName": "1.0.${ARKHIVEON_VERSION_CODE}",
+            "apkUrl": "https://github.com/${REPO}/releases/download/apk-latest/Arkhiveon.apk",
+            "sha256": "${SHA}",
+            "releasedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${GITHUB_SHA}"
+          }
+          JSON
+          cat out/latest.json
+          if ! gh release view apk-latest >/dev/null 2>&1; then
+            gh release create apk-latest --title "Arkhiveon Android (último build)" \
+              --notes "Atualizado automaticamente pelo workflow build-apk." --target "$GITHUB_SHA" --latest
+          fi
+          git tag -f apk-latest "$GITHUB_SHA" && git push -f origin refs/tags/apk-latest
+          # APK primeiro, JSON por último: o app só vê a versão nova quando o APK já está lá
+          gh release upload apk-latest out/Arkhiveon.apk --clobber
+          gh release upload apk-latest out/latest.json --clobber
+          gh release edit apk-latest --notes "versionCode ${ARKHIVEON_VERSION_CODE} · ${GITHUB_SHA::7}"
