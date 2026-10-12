@@ -24,7 +24,8 @@ android {
     signingConfigs {
         if (ksPath) {
             arkhiveon {
-                storeFile file(ksPath)                storeType "pkcs12"
+                storeFile file(ksPath)
+                storeType "pkcs12"
                 storePassword System.getenv("ARKHIVEON_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("ARKHIVEON_KEY_ALIAS")
                 keyPassword System.getenv("ARKHIVEON_KEY_PASSWORD")
