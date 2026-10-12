@@ -56,6 +56,8 @@ export function NumberDetail({
 	trigger,
 	triggerClassName,
 	children,
+	open: openProp,
+	onOpenChange,
 }: {
 	triggerText: string;
 	triggerLabel: string;
@@ -64,9 +66,17 @@ export function NumberDetail({
 	trigger?: ReactNode;
 	triggerClassName?: string;
 	children: ReactNode;
+	/** Opcional: controla abrir/fechar por fora (ex.: fechar ao enviar um formulário). */
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }) {
 	const isMobile = useIsMobile();
-	const [open, setOpen] = useState(false);
+	const [innerOpen, setInnerOpen] = useState(false);
+	const open = openProp ?? innerOpen;
+	const setOpen = (next: boolean) => {
+		if (openProp === undefined) setInnerOpen(next);
+		onOpenChange?.(next);
+	};
 	const [dragY, setDragY] = useState(0);
 	const dragStart = useRef<number | null>(null);
 	const triggerClass = triggerClassName ?? numberTrigger;
@@ -74,7 +84,7 @@ export function NumberDetail({
 
 	if (!isMobile) {
 		return (
-			<Popover>
+			<Popover open={open} onOpenChange={(next) => setOpen(next)}>
 				<PopoverTrigger className={triggerClass} aria-label={triggerLabel}>
 					{triggerBody}
 				</PopoverTrigger>
