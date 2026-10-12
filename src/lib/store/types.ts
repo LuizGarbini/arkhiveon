@@ -1,3 +1,4 @@
+import type { TableResources } from "../table-resources";
 import type { UserPlan } from "../user-plan";
 export type { UserPlan };
 export type {
@@ -250,6 +251,8 @@ export interface Character {
 	trainingList?: TrainingActivity[];
 	tempBonusesList?: TempBonus[];
 	inventoryList?: InventoryItem[];
+	/** Recursos da mesa (Inspiração, Destino, Dados bônus). Vive em `data`. */
+	tableResources?: TableResources;
 	/**
 	 * Quem criou a ficha (`characters.created_by`). Só leitura: vem da coluna,
 	 * nunca é gravado em `data`. Define quem pode vincular itens da campanha.
