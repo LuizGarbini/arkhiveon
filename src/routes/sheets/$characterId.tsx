@@ -224,6 +224,9 @@ function CharacterSheetPage() {
 				onOpenTransferDialog={() => setIsTransferDialogOpen(true)}
 				onOpenExportDialog={() => setIsExportDialogOpen(true)}
 				onToggleEditLayout={() => setIsEditingLayout((current) => !current)}
+				onUpdateTableResources={(tableResources) =>
+					updateCharacter(currentCharacter.id, { tableResources })
+				}
 			/>
 
 			{isEditingLayout ? (

@@ -16,7 +16,9 @@ import { formatModifier } from "@/core/rules";
 import type { Character } from "@/lib/store";
 import { systemLabel } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
+import type { TableResources } from "@/lib/table-resources";
 import { useCombatStats } from "../use-linked-items";
+import { TableResourcesStrip } from "./table-resources-strip";
 import { QuickStat } from "./ui-primitives";
 
 export interface SheetHeaderProps {
@@ -32,6 +34,7 @@ export interface SheetHeaderProps {
 	onOpenTransferDialog: () => void;
 	onOpenExportDialog: () => void;
 	onToggleEditLayout: () => void;
+	onUpdateTableResources?: (next: TableResources) => void;
 }
 
 export function SheetHeader({
@@ -47,6 +50,7 @@ export function SheetHeader({
 	onOpenTransferDialog,
 	onOpenExportDialog,
 	onToggleEditLayout,
+	onUpdateTableResources,
 }: SheetHeaderProps) {
 	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
 	const combat = useCombatStats(character);
@@ -238,6 +242,14 @@ export function SheetHeader({
 					color="text-emerald-400"
 				/>
 			</div>
+
+			{onUpdateTableResources && (
+				<TableResourcesStrip
+					value={character.tableResources}
+					readOnly={isViewer}
+					onChange={onUpdateTableResources}
+				/>
+			)}
 		</header>
 	);
 }
