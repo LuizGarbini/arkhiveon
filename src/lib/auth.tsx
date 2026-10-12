@@ -8,6 +8,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	isNativePlatform,
+	listenNativeOAuth,
+	startNativeOAuth,
+} from "./native-oauth";
 import { useRPGStore } from "./store";
 import { getSupabase, SUPABASE_TABLES } from "./supabase";
 import {
@@ -197,6 +202,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 		};
 	}, [session?.user.id, supabase]);
 
+	useEffect(() => {
+		if (!supabase) return;
+		return listenNativeOAuth(supabase);
+	}, [supabase]);
+
 	const value = useMemo<AuthContextValue>(
 		() => ({
 			user: session?.user ?? null,
@@ -247,6 +257,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			},
 			signInWithOAuth: async (provider) => {
 				if (!supabase) return "Supabase não está configurado.";
+				if (isNativePlatform()) return startNativeOAuth(supabase, provider);
 				const { error } = await supabase.auth.signInWithOAuth({
 					provider,
 					options: {
