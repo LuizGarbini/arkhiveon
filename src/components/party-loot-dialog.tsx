@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useRPGStore } from "@/lib/store";
 
@@ -202,10 +203,11 @@ export function PartyLootDialog({ trigger }: PartyLootDialogProps = {}) {
 									</div>
 
 									<div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
-										<select
+										<Select
+											aria-label="Atribuir item a um personagem"
 											value={selectedCharId}
 											onChange={(e) => setSelectedCharId(e.target.value)}
-											className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary max-w-[160px]"
+											className="h-[44px] max-w-[180px] md:h-9 md:text-xs"
 										>
 											<option value="">Atribuir a...</option>
 											{characters.map((c) => (
@@ -213,7 +215,7 @@ export function PartyLootDialog({ trigger }: PartyLootDialogProps = {}) {
 													{c.characterName}
 												</option>
 											))}
-										</select>
+										</Select>
 										<Button
 											type="button"
 											size="sm"

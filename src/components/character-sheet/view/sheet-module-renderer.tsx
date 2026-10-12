@@ -372,7 +372,7 @@ export function SheetModuleContent({
 				<div className="space-y-3">
 					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
 						<BookOpen className="h-4 w-4 text-primary" />
-						{featsLabel} Selecionados ({featsList.length})
+						Selecionados ({featsList.length})
 					</h4>
 
 					{featsList.length === 0 ? (
@@ -451,11 +451,11 @@ export function SheetModuleContent({
 	}
 
 	if (module.kind === "customText") {
+		// O título já está no cabeçalho do módulo (SheetModuleCard).
 		return (
-			<TextBlock
-				title={module.title}
-				value={module.content || "Sem conteúdo"}
-			/>
+			<p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+				{module.content || "Sem conteúdo"}
+			</p>
 		);
 	}
 

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -120,9 +121,15 @@ describe("ItemForm (cadastro rico)", () => {
 		fireEvent.click(within(nav).getByRole("button", { name: /Ataque/ }));
 		const select = screen.getByRole("combobox", {
 			name: "Atributo de ataque",
-		}) as HTMLSelectElement;
-		expect(select.tagName).toBe("SELECT");
-		expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+		});
+		// Select do DS (shadcn/Base UI), não o <select> nativo.
+		expect(select.tagName).toBe("BUTTON");
+		expect(document.querySelectorAll("select")).toHaveLength(0);
+		await act(async () => {
+			fireEvent.click(select);
+		});
+		const options = await screen.findAllByRole("option");
+		expect(options.map((o) => o.textContent)).toEqual([
 			"Força",
 			"Destreza",
 			"Constituição",
@@ -134,7 +141,14 @@ describe("ItemForm (cadastro rico)", () => {
 		fireEvent.change(screen.getByLabelText("Dados"), {
 			target: { value: "1d8" },
 		});
-		fireEvent.change(select, { target: { value: "charisma" } });
+		const carisma = screen.getByRole("option", { name: "Carisma" });
+		await act(async () => {
+			fireEvent.mouseMove(carisma);
+		});
+		await act(async () => {
+			fireEvent.click(carisma);
+		});
+		expect(select.textContent).toContain("Carisma");
 		fireEvent.click(screen.getByRole("button", { name: /Criar arma/i }));
 		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
 		const payload = addItem.mock.calls[0][0] as unknown as Item;
@@ -165,8 +179,8 @@ describe("ItemForm (cadastro rico)", () => {
 		fireEvent.click(within(nav).getByRole("button", { name: /Ataque/ }));
 		const select = screen.getByRole("combobox", {
 			name: "Atributo de ataque",
-		}) as HTMLSelectElement;
-		expect(select.value).toBe("dexterity");
+		});
+		expect(select.textContent).toContain("Destreza");
 		expect(
 			screen
 				.getByRole("button", { name: "Acuidade" })

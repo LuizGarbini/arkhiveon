@@ -12,19 +12,20 @@ export function QuickStat({
 	value: string;
 	color: string;
 }) {
+	// Célula da faixa de status `<dl>` (2×2 no celular, 4 colunas a partir de sm).
 	return (
-		<div className="rounded-2xl border border-border/70 bg-background/50 p-4 text-center">
-			<p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
+		<div className="min-w-0 bg-background px-2 py-3 text-center sm:py-4">
+			<dt className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 				{label}
-			</p>
-			<p
+			</dt>
+			<dd
 				className={cn(
-					"font-display mt-2 text-2xl font-bold leading-none sm:text-3xl",
+					"mt-1.5 truncate font-display text-xl font-bold leading-none tabular-nums sm:text-2xl",
 					color,
 				)}
 			>
 				{value}
-			</p>
+			</dd>
 		</div>
 	);
 }

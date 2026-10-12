@@ -9,6 +9,7 @@ import {
 	CharacterNameDialog,
 	ModuleEditorDialog,
 	SheetHeader,
+	SheetModuleCard,
 	SheetModuleContent,
 } from "@/components/character-sheet/view";
 import { CharacterTransferDialog } from "@/components/character-transfer-dialog";
@@ -270,32 +271,18 @@ function CharacterSheetPage() {
 						{layout.modules
 							.filter((m) => m.enabled !== false && m.column !== "side")
 							.map((module) => (
-								<section
+								<SheetModuleCard
 									key={module.id}
-									className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 shadow-xs space-y-4"
+									module={module}
+									canEdit={!isViewer}
+									onEdit={() => setEditingModule(module)}
 								>
-									<div className="flex items-center justify-between border-b border-border/40 pb-3">
-										<h3 className="font-display text-base font-bold text-foreground">
-											{module.title}
-										</h3>
-										{!isViewer && (
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={() => setEditingModule(module)}
-												className="min-h-[44px] text-xs text-primary cursor-pointer hover:bg-primary/10"
-											>
-												Editar
-											</Button>
-										)}
-									</div>
 									<SheetModuleContent
 										module={module}
 										character={currentCharacter}
 										config={config}
 									/>
-								</section>
+								</SheetModuleCard>
 							))}
 					</div>
 
@@ -303,32 +290,18 @@ function CharacterSheetPage() {
 						{layout.modules
 							.filter((m) => m.enabled !== false && m.column === "side")
 							.map((module) => (
-								<section
+								<SheetModuleCard
 									key={module.id}
-									className="rounded-2xl border border-border/70 bg-card p-5 shadow-xs space-y-4"
+									module={module}
+									canEdit={!isViewer}
+									onEdit={() => setEditingModule(module)}
 								>
-									<div className="flex items-center justify-between border-b border-border/40 pb-3">
-										<h3 className="font-display text-base font-bold text-foreground">
-											{module.title}
-										</h3>
-										{!isViewer && (
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={() => setEditingModule(module)}
-												className="min-h-[44px] text-xs text-primary cursor-pointer hover:bg-primary/10"
-											>
-												Editar
-											</Button>
-										)}
-									</div>
 									<SheetModuleContent
 										module={module}
 										character={currentCharacter}
 										config={config}
 									/>
-								</section>
+								</SheetModuleCard>
 							))}
 					</div>
 				</div>
