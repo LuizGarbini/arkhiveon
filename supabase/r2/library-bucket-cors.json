@@ -1,0 +1,13 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://arkhiveon.com.br",
+      "https://www.arkhiveon.com.br",
+      "https://localhost"
+    ],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["content-type", "content-length", "range"],
+    "ExposeHeaders": ["content-length", "content-range", "etag"],
+    "MaxAgeSeconds": 3600
+  }
+]
