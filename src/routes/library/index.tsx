@@ -133,7 +133,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: área de soltar arquivo; o botão Enviar PDF é o caminho acessível.
 		<div
-			className="relative space-y-6"
+			className="relative w-full"
 			onDragOver={(event) => {
 				if (!canManage || !event.dataTransfer.types.includes("Files")) return;
 				event.preventDefault();
@@ -178,68 +178,72 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 				onChange={(event) => void handleFile(event.target.files?.[0])}
 			/>
 
-			{upload ? (
-				<div
-					className="rounded-2xl border border-primary/30 bg-primary/8 p-4"
-					aria-live="polite"
-				>
-					<div className="flex items-center justify-between gap-3 text-[12px]">
-						<span className="truncate font-semibold text-foreground">
-							Enviando {upload.name}
-						</span>
-						<span className="tabular-nums text-muted-foreground">
-							{Math.round(upload.progress * 100)}%
-						</span>
-					</div>
-					<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+			<div className="px-6 pb-10 sm:px-8">
+				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					{upload ? (
 						<div
-							className="h-full rounded-full bg-primary transition-[width] duration-200"
-							style={{ width: `${Math.round(upload.progress * 100)}%` }}
-						/>
-					</div>
-				</div>
-			) : null}
+							className="rounded-2xl border border-primary/30 bg-primary/8 p-4"
+							aria-live="polite"
+						>
+							<div className="flex items-center justify-between gap-3 text-[12px]">
+								<span className="truncate font-semibold text-foreground">
+									Enviando {upload.name}
+								</span>
+								<span className="tabular-nums text-muted-foreground">
+									{Math.round(upload.progress * 100)}%
+								</span>
+							</div>
+							<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+								<div
+									className="h-full rounded-full bg-primary transition-[width] duration-200"
+									style={{ width: `${Math.round(upload.progress * 100)}%` }}
+								/>
+							</div>
+						</div>
+					) : null}
 
-			{state.status === "loading" ? (
-				<div className="space-y-3" aria-busy="true">
-					<Skeleton className="h-14 w-full rounded-2xl" />
-					<Skeleton className="h-14 w-full rounded-2xl" />
-					<Skeleton className="h-14 w-full rounded-2xl" />
-				</div>
-			) : state.status === "error" ? (
-				<div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 px-6 py-10 text-center">
-					<p className="text-[13px] font-semibold text-foreground">
-						Não deu pra carregar a Biblioteca.
-					</p>
-					<Button variant="outline" onClick={() => void load()}>
-						<RotateCcw className="mr-2 h-4 w-4" />
-						Tentar de novo
-					</Button>
-				</div>
-			) : files.length === 0 ? (
-				<EmptyState
-					Icon={LibraryBig}
-					title="Nenhum PDF ainda"
-					description={
-						canManage
-							? "Envie livros, mapas ou fichas em PDF (até 50 MB). Dá pra arrastar o arquivo pra cá."
-							: "Quando o mestre enviar PDFs, eles aparecem aqui."
-					}
-					actionLabel={canManage ? "Enviar primeiro PDF" : undefined}
-					onAction={canManage ? openPicker : undefined}
-				/>
-			) : (
-				<ul className="space-y-2">
-					{files.map((file) => (
-						<LibraryFileRow
-							key={file.id}
-							file={file}
-							canManage={canManage}
-							onDelete={setToDelete}
+					{state.status === "loading" ? (
+						<div className="space-y-3" aria-busy="true">
+							<Skeleton className="h-14 w-full rounded-2xl" />
+							<Skeleton className="h-14 w-full rounded-2xl" />
+							<Skeleton className="h-14 w-full rounded-2xl" />
+						</div>
+					) : state.status === "error" ? (
+						<div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 px-6 py-10 text-center">
+							<p className="text-[13px] font-semibold text-foreground">
+								Não deu pra carregar a Biblioteca.
+							</p>
+							<Button variant="outline" onClick={() => void load()}>
+								<RotateCcw className="mr-2 h-4 w-4" />
+								Tentar de novo
+							</Button>
+						</div>
+					) : files.length === 0 ? (
+						<EmptyState
+							Icon={LibraryBig}
+							title="Nenhum PDF ainda"
+							description={
+								canManage
+									? "Envie livros, mapas ou fichas em PDF (até 50 MB). Dá pra arrastar o arquivo pra cá."
+									: "Quando o mestre enviar PDFs, eles aparecem aqui."
+							}
+							actionLabel={canManage ? "Enviar primeiro PDF" : undefined}
+							onAction={canManage ? openPicker : undefined}
 						/>
-					))}
-				</ul>
-			)}
+					) : (
+						<ul className="space-y-2">
+							{files.map((file) => (
+								<LibraryFileRow
+									key={file.id}
+									file={file}
+									canManage={canManage}
+									onDelete={setToDelete}
+								/>
+							))}
+						</ul>
+					)}
+				</div>
+			</div>
 
 			<div
 				className={cn(
