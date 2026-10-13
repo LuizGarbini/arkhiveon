@@ -8,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { FontSizeControl } from "@/components/library/font-size-control";
 import type { PdfViewerHandle } from "@/components/library/pdf-viewer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +17,7 @@ import {
 	type FormValues,
 	loadFormValues,
 	type SaveStatus,
+	saveFormValues,
 	saveStatusLabel,
 } from "@/lib/library/library-forms";
 import {
@@ -23,6 +25,13 @@ import {
 	getLibraryFile,
 	type LibraryFile,
 } from "@/lib/library/library-storage";
+import {
+	type FontSizes,
+	mergeStoredValues,
+	type PreparedPdf,
+	preparePdfWithFontSizes,
+	splitStoredValues,
+} from "@/lib/library/pdf-font-sizes";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -66,8 +75,14 @@ type ViewerState =
 	| {
 			status: "ready";
 			file: LibraryFile;
-			buffer: ArrayBuffer;
+			/** PDF original (do R2), nunca alterado. */
+			original: ArrayBuffer;
+			/** Original com os tamanhos de fonte aplicados (o que o viewer abre). */
+			prepared: PreparedPdf;
 			values: FormValues;
+			sizes: FontSizes;
+			/** Muda quando os tamanhos mudam: reabre o viewer com os novos bytes. */
+			revision: number;
 	  };
 
 function LibraryViewerPage({
@@ -81,6 +96,8 @@ function LibraryViewerPage({
 	const [state, setState] = useState<ViewerState>({ status: "loading" });
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 	const [isExporting, setIsExporting] = useState(false);
+	const [isResizing, setIsResizing] = useState(false);
+	const [selectedField, setSelectedField] = useState<string | null>(null);
 	const handleRef = useRef<PdfViewerHandle | null>(null);
 
 	const load = useCallback(async () => {
@@ -91,11 +108,21 @@ function LibraryViewerPage({
 				setState({ status: "missing" });
 				return;
 			}
-			const [buffer, values] = await Promise.all([
+			const [original, stored] = await Promise.all([
 				downloadLibraryPdf(fileId),
 				loadFormValues(fileId).catch(() => ({})),
 			]);
-			setState({ status: "ready", file, buffer, values });
+			const { values, sizes } = splitStoredValues(stored);
+			const prepared = await preparePdfWithFontSizes(original, sizes);
+			setState({
+				status: "ready",
+				file,
+				original,
+				prepared,
+				values,
+				sizes,
+				revision: 0,
+			});
 		} catch {
 			setState({ status: "error" });
 		}
@@ -118,6 +145,33 @@ function LibraryViewerPage({
 			});
 		} finally {
 			setIsExporting(false);
+		}
+	}
+
+	async function handleSizesChange(next: FontSizes) {
+		if (state.status !== "ready" || isResizing) return;
+		const current = state;
+		setIsResizing(true);
+		try {
+			// Pega o que a pessoa digitou até agora antes de reabrir o PDF.
+			const values = (await handleRef.current?.snapshot()) ?? current.values;
+			setSaveStatus("saving");
+			const prepared = await preparePdfWithFontSizes(current.original, next);
+			setState({
+				...current,
+				prepared,
+				values,
+				sizes: next,
+				revision: current.revision + 1,
+			});
+			try {
+				await saveFormValues(fileId, mergeStoredValues(values, next));
+				setSaveStatus("saved");
+			} catch {
+				setSaveStatus("error");
+			}
+		} finally {
+			setIsResizing(false);
 		}
 	}
 
@@ -166,6 +220,16 @@ function LibraryViewerPage({
 						{label}
 					</p>
 				</div>
+				{state.status === "ready" && (
+					<FontSizeControl
+						fields={state.prepared.fields}
+						sizes={state.sizes}
+						selectedField={selectedField}
+						onSelectField={setSelectedField}
+						onChange={(next) => void handleSizesChange(next)}
+						busy={isResizing}
+					/>
+				)}
 				<Button
 					variant="outline"
 					onClick={() => void handleExport()}
@@ -188,10 +252,13 @@ function LibraryViewerPage({
 				) : (
 					<Suspense fallback={<ViewerLoading />}>
 						<PdfViewer
+							key={state.revision}
 							fileId={fileId}
 							title={state.file.title}
-							buffer={state.buffer}
+							buffer={state.prepared.buffer}
 							initialValues={state.values}
+							fontSizes={state.sizes}
+							onFieldTouched={setSelectedField}
 							onStatus={setSaveStatus}
 							onError={() => setState({ status: "error" })}
 							handleRef={handleRef}

@@ -55,6 +55,23 @@ export function sameFormValues(a: FormValues, b: FormValues): boolean {
 	return keys.every((key) => b[key] === a[key]);
 }
 
+/**
+ * Só o que difere do que o PDF já mostra. Evita reaplicar "" em caixas de
+ * seleção (o engine marca a caixa ao receber qualquer valor) e poupa
+ * trabalho em fichas com centenas de campos.
+ */
+export function valuesToRestore(
+	stored: FormValues,
+	current: FormValues,
+): FormValues {
+	const out: FormValues = {};
+	for (const [key, value] of Object.entries(stored)) {
+		if (!(key in current)) continue;
+		if ((current[key] ?? "") !== value) out[key] = value;
+	}
+	return out;
+}
+
 export function formValuesTooLarge(values: FormValues): boolean {
 	return (
 		new TextEncoder().encode(JSON.stringify(values)).length >

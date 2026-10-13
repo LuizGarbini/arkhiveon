@@ -14,7 +14,12 @@ import {
 	type FormValues,
 	type SaveStatus,
 	saveFormValues,
+	valuesToRestore,
 } from "@/lib/library/library-forms";
+import {
+	type FontSizes,
+	mergeStoredValues,
+} from "@/lib/library/pdf-font-sizes";
 import { libraryViewerTheme } from "./pdf-viewer-theme";
 
 // Formas mínimas das capacidades que usamos (os tipos do snippet são preact).
@@ -33,7 +38,10 @@ interface FormCap {
 	getFormValues: (documentId?: string) => FormValues;
 	setFormValues: (values: FormValues, documentId?: string) => TaskLike<boolean>;
 	onFormReady: Hook<{ documentId: string }>;
-	onFieldValueChange: Hook<{ documentId: string }>;
+	onFieldValueChange: Hook<{
+		documentId: string;
+		widget?: { field?: { name?: string } };
+	}>;
 }
 interface ExportCap {
 	saveAsCopy: () => TaskLike<ArrayBuffer>;
@@ -50,6 +58,8 @@ function capability<T>(registry: PluginRegistry, id: string): T | null {
 
 export interface PdfViewerHandle {
 	exportFilled: () => Promise<void>;
+	/** Grava o pendente e devolve os valores atuais (sem os tamanhos). */
+	snapshot: () => Promise<FormValues | null>;
 }
 
 interface PdfViewerProps {
@@ -57,6 +67,10 @@ interface PdfViewerProps {
 	title: string;
 	buffer: ArrayBuffer;
 	initialValues: FormValues;
+	/** Tamanhos atuais: vão junto em todo salvamento (mesma linha). */
+	fontSizes: FontSizes;
+	/** Último campo editado — pré-seleciona no controle de fonte. */
+	onFieldTouched?: (name: string) => void;
 	onStatus: (status: SaveStatus) => void;
 	onError: () => void;
 	handleRef: React.MutableRefObject<PdfViewerHandle | null>;
@@ -88,16 +102,23 @@ export default function PdfViewer({
 	title,
 	buffer,
 	initialValues,
+	fontSizes,
+	onFieldTouched,
 	onStatus,
 	onError,
 	handleRef,
 }: PdfViewerProps) {
 	const statusRef = useRef(onStatus);
 	statusRef.current = onStatus;
+	const sizesRef = useRef(fontSizes);
+	sizesRef.current = fontSizes;
+	const touchedRef = useRef(onFieldTouched);
+	touchedRef.current = onFieldTouched;
 	const saver = useMemo(
 		() =>
 			createAutosaver({
-				save: (values) => saveFormValues(fileId, values),
+				save: (values) =>
+					saveFormValues(fileId, mergeStoredValues(values, sizesRef.current)),
 				onStatus: (status) => statusRef.current(status),
 			}),
 		[fileId],
@@ -156,10 +177,14 @@ export default function PdfViewer({
 			cleanups.current.push(
 				form.onFormReady(async (event) => {
 					if (event.documentId !== documentId) return;
-					if (Object.keys(initialValues).length > 0) {
+					const toRestore = valuesToRestore(
+						initialValues,
+						form.getFormValues(documentId),
+					);
+					if (Object.keys(toRestore).length > 0) {
 						restoring = true;
 						try {
-							await form.setFormValues(initialValues, documentId).toPromise();
+							await form.setFormValues(toRestore, documentId).toPromise();
 						} finally {
 							restoring = false;
 						}
@@ -168,6 +193,8 @@ export default function PdfViewer({
 				}),
 				form.onFieldValueChange((event) => {
 					if (restoring || event.documentId !== documentId) return;
+					const name = event.widget?.field?.name;
+					if (name) touchedRef.current?.(name);
 					saver.schedule(form.getFormValues(documentId));
 				}),
 			);
@@ -178,6 +205,10 @@ export default function PdfViewer({
 				await saver.flush();
 				const bytes = await exporter.saveAsCopy().toPromise();
 				await deliverPdf(bytes, exportFileName(title));
+			},
+			snapshot: async () => {
+				await saver.flush();
+				return form ? form.getFormValues(documentId) : null;
 			},
 		};
 		try {
