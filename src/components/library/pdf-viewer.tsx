@@ -15,14 +15,13 @@ import {
 	type SaveStatus,
 	saveFormValues,
 } from "@/lib/library/library-forms";
+import { libraryViewerTheme } from "./pdf-viewer-theme";
 
 // Formas mínimas das capacidades que usamos (os tipos do snippet são preact).
 interface TaskLike<T> {
 	toPromise: () => Promise<T>;
 }
-interface Hook<E> {
-	(listener: (event: E) => void): () => void;
-}
+type Hook<E> = (listener: (event: E) => void) => () => void;
 interface DocumentManagerCap {
 	openDocumentBuffer: (opts: {
 		buffer: ArrayBuffer;
@@ -125,7 +124,7 @@ export default function PdfViewer({
 			// Absoluto: o worker do pdfium roda em blob: e não resolve caminho relativo.
 			wasmUrl: new URL(pdfiumWasmUrl, window.location.href).href,
 			tabBar: "never" as const,
-			theme: { preference: isDark ? ("dark" as const) : ("light" as const) },
+			theme: libraryViewerTheme(isDark ? "dark" : "light"),
 			// Só ler e preencher: sem anotar, redigir, criar campo, assinar ou trocar modo.
 			disabledCategories: [
 				"annotation",
