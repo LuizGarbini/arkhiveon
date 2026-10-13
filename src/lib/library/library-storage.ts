@@ -224,3 +224,49 @@ export async function uploadLibraryPdf(
 export async function deleteLibraryFile(fileId: string): Promise<void> {
 	await callLibrary({ action: "delete", fileId });
 }
+
+/** Metadados de um PDF pronto (RLS decide se a pessoa vê). */
+export async function getLibraryFile(
+	fileId: string,
+): Promise<(LibraryFile & { campaignId: string }) | null> {
+	const client = looseClient();
+	if (!client || !isUuid(fileId)) return null;
+	const { data, error } = await client
+		.from(LIBRARY_FILES_TABLE)
+		.select("id, campaign_id, title, size_bytes, created_at")
+		.eq("id", fileId)
+		.eq("status", "ready")
+		.maybeSingle();
+	if (error) throw new LibraryError(libraryErrorMessage(undefined));
+	if (!data) return null;
+	const row = data as {
+		id: string;
+		campaign_id: string;
+		title: string;
+		size_bytes: number;
+		created_at: string;
+	};
+	return {
+		id: row.id,
+		campaignId: row.campaign_id,
+		title: row.title,
+		sizeBytes: Number(row.size_bytes),
+		createdAt: row.created_at,
+	};
+}
+
+/** Baixa o PDF inteiro pelo link assinado de 5 min (`request-read`). */
+export async function downloadLibraryPdf(fileId: string): Promise<ArrayBuffer> {
+	const { url } = await callLibrary<{ url: string }>({
+		action: "request-read",
+		fileId,
+	});
+	const response = await fetch(url);
+	if (!response.ok)
+		throw new LibraryError(libraryErrorMessage(response.status));
+	const buffer = await response.arrayBuffer();
+	if (!hasPdfMagic(new Uint8Array(buffer.slice(0, 5)))) {
+		throw new LibraryError(libraryErrorMessage(422));
+	}
+	return buffer;
+}

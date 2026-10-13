@@ -34,6 +34,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@embedpdf/pdfium": "2.15.1",
+    "@embedpdf/react-pdf-viewer": "2.15.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@paper-design/shaders-react": "^0.0.77",
