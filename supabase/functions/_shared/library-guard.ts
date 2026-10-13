@@ -59,6 +59,18 @@ export function buildLibraryKey(campaignId: string, fileId: string): string {
 	return `library/${campaignId}/${fileId}.pdf`;
 }
 
+/**
+ * Chave temporária do PUT assinado. O link de 10 min só grava aqui; o
+ * confirm-upload copia para a chave final. Assim um PUT repetido com o mesmo
+ * link nunca sobrescreve um PDF que já está `ready`.
+ */
+export function buildPendingLibraryKey(
+	campaignId: string,
+	fileId: string,
+): string {
+	return `pending/${campaignId}/${fileId}.pdf`;
+}
+
 export type UploadValidation =
 	| { ok: true; title: string; size: number }
 	| { ok: false; status: 400 | 413 | 415; error: string };

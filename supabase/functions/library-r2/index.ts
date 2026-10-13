@@ -8,9 +8,13 @@
  * Ações (POST JSON { action, ... }):
  * - request-upload  (owner/editor) { campaignId, title, size, contentType }
  *     → limpa pendentes > 1h da campanha, cria linha `pending`, devolve
- *       presigned PUT (10 min) com Content-Type e Content-Length assinados.
+ *       presigned PUT (10 min) com Content-Type e Content-Length assinados,
+ *       para a chave TEMPORÁRIA `pending/<campaign>/<id>.pdf` (Fatia 1b).
  * - confirm-upload  (owner/editor) { fileId }
- *     → HEAD + Range 0-4 (%PDF-) no R2; ok = `ready`; falha = apaga objeto+linha (422).
+ *     → HEAD + Range 0-4 (%PDF-) na chave temporária; ok = copia para a
+ *       chave final (`r2_key`), apaga a temporária e marca `ready`;
+ *       falha = apaga objeto+linha (422). Um PUT repetido depois do `ready`
+ *       só cai em `pending/`, nunca sobrescreve o PDF final.
  * - request-read    (qualquer membro, só `ready`) { fileId, ttlSeconds? }
  *     → presigned GET (5 min). `ttlSeconds` menor só com LIBRARY_TEST_MODE=1.
  * - delete          (owner/editor) { fileId } → apaga objeto + linha.
@@ -22,6 +26,7 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
+	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
 	HeadObjectCommand,
@@ -35,6 +40,7 @@ import {
 } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import {
 	buildLibraryKey,
+	buildPendingLibraryKey,
 	type CampaignRole,
 	canManageLibrary,
 	canReadLibrary,
@@ -143,9 +149,16 @@ async function deleteFile(
 	admin: SupabaseClient,
 	s3: S3Client,
 	bucket: string,
-	row: Pick<FileRow, "id" | "r2_key">,
+	row: Pick<FileRow, "id" | "r2_key" | "campaign_id">,
 ): Promise<void> {
 	await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: row.r2_key }));
+	// Sobra possível de um PUT repetido; apagar chave inexistente é ok no R2.
+	await s3.send(
+		new DeleteObjectCommand({
+			Bucket: bucket,
+			Key: buildPendingLibraryKey(row.campaign_id, row.id),
+		}),
+	);
 	await admin.from(LIBRARY_FILES_TABLE).delete().eq("id", row.id);
 }
 
@@ -158,13 +171,16 @@ async function cleanupStalePending(
 	const cutoff = new Date(Date.now() - LIBRARY_PENDING_MAX_AGE_MS).toISOString();
 	const { data } = await admin
 		.from(LIBRARY_FILES_TABLE)
-		.select("id, r2_key, created_at")
+		.select("id, campaign_id, r2_key, created_at")
 		.eq("campaign_id", campaignId)
 		.eq("status", "pending")
 		.lt("created_at", cutoff)
 		.limit(50);
 	let removed = 0;
-	for (const row of (data ?? []) as Pick<FileRow, "id" | "r2_key" | "created_at">[]) {
+	for (const row of (data ?? []) as Pick<
+		FileRow,
+		"id" | "campaign_id" | "r2_key" | "created_at"
+	>[]) {
 		if (!isStalePending(row.created_at, Date.now())) continue;
 		try {
 			await deleteFile(admin, s3, bucket, row);
@@ -268,7 +284,7 @@ serve(async (req) => {
 					s3,
 					new PutObjectCommand({
 						Bucket: bucket,
-						Key: key,
+						Key: buildPendingLibraryKey(campaignId, fileId),
 						ContentType: LIBRARY_PDF_MIME,
 						ContentLength: valid.size,
 					}),
@@ -292,14 +308,15 @@ serve(async (req) => {
 				const file = row as FileRow;
 				if (file.status === "ready") return json(req, { fileId: file.id, status: "ready" });
 				let head: { contentLength?: number; contentType?: string };
+				const pendingKey = buildPendingLibraryKey(file.campaign_id, file.id);
 				let first: Uint8Array = new Uint8Array();
 				try {
 					const headRes = await s3.send(
-						new HeadObjectCommand({ Bucket: bucket, Key: file.r2_key }),
+						new HeadObjectCommand({ Bucket: bucket, Key: pendingKey }),
 					);
 					head = { contentLength: headRes.ContentLength, contentType: headRes.ContentType };
 					const getRes = await s3.send(
-						new GetObjectCommand({ Bucket: bucket, Key: file.r2_key, Range: "bytes=0-4" }),
+						new GetObjectCommand({ Bucket: bucket, Key: pendingKey, Range: "bytes=0-4" }),
 					);
 					if (getRes.Body) first = await getRes.Body.transformToByteArray();
 				} catch {
@@ -310,6 +327,17 @@ serve(async (req) => {
 					await deleteFile(admin, s3, bucket, file);
 					return json(req, { error: check.error }, 422);
 				}
+				// Move pending/ → chave final (cópia server-side no R2).
+				await s3.send(
+					new CopyObjectCommand({
+						Bucket: bucket,
+						Key: file.r2_key,
+						CopySource: `${bucket}/${pendingKey}`,
+						ContentType: LIBRARY_PDF_MIME,
+						MetadataDirective: "REPLACE",
+					}),
+				);
+				await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: pendingKey }));
 				await admin
 					.from(LIBRARY_FILES_TABLE)
 					.update({ status: "ready", ready_at: new Date().toISOString() })

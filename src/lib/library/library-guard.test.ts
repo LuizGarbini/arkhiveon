@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildLibraryKey,
+	buildPendingLibraryKey,
 	canManageLibrary,
 	canReadLibrary,
 	checkUploadedObject,
@@ -105,6 +106,11 @@ describe("library-guard", () => {
 
 	it("chave no prefixo da campanha", () => {
 		expect(buildLibraryKey("c", "f")).toBe("library/c/f.pdf");
+		// PUT assinado vai pra chave temporária, nunca pra final.
+		expect(buildPendingLibraryKey("c", "f")).toBe("pending/c/f.pdf");
+		expect(buildPendingLibraryKey("c", "f")).not.toBe(
+			buildLibraryKey("c", "f"),
+		);
 	});
 
 	it("pendente velho = mais de 1h", () => {
