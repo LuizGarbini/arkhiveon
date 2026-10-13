@@ -7,6 +7,7 @@ import {
 	sameFormValues,
 	sanitizeFormValues,
 	saveStatusLabel,
+	valuesToRestore,
 } from "./library-forms";
 
 describe("library-forms", () => {
@@ -19,6 +20,15 @@ describe("library-forms", () => {
 		});
 		expect(sanitizeFormValues(["x"])).toEqual({});
 		expect(sanitizeFormValues(null)).toEqual({});
+	});
+
+	it("restaura só o que difere do PDF (não marca caixa vazia)", () => {
+		expect(
+			valuesToRestore(
+				{ nome: "Elbereth", caixa: "", marcada: "Yes", sumiu: "x" },
+				{ nome: "", caixa: "", marcada: "" },
+			),
+		).toEqual({ nome: "Elbereth", marcada: "Yes" });
 	});
 
 	it("compara valores", () => {
