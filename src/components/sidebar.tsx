@@ -6,6 +6,7 @@ import {
 	Globe2,
 	House,
 	Images,
+	LibraryBig,
 	Map as MapIcon,
 	Newspaper,
 	Package,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
+import { useLibraryPilot } from "@/lib/library/use-library-pilot";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getFactionsTabConfig } from "@/lib/systems";
@@ -66,6 +68,8 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const factionsTabConfig = getFactionsTabConfig(activeCampaign?.system);
+	// Piloto invisível: fora da allowlist o grupo Mundo fica idêntico.
+	const libraryEnabled = useLibraryPilot(activeCampaignId) === true;
 
 	const dynamicWorldItems = [
 		{ to: "/world", label: "Visão geral", Icon: Globe2 },
@@ -79,6 +83,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 		{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
 		{ to: "/locations", label: "Locais", Icon: MapIcon, shortcut: "Alt+7" },
 		{ to: "/lore", label: "Lore", Icon: BookOpen, shortcut: "Alt+8" },
+		...(libraryEnabled
+			? [{ to: "/library", label: "Biblioteca", Icon: LibraryBig }]
+			: []),
 		{ to: "/images", label: "Imagens", Icon: Images },
 	];
 

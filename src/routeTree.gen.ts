@@ -32,6 +32,7 @@ import { Route as NpcsIndexRouteImport } from './routes/npcs/index'
 import { Route as NewsIndexRouteImport } from './routes/news/index'
 import { Route as LoreIndexRouteImport } from './routes/lore/index'
 import { Route as LocationsIndexRouteImport } from './routes/locations/index'
+import { Route as LibraryIndexRouteImport } from './routes/library/index'
 import { Route as ItemsIndexRouteImport } from './routes/items/index'
 import { Route as FactionsIndexRouteImport } from './routes/factions/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
@@ -161,6 +162,11 @@ const LocationsIndexRoute = LocationsIndexRouteImport.update({
   path: '/locations/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryIndexRoute = LibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemsIndexRoute = ItemsIndexRouteImport.update({
   id: '/items/',
   path: '/items/',
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/characters': typeof CharactersIndexRoute
   '/factions': typeof FactionsIndexRoute
   '/items': typeof ItemsIndexRoute
+  '/library': typeof LibraryIndexRoute
   '/locations': typeof LocationsIndexRoute
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/characters': typeof CharactersIndexRoute
   '/factions': typeof FactionsIndexRoute
   '/items': typeof ItemsIndexRoute
+  '/library': typeof LibraryIndexRoute
   '/locations': typeof LocationsIndexRoute
   '/lore': typeof LoreIndexRoute
   '/news': typeof NewsIndexRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/characters/': typeof CharactersIndexRoute
   '/factions/': typeof FactionsIndexRoute
   '/items/': typeof ItemsIndexRoute
+  '/library/': typeof LibraryIndexRoute
   '/locations/': typeof LocationsIndexRoute
   '/lore/': typeof LoreIndexRoute
   '/news/': typeof NewsIndexRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/characters'
     | '/factions'
     | '/items'
+    | '/library'
     | '/locations'
     | '/lore'
     | '/news'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/characters'
     | '/factions'
     | '/items'
+    | '/library'
     | '/locations'
     | '/lore'
     | '/news'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/characters/'
     | '/factions/'
     | '/items/'
+    | '/library/'
     | '/locations/'
     | '/lore/'
     | '/news/'
@@ -488,6 +500,7 @@ export interface RootRouteChildren {
   CharactersIndexRoute: typeof CharactersIndexRoute
   FactionsIndexRoute: typeof FactionsIndexRoute
   ItemsIndexRoute: typeof ItemsIndexRoute
+  LibraryIndexRoute: typeof LibraryIndexRoute
   LocationsIndexRoute: typeof LocationsIndexRoute
   LoreIndexRoute: typeof LoreIndexRoute
   NewsIndexRoute: typeof NewsIndexRoute
@@ -661,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LocationsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/library/': {
+      id: '/library/'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/items/': {
       id: '/items/'
       path: '/items'
@@ -784,6 +804,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersIndexRoute: CharactersIndexRoute,
   FactionsIndexRoute: FactionsIndexRoute,
   ItemsIndexRoute: ItemsIndexRoute,
+  LibraryIndexRoute: LibraryIndexRoute,
   LocationsIndexRoute: LocationsIndexRoute,
   LoreIndexRoute: LoreIndexRoute,
   NewsIndexRoute: NewsIndexRoute,
