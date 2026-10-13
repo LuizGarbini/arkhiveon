@@ -21,3 +21,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/ia-mesa-chat/deno.json"
 entrypoint = "./functions/ia-mesa-chat/index.ts"
+
+[functions.library-r2]
+enabled = true
+verify_jwt = true
+import_map = "./functions/library-r2/deno.json"
+entrypoint = "./functions/library-r2/index.ts"
