@@ -129,6 +129,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 
 	const openPicker = () => inputRef.current?.click();
 	const files = state.status === "ready" ? state.files : [];
+	const count = state.status === "ready" ? files.length : undefined;
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: área de soltar arquivo; o botão Enviar PDF é o caminho acessível.
@@ -150,26 +151,54 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 				void handleFile(event.dataTransfer.files[0]);
 			}}
 		>
-			<PageHeader
-				eyebrow="Mundo"
-				title="Biblioteca"
-				description="PDFs da campanha: livros, mapas e fichas para toda a mesa."
-				Icon={LibraryBig}
-				iconColor="text-primary"
-				count={state.status === "ready" ? files.length : undefined}
-				action={
-					canManage ? (
-						<Button
-							onClick={openPicker}
-							disabled={!!upload}
-							className="min-h-11 active:scale-[0.98]"
-						>
-							<UploadCloud className="mr-2 h-4 w-4" />
-							Enviar PDF
-						</Button>
-					) : null
-				}
-			/>
+			{/* Desktop/tablet: cabeçalho padrão das coleções. */}
+			<div className="hidden sm:block">
+				<PageHeader
+					eyebrow="Mundo"
+					title="Biblioteca"
+					description="PDFs da campanha: livros, mapas e fichas para toda a mesa."
+					Icon={LibraryBig}
+					iconColor="text-primary"
+					count={count}
+					action={
+						canManage ? (
+							<Button
+								onClick={openPicker}
+								disabled={!!upload}
+								className="min-h-11 active:scale-[0.98]"
+							>
+								<UploadCloud className="mr-2 h-4 w-4" />
+								Enviar PDF
+							</Button>
+						) : null
+					}
+				/>
+			</div>
+			{/* Celular: cabeçalho compacto (título + enviar), sem o card grande. */}
+			<header className="flex items-center justify-between gap-3 px-6 pb-4 pt-5 sm:hidden">
+				<div className="flex min-w-0 items-center gap-2.5">
+					<h1 className="font-display truncate text-2xl font-bold tracking-tight text-foreground">
+						Biblioteca
+					</h1>
+					{typeof count === "number" ? (
+						<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
+							{count}
+						</span>
+					) : null}
+				</div>
+				{canManage ? (
+					<Button
+						size="icon"
+						onClick={openPicker}
+						disabled={!!upload}
+						aria-label="Enviar PDF"
+						title="Enviar PDF"
+						className="size-11 shrink-0 active:scale-[0.98]"
+					>
+						<UploadCloud className="h-5 w-5" />
+					</Button>
+				) : null}
+			</header>
 			<input
 				ref={inputRef}
 				type="file"
