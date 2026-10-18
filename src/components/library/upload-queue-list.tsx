@@ -15,8 +15,20 @@ export function UploadQueueList({
 	onRetry,
 	onClearFinished,
 }: UploadQueueListProps) {
-	const sending = items.filter((item) => item.status === "uploading").length;
-	const queued = items.filter((item) => item.status === "queued").length;
+	const count = (status: UploadItem["status"]) =>
+		items.filter((item) => item.status === status).length;
+	const done = count("done");
+	const sending = count("uploading");
+	const queued = count("queued");
+	const failed = count("error");
+	const summary = [
+		`${done} de ${items.length} ${items.length === 1 ? "enviado" : "enviados"}`,
+		sending > 0 ? `${sending} enviando` : null,
+		queued > 0 ? `${queued} na fila` : null,
+		failed > 0 ? `${failed} com erro` : null,
+	]
+		.filter(Boolean)
+		.join(" · ");
 	return (
 		<section
 			className="rounded-2xl border border-primary/30 bg-primary/8 p-2"
@@ -24,9 +36,7 @@ export function UploadQueueList({
 		>
 			<div className="flex min-h-9 items-center justify-between gap-3 px-2 text-[12px]">
 				<span className="font-semibold text-foreground" aria-live="polite">
-					{sending + queued > 0
-						? `Enviando ${sending + queued} de ${items.length}`
-						: "Envios"}
+					{summary}
 				</span>
 				{onClearFinished ? (
 					<Button
@@ -97,7 +107,7 @@ function UploadQueueRow({
 					</span>
 				</div>
 				{item.status === "error" ? (
-					<p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+					<p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
 						{item.error}
 					</p>
 				) : (
