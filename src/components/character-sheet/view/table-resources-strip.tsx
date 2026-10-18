@@ -225,13 +225,14 @@ export function TableResourcesStrip({
 		<span className="text-xs text-muted-foreground"> / {res.fateTotal}</span>
 	);
 	// O total ocupa sempre a mesma caixa (botão ou Input), então editar não
-	// empurra −, +, Queimar nem os dados bônus.
+	// empurra −, +, Queimar nem os dados bônus. A coluna (76px / sm:w-24) cabe
+	// "99 / 99"; no mobile 76px é o máximo que ainda cabe na linha de 390.
 	const totalSlot = "relative inline-flex w-7 shrink-0 justify-center";
 	const total = readOnly ? (
 		totalText
 	) : (
 		<>
-			<span className="mx-1 text-xs text-muted-foreground" aria-hidden="true">
+			<span className="mx-0.5 text-xs text-muted-foreground" aria-hidden="true">
 				/
 			</span>
 			<span className={totalSlot} data-slot="fate-total">
@@ -307,10 +308,11 @@ export function TableResourcesStrip({
 				</Button>
 			)}
 			<span
-				className="inline-flex w-20 shrink-0 flex-col gap-[5px]"
+				className="inline-flex w-[76px] shrink-0 flex-col gap-[5px] sm:w-24"
 				data-slot="fate-number"
 			>
-				<span className="inline-flex items-center justify-center gap-1.5">
+				{/* mb: o anel de foco do Input do total não cobre a ponta da barra. */}
+				<span className="mb-2 inline-flex items-center justify-center gap-1.5 sm:mb-1">
 					<Diamond
 						className="h-3.5 w-3.5 fill-current text-primary"
 						aria-hidden="true"
