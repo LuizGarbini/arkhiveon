@@ -40,6 +40,8 @@ async function main() {
       x.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(list) });
     });
     const calls = [];
+    let holdGuia = true;
+    let releaseGuia = null;
     await ctx.route("**/functions/v1/library-r2", async (x) => {
       if (x.request().method() === "OPTIONS") return x.fulfill({ status: 200, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
       const body = JSON.parse(x.request().postData() || "{}");
@@ -47,14 +49,16 @@ async function main() {
       if (body.action === "request-upload") {
         if (body.title === "Ficha do Grupo") return x.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "boom" }) });
         const slug = body.title === "Mapa de Phandalin" ? "mapa" : "guia";
+        if (body.title !== "Mapa de Phandalin" && body.title !== "Guia de Tiamat") return x.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fileId: "cccccccc-0000-4000-8000-00000000000" + (body.title.length % 10), uploadUrl: "https://fake-r2.example/pending/ok-" + body.title.length + ".pdf?sig=1", headers: { "Content-Type": "application/pdf" } }) });
         return x.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fileId: `bbbbbbbb-0000-4000-8000-00000000000${slug === "mapa" ? 1 : 2}`, uploadUrl: `https://fake-r2.example/pending/${slug}.pdf?sig=1`, headers: { "Content-Type": "application/pdf", "Content-Length": String(body.size) } }) });
       }
-      if (body.action === "confirm-upload") list = [{ id: body.fileId, title: "Guia de Tiamat", size_bytes: 300000, created_at: "2026-10-18T15:00:00Z" }, ...list];
+      if (body.action === "confirm-upload") list = [{ id: body.fileId, title: body.fileId.startsWith("ccc") ? "Livro extra " + body.fileId.slice(-1) : "Guia de Tiamat", size_bytes: 300000, created_at: "2026-10-18T15:00:00Z" }, ...list];
       return x.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
     });
     await ctx.route("https://fake-r2.example/**", async (x) => {
       if (x.request().method() === "OPTIONS") return x.fulfill({ status: 200, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "PUT", "access-control-allow-headers": "*" } });
       if (x.request().url().includes("mapa")) await new Promise(() => {}); // fica enviando
+      if (holdGuia && x.request().url().includes("guia")) await new Promise((res) => { releaseGuia = res; });
       x.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" } });
     });
     await ctx.addInitScript(() => {
@@ -96,16 +100,26 @@ async function main() {
     // 2. Três PDFs + um PNG de uma vez
     const pdf = (n) => ({ name: n, mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\n" + "x".repeat(300000)) });
     await page.locator('input[type="file"]').setInputFiles([pdf("Mapa de Phandalin.pdf"), pdf("Guia de Tiamat.pdf"), pdf("Ficha do Grupo.pdf"), { name: "retrato-elbereth.png", mimeType: "image/png", buffer: Buffer.from("png") }]);
+    await page.getByText("Na fila", { exact: true }).waitFor({ timeout: 10000 });
+    await page.waitForFunction(() => window.__xhrs.mapa && window.__xhrs.guia);
+    await page.evaluate((total) => { window.__xhrs.mapa.upload.dispatchEvent(new ProgressEvent("progress", { lengthComputable: true, loaded: Math.round(total * 0.62), total })); window.__xhrs.guia.upload.dispatchEvent(new ProgressEvent("progress", { lengthComputable: true, loaded: Math.round(total * 0.3), total })); }, 300009);
+    await page.getByText("30%", { exact: true }).waitFor({ timeout: 5000 });
+    await page.waitForTimeout(300);
+    r.concurrencySummary = await page.getByLabel("Envios").locator("span").first().textContent();
+    r.uploadRequestsWhileTwoSending = calls.filter((c) => c.startsWith("request-upload")).length;
+    await shot("2-fila-2-enviando-1-na-fila");
+    holdGuia = false; releaseGuia();
     try { await page.getByText(/arquivo ignorado/).first().waitFor({ timeout: 5000 }); } catch (e) { await shot("debug"); throw e; }
     await page.getByRole("button", { name: /Tentar de novo: Ficha/ }).waitFor({ timeout: 15000 });
-    await page.getByText("Enviado").waitFor({ timeout: 15000 });
+    await page.getByText("Enviado", { exact: true }).waitFor({ timeout: 15000 });
     await page.waitForFunction(() => window.__xhrs.mapa);
     await page.evaluate((total) => { window.__xhrs.mapa.upload.dispatchEvent(new ProgressEvent("progress", { lengthComputable: true, loaded: Math.round(total * 0.62), total })); }, 300009);
     await page.getByText("62%").waitFor({ timeout: 5000 });
     await page.waitForTimeout(300);
-    await shot("2-fila-aviso-png");
+    r.mixedSummary = await page.getByLabel("Envios").locator("span").first().textContent();
+    await shot("3-fila-aviso-png");
     await page.waitForTimeout(6000); // toast some
-    await shot("3-fila-enviando-ok-erro");
+    await shot("4-fila-enviando-ok-erro");
     r.listHasNewFile = await page.getByRole("button", { name: "Apagar Guia de Tiamat" }).count();
     r.calls = calls.slice();
 
@@ -115,7 +129,19 @@ async function main() {
     await page.waitForTimeout(800);
     r.retryCalledAgain = calls.filter((c) => c === "request-upload:Ficha do Grupo").length === before + 1;
 
-    // 5. Fora do piloto
+    // 5. Fila terminada: dois PDFs que dão certo
+    await reloadLibrary();
+    await page.getByText("Mapa de Waterdeep").waitFor({ timeout: 15000 });
+    await page.locator('input[type="file"]').setInputFiles([pdf("Livro do Jogador.pdf"), pdf("Bestiario.pdf")]);
+    await page.getByRole("button", { name: "Limpar" }).waitFor({ timeout: 15000 });
+    await page.waitForTimeout(500);
+    r.doneSummary = await page.getByLabel("Envios").locator("span").first().textContent();
+    await shot("5-fila-terminada");
+    await page.getByRole("button", { name: "Limpar" }).click();
+    await page.waitForTimeout(300);
+    r.panelGoneAfterLimpar = (await page.getByLabel("Envios").count()) === 0;
+
+    // 6. Fora do piloto
     await go("/dashboard");
     await setCampaign(OTHER, "Outra campanha");
     if (w < 768) await openSidebar();
