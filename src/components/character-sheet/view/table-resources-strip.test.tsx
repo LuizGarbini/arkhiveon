@@ -21,7 +21,7 @@ function mockViewport(mobile: boolean) {
 const filled: TableResources = {
 	inspiration: 2,
 	fate: 4,
-	fateMax: 10,
+	fateTotal: 10,
 	bonusDice: [
 		{ id: "a", sides: 6, quantity: 2, origin: "dormiu bem" },
 		{ id: "b", sides: 8, quantity: 1, origin: "bênção do mestre" },
@@ -92,6 +92,80 @@ describe("TableResourcesStrip", () => {
 		expect(onChange.mock.calls[1][0].inspiration).toBe(1);
 		fireEvent.click(screen.getByRole("button", { name: "Usar 1 · vantagem" }));
 		expect(onChange.mock.calls[2][0].inspiration).toBe(1);
+	});
+
+	it("total editável inline com o Input do DS; Enter grava e ajusta a sobra", () => {
+		mockViewport(false);
+		const onChange = renderStrip({ ...filled, fate: 3, fateTotal: 4 });
+		expect(screen.getByRole("group", { name: "Destino 3 de 4" })).toBeTruthy();
+		const bar = document.querySelector('[data-slot="fate-bar"]') as HTMLElement;
+		expect(bar.style.width).toBe("75%");
+		fireEvent.click(
+			screen.getByRole("button", { name: "Editar total de destino (4)" }),
+		);
+		expect(screen.queryByRole("dialog")).toBeNull();
+		const input = screen.getByLabelText(
+			"Total de pontos de destino",
+		) as HTMLInputElement;
+		expect(input.getAttribute("data-slot")).toBe("input");
+		expect(input.value).toBe("4");
+		expect(document.activeElement).toBe(input);
+		fireEvent.change(input, { target: { value: "2" } });
+		fireEvent.submit(input.closest("form") as HTMLFormElement);
+		expect(onChange).toHaveBeenCalledTimes(1);
+		expect(onChange.mock.calls[0][0]).toMatchObject({ fate: 2, fateTotal: 2 });
+		expect(screen.queryByLabelText("Total de pontos de destino")).toBeNull();
+	});
+
+	it("total: Esc cancela, blur grava, valor vazio não muda nada", () => {
+		mockViewport(false);
+		const onChange = renderStrip({ ...filled, fate: 3, fateTotal: 4 });
+		const open = () =>
+			fireEvent.click(
+				screen.getByRole("button", { name: "Editar total de destino (4)" }),
+			);
+		const input = () =>
+			screen.getByLabelText("Total de pontos de destino") as HTMLInputElement;
+		open();
+		fireEvent.change(input(), { target: { value: "9" } });
+		fireEvent.keyDown(input(), { key: "Escape" });
+		expect(onChange).not.toHaveBeenCalled();
+		open();
+		fireEvent.change(input(), { target: { value: "" } });
+		fireEvent.blur(input());
+		expect(onChange).not.toHaveBeenCalled();
+		open();
+		fireEvent.change(input(), { target: { value: "6" } });
+		fireEvent.blur(input());
+		expect(onChange.mock.calls[0][0]).toMatchObject({ fate: 3, fateTotal: 6 });
+	});
+
+	it("queimar pede confirmação no Dialog do DS e tira 1 do total", () => {
+		mockViewport(false);
+		const onChange = renderStrip({ ...filled, fate: 4, fateTotal: 4 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Queimar 1 ponto de destino" }),
+		);
+		expect(onChange).not.toHaveBeenCalled();
+		const dialog = screen.getByRole("dialog");
+		expect(dialog.textContent).toContain("3 / 3");
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		expect(onChange).not.toHaveBeenCalled();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Queimar 1 ponto de destino" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Queimar" }));
+		expect(onChange.mock.calls[0][0]).toMatchObject({ fate: 3, fateTotal: 3 });
+	});
+
+	it("queimar fica desabilitado com total 0", () => {
+		mockViewport(true);
+		renderStrip({ ...filled, fate: 0, fateTotal: 0 });
+		const burn = screen.getByRole("button", {
+			name: "Queimar 1 ponto de destino",
+		}) as HTMLButtonElement;
+		expect(burn.disabled).toBe(true);
+		expect(screen.getByRole("group", { name: "Destino 0 de 0" })).toBeTruthy();
 	});
 
 	it("destino: − / + com teto 10, sem pips", () => {
@@ -189,6 +263,9 @@ describe("TableResourcesStrip", () => {
 		expect(screen.getByRole("img", { name: "Inspiração: 2" })).toBeTruthy();
 		expect(
 			screen.queryByRole("button", { name: /ponto de destino/ }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: /Editar total de destino/ }),
 		).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: /Rolar d6/ }));
 		expect(onChange).not.toHaveBeenCalled();

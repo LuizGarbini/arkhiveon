@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
 	addBonusDie,
 	BONUS_DIE_ORIGIN_MAX,
+	burnFate,
 	EMPTY_TABLE_RESOURCES,
-	FATE_MAX,
+	FATE_TOTAL_DEFAULT,
+	FATE_TOTAL_MAX,
+	fatePercent,
 	normalizeTableResources,
+	regainFate,
 	rollDie,
 	setFate,
+	setFateTotal,
 	setInspiration,
 	spendBonusDie,
+	spendFate,
 	spendInspiration,
 } from "./table-resources";
 
@@ -28,7 +34,7 @@ describe("table resources", () => {
 		});
 		expect(res.inspiration).toBe(1);
 		expect(res.fate).toBe(10);
-		expect(res.fateMax).toBe(10);
+		expect(res.fateTotal).toBe(10);
 		expect(res.bonusDice).toEqual([
 			{ id: "a", sides: 6, quantity: 2, origin: "dormiu bem" },
 		]);
@@ -43,11 +49,11 @@ describe("table resources", () => {
 		expect(normalizeTableResources({ inspiration: "x" }).inspiration).toBe(0);
 		const old = normalizeTableResources({ fate: 2, fateMax: 3 });
 		expect(old.fate).toBe(2);
-		expect(old.fateMax).toBe(FATE_MAX);
+		expect(old.fateTotal).toBe(FATE_TOTAL_DEFAULT);
 		expect(normalizeTableResources({ fate: -4 }).fate).toBe(0);
 		expect(normalizeTableResources({ fate: 7.9, fateMax: 99 })).toMatchObject({
 			fate: 7,
-			fateMax: 10,
+			fateTotal: 10,
 		});
 	});
 
@@ -59,14 +65,74 @@ describe("table resources", () => {
 		expect(spendInspiration(EMPTY_TABLE_RESOURCES).inspiration).toBe(0);
 	});
 
-	it("destino fica entre 0 e 10", () => {
-		expect(setFate(EMPTY_TABLE_RESOURCES, 4).fate).toBe(4);
-		expect(setFate(EMPTY_TABLE_RESOURCES, 11).fate).toBe(10);
-		expect(setFate(EMPTY_TABLE_RESOURCES, -1).fate).toBe(0);
-		expect(setFate({ ...EMPTY_TABLE_RESOURCES, fateMax: 3 }, 8)).toMatchObject({
-			fate: 8,
-			fateMax: 10,
+	it("ficha existente sem fateTotal mantém o valor e fica com total 10", () => {
+		const res = normalizeTableResources({ fate: 4, fateMax: 10 });
+		expect(res).toMatchObject({ fate: 4, fateTotal: 10 });
+		expect(res).not.toHaveProperty("fateMax");
+		expect(normalizeTableResources({ fate: 3, fateTotal: 4 })).toMatchObject({
+			fate: 3,
+			fateTotal: 4,
 		});
+		expect(normalizeTableResources({ fate: 9, fateTotal: 4 }).fate).toBe(4);
+		expect(normalizeTableResources({ fate: 2, fateTotal: 0 })).toMatchObject({
+			fate: 0,
+			fateTotal: 0,
+		});
+		expect(normalizeTableResources({ fateTotal: 500 }).fateTotal).toBe(
+			FATE_TOTAL_MAX,
+		);
+		expect(normalizeTableResources({ fateTotal: -3 }).fateTotal).toBe(0);
+		expect(normalizeTableResources({ fateTotal: "x" }).fateTotal).toBe(10);
+	});
+
+	it("destino fica entre 0 e o total", () => {
+		const four = setFateTotal(EMPTY_TABLE_RESOURCES, 4);
+		expect(setFate(four, 3).fate).toBe(3);
+		expect(setFate(four, 11).fate).toBe(4);
+		expect(setFate(four, -1).fate).toBe(0);
+		expect(setFate(four, Number.NaN).fate).toBe(0);
+		expect(setFate(EMPTY_TABLE_RESOURCES, 11).fate).toBe(10);
+	});
+
+	it("− gasta 1 e + devolve 1, sem passar de 0 nem do total", () => {
+		const full = setFate(setFateTotal(EMPTY_TABLE_RESOURCES, 4), 4);
+		const spent = spendFate(full);
+		expect(spent).toMatchObject({ fate: 3, fateTotal: 4 });
+		expect(regainFate(spent)).toMatchObject({ fate: 4, fateTotal: 4 });
+		expect(regainFate(full).fate).toBe(4);
+		const empty = setFate(full, 0);
+		expect(spendFate(empty).fate).toBe(0);
+	});
+
+	it("mudar o total ajusta o que sobra para baixo, nunca para cima", () => {
+		const res = setFate(EMPTY_TABLE_RESOURCES, 7);
+		expect(setFateTotal(res, 4)).toMatchObject({ fate: 4, fateTotal: 4 });
+		expect(setFateTotal(res, 12)).toMatchObject({ fate: 7, fateTotal: 12 });
+		expect(setFateTotal(res, 0)).toMatchObject({ fate: 0, fateTotal: 0 });
+		expect(setFateTotal(res, -5).fateTotal).toBe(0);
+		expect(setFateTotal(res, 1000).fateTotal).toBe(FATE_TOTAL_MAX);
+		expect(setFateTotal(res, 5.8).fateTotal).toBe(5);
+		expect(setFateTotal(res, Number.NaN)).toBe(res);
+	});
+
+	it("queimar tira 1 do total e ajusta o que sobra (3/4 → 3/3, 4/4 → 3/3)", () => {
+		const four = setFateTotal(EMPTY_TABLE_RESOURCES, 4);
+		expect(burnFate(setFate(four, 3))).toMatchObject({ fate: 3, fateTotal: 3 });
+		expect(burnFate(setFate(four, 4))).toMatchObject({ fate: 3, fateTotal: 3 });
+		expect(burnFate(setFate(four, 1))).toMatchObject({ fate: 1, fateTotal: 3 });
+		const one = setFate(setFateTotal(EMPTY_TABLE_RESOURCES, 1), 1);
+		expect(burnFate(one)).toMatchObject({ fate: 0, fateTotal: 0 });
+		const zero = setFateTotal(EMPTY_TABLE_RESOURCES, 0);
+		expect(burnFate(zero)).toBe(zero);
+	});
+
+	it("barra = sobra / total", () => {
+		const four = setFateTotal(EMPTY_TABLE_RESOURCES, 4);
+		expect(fatePercent(setFate(four, 3))).toBe(75);
+		expect(fatePercent(setFate(four, 4))).toBe(100);
+		expect(fatePercent(setFate(four, 0))).toBe(0);
+		expect(fatePercent(setFateTotal(EMPTY_TABLE_RESOURCES, 0))).toBe(0);
+		expect(fatePercent(setFate(setFateTotal(four, 3), 1))).toBe(33);
 	});
 
 	it("adiciona dado, corta origem em 24 e soma no mesmo dado+origem", () => {
