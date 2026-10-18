@@ -25,7 +25,11 @@ export interface FilterGroup {
 
 interface ListLayoutProps {
 	onSearch?: (query: string) => void;
+	/** Busca controlada (opcional): mostra o X de limpar quando tem texto. */
+	searchValue?: string;
 	searchPlaceholder?: string;
+	/** Esconde o botão Filtros em listas que só têm busca. */
+	hideFilters?: boolean;
 	filterGroups?: FilterGroup[];
 	activeFilters?: Record<string, string>;
 	onFilterChange?: (filterId: string, value: string) => void;
@@ -35,7 +39,9 @@ interface ListLayoutProps {
 
 export function ListLayout({
 	onSearch,
+	searchValue,
 	searchPlaceholder = "Buscar no Arkhiveon…",
+	hideFilters = false,
 	filterGroups,
 	activeFilters = {},
 	onFilterChange,
@@ -65,42 +71,61 @@ export function ListLayout({
 						}
 						data-shortcut-target="page-search"
 						placeholder={searchPlaceholder}
+						value={searchValue}
 						onChange={(e) => onSearch?.(e.target.value)}
-						className="h-10 w-full rounded-2xl border border-border/70 bg-background/55 pl-9 pr-12 text-[13px] text-foreground shadow-sm shadow-black/5 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-muted-foreground/70 hover:border-border-hover/70 focus:border-primary/45 focus:bg-background/75 focus:outline-none focus:ring-2 focus:ring-primary/15"
-					/>
-					<kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 select-none items-center rounded border border-border/70 bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground md:inline-flex">
-						Alt S
-					</kbd>
-				</div>
-
-				<button
-					type="button"
-					onClick={() => setIsOpen((prev) => !prev)}
-					className={cn(
-						"flex h-10 items-center gap-2 rounded-2xl border px-3.5 text-[12px] font-semibold transition-all cursor-pointer select-none",
-						isOpen || activeCount > 0
-							? "border-primary/50 bg-primary/15 text-primary shadow-xs ring-1 ring-primary/20"
-							: "border-border/70 bg-background/55 text-muted-foreground hover:border-primary/30 hover:bg-primary/8 hover:text-foreground active:scale-[0.98]",
-					)}
-				>
-					<Filter className="h-3.5 w-3.5" />
-					<span>Filtros</span>
-					{activeCount > 0 && (
-						<span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">
-							{activeCount}
-						</span>
-					)}
-					<ChevronDown
 						className={cn(
-							"h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
-							isOpen && "rotate-180 text-primary",
+							"h-10 w-full rounded-2xl border border-border/70 bg-background/55 pl-9 pr-12 text-[13px] text-foreground shadow-sm shadow-black/5 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] placeholder:text-muted-foreground/70 hover:border-border-hover/70 focus:border-primary/45 focus:bg-background/75 focus:outline-none focus:ring-2 focus:ring-primary/15",
+							// Busca controlada tem o próprio X; esconde o do navegador.
+							searchValue !== undefined &&
+								"[&::-webkit-search-cancel-button]:appearance-none",
 						)}
 					/>
-				</button>
+					{searchValue ? (
+						<button
+							type="button"
+							aria-label="Limpar busca"
+							onClick={() => onSearch?.("")}
+							className="absolute right-0 top-1/2 flex size-[44px] -translate-y-1/2 select-none items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 md:size-9"
+						>
+							<X className="h-3.5 w-3.5" />
+						</button>
+					) : (
+						<kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 select-none items-center rounded border border-border/70 bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground md:inline-flex">
+							Alt S
+						</kbd>
+					)}
+				</div>
+
+				{hideFilters ? null : (
+					<button
+						type="button"
+						onClick={() => setIsOpen((prev) => !prev)}
+						className={cn(
+							"flex h-10 items-center gap-2 rounded-2xl border px-3.5 text-[12px] font-semibold transition-all cursor-pointer select-none",
+							isOpen || activeCount > 0
+								? "border-primary/50 bg-primary/15 text-primary shadow-xs ring-1 ring-primary/20"
+								: "border-border/70 bg-background/55 text-muted-foreground hover:border-primary/30 hover:bg-primary/8 hover:text-foreground active:scale-[0.98]",
+						)}
+					>
+						<Filter className="h-3.5 w-3.5" />
+						<span>Filtros</span>
+						{activeCount > 0 && (
+							<span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-extrabold text-primary-foreground">
+								{activeCount}
+							</span>
+						)}
+						<ChevronDown
+							className={cn(
+								"h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+								isOpen && "rotate-180 text-primary",
+							)}
+						/>
+					</button>
+				)}
 			</div>
 
 			{/* Painel Expansível de Filtros */}
-			{isOpen && (
+			{isOpen && !hideFilters && (
 				<div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-4 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
 					{filterGroups && filterGroups.length > 0 && (
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

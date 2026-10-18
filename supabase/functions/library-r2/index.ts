@@ -18,6 +18,8 @@
  * - request-read    (qualquer membro, só `ready`) { fileId, ttlSeconds? }
  *     → presigned GET (5 min). `ttlSeconds` menor só com LIBRARY_TEST_MODE=1.
  * - delete          (owner/editor) { fileId } → apaga objeto + linha.
+ * - rename          (owner/editor, só `ready`) { fileId, title }
+ *     → troca só o `title` (NFC, trim, 1–200). Jogador recebe 403.
  *
  * Variáveis (secrets da função; nunca no cliente):
  *   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (padrão Supabase)
@@ -42,8 +44,7 @@ import {
 	buildLibraryKey,
 	buildPendingLibraryKey,
 	type CampaignRole,
-	canManageLibrary,
-	canReadLibrary,
+	canRunLibraryAction,
 	checkUploadedObject,
 	isLibraryAction,
 	isStalePending,
@@ -57,6 +58,7 @@ import {
 	parseAllowedOrigins,
 	resolveCorsOrigin,
 	resolveReadTtl,
+	validateLibraryTitle,
 	validateUploadRequest,
 } from "../_shared/library-guard.ts";
 
@@ -248,9 +250,23 @@ serve(async (req) => {
 		const { pilot, role } = await campaignAccess(userClient, user.id, campaignId);
 		if (!pilot) return json(req, { error: "Forbidden" }, 403);
 
-		const needsManage = body.action !== "request-read";
-		if (needsManage ? !canManageLibrary(role) : !canReadLibrary(role)) {
+		if (!canRunLibraryAction(body.action, role)) {
 			return json(req, { error: "Forbidden" }, 403);
+		}
+
+		// Renomear só mexe no banco: não precisa do R2.
+		if (body.action === "rename") {
+			const file = row as FileRow;
+			if (file.status !== "ready") return json(req, { error: "Forbidden" }, 403);
+			const valid = validateLibraryTitle(body.title);
+			if (!valid.ok) return json(req, { error: valid.error }, valid.status);
+			const { error: updateError } = await admin
+				.from(LIBRARY_FILES_TABLE)
+				.update({ title: valid.title })
+				.eq("id", file.id)
+				.eq("campaign_id", file.campaign_id);
+			if (updateError) throw new Error(updateError.message);
+			return json(req, { fileId: file.id, title: valid.title });
 		}
 
 		const { s3, bucket } = r2();
