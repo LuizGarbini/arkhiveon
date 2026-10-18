@@ -158,6 +158,39 @@ describe("TableResourcesStrip", () => {
 		expect(onChange.mock.calls[0][0]).toMatchObject({ fate: 3, fateTotal: 3 });
 	});
 
+	it("total ocupa a mesma caixa ao editar e Queimar só pinta com hover real", () => {
+		mockViewport(false);
+		renderStrip({ ...filled, fate: 3, fateTotal: 4 });
+		const slot = document.querySelector(
+			'[data-slot="fate-total"]',
+		) as HTMLElement;
+		expect(slot.className).toContain("w-7");
+		fireEvent.click(
+			screen.getByRole("button", { name: "Editar total de destino (4)" }),
+		);
+		expect(
+			slot.contains(screen.getByLabelText("Total de pontos de destino")),
+		).toBe(true);
+		const burn = screen.getByRole("button", {
+			name: "Queimar 1 ponto de destino",
+		});
+		const classes = burn.className.split(/\s+/);
+		expect(classes).toContain("[@media(hover:hover)]:hover:text-destructive");
+		expect(classes).not.toContain("hover:text-destructive");
+		expect(classes).not.toContain("hover:bg-destructive/10");
+	});
+
+	it("mobile: rótulo à esquerda e controle à direita nas duas linhas", () => {
+		mockViewport(true);
+		renderStrip(filled);
+		const insp = screen.getByRole("button", { name: "Inspiração: 2. Ajustar" });
+		expect(insp.parentElement?.firstElementChild?.textContent).toBe(
+			"Inspiração",
+		);
+		const fate = screen.getByRole("group", { name: "Destino 4 de 10" });
+		expect(fate.parentElement?.firstElementChild?.textContent).toBe("Destino");
+	});
+
 	it("queimar fica desabilitado com total 0", () => {
 		mockViewport(true);
 		renderStrip({ ...filled, fate: 0, fateTotal: 0 });

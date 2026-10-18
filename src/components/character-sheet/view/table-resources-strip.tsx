@@ -120,17 +120,14 @@ export function TableResourcesStrip({
 	}
 
 	const insp = res.inspiration;
+	// No mobile o rótulo "Inspiração" fica à esquerda da linha; o chip é só ★ n.
 	const inspChipBody = isMobile ? (
 		<>
 			<Star className={cn("h-4 w-4", insp > 0 && "fill-current")} />
-			<span className="flex flex-col items-start gap-0.5">
-				<span className="text-[9px] font-bold uppercase tracking-[0.16em] opacity-85">
-					Inspiração
-				</span>
-				<span className="font-display text-base leading-none font-bold tabular-nums">
-					{insp}
-				</span>
+			<span className="min-w-3 text-center font-display text-base leading-none font-bold tabular-nums">
+				{insp}
 			</span>
+			{!readOnly && <ChevronDown className="h-3 w-3 opacity-60" />}
 		</>
 	) : (
 		<>
@@ -227,60 +224,69 @@ export function TableResourcesStrip({
 	const totalText = (
 		<span className="text-xs text-muted-foreground"> / {res.fateTotal}</span>
 	);
+	// O total ocupa sempre a mesma caixa (botão ou Input), então editar não
+	// empurra −, +, Queimar nem os dados bônus.
+	const totalSlot = "relative inline-flex w-7 shrink-0 justify-center";
 	const total = readOnly ? (
 		totalText
-	) : editingTotal ? (
-		<form
-			className="inline-flex items-center"
-			onSubmit={(e) => {
-				e.preventDefault();
-				skipTotalBlur.current = true;
-				commitTotal();
-			}}
-		>
-			<span className="text-xs text-muted-foreground" aria-hidden="true">
-				&nbsp;/&nbsp;
-			</span>
-			<label htmlFor={totalInputId} className="sr-only">
-				Total de pontos de destino
-			</label>
-			<Input
-				id={totalInputId}
-				ref={focusAndSelect}
-				type="number"
-				inputMode="numeric"
-				min={FATE_TOTAL_MIN}
-				max={FATE_TOTAL_MAX}
-				step={1}
-				enterKeyHint="done"
-				autoComplete="off"
-				spellCheck={false}
-				value={totalDraft}
-				onChange={(e) => setTotalDraft(e.target.value)}
-				onBlur={() => {
-					if (skipTotalBlur.current) return;
-					commitTotal();
-				}}
-				onKeyDown={(e) => {
-					if (e.key === "Escape") {
-						e.preventDefault();
-						skipTotalBlur.current = true;
-						setEditingTotal(false);
-					}
-				}}
-				className="h-8 w-14 [appearance:textfield] px-1.5 text-center font-display font-bold tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-			/>
-		</form>
 	) : (
-		<button
-			type="button"
-			onClick={startEditTotal}
-			aria-label={`Editar total de destino (${res.fateTotal})`}
-			title="Editar total"
-			className="relative -my-4 ml-1 inline-flex min-w-7 cursor-pointer justify-center rounded-md px-1 py-4 text-xs text-muted-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-[3px] transition-colors duration-150 select-none after:absolute after:-inset-x-1.5 after:inset-y-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-my-1 sm:py-1 [@media(hover:hover)]:hover:text-foreground"
-		>
-			/ {res.fateTotal}
-		</button>
+		<>
+			<span className="mx-1 text-xs text-muted-foreground" aria-hidden="true">
+				/
+			</span>
+			<span className={totalSlot} data-slot="fate-total">
+				{editingTotal ? (
+					<form
+						className="contents"
+						onSubmit={(e) => {
+							e.preventDefault();
+							skipTotalBlur.current = true;
+							commitTotal();
+						}}
+					>
+						<label htmlFor={totalInputId} className="sr-only">
+							Total de pontos de destino
+						</label>
+						<Input
+							id={totalInputId}
+							ref={focusAndSelect}
+							type="number"
+							inputMode="numeric"
+							min={FATE_TOTAL_MIN}
+							max={FATE_TOTAL_MAX}
+							step={1}
+							enterKeyHint="done"
+							autoComplete="off"
+							spellCheck={false}
+							value={totalDraft}
+							onChange={(e) => setTotalDraft(e.target.value)}
+							onBlur={() => {
+								if (skipTotalBlur.current) return;
+								commitTotal();
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Escape") {
+									e.preventDefault();
+									skipTotalBlur.current = true;
+									setEditingTotal(false);
+								}
+							}}
+							className="-my-2.5 h-8 w-full [appearance:textfield] rounded-md px-0 py-0 text-center font-display font-bold tabular-nums sm:-my-1.5 sm:h-6 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+						/>
+					</form>
+				) : (
+					<button
+						type="button"
+						onClick={startEditTotal}
+						aria-label={`Editar total de destino (${res.fateTotal})`}
+						title="Editar total"
+						className="relative -my-4 inline-flex w-full cursor-pointer justify-center rounded-md py-4 text-xs text-muted-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-[3px] transition-colors duration-150 select-none after:absolute after:-inset-x-1.5 after:inset-y-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-my-1 sm:py-1 [@media(hover:hover)]:hover:text-foreground"
+					>
+						{res.fateTotal}
+					</button>
+				)}
+			</span>
+		</>
 	);
 	const fate = (
 		<fieldset
@@ -300,7 +306,10 @@ export function TableResourcesStrip({
 					<Minus className="h-4 w-4" />
 				</Button>
 			)}
-			<span className="inline-flex min-w-[50px] flex-col gap-[5px] sm:min-w-16">
+			<span
+				className="inline-flex w-20 shrink-0 flex-col gap-[5px]"
+				data-slot="fate-number"
+			>
 				<span className="inline-flex items-center justify-center gap-1.5">
 					<Diamond
 						className="h-3.5 w-3.5 fill-current text-primary"
@@ -343,7 +352,9 @@ export function TableResourcesStrip({
 					size="icon"
 					className={cn(
 						stepClass,
-						"text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
+						// Anula o hover roxo do outline (grudaria após o toque) e só pinta
+						// de destrutivo em quem tem hover de verdade.
+						"text-muted-foreground hover:border-border/80 hover:bg-background/65 hover:text-muted-foreground dark:hover:bg-input/30 dark:hover:border-input [@media(hover:hover)]:hover:border-destructive/40 [@media(hover:hover)]:hover:bg-destructive/10 [@media(hover:hover)]:hover:text-destructive dark:[@media(hover:hover)]:hover:border-destructive/40 dark:[@media(hover:hover)]:hover:bg-destructive/10",
 					)}
 					aria-label="Queimar 1 ponto de destino"
 					title="Queimar"
@@ -489,21 +500,15 @@ export function TableResourcesStrip({
 				aria-label="Recursos da mesa"
 				className="relative mt-2 flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-background/50 p-3"
 			>
-				{readOnly ? (
-					<div className="flex items-center justify-between gap-2">
-						{inspiration}
-						{fate}
-					</div>
-				) : (
-					<>
-						{/* Com − / + / Queimar o Destino não cabe ao lado da Inspiração em 390px. */}
-						<div className="flex items-center">{inspiration}</div>
-						<div className="flex items-center justify-between gap-2">
-							<span className={labelClass}>Destino</span>
-							{fate}
-						</div>
-					</>
-				)}
+				{/* Mesmo padrão nas duas linhas: rótulo à esquerda, controle à direita. */}
+				<div className="flex items-center justify-between gap-2">
+					<span className={labelClass}>Inspiração</span>
+					{inspiration}
+				</div>
+				<div className="flex items-center justify-between gap-2">
+					<span className={labelClass}>Destino</span>
+					{fate}
+				</div>
 				<div className="flex min-w-0 items-center gap-2">
 					{addDie ? (
 						<>
