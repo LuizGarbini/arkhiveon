@@ -3,6 +3,7 @@ import { LibraryBig, RotateCcw, UploadCloud } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { LibraryFileRow } from "@/components/library/library-file-row";
+import { UploadQueueList } from "@/components/library/upload-queue-list";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,19 @@ import {
 	listLibraryFiles,
 	uploadLibraryPdf,
 } from "@/lib/library/library-storage";
+import {
+	clearFinished,
+	enqueueFiles,
+	hasActiveUploads,
+	markDone,
+	markError,
+	markUploading,
+	nextToStart,
+	retryItem,
+	setProgress,
+	splitPdfCandidates,
+	type UploadItem,
+} from "@/lib/library/upload-queue";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -62,10 +76,9 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	);
 	const canManage = canManageLibraryRole(role);
 	const [state, setState] = useState<LoadState>({ status: "loading" });
-	const [upload, setUpload] = useState<{
-		name: string;
-		progress: number;
-	} | null>(null);
+	const [uploads, setUploadsState] = useState<UploadItem[]>([]);
+	// Espelho síncrono da fila: os envios terminam fora do render.
+	const uploadsRef = useRef<UploadItem[]>([]);
 	const [isDragging, setIsDragging] = useState(false);
 	const [toDelete, setToDelete] = useState<LibraryFile | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -84,29 +97,77 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 		void load();
 	}, [load]);
 
-	async function handleFile(file: File | undefined) {
-		if (!file || upload || !canManage) return;
-		const check = await checkPdfFile(file);
-		if (!check.ok) {
-			toast.error({ title: "Não deu pra enviar", description: check.error });
-			return;
-		}
-		setUpload({ name: check.title, progress: 0 });
+	/** Atualiza a lista sem voltar pro skeleton (depois de cada envio). */
+	async function refreshQuietly() {
 		try {
-			await uploadLibraryPdf(campaignId, file, check.title, (progress) =>
-				setUpload({ name: check.title, progress }),
-			);
-			toast.success({ title: "PDF enviado", description: check.title });
-			await load();
-		} catch (error) {
-			toast.error({
-				title: "Não deu pra enviar",
-				description: error instanceof Error ? error.message : undefined,
-			});
-		} finally {
-			setUpload(null);
-			if (inputRef.current) inputRef.current.value = "";
+			setState({ status: "ready", files: await listLibraryFiles(campaignId) });
+		} catch {
+			// Mantém a lista atual; o próximo carregamento tenta de novo.
 		}
+	}
+
+	function updateUploads(next: (items: UploadItem[]) => UploadItem[]) {
+		uploadsRef.current = next(uploadsRef.current);
+		setUploadsState(uploadsRef.current);
+	}
+
+	async function runUpload(id: string) {
+		const item = uploadsRef.current.find((x) => x.id === id);
+		if (!item) return;
+		updateUploads((items) => markUploading(items, id));
+		try {
+			const check = await checkPdfFile(item.file);
+			if (!check.ok) throw new Error(check.error);
+			await uploadLibraryPdf(campaignId, item.file, check.title, (progress) =>
+				updateUploads((items) => setProgress(items, id, progress)),
+			);
+			updateUploads((items) => markDone(items, id));
+			void refreshQuietly();
+		} catch (error) {
+			updateUploads((items) =>
+				markError(
+					items,
+					id,
+					error instanceof Error && error.message
+						? error.message
+						: "Não deu pra enviar. Tente de novo.",
+				),
+			);
+		} finally {
+			pumpUploads();
+		}
+	}
+
+	/** Começa os próximos da fila (no máximo 2 ao mesmo tempo). */
+	function pumpUploads() {
+		for (const id of nextToStart(uploadsRef.current)) void runUpload(id);
+	}
+
+	function handleFiles(list: FileList | null | undefined) {
+		// Copia antes de limpar o input: o FileList esvazia junto.
+		const picked = list ? Array.from(list) : [];
+		if (inputRef.current) inputRef.current.value = "";
+		if (picked.length === 0 || !canManage || !isReady) return;
+		const { pdfs, ignored } = splitPdfCandidates(picked);
+		if (ignored.length > 0) {
+			toast.error({
+				title:
+					ignored.length === 1
+						? "1 arquivo ignorado: só dá pra enviar PDF"
+						: `${ignored.length} arquivos ignorados: só dá pra enviar PDF`,
+				description: ignored.map((file) => file.name).join(", "),
+			});
+		}
+		if (pdfs.length === 0) return;
+		updateUploads((items) =>
+			enqueueFiles(items, pdfs, () => crypto.randomUUID()),
+		);
+		pumpUploads();
+	}
+
+	function retryUpload(id: string) {
+		updateUploads((items) => retryItem(items, id));
+		pumpUploads();
 	}
 
 	async function confirmDelete() {
@@ -127,7 +188,11 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 		}
 	}
 
+	const isReady = state.status === "ready";
 	const openPicker = () => inputRef.current?.click();
+	const showClear =
+		uploads.some((item) => item.status === "done") &&
+		!hasActiveUploads(uploads);
 	const files = state.status === "ready" ? state.files : [];
 	const count = state.status === "ready" ? files.length : undefined;
 
@@ -136,7 +201,12 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 		<div
 			className="relative w-full"
 			onDragOver={(event) => {
-				if (!canManage || !event.dataTransfer.types.includes("Files")) return;
+				if (
+					!canManage ||
+					!isReady ||
+					!event.dataTransfer.types.includes("Files")
+				)
+					return;
 				event.preventDefault();
 				setIsDragging(true);
 			}}
@@ -148,7 +218,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 				if (!canManage) return;
 				event.preventDefault();
 				setIsDragging(false);
-				void handleFile(event.dataTransfer.files[0]);
+				handleFiles(event.dataTransfer.files);
 			}}
 		>
 			{/* Desktop/tablet: cabeçalho padrão das coleções. */}
@@ -164,7 +234,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 						canManage ? (
 							<Button
 								onClick={openPicker}
-								disabled={!!upload}
+								disabled={!isReady}
 								className="min-h-11 active:scale-[0.98]"
 							>
 								<UploadCloud className="mr-2 h-4 w-4" />
@@ -190,7 +260,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 					<Button
 						size="icon"
 						onClick={openPicker}
-						disabled={!!upload}
+						disabled={!isReady}
 						aria-label="Enviar PDF"
 						title="Enviar PDF"
 						className="size-11 shrink-0 active:scale-[0.98]"
@@ -203,32 +273,23 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 				ref={inputRef}
 				type="file"
 				accept="application/pdf,.pdf"
+				multiple
 				className="hidden"
-				onChange={(event) => void handleFile(event.target.files?.[0])}
+				onChange={(event) => handleFiles(event.target.files)}
 			/>
 
 			<div className="px-6 pb-10 sm:px-8">
 				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-					{upload ? (
-						<div
-							className="rounded-2xl border border-primary/30 bg-primary/8 p-4"
-							aria-live="polite"
-						>
-							<div className="flex items-center justify-between gap-3 text-[12px]">
-								<span className="truncate font-semibold text-foreground">
-									Enviando {upload.name}
-								</span>
-								<span className="tabular-nums text-muted-foreground">
-									{Math.round(upload.progress * 100)}%
-								</span>
-							</div>
-							<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-								<div
-									className="h-full rounded-full bg-primary transition-[width] duration-200"
-									style={{ width: `${Math.round(upload.progress * 100)}%` }}
-								/>
-							</div>
-						</div>
+					{uploads.length > 0 ? (
+						<UploadQueueList
+							items={uploads}
+							onRetry={retryUpload}
+							onClearFinished={
+								showClear
+									? () => updateUploads((items) => clearFinished(items))
+									: undefined
+							}
+						/>
 					) : null}
 
 					{state.status === "loading" ? (
@@ -253,7 +314,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 							title="Nenhum PDF ainda"
 							description={
 								canManage
-									? "Envie livros, mapas ou fichas em PDF (até 50 MB). Dá pra arrastar o arquivo pra cá."
+									? "Envie livros, mapas ou fichas em PDF (até 50 MB). Dá pra arrastar vários de uma vez pra cá."
 									: "Quando o mestre enviar PDFs, eles aparecem aqui."
 							}
 							actionLabel={canManage ? "Enviar primeiro PDF" : undefined}
@@ -283,7 +344,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 			>
 				<div className="flex flex-col items-center gap-2 text-primary">
 					<UploadCloud className="h-8 w-8" />
-					<span className="text-[13px] font-semibold">Solte o PDF aqui</span>
+					<span className="text-[13px] font-semibold">Solte os PDFs aqui</span>
 				</div>
 			</div>
 
