@@ -22,6 +22,8 @@ const filled: TableResources = {
 	inspiration: 2,
 	fate: 4,
 	fateTotal: 10,
+	divine: 0,
+	divineTotal: 10,
 	bonusDice: [
 		{ id: "a", sides: 6, quantity: 2, origin: "dormiu bem" },
 		{ id: "b", sides: 8, quantity: 1, origin: "bênção do mestre" },
@@ -269,5 +271,95 @@ describe("TableResourcesStrip", () => {
 		).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: /Rolar d6/ }));
 		expect(onChange).not.toHaveBeenCalled();
+	});
+});
+
+describe("TableResourcesStrip · Pontos Divinos", () => {
+	it("ficha antiga abre com ☀ 0/10 e − desligado, sem mudar o Destino", () => {
+		mockViewport(false);
+		renderStrip({ fate: 4, fateTotal: 10 });
+		expect(
+			screen.getByRole("group", { name: "Pontos Divinos 0 de 10" }),
+		).toBeTruthy();
+		expect(screen.getByRole("group", { name: "Destino 4 de 10" })).toBeTruthy();
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Gastar 1 ponto divino",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+	});
+
+	it("− / + mexem só nos Divinos e preservam chave desconhecida", () => {
+		mockViewport(false);
+		const onChange = renderStrip({
+			...filled,
+			divine: 2,
+			divineTotal: 3,
+			futuro: { x: 1 },
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: "Ganhar 1 ponto divino" }),
+		);
+		expect(onChange.mock.calls[0][0]).toMatchObject({
+			divine: 3,
+			divineTotal: 3,
+			fate: 4,
+			fateTotal: 10,
+			futuro: { x: 1 },
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: "Gastar 1 ponto divino" }),
+		);
+		expect(onChange.mock.calls[1][0].divine).toBe(1);
+	});
+
+	it("total editável inline: Enter grava e a sobra desce junto", () => {
+		mockViewport(false);
+		const onChange = renderStrip({ ...filled, divine: 5, divineTotal: 8 });
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: "Editar total de pontos divinos (8)",
+			}),
+		);
+		const input = screen.getByLabelText(
+			"Total de pontos divinos",
+		) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: "3" } });
+		fireEvent.submit(input.closest("form") as HTMLFormElement);
+		expect(onChange.mock.calls[0][0]).toMatchObject({
+			divine: 3,
+			divineTotal: 3,
+			fateTotal: 10,
+		});
+	});
+
+	it("Queimar pede confirmação no Dialog e tira 1 do total", () => {
+		mockViewport(false);
+		const onChange = renderStrip({ ...filled, divine: 4, divineTotal: 4 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Queimar 1 ponto divino" }),
+		);
+		const dialog = screen.getByRole("dialog");
+		expect(dialog.textContent).toMatch(/Pontos Divinos ficam\s*3 \/ 3/);
+		expect(onChange).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Queimar" }));
+		expect(onChange.mock.calls[0][0]).toMatchObject({
+			divine: 3,
+			divineTotal: 3,
+			fateTotal: 10,
+		});
+	});
+
+	it("viewer vê ☀ n / t sem botões, também no 390", () => {
+		mockViewport(true);
+		renderStrip({ ...filled, divine: 2, divineTotal: 5 }, { readOnly: true });
+		expect(
+			screen.getByRole("group", { name: "Pontos Divinos 2 de 5" }),
+		).toBeTruthy();
+		expect(
+			screen.queryByRole("button", { name: /ponto divino|pontos divinos/ }),
+		).toBeNull();
 	});
 });

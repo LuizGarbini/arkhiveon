@@ -11,6 +11,34 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.2-pontos-de-destino",
+		version: "1.6.2",
+		date: "18/10/2026",
+		title: "Pontos de Destino na ficha",
+		description:
+			"A faixa Recursos da mesa, no topo da ficha, agora tem Pontos de Destino: quanto sobra, o total e uma barrinha.",
+		bullets: [
+			"Use o − quando gastar um ponto na mesa e o + quando ganhar de volta.",
+			"Toque no total (o número depois da barra) para mudar. Cada ficha começa com 10.",
+			"Queimar tira 1 ponto do total de vez. O app pergunta antes, para ninguém queimar sem querer.",
+			"O mestre e quem só vê a ficha enxergam os pontos, mas não mexem.",
+		],
+	},
+	{
+		id: "v1.6.2-pontos-divinos",
+		version: "1.6.2",
+		date: "18/10/2026",
+		title: "Pontos Divinos na ficha",
+		description:
+			"Ao lado do Destino, a ficha ganhou os Pontos Divinos, com o ícone de sol. Funcionam do mesmo jeito: gastar, ganhar, mudar o total e queimar.",
+		bullets: [
+			"Aparecem em todas as fichas, na faixa Recursos da mesa.",
+			"Toda ficha começa com 0 de 10. Toque no total para seguir a regra da sua mesa.",
+			"Queimar também pede confirmação antes.",
+			"Quem ainda usa o app de celular antigo (APK) deve atualizar: a versão velha pode zerar os Pontos Divinos ao mexer na faixa.",
+		],
+	},
+	{
 		id: "v1.6.1-atributo-de-ataque",
 		version: "1.6.1",
 		date: "11/10/2026",
