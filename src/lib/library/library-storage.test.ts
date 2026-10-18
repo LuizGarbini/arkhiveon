@@ -23,14 +23,14 @@ describe("library-storage", () => {
 		).resolves.toEqual({ ok: true, title: "Manual do Jogador" });
 	});
 
-	it("recusa outro tipo, >50 MB e arquivo renomeado", async () => {
+	it("recusa outro tipo, >200 MB e arquivo renomeado", async () => {
 		expect((await checkPdfFile(fileOf("x", "a.png", "image/png"))).ok).toBe(
 			false,
 		);
 		expect(
 			(
 				await checkPdfFile(
-					fileOf("%PDF-", "a.pdf", "application/pdf", 52428801),
+					fileOf("%PDF-", "a.pdf", "application/pdf", 209715201),
 				)
 			).ok,
 		).toBe(false);
@@ -52,7 +52,7 @@ describe("library-storage", () => {
 
 	it("mapeia erros para texto leigo", () => {
 		expect(libraryErrorMessage(403)).toMatch(/permissão/);
-		expect(libraryErrorMessage(413)).toMatch(/50 MB/);
+		expect(libraryErrorMessage(413)).toMatch(/200 MB/);
 		expect(libraryErrorMessage(422)).toMatch(/PDF/);
 		expect(libraryErrorMessage(500)).toMatch(/Tente de novo/);
 	});

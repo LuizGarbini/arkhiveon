@@ -6,14 +6,14 @@
 export const LIBRARY_PILOT_TABLE = "campaign_library_pilot_campaigns";
 export const LIBRARY_FILES_TABLE = "campaign_library_files";
 
-export const LIBRARY_MAX_BYTES = 50 * 1024 * 1024; // 52428800
+export const LIBRARY_MAX_BYTES = 200 * 1024 * 1024; // 209715200 (CHECK da 0042)
 export const LIBRARY_PDF_MIME = "application/pdf";
 /** Presigned PUT: 10 min. */
 export const LIBRARY_UPLOAD_TTL_SECONDS = 600;
 /** Presigned GET: 5 min (o viewer baixa o arquivo inteiro ao abrir). */
 export const LIBRARY_READ_TTL_SECONDS = 300;
 /** Pendentes mais velhos que isso são apagados no próximo request-upload. */
-export const LIBRARY_PENDING_MAX_AGE_MS = 60 * 60 * 1000;
+export const LIBRARY_PENDING_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 export const LIBRARY_TITLE_MAX = 200;
 
 export type CampaignRole = "owner" | "editor" | "viewer";
@@ -91,7 +91,7 @@ export function validateUploadRequest(input: {
 		return { ok: false, status: 400, error: "Tamanho inválido." };
 	}
 	if (size > LIBRARY_MAX_BYTES) {
-		return { ok: false, status: 413, error: "PDF acima de 50 MB." };
+		return { ok: false, status: 413, error: "PDF acima de 200 MB." };
 	}
 	const title = typeof input.title === "string" ? input.title.trim() : "";
 	if (!title || title.length > LIBRARY_TITLE_MAX) {
@@ -154,7 +154,7 @@ export function checkUploadedObject(
 		return { ok: false, error: "Tamanho diferente do aprovado." };
 	}
 	if (head.contentLength > LIBRARY_MAX_BYTES) {
-		return { ok: false, error: "PDF acima de 50 MB." };
+		return { ok: false, error: "PDF acima de 200 MB." };
 	}
 	const type = (head.contentType ?? "").split(";")[0].trim().toLowerCase();
 	if (type !== LIBRARY_PDF_MIME) {
