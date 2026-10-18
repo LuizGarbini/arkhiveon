@@ -1,9 +1,17 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { LibraryBig, RotateCcw, UploadCloud } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { LibraryBig, RotateCcw, Search, UploadCloud } from "lucide-react";
+import {
+	useCallback,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { EmptyState } from "@/components/empty-state";
 import { LibraryFileRow } from "@/components/library/library-file-row";
 import { UploadQueueList } from "@/components/library/upload-queue-list";
+import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +24,14 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { filterByTitle, libraryCountLabel } from "@/lib/library/library-search";
 import {
 	canManageLibraryRole,
 	checkPdfFile,
 	deleteLibraryFile,
 	type LibraryFile,
 	listLibraryFiles,
+	renameLibraryFile,
 	uploadLibraryPdf,
 } from "@/lib/library/library-storage";
 import {
@@ -56,10 +66,44 @@ function LibraryRoute() {
 
 function LibrarySkeleton() {
 	return (
-		<div className="space-y-3" aria-busy="true">
-			<Skeleton className="h-24 w-full rounded-2xl" />
-			<Skeleton className="h-14 w-full rounded-2xl" />
-			<Skeleton className="h-14 w-full rounded-2xl" />
+		<div className="px-6 pt-5 sm:px-8 sm:pt-8">
+			<div className="mx-auto w-full max-w-7xl space-y-5">
+				<Skeleton className="h-24 w-full rounded-2xl" />
+				<LibraryListSkeleton />
+			</div>
+		</div>
+	);
+}
+
+const skeletonRows = [
+	{ key: "s1", width: "58%" },
+	{ key: "s2", width: "42%" },
+	{ key: "s3", width: "66%" },
+	{ key: "s4", width: "35%" },
+	{ key: "s5", width: "50%" },
+];
+
+/** Mesma altura e colunas das linhas de verdade (sem pulo ao carregar). */
+function LibraryListSkeleton() {
+	return (
+		<div
+			className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card"
+			aria-busy="true"
+		>
+			{skeletonRows.map((row) => (
+				<div
+					key={row.key}
+					className="flex min-h-14 items-center gap-3 py-2 pl-4 pr-4 sm:min-h-12"
+				>
+					<Skeleton className="h-4 w-4 shrink-0 rounded" />
+					<div className="min-w-0 flex-1 space-y-1.5">
+						<Skeleton className="h-3.5 rounded" style={{ width: row.width }} />
+						<Skeleton className="h-3 w-28 rounded sm:hidden" />
+					</div>
+					<Skeleton className="hidden h-3 w-14 rounded sm:block" />
+					<Skeleton className="hidden h-3 w-20 rounded sm:ml-5 sm:mr-20 sm:block" />
+				</div>
+			))}
 		</div>
 	);
 }
@@ -82,6 +126,8 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	const [isDragging, setIsDragging] = useState(false);
 	const [toDelete, setToDelete] = useState<LibraryFile | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [query, setQuery] = useState("");
+	const deferredQuery = useDeferredValue(query);
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const load = useCallback(async () => {
@@ -188,13 +234,39 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 		}
 	}
 
+	/** Salva o nome e troca só aquela linha (sem recarregar a lista). */
+	async function renameFile(file: LibraryFile, title: string) {
+		const saved = await renameLibraryFile(file.id, title);
+		setState((prev) =>
+			prev.status === "ready"
+				? {
+						status: "ready",
+						files: prev.files.map((item) =>
+							item.id === file.id ? { ...item, title: saved } : item,
+						),
+					}
+				: prev,
+		);
+	}
+
 	const isReady = state.status === "ready";
 	const openPicker = () => inputRef.current?.click();
 	const showClear =
 		uploads.some((item) => item.status === "done") &&
 		!hasActiveUploads(uploads);
-	const files = state.status === "ready" ? state.files : [];
-	const count = state.status === "ready" ? files.length : undefined;
+	const files = useMemo(
+		() => (state.status === "ready" ? state.files : []),
+		[state],
+	);
+	const visibleFiles = useMemo(
+		() => filterByTitle(files, deferredQuery),
+		[files, deferredQuery],
+	);
+	const count =
+		state.status === "ready"
+			? libraryCountLabel(visibleFiles.length, files.length, deferredQuery)
+			: undefined;
+	const showSearch = !(state.status === "ready" && files.length === 0);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: área de soltar arquivo; o botão Enviar PDF é o caminho acessível.
@@ -250,7 +322,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 					<h1 className="font-display truncate text-2xl font-bold tracking-tight text-foreground">
 						Biblioteca
 					</h1>
-					{typeof count === "number" ? (
+					{count !== undefined ? (
 						<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
 							{count}
 						</span>
@@ -292,18 +364,30 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 						/>
 					) : null}
 
+					{showSearch ? (
+						<ListLayout
+							searchValue={query}
+							onSearch={setQuery}
+							searchPlaceholder="Buscar PDF pelo nome…"
+							hideFilters
+						/>
+					) : null}
+
 					{state.status === "loading" ? (
-						<div className="space-y-3" aria-busy="true">
-							<Skeleton className="h-14 w-full rounded-2xl" />
-							<Skeleton className="h-14 w-full rounded-2xl" />
-							<Skeleton className="h-14 w-full rounded-2xl" />
-						</div>
+						<LibraryListSkeleton />
 					) : state.status === "error" ? (
-						<div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 px-6 py-10 text-center">
+						<div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-border/70 bg-card px-6 py-8 text-center">
 							<p className="text-[13px] font-semibold text-foreground">
 								Não deu pra carregar a Biblioteca.
 							</p>
-							<Button variant="outline" onClick={() => void load()}>
+							<p className="-mt-1 text-[12px] text-muted-foreground">
+								Confira a conexão e tente de novo.
+							</p>
+							<Button
+								variant="outline"
+								className="min-h-[44px] sm:min-h-9"
+								onClick={() => void load()}
+							>
 								<RotateCcw className="mr-2 h-4 w-4" />
 								Tentar de novo
 							</Button>
@@ -320,14 +404,23 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 							actionLabel={canManage ? "Enviar primeiro PDF" : undefined}
 							onAction={canManage ? openPicker : undefined}
 						/>
+					) : visibleFiles.length === 0 ? (
+						<EmptyState
+							Icon={Search}
+							title={`Nenhum PDF com "${deferredQuery.trim()}"`}
+							description={`Confira a grafia ou limpe a busca para ver os ${files.length} PDFs.`}
+							actionLabel="Limpar busca"
+							onAction={() => setQuery("")}
+						/>
 					) : (
-						<ul className="space-y-2">
-							{files.map((file) => (
+						<ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
+							{visibleFiles.map((file) => (
 								<LibraryFileRow
 									key={file.id}
 									file={file}
 									canManage={canManage}
 									onDelete={setToDelete}
+									onRename={renameFile}
 								/>
 							))}
 						</ul>
@@ -337,7 +430,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 
 			<div
 				className={cn(
-					"pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl border-2 border-dashed border-primary/60 bg-background/80 backdrop-blur-md transition-opacity duration-150",
+					"pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl border-2 border-dashed border-primary/60 bg-background/90 transition-opacity duration-150",
 					isDragging ? "opacity-100" : "opacity-0",
 				)}
 				aria-hidden={!isDragging}

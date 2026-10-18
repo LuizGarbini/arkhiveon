@@ -4,14 +4,17 @@ import {
 	buildPendingLibraryKey,
 	canManageLibrary,
 	canReadLibrary,
+	canRunLibraryAction,
 	checkUploadedObject,
 	hasPdfMagic,
+	isLibraryAction,
 	isStalePending,
 	LIBRARY_MAX_BYTES,
 	LIBRARY_READ_TTL_SECONDS,
 	parseAllowedOrigins,
 	resolveCorsOrigin,
 	resolveReadTtl,
+	validateLibraryTitle,
 	validateUploadRequest,
 } from "../../../supabase/functions/_shared/library-guard";
 
@@ -135,5 +138,35 @@ describe("library-guard", () => {
 		expect(resolveReadTtl(2, false)).toBe(LIBRARY_READ_TTL_SECONDS);
 		expect(resolveReadTtl(2, true)).toBe(2);
 		expect(resolveReadTtl(9999, true)).toBe(LIBRARY_READ_TTL_SECONDS);
+	});
+
+	it("rename: só mestre/editor; jogador e não membro são negados", () => {
+		expect(isLibraryAction("rename")).toBe(true);
+		expect(canRunLibraryAction("rename", "owner")).toBe(true);
+		expect(canRunLibraryAction("rename", "editor")).toBe(true);
+		expect(canRunLibraryAction("rename", "viewer")).toBe(false);
+		expect(canRunLibraryAction("rename", null)).toBe(false);
+		// Mesma matriz das outras ações de escrita; ler continua aberto ao jogador.
+		expect(canRunLibraryAction("delete", "viewer")).toBe(false);
+		expect(canRunLibraryAction("request-upload", "viewer")).toBe(false);
+		expect(canRunLibraryAction("request-read", "viewer")).toBe(true);
+		expect(canRunLibraryAction("request-read", null)).toBe(false);
+	});
+
+	it("rename: título com trim, NFC e 1–200 caracteres", () => {
+		expect(validateLibraryTitle("  Poções  ")).toEqual({
+			ok: true,
+			title: "Poções",
+		});
+		const nfd = "Caldeirão".normalize("NFD");
+		expect(validateLibraryTitle(nfd)).toEqual({ ok: true, title: "Caldeirão" });
+		expect(validateLibraryTitle("   ").ok).toBe(false);
+		expect(validateLibraryTitle("").ok).toBe(false);
+		expect(validateLibraryTitle(42).ok).toBe(false);
+		expect(validateLibraryTitle(null).ok).toBe(false);
+		expect(validateLibraryTitle("a".repeat(200)).ok).toBe(true);
+		expect(validateLibraryTitle("a".repeat(201)).ok).toBe(false);
+		// Conta caractere (como o char_length do banco), não unidade UTF-16.
+		expect(validateLibraryTitle("🐉".repeat(200)).ok).toBe(true);
 	});
 });

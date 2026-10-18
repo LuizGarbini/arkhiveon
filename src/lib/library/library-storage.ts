@@ -11,8 +11,10 @@ import {
 	LIBRARY_PDF_MIME,
 	LIBRARY_PILOT_TABLE,
 	LIBRARY_TITLE_MAX,
+	validateLibraryTitle,
 } from "../../../supabase/functions/_shared/library-guard";
 import { getSupabase } from "../supabase";
+import { repairMojibake } from "./repair-mojibake";
 
 export interface LibraryFile {
 	id: string;
@@ -80,10 +82,32 @@ export type PdfCheck =
 	| { ok: true; title: string }
 	| { ok: false; error: string };
 
-/** Título a partir do nome do arquivo (sem .pdf, limitado). */
+/**
+ * Título a partir do nome do arquivo (sem .pdf, limitado). Conserta acento
+ * quebrado vindo do disco ("PoÃ§Ãµes" → "Poções") e normaliza pra NFC.
+ */
 export function titleFromFileName(name: string): string {
-	const base = name.replace(/\.pdf$/i, "").trim() || "PDF sem nome";
-	return base.slice(0, LIBRARY_TITLE_MAX);
+	const base =
+		repairMojibake(name)
+			.replace(/\.pdf$/i, "")
+			.trim() || "PDF sem nome";
+	return Array.from(base).slice(0, LIBRARY_TITLE_MAX).join("").trim();
+}
+
+export type TitleDraftCheck =
+	| { ok: true; title: string }
+	| { ok: false; error: string };
+
+/** Valida o nome digitado ao renomear (mesma regra da função). */
+export function checkTitleDraft(draft: string): TitleDraftCheck {
+	const result = validateLibraryTitle(draft);
+	if (result.ok) return result;
+	return {
+		ok: false,
+		error: draft.trim()
+			? `Use até ${LIBRARY_TITLE_MAX} caracteres.`
+			: "O nome não pode ficar vazio.",
+	};
 }
 
 /** Valida no cliente antes de pedir link: tipo, 50 MB e %PDF-. */
@@ -223,6 +247,19 @@ export async function uploadLibraryPdf(
 
 export async function deleteLibraryFile(fileId: string): Promise<void> {
 	await callLibrary({ action: "delete", fileId });
+}
+
+/** Renomeia um PDF pronto (owner/editor; a função nega o resto com 403). */
+export async function renameLibraryFile(
+	fileId: string,
+	title: string,
+): Promise<string> {
+	const result = await callLibrary<{ title?: unknown }>({
+		action: "rename",
+		fileId,
+		title,
+	});
+	return typeof result?.title === "string" ? result.title : title;
 }
 
 /** Metadados de um PDF pronto (RLS decide se a pessoa vê). */

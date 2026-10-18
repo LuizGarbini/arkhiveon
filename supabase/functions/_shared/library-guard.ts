@@ -21,7 +21,8 @@ export type LibraryAction =
 	| "request-upload"
 	| "confirm-upload"
 	| "request-read"
-	| "delete";
+	| "delete"
+	| "rename";
 
 const UUID_RE =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,7 +36,8 @@ export function isLibraryAction(value: unknown): value is LibraryAction {
 		value === "request-upload" ||
 		value === "confirm-upload" ||
 		value === "request-read" ||
-		value === "delete"
+		value === "delete" ||
+		value === "rename"
 	);
 }
 
@@ -96,6 +98,38 @@ export function validateUploadRequest(input: {
 		return { ok: false, status: 400, error: "Título inválido." };
 	}
 	return { ok: true, title, size };
+}
+
+/** Só `request-read` é aberta a qualquer membro; o resto é owner/editor. */
+export function actionNeedsManage(action: LibraryAction): boolean {
+	return action !== "request-read";
+}
+
+/** Quem pode executar a ação, pelo papel na campanha. */
+export function canRunLibraryAction(
+	action: LibraryAction,
+	role: CampaignRole | null,
+): boolean {
+	return actionNeedsManage(action)
+		? canManageLibrary(role)
+		: canReadLibrary(role);
+}
+
+export type TitleValidation =
+	| { ok: true; title: string }
+	| { ok: false; status: 400; error: string };
+
+/**
+ * Novo nome de um PDF (`rename`): texto, NFC, sem espaço nas pontas,
+ * 1–200 caracteres (mesma regra do check da tabela: char_length).
+ */
+export function validateLibraryTitle(value: unknown): TitleValidation {
+	const title = typeof value === "string" ? value.normalize("NFC").trim() : "";
+	const length = Array.from(title).length;
+	if (length < 1 || length > LIBRARY_TITLE_MAX) {
+		return { ok: false, status: 400, error: "Título inválido." };
+	}
+	return { ok: true, title };
 }
 
 /** Primeiros bytes de um PDF: "%PDF-". */

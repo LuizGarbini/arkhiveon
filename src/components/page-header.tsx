@@ -7,7 +7,8 @@ interface PageHeaderProps {
 	Icon: LucideIcon;
 	iconColor?: string;
 	action?: ReactNode;
-	count?: number;
+	/** Número ou texto curto (ex.: "2 de 6" com busca). */
+	count?: number | string;
 	eyebrow?: string;
 }
 
@@ -35,7 +36,7 @@ export function PageHeader({
 							<h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
 								<span className="text-gradient-primary">{title}</span>
 							</h1>
-							{typeof count === "number" && (
+							{(typeof count === "number" || typeof count === "string") && (
 								<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
 									{count}
 								</span>
