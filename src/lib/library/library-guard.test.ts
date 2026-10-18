@@ -116,11 +116,15 @@ describe("library-guard", () => {
 		);
 	});
 
-	it("pendente velho = mais de 1h", () => {
+	it("pendente velho = mais de 3h (upload de 200 MB em conexão lenta)", () => {
 		const now = Date.parse("2026-10-12T18:00:00Z");
-		expect(isStalePending("2026-10-12T16:59:00Z", now)).toBe(true);
-		expect(isStalePending("2026-10-12T17:30:00Z", now)).toBe(false);
+		expect(isStalePending("2026-10-12T14:59:00Z", now)).toBe(true);
+		expect(isStalePending("2026-10-12T16:30:00Z", now)).toBe(false);
 		expect(isStalePending("lixo", now)).toBe(false);
+	});
+
+	it("limite de PDF é 200 MB (igual à CHECK da 0042)", () => {
+		expect(LIBRARY_MAX_BYTES).toBe(209715200);
 	});
 
 	it("CORS só para origens permitidas", () => {

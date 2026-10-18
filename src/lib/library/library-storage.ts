@@ -110,7 +110,7 @@ export function checkTitleDraft(draft: string): TitleDraftCheck {
 	};
 }
 
-/** Valida no cliente antes de pedir link: tipo, 50 MB e %PDF-. */
+/** Valida no cliente antes de pedir link: tipo, 200 MB e %PDF-. */
 export async function checkPdfFile(file: File): Promise<PdfCheck> {
 	const looksPdf =
 		file.type === LIBRARY_PDF_MIME ||
@@ -118,7 +118,7 @@ export async function checkPdfFile(file: File): Promise<PdfCheck> {
 	if (!looksPdf) return { ok: false, error: "Só dá pra enviar PDF." };
 	if (file.size <= 0) return { ok: false, error: "Arquivo vazio." };
 	if (file.size > LIBRARY_MAX_BYTES) {
-		return { ok: false, error: "O PDF passa de 50 MB." };
+		return { ok: false, error: "O PDF passa de 200 MB." };
 	}
 	const head = new Uint8Array(await file.slice(0, 5).arrayBuffer());
 	if (!hasPdfMagic(head)) {
@@ -142,7 +142,7 @@ export function libraryErrorMessage(status: number | undefined): string {
 		case 409:
 			return "O envio não terminou. Tente de novo.";
 		case 413:
-			return "O PDF passa de 50 MB.";
+			return "O PDF passa de 200 MB.";
 		case 415:
 		case 422:
 			return "Esse arquivo não é um PDF válido.";

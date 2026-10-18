@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { LibraryFileRow } from "@/components/library/library-file-row";
 import { UploadQueueList } from "@/components/library/upload-queue-list";
+import { UploadReviewDialog } from "@/components/library/upload-review-dialog";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,11 @@ import {
 	renameLibraryFile,
 	uploadLibraryPdf,
 } from "@/lib/library/library-storage";
+import {
+	classifyUploads,
+	needsUploadReview,
+	type UploadReview,
+} from "@/lib/library/upload-dedupe";
 import {
 	clearFinished,
 	enqueueFiles,
@@ -126,6 +132,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	const [isDragging, setIsDragging] = useState(false);
 	const [toDelete, setToDelete] = useState<LibraryFile | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [review, setReview] = useState<UploadReview<File> | null>(null);
 	const [query, setQuery] = useState("");
 	const deferredQuery = useDeferredValue(query);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -205,8 +212,20 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 			});
 		}
 		if (pdfs.length === 0) return;
+		const existing = state.status === "ready" ? state.files : [];
+		const next = classifyUploads(pdfs, existing);
+		// Sem repetido nem grande demais: segue direto, como antes.
+		if (!needsUploadReview(next)) {
+			startUploads(next.fresh);
+			return;
+		}
+		setReview(next);
+	}
+
+	function startUploads(picked: readonly File[]) {
+		if (picked.length === 0) return;
 		updateUploads((items) =>
-			enqueueFiles(items, pdfs, () => crypto.randomUUID()),
+			enqueueFiles(items, picked, () => crypto.randomUUID()),
 		);
 		pumpUploads();
 	}
@@ -398,7 +417,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 							title="Nenhum PDF ainda"
 							description={
 								canManage
-									? "Envie livros, mapas ou fichas em PDF (até 50 MB). Dá pra arrastar vários de uma vez pra cá."
+									? "Envie livros, mapas ou fichas em PDF (até 200 MB). Dá pra arrastar vários de uma vez pra cá."
 									: "Quando o mestre enviar PDFs, eles aparecem aqui."
 							}
 							actionLabel={canManage ? "Enviar primeiro PDF" : undefined}
@@ -440,6 +459,15 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 					<span className="text-[13px] font-semibold">Solte os PDFs aqui</span>
 				</div>
 			</div>
+
+			<UploadReviewDialog
+				review={review}
+				onCancel={() => setReview(null)}
+				onConfirm={(picked) => {
+					setReview(null);
+					startUploads(picked);
+				}}
+			/>
 
 			<Dialog
 				open={!!toDelete}

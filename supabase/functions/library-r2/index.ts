@@ -7,7 +7,7 @@
  *
  * Ações (POST JSON { action, ... }):
  * - request-upload  (owner/editor) { campaignId, title, size, contentType }
- *     → limpa pendentes > 1h da campanha, cria linha `pending`, devolve
+ *     → limpa pendentes > 3h da campanha, cria linha `pending`, devolve
  *       presigned PUT (10 min) com Content-Type e Content-Length assinados,
  *       para a chave TEMPORÁRIA `pending/<campaign>/<id>.pdf` (Fatia 1b).
  * - confirm-upload  (owner/editor) { fileId }
