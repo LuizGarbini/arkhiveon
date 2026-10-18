@@ -345,34 +345,16 @@ export function TableResourcesStrip({
 				aria-label="Recursos da mesa"
 				className="relative mt-2 flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-background/50 p-3"
 			>
-				{readOnly ? (
-					<>
-						<div className="flex items-center justify-between gap-2">
-							{inspiration}
-							{fate}
-						</div>
-						<div className="flex items-center justify-between gap-2">
-							<span className={labelClass}>Pontos Divinos</span>
-							{divine}
-						</div>
-					</>
-				) : (
-					<>
-						{/* Com − / + / Queimar o Destino não cabe ao lado da Inspiração em 390px. */}
-						<div className="flex items-center">{inspiration}</div>
-						<div className="flex items-center justify-between gap-2">
-							<span className={labelClass}>Destino</span>
-							{fate}
-						</div>
-						<div className="flex items-center justify-between gap-2">
-							{/* "Pontos Divinos" quebra em 2 linhas ao lado de − ☀ + 🔥 no 390; o grupo segue lido como "Pontos Divinos". */}
-							<span className={cn(labelClass, "whitespace-nowrap")}>
-								Divinos
-							</span>
-							{divine}
-						</div>
-					</>
-				)}
+				{/* Uma linha por contador, rótulo à esquerda (owner e viewer): com − / + / Queimar não cabe ao lado da Inspiração em 390px. "Pontos Divinos" vira "Divinos" pra não quebrar; o grupo segue lido completo. */}
+				<div className="flex items-center">{inspiration}</div>
+				<div className="flex items-center justify-between gap-2">
+					<span className={cn(labelClass, "whitespace-nowrap")}>Destino</span>
+					{fate}
+				</div>
+				<div className="flex items-center justify-between gap-2">
+					<span className={cn(labelClass, "whitespace-nowrap")}>Divinos</span>
+					{divine}
+				</div>
 				<div className="flex min-w-0 items-center gap-2">
 					{addDie ? (
 						<>

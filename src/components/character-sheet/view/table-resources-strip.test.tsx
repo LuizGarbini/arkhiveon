@@ -363,3 +363,56 @@ describe("TableResourcesStrip · Pontos Divinos", () => {
 		).toBeNull();
 	});
 });
+
+describe("TableResourcesStrip · Queimar com Destino e Divinos diferentes", () => {
+	it("cada Dialog mostra os próprios números e queimar um não mexe no outro", () => {
+		mockViewport(false);
+		const onChange = renderStrip({
+			...filled,
+			fate: 3,
+			fateTotal: 4,
+			divine: 0,
+			divineTotal: 10,
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: "Queimar 1 ponto divino" }),
+		);
+		const divineText = screen.getByRole("dialog").textContent ?? "";
+		expect(divineText).toMatch(/de 10 para 9/);
+		expect(divineText).toMatch(/Pontos Divinos ficam\s*0 \/ 9/);
+		expect(divineText).not.toMatch(/de 4 para 3/);
+		fireEvent.click(screen.getByRole("button", { name: "Queimar" }));
+		expect(onChange.mock.calls[0][0]).toMatchObject({
+			divine: 0,
+			divineTotal: 9,
+			fate: 3,
+			fateTotal: 4,
+		});
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Queimar 1 ponto de destino" }),
+		);
+		const fateText = screen.getByRole("dialog").textContent ?? "";
+		expect(fateText).toMatch(/de 4 para 3/);
+		expect(fateText).toMatch(/Destino fica\s*3 \/ 3/);
+		expect(fateText).not.toMatch(/de 10 para 9/);
+		fireEvent.click(screen.getByRole("button", { name: "Queimar" }));
+		expect(onChange.mock.calls[1][0]).toMatchObject({
+			fate: 3,
+			fateTotal: 3,
+			divine: 0,
+			divineTotal: 10,
+		});
+	});
+
+	it("viewer 390: Destino e Divinos com rótulo na própria linha", () => {
+		mockViewport(true);
+		renderStrip({ ...filled, divine: 2, divineTotal: 5 }, { readOnly: true });
+		const labels = Array.from(
+			document.querySelectorAll(
+				'section[aria-label="Recursos da mesa"] span.uppercase',
+			),
+		).map((el) => el.textContent);
+		expect(labels).toEqual(expect.arrayContaining(["Destino", "Divinos"]));
+	});
+});
