@@ -1,0 +1,90 @@
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/library-guard.ts
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/ia-mesa-guard.ts
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/ia-mesa-character.ts
+CONSOLE Realtime channel error: Error: socket closed: 0
+    at normalizeChannelError (http://127.0.0.1:3141/node_modules/.vite/deps/@supabase_supabase-js.js?v=15ed9c57:7621:14)
+    at http://127.0.0.1:3141/node_modules/.vite/deps/@supabase_supabase-js.js?v=15ed9c57:7846:111
+    at Object.callback (http://12
+REQ POST https://preview.supabase.test/functions/v1/r2-upload
+DBG uploads 1 disabled false
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/library-guard.ts
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/ia-mesa-guard.ts
+REQ GET http://127.0.0.1:3141/supabase/functions/_shared/ia-mesa-character.ts
+CONSOLE Realtime channel error: Error: socket closed: 0
+    at normalizeChannelError (http://127.0.0.1:3141/node_modules/.vite/deps/@supabase_supabase-js.js?v=15ed9c57:7621:14)
+    at http://127.0.0.1:3141/node_modules/.vite/deps/@supabase_supabase-js.js?v=15ed9c57:7846:111
+    at Object.callback (http://12
+REQ POST https://preview.supabase.test/functions/v1/r2-upload
+DBG uploads 1 disabled false
+RESULTS [
+ {
+  "tag": "1440x900",
+  "uploads": 1,
+  "privateNoticeCount": 1,
+  "privateNoticeText": "Esta imagem está privada na sua galeria. Se você aplicar aqui, todos que podem ver esta página também vão vê-la.",
+  "notice": {
+   "contrast": 13.21,
+   "fgRgb": [
+    254,
+    230,
+    133
+   ],
+   "bgRgb": [
+    39,
+    29,
+    21
+   ],
+   "w": 419,
+   "h": 59,
+   "color": "oklch(0.924 0.12 95.746)",
+   "bg": "oklab(0.769 0.0640531 0.176752 / 0.1)",
+   "border": "oklab(0.769 0.0640531 0.176752 / 0.3)",
+   "aboveApply": true,
+   "insideViewport": true
+  },
+  "publicNoticeCount": 0,
+  "applyDisabled": false,
+  "savedImageUrl": "https://r2.preview.test/npcs/copia-recortada.webp",
+  "noticeAfterSave": 0,
+  "overflow": {
+   "docScrollW": 1440,
+   "vw": 1440
+  },
+  "nativeDialogs": 0
+ },
+ {
+  "tag": "390x844",
+  "uploads": 1,
+  "privateNoticeCount": 1,
+  "privateNoticeText": "Esta imagem está privada na sua galeria. Se você aplicar aqui, todos que podem ver esta página também vão vê-la.",
+  "notice": {
+   "contrast": 13.21,
+   "fgRgb": [
+    254,
+    230,
+    133
+   ],
+   "bgRgb": [
+    39,
+    29,
+    21
+   ],
+   "w": 345,
+   "h": 77,
+   "color": "oklch(0.924 0.12 95.746)",
+   "bg": "oklab(0.769 0.0640531 0.176752 / 0.1)",
+   "border": "oklab(0.769 0.0640531 0.176752 / 0.3)",
+   "aboveApply": true,
+   "insideViewport": true
+  },
+  "publicNoticeCount": 0,
+  "applyDisabled": false,
+  "savedImageUrl": "https://r2.preview.test/npcs/copia-recortada.webp",
+  "noticeAfterSave": 0,
+  "overflow": {
+   "docScrollW": 390,
+   "vw": 390
+  },
+  "nativeDialogs": 0
+ }
+]
