@@ -15,6 +15,7 @@ import {
 import {
 	entityNameOf,
 	generateEntry,
+	isNetworkError,
 	pushLog,
 	remoteErrorMessage,
 } from "./helpers";
@@ -309,6 +310,7 @@ export const createCharacterSlice: StateCreator<
 				return createRemoteActivity(log, campaignId);
 			})
 			.catch((error) => {
+				const offline = isNetworkError(error);
 				const message = remoteErrorMessage(error);
 				// Reverte só esta ficha; não descarta mudanças de outras fichas.
 				set((state) => ({
@@ -318,8 +320,20 @@ export const createCharacterSlice: StateCreator<
 					activityLog: state.activityLog.filter(
 						(l) => !(l.entityId === id && l.action === "update"),
 					),
-					syncError: message,
+					// Sem rede: só o toast (sem erro técnico no banner).
+					syncError: offline ? state.syncError : message,
 				}));
+				if (offline) {
+					showToast("error", {
+						title:
+							"A ficha não foi salva. Verifique a conexão e tente de novo.",
+						action: {
+							label: "Tentar de novo",
+							onClick: () => get().updateCharacter(id, character),
+						},
+					});
+					return;
+				}
 				showToast("error", {
 					title: "A ficha não foi salva",
 					description: message,

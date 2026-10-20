@@ -10,14 +10,18 @@ const db = vi.hoisted(() => ({
 	rows: new Map<string, { id: string; data: Record<string, unknown> }>(),
 	/** Simula a RLS escondendo a linha de quem salva (0 linhas). */
 	rlsHidesRow: false,
+	/** Simula estar sem rede: o fetch do supabase-js rejeita. */
+	offline: false,
 }));
 
 const showToastMock = vi.hoisted(() => vi.fn());
 vi.mock("@/components/ui/toast", () => ({ showToast: showToastMock }));
 
 vi.mock("../supabase", () => {
-	const visible = (id: string) =>
-		db.rlsHidesRow ? undefined : db.rows.get(id);
+	const visible = (id: string) => {
+		if (db.offline) throw new TypeError("Failed to fetch");
+		return db.rlsHidesRow ? undefined : db.rows.get(id);
+	};
 	const from = (table: string) => ({
 		select: () => ({
 			eq: (_col: string, id: string) => ({
@@ -102,6 +106,7 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 	beforeEach(() => {
 		db.rows.clear();
 		db.rlsHidesRow = false;
+		db.offline = false;
 		showToastMock.mockClear();
 		const character = baseCharacter();
 		db.rows.set(character.id, {
@@ -168,5 +173,48 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		await expect(
 			updateRemoteEntity("character", baseCharacter(), CAMPAIGN),
 		).rejects.toThrow(/não tem permissão/);
+	});
+
+	it("cópia desatualizada: aba B sem Realtime salva e o item que a aba A pôs na mochila não some", async () => {
+		// Aba B carregou a ficha só com a espada e não recebe Realtime.
+		const tabB = useRPGStore.getState().characters[0];
+		expect(tabB.inventoryList?.map((i) => i.id)).toEqual(["inv-espada"]);
+		// Aba A adiciona a poção e salva no banco.
+		playerAddsPotion();
+		// Aba B (cópia velha) muda só o deslocamento e salva.
+		useRPGStore.getState().updateCharacter("ficha-1", { speed: 35 });
+		await flush();
+		const saved = db.rows.get("ficha-1")?.data as Partial<Character>;
+		expect(saved.speed).toBe(35);
+		expect(saved.inventoryList?.map((i) => i.id)).toEqual([
+			"inv-espada",
+			"inv-pocao",
+		]);
+		expect(showToastMock).not.toHaveBeenCalled();
+	});
+
+	it("offline: toast sem erro técnico, com 'Tentar de novo' que refaz o save", async () => {
+		db.offline = true;
+		useRPGStore.getState().updateCharacter("ficha-1", { notes: "PV 3/12" });
+		await flush();
+		expect(showToastMock).toHaveBeenCalledTimes(1);
+		const [variant, toast] = showToastMock.mock.calls[0];
+		expect(variant).toBe("error");
+		expect(toast.title).toBe(
+			"A ficha não foi salva. Verifique a conexão e tente de novo.",
+		);
+		expect(JSON.stringify(toast)).not.toMatch(/TypeError|Failed to fetch/);
+		expect(toast.action.label).toBe("Tentar de novo");
+		const state = useRPGStore.getState();
+		expect(state.syncError).toBeNull();
+		expect(state.characters[0].notes).toBe("");
+		// Volta a conexão e clica em "Tentar de novo".
+		db.offline = false;
+		toast.action.onClick();
+		await flush();
+		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe(
+			"PV 3/12",
+		);
+		expect(useRPGStore.getState().characters[0].notes).toBe("PV 3/12");
 	});
 });
