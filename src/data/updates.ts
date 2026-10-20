@@ -11,6 +11,16 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.11-tela-cheia-token",
+		version: "1.6.11",
+		date: "20/10/2026",
+		title: "Retrato do token em tela cheia",
+		description: "Retrato do token abre em tela cheia pelo menu do token.",
+		bullets: [
+			"Toque no retrato ou em Ver imagem em tela cheia; fechar a imagem mantém o menu aberto.",
+		],
+	},
+	{
 		id: "v1.6.10-tela-cheia-entidades",
 		version: "1.6.10",
 		date: "20/10/2026",
