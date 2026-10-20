@@ -4,6 +4,8 @@ import {
 	buildCharacterFormDefaults,
 	type CharacterFormValues,
 	CharacterModuleFields,
+	pickChangedFormValues,
+	sanitizeCharacterFormValues,
 } from "@/components/character-sheet/fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +19,7 @@ import { Field, FormTabs } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { isDeepEqual } from "@/lib/deep-equal";
 import {
 	isCustomSheetModule,
 	lockSheetModuleTitle,
@@ -46,7 +49,7 @@ export function ModuleEditorDialog({
 	onOpenChange: (open: boolean) => void;
 	onSave: (
 		patch: Partial<SheetModuleConfig>,
-		values: CharacterFormValues,
+		changes: Partial<CharacterFormValues>,
 	) => void;
 }) {
 	return (
@@ -78,7 +81,7 @@ function ModuleEditorDialogForm({
 	onCancel: () => void;
 	onSave: (
 		patch: Partial<SheetModuleConfig>,
-		values: CharacterFormValues,
+		changes: Partial<CharacterFormValues>,
 	) => void;
 }) {
 	const form = useForm<CharacterFormValues>({
@@ -172,13 +175,22 @@ function ModuleEditorDialogForm({
 		const nextModules = layout.modules.map((m) =>
 			lockSheetModuleTitle(m.id === activeModule.id ? { ...m, ...patch } : m),
 		);
-		onSave(patch, {
-			...values,
-			sheetLayout: {
-				...layout,
-				modules: nextModules,
-			},
-		});
+		// Só os campos alterados: a ficha aberta pode estar desatualizada
+		// (outra aba salvou a mochila) e regravar tudo apagaria isso.
+		const changes = pickChangedFormValues(
+			sanitizeCharacterFormValues(values),
+			buildCharacterFormDefaults(character),
+		);
+		const moduleChanged = !isDeepEqual(
+			nextModules.find((m) => m.id === activeModule.id),
+			lockSheetModuleTitle(activeModule),
+		);
+		if (moduleChanged) {
+			changes.sheetLayout = { ...layout, modules: nextModules };
+		} else {
+			delete changes.sheetLayout;
+		}
+		onSave(patch, changes);
 	}
 
 	const isCustom = isCustomSheetModule(activeModule);

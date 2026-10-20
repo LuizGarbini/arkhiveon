@@ -1,5 +1,5 @@
 /**
- * Recursos da mesa da ficha: Inspiração, Destino e Dados bônus.
+ * Recursos da mesa da ficha: Inspiração, Destino, Pontos Divinos e Dados bônus.
  * Vive dentro de `characters.data` (JSONB) em `Character.tableResources`;
  * não tem coluna nem migração própria.
  */
@@ -17,6 +17,13 @@ export const FATE_TOTAL_DEFAULT = 10;
 /** Limites do total editável pelo jogador. 0 = todos os pontos queimados. */
 export const FATE_TOTAL_MIN = 0;
 export const FATE_TOTAL_MAX = 99;
+/** Pontos Divinos: mesmo padrão do Destino (total 10, faixa 0–99). */
+export const DIVINE_TOTAL_DEFAULT = 10;
+export const DIVINE_TOTAL_MIN = 0;
+export const DIVINE_TOTAL_MAX = 99;
+
+/** Contadores "sobra / total" da faixa (Destino e Pontos Divinos). */
+export type PoolKey = "fate" | "divine";
 
 export interface BonusDie {
 	id: string;
@@ -36,6 +43,10 @@ export interface TableResources {
 	 * para nenhuma ficha antiga mudar de total sozinha.
 	 */
 	fateTotal: number;
+	/** Pontos Divinos que ainda sobram, 0..divineTotal. */
+	divine: number;
+	/** Total de Pontos Divinos (DIVINE_TOTAL_MIN..DIVINE_TOTAL_MAX). */
+	divineTotal: number;
 	bonusDice: BonusDie[];
 }
 
@@ -43,6 +54,8 @@ export const EMPTY_TABLE_RESOURCES: TableResources = {
 	inspiration: 0,
 	fate: 0,
 	fateTotal: FATE_TOTAL_DEFAULT,
+	divine: 0,
+	divineTotal: DIVINE_TOTAL_DEFAULT,
 	bonusDice: [],
 };
 
@@ -70,6 +83,7 @@ export function normalizeTableResources(raw: unknown): TableResources {
 	if (!raw || typeof raw !== "object") return EMPTY_TABLE_RESOURCES;
 	const r = raw as Record<string, unknown>;
 	const fateTotal = normalizeFateTotal(r.fateTotal);
+	const divineTotal = normalizeTotal(r.divineTotal, DIVINE_TOTAL_DEFAULT);
 	const bonusDice: BonusDie[] = [];
 	if (Array.isArray(r.bonusDice)) {
 		for (const item of r.bonusDice) {
@@ -90,8 +104,23 @@ export function normalizeTableResources(raw: unknown): TableResources {
 		inspiration: normalizeInspiration(r.inspiration),
 		fate: clamp(toInt(r.fate, 0), 0, fateTotal),
 		fateTotal,
+		divine: clamp(toInt(r.divine, 0), 0, divineTotal),
+		divineTotal,
 		bonusDice,
 	};
+}
+
+/**
+ * Junta o que a faixa gravou com o objeto bruto do JSONB, mantendo chaves que
+ * esta versão do app não conhece (ex.: um recurso novo gravado por versão mais
+ * nova). Só as chaves conhecidas são sobrescritas.
+ */
+export function mergeTableResources(
+	raw: unknown,
+	next: TableResources,
+): TableResources {
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return next;
+	return { ...(raw as Record<string, unknown>), ...next };
 }
 
 function newId() {
@@ -120,29 +149,98 @@ export function spendInspiration(res: TableResources): TableResources {
 	return res.inspiration >= 1 ? setInspiration(res, res.inspiration - 1) : res;
 }
 
+function normalizeTotal(value: unknown, fallback: number): number {
+	if (value == null) return fallback;
+	return clamp(toInt(value, fallback), FATE_TOTAL_MIN, FATE_TOTAL_MAX);
+}
+
 function normalizeFateTotal(value: unknown): number {
-	if (value == null) return FATE_TOTAL_DEFAULT;
-	return clamp(
-		toInt(value, FATE_TOTAL_DEFAULT),
-		FATE_TOTAL_MIN,
-		FATE_TOTAL_MAX,
-	);
+	return normalizeTotal(value, FATE_TOTAL_DEFAULT);
+}
+
+/** Sobra e total de um contador. */
+export function getPool(
+	res: TableResources,
+	key: PoolKey,
+): { value: number; total: number } {
+	return key === "fate"
+		? { value: res.fate, total: res.fateTotal }
+		: { value: res.divine, total: res.divineTotal };
+}
+
+function withPool(
+	res: TableResources,
+	key: PoolKey,
+	value: number,
+	total: number,
+): TableResources {
+	return key === "fate"
+		? { ...res, fate: value, fateTotal: total }
+		: { ...res, divine: value, divineTotal: total };
 }
 
 /** Define quanto sobra, sempre entre 0 e o total. */
+export function setPool(
+	res: TableResources,
+	key: PoolKey,
+	value: number,
+): TableResources {
+	const { total } = getPool(res, key);
+	const n = Number.isFinite(value) ? Math.trunc(value) : 0;
+	return withPool(res, key, clamp(n, 0, total), total);
+}
+
+/** "−": gasta 1 ponto; em 0 não muda nada. */
+export function spendPool(res: TableResources, key: PoolKey): TableResources {
+	return setPool(res, key, getPool(res, key).value - 1);
+}
+
+/** "+": devolve 1 ponto; no total não muda nada. */
+export function regainPool(res: TableResources, key: PoolKey): TableResources {
+	return setPool(res, key, getPool(res, key).value + 1);
+}
+
+/**
+ * Muda o total. Valor inválido mantém o total atual. Se o novo total ficar
+ * abaixo do que sobra, o que sobra desce junto.
+ */
+export function setPoolTotal(
+	res: TableResources,
+	key: PoolKey,
+	total: number,
+): TableResources {
+	if (!Number.isFinite(total)) return res;
+	const next = clamp(Math.trunc(total), FATE_TOTAL_MIN, FATE_TOTAL_MAX);
+	return withPool(res, key, Math.min(getPool(res, key).value, next), next);
+}
+
+/** "Queimar": tira 1 do total para sempre (mínimo 0); a sobra desce junto. */
+export function burnPool(res: TableResources, key: PoolKey): TableResources {
+	const { total } = getPool(res, key);
+	if (total <= 0) return res;
+	return setPoolTotal(res, key, total - 1);
+}
+
+/** Largura da barra: quanto sobra / total, em % inteiro 0..100. */
+export function poolPercent(res: TableResources, key: PoolKey): number {
+	const { value, total } = getPool(res, key);
+	if (total <= 0) return 0;
+	return clamp(Math.round((value / total) * 100), 0, 100);
+}
+
+/** Destino: atalhos de `setPool`/`spendPool`/… com `key = "fate"`. */
 export function setFate(res: TableResources, fate: number): TableResources {
-	const n = Number.isFinite(fate) ? Math.trunc(fate) : 0;
-	return { ...res, fate: clamp(n, 0, res.fateTotal) };
+	return setPool(res, "fate", fate);
 }
 
 /** "−": gasta 1 ponto; em 0 não muda nada. */
 export function spendFate(res: TableResources): TableResources {
-	return setFate(res, res.fate - 1);
+	return spendPool(res, "fate");
 }
 
 /** "+": devolve 1 ponto; no total não muda nada. */
 export function regainFate(res: TableResources): TableResources {
-	return setFate(res, res.fate + 1);
+	return regainPool(res, "fate");
 }
 
 /**
@@ -153,9 +251,7 @@ export function setFateTotal(
 	res: TableResources,
 	total: number,
 ): TableResources {
-	if (!Number.isFinite(total)) return res;
-	const fateTotal = clamp(Math.trunc(total), FATE_TOTAL_MIN, FATE_TOTAL_MAX);
-	return { ...res, fateTotal, fate: Math.min(res.fate, fateTotal) };
+	return setPoolTotal(res, "fate", total);
 }
 
 /**
@@ -163,14 +259,12 @@ export function setFateTotal(
  * junto se passar do novo total. Ex.: 3/4 → 3/3 e 4/4 → 3/3.
  */
 export function burnFate(res: TableResources): TableResources {
-	if (res.fateTotal <= 0) return res;
-	return setFateTotal(res, res.fateTotal - 1);
+	return burnPool(res, "fate");
 }
 
 /** Largura da barra: quanto sobra / total, em % inteiro 0..100. */
 export function fatePercent(res: TableResources): number {
-	if (res.fateTotal <= 0) return 0;
-	return clamp(Math.round((res.fate / res.fateTotal) * 100), 0, 100);
+	return poolPercent(res, "fate");
 }
 
 /** Soma na entrada que já tem o mesmo dado e a mesma origem. */

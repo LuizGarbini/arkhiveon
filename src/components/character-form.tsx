@@ -25,6 +25,7 @@ import {
 	getAttributeConstraints,
 	InventoryFields,
 	MagicFields,
+	pickChangedFormValues,
 	sanitizeCharacterFormValues,
 } from "./character-sheet-fields";
 import { DiceRollOverlay } from "./dice-roll-overlay";
@@ -244,7 +245,11 @@ function CharacterFormDialog({
 	function onSubmit(data: CharacterFormValues) {
 		const values = sanitizeCharacterFormValues(data);
 		if (isEdit && character) {
-			updateCharacter(character.id, values);
+			// Só o que mudou: não regrava campos de uma cópia desatualizada.
+			updateCharacter(
+				character.id,
+				pickChangedFormValues(values, buildDefaults(character)),
+			);
 		} else {
 			addCharacter(values);
 		}
