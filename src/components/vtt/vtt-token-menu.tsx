@@ -3,6 +3,7 @@ import {
 	EyeOff,
 	Heart,
 	Lock,
+	Maximize2,
 	Minus,
 	Plus,
 	RotateCw,
@@ -13,9 +14,16 @@ import {
 	X,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -82,6 +90,9 @@ export function VTTTokenMenu({
 	const viewport = useVTTStore((s) => s.viewport);
 
 	const [customHpMod, setCustomHpMod] = useState("");
+	const [viewerOpen, setViewerOpen] = useState(false);
+	// Quem abriu o visualizador (retrato ou item do menu) recebe o foco de volta.
+	const viewerOpenerRef = useRef<HTMLElement | null>(null);
 	const [saving, setSaving] = useState(false);
 	const pendingRef = useRef(false);
 	const runMutation = async (operation: () => Promise<void>) => {
@@ -100,6 +111,13 @@ export function VTTTokenMenu({
 	const onDeleteToken = (id: string) => runMutation(() => deleteToken(id));
 
 	if (!token || activeTokenIdForMenu !== token.id) return null;
+
+	const viewerSrc = tokenImageForViewer(token, isGM);
+	const viewerLabel = token.name.trim() || "Sem nome";
+	const openViewer = (opener: HTMLElement) => {
+		viewerOpenerRef.current = opener;
+		setViewerOpen(true);
+	};
 
 	const handleModifyHp = (amount: number) => {
 		const current = token.hpCurrent ?? 0;
@@ -166,19 +184,47 @@ export function VTTTokenMenu({
 			{/* Token Header */}
 			<div className="flex items-center justify-between pb-2.5 border-b border-border/70">
 				<div className="flex items-center gap-2.5 min-w-0">
-					<div className="h-11 w-11 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
-						{token.avatarUrl ? (
-							<img
-								src={token.avatarUrl}
-								alt={token.name}
-								className="h-full w-full object-cover"
-							/>
-						) : (
-							<span className="font-bold text-xs text-primary">
-								{token.name[0]}
-							</span>
-						)}
-					</div>
+					{viewerSrc ? (
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={(event) => openViewer(event.currentTarget)}
+										aria-label={`Ver imagem de ${viewerLabel} em tela cheia`}
+										aria-haspopup="dialog"
+										className="group relative -m-0.5 flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									/>
+								}
+							>
+								<span className="relative flex h-[44px] w-[44px] items-center justify-center overflow-hidden rounded-full border border-primary/40 bg-primary/20">
+									<img
+										src={viewerSrc}
+										alt=""
+										className="h-full w-full object-cover"
+									/>
+									<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/50 group-hover:opacity-100 group-focus-visible:bg-black/50 group-focus-visible:opacity-100">
+										<Maximize2 className="h-4 w-4 drop-shadow" aria-hidden />
+									</span>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent>Ver em tela cheia</TooltipContent>
+						</Tooltip>
+					) : (
+						<div className="h-11 w-11 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
+							{token.avatarUrl ? (
+								<img
+									src={token.avatarUrl}
+									alt={token.name}
+									className="h-full w-full object-cover"
+								/>
+							) : (
+								<span className="font-bold text-xs text-primary">
+									{token.name[0]}
+								</span>
+							)}
+						</div>
+					)}
 					<div className="min-w-0">
 						<h4 className="font-display font-bold text-xs text-foreground truncate">
 							{token.name}
@@ -219,6 +265,29 @@ export function VTTTokenMenu({
 					</button>
 				</div>
 			</div>
+
+			{viewerSrc && (
+				<Button
+					type="button"
+					variant="outline"
+					onClick={(event) => openViewer(event.currentTarget)}
+					aria-haspopup="dialog"
+					className="h-[48px] w-full justify-start gap-2 rounded-xl text-xs font-semibold"
+				>
+					<Maximize2 className="h-3.5 w-3.5 text-primary" aria-hidden />
+					Ver imagem em tela cheia
+				</Button>
+			)}
+			{viewerSrc && (
+				<ImageViewer
+					open={viewerOpen}
+					onOpenChange={setViewerOpen}
+					src={viewerSrc}
+					alt={viewerLabel}
+					title={viewerLabel}
+					finalFocus={viewerOpenerRef}
+				/>
+			)}
 
 			{saving && (
 				<output className="text-xs text-muted-foreground">
