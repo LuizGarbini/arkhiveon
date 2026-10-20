@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
-import { getSupabase, SUPABASE_TABLES } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/join/$campaignId")({
 	component: JoinCampaignPage,
@@ -36,8 +36,6 @@ function JoinCampaignPage() {
 			return;
 		}
 
-		const currentUserId = user.id;
-
 		async function join() {
 			const supabase = getSupabase();
 			if (!supabase) {
@@ -47,36 +45,21 @@ function JoinCampaignPage() {
 			}
 
 			try {
-				// 1. Obter dados da campanha
-				const { data: camp, error: fetchErr } = await supabase
-					.from(SUPABASE_TABLES.campaigns)
-					.select("id, name, world_id")
-					.eq("id", campaignId)
-					.maybeSingle();
+				// 1. Entrar pela RPC do servidor (só viewer; quem já é membro mantém o papel)
+				const { data, error: joinErr } = await supabase.rpc(
+					"join_campaign_via_link",
+					{ p_campaign_id: campaignId },
+				);
+				const joined = data?.[0];
 
-				if (fetchErr || !camp) {
+				if (joinErr || !joined) {
 					setStatus("error");
 					setErrorMessage("Campanha não encontrada ou link inválido.");
 					return;
 				}
 
-				setCampaignName(camp.name || "Mesa de RPG");
-
-				// 2. Registrar membro na tabela memberships
-				const { error: memberErr } = await supabase
-					.from(SUPABASE_TABLES.memberships)
-					.upsert(
-						{
-							campaign_id: campaignId,
-							user_id: currentUserId,
-							role: "viewer",
-						},
-						{ onConflict: "campaign_id, user_id" },
-					);
-
-				if (memberErr) {
-					console.warn("Erro ao vincular membro:", memberErr.message);
-				}
+				const campName = joined.campaign_name || "Mesa de RPG";
+				setCampaignName(campName);
 
 				// 3. Atualizar store local e trocar contexto para a campanha
 				await useRPGStore.getState().loadCampaigns();
@@ -85,7 +68,7 @@ function JoinCampaignPage() {
 				setStatus("success");
 				toast.success({
 					title: "Você entrou na campanha! 🎉",
-					description: `Bem-vindo à mesa "${camp.name}". Contexto trocado com sucesso.`,
+					description: `Bem-vindo à mesa "${campName}". Contexto trocado com sucesso.`,
 				});
 
 				// Redirecionar para o dashboard
