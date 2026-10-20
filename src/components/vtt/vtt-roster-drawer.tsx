@@ -2,13 +2,15 @@ import { Link } from "@tanstack/react-router";
 import {
 	Crosshair,
 	FileText,
+	Maximize2,
 	Plus,
 	Search,
 	Skull,
 	Users,
 	X,
 } from "lucide-react";
-import { useDeferredValue, useId, useMemo, useState } from "react";
+import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
+import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -476,7 +478,7 @@ export function VTTRosterDrawer({
 	);
 }
 
-function SceneMapTab({
+export function SceneMapTab({
 	scene,
 	onSetSceneMap,
 }: {
@@ -484,6 +486,13 @@ function SceneMapTab({
 	onSetSceneMap: Props["onSetSceneMap"];
 }) {
 	const [applied, setApplied] = useState<string | null>(null);
+	const isGM = useVTTStore((s) => s.isGM);
+	const [viewerOpen, setViewerOpen] = useState(false);
+	const viewerOpenerRef = useRef<HTMLElement | null>(null);
+	const openViewer = (opener: HTMLElement) => {
+		viewerOpenerRef.current = opener;
+		setViewerOpen(true);
+	};
 	const upload = useMapUpload(scene.campaignId, async (map) => {
 		setApplied(null);
 		await onSetSceneMap(scene.id, map);
@@ -509,7 +518,32 @@ function SceneMapTab({
 				upload={upload}
 				value={current}
 				label={`Enviar mapa da cena ${scene.name}`}
+				// Tela cheia do mapa cru: só o mestre (ignora névoa e camada gm).
+				onViewFullscreen={isGM ? openViewer : undefined}
+				viewName={scene.name}
 			/>
+			{isGM && current && (
+				<>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={(event) => openViewer(event.currentTarget)}
+						aria-haspopup="dialog"
+						className="h-[48px] w-full justify-start gap-2 rounded-xl text-xs font-semibold"
+					>
+						<Maximize2 className="h-3.5 w-3.5 text-primary" aria-hidden />
+						Ver mapa em tela cheia
+					</Button>
+					<ImageViewer
+						open={viewerOpen}
+						onOpenChange={setViewerOpen}
+						src={current.url}
+						alt={`Mapa de ${scene.name}`}
+						title={scene.name}
+						finalFocus={viewerOpenerRef}
+					/>
+				</>
+			)}
 			{applied && upload.state.status === "idle" && (
 				<output className="block text-sm text-primary">
 					Mapa aplicado na cena.
