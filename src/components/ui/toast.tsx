@@ -50,10 +50,13 @@ const toastListeners = new Set<ToastListener>();
 
 /**
  * Mostra um toast fora da árvore React (ex.: ações da store Zustand).
- * Sem ToastProvider montado, não faz nada.
+ * Sem ToastProvider montado, não faz nada; com vários, usa o último montado.
  */
 export function showToast(variant: ToastVariant, toast: ToastInput): void {
-	for (const listener of toastListeners) listener(variant, toast);
+	// Há ToastProviders aninhados (main + __root): só o mais interno mostra,
+	// senão o mesmo aviso aparece duplicado.
+	const listener = [...toastListeners].at(-1);
+	listener?.(variant, toast);
 }
 
 /** Duração da animação de saída em ms — deve espelhar a CSS */
