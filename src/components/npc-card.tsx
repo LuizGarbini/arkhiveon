@@ -4,6 +4,7 @@ import type { Npc } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { EntityImageViewer } from "./images/entity-image-viewer";
 
 interface NpcCardProps {
 	npc?: Npc;
@@ -104,6 +105,13 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 						entityName={npc.name || "Sem nome"}
 						entityKindLabel={kindLabel}
 						worldStaffOnly
+						extraActions={
+							<EntityImageViewer
+								variant="corner"
+								src={npc.imageUrl || undefined}
+								name={npc.name || "Sem nome"}
+							/>
+						}
 					/>
 				</div>
 

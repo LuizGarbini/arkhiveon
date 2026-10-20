@@ -5,6 +5,7 @@ import { useRPGStore } from "@/lib/store";
 import { useFactionReputationForActiveCampaign } from "@/lib/worldbuilding/hooks";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { EntityImageViewer } from "./images/entity-image-viewer";
 
 const STATUS_LABELS: Record<FactionReputationStatus, string> = {
 	ally: "Aliado",
@@ -114,6 +115,13 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 								: faction.kind === "legendary_family" || faction.kind === "noble_house"
 									? "família"
 									: "organização"
+						}
+						extraActions={
+							<EntityImageViewer
+								variant="corner"
+								src={faction.imageUrl || undefined}
+								name={faction.name || "Sem nome"}
+							/>
 						}
 					/>
 				</div>

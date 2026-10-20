@@ -12,6 +12,7 @@ import {
 import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { EntityImageViewer } from "./images/entity-image-viewer";
 import { normalizeRarityKey, rarityStyles } from "./item-rarity";
 
 interface ItemCardProps {
@@ -89,6 +90,13 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 						entityName={item.name || "Sem nome"}
 						entityKindLabel="item"
 						canManage={canManage}
+						extraActions={
+							<EntityImageViewer
+								variant="corner"
+								src={itemImageUrl || undefined}
+								name={item.name || "Sem nome"}
+							/>
+						}
 					/>
 				</div>
 

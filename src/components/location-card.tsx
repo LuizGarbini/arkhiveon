@@ -4,6 +4,7 @@ import type { GameLocation } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { EntityImageViewer } from "./images/entity-image-viewer";
 
 interface LocationCardProps {
 	location?: GameLocation;
@@ -79,6 +80,13 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 						entityName={location.name || "Sem nome"}
 						entityKindLabel="local"
 						worldStaffOnly
+						extraActions={
+							<EntityImageViewer
+								variant="corner"
+								src={location.imageUrl || undefined}
+								name={location.name || "Sem nome"}
+							/>
+						}
 					/>
 				</div>
 
