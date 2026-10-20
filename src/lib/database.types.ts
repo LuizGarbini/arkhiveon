@@ -1094,6 +1094,10 @@ export type Database = {
 					world_id: string | null;
 				}[];
 			};
+			join_campaign_via_link: {
+				Args: { p_campaign_id: string };
+				Returns: { role: string; campaign_name: string | null }[];
+			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 		};
 		Enums: {

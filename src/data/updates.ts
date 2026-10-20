@@ -11,14 +11,63 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.3-mesa-abre-pelo-painel",
-		version: "1.6.3",
+		id: "v1.6.6-mesa-abre-pelo-painel",
+		version: "1.6.6",
 		date: "20/10/2026",
 		title: "A mesa abre direto pelo painel",
 		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
 		bullets: [
 			"Enquanto a mesa carrega, o painel continua com o menu lateral, em vez de aparecer pela metade.",
 		],
+	},
+	{
+		id: "v1.6.5-ficha-salvamento-seguro",
+		version: "1.6.5",
+		date: "20/10/2026",
+		title: "Ficha não perde mais itens ao salvar junto",
+		description:
+			"Quando o mestre e o jogador mexem na mesma ficha ao mesmo tempo, um não apaga mais o que o outro salvou — como um item novo na mochila.",
+		bullets: [
+			"Se a ficha não puder ser salva, aparece um aviso na hora em vez de a mudança sumir depois.",
+			'Sem internet, o aviso pede para conferir a conexão e tem o botão "Tentar de novo".',
+		],
+	},
+	{
+		id: "v1.6.4-pontos-de-destino",
+		version: "1.6.4",
+		date: "20/10/2026",
+		title: "Pontos de Destino na ficha",
+		description:
+			"A faixa Recursos da mesa, no topo da ficha, agora tem Pontos de Destino: quanto sobra, o total e uma barrinha.",
+		bullets: [
+			"Use o − quando gastar um ponto na mesa e o + quando ganhar de volta.",
+			"Toque no total (o número depois da barra) para mudar. Cada ficha começa com 10.",
+			"Queimar tira 1 ponto do total de vez. O app pergunta antes, para ninguém queimar sem querer.",
+			"O mestre e quem só vê a ficha enxergam os pontos, mas não mexem.",
+		],
+	},
+	{
+		id: "v1.6.4-pontos-divinos",
+		version: "1.6.4",
+		date: "20/10/2026",
+		title: "Pontos Divinos na ficha",
+		description:
+			"Ao lado do Destino, a ficha ganhou os Pontos Divinos, com o ícone de sol. Funcionam do mesmo jeito: gastar, ganhar, mudar o total e queimar.",
+		bullets: [
+			"Aparecem em todas as fichas, na faixa Recursos da mesa.",
+			"Toda ficha começa com 0 de 10. Toque no total para seguir a regra da sua mesa.",
+			"Queimar também pede confirmação antes.",
+			"Quem ainda usa o app de celular antigo (APK) deve atualizar: a versão velha pode zerar os Pontos Divinos ao mexer na faixa.",
+		],
+	},
+	{
+		id: "v1.6.3-aviso-imagem-privada",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "Aviso ao usar uma imagem privada da galeria",
+		description:
+			"Quando você escolhe uma imagem privada da sua galeria para uma página, o app avisa antes de aplicar: todos que podem ver a página também vão ver a imagem.",
+		bullets: [],
 	},
 	{
 		id: "v1.6.2-vtt-ficha-atributos",
