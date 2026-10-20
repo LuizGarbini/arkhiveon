@@ -3,19 +3,27 @@ import {
 	addBonusDie,
 	BONUS_DIE_ORIGIN_MAX,
 	burnFate,
+	burnPool,
+	DIVINE_TOTAL_DEFAULT,
 	EMPTY_TABLE_RESOURCES,
 	FATE_TOTAL_DEFAULT,
 	FATE_TOTAL_MAX,
 	fatePercent,
+	mergeTableResources,
 	normalizeTableResources,
+	poolPercent,
 	regainFate,
+	regainPool,
 	rollDie,
 	setFate,
 	setFateTotal,
 	setInspiration,
+	setPool,
+	setPoolTotal,
 	spendBonusDie,
 	spendFate,
 	spendInspiration,
+	spendPool,
 } from "./table-resources";
 
 describe("table resources", () => {
@@ -176,5 +184,89 @@ describe("table resources", () => {
 			expect(v).toBeGreaterThanOrEqual(1);
 			expect(v).toBeLessThanOrEqual(12);
 		}
+	});
+});
+
+describe("Pontos Divinos (pool genérico)", () => {
+	it("ficha antiga sem o campo: 0 / 10 e o Destino não muda", () => {
+		const res = normalizeTableResources({ fate: 4, fateTotal: 6 });
+		expect(res).toMatchObject({
+			divine: 0,
+			divineTotal: DIVINE_TOTAL_DEFAULT,
+			fate: 4,
+			fateTotal: 6,
+		});
+		expect(DIVINE_TOTAL_DEFAULT).toBe(10);
+	});
+
+	it("normaliza lixo: sobra entre 0 e o total, total entre 0 e 99", () => {
+		expect(
+			normalizeTableResources({ divine: 50, divineTotal: 7 }),
+		).toMatchObject({ divine: 7, divineTotal: 7 });
+		expect(
+			normalizeTableResources({ divine: -3, divineTotal: 500 }),
+		).toMatchObject({ divine: 0, divineTotal: 99 });
+		expect(normalizeTableResources({ divine: "x" }).divine).toBe(0);
+	});
+
+	it("− / + / set ficam entre 0 e o total, sem tocar no Destino", () => {
+		const base = setPoolTotal(EMPTY_TABLE_RESOURCES, "divine", 3);
+		const full = setPool(base, "divine", 9);
+		expect(full.divine).toBe(3);
+		expect(regainPool(full, "divine").divine).toBe(3);
+		expect(spendPool(full, "divine").divine).toBe(2);
+		expect(spendPool(base, "divine").divine).toBe(0);
+		expect(spendPool(full, "divine").fate).toBe(EMPTY_TABLE_RESOURCES.fate);
+		expect(spendPool(full, "divine").fateTotal).toBe(
+			EMPTY_TABLE_RESOURCES.fateTotal,
+		);
+	});
+
+	it("total 0–99; sobra desce junto; inválido mantém", () => {
+		const r = setPool(
+			setPoolTotal(EMPTY_TABLE_RESOURCES, "divine", 8),
+			"divine",
+			6,
+		);
+		expect(setPoolTotal(r, "divine", 4)).toMatchObject({
+			divine: 4,
+			divineTotal: 4,
+		});
+		expect(setPoolTotal(r, "divine", 150).divineTotal).toBe(99);
+		expect(setPoolTotal(r, "divine", -1).divineTotal).toBe(0);
+		expect(setPoolTotal(r, "divine", Number.NaN)).toBe(r);
+	});
+
+	it("queimar: 3/4 → 3/3, 4/4 → 3/3, 0 não muda", () => {
+		const t4 = setPoolTotal(EMPTY_TABLE_RESOURCES, "divine", 4);
+		expect(burnPool(setPool(t4, "divine", 3), "divine")).toMatchObject({
+			divine: 3,
+			divineTotal: 3,
+		});
+		expect(burnPool(setPool(t4, "divine", 4), "divine")).toMatchObject({
+			divine: 3,
+			divineTotal: 3,
+		});
+		const zero = setPoolTotal(EMPTY_TABLE_RESOURCES, "divine", 0);
+		expect(burnPool(zero, "divine")).toBe(zero);
+	});
+
+	it("percentual da barra", () => {
+		const r = setPool(
+			setPoolTotal(EMPTY_TABLE_RESOURCES, "divine", 3),
+			"divine",
+			1,
+		);
+		expect(poolPercent(r, "divine")).toBe(33);
+		expect(poolPercent(setPoolTotal(r, "divine", 0), "divine")).toBe(0);
+	});
+
+	it("merge preserva chave desconhecida e sobrescreve as conhecidas", () => {
+		const raw = { fate: 1, divine: 9, futuro: { x: 1 } };
+		const next = spendPool(normalizeTableResources(raw), "divine");
+		const merged = mergeTableResources(raw, next);
+		expect(merged).toMatchObject({ futuro: { x: 1 }, divine: 8, fate: 1 });
+		expect(mergeTableResources(undefined, next)).toBe(next);
+		expect(mergeTableResources([1], next)).toBe(next);
 	});
 });

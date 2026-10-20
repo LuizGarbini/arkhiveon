@@ -384,11 +384,13 @@ async function updateEntityRow(
 
 	switch (kind) {
 		case "character": {
-			const { error } = await supabase
+			const { data, error } = await supabase
 				.from(SUPABASE_TABLES.characters)
 				.update(row as TablesUpdate<"characters">)
-				.eq("id", id);
+				.eq("id", id)
+				.select("id");
 			if (error) throw error;
+			if (!data || data.length === 0) throw new CharacterSaveBlockedError();
 			return;
 		}
 		case "npc": {
@@ -670,6 +672,60 @@ export async function createRemoteEntity<T extends { id: string }>(
 	const row = rowFor(kind, entity as Record<string, unknown>, campaignId);
 	await insertEntityRow(kind, row);
 	return entity;
+}
+
+/**
+ * O banco aceitou o UPDATE mas não alterou nenhuma linha: a policy de RLS
+ * escondeu a ficha de quem salvou (ou ela foi apagada). Sem este erro o
+ * PostgREST responde 204 e a mudança some no próximo carregamento.
+ */
+export class CharacterSaveBlockedError extends Error {
+	constructor() {
+		super(
+			"Sua conta não tem permissão para editar esta ficha nesta campanha (ou ela foi removida). Peça ao mestre para conferir seu papel na campanha.",
+		);
+		this.name = "CharacterSaveBlockedError";
+	}
+}
+
+/**
+ * Salva só os campos alterados (`patch`) por cima da versão ATUAL do banco,
+ * em vez de regravar a cópia local inteira. Evita que um aparelho com a
+ * ficha desatualizada (mestre e jogador editando juntos, aba em segundo
+ * plano, realtime atrasado) apague o que o outro acabou de salvar — como um
+ * item novo na mochila. Devolve a ficha mesclada que ficou no banco.
+ *
+ * Conflito ainda possível: os dois mexerem na MESMA chave (ex.: ambos no
+ * `inventoryList`) no mesmo instante — vale a última escrita dessa chave.
+ */
+export async function updateRemoteCharacterPatch<T extends { id: string }>(
+	local: T,
+	patch: Record<string, unknown>,
+	campaignId: string,
+): Promise<T> {
+	const supabase = requireSupabase();
+	const { data: current, error: readError } = await supabase
+		.from(SUPABASE_TABLES.characters)
+		.select("data")
+		.eq("id", local.id)
+		.maybeSingle();
+	if (readError) throw readError;
+	if (!current) throw new CharacterSaveBlockedError();
+
+	const serverData = isRecord(current.data) ? current.data : {};
+	const { createdBy: _createdBy, ...patchData } = patch;
+	const merged = {
+		...(local as Record<string, unknown>),
+		...serverData,
+		...patchData,
+		id: local.id,
+	} as unknown as T;
+	await updateEntityRow(
+		"character",
+		local.id,
+		rowFor("character", merged as Record<string, unknown>, campaignId),
+	);
+	return merged;
 }
 
 export async function updateRemoteEntity<T extends { id: string }>(
