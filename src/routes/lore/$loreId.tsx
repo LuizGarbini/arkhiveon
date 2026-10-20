@@ -20,6 +20,7 @@ import {
 } from "@/components/entity-detail";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { EntityLinkChips } from "@/components/entity-links";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { LoreEditButton } from "@/components/lore-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -145,15 +146,24 @@ function LoreDetailPage() {
 								{currentLore.isSecret && (
 									<Lock className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-card p-0.5 text-rose-400 ring-1 ring-border" />
 								)}
-								{isStaff && (
-									<button
-										type="button"
-										onClick={() => setIsImageDialogOpen(true)}
-										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
-										aria-label="Editar imagem do lore"
-									>
-										<Camera className="h-5 w-5" />
-									</button>
+								{currentLore.imageUrl ? (
+									<EntityImageViewer
+										src={currentLore.imageUrl}
+										name={currentLore.title}
+										canEdit={isStaff}
+										onEdit={() => setIsImageDialogOpen(true)}
+									/>
+								) : (
+									isStaff && (
+										<button
+											type="button"
+											onClick={() => setIsImageDialogOpen(true)}
+											className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+											aria-label="Editar imagem do lore"
+										>
+											<Camera className="h-5 w-5" />
+										</button>
+									)
 								)}
 							</div>
 							<div className="min-w-0">

@@ -11,6 +11,17 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.3-tela-cheia-entidades",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "Imagens de itens, lore, locais e facções em tela cheia",
+		description:
+			"Na página de um item, lore, local ou facção, toque na imagem para vê-la em tela cheia, como já acontece na ficha e no NPC.",
+		bullets: [
+			"Quem pode editar encontra o botão Trocar imagem dentro da tela cheia.",
+		],
+	},
+	{
 		id: "v1.6.2-vtt-ficha-atributos",
 		version: "1.6.2",
 		date: "20/10/2026",

@@ -22,6 +22,7 @@ import {
 } from "@/components/entity-detail";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { EntityLinkChips } from "@/components/entity-links";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { LocationEditButton } from "@/components/location-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,15 +129,24 @@ function LocationDetailPage() {
 								) : (
 									<Compass className="h-7 w-7" strokeWidth={1.5} />
 								)}
-								{isStaff && (
-									<button
-										type="button"
-										onClick={() => setIsImageDialogOpen(true)}
-										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
-										aria-label="Editar imagem do local"
-									>
-										<Camera className="h-5 w-5" />
-									</button>
+								{currentLocation.imageUrl ? (
+									<EntityImageViewer
+										src={currentLocation.imageUrl}
+										name={currentLocation.name}
+										canEdit={isStaff}
+										onEdit={() => setIsImageDialogOpen(true)}
+									/>
+								) : (
+									isStaff && (
+										<button
+											type="button"
+											onClick={() => setIsImageDialogOpen(true)}
+											className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+											aria-label="Editar imagem do local"
+										>
+											<Camera className="h-5 w-5" />
+										</button>
+									)
 								)}
 							</div>
 							<div className="min-w-0">
