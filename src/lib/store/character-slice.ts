@@ -1,8 +1,11 @@
 import type { StateCreator } from "zustand";
+import { showToast } from "@/components/ui/toast";
+import { isDeepEqual } from "@/lib/deep-equal";
 import {
 	createRemoteActivity,
 	createRemoteEntity,
 	deleteRemoteEntity,
+	updateRemoteCharacterPatch,
 	updateRemoteEntity,
 } from "../remote-store";
 import {
@@ -13,9 +16,11 @@ import {
 import {
 	entityNameOf,
 	generateEntry,
+	isNetworkError,
 	pushLog,
 	remoteErrorMessage,
 } from "./helpers";
+import { trackPendingSave } from "./pending-saves";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Character, RPGState } from "./types";
 
@@ -270,11 +275,20 @@ export const createCharacterSlice: StateCreator<
 		const originalCharacters = get().characters;
 		const existing = originalCharacters.find((c) => c.id === id);
 		if (!existing) return;
+		// Rede de segurança: só vai pro banco o que difere da cópia local.
+		// Uma tela que mande a ficha inteira não regrava campos intocados.
+		const current = existing as unknown as Record<string, unknown>;
+		const changes = Object.fromEntries(
+			Object.entries(character).filter(
+				([key, value]) => !isDeepEqual(value, current[key]),
+			),
+		) as Partial<Character>;
+		if (Object.keys(changes).length === 0) return;
 		const updated = {
 			...existing,
-			...character,
-			...(character.sheetLayout
-				? { sheetLayout: lockSheetLayoutTitles(character.sheetLayout) }
+			...changes,
+			...(changes.sheetLayout
+				? { sheetLayout: lockSheetLayoutTitles(changes.sheetLayout) }
 				: {}),
 			updatedAt: Date.now(),
 		};
@@ -289,18 +303,55 @@ export const createCharacterSlice: StateCreator<
 			activityLog: pushLog(state.activityLog, log),
 			syncError: null,
 		}));
-		void Promise.all([
-			updateRemoteEntity("character", updated, campaignId),
-			createRemoteActivity(log, campaignId),
-		]).catch((error) => {
-			set((state) => ({
-				characters: originalCharacters,
-				activityLog: state.activityLog.filter(
-					(l) => !(l.entityId === id && l.action === "update"),
-				),
-				syncError: remoteErrorMessage(error),
-			}));
-		});
+		const patch: Record<string, unknown> = {
+			...changes,
+			...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
+			updatedAt: updated.updatedAt,
+		};
+		void trackPendingSave(
+			updateRemoteCharacterPatch(updated, patch, campaignId),
+		)
+			.then((saved) => {
+				// Adota a versão mesclada do banco (traz o que outra pessoa salvou
+				// enquanto esta cópia estava desatualizada), sem pisar numa edição
+				// local mais nova que chegou nesse meio-tempo.
+				set((state) => ({
+					characters: state.characters.map((c) =>
+						c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
+					),
+				}));
+				return createRemoteActivity(log, campaignId);
+			})
+			.catch((error) => {
+				const offline = isNetworkError(error);
+				const message = remoteErrorMessage(error);
+				// Reverte só esta ficha; não descarta mudanças de outras fichas.
+				set((state) => ({
+					characters: state.characters.map((c) =>
+						c.id === id && c.updatedAt === updated.updatedAt ? existing : c,
+					),
+					activityLog: state.activityLog.filter(
+						(l) => !(l.entityId === id && l.action === "update"),
+					),
+					// Sem rede: só o toast (sem erro técnico no banner).
+					syncError: offline ? state.syncError : message,
+				}));
+				if (offline) {
+					showToast("error", {
+						title:
+							"A ficha não foi salva. Verifique a conexão e tente de novo.",
+						action: {
+							label: "Tentar de novo",
+							onClick: () => get().updateCharacter(id, changes),
+						},
+					});
+					return;
+				}
+				showToast("error", {
+					title: "A ficha não foi salva",
+					description: message,
+				});
+			});
 	},
 	removeCharacter: (id) => {
 		const campaignId = get().activeCampaignId;

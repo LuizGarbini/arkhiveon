@@ -2,21 +2,13 @@ import {
 	ChevronDown,
 	Diamond,
 	Dices,
-	Flame,
 	Minus,
 	Plus,
 	Star,
+	Sun,
 } from "lucide-react";
-import { type FormEvent, useId, useRef, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -25,21 +17,27 @@ import {
 	BONUS_DIE_QUANTITY_MAX,
 	BONUS_DIE_SIDES,
 	type BonusDieSides,
-	burnFate,
+	burnPool,
+	DIVINE_TOTAL_MAX,
+	DIVINE_TOTAL_MIN,
 	FATE_TOTAL_MAX,
 	FATE_TOTAL_MIN,
-	fatePercent,
+	getPool,
+	mergeTableResources,
 	normalizeTableResources,
-	regainFate,
-	setFateTotal,
+	type PoolKey,
+	poolPercent,
+	regainPool,
 	setInspiration,
+	setPoolTotal,
 	spendBonusDie,
-	spendFate,
 	spendInspiration,
+	spendPool,
 	type TableResources,
 } from "@/lib/table-resources";
 import { cn } from "@/lib/utils";
 import { NumberDetail, useIsMobile } from "./number-detail";
+import { PointPoolControl, type PointPoolCopy } from "./point-pool-control";
 
 const ORIGIN_SUGGESTIONS = ["descanso longo", "bênção", "ideia boa", "mestre"];
 
@@ -59,15 +57,26 @@ const diceScroll =
 
 const separator = "w-px shrink-0 self-stretch bg-border/70";
 
-/** Ref estável: foca e seleciona o total só quando o campo aparece (após o toque). */
-function focusAndSelect(el: HTMLInputElement | null) {
-	el?.focus();
-	el?.select();
-}
+const FATE_COPY: PointPoolCopy = {
+	name: "Destino",
+	point: "ponto de destino",
+	totalOf: "destino",
+	totalLabel: "Total de pontos de destino",
+	remains: "fica",
+};
+
+const DIVINE_COPY: PointPoolCopy = {
+	name: "Pontos Divinos",
+	point: "ponto divino",
+	totalOf: "pontos divinos",
+	totalLabel: "Total de pontos divinos",
+	remains: "ficam",
+};
 
 /**
  * Faixa "Recursos da mesa" no cabeçalho da ficha (Modelo A · quantidades):
- * Inspiração ★ n, Destino ◆ sobra/total (total editável) e Dados bônus.
+ * Inspiração ★ n, Destino ◆ e Pontos Divinos ☀ sobra/total (total editável,
+ * Queimar com confirmação) e Dados bônus.
  * Tocar num dado rola 1 e gasta 1.
  */
 export function TableResourcesStrip({
@@ -82,35 +91,27 @@ export function TableResourcesStrip({
 	const res = normalizeTableResources(value);
 	const isMobile = useIsMobile();
 	const toast = useToast();
+	/** Grava preservando chaves do JSONB que esta versão não conhece. */
+	const emit = (next: TableResources) =>
+		onChange(mergeTableResources(value, next));
 	const [lastRoll, setLastRoll] = useState<string | null>(null);
 	const [addOpen, setAddOpen] = useState(false);
 	const [inspOpen, setInspOpen] = useState(false);
-	const [burnOpen, setBurnOpen] = useState(false);
-	const [editingTotal, setEditingTotal] = useState(false);
-	const [totalDraft, setTotalDraft] = useState("");
-	const skipTotalBlur = useRef(false);
-	const totalInputId = useId();
 
-	function startEditTotal() {
-		skipTotalBlur.current = false;
-		setTotalDraft(String(res.fateTotal));
-		setEditingTotal(true);
-	}
-
-	function commitTotal() {
-		setEditingTotal(false);
-		const n = Number.parseInt(totalDraft, 10);
-		if (!Number.isFinite(n)) return;
-		const next = setFateTotal(res, n);
-		if (next.fateTotal !== res.fateTotal || next.fate !== res.fate) {
-			onChange(next);
+	/** Só grava se o total (ou a sobra, que desce junto) mudou. */
+	function setTotal(key: PoolKey, n: number) {
+		const before = getPool(res, key);
+		const next = setPoolTotal(res, key, n);
+		const after = getPool(next, key);
+		if (after.total !== before.total || after.value !== before.value) {
+			emit(next);
 		}
 	}
 
 	function spend(id: string) {
 		const result = spendBonusDie(res, id);
 		if (!result) return;
-		onChange(result.next);
+		emit(result.next);
 		const label = `d${result.die.sides}${result.die.origin ? ` · ${result.die.origin}` : ""}`;
 		setLastRoll(`${label} → ${result.value}`);
 		toast.info({
@@ -180,7 +181,7 @@ export function TableResourcesStrip({
 					className="size-[52px] cursor-pointer rounded-[14px] text-xl"
 					aria-label="Gastar 1 inspiração"
 					disabled={insp <= 0}
-					onClick={() => onChange(setInspiration(res, insp - 1))}
+					onClick={() => emit(setInspiration(res, insp - 1))}
 				>
 					<Minus className="h-5 w-5" />
 				</Button>
@@ -198,7 +199,7 @@ export function TableResourcesStrip({
 					size="icon"
 					className="size-[52px] cursor-pointer rounded-[14px] text-xl"
 					aria-label="Ganhar 1 inspiração"
-					onClick={() => onChange(setInspiration(res, insp + 1))}
+					onClick={() => emit(setInspiration(res, insp + 1))}
 				>
 					<Plus className="h-5 w-5" />
 				</Button>
@@ -208,7 +209,7 @@ export function TableResourcesStrip({
 				className="mt-1 min-h-[44px] w-full cursor-pointer"
 				disabled={insp <= 0}
 				onClick={() => {
-					onChange(spendInspiration(res));
+					emit(spendInspiration(res));
 					setInspOpen(false);
 					toast.info({
 						title: "Inspiração usada",
@@ -221,184 +222,39 @@ export function TableResourcesStrip({
 		</NumberDetail>
 	);
 
-	const fatePct = fatePercent(res);
-	const stepClass =
-		"size-[44px] shrink-0 cursor-pointer rounded-[10px] sm:size-[30px]";
-	const totalText = (
-		<span className="text-xs text-muted-foreground"> / {res.fateTotal}</span>
-	);
-	const total = readOnly ? (
-		totalText
-	) : editingTotal ? (
-		<form
-			className="inline-flex items-center"
-			onSubmit={(e) => {
-				e.preventDefault();
-				skipTotalBlur.current = true;
-				commitTotal();
-			}}
-		>
-			<span className="text-xs text-muted-foreground" aria-hidden="true">
-				&nbsp;/&nbsp;
-			</span>
-			<label htmlFor={totalInputId} className="sr-only">
-				Total de pontos de destino
-			</label>
-			<Input
-				id={totalInputId}
-				ref={focusAndSelect}
-				type="number"
-				inputMode="numeric"
-				min={FATE_TOTAL_MIN}
-				max={FATE_TOTAL_MAX}
-				step={1}
-				enterKeyHint="done"
-				autoComplete="off"
-				spellCheck={false}
-				value={totalDraft}
-				onChange={(e) => setTotalDraft(e.target.value)}
-				onBlur={() => {
-					if (skipTotalBlur.current) return;
-					commitTotal();
-				}}
-				onKeyDown={(e) => {
-					if (e.key === "Escape") {
-						e.preventDefault();
-						skipTotalBlur.current = true;
-						setEditingTotal(false);
-					}
-				}}
-				className="h-8 w-14 [appearance:textfield] px-1.5 text-center font-display font-bold tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-			/>
-		</form>
-	) : (
-		<button
-			type="button"
-			onClick={startEditTotal}
-			aria-label={`Editar total de destino (${res.fateTotal})`}
-			title="Editar total"
-			className="relative -my-4 ml-1 inline-flex min-w-7 cursor-pointer justify-center rounded-md px-1 py-4 text-xs text-muted-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-[3px] transition-colors duration-150 select-none after:absolute after:-inset-x-1.5 after:inset-y-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-my-1 sm:py-1 [@media(hover:hover)]:hover:text-foreground"
-		>
-			/ {res.fateTotal}
-		</button>
-	);
 	const fate = (
-		<fieldset
-			className="flex shrink-0 items-center gap-1 sm:gap-2"
-			aria-label={`Destino ${res.fate} de ${res.fateTotal}`}
-		>
-			{!readOnly && (
-				<Button
-					type="button"
-					variant="outline"
-					size="icon"
-					className={stepClass}
-					aria-label="Gastar 1 ponto de destino"
-					disabled={res.fate <= 0}
-					onClick={() => onChange(spendFate(res))}
-				>
-					<Minus className="h-4 w-4" />
-				</Button>
-			)}
-			<span className="inline-flex min-w-[50px] flex-col gap-[5px] sm:min-w-16">
-				<span className="inline-flex items-center justify-center gap-1.5">
-					<Diamond
-						className="h-3.5 w-3.5 fill-current text-primary"
-						aria-hidden="true"
-					/>
-					<span className="inline-flex items-center font-display text-base leading-none font-bold whitespace-nowrap tabular-nums text-foreground">
-						<span className="sr-only">Destino </span>
-						{res.fate}
-						{total}
-					</span>
-				</span>
-				<span
-					className="h-[3px] overflow-hidden rounded-full bg-muted"
-					aria-hidden="true"
-				>
-					<span
-						data-slot="fate-bar"
-						className="block h-full rounded-full bg-primary transition-[width] duration-150"
-						style={{ width: `${fatePct}%` }}
-					/>
-				</span>
-			</span>
-			{!readOnly && (
-				<Button
-					type="button"
-					variant="outline"
-					size="icon"
-					className={stepClass}
-					aria-label="Ganhar 1 ponto de destino"
-					disabled={res.fate >= res.fateTotal}
-					onClick={() => onChange(regainFate(res))}
-				>
-					<Plus className="h-4 w-4" />
-				</Button>
-			)}
-			{!readOnly && (
-				<Button
-					type="button"
-					variant="outline"
-					size="icon"
-					className={cn(
-						stepClass,
-						"text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
-					)}
-					aria-label="Queimar 1 ponto de destino"
-					title="Queimar"
-					disabled={res.fateTotal <= 0}
-					onClick={() => setBurnOpen(true)}
-				>
-					<Flame className="h-4 w-4" />
-				</Button>
-			)}
-		</fieldset>
+		<PointPoolControl
+			copy={FATE_COPY}
+			icon={Diamond}
+			value={res.fate}
+			total={res.fateTotal}
+			totalMin={FATE_TOTAL_MIN}
+			totalMax={FATE_TOTAL_MAX}
+			percent={poolPercent(res, "fate")}
+			barSlot="fate-bar"
+			readOnly={readOnly}
+			onSpend={() => emit(spendPool(res, "fate"))}
+			onRegain={() => emit(regainPool(res, "fate"))}
+			onSetTotal={(n) => setTotal("fate", n)}
+			onBurn={() => emit(burnPool(res, "fate"))}
+		/>
 	);
-
-	const burnAfter = burnFate(res);
-	const burnDialog = !readOnly && (
-		<Dialog open={burnOpen} onOpenChange={setBurnOpen}>
-			<DialogContent className="sm:max-w-sm">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<Flame className="h-[18px] w-[18px] text-destructive" />
-						Queimar 1 ponto de destino?
-					</DialogTitle>
-					<DialogDescription>
-						O total cai de vez de {res.fateTotal} para {burnAfter.fateTotal}.
-						Destino fica{" "}
-						<strong className="font-semibold text-foreground tabular-nums">
-							{burnAfter.fate} / {burnAfter.fateTotal}
-						</strong>
-						. Só dá pra desfazer editando o total.
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<Button
-						type="button"
-						variant="ghost"
-						className="min-h-[44px] cursor-pointer sm:min-h-9"
-						onClick={() => setBurnOpen(false)}
-					>
-						Cancelar
-					</Button>
-					<Button
-						type="button"
-						variant="destructive"
-						className="min-h-[44px] cursor-pointer sm:min-h-9"
-						disabled={res.fateTotal <= 0}
-						onClick={() => {
-							onChange(burnFate(res));
-							setBurnOpen(false);
-						}}
-					>
-						<Flame className="h-4 w-4" />
-						Queimar
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+	const divine = (
+		<PointPoolControl
+			copy={DIVINE_COPY}
+			icon={Sun}
+			value={res.divine}
+			total={res.divineTotal}
+			totalMin={DIVINE_TOTAL_MIN}
+			totalMax={DIVINE_TOTAL_MAX}
+			percent={poolPercent(res, "divine")}
+			barSlot="divine-bar"
+			readOnly={readOnly}
+			onSpend={() => emit(spendPool(res, "divine"))}
+			onRegain={() => emit(regainPool(res, "divine"))}
+			onSetTotal={(n) => setTotal("divine", n)}
+			onBurn={() => emit(burnPool(res, "divine"))}
+		/>
 	);
 
 	const addDie = !readOnly && (
@@ -423,7 +279,7 @@ export function TableResourcesStrip({
 			<AddBonusDieForm
 				onCancel={() => setAddOpen(false)}
 				onSubmit={(input) => {
-					onChange(addBonusDie(res, input));
+					emit(addBonusDie(res, input));
 					setAddOpen(false);
 				}}
 			/>
@@ -489,21 +345,16 @@ export function TableResourcesStrip({
 				aria-label="Recursos da mesa"
 				className="relative mt-2 flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-background/50 p-3"
 			>
-				{readOnly ? (
-					<div className="flex items-center justify-between gap-2">
-						{inspiration}
-						{fate}
-					</div>
-				) : (
-					<>
-						{/* Com − / + / Queimar o Destino não cabe ao lado da Inspiração em 390px. */}
-						<div className="flex items-center">{inspiration}</div>
-						<div className="flex items-center justify-between gap-2">
-							<span className={labelClass}>Destino</span>
-							{fate}
-						</div>
-					</>
-				)}
+				{/* Uma linha por contador, rótulo à esquerda (owner e viewer): com − / + / Queimar não cabe ao lado da Inspiração em 390px. "Pontos Divinos" vira "Divinos" pra não quebrar; o grupo segue lido completo. */}
+				<div className="flex items-center">{inspiration}</div>
+				<div className="flex items-center justify-between gap-2">
+					<span className={cn(labelClass, "whitespace-nowrap")}>Destino</span>
+					{fate}
+				</div>
+				<div className="flex items-center justify-between gap-2">
+					<span className={cn(labelClass, "whitespace-nowrap")}>Divinos</span>
+					{divine}
+				</div>
 				<div className="flex min-w-0 items-center gap-2">
 					{addDie ? (
 						<>
@@ -516,7 +367,6 @@ export function TableResourcesStrip({
 					{dice}
 				</div>
 				{rollLine}
-				{burnDialog}
 			</section>
 		);
 	}
@@ -526,7 +376,8 @@ export function TableResourcesStrip({
 			aria-label="Recursos da mesa"
 			className="relative mt-2 flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/50 px-3.5 py-2.5"
 		>
-			<div className="flex min-w-0 items-center gap-2.5">
+			{/* 4 recursos não cabem numa linha sem espremer os dados: contadores em cima, dados embaixo. */}
+			<div className="flex min-h-[36px] min-w-0 items-center gap-2.5">
 				{inspiration}
 				<span className={separator} />
 				<span className="inline-flex shrink-0 items-center gap-2">
@@ -534,12 +385,17 @@ export function TableResourcesStrip({
 					{fate}
 				</span>
 				<span className={separator} />
+				<span className="inline-flex shrink-0 items-center gap-2">
+					<span className={labelClass}>Pontos Divinos</span>
+					{divine}
+				</span>
+			</div>
+			<div className="flex min-w-0 items-center gap-2.5 border-t border-border/50 pt-2">
 				<span className={cn(labelClass, "shrink-0")}>Dados bônus</span>
 				{addDie}
 				{dice}
 			</div>
 			{rollLine}
-			{burnDialog}
 		</section>
 	);
 }
