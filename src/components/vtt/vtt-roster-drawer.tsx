@@ -18,7 +18,7 @@ import {
 } from "@/components/vtt/vtt-map-dropzone";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { snapToGrid } from "@/lib/vtt/grid-math";
+import { findFreeCell } from "@/lib/vtt/grid-math";
 import { dragHasFiles } from "@/lib/vtt/map-upload";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -89,8 +89,9 @@ export function VTTRosterDrawer({
 		if (!scene || !isGM || pending) return;
 		setPending(id);
 		setError(null);
-		const { viewport } = useVTTStore.getState();
-		const position = snapToGrid(
+		const { viewport, tokens: sceneTokens } = useVTTStore.getState();
+		const sizeCells = data.sizeCells ?? 1;
+		const position = findFreeCell(
 			{
 				x: Math.max(
 					scene.gridSize,
@@ -107,9 +108,13 @@ export function VTTRosterDrawer({
 					),
 				),
 			},
-			scene.gridType,
-			scene.gridSize,
-			data.sizeCells ?? 1,
+			sceneTokens.filter((t) => t.sceneId === scene.id),
+			{
+				gridType: scene.gridType,
+				gridSize: scene.gridSize,
+				sizeCells,
+				bounds: { width: scene.width, height: scene.height },
+			},
 		);
 		try {
 			await onSpawnToken({
