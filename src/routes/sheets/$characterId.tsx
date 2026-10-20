@@ -1,10 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, User } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import {
-	resolveSheetHealth,
-	sanitizeCharacterFormValues,
-} from "@/components/character-sheet/fields";
+import { buildModuleSaveUpdate } from "@/components/character-sheet/fields";
 import {
 	CharacterNameDialog,
 	ModuleEditorDialog,
@@ -315,12 +312,11 @@ function CharacterSheetPage() {
 				onOpenChange={(open) => {
 					if (!open) setEditingModule(null);
 				}}
-				onSave={(_patch, values) => {
-					const sanitized = sanitizeCharacterFormValues(values);
-					updateCharacter(currentCharacter.id, {
-						...sanitized,
-						...resolveSheetHealth(values, currentCharacter),
-					});
+				onSave={(_patch, changes) => {
+					updateCharacter(
+						currentCharacter.id,
+						buildModuleSaveUpdate(changes, currentCharacter),
+					);
 					setEditingModule(null);
 				}}
 			/>

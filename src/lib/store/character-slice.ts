@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import { showToast } from "@/components/ui/toast";
+import { isDeepEqual } from "@/lib/deep-equal";
 import {
 	createRemoteActivity,
 	createRemoteEntity,
@@ -273,11 +274,20 @@ export const createCharacterSlice: StateCreator<
 		const originalCharacters = get().characters;
 		const existing = originalCharacters.find((c) => c.id === id);
 		if (!existing) return;
+		// Rede de segurança: só vai pro banco o que difere da cópia local.
+		// Uma tela que mande a ficha inteira não regrava campos intocados.
+		const current = existing as unknown as Record<string, unknown>;
+		const changes = Object.fromEntries(
+			Object.entries(character).filter(
+				([key, value]) => !isDeepEqual(value, current[key]),
+			),
+		) as Partial<Character>;
+		if (Object.keys(changes).length === 0) return;
 		const updated = {
 			...existing,
-			...character,
-			...(character.sheetLayout
-				? { sheetLayout: lockSheetLayoutTitles(character.sheetLayout) }
+			...changes,
+			...(changes.sheetLayout
+				? { sheetLayout: lockSheetLayoutTitles(changes.sheetLayout) }
 				: {}),
 			updatedAt: Date.now(),
 		};
@@ -293,8 +303,8 @@ export const createCharacterSlice: StateCreator<
 			syncError: null,
 		}));
 		const patch: Record<string, unknown> = {
-			...character,
-			...(character.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
+			...changes,
+			...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
 			updatedAt: updated.updatedAt,
 		};
 		void updateRemoteCharacterPatch(updated, patch, campaignId)
@@ -329,7 +339,7 @@ export const createCharacterSlice: StateCreator<
 							"A ficha não foi salva. Verifique a conexão e tente de novo.",
 						action: {
 							label: "Tentar de novo",
-							onClick: () => get().updateCharacter(id, character),
+							onClick: () => get().updateCharacter(id, changes),
 						},
 					});
 					return;
