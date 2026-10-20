@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.6-mesa-abre-pelo-painel",
-		version: "1.6.6",
+		id: "v1.6.11-mesa-abre-pelo-painel",
+		version: "1.6.11",
 		date: "20/10/2026",
 		title: "A mesa abre direto pelo painel",
 		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
