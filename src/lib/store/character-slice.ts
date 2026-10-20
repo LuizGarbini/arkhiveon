@@ -20,6 +20,7 @@ import {
 	pushLog,
 	remoteErrorMessage,
 } from "./helpers";
+import { trackPendingSave } from "./pending-saves";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Character, RPGState } from "./types";
 
@@ -307,7 +308,9 @@ export const createCharacterSlice: StateCreator<
 			...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
 			updatedAt: updated.updatedAt,
 		};
-		void updateRemoteCharacterPatch(updated, patch, campaignId)
+		void trackPendingSave(
+			updateRemoteCharacterPatch(updated, patch, campaignId),
+		)
 			.then((saved) => {
 				// Adota a versão mesclada do banco (traz o que outra pessoa salvou
 				// enquanto esta cópia estava desatualizada), sem pisar numa edição

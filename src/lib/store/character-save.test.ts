@@ -61,6 +61,7 @@ vi.mock("../supabase", () => {
 import { updateRemoteEntity } from "../remote-store";
 import { useRPGStore } from "../store";
 import { characterDefaults } from "./character-slice";
+import { pendingSaveCount } from "./pending-saves";
 import type { Character, InventoryItem } from "./types";
 
 const CAMPAIGN = "campanha-qa";
@@ -216,5 +217,23 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 			"PV 3/12",
 		);
 		expect(useRPGStore.getState().characters[0].notes).toBe("PV 3/12");
+	});
+
+	it("save pendente: recarregar a página pede confirmação até o save terminar", async () => {
+		const reload = () => {
+			const event = new Event("beforeunload", { cancelable: true });
+			window.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		expect(reload()).toBe(false);
+		useRPGStore.getState().updateCharacter("ficha-1", { notes: "PV 2/12" });
+		expect(pendingSaveCount()).toBe(1);
+		expect(reload()).toBe(true);
+		await flush();
+		expect(pendingSaveCount()).toBe(0);
+		expect(reload()).toBe(false);
+		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe(
+			"PV 2/12",
+		);
 	});
 });
