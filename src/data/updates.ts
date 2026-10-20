@@ -11,6 +11,18 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.3-nevoa-cobrir-tudo",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "Cobrir Tudo funciona de primeira",
+		description:
+			"Cobrir Tudo ativa a névoa e o tamanho do pincel bate com o botão.",
+		bullets: [
+			"Se a névoa estiver desligada, Cobrir Tudo e Revelar Tudo ligam a névoa e avisam na tela.",
+			"O tamanho do pincel aparece sempre como diâmetro: P 40px, M 80px e G 160px.",
+		],
+	},
+	{
 		id: "v1.6.2-vtt-ficha-atributos",
 		version: "1.6.2",
 		date: "20/10/2026",
