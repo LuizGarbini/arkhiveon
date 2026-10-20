@@ -11,6 +11,17 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.2-vtt-ficha-atributos",
+		version: "1.6.2",
+		date: "20/10/2026",
+		title: "Atributos certos na mesa virtual",
+		description:
+			"Na mesa virtual, o painel da ficha agora mostra os mesmos modificadores de atributo da ficha do personagem, e as rolagens saem com o bônus certo.",
+		bullets: [
+			"Fichas antigas com atributo em branco aparecem com 10 (+0), igual à ficha.",
+		],
+	},
+	{
 		id: "v1.6.1-atributo-de-ataque",
 		version: "1.6.1",
 		date: "11/10/2026",

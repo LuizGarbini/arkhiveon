@@ -328,6 +328,7 @@ export type Database = {
 					mime_type: string;
 					name: string;
 					size_bytes: number;
+					storage_bucket: string;
 					storage_key: string | null;
 					updated_at: string;
 					url: string;
@@ -344,6 +345,7 @@ export type Database = {
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;
+					storage_bucket?: string;
 					storage_key?: string | null;
 					updated_at?: string;
 					url: string;
@@ -360,6 +362,7 @@ export type Database = {
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;
+					storage_bucket?: string;
 					storage_key?: string | null;
 					updated_at?: string;
 					url?: string;
