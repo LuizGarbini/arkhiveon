@@ -1,4 +1,11 @@
-import { Crop, ImagePlus, Images, Loader2, Trash2 } from "lucide-react";
+import {
+	Crop,
+	ImagePlus,
+	Images,
+	Loader2,
+	LockKeyhole,
+	Trash2,
+} from "lucide-react";
 import {
 	lazy,
 	Suspense,
@@ -28,6 +35,9 @@ import {
 	useRPGStore,
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
+
+export const PRIVATE_SOURCE_NOTICE =
+	"Esta imagem está privada na sua galeria. Se você aplicar aqui, todos que podem ver esta página também vão ver a imagem.";
 
 const LazyImageCropDialog = lazy(() =>
 	import("./image-crop-dialog").then((module) => ({
@@ -74,6 +84,8 @@ export function EntityImagePicker({
 	const [libraryOpen, setLibraryOpen] = useState(false);
 	const [cropSource, setCropSource] = useState<string | null>(null);
 	const [pendingFileName, setPendingFileName] = useState<string | null>(null);
+	// A cópia recortada vai para uma URL pública; avisa quando a origem é privada.
+	const [sourceIsPrivate, setSourceIsPrivate] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 
 	useEffect(() => {
@@ -99,9 +111,10 @@ export function EntityImagePicker({
 	const hasPreview = Boolean(previewUrl);
 	const shapeClass = previewShape === "circle" ? "rounded-full" : "rounded-2xl";
 
-	function openCropper(src: string, fileName?: string) {
+	function openCropper(src: string, fileName?: string, isPrivate = false) {
 		setCropSource(src);
 		setPendingFileName(fileName ?? null);
+		setSourceIsPrivate(isPrivate);
 		setCropOpen(true);
 	}
 
@@ -111,6 +124,7 @@ export function EntityImagePicker({
 		}
 		setCropSource(null);
 		setPendingFileName(null);
+		setSourceIsPrivate(false);
 	}
 
 	function handleCropClose(open: boolean) {
@@ -161,7 +175,10 @@ export function EntityImagePicker({
 
 	function handleRecropCurrent() {
 		if (!previewUrl) return;
-		openCropper(previewUrl);
+		const currentAsset = value.imageAssetId
+			? imageAssetLookup.get(value.imageAssetId)
+			: undefined;
+		openCropper(previewUrl, undefined, currentAsset?.isPrivate === true);
 	}
 
 	function handleRemove() {
@@ -276,7 +293,9 @@ export function EntityImagePicker({
 					onOpenChange={setLibraryOpen}
 					assets={visibleAssets}
 					selectedAssetId={value.imageAssetId}
-					onSelect={(asset) => openCropper(asset.url, asset.name)}
+					onSelect={(asset) =>
+						openCropper(asset.url, asset.name, asset.isPrivate)
+					}
 				/>
 			) : null}
 
@@ -289,6 +308,21 @@ export function EntityImagePicker({
 						aspect={cropAspectFromPreview(previewShape)}
 						cropShape={cropShapeFromPreview(previewShape)}
 						busy={isUploading}
+						notice={
+							sourceIsPrivate ? (
+								<p
+									role="note"
+									data-testid="private-source-notice"
+									className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200"
+								>
+									<LockKeyhole
+										className="mt-0.5 h-4 w-4 shrink-0"
+										aria-hidden="true"
+									/>
+									<span>{PRIVATE_SOURCE_NOTICE}</span>
+								</p>
+							) : null
+						}
 						onApply={applyCroppedBlob}
 					/>
 				</Suspense>
