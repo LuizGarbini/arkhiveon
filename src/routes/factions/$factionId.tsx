@@ -18,6 +18,7 @@ import {
 } from "@/components/entity-detail";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { FactionEditButton } from "@/components/faction-form";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
@@ -155,15 +156,24 @@ function FactionDetailPage() {
 								) : (
 									<Flag className="h-7 w-7" strokeWidth={1.5} />
 								)}
-								{isStaff && (
-									<button
-										type="button"
-										onClick={() => setIsImageDialogOpen(true)}
-										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
-										aria-label="Editar imagem da facção"
-									>
-										<Camera className="h-5 w-5" />
-									</button>
+								{faction.imageUrl ? (
+									<EntityImageViewer
+										src={faction.imageUrl}
+										name={faction.name}
+										canEdit={isStaff}
+										onEdit={() => setIsImageDialogOpen(true)}
+									/>
+								) : (
+									isStaff && (
+										<button
+											type="button"
+											onClick={() => setIsImageDialogOpen(true)}
+											className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+											aria-label="Editar imagem da facção"
+										>
+											<Camera className="h-5 w-5" />
+										</button>
+									)
 								)}
 							</div>
 							<div className="min-w-0">

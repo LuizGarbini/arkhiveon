@@ -21,6 +21,17 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.10-tela-cheia-entidades",
+		version: "1.6.10",
+		date: "20/10/2026",
+		title: "Imagens de itens, lore, locais e facções em tela cheia",
+		description:
+			"Na página de um item, lore, local ou facção, toque na imagem para vê-la em tela cheia, como já acontece na ficha e no NPC.",
+		bullets: [
+			"Quem pode editar encontra o botão Trocar imagem dentro da tela cheia.",
+		],
+	},
+	{
 		id: "v1.6.9-tela-cheia-cards",
 		version: "1.6.9",
 		date: "20/10/2026",
