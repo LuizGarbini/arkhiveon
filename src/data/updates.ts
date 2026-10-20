@@ -22,6 +22,30 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.9-tela-cheia-cards",
+		version: "1.6.9",
+		date: "20/10/2026",
+		title: "Imagens dos cards em tela cheia",
+		description:
+			"Nas listas de fichas, NPCs, itens, lore, locais e facções, o novo botão de tela cheia no canto do card abre a imagem grande sem sair da lista.",
+		bullets: [
+			"Clicar no resto do card continua abrindo a página, como antes.",
+			"Cards sem imagem própria (ou com imagem privada que você não pode ver) não mostram o botão.",
+		],
+	},
+	{
+		id: "v1.6.8-nevoa-cobrir-tudo",
+		version: "1.6.8",
+		date: "20/10/2026",
+		title: "Cobrir Tudo funciona de primeira",
+		description:
+			"Cobrir Tudo ativa a névoa e o tamanho do pincel bate com o botão.",
+		bullets: [
+			"Se a névoa estiver desligada, Cobrir Tudo e Revelar Tudo ligam a névoa e avisam na tela.",
+			"O tamanho do pincel aparece sempre como diâmetro: P 40px, M 80px e G 160px.",
+		],
+	},
+	{
 		id: "v1.6.7-tokens-casas-livres",
 		version: "1.6.7",
 		date: "20/10/2026",
