@@ -37,7 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const PRIVATE_SOURCE_NOTICE =
-	"Esta imagem está privada na sua galeria. Se você aplicar aqui, todos que podem ver esta página também vão vê-la.";
+	"Esta imagem está privada na sua galeria. Se você aplicar aqui, todos que podem ver esta página também vão ver a imagem.";
 
 const LazyImageCropDialog = lazy(() =>
 	import("./image-crop-dialog").then((module) => ({
