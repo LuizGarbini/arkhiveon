@@ -4,6 +4,7 @@ import type { Lore } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
+import { EntityImageViewer } from "./images/entity-image-viewer";
 
 interface LoreCardProps {
 	lore?: Lore;
@@ -110,6 +111,13 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 						entityName={lore.title || "Sem título"}
 						entityKindLabel="lore"
 						worldStaffOnly
+						extraActions={
+							<EntityImageViewer
+								variant="corner"
+								src={(hasCustomImage ? lore.imageUrl : undefined) || undefined}
+								name={lore.title || "Sem nome"}
+							/>
+						}
 					/>
 				</div>
 

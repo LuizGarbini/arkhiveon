@@ -3,6 +3,7 @@ import { Camera } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { useToast } from "@/components/ui/toast";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
 import { getCharacterPresetUrl } from "@/lib/character-presets";
@@ -157,21 +158,30 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 								entityName={characterName}
 								entityKindLabel="personagem"
 								extraActions={
-									!isViewer && (
-										<button
-											type="button"
-											onClick={openImageDialog}
-											className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
-											aria-label={
-												hasCustomImage
-													? "Editar imagem do personagem"
-													: "Adicionar imagem do personagem"
-											}
-											title={hasCustomImage ? "Editar imagem" : "Adicionar imagem"}
-										>
-											<Camera className="h-3.5 w-3.5" />
-										</button>
-									)
+									<>
+										<EntityImageViewer
+											variant="corner"
+											src={characterImageUrl || undefined}
+											name={characterName}
+										/>
+										{!isViewer && (
+											<button
+												type="button"
+												onClick={openImageDialog}
+												className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
+												aria-label={
+													hasCustomImage
+														? "Editar imagem do personagem"
+														: "Adicionar imagem do personagem"
+												}
+												title={
+													hasCustomImage ? "Editar imagem" : "Adicionar imagem"
+												}
+											>
+												<Camera className="h-3.5 w-3.5" />
+											</button>
+										)}
+									</>
 								}
 							/>
 						</div>
