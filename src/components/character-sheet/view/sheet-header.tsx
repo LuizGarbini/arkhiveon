@@ -12,6 +12,7 @@ import {
 	User,
 } from "lucide-react";
 import { FramedImage } from "@/components/framed-image";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { CrisImportDialog } from "@/components/ordem/cris-import-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,19 +109,24 @@ export function SheetHeader({
 						) : (
 							<User className="h-8 w-8 text-primary/40" strokeWidth={1.4} />
 						)}
-						{!isViewer && (
-							<button
-								type="button"
-								onClick={onOpenImageDialog}
-								className={`absolute inset-0 flex cursor-pointer items-center justify-center text-white transition focus:outline-none ${
-									characterImageUrl
-										? "bg-black/0 opacity-0 hover:bg-black/50 hover:opacity-100 focus-visible:bg-black/50 focus-visible:opacity-100"
-										: "bg-black/20 opacity-100 hover:bg-black/40"
-								}`}
-								aria-label="Alterar imagem do personagem"
-							>
-								<Camera className="h-5 w-5 drop-shadow" />
-							</button>
+						{characterImageUrl ? (
+							<EntityImageViewer
+								src={characterImageUrl}
+								name={character.characterName}
+								canEdit={!isViewer}
+								onEdit={onOpenImageDialog}
+							/>
+						) : (
+							!isViewer && (
+								<button
+									type="button"
+									onClick={onOpenImageDialog}
+									className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20 text-white opacity-100 transition hover:bg-black/40 focus:outline-none"
+									aria-label="Alterar imagem do personagem"
+								>
+									<Camera className="h-5 w-5 drop-shadow" />
+								</button>
+							)
 						)}
 					</div>
 
