@@ -36,6 +36,17 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+type ToastListener = (variant: ToastVariant, toast: ToastInput) => void;
+const toastListeners = new Set<ToastListener>();
+
+/**
+ * Mostra um toast fora da árvore React (ex.: ações da store Zustand).
+ * Sem ToastProvider montado, não faz nada.
+ */
+export function showToast(variant: ToastVariant, toast: ToastInput): void {
+	for (const listener of toastListeners) listener(variant, toast);
+}
+
 /** Duração da animação de saída em ms — deve espelhar a CSS */
 const EXIT_DURATION_MS = 280;
 const AUTO_DISMISS_MS = 4500;
@@ -87,6 +98,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		},
 		[dismiss],
 	);
+
+	// Assina o canal externo de toasts (showToast)
+	useEffect(() => {
+		toastListeners.add(push);
+		return () => {
+			toastListeners.delete(push);
+		};
+	}, [push]);
 
 	// Limpar timers ao desmontar
 	useEffect(() => {

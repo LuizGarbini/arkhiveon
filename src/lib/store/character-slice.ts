@@ -1,8 +1,10 @@
 import type { StateCreator } from "zustand";
+import { showToast } from "@/components/ui/toast";
 import {
 	createRemoteActivity,
 	createRemoteEntity,
 	deleteRemoteEntity,
+	updateRemoteCharacterPatch,
 	updateRemoteEntity,
 } from "../remote-store";
 import {
@@ -289,18 +291,40 @@ export const createCharacterSlice: StateCreator<
 			activityLog: pushLog(state.activityLog, log),
 			syncError: null,
 		}));
-		void Promise.all([
-			updateRemoteEntity("character", updated, campaignId),
-			createRemoteActivity(log, campaignId),
-		]).catch((error) => {
-			set((state) => ({
-				characters: originalCharacters,
-				activityLog: state.activityLog.filter(
-					(l) => !(l.entityId === id && l.action === "update"),
-				),
-				syncError: remoteErrorMessage(error),
-			}));
-		});
+		const patch: Record<string, unknown> = {
+			...character,
+			...(character.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
+			updatedAt: updated.updatedAt,
+		};
+		void updateRemoteCharacterPatch(updated, patch, campaignId)
+			.then((saved) => {
+				// Adota a versão mesclada do banco (traz o que outra pessoa salvou
+				// enquanto esta cópia estava desatualizada), sem pisar numa edição
+				// local mais nova que chegou nesse meio-tempo.
+				set((state) => ({
+					characters: state.characters.map((c) =>
+						c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
+					),
+				}));
+				return createRemoteActivity(log, campaignId);
+			})
+			.catch((error) => {
+				const message = remoteErrorMessage(error);
+				// Reverte só esta ficha; não descarta mudanças de outras fichas.
+				set((state) => ({
+					characters: state.characters.map((c) =>
+						c.id === id && c.updatedAt === updated.updatedAt ? existing : c,
+					),
+					activityLog: state.activityLog.filter(
+						(l) => !(l.entityId === id && l.action === "update"),
+					),
+					syncError: message,
+				}));
+				showToast("error", {
+					title: "A ficha não foi salva",
+					description: message,
+				});
+			});
 	},
 	removeCharacter: (id) => {
 		const campaignId = get().activeCampaignId;

@@ -11,6 +11,17 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.3-ficha-salvamento-seguro",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "Ficha não perde mais itens ao salvar junto",
+		description:
+			"Quando o mestre e o jogador mexem na mesma ficha ao mesmo tempo, um não apaga mais o que o outro salvou — como um item novo na mochila.",
+		bullets: [
+			"Se a ficha não puder ser salva, aparece um aviso na hora em vez de a mudança sumir depois.",
+		],
+	},
+	{
 		id: "v1.6.2-vtt-ficha-atributos",
 		version: "1.6.2",
 		date: "20/10/2026",
