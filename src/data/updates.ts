@@ -11,6 +11,16 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.3-mesa-abre-pelo-painel",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "A mesa abre direto pelo painel",
+		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
+		bullets: [
+			"Enquanto a mesa carrega, o painel continua com o menu lateral, em vez de aparecer pela metade.",
+		],
+	},
+	{
 		id: "v1.6.2-vtt-ficha-atributos",
 		version: "1.6.2",
 		date: "20/10/2026",
