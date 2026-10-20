@@ -11,6 +11,17 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.13-mapa-tela-cheia",
+		version: "1.6.13",
+		date: "20/10/2026",
+		title: "Mestre pode ver o mapa da cena em tela cheia",
+		description:
+			'Na Biblioteca da mesa, aba Mapa, o mestre abre o mapa da cena em tela cheia tocando na miniatura ou em "Ver mapa em tela cheia".',
+		bullets: [
+			"Só o mestre vê essa opção: o mapa em tela cheia não tem névoa, então os jogadores continuam vendo o mapa só pela mesa.",
+		],
+	},
+	{
 		id: "v1.6.11-tela-cheia-token",
 		version: "1.6.11",
 		date: "20/10/2026",
