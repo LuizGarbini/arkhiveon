@@ -1,5 +1,5 @@
 import { ZoomIn, ZoomOut } from "lucide-react";
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,8 @@ type ImageCropDialogProps = {
 	aspect?: number;
 	cropShape?: "rect" | "round";
 	busy?: boolean;
+	/** Aviso exibido logo acima dos botões (ex.: imagem privada virando pública). */
+	notice?: ReactNode;
 	onApply: (blob: Blob) => void | Promise<void>;
 };
 
@@ -36,6 +38,7 @@ export function ImageCropDialog({
 	aspect = 1,
 	cropShape = "rect",
 	busy = false,
+	notice,
 	onApply,
 }: ImageCropDialogProps) {
 	const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -145,6 +148,8 @@ export function ImageCropDialog({
 							</span>
 						</div>
 					</Field>
+
+					{notice}
 
 					<DialogFooter className="gap-2 sm:justify-end">
 						<Button

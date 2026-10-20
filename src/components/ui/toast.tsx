@@ -9,15 +9,22 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type ToastVariant = "success" | "error" | "info";
+
+interface ToastAction {
+	label: string;
+	onClick: () => void;
+}
 
 interface Toast {
 	id: string;
 	title: string;
 	description?: string;
 	variant: ToastVariant;
+	action?: ToastAction;
 	/** Indica que o toast está saindo (animação de dismiss) */
 	dismissing?: boolean;
 }
@@ -25,6 +32,8 @@ interface Toast {
 interface ToastInput {
 	title: string;
 	description?: string;
+	/** Botão opcional no toast (ex.: "Tentar de novo"); fecha o toast ao clicar. */
+	action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -35,6 +44,20 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+type ToastListener = (variant: ToastVariant, toast: ToastInput) => void;
+const toastListeners = new Set<ToastListener>();
+
+/**
+ * Mostra um toast fora da árvore React (ex.: ações da store Zustand).
+ * Sem ToastProvider montado, não faz nada; com vários, usa o último montado.
+ */
+export function showToast(variant: ToastVariant, toast: ToastInput): void {
+	// Há ToastProviders aninhados (main + __root): só o mais interno mostra,
+	// senão o mesmo aviso aparece duplicado.
+	const listener = [...toastListeners].at(-1);
+	listener?.(variant, toast);
+}
 
 /** Duração da animação de saída em ms — deve espelhar a CSS */
 const EXIT_DURATION_MS = 280;
@@ -82,11 +105,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		(variant: ToastVariant, toast: ToastInput) => {
 			const id = crypto.randomUUID();
 			setToasts((current) => [...current.slice(-3), { id, variant, ...toast }]);
+			// Toast com ação (ex.: "Tentar de novo") fica até o usuário agir ou fechar.
+			if (toast.action) return;
 			const timer = window.setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
 			timersRef.current.set(id, timer);
 		},
 		[dismiss],
 	);
+
+	// Assina o canal externo de toasts (showToast)
+	useEffect(() => {
+		toastListeners.add(push);
+		return () => {
+			toastListeners.delete(push);
+		};
+	}, [push]);
 
 	// Limpar timers ao desmontar
 	useEffect(() => {
@@ -142,6 +175,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 										<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
 											{toast.description}
 										</p>
+									)}
+									{toast.action && (
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="mt-2"
+											onClick={() => {
+												toast.action?.onClick();
+												dismiss(toast.id);
+											}}
+										>
+											{toast.action.label}
+										</Button>
 									)}
 								</div>
 								<button

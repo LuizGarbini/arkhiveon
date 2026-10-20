@@ -1,3 +1,4 @@
+import { isDeepEqual } from "@/lib/deep-equal";
 import { characterDefaults } from "@/lib/store";
 import {
 	type CustomField,
@@ -188,4 +189,49 @@ export function resolveSheetHealth(
 		health = healthMax;
 	}
 	return { health, healthMax };
+}
+
+/**
+ * Só os campos que o formulário mudou em relação à ficha que ele abriu
+ * (`baseline` = defaultValues do react-hook-form). Compara o valor do campo
+ * inteiro (arrays/objetos como `inventoryList` e `deathSaves` entram inteiros
+ * só se algo neles mudou). Também pega mudanças feitas por `setValue` sem
+ * `shouldDirty`, que o `dirtyFields` deixaria passar. Campo apagado no
+ * formulário vira chave com `undefined` explícito: a chave sai do `data`.
+ * Assim uma cópia desatualizada não regrava campos que ninguém tocou.
+ */
+export function pickChangedFormValues(
+	values: CharacterFormValues,
+	baseline: CharacterFormValues,
+): Partial<CharacterFormValues> {
+	const changed: Record<string, unknown> = {};
+	const current = values as Record<string, unknown>;
+	const before = baseline as Record<string, unknown>;
+	const keys = new Set([...Object.keys(current), ...Object.keys(before)]);
+	for (const key of keys) {
+		if (!isDeepEqual(current[key], before[key])) changed[key] = current[key];
+	}
+	return changed as Partial<CharacterFormValues>;
+}
+
+/**
+ * Patch salvo pelo "Editar módulo" da ficha: as mudanças do formulário e,
+ * só se PV/PV máximo mudaram, o par de vida resolvido (bug 05).
+ */
+export function buildModuleSaveUpdate(
+	changes: Partial<CharacterFormValues>,
+	current: { health: number; healthMax: number },
+): Partial<CharacterFormValues> {
+	if (!("health" in changes) && !("healthMax" in changes)) return changes;
+	return {
+		...changes,
+		...resolveSheetHealth(
+			{
+				health: "health" in changes ? changes.health : current.health,
+				healthMax:
+					"healthMax" in changes ? changes.healthMax : current.healthMax,
+			},
+			current,
+		),
+	};
 }

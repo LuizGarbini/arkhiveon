@@ -25,8 +25,8 @@ export function pushLog(
 		timestamp?: number;
 	},
 ): ActivityEntry[] {
-	let actorEmail = entry.actorEmail;
-	let actorName = entry.actorName;
+	const actorEmail = entry.actorEmail;
+	const actorName = entry.actorName;
 
 	if (!actorEmail && !actorName) {
 		const supabase = getSupabase();
@@ -35,7 +35,8 @@ export function pushLog(
 				const u = data.session?.user;
 				if (u) {
 					entry.actorEmail = u.email || undefined;
-					entry.actorName = u.user_metadata?.full_name || u.user_metadata?.name || undefined;
+					entry.actorName =
+						u.user_metadata?.full_name || u.user_metadata?.name || undefined;
 				}
 			});
 		}
@@ -241,4 +242,19 @@ export function remoteErrorMessage(error: unknown): string {
 		}
 	}
 	return "Falha ao sincronizar com o Supabase.";
+}
+
+/** Falha de rede (offline, DNS, CORS): o fetch nem chegou ao Supabase. */
+export function isNetworkError(error: unknown): boolean {
+	if (typeof navigator !== "undefined" && navigator.onLine === false)
+		return true;
+	const message =
+		error instanceof Error
+			? error.message
+			: typeof error === "object" && error !== null && "message" in error
+				? String((error as { message: unknown }).message)
+				: "";
+	return /failed to fetch|networkerror|load failed|network request failed/i.test(
+		message,
+	);
 }
