@@ -1002,7 +1002,10 @@ export function VTTCanvas({
 			}
 			// Tool shortcuts (V/H/R/G/T/F) live in VTTToolbar; only Escape here.
 			if (typing) return;
-			if (e.key === "Escape") {
+			// Esc dentro de um dialog (ex.: imagem em tela cheia) fecha só o dialog.
+			const inDialog =
+				e.target instanceof Element && e.target.closest('[role="dialog"]');
+			if (e.key === "Escape" && !inDialog) {
 				setActiveTokenIdForMenu(null);
 				setPreviewTemplate(null);
 				templateStartRef.current = null;

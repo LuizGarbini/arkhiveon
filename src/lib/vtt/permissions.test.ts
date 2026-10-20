@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canControlVTTToken } from "./permissions";
+import { canControlVTTToken, tokenImageForViewer } from "./permissions";
 
 const token = { characterId: "hero", controlledBy: [], isLocked: false };
 
@@ -65,5 +65,39 @@ describe("VTT token control", () => {
 				[{ id: "hero", userId: "player" }],
 			),
 		).toBe(false);
+	});
+});
+
+describe("tokenImageForViewer", () => {
+	const visible = {
+		avatarUrl: "https://img.test/hero.png",
+		layer: "token" as const,
+		isHidden: false,
+	};
+
+	it("shows any token image to the GM", () => {
+		expect(tokenImageForViewer(visible, true)).toBe(visible.avatarUrl);
+		expect(tokenImageForViewer({ ...visible, layer: "gm" }, true)).toBe(
+			visible.avatarUrl,
+		);
+		expect(tokenImageForViewer({ ...visible, isHidden: true }, true)).toBe(
+			visible.avatarUrl,
+		);
+	});
+
+	it("shows players only visible tokens with an image", () => {
+		expect(tokenImageForViewer(visible, false)).toBe(visible.avatarUrl);
+		expect(
+			tokenImageForViewer({ ...visible, layer: "gm" }, false),
+		).toBeUndefined();
+		expect(
+			tokenImageForViewer({ ...visible, isHidden: true }, false),
+		).toBeUndefined();
+		expect(
+			tokenImageForViewer({ ...visible, avatarUrl: null }, false),
+		).toBeUndefined();
+		expect(
+			tokenImageForViewer({ ...visible, avatarUrl: null }, true),
+		).toBeUndefined();
 	});
 });

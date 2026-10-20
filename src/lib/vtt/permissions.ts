@@ -23,3 +23,18 @@ export function canControlVTTToken(
 			(character.userId === userId || character.createdBy === userId),
 	);
 }
+
+/**
+ * Imagem que o visualizador em tela cheia pode mostrar para este token.
+ * O mestre vê qualquer token; o jogador só vê tokens fora da camada `gm`
+ * e não ocultos, para a tela cheia não vazar o que o canvas esconde.
+ */
+export function tokenImageForViewer(
+	token: Pick<VTTToken, "avatarUrl" | "layer" | "isHidden">,
+	isGM: boolean,
+): string | undefined {
+	if (!token.avatarUrl) return undefined;
+	if (isGM) return token.avatarUrl;
+	if (token.layer === "gm" || token.isHidden) return undefined;
+	return token.avatarUrl;
+}
