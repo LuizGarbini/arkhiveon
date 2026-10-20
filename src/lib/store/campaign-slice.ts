@@ -1020,30 +1020,7 @@ export const createCampaignSlice: StateCreator<
 			throw error;
 		}
 
-		// 3. Garantir a inserção do usuário na tabela de memberships
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (user && invite.campaign_id) {
-			const { error: memberError } = await supabase
-				.from(SUPABASE_TABLES.memberships)
-				.upsert(
-					{
-						campaign_id: invite.campaign_id,
-						user_id: user.id,
-						role: invite.role as MembershipRole,
-					},
-					{ onConflict: "campaign_id, user_id" },
-				);
-
-			if (memberError) {
-				console.warn(
-					"Aviso ao registrar pertencimento no banco:",
-					memberError.message,
-				);
-			}
-		}
+		// 3. O trigger on_invite_accepted cria o membership com o papel do convite.
 
 		set((state) => ({
 			pendingInvites: state.pendingInvites.filter((i) => i.id !== inviteId),

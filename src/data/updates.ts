@@ -39,6 +39,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.3-aviso-imagem-privada",
+		version: "1.6.3",
+		date: "20/10/2026",
+		title: "Aviso ao usar uma imagem privada da galeria",
+		description:
+			"Quando você escolhe uma imagem privada da sua galeria para uma página, o app avisa antes de aplicar: todos que podem ver a página também vão ver a imagem.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.2-vtt-ficha-atributos",
 		version: "1.6.2",
 		date: "20/10/2026",
