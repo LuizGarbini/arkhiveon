@@ -2,6 +2,7 @@ import { Dices, Heart, Shield, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button } from "@/components/ui/button";
+import { characterAttributeScore } from "@/core/rules";
 import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
@@ -237,9 +238,9 @@ function SheetBody({
 					</p>
 					<div className="grid grid-cols-3 gap-1.5">
 						{config.attributes.map((attr) => {
-							const score = Number(
-								character?.[attr.key as keyof Character] ?? 10,
-							);
+							const score = character
+								? characterAttributeScore(character, attr.key)
+								: 10;
 							const mod = abilityModifier(score);
 							return (
 								<button

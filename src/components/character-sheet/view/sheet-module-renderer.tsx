@@ -9,6 +9,7 @@ import {
 	calculateEffectiveHealthMax,
 	calculateHitPointPercentage,
 	calculateProficiencyBonus,
+	characterAttributeScore,
 	explainArmorClass,
 	explainInitiative,
 	formatModifier,
@@ -85,24 +86,8 @@ export function SheetModuleContent({
 	}
 
 	if (module.kind === "abilities") {
-		const isStandardKey = (key: string) =>
-			[
-				"strength",
-				"dexterity",
-				"constitution",
-				"intelligence",
-				"wisdom",
-				"charisma",
-				"power",
-				"size",
-				"education",
-			].includes(key);
-
 		const abilities = (config.attributes || []).map((attr) => {
-			const charProp = attr.key as keyof Character;
-			const val = isStandardKey(attr.key)
-				? Number(character[charProp]) || 10
-				: Number(character.systemAttributes?.[attr.key]) || 10;
+			const val = characterAttributeScore(character, attr.key);
 			return { label: attr.label, value: val };
 		});
 

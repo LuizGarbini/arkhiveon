@@ -16,6 +16,7 @@ import {
 import { type ComponentType, type ReactNode, useState } from "react";
 import { EntityImageDialog } from "@/components/entity-image-dialog";
 import { EntityLinkChips } from "@/components/entity-links";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { NpcEditButton } from "@/components/npc-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -181,15 +182,24 @@ function NpcDetailPage() {
 								{!npc.isAlive && (
 									<Skull className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-card p-0.5 text-rose-400 ring-1 ring-border" />
 								)}
-								{isStaff && (
-									<button
-										type="button"
-										onClick={() => setIsImageDialogOpen(true)}
-										className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
-										aria-label="Editar imagem do NPC"
-									>
-										<Camera className="h-5 w-5" />
-									</button>
+								{npc.imageUrl ? (
+									<EntityImageViewer
+										src={npc.imageUrl}
+										name={npc.name}
+										canEdit={isStaff}
+										onEdit={() => setIsImageDialogOpen(true)}
+									/>
+								) : (
+									isStaff && (
+										<button
+											type="button"
+											onClick={() => setIsImageDialogOpen(true)}
+											className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/50 hover:opacity-100 focus:bg-black/50 focus:opacity-100 focus:outline-none"
+											aria-label="Editar imagem do NPC"
+										>
+											<Camera className="h-5 w-5" />
+										</button>
+									)
 								)}
 							</div>
 							<div className="min-w-0">
