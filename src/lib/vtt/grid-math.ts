@@ -231,3 +231,101 @@ export function getFlatHexCorners(
 	}
 	return corners;
 }
+
+export interface OccupiedFootprint extends Point {
+	sizeCells: number;
+}
+
+export interface FindFreeCellOptions {
+	gridType: VTTGridType;
+	gridSize: number;
+	sizeCells?: number;
+	bounds: { width: number; height: number };
+	/** Raio máximo da busca, em casas. */
+	maxRings?: number;
+}
+
+function footprintsOverlap(
+	a: OccupiedFootprint,
+	b: OccupiedFootprint,
+	gridType: VTTGridType,
+	gridSize: number,
+): boolean {
+	const reach = ((a.sizeCells + b.sizeCells) / 2) * gridSize;
+	const eps = gridSize * 0.01;
+	if (gridType === "hex_pointy" || gridType === "hex_flat") {
+		// Centros de hexágonos vizinhos ficam a r·√3 (= gridSize·√3/2).
+		const neighbor = (reach * Math.sqrt(3)) / 2;
+		return Math.hypot(a.x - b.x, a.y - b.y) < neighbor - eps;
+	}
+	return Math.abs(a.x - b.x) < reach - eps && Math.abs(a.y - b.y) < reach - eps;
+}
+
+function insideBounds(
+	p: Point,
+	half: number,
+	bounds: { width: number; height: number },
+): boolean {
+	const eps = 0.001;
+	return (
+		p.x - half >= -eps &&
+		p.y - half >= -eps &&
+		p.x + half <= bounds.width + eps &&
+		p.y + half <= bounds.height + eps
+	);
+}
+
+/**
+ * Próxima casa livre ao redor de `origin` para um token novo.
+ * Procura em anéis crescentes (mais perto primeiro), devolve o centro já
+ * encaixado no grid cuja pegada não cruza nenhum token e cabe na cena.
+ * Se nada couber no raio, devolve a origem encaixada.
+ */
+export function findFreeCell(
+	origin: Point,
+	occupied: readonly OccupiedFootprint[],
+	{
+		gridType,
+		gridSize,
+		sizeCells = 1,
+		bounds,
+		maxRings = 10,
+	}: FindFreeCellOptions,
+): Point {
+	const start = snapToGrid(origin, gridType, gridSize, sizeCells);
+	if (gridSize <= 0) return start;
+	const half = (sizeCells * gridSize) / 2;
+	const isFree = (p: Point) =>
+		insideBounds(p, half, bounds) &&
+		occupied.every(
+			(o) => !footprintsOverlap({ ...p, sizeCells }, o, gridType, gridSize),
+		);
+
+	if (isFree(start)) return start;
+
+	const step = gridSize / 2;
+	const steps = maxRings * 2;
+	const seen = new Set<string>();
+	const candidates: { p: Point; d: number }[] = [];
+	for (let i = -steps; i <= steps; i++) {
+		for (let j = -steps; j <= steps; j++) {
+			const p = snapToGrid(
+				{ x: start.x + i * step, y: start.y + j * step },
+				gridType,
+				gridSize,
+				sizeCells,
+			);
+			const key = `${p.x.toFixed(2)}:${p.y.toFixed(2)}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const d = Math.hypot(p.x - start.x, p.y - start.y);
+			if (d > maxRings * gridSize + 0.001) continue;
+			candidates.push({ p, d });
+		}
+	}
+	candidates.sort((a, b) => a.d - b.d || a.p.y - b.p.y || a.p.x - b.p.x);
+	for (const { p } of candidates) {
+		if (isFree(p)) return p;
+	}
+	return start;
+}

@@ -21,6 +21,16 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.7-tokens-casas-livres",
+		version: "1.6.7",
+		date: "20/10/2026",
+		title: "Tokens novos em casas livres",
+		description: "Tokens novos aparecem em casas livres, não mais empilhados.",
+		bullets: [
+			"Cada token criado pela Biblioteca da mesa vai para a casa livre mais perto do centro da tela, no grid quadrado ou hexagonal.",
+		],
+	},
+	{
 		id: "v1.6.5-ficha-salvamento-seguro",
 		version: "1.6.5",
 		date: "20/10/2026",
