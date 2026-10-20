@@ -10,9 +10,26 @@ import {
 	Square,
 	X,
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+
+export const FOG_BRUSH_SIZES = [
+	{ label: "P", radius: 20 },
+	{ label: "M", radius: 40 },
+	{ label: "G", radius: 80 },
+] as const;
+
+/** O pincel é mostrado sempre pelo diâmetro, que é o que se vê no mapa. */
+export function fogBrushDiameterLabel(radius: number): string {
+	return `${radius * 2}px`;
+}
+
+const CLEAR_ALL_TOAST = {
+	all_hidden: "Névoa ativada e mapa coberto",
+	all_revealed: "Névoa ativada e mapa revelado",
+} as const;
 
 interface VTTFogControlsProps {
 	scene: VTTScene | null;
@@ -39,6 +56,7 @@ export function VTTFogControls({
 	const setFogBrushRadius = useVTTStore((s) => s.setFogBrushRadius);
 	const showFogControls = useVTTStore((s) => s.showFogControls);
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
+	const toast = useToast();
 
 	if (!isGM || !showFogControls) return null;
 
@@ -59,17 +77,18 @@ export function VTTFogControls({
 		void onUpdateScene(scene.id, { fogExploration: !scene.fogExploration });
 	};
 
-	const handleClearAll = (mode: "all_hidden" | "all_revealed") => {
-		if (onClearFog) {
+	const handleClearAll = async (mode: "all_hidden" | "all_revealed") => {
+		if (!onClearFog) return;
+		// Com a névoa desligada, cobrir/revelar não teria efeito visível:
+		// liga a névoa primeiro e avisa.
+		if (scene && !scene.fogEnabled && onUpdateScene) {
+			await onUpdateScene(scene.id, { fogEnabled: true });
 			onClearFog(mode);
+			toast.info({ title: CLEAR_ALL_TOAST[mode] });
+			return;
 		}
+		onClearFog(mode);
 	};
-
-	const brushSizes = [
-		{ label: "P", radius: 20, px: "20px" },
-		{ label: "M", radius: 40, px: "40px" },
-		{ label: "G", radius: 80, px: "80px" },
-	];
 
 	return (
 		<div className="absolute left-3 sm:left-20 top-32 z-40 max-h-[calc(100dvh-13rem)] overflow-y-auto w-[min(20rem,calc(100%-1.5rem))] flex flex-col gap-2.5 p-3 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl pointer-events-auto select-none min-w-[260px] animate-in fade-in slide-in-from-left-4 duration-200">
@@ -217,11 +236,11 @@ export function VTTFogControls({
 					<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 						<span>Espessura do Pincel</span>
 						<span className="text-foreground font-mono">
-							{fogBrushRadius * 2}px
+							{fogBrushDiameterLabel(fogBrushRadius)}
 						</span>
 					</div>
 					<div className="grid grid-cols-3 gap-1.5">
-						{brushSizes.map((size) => {
+						{FOG_BRUSH_SIZES.map((size) => {
 							const isSelected = fogBrushRadius === size.radius;
 							return (
 								<button
@@ -237,7 +256,7 @@ export function VTTFogControls({
 								>
 									<span>{size.label}</span>
 									<span className="text-[9px] opacity-60 font-mono">
-										({size.px})
+										({fogBrushDiameterLabel(size.radius)})
 									</span>
 								</button>
 							);
@@ -250,7 +269,7 @@ export function VTTFogControls({
 			<div className="flex items-center gap-1.5 pt-1.5 border-t border-border/70">
 				<button
 					type="button"
-					onClick={() => handleClearAll("all_revealed")}
+					onClick={() => void handleClearAll("all_revealed")}
 					title="Revelar todo o mapa instantaneamente"
 					className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-card-elevated hover:bg-white/15 text-foreground hover:text-foreground text-[11px] font-semibold transition-all border border-border/70 cursor-pointer touch-manipulation"
 				>
@@ -260,7 +279,7 @@ export function VTTFogControls({
 
 				<button
 					type="button"
-					onClick={() => handleClearAll("all_hidden")}
+					onClick={() => void handleClearAll("all_hidden")}
 					title="Cobrir todo o mapa (Resetar névoa)"
 					className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-card-elevated hover:bg-white/15 text-foreground hover:text-foreground text-[11px] font-semibold transition-all border border-border/70 cursor-pointer touch-manipulation"
 				>

@@ -89,3 +89,32 @@ describe("EntityImageViewer", () => {
 		).toBeTruthy();
 	});
 });
+
+describe("EntityImageViewer variant=corner", () => {
+	it("botão ícone com tooltip, sem cobrir o retrato, e não propaga o clique", async () => {
+		const parentClick = vi.fn();
+		render(
+			// biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: pai de teste
+			<div onClick={parentClick}>
+				<EntityImageViewer src={SRC} name="Elbereth" variant="corner" />
+			</div>,
+		);
+		const trigger = screen.getByRole("button", {
+			name: "Ver imagem de Elbereth em tela cheia",
+		});
+		expect(trigger.className).not.toContain("inset-0");
+		expect(trigger.className).toContain("after:-inset-[10px]");
+		await act(async () => {
+			fireEvent.click(trigger);
+		});
+		await screen.findByRole("dialog", { name: "Elbereth" });
+		expect(parentClick).not.toHaveBeenCalled();
+	});
+
+	it("corner sem src não renderiza", () => {
+		const { container } = render(
+			<EntityImageViewer name="Elbereth" variant="corner" />,
+		);
+		expect(container.innerHTML).toBe("");
+	});
+});
