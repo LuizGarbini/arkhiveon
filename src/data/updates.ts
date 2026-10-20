@@ -11,9 +11,9 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.2-pontos-de-destino",
-		version: "1.6.2",
-		date: "18/10/2026",
+		id: "v1.6.4-pontos-de-destino",
+		version: "1.6.4",
+		date: "20/10/2026",
 		title: "Pontos de Destino na ficha",
 		description:
 			"A faixa Recursos da mesa, no topo da ficha, agora tem Pontos de Destino: quanto sobra, o total e uma barrinha.",
@@ -25,9 +25,9 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
-		id: "v1.6.2-pontos-divinos",
-		version: "1.6.2",
-		date: "18/10/2026",
+		id: "v1.6.4-pontos-divinos",
+		version: "1.6.4",
+		date: "20/10/2026",
 		title: "Pontos Divinos na ficha",
 		description:
 			"Ao lado do Destino, a ficha ganhou os Pontos Divinos, com o ícone de sol. Funcionam do mesmo jeito: gastar, ganhar, mudar o total e queimar.",
@@ -36,6 +36,17 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Toda ficha começa com 0 de 10. Toque no total para seguir a regra da sua mesa.",
 			"Queimar também pede confirmação antes.",
 			"Quem ainda usa o app de celular antigo (APK) deve atualizar: a versão velha pode zerar os Pontos Divinos ao mexer na faixa.",
+		],
+	},
+	{
+		id: "v1.6.2-vtt-ficha-atributos",
+		version: "1.6.2",
+		date: "20/10/2026",
+		title: "Atributos certos na mesa virtual",
+		description:
+			"Na mesa virtual, o painel da ficha agora mostra os mesmos modificadores de atributo da ficha do personagem, e as rolagens saem com o bônus certo.",
+		bullets: [
+			"Fichas antigas com atributo em branco aparecem com 10 (+0), igual à ficha.",
 		],
 	},
 	{

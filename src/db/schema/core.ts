@@ -120,6 +120,7 @@ export const imageAssets = pgTable("image_assets", {
 	height: integer("height"),
 	isPrivate: boolean("is_private").notNull().default(false),
 	storageKey: text("storage_key"),
+	storageBucket: text("storage_bucket").notNull().default("public"),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.defaultNow(),
