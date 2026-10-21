@@ -3,10 +3,24 @@
  * já existe: lista de ids). As cores são as mesmas da paleta já usada nos
  * chips do menu do token (Tailwind *-400); `hex` é a mesma cor para o Pixi.
  */
+/** Ícones lucide dos status (sem emoji). `circle-dot` = status desconhecido. */
+export const VTT_STATUS_ICON_NAMES = [
+	"biohazard",
+	"arrow-down-to-line",
+	"eye-off",
+	"zap",
+	"ghost",
+	"flame",
+	"brain",
+	"circle-dot",
+] as const;
+export type VTTStatusIconName = (typeof VTT_STATUS_ICON_NAMES)[number];
+
 export interface VTTConditionDef {
 	id: string;
 	label: string;
-	icon: string;
+	/** Ícone do lucide-react (monocromático, `currentColor`). */
+	icon: VTTStatusIconName;
 	/** Classes do chip no menu (mesmas de antes). */
 	color: string;
 	/** Mesma cor (Tailwind *-400) para o anel no canvas. */
@@ -17,49 +31,49 @@ export const VTT_CONDITIONS: VTTConditionDef[] = [
 	{
 		id: "envenenado",
 		label: "Envenenado",
-		icon: "🧪",
+		icon: "biohazard",
 		color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
 		hex: 0x34d399,
 	},
 	{
 		id: "caido",
 		label: "Caído",
-		icon: "🧎",
+		icon: "arrow-down-to-line",
 		color: "text-amber-400 border-amber-500/40 bg-amber-500/10",
 		hex: 0xfbbf24,
 	},
 	{
 		id: "cego",
 		label: "Cego",
-		icon: "👁️‍🗨️",
+		icon: "eye-off",
 		color: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10",
 		hex: 0xa1a1aa,
 	},
 	{
 		id: "atordoado",
 		label: "Atordoado",
-		icon: "⚡",
+		icon: "zap",
 		color: "text-yellow-400 border-yellow-500/40 bg-yellow-500/10",
 		hex: 0xfacc15,
 	},
 	{
 		id: "invisivel",
 		label: "Invisível",
-		icon: "👻",
+		icon: "ghost",
 		color: "text-sky-400 border-sky-500/40 bg-sky-500/10",
 		hex: 0x38bdf8,
 	},
 	{
 		id: "chamas",
 		label: "Em Chamas",
-		icon: "🔥",
+		icon: "flame",
 		color: "text-rose-400 border-rose-500/40 bg-rose-500/10",
 		hex: 0xfb7185,
 	},
 	{
 		id: "concentracao",
 		label: "Concentração",
-		icon: "🔮",
+		icon: "brain",
 		color: "text-purple-400 border-purple-500/40 bg-purple-500/10",
 		hex: 0xc084fc,
 	},
@@ -73,7 +87,7 @@ export function conditionDef(id: string): VTTConditionDef {
 		BY_ID.get(id) ?? {
 			id,
 			label: id,
-			icon: "•",
+			icon: "circle-dot",
 			color: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10",
 			hex: 0xa1a1aa,
 		}
@@ -81,6 +95,13 @@ export function conditionDef(id: string): VTTConditionDef {
 }
 
 export const MAX_VISIBLE_CONDITIONS = 3;
+
+/** Tamanhos do chip de status (px de tela no zoom 1; mesmos no canvas). */
+export const STATUS_CHIP = {
+	desktop: { chip: 22, icon: 16 },
+	compact: { chip: 26, icon: 18 },
+	stroke: 1.5,
+} as const;
 /** No celular/toque: 1 ícone maior + "+N" (14px por ícone ficava ilegível). */
 export const COMPACT_VISIBLE_CONDITIONS = 1;
 
