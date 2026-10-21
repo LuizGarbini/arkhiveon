@@ -18,11 +18,6 @@ import {
 import { ImageLibraryPickerDialog } from "@/components/image-library-picker-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth";
 import { readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
@@ -257,30 +252,25 @@ export function VTTMapDropzone({
 			{value && !isUploading ? (
 				<div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-2">
 					{onViewFullscreen ? (
-						<Tooltip>
-							<TooltipTrigger
-								render={
-									<button
-										type="button"
-										onClick={(event) => onViewFullscreen(event.currentTarget)}
-										aria-label={`Ver mapa de ${viewName ?? value.name} em tela cheia`}
-										aria-haspopup="dialog"
-										className="group relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									/>
-								}
-							>
-								<img
-									src={value.url}
-									alt=""
-									decoding="async"
-									className="h-full w-full object-cover"
-								/>
-								<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/50 group-hover:opacity-100 group-focus-visible:bg-black/50 group-focus-visible:opacity-100">
-									<Maximize2 className="h-4 w-4 drop-shadow" aria-hidden />
-								</span>
-							</TooltipTrigger>
-							<TooltipContent>Ver em tela cheia</TooltipContent>
-						</Tooltip>
+						// Sem Tooltip: o botão "Ver mapa em tela cheia" já rotula a ação e o
+						// tooltip cobria o aviso "Os tokens ficam onde estão."
+						<button
+							type="button"
+							onClick={(event) => onViewFullscreen(event.currentTarget)}
+							aria-label={`Ver mapa de ${viewName ?? value.name} em tela cheia`}
+							aria-haspopup="dialog"
+							className="group relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<img
+								src={value.url}
+								alt=""
+								decoding="async"
+								className="h-full w-full object-cover"
+							/>
+							<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/50 group-hover:opacity-100 group-focus-visible:bg-black/50 group-focus-visible:opacity-100">
+								<Maximize2 className="h-4 w-4 drop-shadow" aria-hidden />
+							</span>
+						</button>
 					) : (
 						<img
 							src={value.url}

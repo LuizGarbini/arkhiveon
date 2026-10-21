@@ -225,19 +225,25 @@ export function VTTTokenMenu({
 				</div>
 
 				<div className="flex shrink-0 items-center gap-1">
-					<button
-						type="button"
-						aria-label="Abrir ficha na mesa"
-						title="Abrir ficha na mesa"
-						onClick={() => {
-							setShowCharacterSheetId(token.id);
-							setActiveTokenIdForMenu(null);
-						}}
-						className="flex h-11 items-center gap-1.5 rounded-xl border border-border/70 bg-card-elevated px-3 text-xs font-semibold text-foreground transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
-					>
-						<ScrollText className="h-3.5 w-3.5 text-primary" />
-						Ficha
-					</button>
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<button
+									type="button"
+									aria-label="Abrir ficha na mesa"
+									onClick={() => {
+										setShowCharacterSheetId(token.id);
+										setActiveTokenIdForMenu(null);
+									}}
+									className="flex h-11 items-center gap-1.5 rounded-xl border border-border/70 bg-card-elevated px-3 text-xs font-semibold text-foreground transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
+								/>
+							}
+						>
+							<ScrollText className="h-3.5 w-3.5 text-primary" />
+							Ficha
+						</TooltipTrigger>
+						<TooltipContent>Abrir ficha na mesa</TooltipContent>
+					</Tooltip>
 					<button
 						type="button"
 						aria-label="Fechar menu do token"
@@ -462,86 +468,126 @@ export function VTTTokenMenu({
 				{/* Quick Actions (Rotate, Hide, Lock, Delete) — sticky footer so they stay reachable */}
 				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex items-center justify-between border-t border-border/70 bg-card px-4 pt-2 pb-3">
 					<div className="flex items-center gap-1">
-						<button
-							type="button"
-							onClick={handleRotate}
-							title="Girar Token (45º)"
-							className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-						>
-							<RotateCw className="h-3.5 w-3.5" />
-						</button>
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={handleRotate}
+										className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+										aria-label="Girar Token (45º)"
+									/>
+								}
+							>
+								<RotateCw className="h-3.5 w-3.5" />
+							</TooltipTrigger>
+							<TooltipContent>Girar Token (45º)</TooltipContent>
+						</Tooltip>
 
 						{isGM && (
 							<>
-								<button
-									type="button"
-									onClick={() =>
-										onUpdateToken(token.id, { isHidden: !token.isHidden })
-									}
-									title={
-										token.isHidden
+								<Tooltip>
+									<TooltipTrigger
+										render={
+											<button
+												type="button"
+												onClick={() =>
+													onUpdateToken(token.id, { isHidden: !token.isHidden })
+												}
+												className={cn(
+													"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+													token.isHidden
+														? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+														: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+												)}
+												aria-label={
+													token.isHidden
+														? "Revelar aos Jogadores"
+														: "Ocultar dos Jogadores"
+												}
+											/>
+										}
+									>
+										{token.isHidden ? (
+											<EyeOff className="h-3.5 w-3.5" />
+										) : (
+											<Eye className="h-3.5 w-3.5" />
+										)}
+									</TooltipTrigger>
+									<TooltipContent>
+										{token.isHidden
 											? "Revelar aos Jogadores"
-											: "Ocultar dos Jogadores"
-									}
-									className={cn(
-										"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-										token.isHidden
-											? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-											: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
-									)}
-								>
-									{token.isHidden ? (
-										<EyeOff className="h-3.5 w-3.5" />
-									) : (
-										<Eye className="h-3.5 w-3.5" />
-									)}
-								</button>
+											: "Ocultar dos Jogadores"}
+									</TooltipContent>
+								</Tooltip>
 
-								<button
-									type="button"
-									onClick={() =>
-										onUpdateToken(token.id, {
-											layer: token.layer === "gm" ? "token" : "gm",
-										})
-									}
-									title={
-										token.layer === "gm"
+								<Tooltip>
+									<TooltipTrigger
+										render={
+											<button
+												type="button"
+												onClick={() =>
+													onUpdateToken(token.id, {
+														layer: token.layer === "gm" ? "token" : "gm",
+													})
+												}
+												className={cn(
+													"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+													token.layer === "gm"
+														? "border-purple-500/50 bg-purple-500/30 text-purple-300 shadow-md shadow-purple-500/20"
+														: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+												)}
+												aria-label={
+													token.layer === "gm"
+														? "Mover para Camada de Jogadores (Tokens)"
+														: "Mover para Camada do Mestre (GM Layer)"
+												}
+											/>
+										}
+									>
+										<ShieldAlert className="h-3.5 w-3.5" />
+									</TooltipTrigger>
+									<TooltipContent>
+										{token.layer === "gm"
 											? "Mover para Camada de Jogadores (Tokens)"
-											: "Mover para Camada do Mestre (GM Layer)"
-									}
-									className={cn(
-										"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-										token.layer === "gm"
-											? "border-purple-500/50 bg-purple-500/30 text-purple-300 shadow-md shadow-purple-500/20"
-											: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
-									)}
-								>
-									<ShieldAlert className="h-3.5 w-3.5" />
-								</button>
+											: "Mover para Camada do Mestre (GM Layer)"}
+									</TooltipContent>
+								</Tooltip>
 							</>
 						)}
 
-						<button
-							type="button"
-							onClick={() =>
-								onUpdateToken(token.id, { isLocked: !token.isLocked })
-							}
-							title={
-								token.isLocked ? "Destravar Movimentação" : "Travar no Lugar"
-							}
-							className={cn(
-								"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-								token.isLocked
-									? "border-primary/40 bg-primary/20 text-primary"
-									: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
-							)}
-						>
-							{token.isLocked ? (
-								<Lock className="h-3.5 w-3.5" />
-							) : (
-								<Unlock className="h-3.5 w-3.5" />
-							)}
-						</button>
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={() =>
+											onUpdateToken(token.id, { isLocked: !token.isLocked })
+										}
+										className={cn(
+											"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+											token.isLocked
+												? "border-primary/40 bg-primary/20 text-primary"
+												: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+										)}
+										aria-label={
+											token.isLocked
+												? "Destravar Movimentação"
+												: "Travar no Lugar"
+										}
+									/>
+								}
+							>
+								{token.isLocked ? (
+									<Lock className="h-3.5 w-3.5" />
+								) : (
+									<Unlock className="h-3.5 w-3.5" />
+								)}
+							</TooltipTrigger>
+							<TooltipContent>
+								{token.isLocked ? "Destravar Movimentação" : "Travar no Lugar"}
+							</TooltipContent>
+						</Tooltip>
 					</div>
 
 					<Button

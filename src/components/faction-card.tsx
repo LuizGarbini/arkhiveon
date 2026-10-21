@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Flag, MapPin, Sparkles, Users } from "lucide-react";
-import type { Faction, FactionReputationStatus } from "@/lib/store/types";
 import { useRPGStore } from "@/lib/store";
+import type { Faction, FactionReputationStatus } from "@/lib/store/types";
 import { useFactionReputationForActiveCampaign } from "@/lib/worldbuilding/hooks";
 import { EntityActions } from "./entity-actions";
 import { cardInitials, EntityCardMedia } from "./entity-card-media";
@@ -21,7 +21,10 @@ const STATUS_CLASSES: Record<FactionReputationStatus, string> = {
 	unfriendly: "border-amber-500/30 bg-amber-500/20 text-amber-300",
 };
 
-const KIND_CONFIG: Record<string, { label: string; icon: string; badge: string }> = {
+const KIND_CONFIG: Record<
+	string,
+	{ label: string; icon: string; badge: string }
+> = {
 	patron: {
 		label: "Patrono de Grupo",
 		icon: "👑",
@@ -30,7 +33,8 @@ const KIND_CONFIG: Record<string, { label: string; icon: string; badge: string }
 	legendary_family: {
 		label: "Família Lendária",
 		icon: "⚜️",
-		badge: "border-yellow-400/40 bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/20",
+		badge:
+			"border-yellow-400/40 bg-yellow-400/15 text-yellow-300 ring-1 ring-yellow-400/20",
 	},
 	noble_house: {
 		label: "Casa Nobre",
@@ -112,7 +116,8 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 						entityKindLabel={
 							faction.kind === "patron"
 								? "patrono"
-								: faction.kind === "legendary_family" || faction.kind === "noble_house"
+								: faction.kind === "legendary_family" ||
+										faction.kind === "noble_house"
 									? "família"
 									: "organização"
 						}
@@ -126,7 +131,7 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 					/>
 				</div>
 				<div className="p-4.5 pt-5">
-					<h3 className="font-display truncate text-xl font-bold text-white">
+					<h3 className="pr-28 font-display truncate text-xl font-bold text-white">
 						{faction.name || "Facção sem nome"}
 					</h3>
 					<div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -134,7 +139,8 @@ export function FactionCard({ faction, isLoading }: FactionCardProps) {
 							<span
 								className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${KIND_CONFIG[faction.kind].badge}`}
 							>
-								{KIND_CONFIG[faction.kind].icon} {KIND_CONFIG[faction.kind].label}
+								{KIND_CONFIG[faction.kind].icon}{" "}
+								{KIND_CONFIG[faction.kind].label}
 							</span>
 						)}
 						{faction.patronType && (

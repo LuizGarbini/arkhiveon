@@ -116,7 +116,7 @@ export function NpcCard({ npc, isLoading }: NpcCardProps) {
 				</div>
 
 				<div className="p-4.5 pt-5">
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 pr-28">
 						<h3
 							className={`font-display truncate text-xl font-bold tracking-tight drop-shadow-sm ${importanceStyles[npc.importance] || "text-white"}`}
 						>

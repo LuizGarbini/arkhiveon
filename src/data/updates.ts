@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.21-pacote-visual",
+		version: "1.6.21",
+		date: "21/10/2026",
+		title: "Busca da Biblioteca mais clara",
+		description:
+			'Quando a busca da Biblioteca da mesa não acha nada, ela diz "Nada encontrado para" o que você digitou e oferece limpar a busca.',
+		bullets: [
+			"No painel da campanha, passar o mouse no retrato destaca só o retrato, não o card inteiro.",
+			"Nos cards das listas, nomes longos não passam mais por baixo dos botões do canto.",
+			"Os botões do menu do token mostram a dica no estilo do app, e a miniatura do mapa não cobre mais o aviso.",
+		],
+	},
+	{
 		id: "v1.6.19-status-token-s2",
 		version: "1.6.19",
 		date: "20/10/2026",
