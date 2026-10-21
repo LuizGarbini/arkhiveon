@@ -3,7 +3,7 @@
   "tag": "mestre-1440x900",
   "isGM": true,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
@@ -42,6 +42,7 @@
    "envenenado"
   ],
   "toast": 1,
+  "bannerRodape": 0,
   "titleNativo": 0,
   "pageErrors": []
  },
@@ -49,7 +50,7 @@
   "tag": "jogador-1440x900",
   "isGM": false,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
@@ -88,6 +89,7 @@
    "concentracao"
   ],
   "toast": 1,
+  "bannerRodape": 0,
   "titleNativo": 0,
   "pageErrors": []
  },
@@ -135,6 +137,7 @@
    "envenenado"
   ],
   "toast": 1,
+  "bannerRodape": 0,
   "titleNativo": 0,
   "pageErrors": []
  },
@@ -182,6 +185,7 @@
    "concentracao"
   ],
   "toast": 1,
+  "bannerRodape": 0,
   "titleNativo": 0,
   "pageErrors": []
  }
