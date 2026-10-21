@@ -19,6 +19,8 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			'Quando a busca da Biblioteca da mesa não acha nada, ela diz "Nada encontrado para" o que você digitou e oferece limpar a busca.',
 		bullets: [
 			"No painel da campanha, passar o mouse no retrato destaca só o retrato, não o card inteiro.",
+			"Nos cards das listas, nomes longos não passam mais por baixo dos botões do canto.",
+			"Os botões do menu do token mostram a dica no estilo do app, e a miniatura do mapa não cobre mais o aviso.",
 		],
 	},
 	{

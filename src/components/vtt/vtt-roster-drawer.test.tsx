@@ -78,6 +78,18 @@ describe("Mapa da cena em tela cheia (aba Mapa)", () => {
 		expect(onSetSceneMap).not.toHaveBeenCalled();
 	});
 
+	it("miniatura sem Tooltip: mantém aria-label e ícone, não abre tooltip no foco", async () => {
+		renderTab(true);
+		const thumb = screen.getByRole("button", { name: thumbName });
+		expect(thumb.getAttribute("data-slot")).toBeNull();
+		expect(thumb.querySelector("svg")).toBeTruthy();
+		act(() => {
+			thumb.focus();
+		});
+		await new Promise((r) => setTimeout(r, 50));
+		expect(document.querySelector('[data-slot="tooltip-content"]')).toBeNull();
+	});
+
 	it("mestre: Esc fecha só a tela cheia e o foco volta à miniatura", async () => {
 		renderTab(true);
 		const thumb = screen.getByRole("button", { name: thumbName });
