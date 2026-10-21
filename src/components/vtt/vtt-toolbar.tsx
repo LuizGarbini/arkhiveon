@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { isVttShortcutBlocked } from "@/lib/vtt/shortcut-guard";
 import type { VTTLayer } from "@/lib/vtt/types";
 import { useVTTStore, type VTTTool } from "@/lib/vtt/vtt-store";
 
@@ -28,15 +29,7 @@ export function VTTToolbar() {
 	// Global Keyboard Shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (
-				e.target instanceof HTMLInputElement ||
-				e.target instanceof HTMLTextAreaElement ||
-				e.target instanceof HTMLSelectElement ||
-				(e.target instanceof HTMLElement && e.target.isContentEditable) ||
-				e.ctrlKey ||
-				e.metaKey ||
-				e.altKey
-			) {
+			if (isVttShortcutBlocked(e) || e.ctrlKey || e.metaKey || e.altKey) {
 				return;
 			}
 
