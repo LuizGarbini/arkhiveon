@@ -1,9 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Package, Plus } from "lucide-react";
 import { useMemo } from "react";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveItemImageUrl } from "@/lib/character-images";
+import { useActiveCampaignRole, useImageAssetLookup } from "@/lib/store";
 import type { Item } from "@/lib/store/types";
 
 interface DashboardQuickVaultProps {
@@ -26,6 +29,8 @@ export function DashboardQuickVault({
 	isViewer,
 	isLoading,
 }: DashboardQuickVaultProps) {
+	const imageAssetLookup = useImageAssetLookup();
+	const activeCampaignRole = useActiveCampaignRole();
 	const highlightedItems = useMemo(() => {
 		// Prioritize attuned, equipped, or rare items
 		const attunedOrEquipped = items.filter(
@@ -107,18 +112,30 @@ export function DashboardQuickVault({
 								className="group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-emerald-500/30 hover:bg-background/60"
 							>
 								<div className="flex items-start gap-3">
-									<div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-card">
-										{item.imageUrl ? (
-											<img
-												src={item.imageUrl}
-												alt={item.name}
-												className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-											/>
-										) : (
-											<div className="flex h-full w-full items-center justify-center font-bold text-emerald-400 text-xs group-hover:scale-110 transition-transform">
-												<Package className="h-4 w-4" />
-											</div>
-										)}
+									<div className="relative shrink-0">
+										<div className="h-9 w-9 overflow-hidden rounded-lg border border-border/70 bg-card">
+											{item.imageUrl ? (
+												<img
+													src={item.imageUrl}
+													alt={item.name}
+													className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+												/>
+											) : (
+												<div className="flex h-full w-full items-center justify-center font-bold text-emerald-400 text-xs group-hover:scale-110 transition-transform">
+													<Package className="h-4 w-4" />
+												</div>
+											)}
+										</div>
+										<EntityImageViewer
+											variant="avatar"
+											src={resolveItemImageUrl(
+												item,
+												imageAssetLookup,
+												activeCampaignRole,
+											)}
+											name={item.name ?? ""}
+											className="rounded-lg"
+										/>
 									</div>
 
 									<div className="min-w-0 flex-1">
