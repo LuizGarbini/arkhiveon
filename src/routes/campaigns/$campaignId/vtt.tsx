@@ -1329,9 +1329,15 @@ function VTTSession() {
 			)
 				// Uma gravação mais nova já manda neste token: nada a reverter aqui.
 				return true;
-			setMutationError(
-				"Não foi possível salvar o token. Restaurando os dados do servidor.",
+			// Status tem toast próprio no menu (com reversão): sem o aviso do
+			// rodapé para não avisar duas vezes.
+			const onlyConditions = Object.keys(updates).every(
+				(k) => k === "conditions",
 			);
+			if (!onlyConditions)
+				setMutationError(
+					"Não foi possível salvar o token. Restaurando os dados do servidor.",
+				);
 			if (activeSceneId) await fetchTokens(activeSceneId);
 			return false;
 		}

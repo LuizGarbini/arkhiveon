@@ -20,7 +20,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [
 			'No menu do token, escolha um status em "Adicionar status…" ou toque no chip para tirar.',
 			"O status aparece na hora; se não salvar, ele volta e você recebe um aviso.",
-			"No celular, o mapa abre ao lado da barra de ferramentas, sem ficar escondido atrás dela.",
+			"Ao abrir a mesa, o mapa começa ao lado da barra de ferramentas, sem tokens escondidos atrás dela.",
 		],
 	},
 	{

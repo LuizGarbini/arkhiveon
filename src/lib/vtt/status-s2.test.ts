@@ -83,8 +83,12 @@ describe("enquadramento inicial", () => {
 		});
 		expect(VTT_TOOLBAR_INSET_PX).toBeGreaterThanOrEqual(68);
 	});
-	it("desktop ou mesa já movida: não mexe", () => {
-		expect(initialSceneViewport(1440, { x: 0, y: 0, scale: 1 })).toBeNull();
+	it("desktop também; mesa já movida: não mexe", () => {
+		expect(initialSceneViewport(1440, { x: 0, y: 0, scale: 1 })).toEqual({
+			x: VTT_TOOLBAR_INSET_PX,
+			y: 0,
+			scale: 1,
+		});
 		expect(initialSceneViewport(390, { x: 5, y: 0, scale: 1 })).toBeNull();
 	});
 });
