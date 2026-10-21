@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { VTTScene } from "@/lib/vtt/types";
+import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ session: null }) }));
@@ -132,5 +132,56 @@ describe("Mapa da cena em tela cheia (aba Mapa)", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
 		expect(screen.getByRole("button", { name: thumbName })).toBeTruthy();
 		expect(screen.getByRole("button", { name: itemName })).toBeTruthy();
+	});
+});
+
+describe("Biblioteca: busca sem resultado", () => {
+	const lyra = {
+		id: "t1",
+		sceneId: "scene-1",
+		name: "Lyra",
+		layer: "token",
+		x: 100,
+		y: 100,
+		sizeCells: 1,
+		hpCurrent: 7,
+		hpMax: 10,
+		conditions: [],
+		controlledBy: [],
+	} as unknown as VTTToken;
+
+	function renderDrawer(tokens: VTTToken[]) {
+		useVTTStore.setState({ isGM: true, showRosterDrawer: true, tokens });
+		render(
+			<VTTRosterDrawer
+				scene={scene}
+				onSpawnToken={vi.fn(async () => {})}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+			/>,
+		);
+	}
+
+	it('com termo: "Nada encontrado para" + Limpar busca devolve a lista e o foco', async () => {
+		renderDrawer([lyra]);
+		const input = screen.getByLabelText(
+			"Buscar na biblioteca",
+		) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: "zzz" } });
+		expect(await screen.findByText('Nada encontrado para "zzz"')).toBeTruthy();
+		expect(screen.queryByText("A cena está pronta para seu grupo")).toBeNull();
+		expect(screen.queryByText("Escolher personagens")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
+		expect(input.value).toBe("");
+		expect(document.activeElement).toBe(input);
+		expect(
+			await screen.findByRole("button", { name: "Localizar Lyra" }),
+		).toBeTruthy();
+	});
+
+	it("sem termo e sem tokens: segue o vazio da cena", () => {
+		renderDrawer([]);
+		expect(screen.getByText("A cena está pronta para seu grupo")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Limpar busca" })).toBeNull();
 	});
 });
