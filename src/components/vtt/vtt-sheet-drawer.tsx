@@ -303,9 +303,8 @@ function FloatingSheet({
 					className="size-4 shrink-0 text-muted-foreground"
 					aria-hidden
 				/>
-				<p className="min-w-0 flex-1 truncate text-xs font-semibold text-muted-foreground">
-					{name}
-				</p>
+				{/* Padrão Figma: só alça + X; o nome fica no título da identidade. */}
+				<span className="flex-1" />
 				<CloseSheetButton onClose={close} />
 			</header>
 			<div className="min-h-0 flex-1 overflow-y-auto p-4">

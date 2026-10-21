@@ -109,6 +109,22 @@ describe("Status S2 — salvar otimista", () => {
 		);
 	});
 
+	it("rollback: chip Atordoado volta a aria-pressed=false, sem visual de selecionado", async () => {
+		const save = vi.fn(async () => false);
+		render(<LiveMenu save={save} />);
+		const chip = screen.getByRole("button", { name: "Atordoado" });
+		expect(chip.getAttribute("aria-pressed")).toBe("false");
+		await act(async () => {
+			fireEvent.click(chip);
+		});
+		await waitFor(() => expect(conds()).toEqual(["caido"]));
+		const after = screen.getByRole("button", { name: "Atordoado" });
+		expect(after.getAttribute("aria-pressed")).toBe("false");
+		// Cores do status aplicado (text-yellow-400 / bg-yellow-500/10) não ficam.
+		expect(after.className).not.toMatch(/yellow/);
+		expect(showToast).toHaveBeenCalledTimes(1);
+	});
+
 	it("Select do DS adiciona status (só lista os que faltam)", async () => {
 		const save = vi.fn(async () => true);
 		render(<LiveMenu save={save} />);
