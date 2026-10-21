@@ -3,7 +3,7 @@
   "tag": "mestre-1440x900",
   "isGM": true,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
@@ -41,7 +41,7 @@
   "tag": "jogador-1440x900",
   "isGM": false,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
@@ -79,7 +79,7 @@
   "tag": "mestre-390x844",
   "isGM": true,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
@@ -105,7 +105,7 @@
   "tag": "jogador-390x844",
   "isGM": false,
   "vp": {
-   "x": 0,
+   "x": 76,
    "y": 0,
    "scale": 1
   },
