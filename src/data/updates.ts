@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.22-combate-base",
+		version: "1.6.22",
+		date: "21/10/2026",
+		title: "Base do combate na mesa",
+		description:
+			"Preparamos as regras de iniciativa e turnos do combate na mesa. O painel chega numa próxima versão.",
+		bullets: [
+			"A ordem segue a iniciativa; no empate, vence quem tem mais Destreza.",
+			"A iniciativa vem da ficha; sem ela, rola d20 + Destreza, e o mestre pode ajustar o valor.",
+			"Depois do último da rodada, começa a rodada seguinte.",
+		],
+	},
+	{
 		id: "v1.6.21-pacote-visual",
 		version: "1.6.21",
 		date: "21/10/2026",
