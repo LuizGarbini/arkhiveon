@@ -1,0 +1,102 @@
+[
+ {
+  "tag": "mestre-1440x900",
+  "isGM": true,
+  "dblGoblin": "aaaaaaaa-0000-4000-8000-000000000002",
+  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
+  "overlayAttr": 0,
+  "titleNativo": 0,
+  "focoMesa_R": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoMesa_Esc": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_VG": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_Esc": {
+   "tool": "ruler",
+   "sheet": null
+  },
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-1440x900",
+  "isGM": false,
+  "dblGoblin": null,
+  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
+  "overlayAttr": 0,
+  "titleNativo": 0,
+  "focoMesa_R": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoMesa_Esc": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_VG": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_Esc": {
+   "tool": "ruler",
+   "sheet": null
+  },
+  "pageErrors": []
+ },
+ {
+  "tag": "mestre-390x844",
+  "isGM": true,
+  "dblGoblin": "aaaaaaaa-0000-4000-8000-000000000002",
+  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
+  "overlayAttr": 0,
+  "titleNativo": 0,
+  "focoMesa_R": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoMesa_Esc": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_VG": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_Esc": {
+   "tool": "ruler",
+   "sheet": null
+  },
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-390x844",
+  "isGM": false,
+  "dblGoblin": null,
+  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
+  "overlayAttr": 0,
+  "titleNativo": 0,
+  "focoMesa_R": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoMesa_Esc": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_VG": {
+   "tool": "ruler",
+   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  },
+  "focoDentro_Esc": {
+   "tool": "ruler",
+   "sheet": null
+  },
+  "pageErrors": []
+ }
+]
