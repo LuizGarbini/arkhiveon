@@ -1,7 +1,14 @@
-import { Dices, Heart, Shield, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, Dices, Heart, Plus, Shield, X } from "lucide-react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { characterAttributeScore } from "@/core/rules";
 import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
@@ -22,6 +29,8 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	const setShowCharacterSheetId = useVTTStore((s) => s.setShowCharacterSheetId);
 	const tokens = useVTTStore((s) => s.tokens);
 	const characters = useRPGStore((s) => s.characters);
+	const loadStatus = useRPGStore((s) => s.campaignLoadStatus);
+	const isGM = useVTTStore((s) => s.isGM);
 
 	const token = useMemo(
 		() => tokens.find((t) => t.id === showCharacterSheetId) ?? null,
@@ -72,13 +81,35 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 			<aside
 				className="t-panel-slide-x pointer-events-none absolute bottom-20 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
 				data-open={isOpen}
-				data-vtt-overlay={isOpen ? "open" : undefined}
+				data-vtt-focus-scope="sheet"
 				aria-label="Ficha na mesa"
 				aria-hidden={!isOpen}
 				inert={!isOpen}
 			>
-				{isOpen && token ? (
+				{isOpen &&
+				token &&
+				token.characterId &&
+				!character &&
+				(loadStatus === "loading" ||
+					loadStatus === "idle" ||
+					loadStatus === "error") ? (
+					<SheetStateCard
+						tokenName={token.name}
+						status={loadStatus === "error" ? "error" : "loading"}
+						onRetry={() => void useRPGStore.getState().loadCampaigns()}
+						onClose={() => setShowCharacterSheetId(null)}
+					/>
+				) : isOpen && token ? (
 					<SheetBody
+						notice={
+							!token.characterId ? (
+								<NoSheetNotice canCreate={isGM} />
+							) : !character ? (
+								<p className="rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
+									Você não tem acesso a esta ficha nesta campanha.
+								</p>
+							) : null
+						}
 						tokenId={token.id}
 						character={character}
 						tokenName={token.name}
@@ -122,7 +153,9 @@ function SheetBody({
 	onClose,
 	onUpdateToken,
 	onStartRoll,
+	notice,
 }: {
+	notice?: ReactNode;
 	tokenId: string;
 	character: Character | null;
 	tokenName: string;
@@ -164,18 +197,11 @@ function SheetBody({
 							: "Token sem ficha vinculada"}
 					</p>
 				</div>
-				<button
-					type="button"
-					onClick={onClose}
-					className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
-					title="Fechar ficha"
-					aria-label="Fechar ficha"
-				>
-					<X className="h-4 w-4" />
-				</button>
+				<CloseSheetButton onClose={onClose} />
 			</div>
 
 			<div className="flex-1 space-y-4 overflow-y-auto p-4">
+				{notice}
 				<div className="space-y-2 rounded-xl border border-border/70 bg-background/55 p-3">
 					<div className="flex items-center justify-between text-xs font-bold">
 						<span className="flex items-center gap-1.5 text-primary">
@@ -284,6 +310,101 @@ function SheetBody({
 					<Dices className="h-4 w-4" />
 					Rolar {config.defaultDice || "d20"}
 				</Button>
+			</div>
+		</div>
+	);
+}
+
+function CloseSheetButton({ onClose }: { onClose: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<button
+						type="button"
+						onClick={onClose}
+						className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
+						aria-label="Fechar ficha"
+					/>
+				}
+			>
+				<X className="h-4 w-4" />
+			</TooltipTrigger>
+			<TooltipContent>Fechar ficha (Esc)</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** Token sem ficha: o mestre pode criar uma; o jogador só vê o aviso. */
+function NoSheetNotice({ canCreate }: { canCreate: boolean }) {
+	return (
+		<div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
+			<p>
+				Este token ainda não tem ficha. Os pontos de vida abaixo são do token.
+			</p>
+			{canCreate ? (
+				<Link
+					to="/sheets/new"
+					className={cn(
+						buttonVariants({ variant: "outline", size: "sm" }),
+						"gap-1.5",
+					)}
+				>
+					<Plus className="h-3.5 w-3.5" />
+					Criar ficha
+				</Link>
+			) : null}
+		</div>
+	);
+}
+
+/** Ficha vinculada que ainda não chegou: carregando, erro ou sem acesso. */
+function SheetStateCard({
+	tokenName,
+	status,
+	onRetry,
+	onClose,
+}: {
+	tokenName: string;
+	status: "loading" | "error";
+	onRetry: () => void;
+	onClose: () => void;
+}) {
+	return (
+		<div
+			className="pointer-events-auto flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md"
+			aria-busy={status === "loading"}
+		>
+			<div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+				<div className="min-w-0">
+					<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+						Ficha na mesa
+					</p>
+					<h3 className="font-display truncate text-sm font-bold">
+						{tokenName}
+					</h3>
+				</div>
+				<CloseSheetButton onClose={onClose} />
+			</div>
+			<div className="flex-1 space-y-3 p-4">
+				{status === "loading" ? (
+					<div data-testid="sheet-skeleton" className="space-y-3">
+						<span className="sr-only">Carregando ficha…</span>
+						<Skeleton className="h-16 w-full rounded-xl" />
+						<Skeleton className="h-24 w-full rounded-xl" />
+						<Skeleton className="h-10 w-2/3 rounded-xl" />
+					</div>
+				) : (
+					<div role="alert" className="space-y-3 text-sm">
+						<p className="flex items-center gap-2 font-semibold text-destructive">
+							<AlertTriangle className="h-4 w-4" />
+							Não deu para carregar a ficha.
+						</p>
+						<Button size="sm" variant="outline" onClick={onRetry}>
+							Tentar de novo
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

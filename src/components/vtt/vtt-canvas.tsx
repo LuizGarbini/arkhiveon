@@ -723,6 +723,16 @@ export function VTTCanvas({
 				});
 			}
 
+			// Duplo clique abre a Ficha na mesa (mesma regra do menu do token:
+			// só quem controla o token). Lê a store no handler; nada re-renderiza.
+			tokenContainer.on("pointertap", (e) => {
+				if (!canControl || e.detail < 2 || e.button !== 0) return;
+				const s = useVTTStore.getState();
+				if (s.activeTool !== "select") return;
+				s.setActiveTokenIdForMenu(null);
+				s.setShowCharacterSheetId(token.id);
+			});
+
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
 				if (!canControl) return;

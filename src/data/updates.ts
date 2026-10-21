@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.18-ficha-flutuante",
+		version: "1.6.18",
+		date: "20/10/2026",
+		title: "Ficha do personagem direto na mesa",
+		description:
+			"Dê dois cliques no seu token para abrir a ficha num painel ao lado do mapa, sem sair da mesa.",
+		bullets: [
+			"A mesa continua funcionando com a ficha aberta: V, R, Espaço e os outros atalhos seguem valendo.",
+			"Enquanto você mexe dentro da ficha, os atalhos ficam pausados; Esc fecha a ficha.",
+			"Cada jogador só abre os tokens que controla, como já era no menu do token.",
+		],
+	},
+	{
 		id: "v1.6.17-status-token",
 		version: "1.6.17",
 		date: "20/10/2026",

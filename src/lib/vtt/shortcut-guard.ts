@@ -19,8 +19,7 @@ export function isInsideDialog(el: Element | null): boolean {
 }
 
 /**
- * Painéis/overlays abertos por cima da mesa: Biblioteca e Ficha na mesa
- * (marcados com `data-vtt-overlay="open"`) e qualquer dialog, sheet, popover
+ * Painéis/overlays abertos por cima da mesa: Biblioteca (marcada com `data-vtt-overlay="open"`) e qualquer dialog, sheet, popover
  * ou menu aberto (Base UI/Radix só montam o popup enquanto aberto).
  */
 const OPEN_OVERLAY =
@@ -33,6 +32,28 @@ const DIALOG_OPEN =
 export function hasOpenVttDialog(): boolean {
 	if (typeof document === "undefined") return false;
 	return document.querySelector(DIALOG_OPEN) !== null;
+}
+
+/**
+ * Painel flutuante (ex.: Ficha na mesa) que só "segura" os atalhos quando o
+ * foco está dentro dele, como os painéis do Figma: com o foco na mesa, V, R,
+ * Espaço etc. continuam funcionando com o painel aberto.
+ */
+const FOCUS_SCOPE = "[data-vtt-focus-scope]";
+
+export function focusScopeOf(el: Element | null): string | null {
+	const scope = el?.closest(FOCUS_SCOPE);
+	return scope ? (scope.getAttribute("data-vtt-focus-scope") ?? "") : null;
+}
+
+/** Escopo (ex.: "sheet") onde está o alvo da tecla ou o foco atual. */
+export function activeFocusScope(e: KeyboardEvent): string | null {
+	return (
+		focusScopeOf(asElement(e.target)) ??
+		(typeof document === "undefined"
+			? null
+			: focusScopeOf(document.activeElement))
+	);
 }
 
 export function hasOpenVttOverlay(): boolean {
@@ -53,5 +74,8 @@ export function isVttShortcutBlocked(e: KeyboardEvent): boolean {
 		typeof document === "undefined" ? null : document.activeElement,
 	];
 	if (hasOpenVttOverlay()) return true;
-	return candidates.some((el) => isEditableElement(el) || isInsideDialog(el));
+	return candidates.some(
+		(el) =>
+			isEditableElement(el) || isInsideDialog(el) || focusScopeOf(el) !== null,
+	);
 }
