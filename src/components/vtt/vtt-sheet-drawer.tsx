@@ -14,6 +14,7 @@ import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import { hasOpenVttDialog } from "@/lib/vtt/shortcut-guard";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -82,6 +83,13 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 				className="t-panel-slide-x pointer-events-none absolute bottom-20 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
 				data-open={isOpen}
 				data-vtt-focus-scope="sheet"
+				// Esc com o foco dentro da ficha fecha a ficha. Na captura porque o
+				// Tooltip do DS do botão focado também consome o Esc.
+				onKeyDownCapture={(e) => {
+					if (e.key !== "Escape" || hasOpenVttDialog()) return;
+					e.preventDefault();
+					setShowCharacterSheetId(null);
+				}}
 				aria-label="Ficha na mesa"
 				aria-hidden={!isOpen}
 				inert={!isOpen}

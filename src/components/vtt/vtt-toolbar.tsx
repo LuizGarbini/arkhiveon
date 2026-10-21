@@ -13,7 +13,6 @@ import {
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
-	activeFocusScope,
 	hasOpenVttDialog,
 	isVttShortcutBlocked,
 } from "@/lib/vtt/shortcut-guard";
@@ -36,13 +35,8 @@ export function VTTToolbar() {
 			// Esc fecha a Biblioteca da mesa (com qualquer foco). Com um dialog
 			// aberto por cima (ex.: tela cheia), o Esc fecha só o dialog.
 			if (e.key === "Escape" && !e.defaultPrevented && !hasOpenVttDialog()) {
-				const state = useVTTStore.getState();
-				// Ficha na mesa: Esc fecha só com o foco dentro dela.
-				if (activeFocusScope(e) === "sheet") {
-					state.setShowCharacterSheetId(null);
-					return;
-				}
-				const { showRosterDrawer, setShowRosterDrawer } = state;
+				const { showRosterDrawer, setShowRosterDrawer } =
+					useVTTStore.getState();
 				if (showRosterDrawer) setShowRosterDrawer(false);
 				return;
 			}
