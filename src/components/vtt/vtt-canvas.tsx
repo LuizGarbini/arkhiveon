@@ -21,6 +21,10 @@ import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
+import {
+	isEditableElement,
+	isVttShortcutBlocked,
+} from "@/lib/vtt/shortcut-guard";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import {
 	beginTokenPress,
@@ -990,10 +994,12 @@ export function VTTCanvas({
 		};
 
 		const handleKeyDown = (e: KeyboardEvent) => {
-			const typing =
-				e.target instanceof HTMLInputElement ||
-				e.target instanceof HTMLTextAreaElement;
-			if (e.code === "Space" && !e.repeat && !typing) {
+			const typing = isEditableElement(
+				e.target instanceof Element ? e.target : null,
+			);
+			// Espaço num campo ou dentro de um dialog não vira a mão de arrastar.
+			const blocked = isVttShortcutBlocked(e);
+			if (e.code === "Space" && !e.repeat && !blocked) {
 				isSpaceHeldRef.current = true;
 				container.style.cursor = "grab";
 			}

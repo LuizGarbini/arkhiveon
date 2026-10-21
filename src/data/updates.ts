@@ -11,6 +11,18 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.15-atalhos-foco",
+		version: "1.6.15",
+		date: "20/10/2026",
+		title: "Digitar na mesa não aciona mais atalhos",
+		description:
+			"Atalhos da mesa (V, H, R, G, T, F e Espaço) não disparam enquanto você digita num campo nem com a Biblioteca, a ficha ou outra janela aberta por cima da mesa.",
+		bullets: [
+			'Ex.: digitar "g" na busca da Biblioteca não vira mais ping.',
+			"Feche o painel e os atalhos voltam a funcionar.",
+		],
+	},
+	{
 		id: "v1.6.14-painel-tela-cheia",
 		version: "1.6.14",
 		date: "20/10/2026",
