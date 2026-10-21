@@ -11,6 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.20-paredes-f1",
+		version: "1.6.20",
+		date: "21/10/2026",
+		title: "Paredes na mesa (só o mestre vê)",
+		description:
+			"Nova ferramenta Parede (W): clique ponto a ponto para desenhar paredes no mapa, encaixando nos cantos da grade.",
+		bullets: [
+			"Esc, Enter ou duplo clique terminam a parede; Backspace desfaz o último ponto.",
+			"Clique numa parede para selecionar e apague com Delete. Ctrl/⌘+Z desfaz e Ctrl/⌘+Shift+Z refaz.",
+			"Segure Shift para desenhar sem encaixar na grade.",
+			"Só o mestre vê as paredes. No celular dá para vê-las, mas desenhar fica para o computador.",
+		],
+	},
+	{
 		id: "v1.6.19-status-token-s2",
 		version: "1.6.19",
 		date: "20/10/2026",

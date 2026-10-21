@@ -48,8 +48,15 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
-import { drawRulerMeasurement, drawSpellTemplate } from "@/lib/vtt/vtt-draw";
+import {
+	drawRulerMeasurement,
+	drawSpellTemplate,
+	drawWallPreview,
+	drawWalls,
+} from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { finishWallDraft } from "@/lib/vtt/wall-sync";
+import { hitTestWall, snapWallPoint } from "@/lib/vtt/walls";
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
@@ -97,6 +104,13 @@ export function VTTCanvas({
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
 	const fogOfWarLayerRef = useRef<Graphics | null>(null);
 	const fogBrushPreviewLayerRef = useRef<Graphics | null>(null);
+	// Paredes (só mestre): um Graphics para todas + um para a prévia do desenho.
+	const wallsLayerRef = useRef<Graphics | null>(null);
+	const wallPreviewLayerRef = useRef<Graphics | null>(null);
+	const wallCursorRef = useRef<{ x: number; y: number } | null>(null);
+	const lastWallClickRef = useRef<{ x: number; y: number; t: number } | null>(
+		null,
+	);
 	const remoteRulersLayerRef = useRef<Graphics | null>(null);
 	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
@@ -178,6 +192,9 @@ export function VTTCanvas({
 	const remoteTemplatePreviews = useVTTStore((s) => s.remoteTemplatePreviews);
 	const setPreviewTemplate = useVTTStore((s) => s.setPreviewTemplate);
 	const addPlacedTemplate = useVTTStore((s) => s.addPlacedTemplate);
+	const walls = useVTTStore((s) => s.walls);
+	const selectedWallIds = useVTTStore((s) => s.selectedWallIds);
+	const wallDraft = useVTTStore((s) => s.wallDraft);
 
 	// 1. Initialize PixiJS Application
 	useEffect(() => {
@@ -244,6 +261,15 @@ export function VTTCanvas({
 			const fogBrushPreviewLayer = new Graphics();
 			fogBrushPreviewLayerRef.current = fogBrushPreviewLayer;
 			world.addChild(fogBrushPreviewLayer);
+
+			// Paredes por cima da névoa: o mestre as vê mesmo em área escondida.
+			const wallsLayer = new Graphics();
+			wallsLayerRef.current = wallsLayer;
+			world.addChild(wallsLayer);
+
+			const wallPreviewLayer = new Graphics();
+			wallPreviewLayerRef.current = wallPreviewLayer;
+			world.addChild(wallPreviewLayer);
 
 			const remoteRulersLayer = new Graphics();
 			remoteRulersLayerRef.current = remoteRulersLayer;
@@ -1040,6 +1066,25 @@ export function VTTCanvas({
 		rendererReady,
 	]);
 
+	// 7c. Paredes: redesenha só quando a lista ou a seleção mudam (zoom e pan
+	// só mexem no container do mundo; nada no ticker). O jogador não recebe paredes e nada é desenhado.
+	useEffect(() => {
+		if (!rendererReady || !wallsLayerRef.current) return;
+		drawWalls(wallsLayerRef.current, isGM ? walls : [], selectedWallIds);
+	}, [walls, selectedWallIds, isGM, rendererReady]);
+
+	// 7d. Prévia da polilinha (os pontos fixos; o trecho até o cursor é
+	// atualizado direto no pointermove, sem passar pelo React).
+	useEffect(() => {
+		if (!rendererReady || !wallPreviewLayerRef.current) return;
+		if (wallDraft.length === 0) wallCursorRef.current = null;
+		drawWallPreview(
+			wallPreviewLayerRef.current,
+			wallDraft,
+			wallCursorRef.current,
+		);
+	}, [wallDraft, rendererReady]);
+
 	// 8. Render Active Pings (Concentric pulsing ripples)
 	useEffect(() => {
 		if (!rendererReady) return;
@@ -1189,6 +1234,56 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Parede (mestre): clique fixa um ponto da polilinha; sem desenho em
+			// andamento, clique perto de uma parede a seleciona (Shift soma).
+			if (activeTool === "wall" && isGM && isLeftClick && scene) {
+				const store = useVTTStore.getState();
+				const draft = store.wallDraft;
+				if (draft.length === 0) {
+					const hit = hitTestWall(store.walls, worldPoint, 8 / viewport.scale);
+					if (hit) {
+						const sel = store.selectedWallIds;
+						store.setSelectedWallIds(
+							e.shiftKey
+								? sel.includes(hit)
+									? sel.filter((id) => id !== hit)
+									: [...sel, hit]
+								: [hit],
+						);
+						lastWallClickRef.current = null;
+						return;
+					}
+				}
+				const p = snapWallPoint(
+					worldPoint,
+					scene.gridType,
+					scene.gridSize,
+					e.shiftKey,
+				);
+				const now = Date.now();
+				const last = lastWallClickRef.current;
+				lastWallClickRef.current = { x: e.clientX, y: e.clientY, t: now };
+				// Duplo clique encerra o desenho.
+				if (
+					draft.length > 0 &&
+					last &&
+					now - last.t < 350 &&
+					Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6
+				) {
+					lastWallClickRef.current = null;
+					finishWallDraft();
+					return;
+				}
+				const prev = draft.at(-1);
+				if (!prev || prev.x !== p.x || prev.y !== p.y) {
+					wallCursorRef.current = p;
+					store.setWallDraft([...draft, p]);
+				}
+				if (draft.length === 0 && store.selectedWallIds.length > 0)
+					store.setSelectedWallIds([]);
+				return;
+			}
+
 			// Deselect if clicking on empty canvas. A press on a token reaches this
 			// listener right after the token handler (same DOM event), so it must
 			// not undo the selection/panel that handler just set.
@@ -1218,6 +1313,29 @@ export function VTTCanvas({
 		const handlePointerMove = (e: PointerEvent) => {
 			statusLongPressRef.current.move(e.clientX, e.clientY);
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
+
+			// Prévia do segmento até o cursor (só redesenha a camada da prévia).
+			if (
+				activeTool === "wall" &&
+				isGM &&
+				scene &&
+				wallPreviewLayerRef.current
+			) {
+				const draft = useVTTStore.getState().wallDraft;
+				if (draft.length > 0) {
+					const p = snapWallPoint(
+						worldPoint,
+						scene.gridType,
+						scene.gridSize,
+						e.shiftKey,
+					);
+					const c = wallCursorRef.current;
+					if (!c || c.x !== p.x || c.y !== p.y) {
+						wallCursorRef.current = p;
+						drawWallPreview(wallPreviewLayerRef.current, draft, p);
+					}
+				}
+			}
 			const now = Date.now();
 
 			// A press that leaves the tap slop is a drag: no panel, no double-click,

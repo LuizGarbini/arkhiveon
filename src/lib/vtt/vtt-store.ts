@@ -15,8 +15,24 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "./types";
+import {
+	applyWallOp,
+	type VTTWall,
+	type WallOp,
+	type WallPoint,
+} from "./walls";
 
-export type VTTTool = "select" | "pan" | "ruler" | "ping" | "fog" | "template";
+export type VTTTool =
+	| "select"
+	| "pan"
+	| "ruler"
+	| "ping"
+	| "fog"
+	| "template"
+	| "wall";
+
+/** Paredes da cena: `missing` = tabela ainda não existe (migração não aplicada). */
+export type VTTWallsStatus = "idle" | "loading" | "ready" | "missing" | "error";
 
 export type { VTTRulerMeasurement } from "./types";
 
@@ -167,6 +183,21 @@ interface VTTState {
 	/** Fecha só esta ficha. */
 	closeCharacterSheet: (id: string) => void;
 	setIsGM: (isGM: boolean) => void;
+
+	// Paredes (só mestre; F1)
+	walls: VTTWall[];
+	wallsStatus: VTTWallsStatus;
+	selectedWallIds: string[];
+	/** Pontos já fixados da polilinha em desenho (vazio = sem desenho). */
+	wallDraft: WallPoint[];
+	wallUndo: WallOp[];
+	wallRedo: WallOp[];
+	setWalls: (walls: VTTWall[]) => void;
+	setWallsStatus: (status: VTTWallsStatus) => void;
+	applyWallOpLocal: (op: WallOp) => void;
+	setSelectedWallIds: (ids: string[]) => void;
+	setWallDraft: (points: WallPoint[]) => void;
+	setWallHistory: (undo: WallOp[], redo: WallOp[]) => void;
 }
 
 const emptySceneContents = () => ({
@@ -185,6 +216,12 @@ const emptySceneContents = () => ({
 	previewTemplate: null,
 	remoteTemplates: {},
 	remoteTemplatePreviews: {},
+	walls: [],
+	wallsStatus: "idle" as VTTWallsStatus,
+	selectedWallIds: [],
+	wallDraft: [],
+	wallUndo: [],
+	wallRedo: [],
 });
 
 /** Máximo de fichas abertas ao mesmo tempo na mesa. */
@@ -238,6 +275,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 	showCharacterSheetId: null,
 	openSheetIds: [],
 	isGM: false,
+
+	walls: [],
+	wallsStatus: "idle",
+	selectedWallIds: [],
+	wallDraft: [],
+	wallUndo: [],
+	wallRedo: [],
 
 	setScenes: (scenes) => set({ scenes }),
 	setActiveSceneId: (sceneId) =>
@@ -302,6 +346,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 				tool === "fog" || tool === "template" ? false : state.showGridSettings,
 			showRosterDrawer:
 				tool === "fog" || tool === "template" ? false : state.showRosterDrawer,
+			// Sair da ferramenta Parede descarta o desenho e a seleção de paredes.
+			...(tool === "wall" ? {} : { wallDraft: [], selectedWallIds: [] }),
 		})),
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
@@ -580,4 +626,21 @@ export const useVTTStore = create<VTTState>((set) => ({
 			};
 		}),
 	setIsGM: (isGM) => set({ isGM }),
+
+	setWalls: (walls) => set({ walls }),
+	setWallsStatus: (wallsStatus) => set({ wallsStatus }),
+	applyWallOpLocal: (op) =>
+		set((state) => {
+			const removed =
+				op.kind === "delete" ? new Set(op.walls.map((w) => w.id)) : null;
+			return {
+				walls: applyWallOp(state.walls, op),
+				selectedWallIds: removed
+					? state.selectedWallIds.filter((id) => !removed.has(id))
+					: state.selectedWallIds,
+			};
+		}),
+	setSelectedWallIds: (selectedWallIds) => set({ selectedWallIds }),
+	setWallDraft: (wallDraft) => set({ wallDraft }),
+	setWallHistory: (wallUndo, wallRedo) => set({ wallUndo, wallRedo }),
 }));

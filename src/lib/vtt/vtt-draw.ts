@@ -117,3 +117,79 @@ export function drawRulerMeasurement(
 		labels.addChild(captionText);
 	}
 }
+
+/** Cores das paredes: as mesmas do anel de token (padrão e selecionado). */
+const WALL_COLOR = 0xd4d4d8;
+const WALL_SELECTED_COLOR = 0x38bdf8;
+
+/**
+ * Todas as paredes num único Graphics: um caminho para as normais e outro para
+ * as selecionadas (2 strokes no total, qualquer que seja a quantidade).
+ * Espessura em unidades do mapa (acompanha o zoom, como a grade), para o zoom
+ * não exigir redesenho.
+ */
+export function drawWalls(
+	layer: Graphics,
+	walls: readonly {
+		id: string;
+		x1: number;
+		y1: number;
+		x2: number;
+		y2: number;
+	}[],
+	selectedIds: readonly string[],
+) {
+	layer.clear();
+	if (walls.length === 0) return;
+	const selected = new Set(selectedIds);
+	let normal = 0;
+	for (const w of walls) {
+		if (selected.has(w.id)) continue;
+		layer.moveTo(w.x1, w.y1);
+		layer.lineTo(w.x2, w.y2);
+		normal++;
+	}
+	if (normal > 0)
+		layer.stroke({
+			width: 4,
+			color: WALL_COLOR,
+			alpha: 0.95,
+			cap: "round",
+		});
+	if (selected.size === 0) return;
+	for (const w of walls) {
+		if (!selected.has(w.id)) continue;
+		layer.moveTo(w.x1, w.y1);
+		layer.lineTo(w.x2, w.y2);
+	}
+	layer.stroke({ width: 6, color: WALL_SELECTED_COLOR, cap: "round" });
+}
+
+/** Polilinha em desenho + segmento até o cursor (mais leve) e os pontos. */
+export function drawWallPreview(
+	layer: Graphics,
+	points: readonly Point[],
+	cursor: Point | null,
+) {
+	layer.clear();
+	if (points.length === 0) return;
+	layer.moveTo(points[0].x, points[0].y);
+	for (let i = 1; i < points.length; i++)
+		layer.lineTo(points[i].x, points[i].y);
+	if (points.length > 1)
+		layer.stroke({ width: 4, color: WALL_SELECTED_COLOR, cap: "round" });
+	const last = points[points.length - 1];
+	if (cursor) {
+		layer.moveTo(last.x, last.y);
+		layer.lineTo(cursor.x, cursor.y);
+		layer.stroke({
+			width: 3,
+			color: WALL_SELECTED_COLOR,
+			alpha: 0.55,
+			cap: "round",
+		});
+	}
+	for (const p of points) layer.circle(p.x, p.y, 5);
+	if (cursor) layer.circle(cursor.x, cursor.y, 5);
+	layer.fill({ color: WALL_SELECTED_COLOR });
+}

@@ -1,4 +1,5 @@
 import {
+	BrickWall,
 	Eye,
 	Grid,
 	Hand,
@@ -11,13 +12,37 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect } from "react";
+import { useIsMobile } from "@/components/character-sheet/view/number-detail";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
 	hasOpenVttDialog,
 	isVttShortcutBlocked,
 } from "@/lib/vtt/shortcut-guard";
 import type { VTTLayer } from "@/lib/vtt/types";
-import { useVTTStore, type VTTTool } from "@/lib/vtt/vtt-store";
+import {
+	useVTTStore,
+	type VTTTool,
+	type VTTWallsStatus,
+} from "@/lib/vtt/vtt-store";
+import { handleWallKey } from "@/lib/vtt/wall-sync";
+
+/** Texto do Tooltip quando a ferramenta Parede está desabilitada. */
+export function wallToolDisabledReason(
+	status: VTTWallsStatus,
+	isMobile: boolean,
+): string | null {
+	if (status === "missing")
+		return "Paredes chegam quando a atualização do banco for aplicada";
+	if (status === "loading" || status === "idle") return "Carregando paredes…";
+	if (status === "error") return "Não foi possível carregar as paredes";
+	if (isMobile) return "Desenhe paredes no computador";
+	return null;
+}
 
 export function VTTToolbar() {
 	const activeTool = useVTTStore((s) => s.activeTool);
@@ -28,28 +53,46 @@ export function VTTToolbar() {
 	const showGridSettings = useVTTStore((s) => s.showGridSettings);
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
+	const wallsStatus = useVTTStore((s) => s.wallsStatus);
+	const isMobile = useIsMobile();
+	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
 
 	// Global Keyboard Shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			// Esc fecha a Biblioteca da mesa (com qualquer foco). Com um dialog
 			// aberto por cima (ex.: tela cheia), o Esc fecha só o dialog.
+			if (
+				e.key === "Escape" &&
+				useVTTStore.getState().wallDraft.length > 0 &&
+				!isVttShortcutBlocked(e) &&
+				handleWallKey(e)
+			) {
+				e.preventDefault();
+				return;
+			}
 			if (e.key === "Escape" && !e.defaultPrevented && !hasOpenVttDialog()) {
 				const { showRosterDrawer, setShowRosterDrawer } =
 					useVTTStore.getState();
 				if (showRosterDrawer) setShowRosterDrawer(false);
 				return;
 			}
-			if (isVttShortcutBlocked(e) || e.ctrlKey || e.metaKey || e.altKey) {
+			if (isVttShortcutBlocked(e)) return;
+			// Ferramenta Parede: Esc/Enter encerram o desenho, Backspace tira o
+			// último ponto, Delete/Backspace apagam a seleção, Ctrl/⌘+Z desfaz.
+			if (!e.defaultPrevented && handleWallKey(e)) {
+				e.preventDefault();
 				return;
 			}
 
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
 			const key = e.key.toLowerCase();
 			if (key === "v") setActiveTool("select");
 			if (key === "h") setActiveTool("pan");
 			if (key === "r") setActiveTool("ruler");
 			if (key === "g") setActiveTool("ping");
 			if (key === "t") setActiveTool("template");
+			if (key === "w" && isGM && !wallDisabledReason) setActiveTool("wall");
 			if (key === "f" && isGM) {
 				setActiveTool("fog");
 				setShowFogControls(true);
@@ -58,7 +101,7 @@ export function VTTToolbar() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [isGM, setActiveTool, setShowFogControls]);
+	}, [isGM, setActiveTool, setShowFogControls, wallDisabledReason]);
 
 	const tools: {
 		id: VTTTool;
@@ -146,6 +189,48 @@ export function VTTToolbar() {
 							</button>
 						);
 					})}
+				{/* Celular: só visualização (o mestre vê as paredes no mapa; o
+				    Tooltip não abre no toque, então o botão nem aparece). */}
+				{isGM && !isMobile && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<button
+									type="button"
+									onClick={() => {
+										if (!wallDisabledReason) setActiveTool("wall");
+									}}
+									aria-label="Parede"
+									aria-pressed={activeTool === "wall"}
+									aria-disabled={wallDisabledReason ? true : undefined}
+									className={cn(
+										"group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary",
+										wallDisabledReason
+											? "cursor-not-allowed text-muted-foreground opacity-50"
+											: activeTool === "wall"
+												? "cursor-pointer bg-primary text-primary-foreground shadow-md shadow-primary/30 active:scale-[0.98]"
+												: "cursor-pointer text-muted-foreground hover:bg-accent hover:text-foreground active:scale-[0.98]",
+									)}
+								/>
+							}
+						>
+							<BrickWall className="h-4.5 w-4.5" />
+							<span
+								className={cn(
+									"absolute bottom-1 right-1 text-[8px] font-extrabold font-mono leading-none opacity-60",
+									activeTool === "wall"
+										? "text-primary-foreground"
+										: "text-muted-foreground",
+								)}
+							>
+								W
+							</span>
+						</TooltipTrigger>
+						<TooltipContent side="right">
+							{wallDisabledReason ?? "Parede (W)"}
+						</TooltipContent>
+					</Tooltip>
+				)}
 			</div>
 
 			{/* Divider for Layers (GM Only) */}

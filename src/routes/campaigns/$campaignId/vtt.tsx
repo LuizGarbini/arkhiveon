@@ -48,6 +48,7 @@ import type {
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { loadWalls } from "@/lib/vtt/wall-sync";
 
 export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
 	component: VTTPage,
@@ -352,6 +353,12 @@ function VTTSession() {
 			tokenRequestRef.current++;
 		};
 	}, [activeSceneId, fetchTokens]);
+
+	// 3b. Paredes da cena (Fatia 1): só o mestre carrega; o jogador não recebe
+	// nada (RLS da 0046 também nega). Efeito externo: busca no Supabase.
+	useEffect(() => {
+		if (activeSceneId && isGM) void loadWalls(activeSceneId);
+	}, [activeSceneId, isGM]);
 
 	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
