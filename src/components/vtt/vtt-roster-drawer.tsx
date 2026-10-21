@@ -51,6 +51,13 @@ export function VTTRosterDrawer({
 		"scene" | "characters" | "npcs" | "custom" | "map"
 	>("scene");
 	const [query, setQuery] = useState("");
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const term = query.trim();
+	const clearSearch = () => {
+		setQuery("");
+		searchInputRef.current?.focus();
+	};
+	const searchEmpty = <SearchEmpty term={term} onClear={clearSearch} />;
 	const search = useDeferredValue(query.trim().toLocaleLowerCase());
 	const [pending, setPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -212,6 +219,7 @@ export function VTTRosterDrawer({
 				<div className="relative m-4">
 					<Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" />
 					<Input
+						ref={searchInputRef}
 						aria-label="Buscar na biblioteca"
 						placeholder="Buscar na biblioteca…"
 						value={query}
@@ -276,13 +284,12 @@ export function VTTRosterDrawer({
 								)}
 							</div>
 						))}
-						{visibleTokens.length === 0 && (
+						{visibleTokens.length === 0 && term ? searchEmpty : null}
+						{visibleTokens.length === 0 && !term && (
 							<div className="rounded-xl border border-dashed border-border/70 p-5 text-center">
 								<Users className="mx-auto mb-3 size-7 text-primary" />
 								<p className="text-sm font-medium">
-									{search
-										? "Nenhum token encontrado"
-										: "A cena está pronta para seu grupo"}
+									A cena está pronta para seu grupo
 								</p>
 								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
 									{isGM
@@ -353,7 +360,8 @@ export function VTTRosterDrawer({
 								</div>
 							</div>
 						))}
-						{visibleCharacters.length === 0 && (
+						{visibleCharacters.length === 0 && term ? searchEmpty : null}
+						{visibleCharacters.length === 0 && !term && (
 							<p className="py-8 text-center text-sm text-muted-foreground">
 								Nenhuma ficha disponível nesta campanha.
 							</p>
@@ -389,7 +397,8 @@ export function VTTRosterDrawer({
 								</Button>
 							</div>
 						))}
-						{visibleNpcs.length === 0 && (
+						{visibleNpcs.length === 0 && term ? searchEmpty : null}
+						{visibleNpcs.length === 0 && !term && (
 							<p className="py-8 text-center text-sm text-muted-foreground">
 								Nenhum NPC disponível nesta campanha.
 							</p>
@@ -551,5 +560,23 @@ export function SceneMapTab({
 				</output>
 			)}
 		</div>
+	);
+}
+
+/**
+ * Busca sem resultado (ref. paleta de comandos do Linear): diz o termo e
+ * oferece limpar a busca, em vez do vazio de "cena sem tokens".
+ */
+function SearchEmpty({ term, onClear }: { term: string; onClear: () => void }) {
+	return (
+		<output className="block rounded-xl border border-dashed border-border/70 p-5 text-center">
+			<Search className="mx-auto mb-3 size-7 text-muted-foreground" />
+			<p className="break-words text-sm font-medium">
+				Nada encontrado para "{term}"
+			</p>
+			<Button variant="outline" className="mt-4 h-11" onClick={onClear}>
+				Limpar busca
+			</Button>
+		</output>
 	);
 }

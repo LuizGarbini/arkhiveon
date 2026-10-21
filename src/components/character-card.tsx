@@ -187,7 +187,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						</div>
 
 						<div className="mt-2.5">
-							<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-md">
+							<h3 className="pr-28 font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-md">
 								{characterName}
 							</h3>
 							<div className="mt-0.5 flex items-center gap-1.5 text-xs text-white/80 drop-shadow-sm">

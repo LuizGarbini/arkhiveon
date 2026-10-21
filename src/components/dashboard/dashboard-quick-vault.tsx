@@ -1,13 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Package, Plus } from "lucide-react";
 import { useMemo } from "react";
-import { EntityImageViewer } from "@/components/images/entity-image-viewer";
+import {
+	CARD_IGNORES_AVATAR_HOVER,
+	EntityImageViewer,
+} from "@/components/images/entity-image-viewer";
 import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveItemImageUrl } from "@/lib/character-images";
 import { useActiveCampaignRole, useImageAssetLookup } from "@/lib/store";
 import type { Item } from "@/lib/store/types";
+import { cn } from "@/lib/utils";
 
 interface DashboardQuickVaultProps {
 	items: Item[];
@@ -109,7 +113,10 @@ export function DashboardQuickVault({
 						return (
 							<div
 								key={item.id}
-								className="group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-emerald-500/30 hover:bg-background/60"
+								className={cn(
+									"group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-emerald-500/30 hover:bg-background/60",
+									CARD_IGNORES_AVATAR_HOVER,
+								)}
 							>
 								<div className="flex items-start gap-3">
 									<div className="relative shrink-0">

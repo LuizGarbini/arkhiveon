@@ -91,7 +91,7 @@ export function LocationCard({ location, isLoading }: LocationCardProps) {
 				</div>
 
 				<div className="p-4.5 pt-5">
-					<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
+					<h3 className="pr-28 font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
 						{location.name || "Sem nome"}
 					</h3>
 					<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-white/70 font-medium">

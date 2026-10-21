@@ -4,6 +4,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { canSeeTokenStatus, conditionDef } from "@/lib/vtt/conditions";
+import { StatusIcon } from "@/lib/vtt/status-icons";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 /**
@@ -27,10 +28,10 @@ export function VTTTokenStatusTooltip() {
 
 	if (!token || dragging || !canSeeTokenStatus(token, isGM)) return null;
 	// No tooltip vão todos os status (inclusive os que viraram "+N").
-	const labels = [...new Set(token.conditions ?? [])]
+	const defs = [...new Set(token.conditions ?? [])]
 		.filter((id) => id.trim())
-		.map((id) => conditionDef(id).label);
-	if (labels.length === 0) return null;
+		.map(conditionDef);
+	if (defs.length === 0) return null;
 
 	const radius = ((token.sizeCells * gridSize) / 2) * scale;
 	const left = token.x * scale + vx;
@@ -50,7 +51,19 @@ export function VTTTokenStatusTooltip() {
 			/>
 			<TooltipContent side="top" sideOffset={8}>
 				<span className="sr-only">{token.name}: </span>
-				{labels.join(" · ")}
+				<span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+					{defs.map((d, i) => (
+						<span
+							key={d.id}
+							data-status-label
+							className="inline-flex items-center gap-1"
+						>
+							{i > 0 ? <span aria-hidden>· </span> : null}
+							<StatusIcon name={d.icon} size={14} />
+							{d.label}
+						</span>
+					))}
+				</span>
 			</TooltipContent>
 		</Tooltip>
 	);

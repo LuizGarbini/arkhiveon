@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.20-paredes-f1",
-		version: "1.6.20",
+		id: "v1.6.24-paredes-f1",
+		version: "1.6.24",
 		date: "21/10/2026",
 		title: "Paredes na mesa (só o mestre vê)",
 		description:
@@ -22,6 +22,45 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Clique numa parede para selecionar e apague com Delete. Ctrl/⌘+Z desfaz e Ctrl/⌘+Shift+Z refaz.",
 			"Segure Shift para desenhar sem encaixar na grade.",
 			"Só o mestre vê as paredes. No celular dá para vê-las, mas desenhar fica para o computador.",
+		],
+	},
+	{
+		id: "v1.6.23-status-icones",
+		version: "1.6.23",
+		date: "21/10/2026",
+		title: "Ícones nos status dos tokens",
+		description:
+			"Os status dos tokens na mesa trocaram os emojis por ícones mais limpos, iguais em qualquer aparelho.",
+		bullets: [
+			"Envenenado, Caído, Cego, Atordoado, Invisível, Em Chamas e Concentração agora têm ícones próprios, no token e no menu.",
+			"Cada status mantém a cor de sempre na borda.",
+			"Com mais status do que cabem, aparece um \"+N\". Passe o mouse para ver a lista completa ou, no celular, toque no token.",
+		],
+	},
+	{
+		id: "v1.6.22-combate-base",
+		version: "1.6.22",
+		date: "21/10/2026",
+		title: "Base do combate na mesa",
+		description:
+			"Preparamos as regras de iniciativa e turnos do combate na mesa. O painel chega numa próxima versão.",
+		bullets: [
+			"A ordem segue a iniciativa; no empate, vence quem tem mais Destreza.",
+			"A iniciativa vem da ficha; sem ela, rola d20 + Destreza, e o mestre pode ajustar o valor.",
+			"Depois do último da rodada, começa a rodada seguinte.",
+		],
+	},
+	{
+		id: "v1.6.21-pacote-visual",
+		version: "1.6.21",
+		date: "21/10/2026",
+		title: "Busca da Biblioteca mais clara",
+		description:
+			'Quando a busca da Biblioteca da mesa não acha nada, ela diz "Nada encontrado para" o que você digitou e oferece limpar a busca.',
+		bullets: [
+			"No painel da campanha, passar o mouse no retrato destaca só o retrato, não o card inteiro.",
+			"Nos cards das listas, nomes longos não passam mais por baixo dos botões do canto.",
+			"Os botões do menu do token mostram a dica no estilo do app, e a miniatura do mapa não cobre mais o aviso.",
 		],
 	},
 	{

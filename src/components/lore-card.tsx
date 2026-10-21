@@ -122,7 +122,7 @@ export function LoreCard({ lore, isLoading }: LoreCardProps) {
 				</div>
 
 				<div className="p-4.5 pt-5">
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 pr-28">
 						<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
 							{lore.title || "Sem título"}
 						</h3>

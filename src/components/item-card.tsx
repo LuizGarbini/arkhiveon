@@ -101,7 +101,7 @@ export function ItemCard({ item, isLoading }: ItemCardProps) {
 				</div>
 
 				<div className="p-4.5 pt-5">
-					<h3 className="font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
+					<h3 className="pr-28 font-display truncate text-xl font-bold tracking-tight text-white drop-shadow-sm">
 						{item.name || "Sem nome"}
 					</h3>
 					<div className="mt-1 flex flex-wrap items-center gap-1.5">
