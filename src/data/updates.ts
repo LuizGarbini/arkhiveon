@@ -11,6 +11,18 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.14-painel-tela-cheia",
+		version: "1.6.14",
+		date: "20/10/2026",
+		title: "Fotos do painel da campanha abrem em tela cheia",
+		description:
+			"No painel da campanha, toque na foto de um personagem, NPC ou item (e na tabela do grupo) para ver a imagem em tela cheia.",
+		bullets: [
+			"Clicar no nome continua abrindo a página, como antes.",
+			"Quem não tem foto (só as iniciais) continua igual.",
+		],
+	},
+	{
 		id: "v1.6.13-mapa-tela-cheia",
 		version: "1.6.13",
 		date: "20/10/2026",

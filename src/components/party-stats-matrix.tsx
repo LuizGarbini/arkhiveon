@@ -1,4 +1,5 @@
 import { Heart, Shield, Sparkles, UserCheck, Zap } from "lucide-react";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { useRPGStore } from "@/lib/store";
 import { formatModifier } from "@/lib/store/helpers";
 import { cn } from "@/lib/utils";
@@ -63,18 +64,26 @@ export function PartyStatsMatrix() {
 								>
 									<td className="py-3 px-4">
 										<div className="flex items-center gap-3">
-											<div className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-card">
-												{char.imageUrl ? (
-													<img
-														src={char.imageUrl}
-														alt={char.characterName}
-														className="h-full w-full object-cover"
-													/>
-												) : (
-													<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-[10px] select-none">
-														{char.characterName?.charAt(0) || "?"}
-													</div>
-												)}
+											<div className="relative shrink-0">
+												<div className="h-8 w-8 overflow-hidden rounded-lg border border-border/70 bg-card">
+													{char.imageUrl ? (
+														<img
+															src={char.imageUrl}
+															alt={char.characterName}
+															className="h-full w-full object-cover"
+														/>
+													) : (
+														<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-[10px] select-none">
+															{char.characterName?.charAt(0) || "?"}
+														</div>
+													)}
+												</div>
+												<EntityImageViewer
+													variant="avatar"
+													src={char.imageUrl}
+													name={char.characterName ?? ""}
+													className="rounded-lg"
+												/>
 											</div>
 											<div className="min-w-0">
 												<span className="font-bold text-foreground block truncate">

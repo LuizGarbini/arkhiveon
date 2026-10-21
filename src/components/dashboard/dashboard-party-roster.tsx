@@ -9,6 +9,7 @@ import {
 	Users,
 	Zap,
 } from "lucide-react";
+import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Character } from "@/lib/store/types";
@@ -95,18 +96,26 @@ export function DashboardPartyRoster({
 								>
 									<div>
 										<div className="flex items-start gap-3">
-											<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-card">
-												{char.imageUrl ? (
-													<img
-														src={char.imageUrl}
-														alt={char.characterName}
-														className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-													/>
-												) : (
-													<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-xs select-none group-hover:text-primary transition-colors">
-														{char.characterName?.charAt(0) || "?"}
-													</div>
-												)}
+											<div className="relative shrink-0">
+												<div className="h-10 w-10 overflow-hidden rounded-xl border border-border/70 bg-card">
+													{char.imageUrl ? (
+														<img
+															src={char.imageUrl}
+															alt={char.characterName}
+															className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+														/>
+													) : (
+														<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-xs select-none group-hover:text-primary transition-colors">
+															{char.characterName?.charAt(0) || "?"}
+														</div>
+													)}
+												</div>
+												<EntityImageViewer
+													variant="avatar"
+													src={char.imageUrl}
+													name={char.characterName ?? ""}
+													className="rounded-xl"
+												/>
 											</div>
 
 											<div className="min-w-0 flex-1">
