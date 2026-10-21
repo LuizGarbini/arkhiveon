@@ -81,18 +81,24 @@ export function conditionDef(id: string): VTTConditionDef {
 }
 
 export const MAX_VISIBLE_CONDITIONS = 3;
+/** No celular/toque: 1 ícone maior + "+N" (14px por ícone ficava ilegível). */
+export const COMPACT_VISIBLE_CONDITIONS = 1;
 
-/** Até 3 status visíveis no token; o resto vira "+N". Ids repetidos/vazios caem. */
+/**
+ * Até 3 status visíveis no token (1 no modo compacto); o resto vira "+N".
+ * Ids repetidos/vazios caem.
+ */
 export function summarizeConditions(
 	ids: readonly string[] | null | undefined,
+	max: number = MAX_VISIBLE_CONDITIONS,
 ): {
 	visible: VTTConditionDef[];
 	overflow: number;
 } {
 	const unique = [...new Set((ids ?? []).filter((id) => id && id.trim()))];
 	return {
-		visible: unique.slice(0, MAX_VISIBLE_CONDITIONS).map(conditionDef),
-		overflow: Math.max(0, unique.length - MAX_VISIBLE_CONDITIONS),
+		visible: unique.slice(0, max).map(conditionDef),
+		overflow: Math.max(0, unique.length - max),
 	};
 }
 
@@ -111,4 +117,26 @@ export function tokenRingStyle(
 	return isGMLayer
 		? { color: 0xa855f7, width: 2.5 }
 		: { color: 0xd4d4d8, width: 2 };
+}
+
+/** Liga/desliga um status, sem repetir ids. */
+export function toggleCondition(
+	ids: readonly string[] | null | undefined,
+	id: string,
+): string[] {
+	const current = [...new Set(ids ?? [])];
+	return current.includes(id)
+		? current.filter((c) => c !== id)
+		: [...current, id];
+}
+
+/**
+ * Jogador só vê status de token que já vê na mesa (mesma regra do canvas e do
+ * RLS/realtime: camada do mestre e tokens ocultos ficam só para o mestre).
+ */
+export function canSeeTokenStatus(
+	token: { layer: string; isHidden: boolean },
+	isGM: boolean,
+): boolean {
+	return isGM || (token.layer !== "gm" && !token.isHidden);
 }

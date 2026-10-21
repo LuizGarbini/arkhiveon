@@ -3,7 +3,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { conditionDef } from "@/lib/vtt/conditions";
+import { canSeeTokenStatus, conditionDef } from "@/lib/vtt/conditions";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 /**
@@ -23,8 +23,9 @@ export function VTTTokenStatusTooltip() {
 	const vy = useVTTStore((s) => s.viewport.y);
 	const scale = useVTTStore((s) => s.viewport.scale);
 	const dragging = useVTTStore((s) => s.draggedTokenId !== null);
+	const isGM = useVTTStore((s) => s.isGM);
 
-	if (!token || dragging) return null;
+	if (!token || dragging || !canSeeTokenStatus(token, isGM)) return null;
 	// No tooltip vão todos os status (inclusive os que viraram "+N").
 	const labels = [...new Set(token.conditions ?? [])]
 		.filter((id) => id.trim())
