@@ -226,7 +226,7 @@ export function VTTToolbar() {
 								W
 							</span>
 						</TooltipTrigger>
-						<TooltipContent side="right">
+						<TooltipContent side="right" sideOffset={8}>
 							{wallDisabledReason ?? "Parede (W)"}
 						</TooltipContent>
 					</Tooltip>
