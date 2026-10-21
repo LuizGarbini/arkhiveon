@@ -58,10 +58,12 @@ export function D20Canvas({ className }: D20CanvasProps) {
 		let isWebGLSupported = true;
 		try {
 			const canvas = document.createElement("canvas");
-			isWebGLSupported = !!(
-				window.WebGLRenderingContext &&
-				(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-			);
+			const gl = window.WebGLRenderingContext
+				? canvas.getContext("webgl")
+				: null;
+			// Libera o contexto de teste na hora: o Chrome mantém poucos vivos (~16).
+			gl?.getExtension("WEBGL_lose_context")?.loseContext();
+			isWebGLSupported = !!gl;
 		} catch {
 			isWebGLSupported = false;
 		}
@@ -356,6 +358,7 @@ export function D20Canvas({ className }: D20CanvasProps) {
 			particleMat.dispose();
 
 			renderer.dispose();
+			renderer.forceContextLoss();
 			if (mount.contains(renderer.domElement)) {
 				mount.removeChild(renderer.domElement);
 			}
