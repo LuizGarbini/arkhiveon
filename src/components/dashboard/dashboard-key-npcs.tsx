@@ -1,9 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, MapPin, Plus, Skull, Users } from "lucide-react";
 import { useMemo } from "react";
+import {
+	CARD_IGNORES_AVATAR_HOVER,
+	EntityImageViewer,
+} from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Npc } from "@/lib/store/types";
+import { cn } from "@/lib/utils";
 
 interface DashboardKeyNpcsProps {
 	npcs: Npc[];
@@ -133,22 +138,33 @@ export function DashboardKeyNpcs({
 						return (
 							<div
 								key={npc.id}
-								className="group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-fuchsia-500/30 hover:bg-background/60 flex flex-col justify-between"
+								className={cn(
+									"group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-fuchsia-500/30 hover:bg-background/60 flex flex-col justify-between",
+									CARD_IGNORES_AVATAR_HOVER,
+								)}
 							>
 								<div>
 									<div className="flex items-start gap-3">
-										<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-card">
-											{npc.imageUrl ? (
-												<img
-													src={npc.imageUrl}
-													alt={npc.name}
-													className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-												/>
-											) : (
-												<div className="flex h-full w-full items-center justify-center font-bold text-fuchsia-400 text-xs select-none">
-													{npc.name?.charAt(0) || "?"}
-												</div>
-											)}
+										<div className="relative shrink-0">
+											<div className="h-10 w-10 overflow-hidden rounded-xl border border-border/70 bg-card">
+												{npc.imageUrl ? (
+													<img
+														src={npc.imageUrl}
+														alt={npc.name}
+														className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+													/>
+												) : (
+													<div className="flex h-full w-full items-center justify-center font-bold text-fuchsia-400 text-xs select-none">
+														{npc.name?.charAt(0) || "?"}
+													</div>
+												)}
+											</div>
+											<EntityImageViewer
+												variant="avatar"
+												src={npc.imageUrl}
+												name={npc.name ?? ""}
+												className="rounded-xl"
+											/>
 										</div>
 
 										<div className="min-w-0 flex-1">

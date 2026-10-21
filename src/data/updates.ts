@@ -11,13 +11,126 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.12-mesa-abre-pelo-painel",
-		version: "1.6.12",
+		id: "v1.6.25-mesa-abre-pelo-painel",
+		version: "1.6.25",
 		date: "20/10/2026",
 		title: "A mesa abre direto pelo painel",
 		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
 		bullets: [
 			"Enquanto a mesa carrega, o painel continua com o menu lateral, em vez de aparecer pela metade.",
+		],
+	},
+	{
+		id: "v1.6.23-status-icones",
+		version: "1.6.23",
+		date: "21/10/2026",
+		title: "Ícones nos status dos tokens",
+		description:
+			"Os status dos tokens na mesa trocaram os emojis por ícones mais limpos, iguais em qualquer aparelho.",
+		bullets: [
+			"Envenenado, Caído, Cego, Atordoado, Invisível, Em Chamas e Concentração agora têm ícones próprios, no token e no menu.",
+			"Cada status mantém a cor de sempre na borda.",
+			'Com mais status do que cabem, aparece um "+N". Passe o mouse para ver a lista completa ou, no celular, toque no token.',
+		],
+	},
+	{
+		id: "v1.6.22-combate-base",
+		version: "1.6.22",
+		date: "21/10/2026",
+		title: "Base do combate na mesa",
+		description:
+			"Preparamos as regras de iniciativa e turnos do combate na mesa. O painel chega numa próxima versão.",
+		bullets: [
+			"A ordem segue a iniciativa; no empate, vence quem tem mais Destreza.",
+			"A iniciativa vem da ficha; sem ela, rola d20 + Destreza, e o mestre pode ajustar o valor.",
+			"Depois do último da rodada, começa a rodada seguinte.",
+		],
+	},
+	{
+		id: "v1.6.21-pacote-visual",
+		version: "1.6.21",
+		date: "21/10/2026",
+		title: "Busca da Biblioteca mais clara",
+		description:
+			'Quando a busca da Biblioteca da mesa não acha nada, ela diz "Nada encontrado para" o que você digitou e oferece limpar a busca.',
+		bullets: [
+			"No painel da campanha, passar o mouse no retrato destaca só o retrato, não o card inteiro.",
+			"Nos cards das listas, nomes longos não passam mais por baixo dos botões do canto.",
+			"Os botões do menu do token mostram a dica no estilo do app, e a miniatura do mapa não cobre mais o aviso.",
+		],
+	},
+	{
+		id: "v1.6.19-status-token-s2",
+		version: "1.6.19",
+		date: "20/10/2026",
+		title: "Status do token mais fáceis de ver e de aplicar",
+		description:
+			'No celular, o token mostra um ícone de status maior e um "+N"; segure o dedo no token para ver a lista inteira.',
+		bullets: [
+			'No menu do token, escolha um status em "Adicionar status…" ou toque no chip para tirar.',
+			"O status aparece na hora; se não salvar, ele volta e você recebe um aviso.",
+			"Ao abrir a mesa, o mapa começa ao lado da barra de ferramentas, sem tokens escondidos atrás dela.",
+		],
+	},
+	{
+		id: "v1.6.18-ficha-flutuante",
+		version: "1.6.18",
+		date: "20/10/2026",
+		title: "Ficha do personagem flutuando na mesa",
+		description:
+			"Dê dois cliques no token para abrir a ficha, com retrato, numa janela por cima do mapa, sem sair da mesa.",
+		bullets: [
+			"Arraste a janela pelo topo e mude o tamanho pelo canto; ela abre onde você deixou da última vez.",
+			"Abra até 3 fichas ao mesmo tempo para comparar.",
+			"No celular, a ficha sobe de baixo; arraste para baixo ou toque fora para fechar.",
+			"Com o foco no mapa, os atalhos continuam valendo; dentro da ficha, Esc fecha.",
+		],
+	},
+	{
+		id: "v1.6.17-status-token",
+		version: "1.6.17",
+		date: "20/10/2026",
+		title: "Status aparecem no token da mesa",
+		description:
+			'Token com status (Envenenado, Caído, Em Chamas…) ganha borda na cor do status e até 3 ícones; o resto vira "+N". Passe o mouse para ver os nomes.',
+		bullets: [
+			"Aplicar e remover continua pelo menu do token (botão direito).",
+			"Sem status, o token fica como sempre.",
+		],
+	},
+	{
+		id: "v1.6.15-atalhos-foco",
+		version: "1.6.15",
+		date: "20/10/2026",
+		title: "Digitar na mesa não aciona mais atalhos",
+		description:
+			"Atalhos da mesa (V, H, R, G, T, F e Espaço) não disparam enquanto você digita num campo nem com a Biblioteca, a ficha ou outra janela aberta por cima da mesa.",
+		bullets: [
+			'Ex.: digitar "g" na busca da Biblioteca não vira mais ping.',
+			"Feche o painel e os atalhos voltam a funcionar.",
+		],
+	},
+	{
+		id: "v1.6.14-painel-tela-cheia",
+		version: "1.6.14",
+		date: "20/10/2026",
+		title: "Fotos do painel da campanha abrem em tela cheia",
+		description:
+			"No painel da campanha, toque na foto de um personagem, NPC ou item (e na tabela do grupo) para ver a imagem em tela cheia.",
+		bullets: [
+			"Clicar no nome continua abrindo a página, como antes.",
+			"Quem não tem foto (só as iniciais) continua igual.",
+		],
+	},
+	{
+		id: "v1.6.13-mapa-tela-cheia",
+		version: "1.6.13",
+		date: "20/10/2026",
+		title: "Mestre pode ver o mapa da cena em tela cheia",
+		description:
+			'Na Biblioteca da mesa, aba Mapa, o mestre abre o mapa da cena em tela cheia tocando na miniatura ou em "Ver mapa em tela cheia".',
+		bullets: [
+			"Só o mestre vê essa opção: o mapa em tela cheia não tem névoa, então os jogadores continuam vendo o mapa só pela mesa.",
 		],
 	},
 	{

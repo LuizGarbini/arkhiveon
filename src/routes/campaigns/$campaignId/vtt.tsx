@@ -14,6 +14,7 @@ import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
 import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
+import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
@@ -45,6 +46,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
+import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
@@ -249,6 +251,11 @@ function VTTSession() {
 				activeCampaign?.ownerId === user?.id ||
 				activeCampaign?.myRole === "editor";
 			setActiveSceneId(active?.id ?? (owner ? mapped[0]?.id : null) ?? null);
+			const framed = initialSceneViewport(
+				window.innerWidth,
+				useVTTStore.getState().viewport,
+			);
+			if (framed) useVTTStore.getState().setViewport(framed);
 		} catch (err) {
 			if (requestId !== sceneRequestRef.current) return;
 			console.error("Erro ao carregar cenas do VTT:", err);
@@ -1260,10 +1267,10 @@ function VTTSession() {
 	const handleUpdateToken = async (
 		tokenId: string,
 		updates: Partial<VTTToken>,
-	) => {
+	): Promise<boolean> => {
 		if (!canEditToken(tokenId)) {
 			setMutationError("Você não controla este token.");
-			return;
+			return false;
 		}
 		setMutationError(null);
 		const sessionGeneration = sessionGenerationRef.current;
@@ -1271,7 +1278,7 @@ function VTTSession() {
 		tokenMutationRef.current.set(tokenId, mutationId);
 
 		const client = getSupabase();
-		if (!client) return;
+		if (!client) return false;
 
 		const dbUpdates: Database["public"]["Tables"]["vtt_tokens"]["Update"] = {};
 		if (updates.x !== undefined) dbUpdates.x = updates.x;
@@ -1313,17 +1320,26 @@ function VTTSession() {
 				}
 				updateToken(tokenId, acceptedUpdates);
 			}
+			return true;
 		} catch {
 			if (
 				sessionGenerationRef.current !== sessionGeneration ||
 				tokenMutationRef.current.get(tokenId) !== mutationId ||
 				useVTTStore.getState().activeSceneId !== activeSceneId
 			)
-				return;
-			setMutationError(
-				"Não foi possível salvar o token. Restaurando os dados do servidor.",
+				// Uma gravação mais nova já manda neste token: nada a reverter aqui.
+				return true;
+			// Status tem toast próprio no menu (com reversão): sem o aviso do
+			// rodapé para não avisar duas vezes.
+			const onlyConditions = Object.keys(updates).every(
+				(k) => k === "conditions",
 			);
+			if (!onlyConditions)
+				setMutationError(
+					"Não foi possível salvar o token. Restaurando os dados do servidor.",
+				);
 			if (activeSceneId) await fetchTokens(activeSceneId);
+			return false;
 		}
 	};
 
@@ -1523,6 +1539,8 @@ function VTTSession() {
 			/>
 
 			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
+
+			<VTTTokenStatusTooltip />
 
 			{/* Token Contextual / Health & Status Edit Popover */}
 			<VTTTokenMenu

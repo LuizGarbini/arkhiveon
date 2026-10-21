@@ -16,7 +16,19 @@ import { ImageViewer } from "./image-viewer";
  * `overlay` (padrão) cobre o retrato; o pai precisa ser `relative`.
  * `corner` é um botão ícone com tooltip para cards: sempre visível, não
  * propaga o clique (o card continua abrindo a página pelo Link irmão).
+ * `avatar` cobre avatares pequenos (painel, tabelas): sem ícone por cima,
+ * cursor de zoom, Tooltip do DS, anel de foco, alvo de toque estendido a
+ * 44px+ e não propaga o clique. O pai precisa ser `relative`.
  */
+/**
+ * Hover do avatar clicável dentro de um card (#146): só o avatar acende (anel
+ * `primary`); o card não acende a borda nem o fundo enquanto o ponteiro está no
+ * avatar. Para voltar a acender o card inteiro, troque para "".
+ * Use no `className` do card (que tem `border-border/60 bg-background/40`).
+ */
+export const CARD_IGNORES_AVATAR_HOVER =
+	"has-[[data-avatar-viewer]:hover]:border-border/60! has-[[data-avatar-viewer]:hover]:bg-background/40!";
+
 export function EntityImageViewer({
 	src,
 	name,
@@ -30,7 +42,7 @@ export function EntityImageViewer({
 	canEdit?: boolean;
 	onEdit?: () => void;
 	className?: string;
-	variant?: "overlay" | "corner";
+	variant?: "overlay" | "corner" | "avatar";
 }) {
 	const [open, setOpen] = useState(false);
 	const triggerRef = useRef<HTMLButtonElement>(null);
@@ -42,7 +54,31 @@ export function EntityImageViewer({
 
 	return (
 		<>
-			{variant === "corner" ? (
+			{variant === "avatar" ? (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<button
+								ref={triggerRef}
+								type="button"
+								onClick={(event) => {
+									event.preventDefault();
+									event.stopPropagation();
+									setOpen(true);
+								}}
+								aria-label={`Ver em tela cheia: ${label}`}
+								aria-haspopup="dialog"
+								data-avatar-viewer=""
+								className={cn(
+									"absolute inset-0 cursor-zoom-in hover:ring-2 hover:ring-primary/40 after:absolute after:-inset-1.5 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									className,
+								)}
+							/>
+						}
+					/>
+					<TooltipContent>Ver em tela cheia</TooltipContent>
+				</Tooltip>
+			) : variant === "corner" ? (
 				<Tooltip>
 					<TooltipTrigger
 						render={

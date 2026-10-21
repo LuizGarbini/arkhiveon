@@ -1,4 +1,11 @@
-import { Images, Loader2, Map as MapIcon, UploadCloud, X } from "lucide-react";
+import {
+	Images,
+	Loader2,
+	Map as MapIcon,
+	Maximize2,
+	UploadCloud,
+	X,
+} from "lucide-react";
 import {
 	type DragEvent,
 	useCallback,
@@ -182,6 +189,13 @@ interface VTTMapDropzoneProps {
 	onRemove?: () => void;
 	/** Accessible name of the drop area. */
 	label?: string;
+	/**
+	 * Abre o mapa atual em tela cheia (só o mestre, na aba Mapa). Sem esta
+	 * prop a miniatura continua só imagem.
+	 */
+	onViewFullscreen?: (opener: HTMLElement) => void;
+	/** Nome usado no aria-label do gatilho de tela cheia. */
+	viewName?: string;
 }
 
 export function VTTMapDropzone({
@@ -190,6 +204,8 @@ export function VTTMapDropzone({
 	value,
 	onRemove,
 	label = "Enviar mapa",
+	onViewFullscreen,
+	viewName,
 }: VTTMapDropzoneProps) {
 	const inputId = useId();
 	const hintId = useId();
@@ -235,12 +251,34 @@ export function VTTMapDropzone({
 		<div className="space-y-2">
 			{value && !isUploading ? (
 				<div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-2">
-					<img
-						src={value.url}
-						alt={`Mapa ${value.name}`}
-						decoding="async"
-						className="size-14 shrink-0 rounded-lg border border-border/70 object-cover"
-					/>
+					{onViewFullscreen ? (
+						// Sem Tooltip: o botão "Ver mapa em tela cheia" já rotula a ação e o
+						// tooltip cobria o aviso "Os tokens ficam onde estão."
+						<button
+							type="button"
+							onClick={(event) => onViewFullscreen(event.currentTarget)}
+							aria-label={`Ver mapa de ${viewName ?? value.name} em tela cheia`}
+							aria-haspopup="dialog"
+							className="group relative size-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<img
+								src={value.url}
+								alt=""
+								decoding="async"
+								className="h-full w-full object-cover"
+							/>
+							<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/50 group-hover:opacity-100 group-focus-visible:bg-black/50 group-focus-visible:opacity-100">
+								<Maximize2 className="h-4 w-4 drop-shadow" aria-hidden />
+							</span>
+						</button>
+					) : (
+						<img
+							src={value.url}
+							alt={`Mapa ${value.name}`}
+							decoding="async"
+							className="size-14 shrink-0 rounded-lg border border-border/70 object-cover"
+						/>
+					)}
 					<div className="min-w-0 flex-1">
 						<p className="truncate text-sm font-semibold">{value.name}</p>
 						<p className="text-xs tabular-nums text-muted-foreground">

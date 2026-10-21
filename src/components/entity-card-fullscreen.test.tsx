@@ -145,6 +145,12 @@ describe("cards: gatilho de tela cheia", () => {
 		expect(linkClick).not.toHaveBeenCalled();
 	});
 
+	it("título reserva espaço (pr-28) para os ícones do canto", () => {
+		render(<NpcCard npc={npc(SRC)} />);
+		const title = screen.getByRole("heading", { name: "Elbereth" });
+		expect(title.parentElement?.className).toContain("pr-28");
+	});
+
 	it("sem imagem não há gatilho", () => {
 		render(<NpcCard npc={npc(undefined)} />);
 		expect(trigger()).toBeNull();

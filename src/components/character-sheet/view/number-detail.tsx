@@ -1,32 +1,29 @@
 import { Info } from "lucide-react";
 import {
 	Fragment,
-	type PointerEvent,
 	type ReactNode,
-	useRef,
 	useState,
 	useSyncExternalStore,
 } from "react";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/bottom-sheet";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Explanation } from "@/core/rules";
-import { cn } from "@/lib/utils";
 
 export const numberTrigger =
 	"rounded-lg px-1 -mx-1 text-left font-display text-xl font-bold tabular-nums text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-4 transition-colors select-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-11 sm:min-h-0 hover:text-primary";
 
 const MOBILE_QUERY = "(max-width: 639px)";
 
+// Sem matchMedia (ex.: jsdom): trata como desktop.
+const hasMatchMedia = () =>
+	typeof window !== "undefined" && typeof window.matchMedia === "function";
+
 function subscribeMobile(onChange: () => void) {
+	if (!hasMatchMedia()) return () => {};
 	const mql = window.matchMedia(MOBILE_QUERY);
 	mql.addEventListener("change", onChange);
 	return () => mql.removeEventListener("change", onChange);
@@ -35,13 +32,10 @@ function subscribeMobile(onChange: () => void) {
 export function useIsMobile() {
 	return useSyncExternalStore(
 		subscribeMobile,
-		() => window.matchMedia(MOBILE_QUERY).matches,
+		() => hasMatchMedia() && window.matchMedia(MOBILE_QUERY).matches,
 		() => false,
 	);
 }
-
-/** Arrastar para baixo além disso fecha o sheet. */
-const DRAG_CLOSE_PX = 80;
 
 /**
  * Detalhe do número: Popover do DS no desktop; no mobile, Dialog do DS ancorado
@@ -77,8 +71,6 @@ export function NumberDetail({
 		if (openProp === undefined) setInnerOpen(next);
 		onOpenChange?.(next);
 	};
-	const [dragY, setDragY] = useState(0);
-	const dragStart = useRef<number | null>(null);
 	const triggerClass = triggerClassName ?? numberTrigger;
 	const triggerBody = trigger ?? triggerText;
 
@@ -99,21 +91,6 @@ export function NumberDetail({
 		);
 	}
 
-	const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-		dragStart.current = e.clientY;
-		e.currentTarget.setPointerCapture(e.pointerId);
-	};
-	const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-		if (dragStart.current === null) return;
-		setDragY(Math.max(0, e.clientY - dragStart.current));
-	};
-	const onPointerEnd = () => {
-		if (dragStart.current === null) return;
-		dragStart.current = null;
-		if (dragY > DRAG_CLOSE_PX) setOpen(false);
-		setDragY(0);
-	};
-
 	return (
 		<>
 			<button
@@ -124,42 +101,14 @@ export function NumberDetail({
 			>
 				{triggerBody}
 			</button>
-			<Dialog
+			<BottomSheet
 				open={open}
-				onOpenChange={(next) => {
-					setOpen(next);
-					if (!next) setDragY(0);
-				}}
+				onOpenChange={setOpen}
+				title={title}
+				subtitle={subtitle}
 			>
-				<DialogContent
-					showCloseButton={false}
-					style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
-					className={cn(
-						"top-auto bottom-0 left-0 max-h-[85dvh] max-w-full translate-x-0 translate-y-0 gap-3 overflow-y-auto rounded-b-none rounded-t-2xl px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] data-open:slide-in-from-bottom-4 data-open:zoom-in-100 data-closed:zoom-out-100",
-						dragY === 0 && "transition-transform duration-150",
-					)}
-				>
-					<div
-						className="-mx-4 -mt-2 flex h-8 cursor-grab touch-none items-center justify-center select-none"
-						onPointerDown={onPointerDown}
-						onPointerMove={onPointerMove}
-						onPointerUp={onPointerEnd}
-						onPointerCancel={onPointerEnd}
-						aria-hidden="true"
-					>
-						<span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
-					</div>
-					<div>
-						<DialogTitle className="font-semibold text-foreground">
-							{title}
-						</DialogTitle>
-						<DialogDescription className="text-xs">
-							{subtitle}
-						</DialogDescription>
-					</div>
-					{children}
-				</DialogContent>
-			</Dialog>
+				{children}
+			</BottomSheet>
 		</>
 	);
 }
