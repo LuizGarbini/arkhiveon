@@ -1,0 +1,56 @@
+[
+ {
+  "tag": "antes-1440x900",
+  "nadaEncontrado": 0,
+  "vazioAntigo": 1,
+  "limpar": 0,
+  "bordaRepouso": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "bordaHoverAvatar": "oklab(0.66 0.068404 -0.187939 / 0.4)",
+  "anelAvatar": "none",
+  "bordaHoverCard": "oklab(0.66 0.068404 -0.187939 / 0.4)",
+  "pageErrors": []
+ },
+ {
+  "tag": "antes-390x844",
+  "nadaEncontrado": 0,
+  "vazioAntigo": 1,
+  "limpar": 0,
+  "bordaRepouso": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "bordaHoverAvatar": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "anelAvatar": "none",
+  "bordaHoverCard": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "pageErrors": []
+ },
+ {
+  "tag": "depois-1440x900",
+  "nadaEncontrado": 1,
+  "vazioAntigo": 0,
+  "limpar": 1,
+  "aposLimpar": {
+   "valor": "",
+   "foco": "Buscar na biblioteca",
+   "lyra": 1
+  },
+  "bordaRepouso": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "bordaHoverAvatar": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "anelAvatar": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0.66 0.068404 -0.187939 / 0.4) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+  "bordaHoverCard": "oklab(0.66 0.068404 -0.187939 / 0.4)",
+  "pageErrors": []
+ },
+ {
+  "tag": "depois-390x844",
+  "nadaEncontrado": 1,
+  "vazioAntigo": 0,
+  "limpar": 1,
+  "aposLimpar": {
+   "valor": "",
+   "foco": "Buscar na biblioteca",
+   "lyra": 1
+  },
+  "bordaRepouso": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "bordaHoverAvatar": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "anelAvatar": "none",
+  "bordaHoverCard": "oklab(0.65 0.017101 -0.0469846 / 0.072)",
+  "pageErrors": []
+ }
+]
