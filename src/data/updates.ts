@@ -11,6 +11,18 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.17-status-token",
+		version: "1.6.17",
+		date: "20/10/2026",
+		title: "Status aparecem no token da mesa",
+		description:
+			'Token com status (Envenenado, Caído, Em Chamas…) ganha borda na cor do status e até 3 ícones; o resto vira "+N". Passe o mouse para ver os nomes.',
+		bullets: [
+			"Aplicar e remover continua pelo menu do token (botão direito).",
+			"Sem status, o token fica como sempre.",
+		],
+	},
+	{
 		id: "v1.6.15-atalhos-foco",
 		version: "1.6.15",
 		date: "20/10/2026",

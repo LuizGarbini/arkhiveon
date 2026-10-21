@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
+import { summarizeConditions, tokenRingStyle } from "@/lib/vtt/conditions";
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
 	calculateGridDistance,
@@ -569,15 +570,53 @@ export function VTTCanvas({
 			}
 
 			// Border Ring
+			// Seleção > status (2px na cor do 1º status) > anel padrão.
 			const ring = new Graphics();
-			const ringColor = isSelected ? 0x38bdf8 : isGMLayer ? 0xa855f7 : 0xd4d4d8;
-
+			const ringStyle = tokenRingStyle(token.conditions, isSelected, isGMLayer);
 			ring.circle(0, 0, tokenRadius);
-			ring.stroke({
-				width: isSelected ? 3.5 : isGMLayer ? 2.5 : 2,
-				color: ringColor,
-			});
+			ring.stroke({ width: ringStyle.width, color: ringStyle.color });
 			tokenContainer.addChild(ring);
+
+			// Status: até 3 ícones na base do token + "+N" (sem fundo colorido
+			// nem brilho; só a borda do chip na cor do status).
+			const status = summarizeConditions(token.conditions);
+			const hasStatusRow = status.visible.length > 0;
+			if (hasStatusRow) {
+				const chipR = Math.max(7, tokenRadius * 0.26);
+				const slots = status.visible.length + (status.overflow > 0 ? 1 : 0);
+				const gap = chipR * 2 + 2;
+				const startX = -((slots - 1) * gap) / 2;
+				const chipY = tokenRadius - chipR * 0.4;
+				const drawChip = (x: number, label: string, color: number) => {
+					const chip = new Graphics();
+					chip.circle(x, chipY, chipR);
+					chip.fill({ color: 0x18181b, alpha: 0.92 });
+					chip.stroke({ width: 1.5, color });
+					tokenContainer.addChild(chip);
+					const text = new Text({
+						text: label,
+						style: new TextStyle({
+							fontFamily: "system-ui, sans-serif",
+							fontSize: Math.max(8, chipR * 1.05),
+							fontWeight: "bold",
+							fill: "#ffffff",
+						}),
+					});
+					text.anchor.set(0.5);
+					text.position.set(x, chipY);
+					tokenContainer.addChild(text);
+				};
+				status.visible.forEach((cond, i) => {
+					drawChip(startX + i * gap, cond.icon, cond.hex);
+				});
+				if (status.overflow > 0) {
+					drawChip(
+						startX + status.visible.length * gap,
+						`+${status.overflow}`,
+						0xd4d4d8,
+					);
+				}
+			}
 
 			// GM Shield Badge
 			if (isGMLayer) {
@@ -662,8 +701,26 @@ export function VTTCanvas({
 					}),
 				});
 				elevText.anchor.set(0.5);
-				elevText.position.set(0, tokenRadius + 8);
+				elevText.position.set(
+					0,
+					tokenRadius +
+						(hasStatusRow ? Math.max(7, tokenRadius * 0.26) + 10 : 8),
+				);
 				tokenContainer.addChild(elevText);
+			}
+
+			// Tooltip do DS com os status (DOM, fora do canvas): só marca qual
+			// token está sob o ponteiro; nada no ticker.
+			if (hasStatusRow) {
+				tokenContainer.on("pointerover", () => {
+					if (useVTTStore.getState().draggedTokenId) return;
+					useVTTStore.getState().setHoveredStatusTokenId(token.id);
+				});
+				tokenContainer.on("pointerout", () => {
+					const s = useVTTStore.getState();
+					if (s.hoveredStatusTokenId === token.id)
+						s.setHoveredStatusTokenId(null);
+				});
 			}
 
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)

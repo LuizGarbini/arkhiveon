@@ -65,6 +65,8 @@ interface VTTState {
 	tokens: VTTToken[];
 	selectedTokenIds: string[];
 	activeTokenIdForMenu: string | null;
+	/** Token com status sob o ponteiro (Tooltip do DS sobre o canvas). */
+	hoveredStatusTokenId: string | null;
 	draggedTokenId: string | null;
 	fogState: VTTFogState | null;
 	fogPaths: VTTFogPath[];
@@ -127,6 +129,7 @@ interface VTTState {
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
 	setActiveTokenIdForMenu: (id: string | null) => void;
+	setHoveredStatusTokenId: (id: string | null) => void;
 	setDraggedTokenId: (id: string | null) => void;
 
 	// Fog Actions
@@ -163,6 +166,7 @@ interface VTTState {
 const emptySceneContents = () => ({
 	selectedTokenIds: [],
 	activeTokenIdForMenu: null,
+	hoveredStatusTokenId: null,
 	tokens: [],
 	fogPaths: [],
 	fogState: null,
@@ -201,6 +205,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	tokens: [],
 	selectedTokenIds: [],
 	activeTokenIdForMenu: null,
+	hoveredStatusTokenId: null,
 	draggedTokenId: null,
 	fogState: null,
 	fogPaths: [],
@@ -400,6 +405,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 				? { activeTokenIdForMenu: id, showRosterDrawer: false }
 				: { activeTokenIdForMenu: null },
 		),
+	setHoveredStatusTokenId: (id) => set({ hoveredStatusTokenId: id }),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),

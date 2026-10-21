@@ -139,3 +139,25 @@ describe("VTTTokenMenu — imagem em tela cheia", () => {
 		expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
 	});
 });
+
+describe("VTTTokenMenu — status", () => {
+	it("aplicar status pelo menu grava conditions", () => {
+		const { onUpdateToken } = setup({ conditions: ["caido"] });
+		const envenenado = screen.getByRole("button", { name: "Envenenado" });
+		expect(envenenado.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(envenenado);
+		expect(onUpdateToken).toHaveBeenLastCalledWith("tok-1", {
+			conditions: ["caido", "envenenado"],
+		});
+	});
+
+	it("clicar num status aplicado remove", () => {
+		const { onUpdateToken } = setup({ conditions: ["caido"] });
+		const caido = screen.getByRole("button", { name: "Caído" });
+		expect(caido.getAttribute("aria-pressed")).toBe("true");
+		fireEvent.click(caido);
+		expect(onUpdateToken).toHaveBeenLastCalledWith("tok-1", {
+			conditions: [],
+		});
+	});
+});
