@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.19-status-token-s2",
+		version: "1.6.19",
+		date: "20/10/2026",
+		title: "Status do token mais fáceis de ver e de aplicar",
+		description:
+			'No celular, o token mostra um ícone de status maior e um "+N"; segure o dedo no token para ver a lista inteira.',
+		bullets: [
+			'No menu do token, escolha um status em "Adicionar status…" ou toque no chip para tirar.',
+			"O status aparece na hora; se não salvar, ele volta e você recebe um aviso.",
+			"Ao abrir a mesa, o mapa começa ao lado da barra de ferramentas, sem tokens escondidos atrás dela.",
+		],
+	},
+	{
 		id: "v1.6.18-ficha-flutuante",
 		version: "1.6.18",
 		date: "20/10/2026",
