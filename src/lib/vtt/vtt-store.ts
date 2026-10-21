@@ -65,6 +65,8 @@ interface VTTState {
 	tokens: VTTToken[];
 	selectedTokenIds: string[];
 	activeTokenIdForMenu: string | null;
+	/** Token com status sob o ponteiro (Tooltip do DS sobre o canvas). */
+	hoveredStatusTokenId: string | null;
 	draggedTokenId: string | null;
 	fogState: VTTFogState | null;
 	fogPaths: VTTFogPath[];
@@ -87,7 +89,10 @@ interface VTTState {
 	showGridSettings: boolean;
 	showSceneManager: boolean;
 	showRosterDrawer: boolean;
+	/** Ficha em foco (a de cima). */
 	showCharacterSheetId: string | null;
+	/** Fichas abertas na mesa (ordem de abertura, no máximo 3). */
+	openSheetIds: string[];
 	isGM: boolean;
 
 	// Actions
@@ -127,6 +132,7 @@ interface VTTState {
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
 	setActiveTokenIdForMenu: (id: string | null) => void;
+	setHoveredStatusTokenId: (id: string | null) => void;
 	setDraggedTokenId: (id: string | null) => void;
 
 	// Fog Actions
@@ -156,13 +162,17 @@ interface VTTState {
 	setShowGridSettings: (show: boolean) => void;
 	setShowSceneManager: (show: boolean) => void;
 	setShowRosterDrawer: (show: boolean) => void;
+	/** Abre (ou traz para frente) a ficha; `null` fecha todas. */
 	setShowCharacterSheetId: (characterId: string | null) => void;
+	/** Fecha só esta ficha. */
+	closeCharacterSheet: (id: string) => void;
 	setIsGM: (isGM: boolean) => void;
 }
 
 const emptySceneContents = () => ({
 	selectedTokenIds: [],
 	activeTokenIdForMenu: null,
+	hoveredStatusTokenId: null,
 	tokens: [],
 	fogPaths: [],
 	fogState: null,
@@ -176,6 +186,9 @@ const emptySceneContents = () => ({
 	remoteTemplates: {},
 	remoteTemplatePreviews: {},
 });
+
+/** Máximo de fichas abertas ao mesmo tempo na mesa. */
+export const MAX_OPEN_SHEETS = 3;
 
 export const useVTTStore = create<VTTState>((set) => ({
 	scenes: [],
@@ -201,6 +214,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	tokens: [],
 	selectedTokenIds: [],
 	activeTokenIdForMenu: null,
+	hoveredStatusTokenId: null,
 	draggedTokenId: null,
 	fogState: null,
 	fogPaths: [],
@@ -222,6 +236,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	showSceneManager: false,
 	showRosterDrawer: false,
 	showCharacterSheetId: null,
+	openSheetIds: [],
 	isGM: false,
 
 	setScenes: (scenes) => set({ scenes }),
@@ -400,6 +415,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 				? { activeTokenIdForMenu: id, showRosterDrawer: false }
 				: { activeTokenIdForMenu: null },
 		),
+	setHoveredStatusTokenId: (id) => set({ hoveredStatusTokenId: id }),
 	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -535,15 +551,33 @@ export const useVTTStore = create<VTTState>((set) => ({
 						showFogControls: false,
 						showTemplateControls: false,
 						showCharacterSheetId: null,
+						openSheetIds: [],
 						activeTokenIdForMenu: null,
 					}
 				: { showRosterDrawer: false },
 		),
 	setShowCharacterSheetId: (id) =>
-		set(
-			id
-				? { showCharacterSheetId: id, showRosterDrawer: false }
-				: { showCharacterSheetId: null },
-		),
+		set((state) => {
+			if (!id) return { showCharacterSheetId: null, openSheetIds: [] };
+			const open = state.openSheetIds.includes(id)
+				? state.openSheetIds
+				: [...state.openSheetIds, id].slice(-MAX_OPEN_SHEETS);
+			return {
+				showCharacterSheetId: id,
+				openSheetIds: open,
+				showRosterDrawer: false,
+			};
+		}),
+	closeCharacterSheet: (id) =>
+		set((state) => {
+			const open = state.openSheetIds.filter((x) => x !== id);
+			return {
+				openSheetIds: open,
+				showCharacterSheetId:
+					state.showCharacterSheetId === id
+						? (open.at(-1) ?? null)
+						: state.showCharacterSheetId,
+			};
+		}),
 	setIsGM: (isGM) => set({ isGM }),
 }));

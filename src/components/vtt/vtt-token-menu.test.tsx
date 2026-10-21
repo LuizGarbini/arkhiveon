@@ -139,3 +139,56 @@ describe("VTTTokenMenu — imagem em tela cheia", () => {
 		expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
 	});
 });
+
+describe("VTTTokenMenu — status", () => {
+	it("aplicar status pelo menu grava conditions", () => {
+		const { onUpdateToken } = setup({ conditions: ["caido"] });
+		const envenenado = screen.getByRole("button", { name: "Envenenado" });
+		expect(envenenado.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(envenenado);
+		expect(onUpdateToken).toHaveBeenLastCalledWith("tok-1", {
+			conditions: ["caido", "envenenado"],
+		});
+	});
+
+	it("clicar num status aplicado remove", () => {
+		const { onUpdateToken } = setup({ conditions: ["caido"] });
+		const caido = screen.getByRole("button", { name: "Caído" });
+		expect(caido.getAttribute("aria-pressed")).toBe("true");
+		fireEvent.click(caido);
+		expect(onUpdateToken).toHaveBeenLastCalledWith("tok-1", {
+			conditions: [],
+		});
+	});
+});
+
+describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
+	it("nenhum title nativo; ações seguem com nome acessível e abrem Tooltip no foco", async () => {
+		setup({ isHidden: false, isLocked: false, layer: "token" });
+		const menu = document.body;
+		expect(menu.querySelector("button[title]")).toBeNull();
+		for (const name of [
+			"Abrir ficha na mesa",
+			"Girar Token (45º)",
+			"Ocultar dos Jogadores",
+			"Mover para Camada do Mestre (GM Layer)",
+			"Travar no Lugar",
+		]) {
+			expect(screen.getByRole("button", { name })).toBeTruthy();
+		}
+		const rotate = screen.getByRole("button", { name: "Girar Token (45º)" });
+		expect(rotate.getAttribute("data-slot")).toBe("tooltip-trigger");
+	});
+
+	it("o texto do Tooltip acompanha o estado (oculto/travado/camada do mestre)", () => {
+		setup({ isHidden: true, isLocked: true, layer: "gm" });
+		for (const name of [
+			"Revelar aos Jogadores",
+			"Destravar Movimentação",
+			"Mover para Camada de Jogadores (Tokens)",
+		]) {
+			const b = screen.getByRole("button", { name });
+			expect(b.getAttribute("data-slot")).toBe("tooltip-trigger");
+		}
+	});
+});

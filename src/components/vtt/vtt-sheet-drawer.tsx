@@ -1,104 +1,153 @@
-import { Dices, Heart, Shield, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+	AlertTriangle,
+	Dices,
+	GripHorizontal,
+	Heart,
+	Plus,
+	X,
+} from "lucide-react";
+import {
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useRef,
+	useState,
+} from "react";
+import { BottomSheet } from "@/components/bottom-sheet";
+import { useIsMobile } from "@/components/character-sheet/view/number-detail";
+import {
+	SheetIdentity,
+	SheetQuickStats,
+} from "@/components/character-sheet/view/sheet-header";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { characterAttributeScore } from "@/core/rules";
-import { abilityModifier, formatModifier, useRPGStore } from "@/lib/store";
+import {
+	isCharacterImageHidden,
+	resolveCharacterImageUrl,
+} from "@/lib/character-images";
+import {
+	abilityModifier,
+	formatModifier,
+	getAttributeFullName,
+	useActiveCampaignId,
+	useActiveCampaignRole,
+	useImageAssetLookup,
+	useRPGStore,
+} from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import {
+	clampSheetRect,
+	defaultSheetRect,
+	loadSheetRect,
+	moveSheetRect,
+	resizeSheetRect,
+	type SheetRect,
+	saveSheetRect,
+	sheetStorageKey,
+} from "@/lib/vtt/floating-sheet";
+import { hasOpenVttDialog } from "@/lib/vtt/shortcut-guard";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
-const chipClass =
-	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer touch-manipulation";
+type DiceType = "d20" | "d100" | "d10" | "d6";
 
 interface VTTSheetDrawerProps {
-	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
+	onUpdateToken: (
+		tokenId: string,
+		updates: Partial<VTTToken>,
+	) => Promise<unknown>;
 }
 
+type StartRoll = (
+	tokenId: string,
+	label: string,
+	modifier: number,
+	diceType: DiceType,
+) => void;
+
+/**
+ * Fichas na mesa. Desktop: até 3 painéis flutuantes (arrastar pelo
+ * cabeçalho, redimensionar no canto, posição/tamanho lembrados). Celular:
+ * Sheet de baixo do DS, sem X. As rolagens que já existiam continuam iguais.
+ */
 export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
-	const showCharacterSheetId = useVTTStore((s) => s.showCharacterSheetId);
-	const setShowCharacterSheetId = useVTTStore((s) => s.setShowCharacterSheetId);
-	const tokens = useVTTStore((s) => s.tokens);
-	const characters = useRPGStore((s) => s.characters);
+	const isMobile = useIsMobile();
+	const openSheetIds = useVTTStore((s) => s.openSheetIds);
+	const topId = useVTTStore((s) => s.showCharacterSheetId);
+	const ids = openSheetIds.length > 0 ? openSheetIds : topId ? [topId] : [];
 
-	const token = useMemo(
-		() => tokens.find((t) => t.id === showCharacterSheetId) ?? null,
-		[tokens, showCharacterSheetId],
-	);
-
-	const character = useMemo(
-		() =>
-			characters.find(
-				(c) => c.id === showCharacterSheetId || c.id === token?.characterId,
-			) ?? null,
-		[characters, showCharacterSheetId, token?.characterId],
-	);
-
-	const isOpen = Boolean(showCharacterSheetId);
-	const config = character
-		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
-		: SYSTEM_CONFIG.dnd5e;
 	const [rollState, setRollState] = useState<{
 		open: boolean;
+		tokenId: string;
 		label: string;
 		modifier: number;
-		diceType: "d20" | "d100" | "d10" | "d6";
-	}>({ open: false, label: "", modifier: 0, diceType: "d20" });
-	const [lastRoll, setLastRoll] = useState<string | null>(null);
+		diceType: DiceType;
+	}>({ open: false, tokenId: "", label: "", modifier: 0, diceType: "d20" });
+	const [lastRolls, setLastRolls] = useState<Record<string, string>>({});
 
-	const rollLabel = rollState.label;
-	const rollModifier = rollState.modifier;
+	const startRoll: StartRoll = (tokenId, label, modifier, diceType) =>
+		setRollState({ open: true, tokenId, label, modifier, diceType });
+	const {
+		tokenId: rollTokenId,
+		label: rollLabel,
+		modifier: rollModifier,
+	} = rollState;
 	const handleRollComplete = useCallback(
 		(natural: number) => {
 			const signed =
 				rollModifier === 0
 					? ""
 					: ` ${rollModifier > 0 ? "+" : "−"} ${Math.abs(rollModifier)}`;
-			setLastRoll(
-				`${rollLabel}: ${natural}${signed} = ${natural + rollModifier}`,
-			);
+			setLastRolls((prev) => ({
+				...prev,
+				[rollTokenId]: `${rollLabel}: ${natural}${signed} = ${natural + rollModifier}`,
+			}));
 		},
-		[rollLabel, rollModifier],
+		[rollTokenId, rollLabel, rollModifier],
 	);
 	const handleRollClose = useCallback(
 		() =>
-			setRollState({ open: false, label: "", modifier: 0, diceType: "d20" }),
+			setRollState({
+				open: false,
+				tokenId: "",
+				label: "",
+				modifier: 0,
+				diceType: "d20",
+			}),
 		[],
 	);
+
 	return (
 		<>
-			<aside
-				className="t-panel-slide-x pointer-events-none absolute bottom-20 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
-				data-open={isOpen}
-				data-vtt-overlay={isOpen ? "open" : undefined}
-				aria-label="Ficha na mesa"
-				aria-hidden={!isOpen}
-				inert={!isOpen}
-			>
-				{isOpen && token ? (
-					<SheetBody
-						tokenId={token.id}
-						character={character}
-						tokenName={token.name}
-						hpCurrent={token.hpCurrent ?? character?.health ?? 0}
-						hpMax={token.hpMax ?? character?.healthMax ?? 0}
-						armorClass={character?.armorClass ?? 10}
-						lastRoll={lastRoll}
-						onClose={() => setShowCharacterSheetId(null)}
+			{isMobile ? (
+				<MobileSheet
+					id={topId}
+					onUpdateToken={onUpdateToken}
+					onStartRoll={startRoll}
+					lastRoll={topId ? (lastRolls[topId] ?? null) : null}
+				/>
+			) : (
+				ids.map((id, index) => (
+					<FloatingSheet
+						key={id}
+						id={id}
+						index={index}
+						isTop={id === topId}
 						onUpdateToken={onUpdateToken}
-						onStartRoll={(label, modifier) =>
-							setRollState({
-								open: true,
-								label,
-								modifier,
-								diceType: config.defaultDice || "d20",
-							})
-						}
+						onStartRoll={startRoll}
+						lastRoll={lastRolls[id] ?? null}
 					/>
-				) : null}
-			</aside>
+				))
+			)}
 			<DiceRollOverlay
 				open={rollState.open}
 				attributeLabel={rollState.label}
@@ -111,162 +160,359 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 	);
 }
 
-function SheetBody({
-	tokenId,
-	character,
-	tokenName,
-	hpCurrent,
-	hpMax,
-	armorClass,
-	lastRoll,
-	onClose,
+/** Token e ficha do painel (a ficha pode ter sido aberta pelo id dela). */
+function useSheetTarget(id: string | null) {
+	const token = useVTTStore((s) =>
+		id ? (s.tokens.find((t) => t.id === id) ?? null) : null,
+	);
+	const characterId = token?.characterId ?? null;
+	const character = useRPGStore((s) =>
+		id
+			? (s.characters.find((c) => c.id === id || c.id === characterId) ?? null)
+			: null,
+	);
+	return { token, character };
+}
+
+interface SheetPanelProps {
+	id: string;
+	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
+	onStartRoll: StartRoll;
+	lastRoll: string | null;
+}
+
+/** Esc com o foco dentro da ficha fecha a ficha (em captura: o Tooltip do DS
+ * do botão focado também consome o Esc). Foco na mesa não é afetado. */
+function escapeCloses(close: () => void) {
+	return (e: React.KeyboardEvent) => {
+		if (e.key !== "Escape" || hasOpenVttDialog()) return;
+		e.preventDefault();
+		close();
+	};
+}
+
+function FloatingSheet({
+	id,
+	index,
+	isTop,
 	onUpdateToken,
 	onStartRoll,
+	lastRoll,
+}: SheetPanelProps & { index: number; isTop: boolean }) {
+	const { token, character } = useSheetTarget(id);
+	const campaignId = useActiveCampaignId() ?? "sem-campanha";
+	const closeSheet = useVTTStore((s) => s.closeCharacterSheet);
+	const focusSheet = useVTTStore((s) => s.setShowCharacterSheetId);
+	const storageKey = sheetStorageKey(campaignId, character?.id ?? id);
+
+	const [rect, setRect] = useState<SheetRect>(
+		() =>
+			loadSheetRect(storageKey) ??
+			defaultSheetRect(index, window.innerWidth, window.innerHeight),
+	);
+	const shown = clampSheetRect(rect, window.innerWidth, window.innerHeight);
+	const panelRef = useRef<HTMLElement>(null);
+	// Arraste/redimensionamento mexem só no estilo do painel; o estado React
+	// (e o localStorage) só muda ao soltar. O canvas não re-renderiza.
+	const gesture = useRef<{
+		kind: "move" | "resize";
+		x: number;
+		y: number;
+		start: SheetRect;
+		last: SheetRect;
+	} | null>(null);
+
+	const begin =
+		(kind: "move" | "resize") => (e: ReactPointerEvent<HTMLElement>) => {
+			if (e.button !== 0) return;
+			if (
+				kind === "move" &&
+				(e.target as Element).closest("button, a, input, [role=button]")
+			)
+				return;
+			e.preventDefault();
+			e.currentTarget.setPointerCapture(e.pointerId);
+			gesture.current = {
+				kind,
+				x: e.clientX,
+				y: e.clientY,
+				start: shown,
+				last: shown,
+			};
+		};
+	const onMove = (e: ReactPointerEvent<HTMLElement>) => {
+		const g = gesture.current;
+		const el = panelRef.current;
+		if (!g || !el) return;
+		const dx = e.clientX - g.x;
+		const dy = e.clientY - g.y;
+		const next =
+			g.kind === "move"
+				? moveSheetRect(g.start, dx, dy, window.innerWidth, window.innerHeight)
+				: resizeSheetRect(
+						g.start,
+						dx,
+						dy,
+						window.innerWidth,
+						window.innerHeight,
+					);
+		g.last = next;
+		el.style.left = `${next.x}px`;
+		el.style.top = `${next.y}px`;
+		el.style.width = `${next.w}px`;
+		el.style.height = `${next.h}px`;
+	};
+	const onEnd = () => {
+		const g = gesture.current;
+		if (!g) return;
+		gesture.current = null;
+		setRect(g.last);
+		saveSheetRect(storageKey, g.last);
+	};
+
+	if (!token && !character) return null;
+	const name = character?.characterName || token?.name || "Ficha";
+	const close = () => closeSheet(id);
+
+	return (
+		<section
+			ref={panelRef}
+			aria-label={`Ficha de ${name}`}
+			data-vtt-focus-scope="sheet"
+			data-testid="vtt-floating-sheet"
+			data-top={isTop || undefined}
+			onKeyDownCapture={escapeCloses(close)}
+			onPointerDownCapture={() => {
+				if (!isTop) focusSheet(id);
+			}}
+			style={{ left: shown.x, top: shown.y, width: shown.w, height: shown.h }}
+			className={cn(
+				"fixed flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card-elevated text-foreground shadow-2xl",
+				isTop ? "z-[41]" : "z-40",
+			)}
+		>
+			<header
+				data-testid="vtt-sheet-drag-handle"
+				onPointerDown={begin("move")}
+				onPointerMove={onMove}
+				onPointerUp={onEnd}
+				onPointerCancel={onEnd}
+				className="flex min-h-11 shrink-0 cursor-grab touch-none items-center gap-2 border-b border-border/60 pl-3 pr-1 select-none active:cursor-grabbing"
+			>
+				<GripHorizontal
+					className="size-4 shrink-0 text-muted-foreground"
+					aria-hidden
+				/>
+				{/* Padrão Figma: só alça + X; o nome fica no título da identidade. */}
+				<span className="flex-1" />
+				<CloseSheetButton onClose={close} />
+			</header>
+			<div className="min-h-0 flex-1 overflow-y-auto p-4">
+				<SheetContent
+					token={token}
+					character={character}
+					onUpdateToken={onUpdateToken}
+					onStartRoll={onStartRoll}
+					lastRoll={lastRoll}
+				/>
+			</div>
+			<div
+				role="presentation"
+				data-testid="vtt-sheet-resize-handle"
+				onPointerDown={begin("resize")}
+				onPointerMove={onMove}
+				onPointerUp={onEnd}
+				onPointerCancel={onEnd}
+				className="absolute right-0 bottom-0 size-5 cursor-nwse-resize touch-none"
+			>
+				<span className="absolute right-1.5 bottom-1.5 size-2 border-r-2 border-b-2 border-muted-foreground/50" />
+			</div>
+		</section>
+	);
+}
+
+function MobileSheet({
+	id,
+	onUpdateToken,
+	onStartRoll,
+	lastRoll,
+}: Omit<SheetPanelProps, "id"> & { id: string | null }) {
+	const { token, character } = useSheetTarget(id);
+	const setShow = useVTTStore((s) => s.setShowCharacterSheetId);
+	const name = character?.characterName || token?.name || "Ficha";
+	return (
+		<BottomSheet
+			open={Boolean(id && (token || character))}
+			onOpenChange={(next) => {
+				if (!next) setShow(null);
+			}}
+			title={<span className="sr-only">Ficha de {name}</span>}
+			aria-label={`Ficha de ${name}`}
+			data-vtt-focus-scope="sheet"
+			// Não cobre a barra de ferramentas da mesa (left-3 + w-14).
+			className="left-[4.75rem] right-0 w-auto max-h-[78dvh] bg-card-elevated backdrop-blur-none"
+			overlayClassName="left-[4.75rem] bg-black/30 backdrop-blur-none"
+		>
+			<SheetContent
+				token={token}
+				character={character}
+				onUpdateToken={onUpdateToken}
+				onStartRoll={onStartRoll}
+				lastRoll={lastRoll}
+			/>
+		</BottomSheet>
+	);
+}
+
+function SheetContent({
+	token,
+	character,
+	onUpdateToken,
+	onStartRoll,
+	lastRoll,
 }: {
-	tokenId: string;
+	token: VTTToken | null;
 	character: Character | null;
-	tokenName: string;
-	hpCurrent: number;
-	hpMax: number;
-	armorClass: number;
-	lastRoll: string | null;
-	onClose: () => void;
 	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
-	onStartRoll: (label: string, modifier: number) => void;
+	onStartRoll: StartRoll;
+	lastRoll: string | null;
 }) {
+	const loadStatus = useRPGStore((s) => s.campaignLoadStatus);
+	const isGM = useVTTStore((s) => s.isGM);
+	const role = useActiveCampaignRole();
+	const imageAssets = useImageAssetLookup();
+
+	if (
+		token?.characterId &&
+		!character &&
+		(loadStatus === "loading" || loadStatus === "idle")
+	) {
+		return (
+			<div data-testid="sheet-skeleton" aria-busy className="space-y-3">
+				<span className="sr-only">Carregando ficha…</span>
+				<div className="flex items-center gap-3">
+					<Skeleton className="size-14 rounded-2xl" />
+					<div className="flex-1 space-y-2">
+						<Skeleton className="h-3 w-1/3" />
+						<Skeleton className="h-5 w-2/3" />
+					</div>
+				</div>
+				<Skeleton className="h-16 w-full rounded-2xl" />
+				<Skeleton className="h-40 w-full rounded-xl" />
+			</div>
+		);
+	}
+	if (token?.characterId && !character && loadStatus === "error") {
+		return (
+			<div role="alert" className="space-y-3 text-sm">
+				<p className="flex items-center gap-2 font-semibold text-destructive">
+					<AlertTriangle className="h-4 w-4" />
+					Não deu para carregar a ficha.
+				</p>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={() => void useRPGStore.getState().loadCampaigns()}
+				>
+					Tentar de novo
+				</Button>
+			</div>
+		);
+	}
+
+	const tokenId = token?.id ?? character?.id ?? "";
 	const config = character
 		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
 		: SYSTEM_CONFIG.dnd5e;
-
-	const hpRatio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
-
-	const handleModifyHp = (delta: number) => {
-		const next = Math.max(
-			0,
-			Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
-		);
-		void onUpdateToken(tokenId, { hpCurrent: next });
-	};
+	const dice: DiceType = config.defaultDice || "d20";
+	const hpCurrent = token?.hpCurrent ?? character?.health ?? 0;
+	const hpMax = token?.hpMax ?? character?.healthMax ?? 0;
 
 	return (
-		<div className="pointer-events-auto flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-2xl backdrop-blur-md">
-			<div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
-				<div className="min-w-0">
-					<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-						Ficha na mesa
-					</p>
-					<h3 className="font-display truncate text-sm font-bold">
-						{character?.characterName || tokenName}
+		<div className="space-y-4">
+			{character ? (
+				<>
+					<SheetIdentity
+						compact
+						isViewer
+						character={character}
+						config={config}
+						characterImageUrl={resolveCharacterImageUrl(
+							character,
+							imageAssets,
+							role,
+						)}
+						isImageHidden={isCharacterImageHidden(character, imageAssets, role)}
+					/>
+					<SheetQuickStats
+						compact
+						character={character}
+						config={config}
+						health={`${hpCurrent}/${hpMax}`}
+					/>
+				</>
+			) : token?.characterId ? (
+				<p className="rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
+					Você não tem acesso a esta ficha nesta campanha.
+				</p>
+			) : (
+				<NoSheetNotice canCreate={isGM} />
+			)}
+
+			{token ? (
+				<HpControl
+					hpCurrent={hpCurrent}
+					hpMax={hpMax}
+					onChange={(next) => void onUpdateToken(token.id, { hpCurrent: next })}
+				/>
+			) : null}
+
+			{character ? (
+				<section aria-labelledby={`attrs-${tokenId}`} className="space-y-2">
+					<h3
+						id={`attrs-${tokenId}`}
+						className="font-display text-sm font-bold tracking-tight"
+					>
+						Atributos
 					</h3>
-					<p className="truncate text-[11px] text-muted-foreground">
-						{character
-							? `${character.class || config.label} · Nv. ${character.level || 1}`
-							: "Token sem ficha vinculada"}
-					</p>
-				</div>
-				<button
-					type="button"
-					onClick={onClose}
-					className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
-					title="Fechar ficha"
-					aria-label="Fechar ficha"
-				>
-					<X className="h-4 w-4" />
-				</button>
-			</div>
-
-			<div className="flex-1 space-y-4 overflow-y-auto p-4">
-				<div className="space-y-2 rounded-xl border border-border/70 bg-background/55 p-3">
-					<div className="flex items-center justify-between text-xs font-bold">
-						<span className="flex items-center gap-1.5 text-primary">
-							<Heart className="h-3.5 w-3.5" />
-							Pontos de vida
-						</span>
-						<span className="font-mono">
-							{hpCurrent} / {hpMax}
-						</span>
-					</div>
-					<div className="h-2 overflow-hidden rounded-full bg-muted">
-						<div
-							className="h-full rounded-full bg-primary transition-[width] duration-150"
-							style={{ width: `${hpRatio * 100}%` }}
-						/>
-					</div>
-					<div className="grid grid-cols-4 gap-1.5">
-						{[-5, -1, 1, 5].map((delta) => (
-							<button
-								type="button"
-								key={delta}
-								onClick={() => handleModifyHp(delta)}
-								className={cn(
-									chipClass,
-									"min-h-[44px] border-border/70 bg-background/80 font-mono",
-									delta < 0
-										? "text-destructive hover:bg-destructive/10"
-										: "text-primary hover:bg-primary/10",
-								)}
-							>
-								{delta > 0 ? `+${delta}` : delta}
-							</button>
-						))}
-					</div>
-				</div>
-
-				<div className="grid grid-cols-2 gap-2">
-					<div className="rounded-xl border border-border/70 bg-background/55 p-3">
-						<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-							CA
-						</p>
-						<p className="font-display flex items-center gap-1.5 text-lg font-bold">
-							<Shield className="h-4 w-4 text-primary" />
-							{armorClass}
-						</p>
-					</div>
-					<div className="rounded-xl border border-border/70 bg-background/55 p-3">
-						<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-							Desloc.
-						</p>
-						<p className="font-display text-lg font-bold">
-							{character?.speed ?? 9}
-							{config.speedUnit ? ` ${config.speedUnit}` : ""}
-						</p>
-					</div>
-				</div>
-
-				<div className="space-y-2">
-					<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-						Rolagens na mesa
-					</p>
-					<div className="grid grid-cols-3 gap-1.5">
+					<ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-background/40">
 						{config.attributes.map((attr) => {
-							const score = character
-								? characterAttributeScore(character, attr.key)
-								: 10;
+							const score = characterAttributeScore(character, attr.key);
 							const mod = abilityModifier(score);
+							const fullName = getAttributeFullName(attr.label);
 							return (
-								<button
-									type="button"
+								<li
 									key={attr.key}
-									onClick={() => onStartRoll(attr.label, mod)}
-									className={cn(
-										chipClass,
-										"h-auto min-h-14 flex-col border-border/70 bg-background/70 py-2 hover:border-primary/40 hover:bg-primary/10",
-									)}
+									className="flex min-h-11 items-center gap-3 px-3"
 								>
-									<span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+									<span className="w-9 shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 										{attr.label}
 									</span>
-									<span className="font-mono text-sm font-bold">
-										{formatModifier(mod)}
+									<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+										{fullName}
 									</span>
-								</button>
+									<span className="font-display text-base font-bold tabular-nums">
+										{score}
+									</span>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="min-h-11 gap-1 font-mono tabular-nums"
+										aria-label={`Rolar ${fullName} (${formatModifier(mod)})`}
+										onClick={() => onStartRoll(tokenId, attr.label, mod, dice)}
+									>
+										<Dices className="size-3.5" aria-hidden />
+										{formatModifier(mod)}
+									</Button>
+								</li>
 							);
 						})}
-					</div>
-				</div>
-			</div>
+					</ul>
+				</section>
+			) : null}
 
-			<div className="space-y-2 border-t border-border/60 px-4 py-3">
+			<div className="space-y-2">
 				{lastRoll ? (
 					<p
 						aria-live="polite"
@@ -279,12 +525,112 @@ function SheetBody({
 					type="button"
 					variant="outline"
 					className="h-[44px] w-full gap-2"
-					onClick={() => onStartRoll("Teste livre", 0)}
+					onClick={() => onStartRoll(tokenId, "Teste livre", 0, dice)}
 				>
 					<Dices className="h-4 w-4" />
 					Rolar {config.defaultDice || "d20"}
 				</Button>
 			</div>
+		</div>
+	);
+}
+
+function HpControl({
+	hpCurrent,
+	hpMax,
+	onChange,
+}: {
+	hpCurrent: number;
+	hpMax: number;
+	onChange: (next: number) => void;
+}) {
+	const ratio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center justify-between text-xs font-bold">
+				<span className="flex items-center gap-1.5 text-rose-400">
+					<Heart className="h-3.5 w-3.5" />
+					Pontos de vida
+				</span>
+				<span className="font-mono tabular-nums">
+					{hpCurrent} / {hpMax}
+				</span>
+			</div>
+			<div className="h-2 overflow-hidden rounded-full bg-muted">
+				<div
+					className="h-full rounded-full bg-primary transition-[width] duration-150"
+					style={{ width: `${ratio * 100}%` }}
+				/>
+			</div>
+			<div className="grid grid-cols-4 gap-1.5">
+				{[-5, -1, 1, 5].map((delta) => (
+					<Button
+						type="button"
+						key={delta}
+						variant="outline"
+						size="sm"
+						className={cn(
+							"min-h-11 font-mono",
+							delta < 0 ? "text-destructive" : "text-primary",
+						)}
+						onClick={() =>
+							onChange(
+								Math.max(
+									0,
+									Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
+								),
+							)
+						}
+					>
+						{delta > 0 ? `+${delta}` : delta}
+					</Button>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function CloseSheetButton({ onClose }: { onClose: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
+						className="size-11 shrink-0 text-muted-foreground"
+						aria-label="Fechar ficha"
+					/>
+				}
+			>
+				<X className="h-4 w-4" />
+			</TooltipTrigger>
+			<TooltipContent>Fechar ficha (Esc)</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** Token sem ficha: o mestre pode criar uma; o jogador só vê o aviso. */
+function NoSheetNotice({ canCreate }: { canCreate: boolean }) {
+	return (
+		<div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
+			<p>
+				Este token ainda não tem ficha. Os pontos de vida abaixo são do token.
+			</p>
+			{canCreate ? (
+				<Link
+					to="/sheets/new"
+					className={cn(
+						buttonVariants({ variant: "outline", size: "sm" }),
+						"gap-1.5",
+					)}
+				>
+					<Plus className="h-3.5 w-3.5" />
+					Criar ficha
+				</Link>
+			) : null}
 		</div>
 	);
 }

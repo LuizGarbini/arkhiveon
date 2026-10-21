@@ -1,10 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, MapPin, Plus, Skull, Users } from "lucide-react";
 import { useMemo } from "react";
-import { EntityImageViewer } from "@/components/images/entity-image-viewer";
+import {
+	CARD_IGNORES_AVATAR_HOVER,
+	EntityImageViewer,
+} from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Npc } from "@/lib/store/types";
+import { cn } from "@/lib/utils";
 
 interface DashboardKeyNpcsProps {
 	npcs: Npc[];
@@ -134,7 +138,10 @@ export function DashboardKeyNpcs({
 						return (
 							<div
 								key={npc.id}
-								className="group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-fuchsia-500/30 hover:bg-background/60 flex flex-col justify-between"
+								className={cn(
+									"group t-hover-lift rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-fuchsia-500/30 hover:bg-background/60 flex flex-col justify-between",
+									CARD_IGNORES_AVATAR_HOVER,
+								)}
 							>
 								<div>
 									<div className="flex items-start gap-3">

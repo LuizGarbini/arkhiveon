@@ -26,6 +26,7 @@ import type { Character } from "@/lib/store";
 import { systemLabel } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
 import type { TableResources } from "@/lib/table-resources";
+import { cn } from "@/lib/utils";
 import { useCombatStats } from "../use-linked-items";
 import { TableResourcesStrip } from "./table-resources-strip";
 import { QuickStat } from "./ui-primitives";
@@ -66,17 +67,6 @@ export function SheetHeader({
 	onToggleEditLayout,
 	onUpdateTableResources,
 }: SheetHeaderProps) {
-	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
-	const combat = useCombatStats(character);
-	const summary =
-		[
-			character.race,
-			character.class,
-			character.level ? `Nível ${character.level}` : null,
-		]
-			.filter(Boolean)
-			.join(" · ") || config.tagline;
-
 	return (
 		<header
 			data-slot="sheet-header"
@@ -93,76 +83,15 @@ export function SheetHeader({
 			</Link>
 
 			<div className="relative mt-2 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-				<div className="flex min-w-0 items-center gap-4 sm:gap-5">
-					<div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-border/70 sm:h-24 sm:w-24">
-						{characterImageUrl ? (
-							<FramedImage
-								src={characterImageUrl}
-								alt={character.characterName}
-								framing={character}
-							/>
-						) : isImageHidden ? (
-							<LockKeyhole
-								className="h-8 w-8 text-primary/40"
-								strokeWidth={1.4}
-							/>
-						) : (
-							<User className="h-8 w-8 text-primary/40" strokeWidth={1.4} />
-						)}
-						{characterImageUrl ? (
-							<EntityImageViewer
-								src={characterImageUrl}
-								name={character.characterName}
-								canEdit={!isViewer}
-								onEdit={onOpenImageDialog}
-							/>
-						) : (
-							!isViewer && (
-								<button
-									type="button"
-									onClick={onOpenImageDialog}
-									className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20 text-white opacity-100 transition hover:bg-black/40 focus:outline-none"
-									aria-label="Alterar imagem do personagem"
-								>
-									<Camera className="h-5 w-5 drop-shadow" />
-								</button>
-							)
-						)}
-					</div>
-
-					<div className="min-w-0 flex-1">
-						<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
-							{systemLabel(character.system)}
-						</p>
-						<div className="flex min-w-0 items-center gap-1">
-							<h1 className="truncate font-display text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
-								{character.characterName}
-							</h1>
-							{!isViewer && (
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									onClick={onOpenNameDialog}
-									className="min-h-[44px] min-w-[44px] shrink-0 text-muted-foreground hover:text-foreground"
-									aria-label="Renomear personagem"
-									title="Renomear personagem"
-								>
-									<Pencil className="h-4 w-4" />
-								</Button>
-							)}
-						</div>
-						<p className="truncate text-sm text-muted-foreground">{summary}</p>
-						{character.playerName && (
-							<p className="mt-0.5 truncate text-xs text-muted-foreground">
-								Jogador:{" "}
-								<span className="font-medium text-foreground/90">
-									{character.playerName}
-								</span>
-							</p>
-						)}
-					</div>
-				</div>
+				<SheetIdentity
+					character={character}
+					config={config}
+					characterImageUrl={characterImageUrl}
+					isImageHidden={isImageHidden}
+					isViewer={isViewer}
+					onOpenImageDialog={onOpenImageDialog}
+					onOpenNameDialog={onOpenNameDialog}
+				/>
 
 				<div className="flex shrink-0 flex-wrap items-center gap-2">
 					{character.system === "ordem" && (
@@ -240,28 +169,12 @@ export function SheetHeader({
 				</div>
 			</div>
 
-			<dl className="relative mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60 sm:grid-cols-4">
-				<QuickStat
-					label="PV"
-					value={`${character.health}/${effectiveHealthMax}`}
-					color="text-rose-400"
-				/>
-				<QuickStat
-					label="CA"
-					value={String(combat.ac.total)}
-					color="text-blue-400"
-				/>
-				<QuickStat
-					label="INIT"
-					value={formatModifier(combat.initiative.total)}
-					color="text-amber-400"
-				/>
-				<QuickStat
-					label="MOV"
-					value={`${character.speed}${config.speedUnit}`}
-					color="text-emerald-400"
-				/>
-			</dl>
+			<SheetQuickStats
+				character={character}
+				config={config}
+				health={`${character.health}/${effectiveHealthMax}`}
+				className="relative mt-5"
+			/>
 
 			{onUpdateTableResources && (
 				<TableResourcesStrip
@@ -271,5 +184,169 @@ export function SheetHeader({
 				/>
 			)}
 		</header>
+	);
+}
+
+/**
+ * Identidade da ficha: retrato, sistema, nome, resumo e jogador. Usada no
+ * cabeçalho da página e, compacta, na ficha flutuante da mesa.
+ */
+export function SheetIdentity({
+	character,
+	config,
+	characterImageUrl,
+	isImageHidden,
+	isViewer,
+	compact = false,
+	onOpenImageDialog,
+	onOpenNameDialog,
+}: {
+	character: Character;
+	config: SystemConfig;
+	characterImageUrl?: string;
+	isImageHidden?: boolean;
+	isViewer?: boolean;
+	/** Versão menor (painel da mesa): retrato 56px e nome como h2. */
+	compact?: boolean;
+	onOpenImageDialog?: () => void;
+	onOpenNameDialog?: () => void;
+}) {
+	const Title = compact ? "h2" : "h1";
+	const summary =
+		[
+			character.race,
+			character.class,
+			character.level ? `Nível ${character.level}` : null,
+		]
+			.filter(Boolean)
+			.join(" · ") || config.tagline;
+	return (
+		<div
+			className={cn(
+				"flex min-w-0 items-center",
+				compact ? "gap-3" : "gap-4 sm:gap-5",
+			)}
+		>
+			<div
+				className={cn(
+					"relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-border/70",
+					compact ? "h-14 w-14" : "h-20 w-20 sm:h-24 sm:w-24",
+				)}
+			>
+				{characterImageUrl ? (
+					<FramedImage
+						src={characterImageUrl}
+						alt={character.characterName}
+						framing={character}
+					/>
+				) : isImageHidden ? (
+					<LockKeyhole className="h-8 w-8 text-primary/40" strokeWidth={1.4} />
+				) : (
+					<User className="h-8 w-8 text-primary/40" strokeWidth={1.4} />
+				)}
+				{characterImageUrl ? (
+					<EntityImageViewer
+						src={characterImageUrl}
+						name={character.characterName}
+						canEdit={!isViewer}
+						onEdit={onOpenImageDialog}
+					/>
+				) : (
+					!isViewer && (
+						<button
+							type="button"
+							onClick={onOpenImageDialog}
+							className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20 text-white opacity-100 transition hover:bg-black/40 focus:outline-none"
+							aria-label="Alterar imagem do personagem"
+						>
+							<Camera className="h-5 w-5 drop-shadow" />
+						</button>
+					)
+				)}
+			</div>
+
+			<div className="min-w-0 flex-1">
+				<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+					{systemLabel(character.system)}
+				</p>
+				<div className="flex min-w-0 items-center gap-1">
+					<Title
+						className={cn(
+							"truncate font-display font-bold leading-tight tracking-tight text-foreground",
+							compact ? "text-xl" : "text-3xl sm:text-4xl",
+						)}
+					>
+						{character.characterName}
+					</Title>
+					{!isViewer && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={onOpenNameDialog}
+							className="min-h-[44px] min-w-[44px] shrink-0 text-muted-foreground hover:text-foreground"
+							aria-label="Renomear personagem"
+							title="Renomear personagem"
+						>
+							<Pencil className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
+				<p className="truncate text-sm text-muted-foreground">{summary}</p>
+				{character.playerName && (
+					<p className="mt-0.5 truncate text-xs text-muted-foreground">
+						Jogador:{" "}
+						<span className="font-medium text-foreground/90">
+							{character.playerName}
+						</span>
+					</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+/** Faixa PV / CA / INIT / MOV da ficha (mesmos valores efetivos da página). */
+export function SheetQuickStats({
+	character,
+	config,
+	health,
+	compact = false,
+	className,
+}: {
+	character: Character;
+	config: SystemConfig;
+	/** Texto do PV (a página usa o PV da ficha; a mesa, o do token). */
+	health: string;
+	compact?: boolean;
+	className?: string;
+}) {
+	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
+	const combat = useCombatStats(character);
+	return (
+		<dl
+			className={cn(
+				"grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60",
+				compact ? "grid-cols-4" : "sm:grid-cols-4",
+				className,
+			)}
+		>
+			<QuickStat label="PV" value={health} color="text-rose-400" />
+			<QuickStat
+				label="CA"
+				value={String(combat.ac.total)}
+				color="text-blue-400"
+			/>
+			<QuickStat
+				label="INIT"
+				value={formatModifier(combat.initiative.total)}
+				color="text-amber-400"
+			/>
+			<QuickStat
+				label="MOV"
+				value={`${character.speed}${config.speedUnit}`}
+				color="text-emerald-400"
+			/>
+		</dl>
 	);
 }

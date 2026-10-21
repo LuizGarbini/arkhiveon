@@ -52,6 +52,7 @@ vi.mock("@/lib/store", () => ({
 	useImageAssetLookup: () => new Map(),
 }));
 
+import { CARD_IGNORES_AVATAR_HOVER } from "@/components/images/entity-image-viewer";
 import { PartyStatsMatrix } from "../party-stats-matrix";
 import { DashboardKeyNpcs } from "./dashboard-key-npcs";
 import { DashboardPartyRoster } from "./dashboard-party-roster";
@@ -147,6 +148,25 @@ describe("tela cheia no painel da campanha (1c-2)", () => {
 		);
 		expect(screen.queryByRole("button", { name: /tela cheia/ })).toBeNull();
 		expect(container.querySelector(".cursor-zoom-in")).toBeNull();
+	});
+
+	it("#146: no hover do avatar só o avatar acende (o card mantém a borda)", () => {
+		render(
+			<>
+				<DashboardPartyRoster characters={[character({})]} isViewer={false} />
+				<DashboardKeyNpcs npcs={[npc({})]} isViewer={false} />
+			</>,
+		);
+		for (const name of [
+			"Ver em tela cheia: Lyra",
+			"Ver em tela cheia: Borin",
+		]) {
+			const avatar = screen.getByRole("button", { name });
+			expect(avatar.hasAttribute("data-avatar-viewer")).toBe(true);
+			expect(avatar.className).toContain("hover:ring-primary/40");
+			const card = avatar.closest(".t-hover-lift");
+			expect(card?.className).toContain(CARD_IGNORES_AVATAR_HOVER);
+		}
 	});
 
 	it("Grupo: avatar do personagem abre a imagem", async () => {

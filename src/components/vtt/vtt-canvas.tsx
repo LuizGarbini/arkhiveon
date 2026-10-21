@@ -10,6 +10,13 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
+import {
+	COMPACT_VISIBLE_CONDITIONS,
+	MAX_VISIBLE_CONDITIONS,
+	STATUS_CHIP,
+	summarizeConditions,
+	tokenRingStyle,
+} from "@/lib/vtt/conditions";
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
 	calculateGridDistance,
@@ -25,6 +32,13 @@ import {
 	isEditableElement,
 	isVttShortcutBlocked,
 } from "@/lib/vtt/shortcut-guard";
+import {
+	clearStatusIconTextures,
+	cssVarColor,
+	placeStatusIcon,
+	statusIconTexture,
+} from "@/lib/vtt/status-icon-texture";
+import { createStatusLongPress } from "@/lib/vtt/status-long-press";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import {
 	beginTokenPress,
@@ -50,7 +64,7 @@ interface VTTCanvasProps {
 	onUpdateToken?: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
-	) => Promise<void>;
+	) => Promise<unknown>;
 	onBroadcastDrag?: (tokenId: string, x: number, y: number) => void;
 	onBroadcastCursor?: (x: number, y: number) => void;
 	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
@@ -112,6 +126,13 @@ export function VTTCanvas({
 	// Press that started on a token; shields it from the empty-area deselect
 	// on the same DOM event and decides tap vs. drag when it ends.
 	const tokenPressRef = useRef<TokenPress | null>(null);
+	// Toque longo num token com status: Tooltip com a lista inteira (celular).
+	const statusLongPressRef = useRef(
+		createStatusLongPress((tokenId) => {
+			const s = useVTTStore.getState();
+			if (!s.draggedTokenId) s.setHoveredStatusTokenId(tokenId);
+		}),
+	);
 	// Set when a touch tap opens the token panel, so the click the browser
 	// synthesizes after that tap cannot land on the panel that just appeared.
 	const swallowTapClickRef = useRef(false);
@@ -300,6 +321,7 @@ export function VTTCanvas({
 					appRef.current.ticker.remove(tickerCallback);
 				}
 				appRef.current.destroy(true, { children: true });
+				clearStatusIconTextures();
 				appRef.current = null;
 			}
 		};
@@ -448,6 +470,13 @@ export function VTTCanvas({
 		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
+		const foreground = cssVarColor("--foreground", 0xfafafa);
+		// Celular/toque: 1 ícone de status maior + "+N" (lido por render, não
+		// por frame).
+		const compactStatus =
+			typeof window !== "undefined" &&
+			window.matchMedia?.("(max-width: 639px), (pointer: coarse)").matches ===
+				true;
 
 		// Calculate player tokens vision circles for Exploration Mode (Penumbra LOS check)
 		const playerTokens = tokens.filter(
@@ -569,15 +598,68 @@ export function VTTCanvas({
 			}
 
 			// Border Ring
+			// Seleção > status (2px na cor do 1º status) > anel padrão.
 			const ring = new Graphics();
-			const ringColor = isSelected ? 0x38bdf8 : isGMLayer ? 0xa855f7 : 0xd4d4d8;
-
+			const ringStyle = tokenRingStyle(token.conditions, isSelected, isGMLayer);
 			ring.circle(0, 0, tokenRadius);
-			ring.stroke({
-				width: isSelected ? 3.5 : isGMLayer ? 2.5 : 2,
-				color: ringColor,
-			});
+			ring.stroke({ width: ringStyle.width, color: ringStyle.color });
 			tokenContainer.addChild(ring);
+
+			// Status: até 3 ícones na base do token + "+N" (sem fundo colorido
+			// nem brilho; só a borda do chip na cor do status).
+			const status = summarizeConditions(
+				token.conditions,
+				compactStatus ? COMPACT_VISIBLE_CONDITIONS : MAX_VISIBLE_CONDITIONS,
+			);
+			const hasStatusRow = status.visible.length > 0;
+			const chipSize = compactStatus
+				? STATUS_CHIP.compact
+				: STATUS_CHIP.desktop;
+			const chipR = chipSize.chip / 2;
+			const renderer = appRef.current?.renderer;
+			if (hasStatusRow && renderer) {
+				const slots = status.visible.length + (status.overflow > 0 ? 1 : 0);
+				const gap = chipR * 2 + 2;
+				const startX = -((slots - 1) * gap) / 2;
+				const chipY = tokenRadius - chipR * 0.4;
+				const drawChipBg = (x: number, color: number) => {
+					const chip = new Graphics();
+					chip.circle(x, chipY, chipR);
+					chip.fill({ color: 0x18181b, alpha: 0.92 });
+					chip.stroke({ width: STATUS_CHIP.stroke, color });
+					tokenContainer.addChild(chip);
+				};
+				// Ícone lucide monocromático (--foreground); textura cacheada por
+				// ícone/tamanho, então redesenhar o token não gera textura nova.
+				status.visible.forEach((cond, i) => {
+					const x = startX + i * gap;
+					drawChipBg(x, cond.hex);
+					const art = statusIconTexture(renderer, cond.icon);
+					const box = placeStatusIcon(art, chipSize.icon, x, chipY);
+					const icon = new Sprite(art.texture);
+					icon.position.set(box.x, box.y);
+					icon.width = box.width;
+					icon.height = box.height;
+					icon.tint = foreground;
+					tokenContainer.addChild(icon);
+				});
+				if (status.overflow > 0) {
+					const x = startX + status.visible.length * gap;
+					drawChipBg(x, 0xd4d4d8);
+					const text = new Text({
+						text: `+${status.overflow}`,
+						style: new TextStyle({
+							fontFamily: "system-ui, sans-serif",
+							fontSize: Math.round(chipR * 0.95),
+							fontWeight: "bold",
+							fill: foreground,
+						}),
+					});
+					text.anchor.set(0.5);
+					text.position.set(x, chipY);
+					tokenContainer.addChild(text);
+				}
+			}
 
 			// GM Shield Badge
 			if (isGMLayer) {
@@ -662,12 +744,32 @@ export function VTTCanvas({
 					}),
 				});
 				elevText.anchor.set(0.5);
-				elevText.position.set(0, tokenRadius + 8);
+				elevText.position.set(0, tokenRadius + (hasStatusRow ? chipR + 10 : 8));
 				tokenContainer.addChild(elevText);
+			}
+
+			// Tooltip do DS com os status (DOM, fora do canvas): só marca qual
+			// token está sob o ponteiro; nada no ticker.
+			if (hasStatusRow) {
+				// Hover só com mouse; no toque a lista vem no toque longo.
+				tokenContainer.on("pointerover", (e) => {
+					if (e.pointerType !== "mouse") return;
+					if (useVTTStore.getState().draggedTokenId) return;
+					useVTTStore.getState().setHoveredStatusTokenId(token.id);
+				});
+				tokenContainer.on("pointerout", () => {
+					const s = useVTTStore.getState();
+					if (s.hoveredStatusTokenId === token.id)
+						s.setHoveredStatusTokenId(null);
+				});
 			}
 
 			// Token Pointer Events (Drag & Selection with Strict Layer Isolation)
 			tokenContainer.on("pointerdown", (e) => {
+				// Qualquer jogador que vê o token pode ver os status dele.
+				if (hasStatusRow && e.pointerType !== "mouse") {
+					statusLongPressRef.current.start(token.id, e.clientX, e.clientY);
+				}
 				if (!canControl) return;
 				if (e.button === 2) {
 					e.stopPropagation();
@@ -710,7 +812,15 @@ export function VTTCanvas({
 
 					const now = Date.now();
 					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
-						setActiveTokenIdForMenu(token.id);
+						// Mouse: duplo clique abre a Ficha na mesa. Toque: segue
+						// abrindo o menu do token (que tem o botão da ficha), já que
+						// no celular não há clique direito.
+						if (e.pointerType === "mouse") {
+							setActiveTokenIdForMenu(null);
+							useVTTStore.getState().setShowCharacterSheetId(token.id);
+						} else {
+							setActiveTokenIdForMenu(token.id);
+						}
 						lastTokenTapRef.current = null;
 						pendingTokenDragRef.current = null;
 						return;
@@ -1049,6 +1159,11 @@ export function VTTCanvas({
 		};
 
 		const handlePointerDown = (e: PointerEvent) => {
+			// Toque novo fecha a lista de status aberta pelo toque longo.
+			if (e.pointerType !== "mouse") {
+				const s = useVTTStore.getState();
+				if (s.hoveredStatusTokenId) s.setHoveredStatusTokenId(null);
+			}
 			const isMiddleClick = e.button === 1;
 			const isLeftClick = e.button === 0;
 
@@ -1120,6 +1235,7 @@ export function VTTCanvas({
 		};
 
 		const handlePointerMove = (e: PointerEvent) => {
+			statusLongPressRef.current.move(e.clientX, e.clientY);
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 			const now = Date.now();
 
@@ -1310,8 +1426,11 @@ export function VTTCanvas({
 			// A touch/pen tap on a token (no drag) selects it and opens its panel.
 			const press = tokenPressRef.current;
 			tokenPressRef.current = null;
+			// Depois do toque longo (lista de status) o mesmo toque não abre o menu.
+			const longPressed = statusLongPressRef.current.end();
 			if (
 				press &&
+				!longPressed &&
 				tokenPressEndAction(press, e.clientX, e.clientY) === "open-panel"
 			) {
 				swallowTapClickRef.current = press.pointerType === "touch";

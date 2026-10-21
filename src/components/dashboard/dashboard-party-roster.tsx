@@ -9,7 +9,10 @@ import {
 	Users,
 	Zap,
 } from "lucide-react";
-import { EntityImageViewer } from "@/components/images/entity-image-viewer";
+import {
+	CARD_IGNORES_AVATAR_HOVER,
+	EntityImageViewer,
+} from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Character } from "@/lib/store/types";
@@ -92,7 +95,10 @@ export function DashboardPartyRoster({
 							return (
 								<div
 									key={char.id}
-									className="group t-hover-lift relative flex flex-col justify-between rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-primary/40 hover:bg-background/60"
+									className={cn(
+										"group t-hover-lift relative flex flex-col justify-between rounded-xl border border-border/60 bg-background/40 p-3.5 hover:border-primary/40 hover:bg-background/60",
+										CARD_IGNORES_AVATAR_HOVER,
+									)}
 								>
 									<div>
 										<div className="flex items-start gap-3">
