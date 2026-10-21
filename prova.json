@@ -14,6 +14,12 @@
    "open": 1
   },
   "retrato": 1,
+  "retratoPx": [
+   51,
+   51
+  ],
+  "nomeNoCabecalho": "",
+  "ariaPainel": "Ficha de Lyra",
   "titleNativo": 0,
   "paineis": 1,
   "listaAtributos": 6,
@@ -52,6 +58,12 @@
    "open": 1
   },
   "retrato": 1,
+  "retratoPx": [
+   51,
+   51
+  ],
+  "nomeNoCabecalho": "",
+  "ariaPainel": "Ficha de Lyra",
   "titleNativo": 0,
   "paineis": 1,
   "listaAtributos": 6,
@@ -90,6 +102,12 @@
    "open": 1
   },
   "retrato": 1,
+  "retratoPx": [
+   51,
+   51
+  ],
+  "nomeNoCabecalho": "",
+  "ariaPainel": "Ficha de Lyra",
   "titleNativo": 0,
   "dialog": 1,
   "botaoX": 0,
@@ -116,6 +134,12 @@
    "open": 1
   },
   "retrato": 1,
+  "retratoPx": [
+   51,
+   51
+  ],
+  "nomeNoCabecalho": "",
+  "ariaPainel": "Ficha de Lyra",
   "titleNativo": 0,
   "dialog": 1,
   "botaoX": 0,
