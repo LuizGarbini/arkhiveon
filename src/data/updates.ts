@@ -11,6 +11,17 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.16-nova-versao-web",
+		version: "1.6.16",
+		date: "20/10/2026",
+		title: "Aviso de nova versão no navegador",
+		description:
+			"Quando sair uma versão nova do Arkhiveon, aparece um aviso discreto no rodapé com Atualizar e Depois. Nada recarrega sozinho.",
+		bullets: [
+			"Abas abertas há muito tempo não ficam mais com a versão antiga sem saber.",
+		],
+	},
+	{
 		id: "v1.6.15-atalhos-foco",
 		version: "1.6.15",
 		date: "20/10/2026",

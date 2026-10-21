@@ -23,6 +23,7 @@ import { NotFound } from "@/components/not-found";
 import { Sidebar } from "@/components/sidebar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ToastProvider } from "@/components/ui/toast";
+import { WebUpdateBanner } from "@/components/web-update-banner";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import {
@@ -67,6 +68,7 @@ function RootLayout() {
 			<AuthProvider>
 				<RootContent />
 				<ApkUpdateBanner />
+				<WebUpdateBanner />
 			</AuthProvider>
 		</ToastProvider>
 	);

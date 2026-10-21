@@ -1,7 +1,7 @@
 import { App } from "@capacitor/app";
-import { Download, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { UpdateNotice } from "@/components/update-notice";
 import {
 	APK_CHECK_INTERVAL_MS,
 	APK_LATEST_JSON_URL,
@@ -102,45 +102,22 @@ export function ApkUpdateBanner() {
 						: `Versão ${manifest.versionName} pronta. Instala por cima, sem perder dados.`;
 
 	return (
-		<section
-			aria-label="Atualização do app"
-			aria-live="polite"
-			className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-lg"
-			style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-		>
-			<Download
-				className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-				aria-hidden
-			/>
-			<div className="min-w-0 flex-1">
-				<p className="text-sm font-medium">Nova versão disponível</p>
-				<p
-					className={
-						phase === "error"
-							? "text-xs text-destructive"
-							: "text-xs text-muted-foreground"
-					}
-				>
-					{description}
-				</p>
-				<div className="mt-2 flex gap-2">
+		<UpdateNotice
+			label="Atualização do app"
+			description={description}
+			descriptionTone={phase === "error" ? "error" : "muted"}
+			onClose={later}
+			closeDisabled={busy}
+			actions={
+				<>
 					<Button size="sm" onClick={update} loading={busy} disabled={busy}>
 						{phase === "error" ? "Tentar de novo" : "Atualizar"}
 					</Button>
 					<Button size="sm" variant="ghost" onClick={later} disabled={busy}>
 						Depois
 					</Button>
-				</div>
-			</div>
-			<button
-				type="button"
-				aria-label="Fechar"
-				onClick={later}
-				disabled={busy}
-				className="rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-			>
-				<X className="size-4" />
-			</button>
-		</section>
+				</>
+			}
+		/>
 	);
 }
