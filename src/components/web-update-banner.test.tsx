@@ -13,6 +13,14 @@ import {
 	WEB_UPDATE_SNOOZE_KEY,
 } from "@/lib/web-update";
 
+let pathname = "/dashboard";
+vi.mock("@tanstack/react-router", () => ({
+	useRouterState: ({
+		select,
+	}: {
+		select: (s: { location: { pathname: string } }) => unknown;
+	}) => select({ location: { pathname } }),
+}));
 vi.mock("@/lib/apk-update", () => ({ isAndroidApp: () => false }));
 vi.mock("@/lib/web-update", async (importOriginal) => {
 	const real = await importOriginal<typeof import("@/lib/web-update")>();
@@ -57,6 +65,23 @@ describe("Nova versão disponível (web)", () => {
 		expect(reload).not.toHaveBeenCalled();
 		fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
 		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	it("só Depois e Atualizar: sem botão de fechar (X)", async () => {
+		await mount();
+		expect(screen.queryByRole("button", { name: "Fechar" })).toBeNull();
+		expect(screen.getAllByRole("button")).toHaveLength(2);
+	});
+
+	it("na mesa (VTT) o aviso vai para o canto, fora da barra de zoom", async () => {
+		pathname = "/campaigns/c1/vtt";
+		await mount();
+		const aviso = screen.getByRole("region", {
+			name: "Atualização do Arkhiveon",
+		});
+		expect(aviso.className).toContain("sm:right-3");
+		expect(aviso.className).toContain("bottom-36");
+		pathname = "/dashboard";
 	});
 
 	it("mesma versão não mostra nada", async () => {

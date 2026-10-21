@@ -106,8 +106,6 @@ export function ApkUpdateBanner() {
 			label="Atualização do app"
 			description={description}
 			descriptionTone={phase === "error" ? "error" : "muted"}
-			onClose={later}
-			closeDisabled={busy}
 			actions={
 				<>
 					<Button size="sm" onClick={update} loading={busy} disabled={busy}>

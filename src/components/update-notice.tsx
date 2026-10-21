@@ -1,30 +1,38 @@
-import { Download, X } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
+import { Download } from "lucide-react";
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * Aviso discreto fixo no rodapé, "Nova versão disponível", com ações
- * (Atualizar/Depois). Usado pelo APK (Android) e pela web.
+ * (Atualizar/Depois). Usado pelo APK (Android) e pela web. Na mesa (VTT) vai
+ * para o canto (desktop) ou sobe acima das barras do rodapé (celular) para
+ * não cobrir o zoom/tela cheia.
  */
 export function UpdateNotice({
 	label,
 	description,
 	descriptionTone = "muted",
 	actions,
-	onClose,
-	closeDisabled,
 }: {
 	label: string;
 	description: ReactNode;
 	descriptionTone?: "muted" | "error";
 	actions: ReactNode;
-	onClose: () => void;
-	closeDisabled?: boolean;
 }) {
+	const onVtt = useRouterState({
+		select: (state) => /\/vtt\/?$/.test(state.location.pathname),
+	});
 	return (
 		<section
 			aria-label={label}
 			aria-live="polite"
-			className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-lg"
+			className={cn(
+				"fixed inset-x-3 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-lg",
+				onVtt
+					? "bottom-36 sm:bottom-3 sm:left-auto sm:right-3 sm:mx-0 sm:w-[22rem]"
+					: "bottom-3",
+			)}
 			style={{ marginBottom: "env(safe-area-inset-bottom)" }}
 		>
 			<Download
@@ -44,15 +52,6 @@ export function UpdateNotice({
 				</p>
 				<div className="mt-2 flex gap-2">{actions}</div>
 			</div>
-			<button
-				type="button"
-				aria-label="Fechar"
-				onClick={onClose}
-				disabled={closeDisabled}
-				className="rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-			>
-				<X className="size-4" />
-			</button>
 		</section>
 	);
 }

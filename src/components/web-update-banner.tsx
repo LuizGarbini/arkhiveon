@@ -63,7 +63,6 @@ export function WebUpdateBanner() {
 		<UpdateNotice
 			label="Atualização do Arkhiveon"
 			description="Recarregue para usar a versão mais recente. O que já foi salvo não se perde."
-			onClose={later}
 			actions={
 				<>
 					<Button size="sm" onClick={() => window.location.reload()}>
