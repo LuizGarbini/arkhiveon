@@ -23,6 +23,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -32,51 +33,6 @@ interface VTTTokenMenuProps {
 	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
 	onDeleteToken: (tokenId: string) => Promise<void>;
 }
-
-const COMMON_CONDITIONS = [
-	{
-		id: "envenenado",
-		label: "Envenenado",
-		icon: "🧪",
-		color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
-	},
-	{
-		id: "caido",
-		label: "Caído",
-		icon: "🧎",
-		color: "text-amber-400 border-amber-500/40 bg-amber-500/10",
-	},
-	{
-		id: "cego",
-		label: "Cego",
-		icon: "👁️‍🗨️",
-		color: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10",
-	},
-	{
-		id: "atordoado",
-		label: "Atordoado",
-		icon: "⚡",
-		color: "text-yellow-400 border-yellow-500/40 bg-yellow-500/10",
-	},
-	{
-		id: "invisivel",
-		label: "Invisível",
-		icon: "👻",
-		color: "text-sky-400 border-sky-500/40 bg-sky-500/10",
-	},
-	{
-		id: "chamas",
-		label: "Em Chamas",
-		icon: "🔥",
-		color: "text-rose-400 border-rose-500/40 bg-rose-500/10",
-	},
-	{
-		id: "concentracao",
-		label: "Concentração",
-		icon: "🔮",
-		color: "text-purple-400 border-purple-500/40 bg-purple-500/10",
-	},
-];
 
 export function VTTTokenMenu({
 	token,
@@ -381,7 +337,7 @@ export function VTTTokenMenu({
 							Condições & Status
 						</span>
 						<div className="flex flex-wrap gap-1">
-							{COMMON_CONDITIONS.map((cond) => {
+							{VTT_CONDITIONS.map((cond) => {
 								const isApplied = (token.conditions || []).includes(cond.id);
 								return (
 									<button

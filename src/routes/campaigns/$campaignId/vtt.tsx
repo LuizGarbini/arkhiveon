@@ -14,6 +14,7 @@ import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
 import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
+import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
@@ -1523,6 +1524,8 @@ function VTTSession() {
 			/>
 
 			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
+
+			<VTTTokenStatusTooltip />
 
 			{/* Token Contextual / Health & Status Edit Popover */}
 			<VTTTokenMenu
