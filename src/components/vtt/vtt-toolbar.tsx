@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { isVttShortcutBlocked } from "@/lib/vtt/shortcut-guard";
+import {
+	hasOpenVttDialog,
+	isVttShortcutBlocked,
+} from "@/lib/vtt/shortcut-guard";
 import type { VTTLayer } from "@/lib/vtt/types";
 import { useVTTStore, type VTTTool } from "@/lib/vtt/vtt-store";
 
@@ -29,6 +32,14 @@ export function VTTToolbar() {
 	// Global Keyboard Shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Esc fecha a Biblioteca da mesa (com qualquer foco). Com um dialog
+			// aberto por cima (ex.: tela cheia), o Esc fecha só o dialog.
+			if (e.key === "Escape" && !e.defaultPrevented && !hasOpenVttDialog()) {
+				const { showRosterDrawer, setShowRosterDrawer } =
+					useVTTStore.getState();
+				if (showRosterDrawer) setShowRosterDrawer(false);
+				return;
+			}
 			if (isVttShortcutBlocked(e) || e.ctrlKey || e.metaKey || e.altKey) {
 				return;
 			}

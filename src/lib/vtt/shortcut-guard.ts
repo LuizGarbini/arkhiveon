@@ -26,6 +26,15 @@ export function isInsideDialog(el: Element | null): boolean {
 const OPEN_OVERLAY =
 	'[data-vtt-overlay="open"], [role="dialog"], [role="alertdialog"], dialog[open], [role="menu"]';
 
+/** Há um dialog/sheet/menu aberto (o Esc é dele, não da Biblioteca). */
+const DIALOG_OPEN =
+	'[role="dialog"], [role="alertdialog"], dialog[open], [role="menu"]';
+
+export function hasOpenVttDialog(): boolean {
+	if (typeof document === "undefined") return false;
+	return document.querySelector(DIALOG_OPEN) !== null;
+}
+
 export function hasOpenVttOverlay(): boolean {
 	if (typeof document === "undefined") return false;
 	return document.querySelector(OPEN_OVERLAY) !== null;

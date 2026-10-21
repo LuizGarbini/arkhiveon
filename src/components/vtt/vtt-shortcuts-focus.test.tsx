@@ -21,6 +21,8 @@ vi.mock("@tanstack/react-router", () => ({
 	Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
 }));
 
+import { VTTFogControls } from "./vtt-fog-controls";
+import { VTTGridSettings } from "./vtt-grid-settings";
 import { VTTRosterDrawer } from "./vtt-roster-drawer";
 import { VTTToolbar } from "./vtt-toolbar";
 
@@ -102,6 +104,8 @@ describe("atalhos do VTT respeitam o foco", () => {
 			fireEvent.keyDown(dialog, { key: "Escape" });
 		});
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		// O Esc fechou só a tela cheia; a Biblioteca continua aberta.
+		expect(useVTTStore.getState().showRosterDrawer).toBe(true);
 	});
 
 	it("abas da Biblioteca focadas: G/V/R/F não disparam", () => {
@@ -124,6 +128,73 @@ describe("atalhos do VTT respeitam o foco", () => {
 		expect(document.activeElement).toBe(document.body);
 		for (const k of ["g", "v", "r", "f", "t", "h"]) press(document.body, k);
 		expect(tool()).toBe("pan");
+	});
+
+	it("Biblioteca aberta: Esc fecha o painel e depois R liga a Régua", () => {
+		renderMesa();
+		screen.getByRole("button", { name: "Fichas" }).focus();
+		press(document.activeElement ?? document.body, "Escape");
+		expect(useVTTStore.getState().showRosterDrawer).toBe(false);
+		expect(
+			screen.queryByRole("complementary", { name: "Biblioteca da mesa" }),
+		).toBeNull();
+		press(document.body, "r");
+		expect(tool()).toBe("ruler");
+	});
+
+	it("Esc com foco no body também fecha a Biblioteca", () => {
+		renderMesa();
+		press(document.body, "Escape");
+		expect(useVTTStore.getState().showRosterDrawer).toBe(false);
+	});
+
+	it("painel de grade: digitar no campo Escala não dispara atalho", () => {
+		useVTTStore.setState({
+			showRosterDrawer: false,
+			showGridSettings: true,
+			scenes: [scene],
+			activeSceneId: scene.id,
+			activeTool: "pan",
+		});
+		render(
+			<>
+				<VTTToolbar />
+				<VTTGridSettings onUpdateSceneSettings={vi.fn()} />
+			</>,
+		);
+		const escala = screen.getByLabelText("Escala");
+		escala.focus();
+		for (const k of ["g", "v", "r", "f", "t"]) press(escala, k);
+		expect(tool()).toBe("pan");
+		// Painel de grade não bloqueia atalhos fora do campo (decisão do Chefe).
+		escala.blur();
+		press(document.body, "r");
+		expect(tool()).toBe("ruler");
+	});
+
+	it("painel de névoa: não tem campo de texto e não bloqueia atalhos", () => {
+		useVTTStore.setState({
+			showRosterDrawer: false,
+			showFogControls: true,
+			activeTool: "fog",
+		});
+		const { container } = render(
+			<>
+				<VTTToolbar />
+				<VTTFogControls
+					scene={scene}
+					onUpdateScene={vi.fn(async () => {})}
+					onClearFog={vi.fn()}
+				/>
+			</>,
+		);
+		expect(
+			container.querySelector(
+				'input:not([type="range"]):not([type="checkbox"]), textarea, [contenteditable="true"]',
+			),
+		).toBeNull();
+		press(document.body, "r");
+		expect(tool()).toBe("ruler");
 	});
 
 	it("com tudo fechado os atalhos funcionam", () => {
