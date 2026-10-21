@@ -11,6 +11,16 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.25-mesa-abre-pelo-painel",
+		version: "1.6.25",
+		date: "20/10/2026",
+		title: "A mesa abre direto pelo painel",
+		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
+		bullets: [
+			"Enquanto a mesa carrega, o painel continua com o menu lateral, em vez de aparecer pela metade.",
+		],
+	},
+	{
 		id: "v1.6.23-status-icones",
 		version: "1.6.23",
 		date: "21/10/2026",
@@ -20,7 +30,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [
 			"Envenenado, Caído, Cego, Atordoado, Invisível, Em Chamas e Concentração agora têm ícones próprios, no token e no menu.",
 			"Cada status mantém a cor de sempre na borda.",
-			"Com mais status do que cabem, aparece um \"+N\". Passe o mouse para ver a lista completa ou, no celular, toque no token.",
+			'Com mais status do que cabem, aparece um "+N". Passe o mouse para ver a lista completa ou, no celular, toque no token.',
 		],
 	},
 	{
