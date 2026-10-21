@@ -14,7 +14,10 @@ const chipClass =
 	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer touch-manipulation";
 
 interface VTTSheetDrawerProps {
-	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
+	onUpdateToken: (
+		tokenId: string,
+		updates: Partial<VTTToken>,
+	) => Promise<unknown>;
 }
 
 export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {

@@ -46,6 +46,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
+import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
@@ -250,6 +251,11 @@ function VTTSession() {
 				activeCampaign?.ownerId === user?.id ||
 				activeCampaign?.myRole === "editor";
 			setActiveSceneId(active?.id ?? (owner ? mapped[0]?.id : null) ?? null);
+			const framed = initialSceneViewport(
+				window.innerWidth,
+				useVTTStore.getState().viewport,
+			);
+			if (framed) useVTTStore.getState().setViewport(framed);
 		} catch (err) {
 			if (requestId !== sceneRequestRef.current) return;
 			console.error("Erro ao carregar cenas do VTT:", err);
@@ -1261,10 +1267,10 @@ function VTTSession() {
 	const handleUpdateToken = async (
 		tokenId: string,
 		updates: Partial<VTTToken>,
-	) => {
+	): Promise<boolean> => {
 		if (!canEditToken(tokenId)) {
 			setMutationError("Você não controla este token.");
-			return;
+			return false;
 		}
 		setMutationError(null);
 		const sessionGeneration = sessionGenerationRef.current;
@@ -1272,7 +1278,7 @@ function VTTSession() {
 		tokenMutationRef.current.set(tokenId, mutationId);
 
 		const client = getSupabase();
-		if (!client) return;
+		if (!client) return false;
 
 		const dbUpdates: Database["public"]["Tables"]["vtt_tokens"]["Update"] = {};
 		if (updates.x !== undefined) dbUpdates.x = updates.x;
@@ -1314,17 +1320,20 @@ function VTTSession() {
 				}
 				updateToken(tokenId, acceptedUpdates);
 			}
+			return true;
 		} catch {
 			if (
 				sessionGenerationRef.current !== sessionGeneration ||
 				tokenMutationRef.current.get(tokenId) !== mutationId ||
 				useVTTStore.getState().activeSceneId !== activeSceneId
 			)
-				return;
+				// Uma gravação mais nova já manda neste token: nada a reverter aqui.
+				return true;
 			setMutationError(
 				"Não foi possível salvar o token. Restaurando os dados do servidor.",
 			);
 			if (activeSceneId) await fetchTokens(activeSceneId);
+			return false;
 		}
 	};
 

@@ -17,20 +17,26 @@ import { useRef, useState } from "react";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { showToast } from "@/components/ui/toast";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { VTT_CONDITIONS } from "@/lib/vtt/conditions";
+import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 interface VTTTokenMenuProps {
 	token: VTTToken | null;
-	onUpdateToken: (tokenId: string, updates: Partial<VTTToken>) => Promise<void>;
+	/** Resolve `false` quando o servidor recusou a gravação. */
+	onUpdateToken: (
+		tokenId: string,
+		updates: Partial<VTTToken>,
+	) => Promise<unknown>;
 	onDeleteToken: (tokenId: string) => Promise<void>;
 }
 
@@ -63,7 +69,9 @@ export function VTTTokenMenu({
 		}
 	};
 	const onUpdateToken = (id: string, updates: Partial<VTTToken>) =>
-		runMutation(() => saveToken(id, updates));
+		runMutation(async () => {
+			await saveToken(id, updates);
+		});
 	const onDeleteToken = (id: string) => runMutation(() => deleteToken(id));
 
 	if (!token || activeTokenIdForMenu !== token.id) return null;
@@ -89,13 +97,32 @@ export function VTTTokenMenu({
 		setCustomHpMod("");
 	};
 
+	// Status: otimista. Aplica na mesa na hora e grava; se o servidor recusar,
+	// volta ao que estava (se ninguém mexeu de novo) e avisa com toast.
 	const handleToggleCondition = (conditionId: string) => {
-		const current = token.conditions || [];
-		const next = current.includes(conditionId)
-			? current.filter((c) => c !== conditionId)
-			: [...current, conditionId];
-		void onUpdateToken(token.id, { conditions: next });
+		if (pendingRef.current) return;
+		const tokenId = token.id;
+		const previous = token.conditions ?? [];
+		const next = toggleCondition(previous, conditionId);
+		useVTTStore.getState().updateToken(tokenId, { conditions: next });
+		void runMutation(async () => {
+			const ok = await saveToken(tokenId, { conditions: next });
+			if (ok !== false) return;
+			const now = useVTTStore
+				.getState()
+				.tokens.find((t) => t.id === tokenId)?.conditions;
+			if (now && now.join("|") === next.join("|")) {
+				useVTTStore.getState().updateToken(tokenId, { conditions: previous });
+			}
+			showToast("error", {
+				title: "Não foi possível salvar o status",
+				description: "O token voltou ao que estava antes.",
+			});
+		});
 	};
+	const missingConditions = VTT_CONDITIONS.filter(
+		(c) => !(token.conditions ?? []).includes(c.id),
+	);
 
 	const handleSetSize = (size: number) => {
 		void onUpdateToken(token.id, { sizeCells: size });
@@ -336,6 +363,22 @@ export function VTTTokenMenu({
 						<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
 							Condições & Status
 						</span>
+						{missingConditions.length > 0 ? (
+							<Select
+								aria-label="Adicionar status"
+								value=""
+								placeholder="Adicionar status…"
+								onChange={(e) => {
+									if (e.target.value) handleToggleCondition(e.target.value);
+								}}
+							>
+								{missingConditions.map((cond) => (
+									<option key={cond.id} value={cond.id}>
+										{`${cond.icon} ${cond.label}`}
+									</option>
+								))}
+							</Select>
+						) : null}
 						<div className="flex flex-wrap gap-1">
 							{VTT_CONDITIONS.map((cond) => {
 								const isApplied = (token.conditions || []).includes(cond.id);
