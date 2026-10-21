@@ -1,0 +1,188 @@
+[
+ {
+  "tag": "mestre-1440x900",
+  "isGM": true,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "conds": {
+   "Lyra": [
+    "concentracao"
+   ],
+   "Ogro": [
+    "envenenado",
+    "caido",
+    "cego",
+    "atordoado",
+    "chamas"
+   ],
+   "Goblin": [
+    "envenenado"
+   ],
+   "Espião oculto": [
+    "invisivel"
+   ]
+  },
+  "tooltip": [
+   "Ogro: Envenenado · Caído · Cego · Atordoado · Em Chamas"
+  ],
+  "select": 1,
+  "aposCego": [
+   "envenenado",
+   "cego"
+  ],
+  "otimista": [
+   "envenenado",
+   "cego",
+   "atordoado"
+  ],
+  "aposErro": [
+   "envenenado"
+  ],
+  "toast": 1,
+  "titleNativo": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-1440x900",
+  "isGM": false,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "conds": {
+   "Lyra": [
+    "concentracao"
+   ],
+   "Ogro": [
+    "envenenado",
+    "caido",
+    "cego",
+    "atordoado",
+    "chamas"
+   ],
+   "Goblin": [
+    "envenenado"
+   ],
+   "Espião oculto": [
+    "invisivel"
+   ]
+  },
+  "tooltip": [
+   "Ogro: Envenenado · Caído · Cego · Atordoado · Em Chamas"
+  ],
+  "select": 1,
+  "aposCego": [
+   "concentracao",
+   "cego"
+  ],
+  "otimista": [
+   "concentracao",
+   "cego",
+   "atordoado"
+  ],
+  "aposErro": [
+   "concentracao"
+  ],
+  "toast": 1,
+  "titleNativo": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "mestre-390x844",
+  "isGM": true,
+  "vp": {
+   "x": 76,
+   "y": 0,
+   "scale": 1
+  },
+  "conds": {
+   "Lyra": [
+    "concentracao"
+   ],
+   "Ogro": [
+    "envenenado",
+    "caido",
+    "cego",
+    "atordoado",
+    "chamas"
+   ],
+   "Goblin": [
+    "envenenado"
+   ],
+   "Espião oculto": [
+    "invisivel"
+   ]
+  },
+  "menuAposToqueLongo": null,
+  "tooltip": [
+   "Ogro: Envenenado · Caído · Cego · Atordoado · Em Chamas"
+  ],
+  "select": 1,
+  "aposCego": [
+   "envenenado",
+   "cego"
+  ],
+  "otimista": [
+   "envenenado",
+   "cego",
+   "atordoado"
+  ],
+  "aposErro": [
+   "envenenado"
+  ],
+  "toast": 1,
+  "titleNativo": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-390x844",
+  "isGM": false,
+  "vp": {
+   "x": 76,
+   "y": 0,
+   "scale": 1
+  },
+  "conds": {
+   "Lyra": [
+    "concentracao"
+   ],
+   "Ogro": [
+    "envenenado",
+    "caido",
+    "cego",
+    "atordoado",
+    "chamas"
+   ],
+   "Goblin": [
+    "envenenado"
+   ],
+   "Espião oculto": [
+    "invisivel"
+   ]
+  },
+  "menuAposToqueLongo": null,
+  "tooltip": [
+   "Ogro: Envenenado · Caído · Cego · Atordoado · Em Chamas"
+  ],
+  "select": 1,
+  "aposCego": [
+   "concentracao",
+   "cego"
+  ],
+  "otimista": [
+   "concentracao",
+   "cego",
+   "atordoado"
+  ],
+  "aposErro": [
+   "concentracao"
+  ],
+  "toast": 1,
+  "titleNativo": 0,
+  "pageErrors": []
+ }
+]
