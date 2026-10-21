@@ -11,6 +11,19 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.23-status-icones",
+		version: "1.6.23",
+		date: "21/10/2026",
+		title: "Ícones nos status dos tokens",
+		description:
+			"Os status dos tokens na mesa trocaram os emojis por ícones mais limpos, iguais em qualquer aparelho.",
+		bullets: [
+			"Envenenado, Caído, Cego, Atordoado, Invisível, Em Chamas e Concentração agora têm ícones próprios, no token e no menu.",
+			"Cada status mantém a cor de sempre na borda.",
+			"Com mais status do que cabem, aparece um \"+N\". Passe o mouse para ver a lista completa ou, no celular, toque no token.",
+		],
+	},
+	{
 		id: "v1.6.22-combate-base",
 		version: "1.6.22",
 		date: "21/10/2026",

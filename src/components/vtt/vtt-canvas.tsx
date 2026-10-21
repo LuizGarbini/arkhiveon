@@ -13,6 +13,7 @@ import { playPingAudio } from "@/lib/vtt/audio";
 import {
 	COMPACT_VISIBLE_CONDITIONS,
 	MAX_VISIBLE_CONDITIONS,
+	STATUS_CHIP,
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
@@ -31,6 +32,12 @@ import {
 	isEditableElement,
 	isVttShortcutBlocked,
 } from "@/lib/vtt/shortcut-guard";
+import {
+	clearStatusIconTextures,
+	cssVarColor,
+	placeStatusIcon,
+	statusIconTexture,
+} from "@/lib/vtt/status-icon-texture";
 import { createStatusLongPress } from "@/lib/vtt/status-long-press";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import {
@@ -314,6 +321,7 @@ export function VTTCanvas({
 					appRef.current.ticker.remove(tickerCallback);
 				}
 				appRef.current.destroy(true, { children: true });
+				clearStatusIconTextures();
 				appRef.current = null;
 			}
 		};
@@ -462,6 +470,7 @@ export function VTTCanvas({
 		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
+		const foreground = cssVarColor("--foreground", 0xfafafa);
 		// Celular/toque: 1 ícone de status maior + "+N" (lido por render, não
 		// por frame).
 		const compactStatus =
@@ -603,42 +612,52 @@ export function VTTCanvas({
 				compactStatus ? COMPACT_VISIBLE_CONDITIONS : MAX_VISIBLE_CONDITIONS,
 			);
 			const hasStatusRow = status.visible.length > 0;
-			const chipR = compactStatus
-				? Math.max(11, tokenRadius * 0.38)
-				: Math.max(7, tokenRadius * 0.26);
-			if (hasStatusRow) {
+			const chipSize = compactStatus
+				? STATUS_CHIP.compact
+				: STATUS_CHIP.desktop;
+			const chipR = chipSize.chip / 2;
+			const renderer = appRef.current?.renderer;
+			if (hasStatusRow && renderer) {
 				const slots = status.visible.length + (status.overflow > 0 ? 1 : 0);
 				const gap = chipR * 2 + 2;
 				const startX = -((slots - 1) * gap) / 2;
 				const chipY = tokenRadius - chipR * 0.4;
-				const drawChip = (x: number, label: string, color: number) => {
+				const drawChipBg = (x: number, color: number) => {
 					const chip = new Graphics();
 					chip.circle(x, chipY, chipR);
 					chip.fill({ color: 0x18181b, alpha: 0.92 });
-					chip.stroke({ width: 1.5, color });
+					chip.stroke({ width: STATUS_CHIP.stroke, color });
 					tokenContainer.addChild(chip);
+				};
+				// Ícone lucide monocromático (--foreground); textura cacheada por
+				// ícone/tamanho, então redesenhar o token não gera textura nova.
+				status.visible.forEach((cond, i) => {
+					const x = startX + i * gap;
+					drawChipBg(x, cond.hex);
+					const art = statusIconTexture(renderer, cond.icon);
+					const box = placeStatusIcon(art, chipSize.icon, x, chipY);
+					const icon = new Sprite(art.texture);
+					icon.position.set(box.x, box.y);
+					icon.width = box.width;
+					icon.height = box.height;
+					icon.tint = foreground;
+					tokenContainer.addChild(icon);
+				});
+				if (status.overflow > 0) {
+					const x = startX + status.visible.length * gap;
+					drawChipBg(x, 0xd4d4d8);
 					const text = new Text({
-						text: label,
+						text: `+${status.overflow}`,
 						style: new TextStyle({
 							fontFamily: "system-ui, sans-serif",
-							fontSize: Math.max(8, chipR * 1.05),
+							fontSize: Math.round(chipR * 0.95),
 							fontWeight: "bold",
-							fill: "#ffffff",
+							fill: foreground,
 						}),
 					});
 					text.anchor.set(0.5);
 					text.position.set(x, chipY);
 					tokenContainer.addChild(text);
-				};
-				status.visible.forEach((cond, i) => {
-					drawChip(startX + i * gap, cond.icon, cond.hex);
-				});
-				if (status.overflow > 0) {
-					drawChip(
-						startX + status.visible.length * gap,
-						`+${status.overflow}`,
-						0xd4d4d8,
-					);
 				}
 			}
 

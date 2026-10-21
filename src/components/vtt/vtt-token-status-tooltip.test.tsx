@@ -44,9 +44,17 @@ describe("Tooltip de status sobre o token", () => {
 	it("hover mostra todos os status (inclusive os do +N), no topo do token", async () => {
 		render(<VTTTokenStatusTooltip />);
 		act(() => useVTTStore.getState().setHoveredStatusTokenId("tok-1"));
+		await screen.findByText("Em Chamas");
+		const labels = [...document.querySelectorAll("[data-status-label]")].map(
+			(el) => el.textContent?.replace("· ", ""),
+		);
+		expect(labels).toEqual(["Envenenado", "Caído", "Cego", "Em Chamas"]);
+		// Cada status, inclusive os escondidos no "+N", tem o ícone lucide.
 		expect(
-			await screen.findByText("Envenenado · Caído · Cego · Em Chamas"),
-		).toBeTruthy();
+			[...document.querySelectorAll("[data-status-icon]")].map((el) =>
+				el.getAttribute("data-status-icon"),
+			),
+		).toEqual(["biohazard", "arrow-down-to-line", "eye-off", "flame"]);
 		const anchor = screen.getByTestId("token-status-anchor");
 		// x = 200*2+10; topo = 300*2+20 - 35*2
 		expect(anchor.style.left).toBe("410px");

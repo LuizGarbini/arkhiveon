@@ -17,7 +17,13 @@ import { useRef, useState } from "react";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+	SelectContent,
+	SelectItem,
+	SelectRoot,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { showToast } from "@/components/ui/toast";
 import {
 	Tooltip,
@@ -27,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
+import { StatusIcon } from "@/lib/vtt/status-icons";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -370,20 +377,39 @@ export function VTTTokenMenu({
 							Condições & Status
 						</span>
 						{missingConditions.length > 0 ? (
-							<Select
-								aria-label="Adicionar status"
-								value=""
-								placeholder="Adicionar status…"
-								onChange={(e) => {
-									if (e.target.value) handleToggleCondition(e.target.value);
+							<SelectRoot<string>
+								value={null}
+								onValueChange={(next) => {
+									if (next) handleToggleCondition(next);
 								}}
 							>
-								{missingConditions.map((cond) => (
-									<option key={cond.id} value={cond.id}>
-										{`${cond.icon} ${cond.label}`}
-									</option>
-								))}
-							</Select>
+								<SelectTrigger aria-label="Adicionar status">
+									<SelectValue>
+										{() => (
+											<span className="text-muted-foreground">
+												Adicionar status…
+											</span>
+										)}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent>
+									{missingConditions.map((cond) => (
+										<SelectItem
+											key={cond.id}
+											value={cond.id}
+											label={cond.label}
+										>
+											<span className="flex items-center gap-2">
+												<StatusIcon
+													name={cond.icon}
+													className="text-muted-foreground"
+												/>
+												{cond.label}
+											</span>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</SelectRoot>
 						) : null}
 						<div className="flex flex-wrap gap-1">
 							{VTT_CONDITIONS.map((cond) => {
@@ -397,12 +423,13 @@ export function VTTTokenMenu({
 										onClick={() => handleToggleCondition(cond.id)}
 										className={cn(
 											"flex min-h-11 items-center gap-1 px-2.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
+											// Ícone monocromático: só a borda/fundo levam a cor do status.
 											isApplied
-												? cond.color
+												? cn(cond.color, "text-foreground")
 												: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground",
 										)}
 									>
-										<span>{cond.icon}</span>
+										<StatusIcon name={cond.icon} />
 										<span>{cond.label}</span>
 									</button>
 								);
