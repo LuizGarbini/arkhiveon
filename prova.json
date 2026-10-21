@@ -88,10 +88,10 @@
   "toast": 1,
   "fps": {
    "paredes": 200,
-   "parado": 19,
-   "zoomEPanCadaFrame": 20,
-   "semParedesZoomEPan": 24,
-   "semParedesParado": 26
+   "parado": 18,
+   "zoomEPanCadaFrame": 18,
+   "semParedesZoomEPan": 22,
+   "semParedesParado": 24
   },
   "titleNativoNoBotao": 0,
   "pageErrors": []
