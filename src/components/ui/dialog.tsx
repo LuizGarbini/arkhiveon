@@ -40,13 +40,16 @@ function DialogContent({
 	className,
 	children,
 	showCloseButton = true,
+	overlayClassName,
 	...props
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean;
+	/** Classes extras do overlay (ex.: sheet da mesa sem blur). */
+	overlayClassName?: string;
 }) {
 	return (
 		<DialogPortal>
-			<DialogOverlay />
+			<DialogOverlay className={overlayClassName} />
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(

@@ -793,7 +793,15 @@ export function VTTCanvas({
 
 					const now = Date.now();
 					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
-						setActiveTokenIdForMenu(token.id);
+						// Mouse: duplo clique abre a Ficha na mesa. Toque: segue
+						// abrindo o menu do token (que tem o botão da ficha), já que
+						// no celular não há clique direito.
+						if (e.pointerType === "mouse") {
+							setActiveTokenIdForMenu(null);
+							useVTTStore.getState().setShowCharacterSheetId(token.id);
+						} else {
+							setActiveTokenIdForMenu(token.id);
+						}
 						lastTokenTapRef.current = null;
 						pendingTokenDragRef.current = null;
 						return;

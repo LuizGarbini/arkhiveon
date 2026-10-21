@@ -24,6 +24,20 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.18-ficha-flutuante",
+		version: "1.6.18",
+		date: "20/10/2026",
+		title: "Ficha do personagem flutuando na mesa",
+		description:
+			"Dê dois cliques no token para abrir a ficha, com retrato, numa janela por cima do mapa, sem sair da mesa.",
+		bullets: [
+			"Arraste a janela pelo topo e mude o tamanho pelo canto; ela abre onde você deixou da última vez.",
+			"Abra até 3 fichas ao mesmo tempo para comparar.",
+			"No celular, a ficha sobe de baixo; arraste para baixo ou toque fora para fechar.",
+			"Com o foco no mapa, os atalhos continuam valendo; dentro da ficha, Esc fecha.",
+		],
+	},
+	{
 		id: "v1.6.17-status-token",
 		version: "1.6.17",
 		date: "20/10/2026",

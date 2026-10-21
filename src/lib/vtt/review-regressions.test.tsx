@@ -19,8 +19,15 @@ const rolls = vi.hoisted(() => ({ starts: 0, stops: 0 }));
 vi.mock("@/lib/store", () => ({
 	RPG_SYSTEMS: [],
 	getAttributeFullName: (label: string) => label,
-	useRPGStore: (selector: (s: { characters: never[] }) => unknown) =>
-		selector({ characters: [] }),
+	useRPGStore: (
+		selector: (s: {
+			characters: never[];
+			campaignLoadStatus: string;
+		}) => unknown,
+	) => selector({ characters: [], campaignLoadStatus: "ready" }),
+	useActiveCampaignId: () => "campaign",
+	useActiveCampaignRole: () => "owner",
+	useImageAssetLookup: () => ({}),
 	abilityModifier: () => 0,
 	formatModifier: () => "+0",
 }));
