@@ -1,0 +1,70 @@
+[
+ {
+  "tag": "antes-1440x900",
+  "miniaturaTooltip": 1,
+  "miniaturaIcone": 1,
+  "avisoTokensVisivel": true,
+  "menuTitlesNativos": 5,
+  "menuTooltip": [],
+  "cardGeo": {
+   "textoDireita": 554,
+   "iconesEsquerda": 474,
+   "iconesBase": 407,
+   "tituloTopo": 391
+  },
+  "tituloPassaSobIcones": true,
+  "pageErrors": []
+ },
+ {
+  "tag": "antes-390x844",
+  "miniaturaTooltip": 0,
+  "miniaturaIcone": 1,
+  "avisoTokensVisivel": true,
+  "menuTitlesNativos": 5,
+  "menuTooltip": [],
+  "cardGeo": {
+   "textoDireita": 351,
+   "iconesEsquerda": 271,
+   "iconesBase": 466,
+   "tituloTopo": 450
+  },
+  "tituloPassaSobIcones": true,
+  "pageErrors": []
+ },
+ {
+  "tag": "depois-1440x900",
+  "miniaturaTooltip": 0,
+  "miniaturaIcone": 1,
+  "avisoTokensVisivel": true,
+  "menuTitlesNativos": 0,
+  "menuTooltip": [
+   "Girar Token (45º)"
+  ],
+  "cardGeo": {
+   "textoDireita": 452,
+   "iconesEsquerda": 474,
+   "iconesBase": 407,
+   "tituloTopo": 391
+  },
+  "tituloPassaSobIcones": false,
+  "pageErrors": []
+ },
+ {
+  "tag": "depois-390x844",
+  "miniaturaTooltip": 0,
+  "miniaturaIcone": 1,
+  "avisoTokensVisivel": true,
+  "menuTitlesNativos": 0,
+  "menuTooltip": [
+   "Girar Token (45º)"
+  ],
+  "cardGeo": {
+   "textoDireita": 249,
+   "iconesEsquerda": 271,
+   "iconesBase": 466,
+   "tituloTopo": 450
+  },
+  "tituloPassaSobIcones": false,
+  "pageErrors": []
+ }
+]
