@@ -1,5 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { isLitePerformanceMode } from "@/lib/performance-mode";
 
 const LazyDiscordDitherShader = lazy(() =>
@@ -37,11 +37,12 @@ function scheduleIdle(callback: () => void) {
 function isWebGLSupported(): boolean {
 	if (typeof window === "undefined") return false;
 	try {
+		if (!window.WebGLRenderingContext) return false;
 		const canvas = document.createElement("canvas");
-		return !!(
-			window.WebGLRenderingContext &&
-			(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-		);
+		const gl = canvas.getContext("webgl");
+		// Libera o contexto de teste na hora: o Chrome mantém poucos vivos (~16).
+		gl?.getExtension("WEBGL_lose_context")?.loseContext();
+		return !!gl;
 	} catch (_e) {
 		return false;
 	}
@@ -49,8 +50,10 @@ function isWebGLSupported(): boolean {
 
 export function DiscordDitherBanner() {
 	const [enableShader, setEnableShader] = useState(false);
+	const asideRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {
+		const aside = asideRef.current;
 		let cancelIdle: (() => void) | undefined;
 
 		function sync() {
@@ -79,11 +82,20 @@ export function DiscordDitherBanner() {
 			motionQuery.removeEventListener("change", sync);
 			window.removeEventListener("arkhiveon-performance-mode-change", sync);
 			window.removeEventListener("storage", sync);
+			// O shader cancela o próprio rAF ao desmontar; aqui o contexto WebGL
+			// é liberado na hora, em vez de esperar o GC.
+			for (const canvas of aside?.querySelectorAll("canvas") ?? []) {
+				canvas
+					.getContext("webgl2")
+					?.getExtension("WEBGL_lose_context")
+					?.loseContext();
+			}
 		};
 	}, []);
 
 	return (
 		<aside
+			ref={asideRef}
 			aria-label="Comunidade Discord"
 			className="group relative overflow-hidden rounded-2xl border border-[#5865F2]/40 bg-[#0e051c] p-4 sm:p-5 shadow-lg shadow-black/20 transition-all duration-150 ease-out hover:border-[#5865F2]/70"
 		>

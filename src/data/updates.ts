@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.27-webgl-contextos",
+		version: "1.6.27",
+		date: "21/10/2026",
+		title: "Ir e voltar entre mesa e painel sem travar",
+		description:
+			"Os fundos animados do painel e o d20 liberam a placa de vídeo ao sair da tela, então ir e voltar entre a mesa e o painel não acumula mais peso.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.25-mesa-abre-pelo-painel",
 		version: "1.6.25",
 		date: "20/10/2026",
