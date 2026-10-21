@@ -14,13 +14,14 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		id: "v1.6.18-ficha-flutuante",
 		version: "1.6.18",
 		date: "20/10/2026",
-		title: "Ficha do personagem direto na mesa",
+		title: "Ficha do personagem flutuando na mesa",
 		description:
-			"Dê dois cliques no seu token para abrir a ficha num painel ao lado do mapa, sem sair da mesa.",
+			"Dê dois cliques no token para abrir a ficha, com retrato, numa janela por cima do mapa, sem sair da mesa.",
 		bullets: [
-			"A mesa continua funcionando com a ficha aberta: V, R, Espaço e os outros atalhos seguem valendo.",
-			"Enquanto você mexe dentro da ficha, os atalhos ficam pausados; Esc fecha a ficha.",
-			"Cada jogador só abre os tokens que controla, como já era no menu do token.",
+			"Arraste a janela pelo topo e mude o tamanho pelo canto; ela abre onde você deixou da última vez.",
+			"Abra até 3 fichas ao mesmo tempo para comparar.",
+			"No celular, a ficha sobe de baixo; arraste para baixo ou toque fora para fechar.",
+			"Com o foco no mapa, os atalhos continuam valendo; dentro da ficha, Esc fecha.",
 		],
 	},
 	{
