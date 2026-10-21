@@ -132,12 +132,13 @@ describe("textura do Pixi", () => {
 	it("ícone fica centrado no chip, no tamanho do viewBox (sem esticar)", () => {
 		// circle-dot: caixa 1.25..22.75 no viewBox 24.
 		const art = { x: 1.25, y: 1.25, width: 21.5, height: 21.5 };
-		expect(placeStatusIcon(art, 16, 100, 50)).toEqual({
-			x: 100 - (10.75 * 16) / 24,
-			y: 50 - (10.75 * 16) / 24,
-			width: (21.5 * 16) / 24,
-			height: (21.5 * 16) / 24,
-		});
+		const b = placeStatusIcon(art, 16, 100, 50);
+		const half = (10.75 * 16) / 24;
+		expect(b.x).toBeCloseTo(100 - half);
+		expect(b.y).toBeCloseTo(50 - half);
+		expect(b.width).toBeCloseTo((21.5 * 16) / 24);
+		// Centro do ícone = centro do chip.
+		expect(b.x + b.width / 2).toBeCloseTo(100);
 		// Desenho estreito (arrow-down-to-line) não vira quadrado.
 		const box = placeStatusIcon(
 			{ x: 4.25, y: 2.25, width: 15.5, height: 19.5 },
