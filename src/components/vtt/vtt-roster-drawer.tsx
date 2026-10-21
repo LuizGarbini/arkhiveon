@@ -151,6 +151,7 @@ export function VTTRosterDrawer({
 	return (
 		<aside
 			aria-label="Biblioteca da mesa"
+			data-vtt-overlay="open"
 			onDragEnter={(event) => {
 				// A file dragged over the library opens the map tab, where it lands.
 				if (isGM && tab !== "map" && dragHasFiles(event.dataTransfer.types)) {

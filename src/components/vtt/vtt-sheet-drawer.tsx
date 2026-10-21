@@ -72,6 +72,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 			<aside
 				className="t-panel-slide-x pointer-events-none absolute bottom-20 right-3 top-32 z-40 w-[min(100%-1.5rem,22rem)]"
 				data-open={isOpen}
+				data-vtt-overlay={isOpen ? "open" : undefined}
 				aria-label="Ficha na mesa"
 				aria-hidden={!isOpen}
 				inert={!isOpen}

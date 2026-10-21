@@ -19,8 +19,22 @@ export function isInsideDialog(el: Element | null): boolean {
 }
 
 /**
+ * Painéis/overlays abertos por cima da mesa: Biblioteca e Ficha na mesa
+ * (marcados com `data-vtt-overlay="open"`) e qualquer dialog, sheet, popover
+ * ou menu aberto (Base UI/Radix só montam o popup enquanto aberto).
+ */
+const OPEN_OVERLAY =
+	'[data-vtt-overlay="open"], [role="dialog"], [role="alertdialog"], dialog[open], [role="menu"]';
+
+export function hasOpenVttOverlay(): boolean {
+	if (typeof document === "undefined") return false;
+	return document.querySelector(OPEN_OVERLAY) !== null;
+}
+
+/**
  * Atalhos de letra do VTT (V/H/R/G/T/F, Espaço) não disparam quando o alvo da
- * tecla ou o foco atual estão num campo editável ou dentro de um dialog.
+ * tecla ou o foco atual estão num campo editável ou dentro de um dialog, nem
+ * enquanto houver painel/overlay aberto por cima da mesa (qualquer foco).
  * Olha também `document.activeElement` porque o evento pode vir do `body`
  * enquanto o foco está num campo (ex.: logo depois de trocar de aba).
  */
@@ -29,5 +43,6 @@ export function isVttShortcutBlocked(e: KeyboardEvent): boolean {
 		asElement(e.target),
 		typeof document === "undefined" ? null : document.activeElement,
 	];
+	if (hasOpenVttOverlay()) return true;
 	return candidates.some((el) => isEditableElement(el) || isInsideDialog(el));
 }

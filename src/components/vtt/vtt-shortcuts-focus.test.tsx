@@ -104,11 +104,38 @@ describe("atalhos do VTT respeitam o foco", () => {
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 	});
 
-	it("fora de campo e de dialog os atalhos funcionam", () => {
+	it("abas da Biblioteca focadas: G/V/R/F não disparam", () => {
 		renderMesa();
-		const busca = screen.getByPlaceholderText("Buscar na biblioteca…");
-		busca.focus();
-		busca.blur();
+		useVTTStore.setState({ activeTool: "pan" });
+		for (const aba of ["Na cena", "Mapa"]) {
+			const botao = screen.getByRole("button", { name: aba });
+			botao.focus();
+			expect(document.activeElement).toBe(botao);
+			for (const k of ["g", "v", "r", "f"]) press(botao, k);
+		}
+		expect(tool()).toBe("pan");
+		expect(useVTTStore.getState().showFogControls).toBe(false);
+	});
+
+	it("Biblioteca aberta com foco no body: nenhum atalho dispara", () => {
+		renderMesa();
+		useVTTStore.setState({ activeTool: "pan" });
+		(document.activeElement as HTMLElement | null)?.blur();
+		expect(document.activeElement).toBe(document.body);
+		for (const k of ["g", "v", "r", "f", "t", "h"]) press(document.body, k);
+		expect(tool()).toBe("pan");
+	});
+
+	it("com tudo fechado os atalhos funcionam", () => {
+		renderMesa();
+		press(document.body, "r");
+		expect(tool()).toBe("select");
+		act(() => {
+			useVTTStore.setState({ showRosterDrawer: false });
+		});
+		expect(
+			screen.queryByRole("complementary", { name: "Biblioteca da mesa" }),
+		).toBeNull();
 		press(document.body, "r");
 		expect(tool()).toBe("ruler");
 		press(document.body, "g");
@@ -146,7 +173,16 @@ describe("isVttShortcutBlocked", () => {
 		expect(isVttShortcutBlocked(ev(el))).toBe(true);
 	});
 
-	it("não bloqueia num botão comum fora de dialog", () => {
+	it("bloqueia em qualquer foco com painel marcado aberto", () => {
+		document.body.innerHTML =
+			'<aside data-vtt-overlay="open"></aside><button>Mapa</button>';
+		const el = document.body.querySelector("button");
+		if (!el) throw new Error("sem alvo");
+		expect(isVttShortcutBlocked(ev(el))).toBe(true);
+		expect(isVttShortcutBlocked(ev(document.body))).toBe(true);
+	});
+
+	it("não bloqueia num botão comum sem overlay aberto", () => {
 		document.body.innerHTML = "<button>Mapa</button>";
 		const el = document.body.firstElementChild;
 		if (!el) throw new Error("sem alvo");

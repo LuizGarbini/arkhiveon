@@ -16,10 +16,10 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "20/10/2026",
 		title: "Digitar na mesa não aciona mais atalhos",
 		description:
-			"Atalhos da mesa (V, H, R, G, T, F e Espaço) não disparam enquanto você digita num campo ou com uma janela aberta, como a imagem em tela cheia.",
+			"Atalhos da mesa (V, H, R, G, T, F e Espaço) não disparam enquanto você digita num campo nem com a Biblioteca, a ficha ou outra janela aberta por cima da mesa.",
 		bullets: [
 			'Ex.: digitar "g" na busca da Biblioteca não vira mais ping.',
-			"Clique no mapa (fora do campo) e os atalhos voltam a funcionar.",
+			"Feche o painel e os atalhos voltam a funcionar.",
 		],
 	},
 	{
