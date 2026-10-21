@@ -2,100 +2,128 @@
  {
   "tag": "mestre-1440x900",
   "isGM": true,
-  "dblGoblin": "aaaaaaaa-0000-4000-8000-000000000002",
-  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
-  "overlayAttr": 0,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "goblinAbre": 1,
+  "lyra": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000001",
+   "open": 1
+  },
+  "retrato": 1,
   "titleNativo": 0,
-  "focoMesa_R": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  "paineis": 1,
+  "listaAtributos": 6,
+  "posAposArraste": {
+   "left": "444px",
+   "top": "248px"
   },
-  "focoMesa_Esc": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  "tres": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000003",
+   "open": 3
   },
-  "focoDentro_VG": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_Esc": {
-   "tool": "ruler",
-   "sheet": null
+  "paineis3": 3,
+  "focoMesaR": "ruler",
+  "focoMesaEsc": 3,
+  "focoDentroV": "ruler",
+  "focoDentroEsc": 2,
+  "posAposRecarregar": {
+   "left": "444px",
+   "top": "248px"
   },
   "pageErrors": []
  },
  {
   "tag": "jogador-1440x900",
   "isGM": false,
-  "dblGoblin": null,
-  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
-  "overlayAttr": 0,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "goblinAbre": 0,
+  "lyra": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000001",
+   "open": 1
+  },
+  "retrato": 1,
   "titleNativo": 0,
-  "focoMesa_R": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  "paineis": 1,
+  "listaAtributos": 6,
+  "posAposArraste": {
+   "left": "444px",
+   "top": "248px"
   },
-  "focoMesa_Esc": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
+  "tres": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000003",
+   "open": 3
   },
-  "focoDentro_VG": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_Esc": {
-   "tool": "ruler",
-   "sheet": null
+  "paineis3": 3,
+  "focoMesaR": "ruler",
+  "focoMesaEsc": 3,
+  "focoDentroV": "ruler",
+  "focoDentroEsc": 2,
+  "posAposRecarregar": {
+   "left": "444px",
+   "top": "248px"
   },
   "pageErrors": []
  },
  {
   "tag": "mestre-390x844",
   "isGM": true,
-  "dblGoblin": "aaaaaaaa-0000-4000-8000-000000000002",
-  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
-  "overlayAttr": 0,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "goblinAbre": 0,
+  "lyra": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000001",
+   "open": 1
+  },
+  "retrato": 1,
   "titleNativo": 0,
-  "focoMesa_R": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoMesa_Esc": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_VG": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_Esc": {
-   "tool": "ruler",
-   "sheet": null
+  "dialog": 1,
+  "botaoX": 0,
+  "naoCobreToolbar": true,
+  "aposArrastarBaixo": {
+   "tool": "select",
+   "top": null,
+   "open": 0
   },
   "pageErrors": []
  },
  {
   "tag": "jogador-390x844",
   "isGM": false,
-  "dblGoblin": null,
-  "dblLyra": "aaaaaaaa-0000-4000-8000-000000000001",
-  "overlayAttr": 0,
+  "vp": {
+   "x": 0,
+   "y": 0,
+   "scale": 1
+  },
+  "goblinAbre": 0,
+  "lyra": {
+   "tool": "select",
+   "top": "aaaaaaaa-0000-4000-8000-000000000001",
+   "open": 1
+  },
+  "retrato": 1,
   "titleNativo": 0,
-  "focoMesa_R": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoMesa_Esc": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_VG": {
-   "tool": "ruler",
-   "sheet": "aaaaaaaa-0000-4000-8000-000000000001"
-  },
-  "focoDentro_Esc": {
-   "tool": "ruler",
-   "sheet": null
+  "dialog": 1,
+  "botaoX": 0,
+  "naoCobreToolbar": true,
+  "aposArrastarBaixo": {
+   "tool": "select",
+   "top": null,
+   "open": 0
   },
   "pageErrors": []
  }
