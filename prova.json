@@ -1,0 +1,164 @@
+[
+ {
+  "tag": "mestre-1440x900",
+  "inicial": {
+   "isGM": true,
+   "tool": "select",
+   "walls": 4,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 0
+  },
+  "aposW": "wall",
+  "desenhando": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 4,
+   "selected": 0,
+   "draft": 2,
+   "status": "ready",
+   "undo": 0
+  },
+  "aposBackspace": 2,
+  "aposEsc": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 6,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 1
+  },
+  "salvasNoServidor": 6,
+  "selecionada": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 6,
+   "selected": 1,
+   "draft": 0,
+   "status": "ready",
+   "undo": 1
+  },
+  "aposDelete": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 5,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 2
+  },
+  "aposCtrlZ": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 6,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 1
+  },
+  "aposRedo": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 5,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 2
+  },
+  "otimista": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 6,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 3
+  },
+  "aposFalha": {
+   "isGM": true,
+   "tool": "wall",
+   "walls": 5,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 2
+  },
+  "toast": 1,
+  "fps": {
+   "paredes": 200,
+   "parado": 19,
+   "zoomEPanCadaFrame": 20,
+   "semParedesZoomEPan": 24,
+   "semParedesParado": 26
+  },
+  "titleNativoNoBotao": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "mestre-sem-tabela-1440x900",
+  "inicial": {
+   "isGM": true,
+   "tool": "select",
+   "walls": 0,
+   "selected": 0,
+   "draft": 0,
+   "status": "missing",
+   "undo": 0
+  },
+  "ariaDisabled": "true",
+  "tooltip": [
+   "Paredes chegam quando a atualização do banco for aplicada"
+  ],
+  "ferramenta": "select",
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-1440x900",
+  "estado": {
+   "isGM": false,
+   "tool": "select",
+   "walls": 0,
+   "selected": 0,
+   "draft": 0,
+   "status": "idle",
+   "undo": 0
+  },
+  "botaoParede": 0,
+  "aposW": "select",
+  "pedidosVttWalls": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "jogador-390x844",
+  "estado": {
+   "isGM": false,
+   "tool": "select",
+   "walls": 0,
+   "selected": 0,
+   "draft": 0,
+   "status": "idle",
+   "undo": 0
+  },
+  "botaoParede": 0,
+  "aposW": "select",
+  "pedidosVttWalls": 0,
+  "pageErrors": []
+ },
+ {
+  "tag": "mestre-390x844",
+  "estado": {
+   "isGM": true,
+   "tool": "select",
+   "walls": 4,
+   "selected": 0,
+   "draft": 0,
+   "status": "ready",
+   "undo": 0
+  },
+  "botaoParede": 0,
+  "ferramenta": "select",
+  "pageErrors": []
+ }
+]
