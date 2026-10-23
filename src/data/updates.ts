@@ -11,13 +11,24 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.30-token-so-o-mestre",
-		version: "1.6.30",
+		id: "v1.6.31-token-so-o-mestre",
+		version: "1.6.31",
 		date: "23/10/2026",
 		title: "Token do jogador mais protegido",
 		description:
 			"Na mesa, o jogador continua movendo e cuidando do próprio token, mas só o mestre troca de cena, de ficha, quem controla, a camada, o oculto e a trava.",
 		bullets: [],
+	},
+	{
+		id: "v1.6.29-nova-versao-web",
+		version: "1.6.29",
+		date: "20/10/2026",
+		title: "Aviso de nova versão no navegador",
+		description:
+			"Quando sair uma versão nova do Arkhiveon, aparece um aviso discreto no rodapé com Atualizar e Depois. Nada recarrega sozinho.",
+		bullets: [
+			"Abas abertas há muito tempo não ficam mais com a versão antiga sem saber.",
+		],
 	},
 	{
 		id: "v1.6.27-webgl-contextos",
