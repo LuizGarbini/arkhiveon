@@ -79,9 +79,36 @@ describe("Nova versão disponível (web)", () => {
 		const aviso = screen.getByRole("region", {
 			name: "Atualização do Arkhiveon",
 		});
-		expect(aviso.className).toContain("sm:right-3");
+		expect(aviso.className).toContain("sm:left-auto");
 		expect(aviso.className).toContain("bottom-36");
 		pathname = "/dashboard";
+	});
+
+	it("na mesa no celular (390) o aviso começa depois da barra de ferramentas lateral", async () => {
+		pathname = "/campaigns/c1/vtt";
+		await mount();
+		const aviso = screen.getByRole("region", {
+			name: "Atualização do Arkhiveon",
+		});
+		const classes = aviso.className.split(/\s+/);
+		// barra lateral da mesa (left-3 + w-14 = 4.25rem) termina antes de left-20 (5rem)
+		expect(classes).toContain("left-20");
+		expect(classes).toContain("right-3");
+		expect(classes).not.toContain("inset-x-3");
+		expect(classes).not.toContain("mx-auto");
+		pathname = "/dashboard";
+	});
+
+	it("fora da mesa o aviso continua centralizado no rodapé", async () => {
+		await mount();
+		const aviso = screen.getByRole("region", {
+			name: "Atualização do Arkhiveon",
+		});
+		const classes = aviso.className.split(/\s+/);
+		expect(classes).toEqual(
+			expect.arrayContaining(["inset-x-3", "bottom-3", "mx-auto"]),
+		);
+		expect(classes).not.toContain("left-20");
 	});
 
 	it("mesma versão não mostra nada", async () => {

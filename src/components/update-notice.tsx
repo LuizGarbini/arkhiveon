@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
  * Aviso discreto fixo no rodapé, "Nova versão disponível", com ações
  * (Atualizar/Depois). Usado pelo APK (Android) e pela web. Na mesa (VTT) vai
  * para o canto (desktop) ou sobe acima das barras do rodapé (celular) para
- * não cobrir o zoom/tela cheia.
+ * não cobrir o zoom/tela cheia; no celular também começa depois da barra de
+ * ferramentas lateral (left-20), para não cobrir "Configurações do Grid".
  */
 export function UpdateNotice({
 	label,
@@ -28,10 +29,10 @@ export function UpdateNotice({
 			aria-label={label}
 			aria-live="polite"
 			className={cn(
-				"fixed inset-x-3 z-50 mx-auto flex max-w-md items-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-lg",
+				"fixed z-50 flex max-w-md items-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-lg",
 				onVtt
-					? "bottom-36 sm:bottom-3 sm:left-auto sm:right-3 sm:mx-0 sm:w-[22rem]"
-					: "bottom-3",
+					? "bottom-36 left-20 right-3 sm:bottom-3 sm:left-auto sm:w-[22rem]"
+					: "inset-x-3 bottom-3 mx-auto",
 			)}
 			style={{ marginBottom: "env(safe-area-inset-bottom)" }}
 		>
