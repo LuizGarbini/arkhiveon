@@ -42,11 +42,12 @@ function scheduleIdle(callback: () => void) {
 function isWebGLSupported(): boolean {
 	if (typeof window === "undefined") return false;
 	try {
+		if (!window.WebGLRenderingContext) return false;
 		const canvas = document.createElement("canvas");
-		return !!(
-			window.WebGLRenderingContext &&
-			(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-		);
+		const gl = canvas.getContext("webgl");
+		// Libera o contexto de teste na hora: o Chrome mantém poucos vivos (~16).
+		gl?.getExtension("WEBGL_lose_context")?.loseContext();
+		return !!gl;
 	} catch (_e) {
 		return false;
 	}

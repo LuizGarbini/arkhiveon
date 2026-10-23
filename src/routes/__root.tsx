@@ -3,7 +3,6 @@ import {
 	Link,
 	Navigate,
 	Outlet,
-	useLocation,
 	useNavigate,
 } from "@tanstack/react-router";
 import {
@@ -29,6 +28,10 @@ import {
 	isCampaignLoadPending,
 	needsAppOnboarding,
 } from "@/lib/campaign-bootstrap";
+import {
+	isFullscreenTabletopPath,
+	useLayoutPathname,
+} from "@/lib/layout-pathname";
 import { usePerformanceMode } from "@/lib/performance-mode";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
@@ -73,12 +76,12 @@ function RootLayout() {
 }
 
 function RootContent() {
-	const location = useLocation();
-	const isLanding = location.pathname === "/";
-	const isAuth = location.pathname === "/auth";
-	const isErrorPreview = location.pathname === "/error-preview";
-	const isPrivacy = location.pathname === "/privacy";
-	const isTerms = location.pathname === "/terms";
+	const pathname = useLayoutPathname();
+	const isLanding = pathname === "/";
+	const isAuth = pathname === "/auth";
+	const isErrorPreview = pathname === "/error-preview";
+	const isPrivacy = pathname === "/privacy";
+	const isTerms = pathname === "/terms";
 
 	if (isLanding || isAuth || isErrorPreview || isPrivacy || isTerms) {
 		return <Outlet />;
@@ -108,7 +111,7 @@ function ProtectedLayout() {
 		syncError && isLimitError && dismissedLimitError !== syncError,
 	);
 
-	const location = useLocation();
+	const pathname = useLayoutPathname();
 
 	const getPageTitle = (pathname: string) => {
 		if (pathname.startsWith("/dashboard")) return "Dashboard - Arkhiveon";
@@ -134,7 +137,7 @@ function ProtectedLayout() {
 		return "Arkhiveon";
 	};
 
-	useDocumentMetadata(getPageTitle(location.pathname), "", false);
+	useDocumentMetadata(getPageTitle(pathname), "", false);
 
 	// Sincroniza o plano do Auth Context → Zustand Store
 	useEffect(() => {
@@ -266,26 +269,26 @@ function ProtectedLayout() {
 	});
 
 	const isCampaignDependentRoute = CAMPAIGN_DEPENDENT_PREFIXES.some((prefix) =>
-		location.pathname.startsWith(prefix),
+		pathname.startsWith(prefix),
 	);
 
 	if (
 		onboarding &&
 		isCampaignDependentRoute &&
-		!location.pathname.startsWith("/onboarding")
+		!pathname.startsWith("/onboarding")
 	) {
 		return <Navigate to="/onboarding" replace />;
 	}
 
-	if (!onboarding && location.pathname.startsWith("/onboarding")) {
+	if (!onboarding && pathname.startsWith("/onboarding")) {
 		return <Navigate to="/dashboard" replace />;
 	}
 
-	if (onboarding || location.pathname.startsWith("/onboarding")) {
+	if (onboarding || pathname.startsWith("/onboarding")) {
 		return <Outlet />;
 	}
 
-	if (location.pathname.includes("/vtt")) {
+	if (isFullscreenTabletopPath(pathname)) {
 		return <Outlet />;
 	}
 

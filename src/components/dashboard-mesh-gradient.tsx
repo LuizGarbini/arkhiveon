@@ -23,6 +23,19 @@ const ANIMATION_SPEED = 0.35;
 /** Cap GPU work: ~720p worth of fragments max. */
 const MAX_PIXEL_COUNT = 1280 * 720;
 
+/**
+ * O MeshGradient cancela o próprio rAF ao desmontar, mas o contexto WebGL só
+ * sai com o GC. Libera na hora para não acumular contextos a cada ida ao painel.
+ */
+function loseShaderContexts(root: HTMLElement) {
+	for (const canvas of root.querySelectorAll("canvas")) {
+		canvas
+			.getContext("webgl2")
+			?.getExtension("WEBGL_lose_context")
+			?.loseContext();
+	}
+}
+
 const WEBGL_CONTEXT: WebGLContextAttributes = {
 	alpha: false,
 	antialias: false,
@@ -65,6 +78,7 @@ function DashboardMeshGradientComponent() {
 
 			return () => {
 				document.removeEventListener("visibilitychange", onVisibility);
+				loseShaderContexts(el);
 			};
 		}
 
@@ -87,6 +101,7 @@ function DashboardMeshGradientComponent() {
 		return () => {
 			observer.disconnect();
 			document.removeEventListener("visibilitychange", onVisibility);
+			loseShaderContexts(el);
 		};
 	}, []);
 
