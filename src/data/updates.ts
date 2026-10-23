@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.28-paredes-f1",
-		version: "1.6.28",
+		id: "v1.6.30-paredes-f1",
+		version: "1.6.30",
 		date: "21/10/2026",
 		title: "Paredes na mesa (só o mestre vê)",
 		description:
@@ -22,6 +22,17 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Clique numa parede para selecionar e apague com Delete. Ctrl/⌘+Z desfaz e Ctrl/⌘+Shift+Z refaz.",
 			"Segure Shift para desenhar sem encaixar na grade.",
 			"Só o mestre vê as paredes. No celular dá para vê-las, mas desenhar fica para o computador.",
+		],
+	},
+	{
+		id: "v1.6.29-nova-versao-web",
+		version: "1.6.29",
+		date: "20/10/2026",
+		title: "Aviso de nova versão no navegador",
+		description:
+			"Quando sair uma versão nova do Arkhiveon, aparece um aviso discreto no rodapé com Atualizar e Depois. Nada recarrega sozinho.",
+		bullets: [
+			"Abas abertas há muito tempo não ficam mais com a versão antiga sem saber.",
 		],
 	},
 	{
