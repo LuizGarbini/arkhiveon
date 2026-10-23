@@ -11,14 +11,33 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.26-nova-versao-web",
-		version: "1.6.26",
+		id: "v1.6.29-nova-versao-web",
+		version: "1.6.29",
 		date: "20/10/2026",
 		title: "Aviso de nova versão no navegador",
 		description:
 			"Quando sair uma versão nova do Arkhiveon, aparece um aviso discreto no rodapé com Atualizar e Depois. Nada recarrega sozinho.",
 		bullets: [
 			"Abas abertas há muito tempo não ficam mais com a versão antiga sem saber.",
+		],
+	},
+	{
+		id: "v1.6.27-webgl-contextos",
+		version: "1.6.27",
+		date: "21/10/2026",
+		title: "Ir e voltar entre mesa e painel sem travar",
+		description:
+			"Os fundos animados do painel e o d20 liberam a placa de vídeo ao sair da tela, então ir e voltar entre a mesa e o painel não acumula mais peso.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.25-mesa-abre-pelo-painel",
+		version: "1.6.25",
+		date: "20/10/2026",
+		title: "A mesa abre direto pelo painel",
+		description: "A mesa abre direto pelo painel, sem precisar recarregar.",
+		bullets: [
+			"Enquanto a mesa carrega, o painel continua com o menu lateral, em vez de aparecer pela metade.",
 		],
 	},
 	{
