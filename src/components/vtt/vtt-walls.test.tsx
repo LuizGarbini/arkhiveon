@@ -254,6 +254,29 @@ describe("desenho, apagar e desfazer", () => {
 		);
 	});
 
+	it("falha ao apagar: a parede volta ainda selecionada e Delete tenta de novo", async () => {
+		db.failWrites = true;
+		useVTTStore.setState({
+			walls: [wall("a"), wall("b")],
+			selectedWallIds: ["a"],
+		});
+		render(<VTTToolbar />);
+		key("Delete");
+		expect(st().selectedWallIds).toEqual([]);
+		await flush();
+		expect(
+			st()
+				.walls.map((w) => w.id)
+				.sort(),
+		).toEqual(["a", "b"]);
+		expect(st().selectedWallIds).toEqual(["a"]);
+		db.failWrites = false;
+		key("Delete");
+		await flush();
+		expect(st().walls.map((w) => w.id)).toEqual(["b"]);
+		expect(st().selectedWallIds).toEqual([]);
+	});
+
 	it("sair da ferramenta descarta o desenho e a seleção", () => {
 		useVTTStore.setState({
 			wallDraft: [{ x: 0, y: 0 }],

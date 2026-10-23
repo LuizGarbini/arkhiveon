@@ -94,6 +94,7 @@ export async function runWallOp(op: WallOp, source: Source): Promise<boolean> {
 	const sceneId = store.activeSceneId;
 	const prevUndo = store.wallUndo;
 	const prevRedo = store.wallRedo;
+	const prevSelected = store.selectedWallIds;
 	const applied = source === "undo" ? invertWallOp(op) : op;
 
 	store.applyWallOpLocal(applied);
@@ -110,6 +111,16 @@ export async function runWallOp(op: WallOp, source: Source): Promise<boolean> {
 	if (now.activeSceneId !== sceneId) return false;
 	now.applyWallOpLocal(invertWallOp(applied));
 	now.setWallHistory(prevUndo, prevRedo);
+	if (applied.kind === "delete") {
+		// Falhou ao apagar: a parede volta já selecionada, como estava.
+		const back = new Set(applied.walls.map((w) => w.id));
+		const keep = prevSelected.filter((id) => back.has(id));
+		const current = useVTTStore.getState().selectedWallIds;
+		now.setSelectedWallIds([
+			...current,
+			...keep.filter((id) => !current.includes(id)),
+		]);
+	}
 	showToast("error", {
 		title:
 			applied.kind === "create"

@@ -120,8 +120,12 @@ export function drawRulerMeasurement(
 
 /** Cor padrão das paredes: a mesma do anel de token. */
 const WALL_COLOR = 0xd4d4d8;
-/** Prévia do desenho (mesma cor da seleção de token), diferente da seleção. */
-const WALL_PREVIEW_COLOR = 0x38bdf8;
+/**
+ * Prévia do desenho: token `--chart-1` do DS (violeta claro do tema), diferente
+ * do `--primary` da parede selecionada. O número é só o fallback sem DOM.
+ */
+export const WALL_PREVIEW_TOKEN = "--chart-1";
+const WALL_PREVIEW_FALLBACK = 0xc4b5fd;
 
 const dsColorCache = new Map<string, number>();
 
@@ -132,9 +136,8 @@ const dsColorCache = new Map<string, number>();
  */
 export function dsColor(cssVar: string, fallback: number): number {
 	if (typeof document === "undefined") return fallback;
-	const value = getComputedStyle(document.documentElement)
-		.getPropertyValue(cssVar)
-		.trim();
+	// Lida do body: o tema escuro vem da classe `.dark` nele.
+	const value = getComputedStyle(document.body).getPropertyValue(cssVar).trim();
 	if (!value) return fallback;
 	const cached = dsColorCache.get(value);
 	if (cached !== undefined) return cached;
@@ -240,6 +243,7 @@ export function drawWallPreview(
 ) {
 	layer.clear();
 	if (points.length === 0) return;
+	const WALL_PREVIEW_COLOR = dsColor(WALL_PREVIEW_TOKEN, WALL_PREVIEW_FALLBACK);
 	layer.moveTo(points[0].x, points[0].y);
 	for (let i = 1; i < points.length; i++)
 		layer.lineTo(points[i].x, points[i].y);
