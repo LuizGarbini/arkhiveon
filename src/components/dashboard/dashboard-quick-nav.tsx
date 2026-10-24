@@ -10,7 +10,7 @@ import {
 	User,
 	Users,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardCount, type DashboardCountStatus } from "./dashboard-count";
 
 interface DashboardQuickNavProps {
 	counts: {
@@ -23,7 +23,7 @@ interface DashboardQuickNavProps {
 		lores: number;
 		factions?: number;
 	};
-	isLoading?: boolean;
+	countStatus?: DashboardCountStatus;
 }
 
 const navItems = [
@@ -87,22 +87,8 @@ const navItems = [
 
 export function DashboardQuickNav({
 	counts,
-	isLoading,
+	countStatus = "ready",
 }: DashboardQuickNavProps) {
-	if (isLoading) {
-		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<Skeleton className="h-5 w-36 mb-4" />
-				<div className="grid grid-cols-2 gap-2">
-					{Array.from({ length: 8 }).map((_, i) => (
-						// biome-ignore lint/suspicious/noArrayIndexKey: skeleton loading items
-						<Skeleton key={i} className="h-12 w-full rounded-xl" />
-					))}
-				</div>
-			</div>
-		);
-	}
-
 	return (
 		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
 			<div className="flex items-center justify-between border-b border-border/50 pb-3 mb-4">
@@ -142,7 +128,11 @@ export function DashboardQuickNav({
 							</div>
 
 							<span className="font-mono text-[10px] font-bold text-muted-foreground/70 group-hover:text-primary transition-colors tabular-nums shrink-0 ml-1">
-								{count}
+								<DashboardCount
+									value={count}
+									status={countStatus}
+									label={item.title.toLowerCase()}
+								/>
 							</span>
 						</Link>
 					);

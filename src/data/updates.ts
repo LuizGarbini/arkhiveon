@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.32-painel-numeros-mundo-compartilhado",
+		version: "1.6.32",
+		date: "24/10/2026",
+		title: "Números do painel mais confiáveis",
+		description:
+			"Os números do painel agora contam só o que você vê nas listas, aparecem como um bloco cinza enquanto carregam e viram “—” se a carga falhar. O seletor avisa quando o mundo é compartilhado com outras mesas.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.31-token-so-o-mestre",
 		version: "1.6.31",
 		date: "23/10/2026",

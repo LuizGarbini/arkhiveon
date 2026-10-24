@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
 import { CampaignForm } from "@/components/campaign-form";
 import { DashboardActiveQuests } from "@/components/dashboard/dashboard-active-quests";
+import { dashboardCountStatus } from "@/components/dashboard/dashboard-count-status";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardKeyNpcs } from "@/components/dashboard/dashboard-key-npcs";
 import { DashboardLatestSession } from "@/components/dashboard/dashboard-latest-session";
@@ -19,6 +20,7 @@ import {
 	needsAppOnboarding,
 } from "@/lib/campaign-bootstrap";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { useVisibleWorldEntities } from "@/lib/worldbuilding/hooks";
 
 export const Route = createFileRoute("/dashboard")({
 	component: Dashboard,
@@ -35,6 +37,11 @@ function Dashboard() {
 	const factions = useRPGStore((s) => s.factions || []);
 	const partyLoot = useRPGStore((s) => s.partyLoot || []);
 	const isLoading = useRPGStore((s) => s.isLoadingRemote);
+	const remoteLoadError = useRPGStore((s) => s.remoteLoadError);
+	const visibleNpcs = useVisibleWorldEntities(npcs);
+	const visibleItems = useVisibleWorldEntities(items);
+	const visibleLocations = useVisibleWorldEntities(locations);
+	const visibleLores = useVisibleWorldEntities(lores);
 	const hasAuthoritativeCampaignSnapshot = useRPGStore(
 		(s) => s.hasLoadedCampaigns,
 	);
@@ -58,25 +65,31 @@ function Dashboard() {
 	const counts = useMemo(
 		() => ({
 			characters: characters.length,
-			npcs: npcs.length,
+			npcs: visibleNpcs.length,
 			sessions: sessions.length,
-			items: items.length,
-			locations: locations.length,
-			lores: lores.length,
+			items: visibleItems.length,
+			locations: visibleLocations.length,
+			lores: visibleLores.length,
 			quests: quests.length,
 			factions: factions.length,
 		}),
 		[
 			characters.length,
-			items.length,
-			locations.length,
-			lores.length,
-			npcs.length,
+			visibleItems.length,
+			visibleLocations.length,
+			visibleLores.length,
+			visibleNpcs.length,
 			sessions.length,
 			quests.length,
 			factions.length,
 		],
 	);
+
+	const countStatus = dashboardCountStatus({
+		isLoadingRemote: isLoading,
+		hasCampaignSnapshot: hasAuthoritativeCampaignSnapshot,
+		loadError: remoteLoadError,
+	});
 
 	const unclaimedLootCount = useMemo(
 		() => partyLoot.filter((l) => !l.isClaimed).length,
@@ -127,7 +140,7 @@ function Dashboard() {
 				campaignRole={activeCampaignRole}
 				isViewer={isViewer}
 				counts={counts}
-				isLoading={isLoading}
+				countStatus={countStatus}
 			/>
 
 			{/* Special Ordem Paranormal Banner if applicable */}
@@ -212,7 +225,7 @@ function Dashboard() {
 						isLoading={isLoading}
 					/>
 
-					<DashboardQuickNav counts={counts} isLoading={isLoading} />
+					<DashboardQuickNav counts={counts} countStatus={countStatus} />
 
 					<ActivityFeed limit={6} isLoading={isLoading} />
 				</div>

@@ -798,6 +798,7 @@ export interface ImageAsset {
 export interface RPGState {
 	isLoadingRemote: boolean;
 	syncError: string | null;
+	remoteLoadError: string | null;
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;
