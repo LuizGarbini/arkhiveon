@@ -1,6 +1,10 @@
 import type { StateCreator } from "zustand";
 import { normalizeItemWeapon } from "@/core/rules/item-mechanics";
-import { fetchGlobalTotalCount, loadRemoteState } from "../remote-store";
+import {
+	fetchGlobalTotalCount,
+	loadRemoteActivity,
+	loadRemoteState,
+} from "../remote-store";
 import { getSupabase } from "../supabase";
 import type { UserPlan } from "../user-plan";
 import { characterDefaults } from "./character-slice";
@@ -51,6 +55,11 @@ export interface SyncSlice {
 	/** Mesa cujos dados remotos já chegaram nesta sessão (null = nenhuma ainda). */
 	remoteLoadedCampaignId: string | null;
 	activityLog: ActivityEntry[];
+	/** Falha só da timeline (o resto da mesa carregou). */
+	activityLoadError: string | null;
+	/** Nova tentativa só da timeline em andamento. */
+	isLoadingActivity: boolean;
+	retryActivity: () => Promise<void>;
 	userPlan: UserPlan;
 	setUserPlan: (plan: UserPlan) => void;
 	globalRecordsCount: number;
@@ -252,6 +261,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	remoteLoadError: null,
 	remoteLoadedCampaignId: null,
 	activityLog: [],
+	activityLoadError: null,
+	isLoadingActivity: false,
 	userPlan: "free",
 	setUserPlan: (plan) => set({ userPlan: plan }),
 	globalRecordsCount: 0,
@@ -289,8 +300,9 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 		const startCampaignId = get().activeCampaignId;
 
-		// Só mostra skeleton se não houver NENHUM dado local ainda
-		if (!hasData) {
+		// Skeleton se não houver dado local ou se for nova tentativa após falha
+		// (nunca spinner: a tela volta ao skeleton enquanto tenta de novo).
+		if (!hasData || state.remoteLoadError !== null) {
 			set({ isLoadingRemote: true, syncError: null, remoteLoadError: null });
 		} else {
 			set({ syncError: null, remoteLoadError: null });
@@ -346,6 +358,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				) as CustomTemplate[],
 				imageAssets: ensureArray(remote.imageAssets) as ImageAsset[],
 				activityLog: ensureArray(remote.activityLog) as ActivityEntry[],
+				activityLoadError: remote.activityLoadError ?? null,
+				isLoadingActivity: false,
 				factions: ensureArray(remote.factions).map((f) => ({
 					...factionDefaults,
 					worldId: "",
@@ -373,6 +387,22 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 					remoteLoadError: message,
 				});
 			}
+		}
+	},
+	retryActivity: async () => {
+		const campaignId = get().activeCampaignId;
+		if (!campaignId) return;
+		set({ isLoadingActivity: true, activityLoadError: null });
+		try {
+			const activityLog = await loadRemoteActivity(campaignId);
+			if (get().activeCampaignId !== campaignId) return;
+			set({ activityLog, isLoadingActivity: false });
+		} catch (error) {
+			if (get().activeCampaignId !== campaignId) return;
+			set({
+				isLoadingActivity: false,
+				activityLoadError: remoteErrorMessage(error),
+			});
 		}
 	},
 	setupRealtime: () => {
@@ -714,6 +744,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			syncError: null,
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
+			activityLoadError: null,
+			isLoadingActivity: false,
 		});
 		get().resetCampaigns();
 	},
@@ -737,6 +769,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			syncError: null,
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
+			activityLoadError: null,
+			isLoadingActivity: false,
 		});
 	},
 	clearActivity: () => set({ activityLog: [] }),

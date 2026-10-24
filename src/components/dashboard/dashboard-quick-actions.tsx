@@ -10,6 +10,7 @@ import {
 import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
+import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
 interface DashboardQuickActionsProps {
 	activeCampaign?: Campaign;
@@ -18,6 +19,8 @@ interface DashboardQuickActionsProps {
 	onInviteClick: () => void;
 	unclaimedLootCount: number;
 	isLoading?: boolean;
+	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
+	isUnavailable?: boolean;
 }
 
 export function DashboardQuickActions({
@@ -26,7 +29,17 @@ export function DashboardQuickActions({
 	onInviteClick,
 	unclaimedLootCount,
 	isLoading,
+	isUnavailable,
 }: DashboardQuickActionsProps) {
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="Ações da Mesa"
+				icon={<Sparkles className="h-4 w-4" />}
+			/>
+		);
+	}
+
 	if (isLoading) {
 		return (
 			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">

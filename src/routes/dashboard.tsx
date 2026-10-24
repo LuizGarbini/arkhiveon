@@ -8,6 +8,7 @@ import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-coun
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardKeyNpcs } from "@/components/dashboard/dashboard-key-npcs";
 import { DashboardLatestSession } from "@/components/dashboard/dashboard-latest-session";
+import { DashboardLoadErrorNotice } from "@/components/dashboard/dashboard-load-error";
 import { DashboardPartyRoster } from "@/components/dashboard/dashboard-party-roster";
 import { DashboardQuickActions } from "@/components/dashboard/dashboard-quick-actions";
 import { DashboardQuickNav } from "@/components/dashboard/dashboard-quick-nav";
@@ -86,6 +87,12 @@ function Dashboard() {
 	const countStatus = useRPGStore(selectDashboardDataStatus);
 	// Seções mostram skeleton (não estado vazio/CTA) até os dados da mesa chegarem.
 	const isLoading = countStatus === "loading";
+	// Falha global: um aviso no topo; seções ficam neutras (sem vazio/CTA/0).
+	const isUnavailable = countStatus === "error";
+	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
+	const activityLoadError = useRPGStore((s) => s.activityLoadError);
+	const isLoadingActivity = useRPGStore((s) => s.isLoadingActivity);
+	const retryActivity = useRPGStore((s) => s.retryActivity);
 
 	const unclaimedLootCount = useMemo(
 		() => partyLoot.filter((l) => !l.isClaimed).length,
@@ -125,6 +132,10 @@ function Dashboard() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+			{isUnavailable && (
+				<DashboardLoadErrorNotice onRetry={() => void loadRemoteData()} />
+			)}
+
 			<InviteBanner />
 
 			{/* Discord Community Dithering Banner */}
@@ -183,30 +194,35 @@ function Dashboard() {
 						sessionCount={sessions.length}
 						isViewer={isViewer}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 
 					<DashboardActiveQuests
 						quests={quests}
 						isViewer={isViewer}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 
 					<DashboardPartyRoster
 						characters={characters}
 						isViewer={isViewer}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 
 					<DashboardKeyNpcs
 						npcs={visibleNpcs}
 						isViewer={isViewer}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 
 					<DashboardQuickVault
 						items={visibleItems}
 						isViewer={isViewer}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 				</div>
 
@@ -219,11 +235,18 @@ function Dashboard() {
 						onInviteClick={() => setShowInviteDialog(true)}
 						unclaimedLootCount={unclaimedLootCount}
 						isLoading={isLoading}
+						isUnavailable={isUnavailable}
 					/>
 
 					<DashboardQuickNav counts={counts} countStatus={countStatus} />
 
-					<ActivityFeed limit={6} isLoading={isLoading} />
+					<ActivityFeed
+						limit={6}
+						isLoading={isLoading || isLoadingActivity}
+						isUnavailable={isUnavailable}
+						loadError={activityLoadError}
+						onRetry={() => void retryActivity()}
+					/>
 				</div>
 			</div>
 

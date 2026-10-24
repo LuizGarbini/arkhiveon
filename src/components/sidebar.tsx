@@ -53,6 +53,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isLoadingRecords = useRPGStore(
 		(s) => selectDashboardDataStatus(s) === "loading",
 	);
+	const recordsError = useRPGStore(
+		(s) => selectDashboardDataStatus(s) === "error",
+	);
 	const recordsLoading = planLoading || isLoadingRecords;
 
 	const usagePercentage = isPro
@@ -220,6 +223,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 											aria-label="Carregando registros"
 											className="h-3 w-10"
 										/>
+									) : recordsError ? (
+										<span data-testid="unavailable-value">
+											<span aria-hidden="true">—</span>
+											<span className="sr-only">Registros indisponíveis</span>
+										</span>
 									) : (
 										<span>
 											{usedCreations} / {isPro ? "∞" : FREE_CREATION_LIMIT}

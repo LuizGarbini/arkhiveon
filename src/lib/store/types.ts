@@ -970,6 +970,9 @@ export interface RPGState {
 	removeNewsComment: (id: string) => void;
 
 	activityLog: ActivityEntry[];
+	activityLoadError: string | null;
+	isLoadingActivity: boolean;
+	retryActivity: () => Promise<void>;
 	clearActivity: () => void;
 
 	spotifyJamLink: string | null;

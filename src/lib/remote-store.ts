@@ -58,6 +58,8 @@ export interface RemoteStateSnapshot {
 	customTemplates: unknown[];
 	imageAssets: RemoteImageAsset[];
 	activityLog: RemoteActivityEntry[];
+	/** Falha só da timeline; o resto do snapshot é válido. */
+	activityLoadError?: string | null;
 	factions: unknown[];
 	factionReputations: unknown[];
 	worldNews: unknown[];
@@ -551,15 +553,30 @@ export async function loadRemoteImageAssets(
 	return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
 }
 
+function activityLogQuery(campaignId: string) {
+	return requireSupabase()
+		.from(SUPABASE_TABLES.activity)
+		.select("id,action,entity_kind,entity_id,entity_name,created_at")
+		.eq("campaign_id", campaignId)
+		.order("created_at", { ascending: false })
+		.limit(200);
+}
+
+/** Recarrega só a timeline da mesa (nova tentativa da seção). */
+export async function loadRemoteActivity(
+	campaignId: string,
+): Promise<RemoteActivityEntry[]> {
+	const { data, error } = await activityLogQuery(campaignId);
+	if (error) throw error;
+	return ((data ?? []) as ActivityRow[]).map(fromActivityRow);
+}
+
 export async function loadRemoteState(
 	campaignId: string,
 ): Promise<RemoteStateSnapshot> {
 	const worldId = await fetchCampaignWorldId(campaignId);
 
-	const activityQuery = requireSupabase()
-		.from(SUPABASE_TABLES.activity)
-		.select("id,action,entity_kind,entity_id,entity_name,created_at")
-		.eq("campaign_id", campaignId);
+	const activityQuery = activityLogQuery(campaignId);
 
 	const [
 		characters,
@@ -577,7 +594,7 @@ export async function loadRemoteState(
 		selectEntities(SUPABASE_TABLES.sessions, campaignId),
 		selectEntities(SUPABASE_TABLES.customTemplates, campaignId),
 		loadRemoteImageAssets(campaignId, worldId),
-		activityQuery.order("created_at", { ascending: false }).limit(200),
+		activityQuery,
 		worldId
 			? selectWorldEntities(SUPABASE_TABLES.npcs, worldId)
 			: Promise.resolve([]),
@@ -593,9 +610,13 @@ export async function loadRemoteState(
 		worldId ? loadWorldbuildingState(worldId) : Promise.resolve(null),
 	]);
 
-	if (activityRows.error) throw activityRows.error;
+	// A timeline falhar não derruba a mesa: vira falha só da seção.
+	const activityLoadError = activityRows.error
+		? activityRows.error.message || "Falha ao carregar a atividade"
+		: null;
 
 	return {
+		activityLoadError,
 		characters,
 		npcs,
 		sessions,

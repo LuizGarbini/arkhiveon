@@ -29,12 +29,13 @@ function renderWith(state: {
 	hasLoadedCampaigns: boolean;
 	planLoading?: boolean;
 	awaitingMesaData?: boolean;
+	loadError?: string;
 }) {
 	auth.planLoading = state.planLoading ?? false;
 	useRPGStore.setState({
 		isLoadingRemote: state.isLoadingRemote,
 		hasLoadedCampaigns: state.hasLoadedCampaigns,
-		remoteLoadError: null,
+		remoteLoadError: state.loadError ?? null,
 		activeCampaignId: "camp-1",
 		remoteLoadedCampaignId: state.awaitingMesaData ? null : "camp-1",
 		globalRecordsCount: 7,
@@ -73,6 +74,21 @@ describe("Sidebar: Registros", () => {
 		expect(
 			screen.getByRole("status", { name: "Carregando registros" }),
 		).toBeTruthy();
+	});
+
+	it("falha na carga: mostra —, sem 0/20 e sem skeleton", () => {
+		renderWith({
+			isLoadingRemote: false,
+			hasLoadedCampaigns: true,
+			awaitingMesaData: true,
+			loadError: "falhou",
+		});
+		expect(screen.getByText("Registros indisponíveis")).toBeTruthy();
+		expect(screen.getByTestId("unavailable-value").textContent).toContain("—");
+		expect(screen.queryByText(/\d+ \/ (20|∞)/)).toBeNull();
+		expect(
+			screen.queryByRole("status", { name: "Carregando registros" }),
+		).toBeNull();
 	});
 
 	it("mostra a contagem quando terminou de carregar", () => {

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.36-painel-falha-carga",
+		version: "1.6.36",
+		date: "24/10/2026",
+		title: "Painel avisa quando os dados não carregam",
+		description:
+			"Se os dados da mesa não carregarem, o painel mostra um único aviso no topo com o botão “Tentar de novo”, em vez de dizer que está tudo vazio ou oferecer para criar o primeiro registro. As seções ficam em espera, sem zeros, e os registros do menu e o mundo mostram “—”. Se só a atividade recente falhar, aparece uma linha discreta nela com o mesmo botão. Ao tentar de novo, os blocos de carregamento voltam até os dados chegarem.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.35-painel-escopo-campanha",
 		version: "1.6.35",
 		date: "24/10/2026",

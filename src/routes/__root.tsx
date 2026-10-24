@@ -103,6 +103,7 @@ function ProtectedLayout() {
 	const loadCampaigns = useRPGStore((s) => s.loadCampaigns);
 	const bootstrappedUserIdRef = useRef<string | null>(null);
 	const syncError = useRPGStore((s) => s.syncError);
+	const remoteLoadError = useRPGStore((s) => s.remoteLoadError);
 	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [dismissedLimitError, setDismissedLimitError] = useState<string | null>(
@@ -342,7 +343,12 @@ function ProtectedLayout() {
 					data-shortcut-target="main-content"
 					className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden bg-background scrollbar-none focus:outline-none"
 				>
-					{syncError && !isLimitError && <SyncErrorBanner error={syncError} />}
+					{syncError &&
+						!isLimitError &&
+						// No painel, a falha de carga já tem o aviso único com "Tentar de novo".
+						!(
+							pathname.startsWith("/dashboard") && syncError === remoteLoadError
+						) && <SyncErrorBanner error={syncError} />}
 					<Outlet />
 				</main>
 			</div>
