@@ -9,11 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Npc } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
 interface DashboardKeyNpcsProps {
 	npcs: Npc[];
 	isViewer: boolean;
 	isLoading?: boolean;
+	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
+	isUnavailable?: boolean;
 }
 
 const IMPORTANCE_LABELS: Record<string, { label: string; className: string }> =
@@ -67,6 +70,7 @@ export function DashboardKeyNpcs({
 	npcs,
 	isViewer,
 	isLoading,
+	isUnavailable,
 }: DashboardKeyNpcsProps) {
 	const keyNpcs = useMemo(() => {
 		// Prioritize Boss, Major, Supporting NPCs
@@ -78,6 +82,15 @@ export function DashboardKeyNpcs({
 		);
 		return (filtered.length > 0 ? filtered : npcs).slice(0, 4);
 	}, [npcs]);
+
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="NPCs Importantes & Ameaças"
+				icon={<Users className="h-4 w-4" />}
+			/>
+		);
+	}
 
 	if (isLoading) {
 		return (

@@ -2,7 +2,9 @@
 
 import type { User } from "@supabase/supabase-js";
 import {
+	act,
 	cleanup,
+	fireEvent,
 	render,
 	screen,
 	waitFor,
@@ -72,12 +74,28 @@ vi.mock("@/components/discord-dither-banner", () => ({
 }));
 vi.mock("@/components/invite-banner", () => ({ InviteBanner: () => null }));
 vi.mock("@/components/activity-feed", () => ({
-	ActivityFeed: ({ isLoading }: { isLoading?: boolean }) => (
+	ActivityFeed: ({
+		isLoading,
+		isUnavailable,
+	}: {
+		isLoading?: boolean;
+		isUnavailable?: boolean;
+	}) => (
 		<div
 			data-testid="activity-feed"
 			data-loading={String(Boolean(isLoading))}
+			data-unavailable={String(Boolean(isUnavailable))}
 		/>
 	),
+}));
+const remote = vi.hoisted(() => ({
+	loadRemoteState: vi.fn(),
+	fetchGlobalTotalCount: vi.fn(),
+}));
+vi.mock("@/lib/remote-store", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@/lib/remote-store")>()),
+	loadRemoteState: remote.loadRemoteState,
+	fetchGlobalTotalCount: remote.fetchGlobalTotalCount,
 }));
 vi.mock("@/components/campaign-form", () => ({ CampaignForm: () => null }));
 vi.mock("@/components/world-form", () => ({ WorldForm: () => null }));
@@ -445,5 +463,185 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 		expect(
 			screen.getAllByRole("button", { name: /Ver detalhes/ }),
 		).toHaveLength(12);
+	});
+});
+
+describe("Painel com falha na carga", () => {
+	afterEach(cleanup);
+
+	const failed = { remoteLoadedCampaignId: null, remoteLoadError: "falhou" };
+
+	const sections = [
+		{
+			title: "Última Sessão & Crônica",
+			empty: "Nenhuma sessão registrada",
+			cta: "Registrar 1ª Sessão",
+		},
+		{
+			title: "Missões em Andamento",
+			empty: "Nenhuma missão ativa",
+			cta: "Nova Missão",
+		},
+		{
+			title: "Grupo de Aventureiros",
+			empty: "Nenhum personagem cadastrado",
+			cta: "Criar Primeira Ficha",
+		},
+		{
+			title: "NPCs Importantes & Ameaças",
+			empty: "Nenhum NPC registrado",
+			cta: "Criar NPC",
+		},
+		{
+			title: "Itens & Tesouros Relevantes",
+			empty: "Nenhum item cadastrado",
+			cta: null,
+		},
+	];
+
+	it("falha global: UM aviso no topo com um único 'Tentar de novo'", () => {
+		setDashboardState(failed);
+		render(<Dashboard />);
+		const alerts = screen.getAllByRole("alert");
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].textContent).toContain(
+			"Não foi possível carregar os dados da mesa",
+		);
+		expect(
+			screen.getAllByRole("button", { name: "Tentar de novo" }),
+		).toHaveLength(1);
+		// nada de criar em cima de uma carga que falhou
+		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+	});
+
+	for (const section of sections) {
+		it(`${section.title}: erro x vazio x carregando`, () => {
+			// erro: neutro, sem vazio e sem CTA
+			setDashboardState(failed);
+			const first = render(<Dashboard />);
+			expect(
+				screen.getByRole("region", { name: `${section.title}: indisponível` }),
+			).toBeTruthy();
+			expect(screen.queryByText(section.empty)).toBeNull();
+			if (section.cta) expect(screen.queryByText(section.cta)).toBeNull();
+			first.unmount();
+
+			// carregando: skeleton, sem aviso e sem neutro
+			setDashboardState({ remoteLoadedCampaignId: null });
+			const second = render(<Dashboard />);
+			expect(screen.queryByRole("alert")).toBeNull();
+			expect(
+				screen.queryByRole("region", {
+					name: `${section.title}: indisponível`,
+				}),
+			).toBeNull();
+			expect(screen.queryByText(section.empty)).toBeNull();
+			second.unmount();
+
+			// vazio de verdade: texto e CTA
+			setDashboardState({});
+			render(<Dashboard />);
+			expect(screen.queryByRole("alert")).toBeNull();
+			expect(screen.getByText(section.empty)).toBeTruthy();
+			if (section.cta) expect(screen.getByText(section.cta)).toBeTruthy();
+		});
+	}
+
+	it("Ações da Mesa: neutro no erro, sem '0 itens' e sem 'Criar'", () => {
+		setDashboardState(failed);
+		render(<Dashboard />);
+		expect(
+			screen.getByRole("region", { name: "Ações da Mesa: indisponível" }),
+		).toBeTruthy();
+		expect(screen.queryByText(/^0\s*itens$/)).toBeNull();
+	});
+
+	it("Timeline: recebe o estado neutro no erro, não o de carregando", () => {
+		setDashboardState(failed);
+		render(<Dashboard />);
+		const feed = screen.getByTestId("activity-feed");
+		expect(feed.dataset.unavailable).toBe("true");
+		expect(feed.dataset.loading).toBe("false");
+	});
+
+	it("botão de nova tentativa: nativo, focável e com 44px no celular", () => {
+		setDashboardState(failed);
+		render(<Dashboard />);
+		const button = screen.getByRole("button", { name: "Tentar de novo" });
+		expect(button.tagName).toBe("BUTTON");
+		expect(button.getAttribute("type")).toBe("button");
+		expect(button.hasAttribute("disabled")).toBe(false);
+		expect(button.className).toContain("min-h-[44px]");
+		button.focus();
+		expect(document.activeElement).toBe(button);
+	});
+
+	it("'Tentar de novo' chama a carga e volta ao skeleton (sem spinner)", async () => {
+		let resolve: (value: unknown) => void = () => {};
+		remote.loadRemoteState.mockReturnValue(
+			new Promise((r) => {
+				resolve = r;
+			}),
+		);
+		remote.fetchGlobalTotalCount.mockResolvedValue(0);
+		setDashboardState(failed);
+		render(<Dashboard />);
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		});
+
+		expect(remote.loadRemoteState).toHaveBeenCalledWith(campaign.id);
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.queryByText("Nenhuma missão ativa")).toBeNull();
+		expect(
+			screen.getAllByRole("status", { name: /^Carregando/ }).length,
+		).toBeGreaterThan(0);
+		expect(document.querySelector(".animate-spin")).toBeNull();
+		expect(screen.getByTestId("activity-feed").dataset.loading).toBe("true");
+
+		await act(async () => {
+			resolve({
+				characters: [],
+				npcs: [],
+				sessions: [],
+				items: [],
+				locations: [],
+				lores: [],
+				customTemplates: [],
+				imageAssets: [],
+				activityLog: [],
+				factions: [],
+				factionReputations: [],
+				worldNews: [],
+			});
+		});
+		await waitFor(() =>
+			expect(screen.getByText("Nenhuma missão ativa")).toBeTruthy(),
+		);
+		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("nova tentativa que falha de novo volta ao aviso único", async () => {
+		remote.loadRemoteState.mockRejectedValue(new Error("offline"));
+		remote.fetchGlobalTotalCount.mockResolvedValue(0);
+		setDashboardState(failed);
+		render(<Dashboard />);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		});
+		await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(1));
+	});
+
+	it("seletor de mundo: — no erro, não 'Selecione um Mundo'", () => {
+		setDashboardState({ ...failed, worlds: [] });
+		render(
+			<ToastProvider>
+				<CampaignSwitcher isCollapsed={false} />
+			</ToastProvider>,
+		);
+		expect(screen.queryByText("Selecione um Mundo")).toBeNull();
+		expect(screen.getByText("Mundo indisponível")).toBeTruthy();
+		expect(screen.getByTestId("unavailable-value").textContent).toContain("—");
 	});
 });

@@ -12,11 +12,14 @@ import { resolveItemImageUrl } from "@/lib/character-images";
 import { useActiveCampaignRole, useImageAssetLookup } from "@/lib/store";
 import type { Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
 interface DashboardQuickVaultProps {
 	items: Item[];
 	isViewer: boolean;
 	isLoading?: boolean;
+	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
+	isUnavailable?: boolean;
 }
 
 const RARITY_STYLES: Record<string, string> = {
@@ -32,6 +35,7 @@ export function DashboardQuickVault({
 	items,
 	isViewer,
 	isLoading,
+	isUnavailable,
 }: DashboardQuickVaultProps) {
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
@@ -49,6 +53,15 @@ export function DashboardQuickVault({
 			4,
 		);
 	}, [items]);
+
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="Itens & Tesouros Relevantes"
+				icon={<Package className="h-4 w-4" />}
+			/>
+		);
+	}
 
 	if (isLoading) {
 		return (

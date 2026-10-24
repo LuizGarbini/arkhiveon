@@ -4,17 +4,21 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Quest } from "@/lib/store/types";
+import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
 interface DashboardActiveQuestsProps {
 	quests: Quest[];
 	isViewer: boolean;
 	isLoading?: boolean;
+	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
+	isUnavailable?: boolean;
 }
 
 export function DashboardActiveQuests({
 	quests,
 	isViewer,
 	isLoading,
+	isUnavailable,
 }: DashboardActiveQuestsProps) {
 	const activeQuests = useMemo(
 		() => quests.filter((q) => q.status === "active"),
@@ -25,6 +29,15 @@ export function DashboardActiveQuests({
 		() => quests.filter((q) => q.status === "completed").length,
 		[quests],
 	);
+
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="Missões em Andamento"
+				icon={<Scroll className="h-4 w-4" />}
+			/>
+		);
+	}
 
 	if (isLoading) {
 		return (

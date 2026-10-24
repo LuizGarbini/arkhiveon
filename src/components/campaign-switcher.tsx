@@ -99,6 +99,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const isMesaLoading = useRPGStore(
 		(state) => selectDashboardDataStatus(state) === "loading",
 	);
+	const isMesaError = useRPGStore(
+		(state) => selectDashboardDataStatus(state) === "error",
+	);
 	const pendingInvites = useRPGStore((state) => state.pendingInvites);
 	const acceptInvite = useRPGStore((state) => state.acceptInvite);
 	const switchCampaign = useRPGStore((state) => state.switchCampaign);
@@ -250,6 +253,11 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 									aria-label="Carregando mundo"
 									className="mt-0.5 inline-block h-2.5 w-16 align-middle"
 								/>
+							) : isMesaError && activeCampaignId ? (
+								<span data-testid="unavailable-value">
+									<span aria-hidden="true">—</span>
+									<span className="sr-only">Mundo indisponível</span>
+								</span>
 							) : (
 								"Selecione um Mundo"
 							)}

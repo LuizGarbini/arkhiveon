@@ -17,18 +17,31 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
 interface DashboardPartyRosterProps {
 	characters: Character[];
 	isViewer: boolean;
 	isLoading?: boolean;
+	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
+	isUnavailable?: boolean;
 }
 
 export function DashboardPartyRoster({
 	characters,
 	isViewer,
 	isLoading,
+	isUnavailable,
 }: DashboardPartyRosterProps) {
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="Grupo de Aventureiros"
+				icon={<Users className="h-4 w-4" />}
+			/>
+		);
+	}
+
 	if (isLoading) {
 		return (
 			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">

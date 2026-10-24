@@ -14,6 +14,10 @@ import {
 	Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+	DashboardSectionErrorLine,
+	DashboardSectionUnavailable,
+} from "@/components/dashboard/dashboard-load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	type ActivityAction,
@@ -59,9 +63,20 @@ const ACTION_META: Record<
 interface ActivityFeedProps {
 	limit?: number;
 	isLoading?: boolean;
+	/** Falha global: estado neutro (sem "Nenhum registro ainda"). */
+	isUnavailable?: boolean;
+	/** Falha só da timeline: linha discreta com nova tentativa. */
+	loadError?: string | null;
+	onRetry?: () => void;
 }
 
-export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
+export function ActivityFeed({
+	limit = 6,
+	isLoading,
+	isUnavailable,
+	loadError,
+	onRetry,
+}: ActivityFeedProps) {
 	const activity = useRPGStore((s) => s.activityLog);
 	const [visibleCount, setVisibleCount] = useState(limit);
 	const items = useMemo(
@@ -78,6 +93,15 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 		[limit],
 	);
 
+	if (isUnavailable) {
+		return (
+			<DashboardSectionUnavailable
+				title="Atividade recente"
+				icon={<History className="h-4 w-4" />}
+			/>
+		);
+	}
+
 	return (
 		<aside className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 flex flex-col justify-between">
 			<div>
@@ -91,7 +115,7 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 						</h2>
 					</div>
 					<div className="flex items-center gap-3">
-						{!isLoading && activity.length > 0 && (
+						{!isLoading && !loadError && activity.length > 0 && (
 							<span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[9px] font-bold tracking-wide text-primary">
 								{activity.length} eventos
 							</span>
@@ -118,6 +142,11 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 							</div>
 						))}
 					</div>
+				) : loadError && onRetry ? (
+					<DashboardSectionErrorLine
+						message="Não foi possível carregar a atividade recente."
+						onRetry={onRetry}
+					/>
 				) : items.length === 0 ? (
 					<div className="rounded-xl border border-dashed border-border px-4 py-8 text-center bg-background/20">
 						<div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-3 text-muted-foreground/45">
@@ -163,7 +192,10 @@ export function ActivityFeed({ limit = 6, isLoading }: ActivityFeedProps) {
 											</span>
 											{(entry.actorName || entry.actorEmail) && (
 												<span className="text-[11px] text-muted-foreground font-normal border-l border-border/40 pl-1.5">
-													por <strong className="text-foreground/80 font-medium">{entry.actorName || entry.actorEmail}</strong>
+													por{" "}
+													<strong className="text-foreground/80 font-medium">
+														{entry.actorName || entry.actorEmail}
+													</strong>
 												</span>
 											)}
 										</div>
