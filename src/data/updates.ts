@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.38-painel-falha-base",
+		version: "1.6.38",
+		date: "24/10/2026",
+		title: "Painel avisa direito quando a conexão cai",
+		description:
+			"Se não der para buscar suas campanhas, seu plano ou seus convites, o painel mostra um único aviso com “Tentar de novo”, em vez de ficar carregando sem fim ou mostrar uma mensagem técnica. O menu lateral não mostra mais “Plano Free” nem nomes genéricos do mundo antes de saber os dados de verdade, e o botão Registrar Sessão só aparece com a mesa carregada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.37-painel-itens-mochila",
 		version: "1.6.37",
 		date: "24/10/2026",

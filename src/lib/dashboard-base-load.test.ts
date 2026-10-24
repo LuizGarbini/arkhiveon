@@ -59,17 +59,17 @@ function response(table: string, okData: unknown) {
 	);
 }
 
-/** Query encadeável: qualquer método devolve a própria query; await resolve. */
+/** Query encadeável: a própria promessa da resposta, com os métodos do builder. */
 function query(table: string, okData: unknown) {
-	const q: Record<string, unknown> = {};
-	for (const m of ["select", "eq", "ilike", "in", "order"]) {
-		q[m] = () => q;
-	}
-	q.maybeSingle = () => response(table, okData);
-	q.then = (
-		resolve: (v: unknown) => unknown,
-		reject: (e: unknown) => unknown,
-	) => response(table, okData).then(resolve, reject);
+	const promise = response(table, okData);
+	const q = Object.assign(promise, {
+		select: () => q,
+		eq: () => q,
+		ilike: () => q,
+		in: () => q,
+		order: () => q,
+		maybeSingle: () => promise,
+	});
 	return q;
 }
 
