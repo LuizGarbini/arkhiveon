@@ -1,0 +1,49 @@
+import { chromium } from "playwright";
+const OUT = "/workspace/arkhiveon/previews/dashboard-ui/fatia-4b";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const browser = await chromium.launch();
+const log = [];
+for (const [w, h] of [[1440, 900], [390, 844]]) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+  await ctx.addInitScript(() => {
+    const b64 = (o) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const exp = Math.floor(Date.now() / 1000) + 86400;
+    const user = { id: "00000000-0000-4000-8000-000000000001", aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { full_name: "QA" }, created_at: "2026-01-01T00:00:00Z" };
+    const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: user.id, exp, role: "authenticated", aud: "authenticated", email: user.email })}.assinatura-falsa`;
+    localStorage.setItem("sb-preview-bloqueado-auth-token", JSON.stringify({ access_token: token, refresh_token: "falso", token_type: "bearer", expires_in: 86400, expires_at: exp, user }));
+    localStorage.setItem("arkhiveon-storage", JSON.stringify({ state: { activeCampaignId: "c1",
+      campaigns: [{ id: "c1", name: "QA Designer (teste)", description: "", worldId: null, myRole: "editor" }] }, version: 0 }));
+  });
+  const page = await ctx.newPage();
+  let mode = "block";
+  await page.route(/\.supabase\.co\/auth\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "00000000-0000-4000-8000-000000000001", aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: {} }) }));
+  await page.route(/\.supabase\.co\/(rest|storage|realtime|functions)\//, async (route) => {
+    await sleep(3000);
+    if (mode === "block") return route.abort("failed");
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await page.goto("http://127.0.0.1:4521/dashboard");
+  await sleep(1200);
+  await page.screenshot({ path: `${OUT}/${w}-01-carregando-tela-inteira.png`, fullPage: true });
+  const btn = page.getByRole("button", { name: "Tentar de novo" });
+  await btn.waitFor({ timeout: 30000 });
+  await sleep(500);
+  const regs = await page.getByText("Registrar Sessão").count();
+  await page.screenshot({ path: `${OUT}/${w}-02-aviso-falha-geral.png`, fullPage: true });
+  await btn.focus(); await page.keyboard.press("Shift+Tab"); await page.keyboard.press("Tab");
+  const box = await btn.boundingBox();
+  const focused = await btn.evaluate((el) => el === document.activeElement && el.matches(":focus-visible"));
+  await page.screenshot({ path: `${OUT}/${w}-03-foco-teclado-tentar-de-novo.png`, fullPage: true });
+  await page.keyboard.press("Enter");
+  await sleep(800);
+  const regsLoading = await page.getByText("Registrar Sessão").count();
+  await page.screenshot({ path: `${OUT}/${w}-04-nova-tentativa-skeleton.png`, fullPage: true });
+  await btn.waitFor({ timeout: 30000 });
+  await page.screenshot({ path: `${OUT}/${w}-05-falha-de-novo-apos-tentativa.png`, fullPage: true });
+  const body = await page.locator("body").innerText();
+  log.push({ w, h, btnHeight: box?.height, focusVisible: focused, registrarNoErro: regs, registrarNoLoading: regsLoading,
+    temFree: /Free/.test(body), temFaccoes: /Facções & Ordens/.test(body), temFailedFetch: /Failed to fetch/.test(body) });
+  await ctx.close();
+}
+console.log(JSON.stringify(log, null, 1));
+await browser.close();
