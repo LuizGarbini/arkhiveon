@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getFactionsTabConfig } from "@/lib/systems";
@@ -48,6 +49,10 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
 	const { isPro, planLoading, storageUsedBytes } = useAuth();
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
+	const isLoadingRecords = useRPGStore(
+		(s) => s.isLoadingRemote || !s.hasLoadedCampaigns,
+	);
+	const recordsLoading = planLoading || isLoadingRecords;
 
 	const usagePercentage = isPro
 		? 100
@@ -208,9 +213,17 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
 									<span>Registros</span>
-									<span>
-										{usedCreations} / {isPro ? "∞" : FREE_CREATION_LIMIT}
-									</span>
+									{recordsLoading ? (
+										<Skeleton
+											role="status"
+											aria-label="Carregando registros"
+											className="h-3 w-10"
+										/>
+									) : (
+										<span>
+											{usedCreations} / {isPro ? "∞" : FREE_CREATION_LIMIT}
+										</span>
+									)}
 								</div>
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
 									<div

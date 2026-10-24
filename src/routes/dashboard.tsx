@@ -202,13 +202,13 @@ function Dashboard() {
 					/>
 
 					<DashboardKeyNpcs
-						npcs={npcs}
+						npcs={visibleNpcs}
 						isViewer={isViewer}
 						isLoading={isLoading}
 					/>
 
 					<DashboardQuickVault
-						items={items}
+						items={visibleItems}
 						isViewer={isViewer}
 						isLoading={isLoading}
 					/>
