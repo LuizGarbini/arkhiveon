@@ -3,7 +3,6 @@
 import type { User } from "@supabase/supabase-js";
 import {
 	cleanup,
-	fireEvent,
 	render,
 	screen,
 	waitFor,
@@ -159,18 +158,30 @@ describe("Painel: estados dos números", () => {
 		expect(screen.queryAllByRole("status")).toHaveLength(0);
 	});
 
-	it("erro: mostra — com tooltip do DS, sem title nativo", async () => {
+	it("erro: mostra — num botão que abre o Popover do DS por clique, sem navegar", async () => {
 		setDashboardState({ remoteLoadError: "falhou" });
 		render(<Dashboard />);
-		const link = quickNavCount("Locais & Mapas");
-		const dash = within(link).getByText("—");
-		expect(dash.getAttribute("title")).toBeNull();
 		expect(document.querySelector("[title]")).toBeNull();
-		fireEvent.focus(dash);
+		const buttons = screen.getAllByRole("button", {
+			name: /Não foi possível carregar/,
+		});
+		// 4 números do topo + 8 do Grimório
+		expect(buttons.length).toBe(12);
+		// o primeiro é o número do topo (o segundo é o do Grimório)
+		const [personagens] = screen.getAllByRole("button", {
+			name: "personagens: Não foi possível carregar. Ver detalhes",
+		});
+		expect(personagens.className).toContain("min-h-[44px]");
+		expect(personagens.className).toContain("min-w-[44px]");
+		const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+		personagens.dispatchEvent(click);
+		expect(click.defaultPrevented).toBe(true);
 		await waitFor(() =>
 			expect(
-				screen.getAllByText("Não foi possível carregar").length,
-			).toBeGreaterThan(0),
+				screen.getByText(
+					"Os personagens não carregaram. Recarregue a página para tentar de novo.",
+				),
+			).toBeTruthy(),
 		);
 	});
 
@@ -231,7 +242,8 @@ describe("Seletor de mundo: compartilhado x próprio", () => {
 				<CampaignSwitcher isCollapsed={false} />
 			</ToastProvider>,
 		);
-		expect(screen.getByText(/faerun · Mundo compartilhado/)).toBeTruthy();
+		expect(screen.getByText("faerun")).toBeTruthy();
+		expect(screen.getByText("Mundo compartilhado")).toBeTruthy();
 	});
 
 	it("mundo próprio não ganha o aviso", () => {

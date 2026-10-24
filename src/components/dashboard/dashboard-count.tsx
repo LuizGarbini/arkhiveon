@@ -1,9 +1,11 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+	Popover,
+	PopoverContent,
+	PopoverDescription,
+	PopoverTitle,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export type DashboardCountStatus = "loading" | "ready" | "error";
@@ -40,23 +42,39 @@ export function DashboardCount({
 
 	if (status === "error") {
 		return (
-			<Tooltip>
-				<TooltipTrigger
+			<Popover>
+				<PopoverTrigger
 					render={
-						<span
-							// biome-ignore lint/a11y/noNoninteractiveTabindex: o tooltip precisa abrir pelo teclado
-							tabIndex={0}
-							className="cursor-help"
+						<button
+							type="button"
+							aria-label={`${label}: ${DASHBOARD_COUNT_ERROR_HINT}. Ver detalhes`}
+							// O número fica dentro de um link: o toque abre o aviso sem navegar.
+							onClick={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+							}}
+							className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md align-middle outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 					}
 				>
 					<span aria-hidden="true">—</span>
-					<span className="sr-only">
-						{label}: {DASHBOARD_COUNT_ERROR_HINT}
-					</span>
-				</TooltipTrigger>
-				<TooltipContent>{DASHBOARD_COUNT_ERROR_HINT}</TooltipContent>
-			</Tooltip>
+				</PopoverTrigger>
+				<PopoverContent
+					side="bottom"
+					className="w-56 gap-1 p-3 text-xs"
+					onClick={(event) => {
+						event.preventDefault();
+						event.stopPropagation();
+					}}
+				>
+					<PopoverTitle className="text-xs">
+						{DASHBOARD_COUNT_ERROR_HINT}
+					</PopoverTitle>
+					<PopoverDescription className="text-xs">
+						Os {label} não carregaram. Recarregue a página para tentar de novo.
+					</PopoverDescription>
+				</PopoverContent>
+			</Popover>
 		);
 	}
 

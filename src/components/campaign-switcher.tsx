@@ -238,8 +238,12 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeWorld?.name ?? "Selecione um Mundo"}
-							{isActiveWorldShared && " · Mundo compartilhado"}
 						</span>
+						{isActiveWorldShared && (
+							<span className="truncate text-[10px] text-muted-foreground">
+								Mundo compartilhado
+							</span>
+						)}
 					</div>
 					<ChevronDown
 						className={cn(
