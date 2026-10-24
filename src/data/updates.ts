@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.33-painel-sem-cortes",
+		version: "1.6.33",
+		date: "24/10/2026",
+		title: "Painel sem textos cortados",
+		description:
+			"Os atalhos do Grimório mostram o nome inteiro, o banner do Discord cabe no celular e tocar no “—” de um número abre o aviso sem sair do painel.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.32-painel-numeros-mundo-compartilhado",
 		version: "1.6.32",
 		date: "24/10/2026",

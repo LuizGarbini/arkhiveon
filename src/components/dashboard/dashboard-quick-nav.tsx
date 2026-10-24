@@ -111,30 +111,35 @@ export function DashboardQuickNav({
 					const Icon = item.Icon;
 
 					return (
-						<Link
+						<div
 							key={item.to}
-							to={item.to}
-							className="group t-hover-lift flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-2.5 hover:border-primary/40 hover:bg-background/80 select-none"
+							className="group t-hover-lift relative flex items-center justify-between gap-1 rounded-xl border border-border/60 bg-background/40 p-2.5 hover:border-primary/40 hover:bg-background/80 select-none"
 						>
+							<Link
+								to={item.to}
+								aria-label={`Abrir ${item.title}`}
+								className="absolute inset-0 z-[1] rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							/>
 							<div className="flex items-center gap-2.5 min-w-0">
 								<div
 									className={`t-icon-spring flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${item.color}`}
 								>
 									<Icon className="h-3.5 w-3.5" />
 								</div>
-								<span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+								<span className="line-clamp-2 text-xs font-semibold leading-tight text-foreground group-hover:text-primary transition-colors">
 									{item.title}
 								</span>
 							</div>
 
-							<span className="font-mono text-[10px] font-bold text-muted-foreground/70 group-hover:text-primary transition-colors tabular-nums shrink-0 ml-1">
+							<span className="font-mono text-[10px] font-bold text-muted-foreground/70 group-hover:text-primary transition-colors tabular-nums relative inline-flex shrink-0 justify-center">
 								<DashboardCount
 									value={count}
 									status={countStatus}
 									label={item.title.toLowerCase()}
+									compactTarget
 								/>
 							</span>
-						</Link>
+						</div>
 					);
 				})}
 			</div>
