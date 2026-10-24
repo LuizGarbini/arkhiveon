@@ -18,6 +18,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import {
+	DashboardSectionHeaderSkeleton,
+	DashboardSkeletonGroup,
+} from "./dashboard-skeleton";
+
+const SKELETON_CARDS_4 = ["a", "b", "c", "d"] as const;
 
 interface DashboardPartyRosterProps {
 	characters: Character[];
@@ -44,15 +50,20 @@ export function DashboardPartyRoster({
 
 	if (isLoading) {
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<div className="flex items-center justify-between gap-3 mb-4">
-					<Skeleton className="h-5 w-40" />
-					<Skeleton className="h-5 w-20 rounded-full" />
-				</div>
-				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					<Skeleton className="h-28 w-full rounded-xl" />
-					<Skeleton className="h-28 w-full rounded-xl" />
-				</div>
+			<div
+				data-dash-section="party-roster"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<DashboardSectionHeaderSkeleton
+					icon={<Users className="h-4 w-4" />}
+					iconClassName="border-primary/20 bg-primary/10 text-primary"
+					title="Grupo de Aventureiros"
+				/>
+				<DashboardSkeletonGroup className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+					{SKELETON_CARDS_4.map((key) => (
+						<Skeleton key={key} className="h-[150px] w-full rounded-xl" />
+					))}
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
@@ -60,7 +71,10 @@ export function DashboardPartyRoster({
 	const displayCharacters = characters.slice(0, 4);
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border">
+		<div
+			data-dash-section="party-roster"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
+		>
 			{/* Section Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
 				<div className="flex items-center gap-2.5">

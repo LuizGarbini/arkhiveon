@@ -18,6 +18,7 @@ import {
 	DashboardSectionErrorLine,
 	DashboardSectionUnavailable,
 } from "@/components/dashboard/dashboard-load-error";
+import { DashboardSkeletonGroup } from "@/components/dashboard/dashboard-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	type ActivityAction,
@@ -103,7 +104,10 @@ export function ActivityFeed({
 	}
 
 	return (
-		<aside className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 flex flex-col justify-between">
+		<aside
+			data-dash-section="activity"
+			className="rounded-2xl border border-border/70 bg-card-elevated p-6 shadow-sm shadow-black/5 flex flex-col justify-between"
+		>
 			<div>
 				<div className="mb-6 flex items-center justify-between gap-3">
 					<div>
@@ -125,14 +129,14 @@ export function ActivityFeed({
 				</div>
 
 				{isLoading ? (
-					<div className="relative border-l border-border/40 ml-3 space-y-6">
+					<DashboardSkeletonGroup className="relative border-l border-border/40 ml-3 space-y-6 py-1">
 						{skeletonKeys.map((key) => (
 							<div
 								key={key}
-								className="relative flex items-center justify-between gap-4 pl-6"
+								className="relative flex min-h-[43px] items-center justify-between gap-4 pl-6"
 							>
 								<div className="absolute -left-[10px] flex h-5 w-5 items-center justify-center rounded-full bg-background border border-border">
-									<div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 animate-pulse" />
+									<div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
 								</div>
 								<div className="flex-1 space-y-1.5">
 									<Skeleton className="h-3 w-24" />
@@ -141,7 +145,7 @@ export function ActivityFeed({
 								<Skeleton className="h-4 w-12 rounded" />
 							</div>
 						))}
-					</div>
+					</DashboardSkeletonGroup>
 				) : loadError && onRetry ? (
 					<DashboardSectionErrorLine
 						message="Não foi possível carregar a atividade recente."

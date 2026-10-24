@@ -79,7 +79,7 @@ export function SidebarNav({
 									{labelPending ? (
 										<Skeleton
 											aria-hidden="true"
-											className="inline-block h-3 w-24 align-middle"
+											className="dashboard-skeleton inline-block h-3 w-24 align-middle"
 										/>
 									) : (
 										label

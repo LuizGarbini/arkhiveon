@@ -89,7 +89,6 @@ function Dashboard() {
 	// Falha global: um aviso no topo; seções ficam neutras (sem vazio/CTA/0).
 	const isUnavailable = countStatus === "error";
 	const retryBaseLoad = useRPGStore((s) => s.retryBaseLoad);
-	const isRetryingBase = useRPGStore((s) => s.isRetryingBase);
 	const activityLoadError = useRPGStore((s) => s.activityLoadError);
 	const isLoadingActivity = useRPGStore((s) => s.isLoadingActivity);
 	const retryActivity = useRPGStore((s) => s.retryActivity);
@@ -104,25 +103,19 @@ function Dashboard() {
 		[sessions],
 	);
 
-	if (
+	// Campanhas ainda chegando: o próprio painel em skeleton (sem tela de
+	// texto "Carregando grimório..."); só decide onboarding com dado real.
+	const campaignsPending =
 		!hasAuthoritativeCampaignSnapshot &&
-		isCampaignLoadPending(campaignLoadStatus) &&
-		// Nova tentativa volta ao skeleton do painel, não à tela de texto.
-		!isRetryingBase
-	) {
-		return (
-			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
-				Carregando grimório...
-			</div>
-		);
-	}
+		isCampaignLoadPending(campaignLoadStatus);
 
 	if (
-		campaigns.length === 0 ||
-		needsAppOnboarding({
-			campaignLoadStatus,
-			campaignCount: campaigns.length,
-		})
+		!campaignsPending &&
+		(campaigns.length === 0 ||
+			needsAppOnboarding({
+				campaignLoadStatus,
+				campaignCount: campaigns.length,
+			}))
 	) {
 		return null;
 	}

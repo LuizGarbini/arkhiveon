@@ -161,6 +161,12 @@ describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
 		expect(
 			screen.getByRole("status", { name: "Carregando arquivos" }),
 		).toBeTruthy();
+		// Título "Plano" fica fixo; só o valor vira barra curta.
+		expect(screen.getByText("Plano")).toBeTruthy();
+		expect(
+			screen.getByRole("status", { name: "Carregando plano" }),
+		).toBeTruthy();
+		expect(screen.queryByText("Verificando")).toBeNull();
 	});
 
 	it("plano real chegou: mostra o valor", () => {

@@ -844,3 +844,78 @@ describe("Selo de papel: só com o dado real", () => {
 		expect(screen.queryByText("Co-Mestre")).toBeNull();
 	});
 });
+
+describe("Skeleton do painel com a forma real", () => {
+	afterEach(cleanup);
+
+	function section(name: string): HTMLElement {
+		const el = document.querySelector<HTMLElement>(
+			`[data-dash-section="${name}"]`,
+		);
+		if (!el) throw new Error(`seção ${name} não encontrada`);
+		return el;
+	}
+
+	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões: 3 linhas", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const actions = section("quick-actions");
+		expect(within(actions).getByText("Ações da Mesa")).toBeTruthy();
+		const actionRows = actions.querySelectorAll(
+			"[data-dashboard-skeleton] > div",
+		);
+		expect(actionRows).toHaveLength(4);
+		const quests = section("active-quests");
+		expect(within(quests).getByText("Missões em Andamento")).toBeTruthy();
+		expect(
+			quests.querySelectorAll("[data-dashboard-skeleton].mt-4 > div"),
+		).toHaveLength(3);
+	});
+
+	it("Grimório: grade 2×N com rótulos reais e barra só na contagem", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const nav = section("quick-nav");
+		expect(within(nav).getByText("Locais & Mapas")).toBeTruthy();
+		expect(
+			within(nav).getAllByRole("status", { name: /^Carregando/ }),
+		).toHaveLength(8);
+	});
+
+	it("um único pulse por contêiner: nenhuma barra anima sozinha fora dele", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const bars = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-slot="skeleton"]'),
+		);
+		expect(bars.length).toBeGreaterThan(0);
+		const loose = bars
+			.filter((bar) => bar.closest(".dashboard-skeleton") === null)
+			.map((bar) => bar.getAttribute("aria-label") ?? bar.className);
+		expect(loose).toEqual([]);
+	});
+
+	it("campanhas ainda chegando: o painel em skeleton, sem tela de texto", () => {
+		setDashboardState({
+			campaigns: [],
+			activeCampaignId: null,
+			hasLoadedCampaigns: false,
+			campaignLoadStatus: "loading",
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		expect(screen.queryByText("Carregando grimório...")).toBeNull();
+		expect(section("hero")).toBeTruthy();
+		expect(section("quick-actions")).toBeTruthy();
+		expect(screen.queryByText("Campanha em Foco")).toBeNull();
+	});
+
+	it("carregado: mesmas seções, sem skeleton", () => {
+		setDashboardState({});
+		render(<Dashboard />);
+		expect(section("quick-actions")).toBeTruthy();
+		expect(document.querySelectorAll("[data-dashboard-skeleton]")).toHaveLength(
+			0,
+		);
+	});
+});

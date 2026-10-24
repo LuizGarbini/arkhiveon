@@ -11,6 +11,27 @@ import { PartyLootDialog } from "@/components/party-loot-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import { DashboardSkeletonGroup, SkeletonLine } from "./dashboard-skeleton";
+
+const QUICK_ACTION_SKELETON_ROWS = ["vtt", "loot", "sheet", "invite"] as const;
+
+function QuickActionsHeader() {
+	return (
+		<div className="flex items-center justify-between border-b border-border/50 pb-3 mb-3">
+			<div className="flex items-center gap-2 select-none">
+				<div className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+					<Sparkles className="h-3.5 w-3.5" />
+				</div>
+				<h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+					Ações da Mesa
+				</h3>
+			</div>
+			<span className="text-[10px] font-semibold text-muted-foreground select-none">
+				Ferramentas
+			</span>
+		</div>
+	);
+}
 
 /** Mesmo selo "Abrir ↗" para os atalhos da Mesa Virtual e da Mochila. */
 const OPEN_PILL_CLASS =
@@ -43,34 +64,44 @@ export function DashboardQuickActions({
 	}
 
 	if (isLoading) {
+		// Mesma forma do carregado: cabeçalho real + 4 linhas (ícone, título,
+		// subtítulo e pílula) com os mesmos paddings, então nada pula.
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<Skeleton className="h-5 w-36 mb-4" />
-				<div className="flex flex-col gap-2">
-					<Skeleton className="h-14 w-full rounded-xl" />
-					<Skeleton className="h-14 w-full rounded-xl" />
-					<Skeleton className="h-14 w-full rounded-xl" />
-					<Skeleton className="h-14 w-full rounded-xl" />
-				</div>
+			<div
+				data-dash-section="quick-actions"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<QuickActionsHeader />
+				<DashboardSkeletonGroup className="flex flex-col gap-2">
+					{QUICK_ACTION_SKELETON_ROWS.map((row) => (
+						<div
+							key={row}
+							className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-2.5 sm:p-3"
+						>
+							<div className="flex min-w-0 flex-1 items-center gap-3">
+								<Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+								<div className="min-w-0 flex-1">
+									<SkeletonLine textClassName="text-xs" className="w-28" />
+									<SkeletonLine
+										textClassName="text-[11px]"
+										className="w-40 max-w-full"
+									/>
+								</div>
+							</div>
+							<Skeleton className="ml-2 h-5 w-14 shrink-0 rounded-md" />
+						</div>
+					))}
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-			<div className="flex items-center justify-between border-b border-border/50 pb-3 mb-3">
-				<div className="flex items-center gap-2 select-none">
-					<div className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
-						<Sparkles className="h-3.5 w-3.5" />
-					</div>
-					<h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-						Ações da Mesa
-					</h3>
-				</div>
-				<span className="text-[10px] font-semibold text-muted-foreground select-none">
-					Ferramentas
-				</span>
-			</div>
+		<div
+			data-dash-section="quick-actions"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+		>
+			<QuickActionsHeader />
 
 			<div className="flex flex-col gap-2">
 				{/* 1. Mesa Virtual VTT */}

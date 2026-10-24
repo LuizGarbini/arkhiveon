@@ -76,7 +76,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 
 	const planLabel = isPro ? "Plano Pro" : "Plano Free";
 	const badgeLabel = planLoading
-		? "..."
+		? null
 		: planUnavailable
 			? "—"
 			: isPro
@@ -89,7 +89,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const factionsTabConfig = getFactionsTabConfig(activeCampaign?.system);
 	// O sistema da mesa vem das campanhas; até chegarem, o rótulo não cai no padrão.
 	const worldLabelsPending = useRPGStore(
-		(s) => s.campaignLoadStatus !== "ready" && s.activeCampaignId !== null,
+		(s) =>
+			s.campaignLoadStatus !== "ready" &&
+			(s.activeCampaignId !== null ||
+				// Primeira carga sem nada em cache: ainda não dá para saber o sistema.
+				(!s.hasLoadedCampaigns && s.campaignLoadStatus !== "error")),
 	);
 	// Piloto invisível: fora da allowlist o grupo Mundo fica idêntico.
 	const libraryEnabled = useLibraryPilot(activeCampaignId) === true;
@@ -209,10 +213,17 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 									}`}
 								>
 									{planLoading ? (
-										"Verificando"
+										<span className="inline-flex items-center gap-1">
+											Plano
+											<Skeleton
+												role="status"
+												aria-label="Carregando plano"
+												className="dashboard-skeleton inline-block h-[0.7em] w-7 align-middle"
+											/>
+										</span>
 									) : planUnavailable ? (
 										<span data-testid="plan-unavailable">
-											<span aria-hidden="true">—</span>
+											<span aria-hidden="true">Plano —</span>
 											<span className="sr-only">Plano indisponível</span>
 										</span>
 									) : (
@@ -227,7 +238,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										: "max-w-16 translate-x-0 opacity-100"
 								}`}
 							>
-								{badgeLabel}
+								{badgeLabel ?? (
+									<Skeleton className="dashboard-skeleton inline-block h-[0.7em] w-5 align-middle" />
+								)}
 							</span>
 						</div>
 
@@ -245,7 +258,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										<Skeleton
 											role="status"
 											aria-label="Carregando registros"
-											className="h-3 w-10"
+											className="dashboard-skeleton h-3 w-10"
 										/>
 									) : recordsError ? (
 										<span data-testid="unavailable-value">
@@ -273,7 +286,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										<Skeleton
 											role="status"
 											aria-label="Carregando arquivos"
-											className="h-3 w-14"
+											className="dashboard-skeleton h-3 w-14"
 										/>
 									) : planUnavailable ? (
 										<span data-testid="storage-unavailable">

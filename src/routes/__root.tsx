@@ -243,7 +243,10 @@ function ProtectedLayout() {
 	if (
 		isCampaignLoadPending(campaignLoadStatus) &&
 		!hasAuthoritativeCampaignSnapshot &&
-		!isRetryingBase
+		!isRetryingBase &&
+		// No painel, sidebar/cabeçalho/hero aparecem na hora e só o conteúdo
+		// fica em skeleton (sem tela preta "Carregando campanhas...").
+		!pathname.startsWith("/dashboard")
 	) {
 		return (
 			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
