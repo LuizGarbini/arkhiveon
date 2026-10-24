@@ -79,7 +79,10 @@ export function DashboardActiveQuests({
 							className="rounded-xl border border-border/60 bg-background/40 p-4"
 						>
 							<div className="flex items-center gap-2">
-								<Skeleton className="h-[17px] w-16 rounded-md" />
+								{/* Mesmo box do chip real (padding, borda e corpo de 9px). */}
+								<Skeleton className="w-16 rounded-md border border-transparent px-2 py-0.5 text-[9px]">
+									{"\u00a0"}
+								</Skeleton>
 								<SkeletonLine textClassName="text-sm" className="w-40" />
 							</div>
 							<div className="mt-2">
@@ -87,8 +90,9 @@ export function DashboardActiveQuests({
 									textClassName="text-[12px] leading-relaxed"
 									className="w-full"
 								/>
+								{/* Em telas largas a descrição real cabe em 1 linha. */}
 								<SkeletonLine
-									textClassName="text-[12px] leading-relaxed"
+									textClassName="text-[12px] leading-relaxed lg:hidden"
 									className="w-3/4"
 								/>
 							</div>
