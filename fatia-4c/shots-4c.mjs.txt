@@ -1,6 +1,9 @@
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 const OUT = "/workspace/arkhiveon/previews/dashboard-ui/fatia-4c";
+const MODE = process.env.MODE || "base"; // base | missoes
+const PFX = MODE === "missoes" ? "missoes-" : "";
+const QUESTS = [1, 2, 3, 4].map((i) => ({ id: `q${i}`, createdAt: Date.parse("2026-10-20T12:00:00Z"), title: `Missão ${i}: O selo partido`, description: "Recuperar os fragmentos do selo antes da lua cheia, seguindo as pistas da cripta.", status: "active", category: i === 1 ? "main" : "side", giverNpcName: "Irmã Velha", locationName: "Valônia", reward: "100 po", notes: "", worldId: "w1", publicationScope: "global", campaignIds: ["c1"], visibility: "public" }));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UID = "00000000-0000-4000-8000-000000000001";
 const T = "2026-10-20T12:00:00Z";
@@ -25,13 +28,14 @@ const browser = await chromium.launch();
 const report = {};
 for (const [w, h] of [[1440, 900], [390, 844]]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
-  await ctx.addInitScript(([UID]) => {
+  await ctx.addInitScript(([UID, QUESTS]) => {
     const b64 = (o) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
     const exp = Math.floor(Date.now() / 1000) + 86400;
     const user = { id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" }, created_at: "2026-01-01T00:00:00Z" };
     const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, exp, role: "authenticated", aud: "authenticated" })}.assinatura-falsa`;
     localStorage.setItem("sb-preview-bloqueado-auth-token", JSON.stringify({ access_token: token, refresh_token: "falso", token_type: "bearer", expires_in: 86400, expires_at: exp, user }));
-  }, [UID]);
+    if (QUESTS) localStorage.setItem("arkhiveon-storage", JSON.stringify({ state: { quests: QUESTS }, version: 2 }));
+  }, [UID, MODE === "missoes" ? QUESTS : null]);
   const page = await ctx.newPage();
   let release; const gate = new Promise((r) => { release = r; });
   await page.route(/\.supabase\.co\/auth\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" } }) }));
@@ -52,13 +56,15 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
   const at150 = await page.evaluate(() => { const el = document.querySelector("[data-dashboard-skeleton]"); return el ? getComputedStyle(el).visibility : "none"; });
   await sleep(1500);
   const at1650 = await page.evaluate(() => { const el = document.querySelector("[data-dashboard-skeleton]"); return el ? getComputedStyle(el).visibility : "none"; });
-  await page.screenshot({ path: `${OUT}/${w}-01-carregando.png`, fullPage: true });
+  await page.screenshot({ path: `${OUT}/${PFX}${w}-01-carregando.png`, fullPage: true });
+  if (MODE === "missoes") await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/missoes-${w}-secao-01-carregando.png` });
   const loadingBoxes = await boxes();
   const pageHLoading = await page.evaluate(() => document.documentElement.scrollHeight);
   release();
   await page.getByText("Aria").first().waitFor({ timeout: 15000 }).catch(() => {});
   await sleep(1500);
-  await page.screenshot({ path: `${OUT}/${w}-02-carregado.png`, fullPage: true });
+  await page.screenshot({ path: `${OUT}/${PFX}${w}-02-carregado.png`, fullPage: true });
+  if (MODE === "missoes") await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/missoes-${w}-secao-02-carregado.png` });
   const loadedBoxes = await boxes();
   const pageHLoaded = await page.evaluate(() => document.documentElement.scrollHeight);
   const delta = Object.fromEntries(SECTIONS.map((n) => { const a = loadingBoxes[n], b = loadedBoxes[n]; if (!a || !b) return [n, { faltando: !a ? "carregando" : "carregado" }]; return [n, { dx: b.x - a.x, dy: b.y - a.y, dw: b.w - a.w, dh: b.h - a.h, hCarregando: a.h, hCarregado: b.h }]; }));
@@ -68,14 +74,41 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
   report[w] = { telaPretaCarregandoCampanhas: blackGate, skeletonVisibilidadeEm150ms: at150, skeletonVisibilidadeEm1650ms: at1650, alturaPagina: { carregando: pageHLoading, carregado: pageHLoaded }, delta };
   await ctx.close();
 }
-// reduced-motion check
-{
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+// reduced-motion check (apenas no modo base)
+if (MODE === "base") for (const [w, h] of [[1440, 900], [390, 844]]) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
+  await ctx.addInitScript(([UID]) => {
+    const b64 = (o) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const exp = Math.floor(Date.now() / 1000) + 86400;
+    const user = { id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" }, created_at: "2026-01-01T00:00:00Z" };
+    const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, exp, role: "authenticated", aud: "authenticated" })}.assinatura-falsa`;
+    localStorage.setItem("sb-preview-bloqueado-auth-token", JSON.stringify({ access_token: token, refresh_token: "falso", token_type: "bearer", expires_in: 86400, expires_at: exp, user }));
+  }, [UID]);
   const page = await ctx.newPage();
+  await page.route(/\.supabase\.co\/auth\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" } }) }));
+  await page.route(/\.supabase\.co\/(storage|realtime|functions)\//, (route) => route.abort());
+  await page.route(/\.supabase\.co\/rest\/v1\//, () => {}); // segura para sempre: fica carregando
   await page.goto("http://127.0.0.1:4521/dashboard");
-  report.reducedMotion = await page.evaluate(() => { const d = document.createElement("div"); d.className = "dashboard-skeleton"; document.body.append(d); const a = getComputedStyle(d).animationName; d.remove(); return a; });
+  await page.waitForTimeout(1650);
+  const reduce = await page.evaluate(() => {
+    const els = [...document.querySelectorAll(".dashboard-skeleton")];
+    const cs = (el) => { const c = getComputedStyle(el); return { animationName: c.animationName, animationDuration: c.animationDuration, visibility: c.visibility, opacity: c.opacity }; };
+    const first = els[0];
+    const s1 = els.map((e) => getComputedStyle(e).opacity);
+    return { matchMedia: matchMedia("(prefers-reduced-motion: reduce)").matches, conteineres: els.length, primeiro: first ? cs(first) : null, algumPulse: els.some((e) => getComputedStyle(e).animationName.includes("pulse")), opacidades: s1 };
+  });
+  await page.screenshot({ path: `${OUT}/reduced-motion-${w}-a.png`, fullPage: true });
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: `${OUT}/reduced-motion-${w}-b.png`, fullPage: true });
+  reduce.opacidades1sDepois = await page.evaluate(() => [...document.querySelectorAll(".dashboard-skeleton")].map((e) => getComputedStyle(e).opacity));
+  reduce.opacidadeParada = JSON.stringify(reduce.opacidades) === JSON.stringify(reduce.opacidades1sDepois);
+  delete reduce.opacidades; delete reduce.opacidades1sDepois;
+  report.reducedMotion = report.reducedMotion || {}; report.reducedMotion[w] = reduce;
   await ctx.close();
 }
-writeFileSync(`${OUT}/medicao.json`, JSON.stringify(report, null, 1));
+import("node:fs").then(() => {});
+{ const fs = await import("node:fs"); const f = `${OUT}/medicao.json`; const prev = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : {};
+  const next = MODE === "missoes" ? { ...prev, missoes: report } : { ...report, ...(prev.missoes ? { missoes: prev.missoes } : {}) };
+  writeFileSync(f, JSON.stringify(next, null, 1)); }
 console.log(JSON.stringify(report, null, 1));
 await browser.close();

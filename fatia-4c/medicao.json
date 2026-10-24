@@ -165,5 +165,198 @@
    }
   }
  },
- "reducedMotion": "dashboard-skeleton-in"
+ "reducedMotion": {
+  "390": {
+   "matchMedia": true,
+   "conteineres": 33,
+   "primeiro": {
+    "animationName": "dashboard-skeleton-in",
+    "animationDuration": "1e-06s",
+    "visibility": "visible",
+    "opacity": "1"
+   },
+   "algumPulse": false,
+   "opacidadeParada": true
+  },
+  "1440": {
+   "matchMedia": true,
+   "conteineres": 33,
+   "primeiro": {
+    "animationName": "dashboard-skeleton-in",
+    "animationDuration": "1e-06s",
+    "visibility": "visible",
+    "opacity": "1"
+   },
+   "algumPulse": false,
+   "opacidadeParada": true
+  }
+ },
+ "missoes": {
+  "390": {
+   "telaPretaCarregandoCampanhas": 0,
+   "skeletonVisibilidadeEm150ms": "hidden",
+   "skeletonVisibilidadeEm1650ms": "visible",
+   "alturaPagina": {
+    "carregando": 844,
+    "carregado": 844
+   },
+   "delta": {
+    "hero": {
+     "dx": 0,
+     "dy": -26,
+     "dw": 0,
+     "dh": 26,
+     "hCarregando": 588,
+     "hCarregado": 614
+    },
+    "latest-session": {
+     "dx": 0,
+     "dy": 0,
+     "dw": 0,
+     "dh": 1,
+     "hCarregando": 265,
+     "hCarregado": 266
+    },
+    "active-quests": {
+     "dx": 0,
+     "dy": 2,
+     "dw": 0,
+     "dh": 39,
+     "hCarregando": 502,
+     "hCarregado": 541
+    },
+    "party-roster": {
+     "dx": 0,
+     "dy": 40,
+     "dw": 0,
+     "dh": 1,
+     "hCarregando": 744,
+     "hCarregado": 745
+    },
+    "key-npcs": {
+     "dx": 0,
+     "dy": 41,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 437,
+     "hCarregado": 437
+    },
+    "quick-vault": {
+     "dx": 0,
+     "dy": 42,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 321,
+     "hCarregado": 321
+    },
+    "quick-actions": {
+     "dx": 0,
+     "dy": 41,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 320,
+     "hCarregado": 320
+    },
+    "quick-nav": {
+     "dx": 0,
+     "dy": 40,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 306,
+     "hCarregado": 306
+    },
+    "activity": {
+     "dx": 0,
+     "dy": 41,
+     "dw": 0,
+     "dh": -2,
+     "hCarregando": 485,
+     "hCarregado": 483
+    }
+   }
+  },
+  "1440": {
+   "telaPretaCarregandoCampanhas": 0,
+   "skeletonVisibilidadeEm150ms": "hidden",
+   "skeletonVisibilidadeEm1650ms": "visible",
+   "alturaPagina": {
+    "carregando": 900,
+    "carregado": 900
+   },
+   "delta": {
+    "hero": {
+     "dx": 0,
+     "dy": 0,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 367,
+     "hCarregado": 367
+    },
+    "latest-session": {
+     "dx": 0,
+     "dy": 0,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 237,
+     "hCarregado": 237
+    },
+    "active-quests": {
+     "dx": 0,
+     "dy": 1,
+     "dw": 0,
+     "dh": -20,
+     "hCarregando": 495,
+     "hCarregado": 475
+    },
+    "party-roster": {
+     "dx": 0,
+     "dy": -18,
+     "dw": 0,
+     "dh": 1,
+     "hCarregando": 415,
+     "hCarregado": 416
+    },
+    "key-npcs": {
+     "dx": 0,
+     "dy": -18,
+     "dw": 0,
+     "dh": 1,
+     "hCarregando": 305,
+     "hCarregado": 306
+    },
+    "quick-vault": {
+     "dx": 0,
+     "dy": -18,
+     "dw": 0,
+     "dh": -1,
+     "hCarregando": 195,
+     "hCarregado": 194
+    },
+    "quick-actions": {
+     "dx": 0,
+     "dy": 0,
+     "dw": 0,
+     "dh": 0,
+     "hCarregando": 334,
+     "hCarregado": 334
+    },
+    "quick-nav": {
+     "dx": 0,
+     "dy": 0,
+     "dw": 0,
+     "dh": -2,
+     "hCarregando": 308,
+     "hCarregado": 306
+    },
+    "activity": {
+     "dx": 0,
+     "dy": -2,
+     "dw": 0,
+     "dh": -2,
+     "hCarregando": 485,
+     "hCarregado": 483
+    }
+   }
+  }
+ }
 }
