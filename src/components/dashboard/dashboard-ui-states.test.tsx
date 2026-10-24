@@ -16,6 +16,8 @@ import { useRPGStore } from "@/lib/store";
 import type {
 	Campaign,
 	GameLocation,
+	Item,
+	Npc,
 	RPGState,
 	World,
 } from "@/lib/store/types";
@@ -183,6 +185,44 @@ describe("Painel: estados dos números", () => {
 				),
 			).toBeTruthy(),
 		);
+	});
+
+	it("cards de NPCs e itens contam só a campanha ativa (mesmo filtro do topo)", () => {
+		const scoped = (id: string) => [
+			location(`${id}-global`),
+			location(`${id}-outra`, {
+				publicationScope: "restricted",
+				campaignIds: ["camp-outra"],
+			}),
+			location(`${id}-outra-2`, {
+				publicationScope: "restricted",
+				campaignIds: ["camp-outra"],
+			}),
+		];
+		setDashboardState({
+			npcs: scoped("npc") as unknown as Npc[],
+			items: scoped("item") as unknown as Item[],
+		});
+		render(<Dashboard />);
+		expect(screen.getByText("1 Registrado")).toBeTruthy();
+		expect(screen.getByText("Ver todos (1)")).toBeTruthy();
+		expect(screen.queryByText("npc-outra")).toBeNull();
+		expect(screen.queryByText("item-outra")).toBeNull();
+	});
+
+	it("'Ver todas (N)' dos cards fica numa linha só", () => {
+		setDashboardState({});
+		render(<Dashboard />);
+		const links = screen.getAllByText(/^Ver tod(a|o)s/);
+		expect(links.length).toBeGreaterThanOrEqual(5);
+		for (const link of links) {
+			const anchor = link.closest("a") ?? link;
+			expect(anchor.className).toContain("whitespace-nowrap");
+			expect(anchor.className).toContain("shrink-0");
+		}
+		for (const pill of [/Herói/, /Ativa/, /Registrado/]) {
+			expect(screen.getByText(pill).className).toContain("whitespace-nowrap");
+		}
 	});
 
 	it("conta só o que a lista mostra (mesmo filtro de visibilidade)", () => {

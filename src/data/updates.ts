@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.34-painel-escopo-campanha",
+		version: "1.6.34",
+		date: "24/10/2026",
+		title: "Cards do painel só com a sua mesa",
+		description:
+			"Os cards de NPCs e itens do painel agora contam e listam só o que a campanha ativa vê, igual aos números do topo. Os registros do menu lateral mostram um bloco cinza enquanto carregam, e o “Ver todas” cabe numa linha no celular.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.32-painel-numeros-mundo-compartilhado",
 		version: "1.6.32",
 		date: "24/10/2026",
