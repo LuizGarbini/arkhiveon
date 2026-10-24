@@ -46,6 +46,8 @@ export function isCreationLimitReached(state: RPGState): boolean {
 export interface SyncSlice {
 	isLoadingRemote: boolean;
 	syncError: string | null;
+	/** Erro da última carga da mesa ativa (não inclui erros de escrita). */
+	remoteLoadError: string | null;
 	activityLog: ActivityEntry[];
 	userPlan: UserPlan;
 	setUserPlan: (plan: UserPlan) => void;
@@ -245,6 +247,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 ) => ({
 	isLoadingRemote: false,
 	syncError: null,
+	remoteLoadError: null,
 	activityLog: [],
 	userPlan: "free",
 	setUserPlan: (plan) => set({ userPlan: plan }),
@@ -285,9 +288,9 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 
 		// Só mostra skeleton se não houver NENHUM dado local ainda
 		if (!hasData) {
-			set({ isLoadingRemote: true, syncError: null });
+			set({ isLoadingRemote: true, syncError: null, remoteLoadError: null });
 		} else {
-			set({ syncError: null });
+			set({ syncError: null, remoteLoadError: null });
 		}
 		try {
 			if (!startCampaignId) {
@@ -359,7 +362,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			});
 		} catch (error) {
 			if (get().activeCampaignId === startCampaignId) {
-				set({ isLoadingRemote: false, syncError: remoteErrorMessage(error) });
+				const message = remoteErrorMessage(error);
+				set({
+					isLoadingRemote: false,
+					syncError: message,
+					remoteLoadError: message,
+				});
 			}
 		}
 	},
@@ -700,6 +708,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			newsComments: [],
 			notifications: [],
 			syncError: null,
+			remoteLoadError: null,
 		});
 		get().resetCampaigns();
 	},
@@ -721,6 +730,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			newsComments: [],
 			notifications: [],
 			syncError: null,
+			remoteLoadError: null,
 		});
 	},
 	clearActivity: () => set({ activityLog: [] }),

@@ -7,7 +7,7 @@ import {
 	Trash2,
 	UserPlus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
@@ -22,6 +22,7 @@ import {
 	maxOwnedWorlds,
 	worldLimitError,
 } from "@/lib/worldbuilding/plan-limits";
+import { isSharedWorld } from "@/lib/worldbuilding/shared-world";
 import { CampaignForm } from "./campaign-form";
 import { Button } from "./ui/button";
 import {
@@ -101,11 +102,25 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const deleteWorld = useRPGStore((state) => state.deleteWorld);
 	const userPlan = useRPGStore((state) => state.userPlan);
 	const activeWorld = useActiveWorld();
+	const sharedWorldIds = useMemo(
+		() =>
+			new Set(
+				worlds
+					.filter((world) => isSharedWorld(world, campaigns, user?.id))
+					.map((world) => world.id),
+			),
+		[worlds, campaigns, user?.id],
+	);
+	const isActiveWorldShared = activeWorld
+		? sharedWorldIds.has(activeWorld.id)
+		: false;
 	const toast = useToast();
 	const [isOpen, setIsOpen] = useState(false);
 	const [showCampaignForm, setShowCampaignForm] = useState(false);
 	const [showWorldForm, setShowWorldForm] = useState(false);
-	const [worldToEdit, setWorldToEdit] = useState<typeof worlds[number] | null>(null);
+	const [worldToEdit, setWorldToEdit] = useState<
+		(typeof worlds)[number] | null
+	>(null);
 	const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
 	const [isDeletingWorld, setIsDeletingWorld] = useState(false);
 	const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
@@ -175,7 +190,10 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 		} catch (err) {
 			toast.error({
 				title: "Erro ao excluir Mundo",
-				description: err instanceof Error ? err.message : "Não foi possível excluir o Mundo.",
+				description:
+					err instanceof Error
+						? err.message
+						: "Não foi possível excluir o Mundo.",
 			});
 		} finally {
 			setIsDeletingWorld(false);
@@ -221,6 +239,11 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeWorld?.name ?? "Selecione um Mundo"}
 						</span>
+						{isActiveWorldShared && (
+							<span className="truncate text-[10px] text-muted-foreground">
+								Mundo compartilhado
+							</span>
+						)}
 					</div>
 					<ChevronDown
 						className={cn(
@@ -248,13 +271,17 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 									✉️ Convites Pendentes ({pendingInvites.length})
 								</span>
 								{pendingInvites.map((inv) => (
-									<div key={inv.id} className="flex items-center justify-between gap-2">
+									<div
+										key={inv.id}
+										className="flex items-center justify-between gap-2"
+									>
 										<div className="min-w-0 flex-1">
 											<p className="text-[11px] font-bold text-foreground truncate">
 												{inv.campaignName}
 											</p>
 											<span className="text-[9px] text-muted-foreground">
-												Função: {inv.role === "editor" ? "Co-Mestre" : "Jogador"}
+												Função:{" "}
+												{inv.role === "editor" ? "Co-Mestre" : "Jogador"}
 											</span>
 										</div>
 										<Button
@@ -304,7 +331,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 										key={world.id}
 										className={cn(
 											"group/item flex items-center justify-between rounded-xl px-2 py-1.5 transition-colors",
-											isSelected ? "bg-sky-500/15 border border-sky-500/30 text-sky-200" : "hover:bg-muted/40 text-muted-foreground hover:text-foreground",
+											isSelected
+												? "bg-sky-500/15 border border-sky-500/30 text-sky-200"
+												: "hover:bg-muted/40 text-muted-foreground hover:text-foreground",
 										)}
 									>
 										<button
@@ -315,11 +344,23 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 											}}
 											className="flex min-w-0 flex-1 items-center gap-2 text-left"
 										>
-											<Globe2 className={cn("h-3.5 w-3.5 shrink-0", isSelected ? "text-sky-300" : "text-muted-foreground")} />
+											<Globe2
+												className={cn(
+													"h-3.5 w-3.5 shrink-0",
+													isSelected ? "text-sky-300" : "text-muted-foreground",
+												)}
+											/>
 											<span className="min-w-0 flex-1 truncate text-[12px] font-medium">
 												{world.name}
 											</span>
-											{isSelected && <Check className="h-3.5 w-3.5 text-sky-400 shrink-0" />}
+											{sharedWorldIds.has(world.id) && (
+												<span className="shrink-0 text-[10px] text-muted-foreground">
+													Mundo compartilhado
+												</span>
+											)}
+											{isSelected && (
+												<Check className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+											)}
 										</button>
 
 										{world.ownerUserId === user?.id && (
@@ -382,14 +423,18 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							{campaigns.map((campaign) => {
 								const isSelected = campaign.id === activeCampaignId;
 								const index = campaigns.findIndex((c) => c.id === campaign.id);
-								const campaignWorld = worlds.find((w) => w.id === campaign.worldId);
+								const campaignWorld = worlds.find(
+									(w) => w.id === campaign.worldId,
+								);
 
 								return (
 									<div
 										key={campaign.id}
 										className={cn(
 											"group/item flex items-center justify-between rounded-xl p-1.5 transition-colors",
-											isSelected ? "bg-primary/15 border border-primary/30" : "hover:bg-muted/40",
+											isSelected
+												? "bg-primary/15 border border-primary/30"
+												: "hover:bg-muted/40",
 										)}
 									>
 										<button
@@ -421,7 +466,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 													</span>
 												)}
 											</div>
-											{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+											{isSelected && (
+												<Check className="h-3.5 w-3.5 text-primary shrink-0" />
+											)}
 										</button>
 
 										{campaign.myRole === "owner" && (
@@ -535,7 +582,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 					<DialogHeader>
 						<DialogTitle>Excluir Mundo?</DialogTitle>
 						<DialogDescription>
-							Isso removerá a ambientação do Mundo. As campanhas pertencentes a ele continuarão acessíveis no seu Mundo Padrão. Esta ação não pode ser desfeita.
+							Isso removerá a ambientação do Mundo. As campanhas pertencentes a
+							ele continuarão acessíveis no seu Mundo Padrão. Esta ação não pode
+							ser desfeita.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>

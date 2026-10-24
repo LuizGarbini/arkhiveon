@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { systemLabel } from "@/lib/store/helpers";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
+import { DashboardCount, type DashboardCountStatus } from "./dashboard-count";
 
 interface DashboardHeaderProps {
 	activeCampaign?: Campaign;
@@ -30,7 +30,7 @@ interface DashboardHeaderProps {
 		locations: number;
 		lores: number;
 	};
-	isLoading?: boolean;
+	countStatus?: DashboardCountStatus;
 }
 
 export function DashboardHeader({
@@ -38,7 +38,7 @@ export function DashboardHeader({
 	campaignRole,
 	isViewer,
 	counts,
-	isLoading,
+	countStatus = "ready",
 }: DashboardHeaderProps) {
 	const systemName = activeCampaign?.system
 		? activeCampaign.system === "ordem"
@@ -52,30 +52,6 @@ export function DashboardHeader({
 			: campaignRole === "editor"
 				? "Co-Mestre"
 				: "Jogador (Visualizador)";
-
-	if (isLoading) {
-		return (
-			<header className="relative overflow-hidden rounded-[1.85rem] border border-border/70 bg-card p-8 sm:p-11 lg:p-12 shadow-xl shadow-black/5">
-				<div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)] lg:items-center">
-					<div className="flex flex-col gap-4">
-						<div className="flex items-center gap-2">
-							<Skeleton className="h-5 w-28 rounded-full" />
-							<Skeleton className="h-5 w-32 rounded-full" />
-						</div>
-						<Skeleton className="h-14 w-3/4" />
-						<Skeleton className="h-5 w-full max-w-xl" />
-						<Skeleton className="h-11 w-44 rounded-xl mt-3" />
-					</div>
-					<div className="grid grid-cols-2 gap-4">
-						<Skeleton className="h-32 rounded-2xl" />
-						<Skeleton className="h-32 rounded-2xl" />
-						<Skeleton className="h-32 rounded-2xl" />
-						<Skeleton className="h-32 rounded-2xl" />
-					</div>
-				</div>
-			</header>
-		);
-	}
 
 	return (
 		<header className="relative overflow-hidden rounded-[1.85rem] border border-border/70 p-8 sm:p-11 lg:p-12 shadow-2xl shadow-black/10">
@@ -160,7 +136,12 @@ export function DashboardHeader({
 						</div>
 						<div className="mt-3">
 							<p className="font-display text-3xl sm:text-4xl font-bold leading-none text-white tabular-nums">
-								{counts.characters}
+								<DashboardCount
+									value={counts.characters}
+									status={countStatus}
+									label="personagens"
+									skeletonClassName="w-[2ch]"
+								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
 								<span>Fichas ativas</span>
@@ -184,7 +165,12 @@ export function DashboardHeader({
 						</div>
 						<div className="mt-3">
 							<p className="font-display text-3xl sm:text-4xl font-bold leading-none text-white tabular-nums">
-								{counts.sessions}
+								<DashboardCount
+									value={counts.sessions}
+									status={countStatus}
+									label="sessões"
+									skeletonClassName="w-[2ch]"
+								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
 								<span>Crônicas</span>
@@ -208,7 +194,12 @@ export function DashboardHeader({
 						</div>
 						<div className="mt-3">
 							<p className="font-display text-3xl sm:text-4xl font-bold leading-none text-white tabular-nums">
-								{counts.quests}
+								<DashboardCount
+									value={counts.quests}
+									status={countStatus}
+									label="missões"
+									skeletonClassName="w-[2ch]"
+								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
 								<span>Objetivos</span>
@@ -232,7 +223,12 @@ export function DashboardHeader({
 						</div>
 						<div className="mt-3">
 							<p className="font-display text-3xl sm:text-4xl font-bold leading-none text-white tabular-nums">
-								{counts.items}
+								<DashboardCount
+									value={counts.items}
+									status={countStatus}
+									label="itens"
+									skeletonClassName="w-[2ch]"
+								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
 								<span>Itens & Saques</span>
