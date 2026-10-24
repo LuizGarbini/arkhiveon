@@ -238,8 +238,7 @@ export function DashboardHeader({
 									skeletonClassName="w-[2ch]"
 								/>
 							</p>
-							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
-								<span>Itens & Saques</span>
+							<div className="mt-1.5 flex items-center justify-end text-xs text-white/80">
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-emerald-300" />
 							</div>
 						</div>

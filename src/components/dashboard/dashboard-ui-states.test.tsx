@@ -427,6 +427,16 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 		});
 	}
 
+	it("Mochila usa o mesmo selo 'Abrir' da Mesa Virtual (sem mono âmbar)", () => {
+		setDashboardState({});
+		const { container } = render(<Dashboard />);
+		const pills = container.querySelectorAll('[data-slot="open-pill"]');
+		expect(pills).toHaveLength(2);
+		expect(pills[0].className).toBe(pills[1].className);
+		expect(pills[1].className).not.toContain("font-mono");
+		expect(pills[1].className).not.toContain("amber");
+	});
+
 	it("Mochila: nunca mostra contagem (carregando, vazio ou com saque), só 'Abrir'", () => {
 		setDashboardState(beforeMesaData);
 		const { unmount } = render(<Dashboard />);
@@ -470,7 +480,7 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 		expect(
 			screen.getAllByRole("link", { name: "Abrir Itens" }).length,
 		).toBeGreaterThan(0);
-		expect(screen.getByText("Itens & Saques")).toBeTruthy();
+		expect(screen.queryByText("Itens & Saques")).toBeNull();
 		expect(within(quickNavCount("Itens")).getByText("2")).toBeTruthy();
 	});
 

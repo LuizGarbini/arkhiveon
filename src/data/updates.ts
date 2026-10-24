@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "24/10/2026",
 		title: "Itens e Mochila com nomes mais claros",
 		description:
-			"No painel, o card do topo e o atalho do Grimório agora se chamam “Itens”, porque contam os itens do mundo que a sua mesa vê. A Mochila do Grupo deixou de mostrar uma contagem que voltava a zero ao recarregar a página e agora mostra só “Abrir”.",
+			"No painel, o card do topo (agora sem subtítulo) e o atalho do Grimório se chamam “Itens”, porque contam os itens do mundo que a sua mesa vê. A Mochila do Grupo deixou de mostrar uma contagem que voltava a zero ao recarregar a página e agora mostra só “Abrir”, igual ao atalho da Mesa Virtual.",
 		bullets: [],
 	},
 	{

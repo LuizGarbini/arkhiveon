@@ -12,6 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
 
+/** Mesmo selo "Abrir ↗" para os atalhos da Mesa Virtual e da Mochila. */
+const OPEN_PILL_CLASS =
+	"inline-flex items-center gap-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 group-hover:bg-purple-500/20 transition-colors shrink-0 ml-2";
+
 interface DashboardQuickActionsProps {
 	activeCampaign?: Campaign;
 	campaignRole?: MembershipRole;
@@ -89,7 +93,7 @@ export function DashboardQuickActions({
 								</span>
 							</div>
 						</div>
-						<span className="inline-flex items-center gap-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 group-hover:bg-purple-500/20 transition-colors shrink-0 ml-2">
+						<span data-slot="open-pill" className={OPEN_PILL_CLASS}>
 							<span>Abrir</span>
 							<ArrowUpRight className="h-3 w-3" />
 						</span>
@@ -116,8 +120,9 @@ export function DashboardQuickActions({
 									</span>
 								</div>
 							</div>
-							<span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300 tabular-nums shrink-0 ml-2 group-hover:bg-amber-500/20 transition-colors">
-								Abrir
+							<span data-slot="open-pill" className={OPEN_PILL_CLASS}>
+								<span>Abrir</span>
+								<ArrowUpRight className="h-3 w-3" />
 							</span>
 						</button>
 					}
