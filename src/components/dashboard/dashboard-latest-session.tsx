@@ -64,7 +64,7 @@ export function DashboardLatestSession({
 					)}
 					<Link
 						to="/sessions"
-						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex shrink-0 items-center gap-1 whitespace-nowrap"
 					>
 						Ver todas ({sessionCount})
 						<ArrowUpRight className="h-3 w-3" />

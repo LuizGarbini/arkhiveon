@@ -57,12 +57,12 @@ export function DashboardActiveQuests({
 				</div>
 
 				<div className="flex items-center gap-2">
-					<span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
+					<span className="shrink-0 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
 						{activeQuests.length} Ativa{activeQuests.length === 1 ? "" : "s"}
 					</span>
 					<Link
 						to="/quests"
-						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex shrink-0 items-center gap-1 whitespace-nowrap"
 					>
 						Ver todas ({quests.length})
 						<ArrowUpRight className="h-3 w-3" />

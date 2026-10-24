@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
 import { CampaignForm } from "@/components/campaign-form";
 import { DashboardActiveQuests } from "@/components/dashboard/dashboard-active-quests";
-import { dashboardCountStatus } from "@/components/dashboard/dashboard-count-status";
+import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-count-status";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardKeyNpcs } from "@/components/dashboard/dashboard-key-npcs";
 import { DashboardLatestSession } from "@/components/dashboard/dashboard-latest-session";
@@ -36,8 +36,6 @@ function Dashboard() {
 	const quests = useRPGStore((s) => s.quests || []);
 	const factions = useRPGStore((s) => s.factions || []);
 	const partyLoot = useRPGStore((s) => s.partyLoot || []);
-	const isLoading = useRPGStore((s) => s.isLoadingRemote);
-	const remoteLoadError = useRPGStore((s) => s.remoteLoadError);
 	const visibleNpcs = useVisibleWorldEntities(npcs);
 	const visibleItems = useVisibleWorldEntities(items);
 	const visibleLocations = useVisibleWorldEntities(locations);
@@ -85,11 +83,9 @@ function Dashboard() {
 		],
 	);
 
-	const countStatus = dashboardCountStatus({
-		isLoadingRemote: isLoading,
-		hasCampaignSnapshot: hasAuthoritativeCampaignSnapshot,
-		loadError: remoteLoadError,
-	});
+	const countStatus = useRPGStore(selectDashboardDataStatus);
+	// Seções mostram skeleton (não estado vazio/CTA) até os dados da mesa chegarem.
+	const isLoading = countStatus === "loading";
 
 	const unclaimedLootCount = useMemo(
 		() => partyLoot.filter((l) => !l.isClaimed).length,
@@ -202,13 +198,13 @@ function Dashboard() {
 					/>
 
 					<DashboardKeyNpcs
-						npcs={npcs}
+						npcs={visibleNpcs}
 						isViewer={isViewer}
 						isLoading={isLoading}
 					/>
 
 					<DashboardQuickVault
-						items={items}
+						items={visibleItems}
 						isViewer={isViewer}
 						isLoading={isLoading}
 					/>

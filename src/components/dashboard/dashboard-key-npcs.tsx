@@ -110,12 +110,12 @@ export function DashboardKeyNpcs({
 				</div>
 
 				<div className="flex items-center gap-2">
-					<span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-fuchsia-300">
+					<span className="shrink-0 whitespace-nowrap rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-fuchsia-300">
 						{npcs.length} Registrado{npcs.length === 1 ? "" : "s"}
 					</span>
 					<Link
 						to="/npcs"
-						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex shrink-0 items-center gap-1 whitespace-nowrap"
 					>
 						Ver todos
 						<ArrowUpRight className="h-3 w-3" />

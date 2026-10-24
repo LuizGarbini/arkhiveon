@@ -62,12 +62,12 @@ export function DashboardPartyRoster({
 				</div>
 
 				<div className="flex items-center gap-2 select-none">
-					<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary tabular-nums">
+					<span className="shrink-0 whitespace-nowrap rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary tabular-nums">
 						{characters.length} Herói{characters.length === 1 ? "" : "s"}
 					</span>
 					<Link
 						to="/characters"
-						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex shrink-0 items-center gap-1 whitespace-nowrap"
 					>
 						Ver todos
 						<ArrowUpRight className="h-3 w-3" />
