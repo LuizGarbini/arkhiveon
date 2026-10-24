@@ -1074,6 +1074,46 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			/** 0046 (Paredes F1, merge do Luiz): só mestre lê/escreve. */
+			vtt_walls: {
+				Row: {
+					id: string;
+					scene_id: string;
+					x1: number;
+					y1: number;
+					x2: number;
+					y2: number;
+					kind: string;
+					created_by: string | null;
+					created_at: string;
+					updated_at: string;
+				};
+				Insert: {
+					id?: string;
+					scene_id: string;
+					x1: number;
+					y1: number;
+					x2: number;
+					y2: number;
+					kind?: string;
+					created_by?: string | null;
+					created_at?: string;
+					updated_at?: string;
+				};
+				Update: {
+					id?: string;
+					scene_id?: string;
+					x1?: number;
+					y1?: number;
+					x2?: number;
+					y2?: number;
+					kind?: string;
+					created_by?: string | null;
+					created_at?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
 		};
 		Views: {
 			[_ in never]: never;
