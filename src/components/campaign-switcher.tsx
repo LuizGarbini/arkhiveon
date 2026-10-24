@@ -242,7 +242,16 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							<span className="truncate text-[12px] font-bold">
 								{activeCampaign?.name ?? "Sem campanha"}
 							</span>
-							{activeCampaign && <RoleBadge role={activeCampaign.myRole} />}
+							{activeCampaign &&
+								(isMesaLoading ? (
+									<Skeleton
+										role="status"
+										aria-label="Carregando papel na mesa"
+										className="h-3.5 w-10 shrink-0 rounded-full"
+									/>
+								) : isMesaError ? null : (
+									<RoleBadge role={activeCampaign.myRole} />
+								))}
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeWorld ? (

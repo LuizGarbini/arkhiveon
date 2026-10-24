@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { systemLabel } from "@/lib/store/helpers";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { DashboardCount, type DashboardCountStatus } from "./dashboard-count";
@@ -79,14 +80,24 @@ export function DashboardHeader({
 							</span>
 						)}
 
-						<span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
-							{campaignRole === "owner" ? (
-								<Crown className="h-3.5 w-3.5 text-amber-400" />
-							) : (
-								<Shield className="h-3.5 w-3.5 text-purple-300" />
-							)}
-							{roleLabel}
-						</span>
+						{/* Papel só com o dado real: skeleton carregando, escondido no erro
+						    (antes mostrava o papel em cache ou "Jogador" como padrão). */}
+						{countStatus === "loading" ? (
+							<Skeleton
+								role="status"
+								aria-label="Carregando papel na mesa"
+								className="h-6 w-24 rounded-full"
+							/>
+						) : countStatus === "ready" ? (
+							<span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
+								{campaignRole === "owner" ? (
+									<Crown className="h-3.5 w-3.5 text-amber-400" />
+								) : (
+									<Shield className="h-3.5 w-3.5 text-purple-300" />
+								)}
+								{roleLabel}
+							</span>
+						) : null}
 					</div>
 
 					<h1 className="font-display mt-4 text-3xl font-bold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl drop-shadow-xs">

@@ -499,9 +499,14 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 	it("Grimório e topo: skeleton no lugar de 0 enquanto carrega", () => {
 		setDashboardState(beforeMesaData);
 		render(<Dashboard />);
-		expect(screen.getAllByRole("status", { name: /^Carregando/ }).length).toBe(
-			12,
-		);
+		// 4 números do topo + 8 do Grimório (o selo de papel é à parte)
+		expect(
+			screen
+				.getAllByRole("status", { name: /^Carregando/ })
+				.filter(
+					(el) => el.getAttribute("aria-label") !== "Carregando papel na mesa",
+				),
+		).toHaveLength(12);
 		expect(within(quickNavCount("Locais & Mapas")).queryByText("0")).toBeNull();
 	});
 
@@ -777,5 +782,65 @@ describe("Painel: falha das consultas base (campanhas, vínculos, plano, convite
 			screen.getAllByRole("status", { name: /^Carregando/ }).length,
 		).toBeGreaterThan(0);
 		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+	});
+});
+
+describe("Selo de papel: só com o dado real", () => {
+	afterEach(cleanup);
+
+	const cachedEditor = {
+		campaigns: [{ ...campaign, myRole: "editor" as const }],
+	};
+	const roleText = /Co-Mestre|Mestre|Jogador/;
+
+	function renderBoth() {
+		render(
+			<ToastProvider>
+				<CampaignSwitcher isCollapsed={false} />
+				<Dashboard />
+			</ToastProvider>,
+		);
+	}
+
+	it("carregando: skeleton no hero e na barra lateral, sem papel padrão", () => {
+		setDashboardState({ ...cachedEditor, isLoadingRemote: true });
+		renderBoth();
+		expect(
+			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(2);
+		expect(screen.queryByText(roleText)).toBeNull();
+	});
+
+	it("retry da falha base: skeleton, sem 'Co-Mestre'", () => {
+		setDashboardState({
+			...cachedEditor,
+			isRetryingBase: true,
+			campaignLoadStatus: "loading",
+		});
+		renderBoth();
+		expect(
+			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(2);
+		expect(screen.queryByText(roleText)).toBeNull();
+	});
+
+	it("erro: papel escondido nos dois lugares", () => {
+		setDashboardState({
+			...cachedEditor,
+			baseLoadError: "Não foi possível carregar os dados da mesa.",
+		});
+		renderBoth();
+		expect(
+			screen.queryAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(0);
+		expect(screen.queryByText(roleText)).toBeNull();
+	});
+
+	it("pronto: mostra o papel real (Mestre)", () => {
+		setDashboardState({});
+		renderBoth();
+		expect(screen.getByText("Mestre da Mesa")).toBeTruthy();
+		expect(screen.getByText("Mestre")).toBeTruthy();
+		expect(screen.queryByText("Co-Mestre")).toBeNull();
 	});
 });
