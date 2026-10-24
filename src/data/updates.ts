@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "24/10/2026",
 		title: "Cards do painel só com a sua mesa",
 		description:
-			"Os cards de NPCs e itens do painel agora contam e listam só o que a campanha ativa vê, igual aos números do topo. Os registros do menu lateral mostram um bloco cinza enquanto carregam, e o “Ver todas” cabe numa linha no celular.",
+			"Os cards de NPCs e itens do painel agora contam e listam só o que a campanha ativa vê, igual aos números do topo. Os registros do menu lateral mostram um bloco cinza enquanto carregam, e o “Ver todas” cabe numa linha no celular. Ao recarregar, o painel mostra blocos de carregamento em vez de telas vazias e zeros até os dados chegarem.",
 		bullets: [],
 	},
 	{

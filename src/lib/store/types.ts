@@ -799,6 +799,7 @@ export interface RPGState {
 	isLoadingRemote: boolean;
 	syncError: string | null;
 	remoteLoadError: string | null;
+	remoteLoadedCampaignId: string | null;
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;

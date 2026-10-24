@@ -24,6 +24,7 @@ import {
 } from "@/lib/worldbuilding/plan-limits";
 import { isSharedWorld } from "@/lib/worldbuilding/shared-world";
 import { CampaignForm } from "./campaign-form";
+import { selectDashboardDataStatus } from "./dashboard/dashboard-count-status";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -40,6 +41,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Skeleton } from "./ui/skeleton";
 import { WorldForm } from "./world-form";
 
 function RoleBadge({ role }: { role: MembershipRole | undefined }) {
@@ -94,6 +96,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const campaigns = useRPGStore((state) => state.campaigns);
 	const worlds = useRPGStore((state) => state.worlds);
 	const activeCampaignId = useRPGStore((state) => state.activeCampaignId);
+	const isMesaLoading = useRPGStore(
+		(state) => selectDashboardDataStatus(state) === "loading",
+	);
 	const pendingInvites = useRPGStore((state) => state.pendingInvites);
 	const acceptInvite = useRPGStore((state) => state.acceptInvite);
 	const switchCampaign = useRPGStore((state) => state.switchCampaign);
@@ -237,7 +242,17 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 							{activeCampaign && <RoleBadge role={activeCampaign.myRole} />}
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
-							{activeWorld?.name ?? "Selecione um Mundo"}
+							{activeWorld ? (
+								activeWorld.name
+							) : isMesaLoading && activeCampaignId ? (
+								<Skeleton
+									role="status"
+									aria-label="Carregando mundo"
+									className="mt-0.5 inline-block h-2.5 w-16 align-middle"
+								/>
+							) : (
+								"Selecione um Mundo"
+							)}
 						</span>
 						{isActiveWorldShared && (
 							<span className="truncate text-[10px] text-muted-foreground">

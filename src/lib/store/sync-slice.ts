@@ -48,6 +48,8 @@ export interface SyncSlice {
 	syncError: string | null;
 	/** Erro da última carga da mesa ativa (não inclui erros de escrita). */
 	remoteLoadError: string | null;
+	/** Mesa cujos dados remotos já chegaram nesta sessão (null = nenhuma ainda). */
+	remoteLoadedCampaignId: string | null;
 	activityLog: ActivityEntry[];
 	userPlan: UserPlan;
 	setUserPlan: (plan: UserPlan) => void;
@@ -248,6 +250,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	isLoadingRemote: false,
 	syncError: null,
 	remoteLoadError: null,
+	remoteLoadedCampaignId: null,
 	activityLog: [],
 	userPlan: "free",
 	setUserPlan: (plan) => set({ userPlan: plan }),
@@ -359,6 +362,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				})) as WorldNews[],
 				newsComments: [] as NewsComment[],
 				isLoadingRemote: false,
+				remoteLoadedCampaignId: startCampaignId,
 			});
 		} catch (error) {
 			if (get().activeCampaignId === startCampaignId) {
@@ -709,6 +713,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			notifications: [],
 			syncError: null,
 			remoteLoadError: null,
+			remoteLoadedCampaignId: null,
 		});
 		get().resetCampaigns();
 	},
@@ -731,6 +736,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			notifications: [],
 			syncError: null,
 			remoteLoadError: null,
+			remoteLoadedCampaignId: null,
 		});
 	},
 	clearActivity: () => set({ activityLog: [] }),

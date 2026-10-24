@@ -26,6 +26,7 @@ import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getFactionsTabConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import { CampaignSwitcher } from "./campaign-switcher";
+import { selectDashboardDataStatus } from "./dashboard/dashboard-count-status";
 import { SidebarNav } from "./sidebar-nav";
 
 const mesaItems = [
@@ -50,7 +51,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const { isPro, planLoading, storageUsedBytes } = useAuth();
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
 	const isLoadingRecords = useRPGStore(
-		(s) => s.isLoadingRemote || !s.hasLoadedCampaigns,
+		(s) => selectDashboardDataStatus(s) === "loading",
 	);
 	const recordsLoading = planLoading || isLoadingRecords;
 

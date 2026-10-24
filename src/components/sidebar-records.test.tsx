@@ -28,11 +28,15 @@ function renderWith(state: {
 	isLoadingRemote: boolean;
 	hasLoadedCampaigns: boolean;
 	planLoading?: boolean;
+	awaitingMesaData?: boolean;
 }) {
 	auth.planLoading = state.planLoading ?? false;
 	useRPGStore.setState({
 		isLoadingRemote: state.isLoadingRemote,
 		hasLoadedCampaigns: state.hasLoadedCampaigns,
+		remoteLoadError: null,
+		activeCampaignId: "camp-1",
+		remoteLoadedCampaignId: state.awaitingMesaData ? null : "camp-1",
 		globalRecordsCount: 7,
 	});
 	render(<Sidebar isOpen />);
@@ -54,6 +58,17 @@ describe("Sidebar: Registros", () => {
 			isLoadingRemote: false,
 			hasLoadedCampaigns: true,
 			planLoading: true,
+		});
+		expect(
+			screen.getByRole("status", { name: "Carregando registros" }),
+		).toBeTruthy();
+	});
+
+	it("após reload, antes da carga começar: skeleton, não 0", () => {
+		renderWith({
+			isLoadingRemote: false,
+			hasLoadedCampaigns: true,
+			awaitingMesaData: true,
 		});
 		expect(
 			screen.getByRole("status", { name: "Carregando registros" }),

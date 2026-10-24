@@ -71,7 +71,14 @@ vi.mock("@/components/discord-dither-banner", () => ({
 	DiscordDitherBanner: () => null,
 }));
 vi.mock("@/components/invite-banner", () => ({ InviteBanner: () => null }));
-vi.mock("@/components/activity-feed", () => ({ ActivityFeed: () => null }));
+vi.mock("@/components/activity-feed", () => ({
+	ActivityFeed: ({ isLoading }: { isLoading?: boolean }) => (
+		<div
+			data-testid="activity-feed"
+			data-loading={String(Boolean(isLoading))}
+		/>
+	),
+}));
 vi.mock("@/components/campaign-form", () => ({ CampaignForm: () => null }));
 vi.mock("@/components/world-form", () => ({ WorldForm: () => null }));
 
@@ -117,6 +124,7 @@ function setDashboardState(partial: Partial<RPGState>) {
 		campaignLoadStatus: "ready",
 		isLoadingRemote: false,
 		remoteLoadError: null,
+		remoteLoadedCampaignId: campaign.id,
 		characters: [],
 		npcs: [],
 		sessions: [],
@@ -328,5 +336,114 @@ describe("Seletor de mundo: compartilhado x próprio", () => {
 		);
 		expect(screen.getByText("Toril")).toBeTruthy();
 		expect(screen.queryByText(/Mundo compartilhado/)).toBeNull();
+	});
+
+	it("após reload sem mundos ainda: skeleton, não 'Selecione um Mundo'", () => {
+		useRPGStore.setState({
+			worlds: [],
+			activeCampaignId: campaign.id,
+			activeWorldId: null,
+			hasLoadedCampaigns: true,
+			isLoadingRemote: false,
+			remoteLoadError: null,
+			remoteLoadedCampaignId: null,
+		});
+		const { unmount } = render(
+			<ToastProvider>
+				<CampaignSwitcher isCollapsed={false} />
+			</ToastProvider>,
+		);
+		expect(
+			screen.getByRole("status", { name: "Carregando mundo" }),
+		).toBeTruthy();
+		expect(screen.queryByText("Selecione um Mundo")).toBeNull();
+		unmount();
+
+		useRPGStore.setState({ remoteLoadedCampaignId: campaign.id });
+		render(
+			<ToastProvider>
+				<CampaignSwitcher isCollapsed={false} />
+			</ToastProvider>,
+		);
+		expect(screen.getByText("Selecione um Mundo")).toBeTruthy();
+	});
+});
+
+describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
+	afterEach(cleanup);
+
+	// Reload: campanhas já vieram, mas a carga da mesa nem começou
+	// (isLoadingRemote ainda false). Antes disso virava estado vazio.
+	const beforeMesaData = { remoteLoadedCampaignId: null };
+
+	const sections = [
+		{
+			name: "Sessões",
+			empty: "Nenhuma sessão registrada",
+			cta: "Registrar 1ª Sessão",
+		},
+		{ name: "Missões", empty: "Nenhuma missão ativa", cta: "Nova Missão" },
+		{
+			name: "Grupo",
+			empty: "Nenhum personagem cadastrado",
+			cta: "Criar Primeira Ficha",
+		},
+		{ name: "NPCs", empty: "Nenhum NPC registrado", cta: "Criar NPC" },
+		{ name: "Itens", empty: "Nenhum item cadastrado", cta: null },
+	];
+
+	for (const section of sections) {
+		it(`${section.name}: skeleton enquanto carrega, vazio só depois`, () => {
+			setDashboardState(beforeMesaData);
+			const { unmount } = render(<Dashboard />);
+			expect(screen.queryByText(section.empty)).toBeNull();
+			if (section.cta) expect(screen.queryByText(section.cta)).toBeNull();
+			unmount();
+
+			setDashboardState({});
+			render(<Dashboard />);
+			expect(screen.getByText(section.empty)).toBeTruthy();
+			if (section.cta) expect(screen.getByText(section.cta)).toBeTruthy();
+		});
+	}
+
+	it("Mochila: sem '0 itens' enquanto carrega", () => {
+		setDashboardState(beforeMesaData);
+		const { unmount } = render(<Dashboard />);
+		expect(screen.queryByText(/^0\s*itens$/)).toBeNull();
+		unmount();
+		setDashboardState({});
+		render(<Dashboard />);
+		expect(screen.getByText(/^0\s*itens$/)).toBeTruthy();
+	});
+
+	it("Timeline: recebe isLoading enquanto carrega", () => {
+		setDashboardState(beforeMesaData);
+		const { unmount } = render(<Dashboard />);
+		expect(screen.getByTestId("activity-feed").dataset.loading).toBe("true");
+		unmount();
+		setDashboardState({});
+		render(<Dashboard />);
+		expect(screen.getByTestId("activity-feed").dataset.loading).toBe("false");
+	});
+
+	it("Grimório e topo: skeleton no lugar de 0 enquanto carrega", () => {
+		setDashboardState(beforeMesaData);
+		render(<Dashboard />);
+		expect(screen.getAllByRole("status", { name: /^Carregando/ }).length).toBe(
+			12,
+		);
+		expect(within(quickNavCount("Locais & Mapas")).queryByText("0")).toBeNull();
+	});
+
+	it("erro não é carregamento: mostra '—', sem skeleton", () => {
+		setDashboardState({ ...beforeMesaData, remoteLoadError: "falhou" });
+		render(<Dashboard />);
+		expect(
+			screen.queryAllByRole("status", { name: /^Carregando/ }),
+		).toHaveLength(0);
+		expect(
+			screen.getAllByRole("button", { name: /Ver detalhes/ }),
+		).toHaveLength(12);
 	});
 });
