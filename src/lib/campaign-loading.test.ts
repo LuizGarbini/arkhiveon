@@ -73,7 +73,9 @@ describe("campaign loading", () => {
 		const state = useRPGStore.getState();
 		expect(state.campaigns).toEqual([cachedCampaign]);
 		expect(state.activeCampaignId).toBe(cachedCampaign.id);
-		expect(state.syncError).toContain("network unavailable");
+		// Mensagem leiga; o erro técnico cru não vai para a tela.
+		expect(state.syncError).toBe("Não foi possível carregar os dados da mesa.");
+		expect(state.baseLoadError).not.toBeNull();
 	});
 
 	it("marks an unsuccessful remote reload as an error", async () => {

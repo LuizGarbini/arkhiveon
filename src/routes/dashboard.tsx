@@ -89,7 +89,8 @@ function Dashboard() {
 	const isLoading = countStatus === "loading";
 	// Falha global: um aviso no topo; seções ficam neutras (sem vazio/CTA/0).
 	const isUnavailable = countStatus === "error";
-	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
+	const retryBaseLoad = useRPGStore((s) => s.retryBaseLoad);
+	const isRetryingBase = useRPGStore((s) => s.isRetryingBase);
 	const activityLoadError = useRPGStore((s) => s.activityLoadError);
 	const isLoadingActivity = useRPGStore((s) => s.isLoadingActivity);
 	const retryActivity = useRPGStore((s) => s.retryActivity);
@@ -111,7 +112,9 @@ function Dashboard() {
 
 	if (
 		!hasAuthoritativeCampaignSnapshot &&
-		isCampaignLoadPending(campaignLoadStatus)
+		isCampaignLoadPending(campaignLoadStatus) &&
+		// Nova tentativa volta ao skeleton do painel, não à tela de texto.
+		!isRetryingBase
 	) {
 		return (
 			<div className="flex min-h-[calc(100vh-6rem)] items-center justify-center p-6 w-full text-[13px] text-muted-foreground">
@@ -133,7 +136,7 @@ function Dashboard() {
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
 			{isUnavailable && (
-				<DashboardLoadErrorNotice onRetry={() => void loadRemoteData()} />
+				<DashboardLoadErrorNotice onRetry={() => void retryBaseLoad()} />
 			)}
 
 			<InviteBanner />

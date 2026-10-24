@@ -30,6 +30,8 @@ interface AuthContextValue {
 	storageUsedBytes: number;
 	isPro: boolean;
 	planLoading: boolean;
+	/** "error": o plano real não chegou; a UI mostra "—", nunca "Free". */
+	planStatus: PlanStatus;
 	signIn: (email: string, password: string) => Promise<string | null>;
 	signUp: (
 		name: string,
@@ -44,6 +46,14 @@ interface AuthContextValue {
 	) => Promise<string | null>;
 }
 
+export type PlanStatus = "loading" | "ready" | "error";
+
+interface PlanState extends UserPlanData {
+	/** Usuário a quem o plano pertence (null = nenhum carregado). */
+	userId: string | null;
+	status: PlanStatus;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const FALLBACK_AUTH_VALUE: AuthContextValue = {
@@ -54,6 +64,7 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	storageUsedBytes: 0,
 	isPro: false,
 	planLoading: false,
+	planStatus: "ready",
 	signIn: async () => "Supabase não está configurado.",
 	signUp: async () => "Supabase não está configurado.",
 	signOut: async () => null,
@@ -76,11 +87,13 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
 	const suppressAutoSignInRef = useRef(false);
-	const [planData, setPlanData] = useState<UserPlanData>({
+	const [planState, setPlanState] = useState<PlanState>({
+		userId: null,
+		status: "ready",
 		plan: "free",
 		storageUsedBytes: 0,
 	});
-	const [planLoading, setPlanLoading] = useState(false);
+	const baseRetryNonce = useRPGStore((s) => s.baseRetryNonce);
 
 	useEffect(() => {
 		// Support automated preview recording & test tooling on localhost only (blocked on production domains)
@@ -148,30 +161,37 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		const userId = session?.user.id;
 		if (!supabase || !userId) {
-			setPlanData({ plan: "free", storageUsedBytes: 0 });
-			setPlanLoading(false);
+			setPlanState({
+				userId: null,
+				status: "ready",
+				plan: "free",
+				storageUsedBytes: 0,
+			});
 			return;
 		}
 
 		let mounted = true;
-		setPlanLoading(true);
+		// Nova tentativa do painel (baseRetryNonce) também recarrega o plano.
+		void baseRetryNonce;
+		setPlanState((prev) => ({ ...prev, userId, status: "loading" }));
 
 		loadCurrentUserPlan(userId)
 			.then((nextPlanData) => {
-				if (mounted) {
-					setPlanData(nextPlanData);
-					useRPGStore.getState().setUserPlan(nextPlanData.plan);
-				}
+				if (!mounted) return;
+				setPlanState({ userId, status: "ready", ...nextPlanData });
+				useRPGStore.getState().setUserPlan(nextPlanData.plan);
 			})
 			.catch(() => {
-				if (mounted) {
-					setPlanData({ plan: "free", storageUsedBytes: 0 });
-					useRPGStore.getState().setUserPlan("free");
-				}
-			})
-			.finally(() => {
-				if (mounted) setPlanLoading(false);
+				if (!mounted) return;
+				// Sem plano real: nada de cair em "free"; o painel mostra o aviso único.
+				setPlanState((prev) => ({ ...prev, userId, status: "error" }));
+				useRPGStore.getState().reportBaseLoadError();
 			});
+
+		const applyRow = (next: UserPlanData) => {
+			setPlanState({ userId, status: "ready", ...next });
+			useRPGStore.getState().setUserPlan(next.plan);
+		};
 
 		const channel = supabase
 			.channel(`user-plan-${userId}`)
@@ -185,13 +205,10 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				},
 				(payload) => {
 					if (payload.eventType === "DELETE") {
-						setPlanData({ plan: "free", storageUsedBytes: 0 });
-						useRPGStore.getState().setUserPlan("free");
+						applyRow({ plan: "free", storageUsedBytes: 0 });
 						return;
 					}
-					const parsed = planFromRealtimeRow(payload.new);
-					setPlanData(parsed);
-					useRPGStore.getState().setUserPlan(parsed.plan);
+					applyRow(planFromRealtimeRow(payload.new));
 				},
 			)
 			.subscribe();
@@ -200,22 +217,30 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			mounted = false;
 			void supabase.removeChannel(channel);
 		};
-	}, [session?.user.id, supabase]);
+	}, [session?.user.id, supabase, baseRetryNonce]);
 
 	useEffect(() => {
 		if (!supabase) return;
 		return listenNativeOAuth(supabase);
 	}, [supabase]);
 
+	// Derivado no render: plano de outro usuário (ou ainda não pedido) = carregando.
+	const currentUserId = session?.user.id ?? null;
+	const planStatus: PlanStatus =
+		currentUserId !== null && planState.userId !== currentUserId
+			? "loading"
+			: planState.status;
+
 	const value = useMemo<AuthContextValue>(
 		() => ({
 			user: session?.user ?? null,
 			session,
 			loading,
-			plan: planData.plan,
-			storageUsedBytes: planData.storageUsedBytes,
-			isPro: planData.plan === "pro",
-			planLoading,
+			plan: planState.plan,
+			storageUsedBytes: planState.storageUsedBytes,
+			isPro: planState.plan === "pro",
+			planLoading: planStatus === "loading",
+			planStatus,
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = false;
@@ -267,7 +292,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				return error?.message ?? null;
 			},
 		}),
-		[loading, planData, planLoading, session, supabase],
+		[loading, planState, planStatus, session, supabase],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

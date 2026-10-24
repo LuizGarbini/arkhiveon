@@ -800,6 +800,16 @@ export interface RPGState {
 	syncError: string | null;
 	remoteLoadError: string | null;
 	remoteLoadedCampaignId: string | null;
+	/** Falha das consultas base (campanhas, vínculos, plano, convites). Mensagem leiga. */
+	baseLoadError: string | null;
+	/** Nova tentativa da carga base em andamento (tela volta ao skeleton). */
+	isRetryingBase: boolean;
+	/** Sobe a cada nova tentativa; quem carrega dado base fora do store recarrega. */
+	baseRetryNonce: number;
+	reportBaseLoadError: () => void;
+	/** Campanhas → mesa ativa → dados da mesa, com prazo (skeleton nunca infinito). */
+	bootstrapCampaignData: () => Promise<void>;
+	retryBaseLoad: () => Promise<void>;
 	loadRemoteData: () => Promise<void>;
 	setupRealtime: () => () => void;
 	clearLocalData: () => void;

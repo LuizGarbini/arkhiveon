@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SidebarNavProps {
 	title?: string;
@@ -10,6 +11,8 @@ interface SidebarNavProps {
 		Icon: LucideIcon;
 		exact?: boolean;
 		shortcut?: string;
+		/** Rótulo depende de dado ainda não carregado: skeleton no lugar do padrão. */
+		labelPending?: boolean;
 	}[];
 	onItemClick?: () => void;
 }
@@ -34,7 +37,7 @@ export function SidebarNav({
 				</div>
 			)}
 			<div className="space-y-1">
-				{items.map(({ to, label, Icon, exact, shortcut }) => (
+				{items.map(({ to, label, Icon, exact, shortcut, labelPending }) => (
 					<Link
 						key={to}
 						to={to}
@@ -54,7 +57,8 @@ export function SidebarNav({
 								? "justify-center gap-0 px-0 py-2.5"
 								: "gap-2.5 px-3 py-2.5"
 						}`}
-						title={isCollapsed ? label : undefined}
+						title={isCollapsed && !labelPending ? label : undefined}
+						aria-label={labelPending ? "Carregando seção do mundo" : undefined}
 					>
 						{({ isActive }) => (
 							<>
@@ -72,7 +76,14 @@ export function SidebarNav({
 											: "max-w-36 translate-x-0 opacity-100"
 									}`}
 								>
-									{label}
+									{labelPending ? (
+										<Skeleton
+											aria-hidden="true"
+											className="inline-block h-3 w-24 align-middle"
+										/>
+									) : (
+										label
+									)}
 								</span>
 							</>
 						)}

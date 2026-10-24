@@ -220,6 +220,10 @@ function appendPostgrestContext(
 }
 
 /** Human-readable sync error; never returns "[object Object]". */
+/** Mensagem leiga das falhas de carga (nunca mostra o erro técnico cru). */
+export const BASE_LOAD_ERROR_MESSAGE =
+	"Não foi possível carregar os dados da mesa.";
+
 export function remoteErrorMessage(error: unknown): string {
 	if (typeof error === "string" && error.trim()) return error;
 	if (error instanceof Error) {

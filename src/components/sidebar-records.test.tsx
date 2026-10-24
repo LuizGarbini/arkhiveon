@@ -6,12 +6,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 
-const auth = vi.hoisted(() => ({ planLoading: false }));
+const auth = vi.hoisted(() => ({
+	planLoading: false,
+	planStatus: "ready" as "loading" | "ready" | "error",
+	isPro: false,
+}));
 
 vi.mock("@/lib/auth", () => ({
 	useAuth: () => ({
-		isPro: false,
+		isPro: auth.isPro,
 		planLoading: auth.planLoading,
+		planStatus: auth.planStatus,
 		storageUsedBytes: 0,
 	}),
 }));
@@ -19,7 +24,25 @@ vi.mock("@tanstack/react-router", () => ({
 	Link: ({ children }: { children?: ReactNode }) => <a href="/">{children}</a>,
 }));
 vi.mock("./campaign-switcher", () => ({ CampaignSwitcher: () => null }));
-vi.mock("./sidebar-nav", () => ({ SidebarNav: () => null }));
+vi.mock("./sidebar-nav", () => ({
+	SidebarNav: ({
+		items,
+	}: {
+		items: { to: string; label: string; labelPending?: boolean }[];
+	}) => (
+		<ul>
+			{items.map((item) => (
+				<li
+					key={item.to}
+					data-testid={`nav-${item.to}`}
+					data-pending={String(Boolean(item.labelPending))}
+				>
+					{item.labelPending ? "" : item.label}
+				</li>
+			))}
+		</ul>
+	),
+}));
 vi.mock("@/lib/library/use-library-pilot", () => ({
 	useLibraryPilot: () => false,
 }));
@@ -32,6 +55,8 @@ function renderWith(state: {
 	loadError?: string;
 }) {
 	auth.planLoading = state.planLoading ?? false;
+	auth.planStatus = state.planLoading ? "loading" : "ready";
+	auth.isPro = false;
 	useRPGStore.setState({
 		isLoadingRemote: state.isLoadingRemote,
 		hasLoadedCampaigns: state.hasLoadedCampaigns,
@@ -97,5 +122,72 @@ describe("Sidebar: Registros", () => {
 			screen.queryByRole("status", { name: "Carregando registros" }),
 		).toBeNull();
 		expect(screen.getByText("7 / 20")).toBeTruthy();
+	});
+});
+
+describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
+	afterEach(cleanup);
+
+	function renderPlan(planStatus: "loading" | "ready" | "error") {
+		auth.planLoading = planStatus === "loading";
+		auth.planStatus = planStatus;
+		auth.isPro = false;
+		useRPGStore.setState({
+			isLoadingRemote: false,
+			hasLoadedCampaigns: true,
+			remoteLoadError: null,
+			baseLoadError: null,
+			campaignLoadStatus: "ready",
+			activeCampaignId: "camp-1",
+			remoteLoadedCampaignId: "camp-1",
+		});
+		render(<Sidebar isOpen />);
+	}
+
+	it("plano falhou (user_plans): —, nunca 'Plano Free' nem 0.0MB", () => {
+		renderPlan("error");
+		expect(screen.queryByText("Plano Free")).toBeNull();
+		expect(screen.queryByText("Free")).toBeNull();
+		expect(screen.queryByText(/0\.0MB/)).toBeNull();
+		expect(screen.queryByText("Fazer Upgrade")).toBeNull();
+		expect(screen.getByText("Plano indisponível")).toBeTruthy();
+		expect(screen.getByText("Arquivos indisponíveis")).toBeTruthy();
+	});
+
+	it("plano carregando: skeleton em Arquivos, sem Free", () => {
+		renderPlan("loading");
+		expect(screen.queryByText("Plano Free")).toBeNull();
+		expect(screen.queryByText(/0\.0MB/)).toBeNull();
+		expect(
+			screen.getByRole("status", { name: "Carregando arquivos" }),
+		).toBeTruthy();
+	});
+
+	it("plano real chegou: mostra o valor", () => {
+		renderPlan("ready");
+		expect(screen.getByText("Plano Free")).toBeTruthy();
+		expect(screen.getByText(/0\.0MB \/ 100MB/)).toBeTruthy();
+	});
+
+	it("campanhas ainda não confirmadas: rótulo do mundo pendente, sem 'Facções & Ordens'", () => {
+		auth.planStatus = "ready";
+		useRPGStore.setState({
+			campaignLoadStatus: "error",
+			activeCampaignId: "camp-1",
+			campaigns: [
+				{
+					id: "camp-1",
+					name: "QA Designer (teste)",
+					description: "",
+					ownerId: "o",
+					worldId: "w",
+					myRole: "editor",
+					createdAt: 1,
+				},
+			],
+		});
+		render(<Sidebar isOpen />);
+		expect(screen.getByTestId("nav-/factions").dataset.pending).toBe("true");
+		expect(screen.queryByText("Facções & Ordens")).toBeNull();
 	});
 });

@@ -17,7 +17,7 @@ import {
 	resolveWorldIdForNewCampaign,
 	updateRemoteWorld,
 } from "../worldbuilding/world-service";
-import { remoteErrorMessage } from "./helpers";
+import { BASE_LOAD_ERROR_MESSAGE, remoteErrorMessage } from "./helpers";
 import type {
 	Campaign,
 	CampaignLoadStatus,
@@ -293,8 +293,8 @@ export const createCampaignSlice: StateCreator<
 			if (!user || !user.email) {
 				set({
 					campaignLoadStatus: "error",
-					syncError:
-						"Erro ao carregar campanhas: sessão autenticada indisponível",
+					syncError: BASE_LOAD_ERROR_MESSAGE,
+					baseLoadError: BASE_LOAD_ERROR_MESSAGE,
 				});
 				return;
 			}
@@ -394,7 +394,8 @@ export const createCampaignSlice: StateCreator<
 				if (fallbackError) {
 					set({
 						campaignLoadStatus: "error",
-						syncError: `Erro ao carregar campanhas: ${remoteErrorMessage(fallbackError)}`,
+						syncError: BASE_LOAD_ERROR_MESSAGE,
+						baseLoadError: BASE_LOAD_ERROR_MESSAGE,
 					});
 					return;
 				}
@@ -427,10 +428,11 @@ export const createCampaignSlice: StateCreator<
 				hasLoadedCampaigns: true,
 				campaignLoadStatus: "ready",
 			});
-		} catch (error) {
+		} catch {
 			set({
 				campaignLoadStatus: "error",
-				syncError: `Erro ao carregar campanhas: ${remoteErrorMessage(error)}`,
+				syncError: BASE_LOAD_ERROR_MESSAGE,
+				baseLoadError: BASE_LOAD_ERROR_MESSAGE,
 			});
 			return;
 		}
@@ -486,19 +488,25 @@ export const createCampaignSlice: StateCreator<
 		if (resolved.campaignId) {
 			const activeCamp = campaigns.find((c) => c.id === resolved.campaignId);
 			if (activeCamp) {
-				const { data: planData } = await supabase
+				const { data: planData, error: ownerPlanError } = await supabase
 					.from(SUPABASE_TABLES.userPlans)
 					.select("plan")
 					.eq("user_id", activeCamp.ownerId)
 					.maybeSingle();
-				const ownerPlan = (planData as any)?.plan || "free";
-				set({
-					activeCampaignOwnerPlan: ownerPlan as UserPlan,
-				});
+				if (ownerPlanError) {
+					// Plano do mestre desconhecido: não assume "free" em silêncio.
+					get().reportBaseLoadError();
+				} else {
+					const ownerPlan =
+						(planData as { plan?: string } | null)?.plan || "free";
+					set({
+						activeCampaignOwnerPlan: ownerPlan as UserPlan,
+					});
+				}
 			}
 		}
 
-		void get().loadInvites();
+		await get().loadInvites();
 	},
 
 	createCampaign: async (name, description = "", options) => {
@@ -826,7 +834,8 @@ export const createCampaignSlice: StateCreator<
 			.order("created_at", { ascending: false });
 
 		if (error) {
-			set({ syncError: `Erro ao carregar convites: ${error.message}` });
+			// Convites fazem parte da carga base: mesmo aviso único do painel.
+			get().reportBaseLoadError();
 			return;
 		}
 

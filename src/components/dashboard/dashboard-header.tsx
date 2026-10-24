@@ -100,7 +100,7 @@ export function DashboardHeader({
 
 					{/* Action Toolbar - Balanced Registrar Sessão Button */}
 					<div className="mt-5 flex flex-wrap items-center gap-3">
-						{countStatus === "error" ? null : isViewer ? (
+						{countStatus !== "ready" ? null : isViewer ? (
 							<Button
 								disabled
 								className="h-[38px] gap-2 rounded-xl border border-white/10 bg-white/5 px-4.5 text-[13px] font-bold text-white/40 cursor-not-allowed opacity-50 backdrop-blur-sm select-none"

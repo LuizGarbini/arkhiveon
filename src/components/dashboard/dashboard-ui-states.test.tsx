@@ -142,6 +142,8 @@ function setDashboardState(partial: Partial<RPGState>) {
 		campaignLoadStatus: "ready",
 		isLoadingRemote: false,
 		remoteLoadError: null,
+		baseLoadError: null,
+		isRetryingBase: false,
 		remoteLoadedCampaignId: campaign.id,
 		characters: [],
 		npcs: [],
@@ -643,5 +645,88 @@ describe("Painel com falha na carga", () => {
 		expect(screen.queryByText("Selecione um Mundo")).toBeNull();
 		expect(screen.getByText("Mundo indisponível")).toBeTruthy();
 		expect(screen.getByTestId("unavailable-value").textContent).toContain("—");
+	});
+});
+
+describe("Painel: falha das consultas base (campanhas, vínculos, plano, convites)", () => {
+	afterEach(cleanup);
+
+	const baseFailures: Array<[string, Partial<RPGState>]> = [
+		// campanhas/vínculos falharam: nada da mesa foi pedido ainda
+		[
+			"campanhas",
+			{
+				campaignLoadStatus: "error",
+				hasLoadedCampaigns: false,
+				remoteLoadedCampaignId: null,
+				baseLoadError: "Não foi possível carregar os dados da mesa.",
+			},
+		],
+		// plano do mestre ou convites falharam
+		[
+			"plano/convites",
+			{ baseLoadError: "Não foi possível carregar os dados da mesa." },
+		],
+	];
+
+	for (const [name, partial] of baseFailures) {
+		it(`${name}: aviso único com 'Tentar de novo', sem Registrar Sessão`, () => {
+			setDashboardState(partial);
+			render(<Dashboard />);
+			expect(screen.getAllByRole("alert")).toHaveLength(1);
+			expect(
+				screen.getByText("Não foi possível carregar os dados da mesa"),
+			).toBeTruthy();
+			expect(screen.queryByText(/Failed to fetch|Erro ao carregar/)).toBeNull();
+			expect(screen.queryByText("Registrar Sessão")).toBeNull();
+			expect(
+				screen.queryAllByRole("status", { name: /^Carregando/ }),
+			).toHaveLength(0);
+		});
+	}
+
+	it("campanhas em erro sem flag base (estado antigo) também vira erro, não skeleton", () => {
+		setDashboardState({
+			campaignLoadStatus: "error",
+			hasLoadedCampaigns: false,
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		expect(screen.getAllByRole("alert")).toHaveLength(1);
+	});
+
+	it("Registrar Sessão fica escondido também durante o carregamento", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+	});
+
+	it("'Tentar de novo' na falha base chama a carga completa e volta ao skeleton", async () => {
+		const retryBaseLoad = vi.fn(async () => {
+			useRPGStore.setState({
+				baseLoadError: null,
+				isRetryingBase: true,
+				campaignLoadStatus: "loading",
+			});
+		});
+		setDashboardState({
+			campaignLoadStatus: "error",
+			hasLoadedCampaigns: false,
+			remoteLoadedCampaignId: null,
+			baseLoadError: "Não foi possível carregar os dados da mesa.",
+			retryBaseLoad,
+		});
+		render(<Dashboard />);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		});
+		expect(retryBaseLoad).toHaveBeenCalledTimes(1);
+		// Skeleton do painel, não a tela de texto "Carregando grimório...".
+		expect(screen.queryByText("Carregando grimório...")).toBeNull();
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(
+			screen.getAllByRole("status", { name: /^Carregando/ }).length,
+		).toBeGreaterThan(0);
+		expect(screen.queryByText("Registrar Sessão")).toBeNull();
 	});
 });

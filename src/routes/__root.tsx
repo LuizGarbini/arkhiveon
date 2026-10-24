@@ -16,6 +16,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ShellAiChat } from "@/components/ai-mesa/shell-ai-chat";
 import { ApkUpdateBanner } from "@/components/apk-update-banner";
 import { AppHeader } from "@/components/app-header";
+import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-count-status";
 import { GlobalError } from "@/components/global-error";
 import { LegacyWorldNamingGate } from "@/components/legacy-world-naming-gate";
 import { NotFound } from "@/components/not-found";
@@ -97,13 +98,15 @@ function ProtectedLayout() {
 	const mainContentId = useId();
 	const { loading, session, plan } = useAuth();
 	const authenticatedUserId = session?.user.id;
-	const loadRemoteData = useRPGStore((s) => s.loadRemoteData);
 	const setupRealtime = useRPGStore((s) => s.setupRealtime);
 	const clearLocalData = useRPGStore((s) => s.clearLocalData);
-	const loadCampaigns = useRPGStore((s) => s.loadCampaigns);
 	const bootstrappedUserIdRef = useRef<string | null>(null);
 	const syncError = useRPGStore((s) => s.syncError);
-	const remoteLoadError = useRPGStore((s) => s.remoteLoadError);
+	const isDashboardLoadError = useRPGStore(
+		(s) => selectDashboardDataStatus(s) === "error",
+	);
+	const isRetryingBase = useRPGStore((s) => s.isRetryingBase);
+	const bootstrapCampaignData = useRPGStore((s) => s.bootstrapCampaignData);
 	const setUserPlan = useRPGStore((s) => s.setUserPlan);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [dismissedLimitError, setDismissedLimitError] = useState<string | null>(
@@ -204,31 +207,13 @@ function ProtectedLayout() {
 		}
 		bootstrappedUserIdRef.current = authenticatedUserId;
 
-		async function initCampaigns() {
-			await loadCampaigns();
-
-			const state = useRPGStore.getState();
-			if (state.campaignLoadStatus !== "ready") {
-				return;
-			}
-			// loadCampaigns já resolve campanha/mundo respeitando activeWorldId.
-			// Só auto-escolhe a primeira mesa global se ainda não há contexto.
-			if (
-				state.campaigns.length > 0 &&
-				!state.activeCampaignId &&
-				!state.activeWorldId
-			) {
-				await useRPGStore.getState().switchCampaign(state.campaigns[0].id);
-			}
-
-			await loadRemoteData();
-		}
-
-		void initCampaigns();
+		// Campanhas → mesa ativa → dados; falha em qualquer etapa vira o aviso
+		// único do painel (antes a falha das campanhas parava aqui e o painel
+		// ficava em skeleton para sempre).
+		void bootstrapCampaignData();
 	}, [
+		bootstrapCampaignData,
 		clearLocalData,
-		loadCampaigns,
-		loadRemoteData,
 		loading,
 		navigate,
 		authenticatedUserId,
@@ -257,7 +242,8 @@ function ProtectedLayout() {
 
 	if (
 		isCampaignLoadPending(campaignLoadStatus) &&
-		!hasAuthoritativeCampaignSnapshot
+		!hasAuthoritativeCampaignSnapshot &&
+		!isRetryingBase
 	) {
 		return (
 			<div className="flex min-h-screen items-center justify-center text-[13px] text-muted-foreground">
@@ -346,9 +332,9 @@ function ProtectedLayout() {
 					{syncError &&
 						!isLimitError &&
 						// No painel, a falha de carga já tem o aviso único com "Tentar de novo".
-						!(
-							pathname.startsWith("/dashboard") && syncError === remoteLoadError
-						) && <SyncErrorBanner error={syncError} />}
+						!(pathname.startsWith("/dashboard") && isDashboardLoadError) && (
+							<SyncErrorBanner error={syncError} />
+						)}
 					<Outlet />
 				</main>
 			</div>
