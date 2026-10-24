@@ -213,6 +213,9 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
 		await vi.advanceTimersByTimeAsync(BASE_LOAD_TIMEOUT_MS);
 		expectGlobalError();
+		// Sem snapshot de campanhas, a raiz não pode ficar em
+		// "Carregando campanhas..." para sempre.
+		expect(useRPGStore.getState().campaignLoadStatus).toBe("error");
 	});
 
 	it("Tentar de novo volta ao skeleton e, com a rede de volta, fica pronto", async () => {

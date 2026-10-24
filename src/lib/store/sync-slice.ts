@@ -274,12 +274,18 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	isRetryingBase: false,
 	baseRetryNonce: 0,
 	reportBaseLoadError: () =>
-		set({
+		set((s) => ({
 			baseLoadError: BASE_LOAD_ERROR_MESSAGE,
 			syncError: BASE_LOAD_ERROR_MESSAGE,
 			isLoadingRemote: false,
 			isRetryingBase: false,
-		}),
+			// Prazo estourado com as campanhas ainda pendentes: sai do
+			// "Carregando campanhas..." da raiz em vez de ficar nele para sempre.
+			campaignLoadStatus:
+				s.campaignLoadStatus === "idle" || s.campaignLoadStatus === "loading"
+					? "error"
+					: s.campaignLoadStatus,
+		})),
 	bootstrapCampaignData: async () => {
 		const token = ++bootstrapToken;
 		let timedOut = false;
