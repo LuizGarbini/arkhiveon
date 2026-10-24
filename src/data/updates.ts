@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.33-campanha-so-em-mundo-seu",
+		version: "1.6.33",
+		date: "24/10/2026",
+		title: "Mundos mais protegidos",
+		description:
+			"Uma campanha só pode ser criada ou movida para um mundo seu ou para um mundo em que você já é mestre ou co-mestre de alguma campanha. Ninguém de fora consegue pendurar campanhas no seu mundo.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.32-painel-numeros-mundo-compartilhado",
 		version: "1.6.32",
 		date: "24/10/2026",
