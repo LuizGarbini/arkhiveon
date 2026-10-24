@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.31-token-so-o-mestre",
+		version: "1.6.31",
+		date: "23/10/2026",
+		title: "Token do jogador mais protegido",
+		description:
+			"Na mesa, o jogador continua movendo e cuidando do próprio token, mas só o mestre troca de cena, de ficha, quem controla, a camada, o oculto e a trava.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.30-paredes-f1",
 		version: "1.6.30",
 		date: "21/10/2026",
