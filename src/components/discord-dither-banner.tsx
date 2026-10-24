@@ -121,7 +121,7 @@ export function DiscordDitherBanner() {
 						<DiscordIcon className="h-5 w-5 fill-current text-[#7289DA] group-hover:text-white transition-colors" />
 					</div>
 					<div className="min-w-0">
-						<div className="flex items-center gap-2">
+						<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 							<h3 className="font-display text-sm font-bold text-white tracking-tight">
 								Comunidade Arkhiveon
 							</h3>
@@ -129,7 +129,7 @@ export function DiscordDitherBanner() {
 								Discord Oficial
 							</span>
 						</div>
-						<p className="text-xs text-white/75 mt-0.5 max-w-xl truncate sm:whitespace-normal">
+						<p className="text-xs text-white/75 mt-0.5 max-w-xl">
 							Conecte-se com mestres e jogadores, compartilhe fichas, mapas e
 							tire dúvidas da mesa.
 						</p>
