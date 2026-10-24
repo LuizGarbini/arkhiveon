@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import type { VTTWall } from "@/lib/vtt/walls";
+import { hitTestWall, type VTTWall } from "@/lib/vtt/walls";
 
 const db = vi.hoisted(() => ({
 	rows: [] as Record<string, unknown>[],
@@ -16,6 +16,7 @@ const db = vi.hoisted(() => ({
 	failWrites: false,
 	inserts: 0,
 	deletes: 0,
+	deletedIds: [] as string[],
 }));
 const toast = vi.hoisted(() => vi.fn());
 
@@ -38,8 +39,9 @@ vi.mock("@/lib/supabase", () => ({
 					});
 				},
 				delete: () => ({
-					in: () => {
+					in: (_col: string, ids: string[]) => {
 						db.deletes++;
+						db.deletedIds.push(...ids);
 						return Promise.resolve({
 							error: db.failWrites ? { code: "42501", message: "rls" } : null,
 						});
@@ -75,6 +77,7 @@ beforeEach(() => {
 	db.failWrites = false;
 	db.inserts = 0;
 	db.deletes = 0;
+	db.deletedIds = [];
 	toast.mockReset();
 	useVTTStore.setState({
 		isGM: true,
@@ -307,5 +310,68 @@ describe("carregar paredes", () => {
 		expect(st().walls).toEqual([]);
 		expect(st().selectedWallIds).toEqual([]);
 		expect(st().wallUndo).toEqual([]);
+	});
+});
+
+describe("parede em L (bug relatado em produção)", () => {
+	// Mesmo caminho do canvas: polilinha → Esc salva; clique perto da parede
+	// usa hitTestWall com 8px/zoom e seleciona; Delete apaga a selecionada.
+	function drawL() {
+		useVTTStore.setState({ activeTool: "wall" });
+		render(<VTTToolbar />);
+		st().setWallDraft([
+			{ x: 70, y: 70 },
+			{ x: 210, y: 70 },
+			{ x: 210, y: 210 },
+		]);
+		key("Escape");
+	}
+	const isVertical = (w: VTTWall) => w.x1 === w.x2;
+	const clickWall = (x: number, y: number, zoom = 1) => {
+		const hit = hitTestWall(st().walls, { x, y }, 8 / zoom);
+		if (hit) act(() => st().setSelectedWallIds([hit]));
+		return hit;
+	};
+
+	for (const [nome, x, y, zoom] of [
+		["no meio do segmento vertical", 210, 140, 1],
+		["perto do canto compartilhado", 211, 76, 1],
+		["perto do canto com zoom 0.5", 213, 80, 0.5],
+	] as const) {
+		it(`selecionar o 2º segmento (vertical) ${nome} e apertar Delete apaga só ele`, async () => {
+			drawL();
+			await flush();
+			expect(st().walls).toHaveLength(2);
+			const vertical = st().walls.find(isVertical);
+			const horizontal = st().walls.find((w) => !isVertical(w));
+			expect(clickWall(x, y, zoom)).toBe(vertical?.id);
+			expect(st().selectedWallIds).toEqual([vertical?.id]);
+			key("Delete");
+			await flush();
+			expect(st().walls.map((w) => w.id)).toEqual([horizontal?.id]);
+			expect(db.deletedIds).toEqual([vertical?.id]);
+		});
+	}
+
+	it("depois de recarregar do banco, Delete no vertical também apaga só ele", async () => {
+		drawL();
+		await flush();
+		const saved = st().walls;
+		db.rows = [...saved].reverse().map((w) => ({
+			id: w.id,
+			scene_id: w.sceneId,
+			x1: w.x1,
+			y1: w.y1,
+			x2: w.x2,
+			y2: w.y2,
+		}));
+		await act(() => loadWalls("scene-1"));
+		const vertical = st().walls.find(isVertical);
+		expect(clickWall(210, 150)).toBe(vertical?.id);
+		key("Delete");
+		await flush();
+		expect(st().walls.every((w) => !isVertical(w))).toBe(true);
+		expect(st().walls).toHaveLength(1);
+		expect(db.deletedIds).toEqual([vertical?.id]);
 	});
 });
