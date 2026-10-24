@@ -218,12 +218,12 @@ export function DashboardHeader({
 					<div className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-emerald-400/50 hover:bg-white/15">
 						<Link
 							to="/items"
-							aria-label={"Abrir Inventário"}
+							aria-label={"Abrir Itens"}
 							className="absolute inset-0 z-[1] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						/>
 						<div className="flex items-center justify-between gap-2 w-full">
 							<p className="text-[11px] font-semibold uppercase tracking-wider text-white/75 whitespace-nowrap">
-								Inventário
+								Itens
 							</p>
 							<div className="t-icon-spring flex h-7.5 w-7.5 min-h-[30px] min-w-[30px] max-h-[30px] max-w-[30px] shrink-0 aspect-square items-center justify-center rounded-lg border border-white/10 bg-white/10 text-white/80 group-hover:border-emerald-500/40 group-hover:bg-emerald-500/20 group-hover:text-emerald-300">
 								<Package className="h-3.5 w-3.5 shrink-0" />
@@ -238,8 +238,7 @@ export function DashboardHeader({
 									skeletonClassName="w-[2ch]"
 								/>
 							</p>
-							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
-								<span>Itens & Saques</span>
+							<div className="mt-1.5 flex items-center justify-end text-xs text-white/80">
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-emerald-300" />
 							</div>
 						</div>

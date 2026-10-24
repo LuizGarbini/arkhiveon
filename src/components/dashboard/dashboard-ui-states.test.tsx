@@ -160,9 +160,11 @@ function setDashboardState(partial: Partial<RPGState>) {
 }
 
 function quickNavCount(title: string): HTMLElement {
-	const card = screen.getByRole("link", {
-		name: `Abrir ${title}`,
-	}).parentElement;
+	// O topo e o Grimório podem ter o mesmo nome ("Abrir Itens"); o do
+	// Grimório vem depois no DOM.
+	const card = screen
+		.getAllByRole("link", { name: `Abrir ${title}` })
+		.at(-1)?.parentElement;
 	if (!card) throw new Error(`card ${title} não encontrado`);
 	return card;
 }
@@ -264,7 +266,7 @@ describe("Painel: estados dos números", () => {
 		});
 		expect(countButtons).toHaveLength(12);
 		for (const button of countButtons) expect(button.closest("a")).toBeNull();
-		for (const title of ["Personagens", "Sessões", "Missões", "Inventário"]) {
+		for (const title of ["Personagens", "Sessões", "Missões", "Itens"]) {
 			const [link] = screen.getAllByRole("link", { name: `Abrir ${title}` });
 			const card = link.parentElement;
 			expect(card?.querySelector("button")).toBeTruthy();
@@ -427,14 +429,61 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 		});
 	}
 
-	it("Mochila: sem '0 itens' enquanto carrega", () => {
+	it("Mochila usa o mesmo selo 'Abrir' da Mesa Virtual (sem mono âmbar)", () => {
+		setDashboardState({});
+		const { container } = render(<Dashboard />);
+		const pills = container.querySelectorAll('[data-slot="open-pill"]');
+		expect(pills).toHaveLength(2);
+		expect(pills[0].className).toBe(pills[1].className);
+		expect(pills[1].className).not.toContain("font-mono");
+		expect(pills[1].className).not.toContain("amber");
+	});
+
+	it("Mochila: nunca mostra contagem (carregando, vazio ou com saque), só 'Abrir'", () => {
 		setDashboardState(beforeMesaData);
 		const { unmount } = render(<Dashboard />);
-		expect(screen.queryByText(/^0\s*itens$/)).toBeNull();
+		expect(screen.queryByText(/^\d+\s*itens?$/)).toBeNull();
 		unmount();
-		setDashboardState({});
+		setDashboardState({
+			partyLoot: [
+				{ id: "l1", name: "Ouro", isClaimed: false, createdAt: 1 },
+			] as RPGState["partyLoot"],
+		});
 		render(<Dashboard />);
-		expect(screen.getByText(/^0\s*itens$/)).toBeTruthy();
+		expect(screen.queryByText(/^\d+\s*itens?$/)).toBeNull();
+		expect(
+			screen.getByRole("button", { name: /Mochila do Grupo/ }).textContent,
+		).toContain("Abrir");
+	});
+
+	it("Itens: topo e Grimório dizem 'Itens' e contam só os itens visíveis", () => {
+		const item = (id: string, extra: Partial<Item> = {}) =>
+			({
+				id,
+				name: id,
+				worldId: "world-shared",
+				campaignIds: [],
+				visibility: "public",
+				publicationScope: "global",
+				createdAt: 1,
+				...extra,
+			}) as Item;
+		setDashboardState({
+			items: [
+				item("a"),
+				item("b"),
+				item("c", { publicationScope: "restricted", campaignIds: ["camp-x"] }),
+				item("d", { worldId: "outro-mundo" }),
+			],
+		});
+		render(<Dashboard />);
+		expect(screen.queryByText("Inventário")).toBeNull();
+		expect(screen.queryByText("Itens & Inventário")).toBeNull();
+		expect(
+			screen.getAllByRole("link", { name: "Abrir Itens" }).length,
+		).toBeGreaterThan(0);
+		expect(screen.queryByText("Itens & Saques")).toBeNull();
+		expect(within(quickNavCount("Itens")).getByText("2")).toBeTruthy();
 	});
 
 	it("Timeline: recebe isLoading enquanto carrega", () => {
