@@ -1,9 +1,10 @@
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 const OUT = "/workspace/arkhiveon/previews/dashboard-ui/fatia-4c";
-const MODE = process.env.MODE || "base"; // base | missoes
-const PFX = MODE === "missoes" ? "missoes-" : "";
-const QUESTS = [1, 2, 3, 4].map((i) => ({ id: `q${i}`, createdAt: Date.parse("2026-10-20T12:00:00Z"), title: `Missão ${i}: O selo partido`, description: "Recuperar os fragmentos do selo antes da lua cheia, seguindo as pistas da cripta.", status: "active", category: i === 1 ? "main" : "side", giverNpcName: "Irmã Velha", locationName: "Valônia", reward: "100 po", notes: "", worldId: "w1", publicationScope: "global", campaignIds: ["c1"], visibility: "public" }));
+const MODE = process.env.MODE || "base"; // base | missoes (4) | missoes3
+const NQ = MODE === "missoes3" ? 3 : 4;
+const PFX = MODE === "missoes" ? "missoes-4-" : MODE === "missoes3" ? "missoes-3-" : "";
+const QUESTS = [1, 2, 3, 4].slice(0, NQ).map((i) => ({ id: `q${i}`, createdAt: Date.parse("2026-10-20T12:00:00Z"), title: `Missão ${i}: O selo partido`, description: "Recuperar os fragmentos do selo antes da lua cheia, seguindo as pistas da cripta.", status: "active", category: i === 1 ? "main" : "side", giverNpcName: "Irmã Velha", locationName: "Valônia", reward: "100 po", notes: "", worldId: "w1", publicationScope: "global", campaignIds: ["c1"], visibility: "public" }));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UID = "00000000-0000-4000-8000-000000000001";
 const T = "2026-10-20T12:00:00Z";
@@ -26,6 +27,7 @@ const fixtures = {
 const SECTIONS = ["hero", "latest-session", "active-quests", "party-roster", "key-npcs", "quick-vault", "quick-actions", "quick-nav", "activity"];
 const browser = await chromium.launch();
 const report = {};
+const rowsH = (page) => page.evaluate(() => { const sec = document.querySelector('[data-dash-section="active-quests"]'); const list = sec?.children[1]; return list ? [...list.children].map((c) => Math.round(c.getBoundingClientRect().height * 10) / 10) : []; });
 for (const [w, h] of [[1440, 900], [390, 844]]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
   await ctx.addInitScript(([UID, QUESTS]) => {
@@ -35,7 +37,7 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
     const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, exp, role: "authenticated", aud: "authenticated" })}.assinatura-falsa`;
     localStorage.setItem("sb-preview-bloqueado-auth-token", JSON.stringify({ access_token: token, refresh_token: "falso", token_type: "bearer", expires_in: 86400, expires_at: exp, user }));
     if (QUESTS) localStorage.setItem("arkhiveon-storage", JSON.stringify({ state: { quests: QUESTS }, version: 2 }));
-  }, [UID, MODE === "missoes" ? QUESTS : null]);
+  }, [UID, MODE.startsWith("missoes") ? QUESTS : null]);
   const page = await ctx.newPage();
   let release; const gate = new Promise((r) => { release = r; });
   await page.route(/\.supabase\.co\/auth\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" } }) }));
@@ -57,21 +59,23 @@ for (const [w, h] of [[1440, 900], [390, 844]]) {
   await sleep(1500);
   const at1650 = await page.evaluate(() => { const el = document.querySelector("[data-dashboard-skeleton]"); return el ? getComputedStyle(el).visibility : "none"; });
   await page.screenshot({ path: `${OUT}/${PFX}${w}-01-carregando.png`, fullPage: true });
-  if (MODE === "missoes") await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/missoes-${w}-secao-01-carregando.png` });
+  if (MODE.startsWith("missoes")) await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/${PFX}${w}-secao-01-carregando.png` });
+  const rowsLoading = await rowsH(page);
   const loadingBoxes = await boxes();
   const pageHLoading = await page.evaluate(() => document.documentElement.scrollHeight);
   release();
   await page.getByText("Aria").first().waitFor({ timeout: 15000 }).catch(() => {});
   await sleep(1500);
   await page.screenshot({ path: `${OUT}/${PFX}${w}-02-carregado.png`, fullPage: true });
-  if (MODE === "missoes") await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/missoes-${w}-secao-02-carregado.png` });
+  if (MODE.startsWith("missoes")) await page.locator('[data-dash-section="active-quests"]').screenshot({ path: `${OUT}/${PFX}${w}-secao-02-carregado.png` });
+  const rowsLoaded = await rowsH(page);
   const loadedBoxes = await boxes();
   const pageHLoaded = await page.evaluate(() => document.documentElement.scrollHeight);
   const delta = Object.fromEntries(SECTIONS.map((n) => { const a = loadingBoxes[n], b = loadedBoxes[n]; if (!a || !b) return [n, { faltando: !a ? "carregando" : "carregado" }]; return [n, { dx: b.x - a.x, dy: b.y - a.y, dw: b.w - a.w, dh: b.h - a.h, hCarregando: a.h, hCarregado: b.h }]; }));
   // reduced motion
   const rm = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
   await rm.close();
-  report[w] = { telaPretaCarregandoCampanhas: blackGate, skeletonVisibilidadeEm150ms: at150, skeletonVisibilidadeEm1650ms: at1650, alturaPagina: { carregando: pageHLoading, carregado: pageHLoaded }, delta };
+  report[w] = { telaPretaCarregandoCampanhas: blackGate, skeletonVisibilidadeEm150ms: at150, skeletonVisibilidadeEm1650ms: at1650, alturaPagina: { carregando: pageHLoading, carregado: pageHLoaded }, delta, ...(MODE.startsWith("missoes") ? { missoesLinhas: { carregando: rowsLoading, carregado: rowsLoaded, delta: rowsLoaded.slice(0, 3).map((hh, i) => Math.round((hh - (rowsLoading[i] ?? 0)) * 10) / 10) } } : {}) };
   await ctx.close();
 }
 // reduced-motion check (apenas no modo base)
@@ -108,7 +112,7 @@ if (MODE === "base") for (const [w, h] of [[1440, 900], [390, 844]]) {
 }
 import("node:fs").then(() => {});
 { const fs = await import("node:fs"); const f = `${OUT}/medicao.json`; const prev = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : {};
-  const next = MODE === "missoes" ? { ...prev, missoes: report } : { ...report, ...(prev.missoes ? { missoes: prev.missoes } : {}) };
+  const key = MODE === "missoes" ? "missoes4" : "missoes3"; const { missoes, ...rest } = prev; const next = MODE === "base" ? { ...report, ...(prev.missoes3 ? { missoes3: prev.missoes3, missoes4: prev.missoes4 } : {}) } : { ...rest, [key]: report };
   writeFileSync(f, JSON.stringify(next, null, 1)); }
 console.log(JSON.stringify(report, null, 1));
 await browser.close();
