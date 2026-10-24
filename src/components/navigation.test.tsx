@@ -267,8 +267,12 @@ describe("Router navigation loop test", () => {
 			expect(screen.getAllByText("Aventureiro").length).toBeGreaterThan(0);
 		});
 		expect(screen.queryByText("Comece pelo seu Mundo")).toBeNull();
-		expect(screen.getByText(campaignError)).toBeDefined();
-		expect(useRPGStore.getState().syncError).toBe(campaignError);
+		// Fora do painel a faixa existe, mas com a mensagem leiga (nunca a crua).
+		expect(
+			screen.getByText("Não foi possível carregar os dados da mesa."),
+		).toBeDefined();
+		expect(screen.queryByText(campaignError)).toBeNull();
+		expect(useRPGStore.getState().baseLoadError).not.toBeNull();
 		expect(loadRemoteData).not.toHaveBeenCalled();
 	});
 });

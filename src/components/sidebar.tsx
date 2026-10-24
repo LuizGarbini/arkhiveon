@@ -48,7 +48,10 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
-	const { isPro, planLoading, storageUsedBytes } = useAuth();
+	const { isPro, planLoading, planStatus, storageUsedBytes } = useAuth();
+	// Plano real ainda não chegou (ou falhou): nunca mostra "Free" nem 0 MB.
+	const planUnavailable = planStatus === "error";
+	const planUnknown = planLoading || planUnavailable;
 	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
 	const isLoadingRecords = useRPGStore(
 		(s) => selectDashboardDataStatus(s) === "loading",
@@ -58,25 +61,40 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	);
 	const recordsLoading = planLoading || isLoadingRecords;
 
-	const usagePercentage = isPro
-		? 100
-		: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
+	const usagePercentage = planUnknown
+		? 0
+		: isPro
+			? 100
+			: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
 
 	const storageLimitBytes = isPro ? 2 * 1024 * 1024 * 1024 : 100 * 1024 * 1024;
-	const storageUsagePercentage = Math.min(
-		100,
-		Math.round((storageUsedBytes / storageLimitBytes) * 100),
-	);
+	const storageUsagePercentage = planUnknown
+		? 0
+		: Math.min(100, Math.round((storageUsedBytes / storageLimitBytes) * 100));
 	const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(1);
 	const storageLimitMB = isPro ? "2GB" : "100MB";
 
 	const planLabel = isPro ? "Plano Pro" : "Plano Free";
-	const badgeLabel = planLoading ? "..." : isPro ? "Pro" : "Free";
+	const badgeLabel = planLoading
+		? null
+		: planUnavailable
+			? "—"
+			: isPro
+				? "Pro"
+				: "Free";
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const factionsTabConfig = getFactionsTabConfig(activeCampaign?.system);
+	// O sistema da mesa vem das campanhas; até chegarem, o rótulo não cai no padrão.
+	const worldLabelsPending = useRPGStore(
+		(s) =>
+			s.campaignLoadStatus !== "ready" &&
+			(s.activeCampaignId !== null ||
+				// Primeira carga sem nada em cache: ainda não dá para saber o sistema.
+				(!s.hasLoadedCampaigns && s.campaignLoadStatus !== "error")),
+	);
 	// Piloto invisível: fora da allowlist o grupo Mundo fica idêntico.
 	const libraryEnabled = useLibraryPilot(activeCampaignId) === true;
 
@@ -87,6 +105,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 			to: "/factions",
 			label: factionsTabConfig.label,
 			Icon: factionsTabConfig.Icon,
+			labelPending: worldLabelsPending,
 		},
 		{ to: "/news", label: "Mural", Icon: Newspaper },
 		{ to: "/items", label: "Itens", Icon: Package, shortcut: "Alt+6" },
@@ -193,7 +212,23 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 											: "max-w-24 translate-x-0 opacity-100"
 									}`}
 								>
-									{planLoading ? "Verificando" : planLabel}
+									{planLoading ? (
+										<span className="inline-flex items-center gap-1">
+											Plano
+											<Skeleton
+												role="status"
+												aria-label="Carregando plano"
+												className="dashboard-skeleton inline-block h-[0.7em] w-7 align-middle"
+											/>
+										</span>
+									) : planUnavailable ? (
+										<span data-testid="plan-unavailable">
+											<span aria-hidden="true">Plano —</span>
+											<span className="sr-only">Plano indisponível</span>
+										</span>
+									) : (
+										planLabel
+									)}
 								</span>
 							</div>
 							<span
@@ -203,7 +238,9 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										: "max-w-16 translate-x-0 opacity-100"
 								}`}
 							>
-								{badgeLabel}
+								{badgeLabel ?? (
+									<Skeleton className="dashboard-skeleton inline-block h-[0.7em] w-5 align-middle" />
+								)}
 							</span>
 						</div>
 
@@ -221,7 +258,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 										<Skeleton
 											role="status"
 											aria-label="Carregando registros"
-											className="h-3 w-10"
+											className="dashboard-skeleton h-3 w-10"
 										/>
 									) : recordsError ? (
 										<span data-testid="unavailable-value">
@@ -245,9 +282,22 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
 									<span>Arquivos</span>
-									<span>
-										{storageUsedMB}MB / {storageLimitMB}
-									</span>
+									{planLoading ? (
+										<Skeleton
+											role="status"
+											aria-label="Carregando arquivos"
+											className="dashboard-skeleton h-3 w-14"
+										/>
+									) : planUnavailable ? (
+										<span data-testid="storage-unavailable">
+											<span aria-hidden="true">—</span>
+											<span className="sr-only">Arquivos indisponíveis</span>
+										</span>
+									) : (
+										<span>
+											{storageUsedMB}MB / {storageLimitMB}
+										</span>
+									)}
 								</div>
 								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
 									<div
@@ -267,7 +317,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 								className="mt-4 block w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-center text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
 								onClick={onItemClick}
 							>
-								{isPro ? "Pro ativo" : "Fazer Upgrade"}
+								{planUnknown
+									? "Ver assinatura"
+									: isPro
+										? "Pro ativo"
+										: "Fazer Upgrade"}
 							</Link>
 						</div>
 					</div>

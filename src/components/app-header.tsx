@@ -27,7 +27,6 @@ import { ChangelogPanel } from "@/components/changelog-panel";
 import { GlobalSearch } from "@/components/global-search";
 import { JamPresenceSync } from "@/components/jam-presence-sync";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const SpotifyJamCard = lazy(() =>
 	import("@/components/spotify-jam-card").then((m) => ({
@@ -168,8 +167,6 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 		});
 		await navigate({ to: "/auth", search: { mode: "login" }, replace: true });
 	}
-
-	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -481,16 +478,13 @@ export function AppHeader({ isSidebarOpen, onToggleSidebar }: AppHeaderProps) {
 							)}
 							aria-label="Abrir menu da conta"
 						>
-							{isLoading ? (
-								<Skeleton className="h-full w-full rounded-full" />
-							) : (
-								<Avatar className="h-full w-full">
-									<AvatarImage src={userImage} />
-									<AvatarFallback className="bg-primary/10 text-[10px] font-bold text-primary">
-										{initials}
-									</AvatarFallback>
-								</Avatar>
-							)}
+							{/* A inicial vem da sessão, que já existe: não espera a mesa. */}
+							<Avatar className="h-full w-full">
+								<AvatarImage src={userImage} />
+								<AvatarFallback className="bg-primary/10 text-[10px] font-bold text-primary">
+									{initials}
+								</AvatarFallback>
+							</Avatar>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent className="w-56" align="end">
 							<DropdownMenuGroup>

@@ -10,6 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Npc } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import {
+	DashboardSectionHeaderSkeleton,
+	DashboardSkeletonGroup,
+} from "./dashboard-skeleton";
+
+const SKELETON_CARDS_3 = ["a", "b", "c"] as const;
 
 interface DashboardKeyNpcsProps {
 	npcs: Npc[];
@@ -94,21 +100,30 @@ export function DashboardKeyNpcs({
 
 	if (isLoading) {
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<div className="flex items-center justify-between gap-3 mb-4">
-					<Skeleton className="h-5 w-36" />
-					<Skeleton className="h-5 w-16 rounded-full" />
-				</div>
-				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					<Skeleton className="h-24 w-full rounded-xl" />
-					<Skeleton className="h-24 w-full rounded-xl" />
-				</div>
+			<div
+				data-dash-section="key-npcs"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<DashboardSectionHeaderSkeleton
+					icon={<Users className="h-4 w-4" />}
+					iconClassName="border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-400"
+					actionClassName="w-[172px]"
+					title="NPCs Importantes & Ameaças"
+				/>
+				<DashboardSkeletonGroup className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+					{SKELETON_CARDS_3.map((key) => (
+						<Skeleton key={key} className="h-[95px] w-full rounded-xl" />
+					))}
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border">
+		<div
+			data-dash-section="key-npcs"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
+		>
 			{/* Section Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
 				<div className="flex items-center gap-2.5">

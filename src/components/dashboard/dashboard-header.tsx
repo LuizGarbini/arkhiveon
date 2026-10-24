@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import { DashboardHeroBackground } from "@/components/dashboard-hero-background";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { systemLabel } from "@/lib/store/helpers";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { DashboardCount, type DashboardCountStatus } from "./dashboard-count";
+import { DashboardSkeletonGroup, SkeletonLine } from "./dashboard-skeleton";
 
 interface DashboardHeaderProps {
 	activeCampaign?: Campaign;
@@ -54,7 +56,10 @@ export function DashboardHeader({
 				: "Jogador (Visualizador)";
 
 	return (
-		<header className="relative overflow-hidden rounded-[1.85rem] border border-border/70 p-8 sm:p-11 lg:p-12 shadow-2xl shadow-black/10">
+		<header
+			data-dash-section="hero"
+			className="relative overflow-hidden rounded-[1.85rem] border border-border/70 p-8 sm:p-11 lg:p-12 shadow-2xl shadow-black/10"
+		>
 			{/* Dynamic Shader Mesh Gradient with instant CSS fallback */}
 			<DashboardHeroBackground />
 			{/* Soft vignette for text contrast */}
@@ -79,18 +84,43 @@ export function DashboardHeader({
 							</span>
 						)}
 
-						<span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
-							{campaignRole === "owner" ? (
-								<Crown className="h-3.5 w-3.5 text-amber-400" />
-							) : (
-								<Shield className="h-3.5 w-3.5 text-purple-300" />
-							)}
-							{roleLabel}
-						</span>
+						{/* Papel só com o dado real: skeleton carregando, escondido no erro
+						    (antes mostrava o papel em cache ou "Jogador" como padrão). */}
+						{countStatus === "loading" ? (
+							<Skeleton
+								role="status"
+								aria-label="Carregando papel na mesa"
+								className="dashboard-skeleton h-6 w-24 rounded-full bg-muted-foreground/20"
+							/>
+						) : countStatus === "ready" ? (
+							<span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
+								{campaignRole === "owner" ? (
+									<Crown className="h-3.5 w-3.5 text-amber-400" />
+								) : (
+									<Shield className="h-3.5 w-3.5 text-purple-300" />
+								)}
+								{roleLabel}
+							</span>
+						) : null}
 					</div>
 
 					<h1 className="font-display mt-4 text-3xl font-bold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl drop-shadow-xs">
-						{activeCampaign?.name || "Campanha em Foco"}
+						{activeCampaign?.name ||
+							(countStatus === "loading" ? (
+								<DashboardSkeletonGroup>
+									<SkeletonLine
+										textClassName="text-3xl sm:text-4xl lg:text-5xl"
+										className="w-3/5 bg-muted-foreground/20"
+									/>
+									{/* No celular o nome costuma quebrar em 2 linhas. */}
+									<SkeletonLine
+										textClassName="text-3xl sm:hidden"
+										className="w-2/5 bg-muted-foreground/20"
+									/>
+								</DashboardSkeletonGroup>
+							) : (
+								"Campanha em Foco"
+							))}
 					</h1>
 
 					<p className="mt-3.5 max-w-2xl text-[14px] sm:text-base leading-relaxed text-white/85 font-normal">
@@ -100,7 +130,11 @@ export function DashboardHeader({
 
 					{/* Action Toolbar - Balanced Registrar Sessão Button */}
 					<div className="mt-5 flex flex-wrap items-center gap-3">
-						{countStatus === "error" ? null : isViewer ? (
+						{countStatus === "loading" ? (
+							// Reserva a linha do botão (escondido no carregamento) para
+							// o hero não crescer quando os dados chegam.
+							<div aria-hidden="true" className="h-[38px]" />
+						) : countStatus !== "ready" ? null : isViewer ? (
 							<Button
 								disabled
 								className="h-[38px] gap-2 rounded-xl border border-white/10 bg-white/5 px-4.5 text-[13px] font-bold text-white/40 cursor-not-allowed opacity-50 backdrop-blur-sm select-none"
@@ -142,7 +176,6 @@ export function DashboardHeader({
 									value={counts.characters}
 									status={countStatus}
 									label="personagens"
-									skeletonClassName="w-[2ch]"
 								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
@@ -173,7 +206,6 @@ export function DashboardHeader({
 									value={counts.sessions}
 									status={countStatus}
 									label="sessões"
-									skeletonClassName="w-[2ch]"
 								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
@@ -204,7 +236,6 @@ export function DashboardHeader({
 									value={counts.quests}
 									status={countStatus}
 									label="missões"
-									skeletonClassName="w-[2ch]"
 								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-between text-xs text-white/80">
@@ -235,7 +266,6 @@ export function DashboardHeader({
 									value={counts.items}
 									status={countStatus}
 									label="itens"
-									skeletonClassName="w-[2ch]"
 								/>
 							</p>
 							<div className="mt-1.5 flex items-center justify-end text-xs text-white/80">

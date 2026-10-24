@@ -38,8 +38,11 @@ export function DashboardCount({
 			<Skeleton
 				role="status"
 				aria-label={`Carregando ${label}`}
+				// Barra baixa do tamanho de 2 dígitos, mais clara que o card, na
+				// linha de base do número (não muda a altura da linha). Pulse único
+				// com atraso de 300 ms via `.dashboard-skeleton`.
 				className={cn(
-					"inline-block h-[1em] w-[1.5ch] align-middle",
+					"dashboard-skeleton inline-block h-[0.5em] w-[2ch] rounded-sm bg-muted-foreground/20 align-baseline",
 					skeletonClassName,
 				)}
 			/>

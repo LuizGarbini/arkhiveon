@@ -13,7 +13,7 @@ import {
 	locationDefaults,
 	loreDefaults,
 } from "./collection-slice";
-import { remoteErrorMessage } from "./helpers";
+import { BASE_LOAD_ERROR_MESSAGE, remoteErrorMessage } from "./helpers";
 import { npcDefaults } from "./npc-slice";
 import { sessionDefaults } from "./session-slice";
 import type {
@@ -47,6 +47,10 @@ export function isCreationLimitReached(state: RPGState): boolean {
 	return state.globalRecordsCount >= FREE_CREATION_LIMIT;
 }
 
+/** Prazo da carga base: depois disso o skeleton vira o aviso único. */
+export const BASE_LOAD_TIMEOUT_MS = 20_000;
+let bootstrapToken = 0;
+
 export interface SyncSlice {
 	isLoadingRemote: boolean;
 	syncError: string | null;
@@ -54,6 +58,12 @@ export interface SyncSlice {
 	remoteLoadError: string | null;
 	/** Mesa cujos dados remotos já chegaram nesta sessão (null = nenhuma ainda). */
 	remoteLoadedCampaignId: string | null;
+	baseLoadError: string | null;
+	isRetryingBase: boolean;
+	baseRetryNonce: number;
+	reportBaseLoadError: () => void;
+	bootstrapCampaignData: () => Promise<void>;
+	retryBaseLoad: () => Promise<void>;
 	activityLog: ActivityEntry[];
 	/** Falha só da timeline (o resto da mesa carregou). */
 	activityLoadError: string | null;
@@ -260,6 +270,77 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	syncError: null,
 	remoteLoadError: null,
 	remoteLoadedCampaignId: null,
+	baseLoadError: null,
+	isRetryingBase: false,
+	baseRetryNonce: 0,
+	reportBaseLoadError: () =>
+		set((s) => ({
+			baseLoadError: BASE_LOAD_ERROR_MESSAGE,
+			syncError: BASE_LOAD_ERROR_MESSAGE,
+			isLoadingRemote: false,
+			isRetryingBase: false,
+			// Prazo estourado com as campanhas ainda pendentes: sai do
+			// "Carregando campanhas..." da raiz em vez de ficar nele para sempre.
+			campaignLoadStatus:
+				s.campaignLoadStatus === "idle" || s.campaignLoadStatus === "loading"
+					? "error"
+					: s.campaignLoadStatus,
+		})),
+	bootstrapCampaignData: async () => {
+		const token = ++bootstrapToken;
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			if (token !== bootstrapToken) return;
+			timedOut = true;
+			// Prazo estourado: troca o skeleton pelo aviso único.
+			get().reportBaseLoadError();
+		}, BASE_LOAD_TIMEOUT_MS);
+		try {
+			await get().loadCampaigns();
+			const state = get();
+			if (token !== bootstrapToken) return;
+			if (state.campaignLoadStatus !== "ready" || state.baseLoadError) {
+				// Falha das campanhas, do plano do mestre ou dos convites: estado de
+				// erro global (antes a falha das campanhas deixava o painel em "loading").
+				get().reportBaseLoadError();
+				return;
+			}
+			if (
+				state.campaigns.length > 0 &&
+				!state.activeCampaignId &&
+				!state.activeWorldId
+			) {
+				await get().switchCampaign(state.campaigns[0].id);
+			}
+			await get().loadRemoteData();
+			if (token !== bootstrapToken) return;
+			const after = get();
+			// Chegou depois do prazo e deu certo: some o aviso.
+			if (
+				timedOut &&
+				after.remoteLoadError === null &&
+				after.campaignLoadStatus === "ready"
+			) {
+				set({ baseLoadError: null, syncError: null });
+			}
+		} catch {
+			if (token === bootstrapToken) get().reportBaseLoadError();
+		} finally {
+			clearTimeout(timer);
+			if (token === bootstrapToken) set({ isRetryingBase: false });
+		}
+	},
+	retryBaseLoad: async () => {
+		set((s) => ({
+			baseLoadError: null,
+			remoteLoadError: null,
+			syncError: null,
+			isRetryingBase: true,
+			isLoadingRemote: true,
+			baseRetryNonce: s.baseRetryNonce + 1,
+		}));
+		await get().bootstrapCampaignData();
+	},
 	activityLog: [],
 	activityLoadError: null,
 	isLoadingActivity: false,
@@ -378,13 +459,12 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				isLoadingRemote: false,
 				remoteLoadedCampaignId: startCampaignId,
 			});
-		} catch (error) {
+		} catch {
 			if (get().activeCampaignId === startCampaignId) {
-				const message = remoteErrorMessage(error);
 				set({
 					isLoadingRemote: false,
-					syncError: message,
-					remoteLoadError: message,
+					syncError: BASE_LOAD_ERROR_MESSAGE,
+					remoteLoadError: BASE_LOAD_ERROR_MESSAGE,
 				});
 			}
 		}
@@ -744,6 +824,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			syncError: null,
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
+			baseLoadError: null,
+			isRetryingBase: false,
 			activityLoadError: null,
 			isLoadingActivity: false,
 		});
@@ -769,6 +851,8 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			syncError: null,
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
+			baseLoadError: null,
+			isRetryingBase: false,
 			activityLoadError: null,
 			isLoadingActivity: false,
 		});

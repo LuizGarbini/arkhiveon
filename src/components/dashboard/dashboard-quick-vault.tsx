@@ -13,6 +13,12 @@ import { useActiveCampaignRole, useImageAssetLookup } from "@/lib/store";
 import type { Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import {
+	DashboardSectionHeaderSkeleton,
+	DashboardSkeletonGroup,
+} from "./dashboard-skeleton";
+
+const SKELETON_CARDS_2 = ["a", "b"] as const;
 
 interface DashboardQuickVaultProps {
 	items: Item[];
@@ -65,21 +71,30 @@ export function DashboardQuickVault({
 
 	if (isLoading) {
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<div className="flex items-center justify-between gap-3 mb-4">
-					<Skeleton className="h-5 w-36" />
-					<Skeleton className="h-5 w-16 rounded-full" />
-				</div>
-				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					<Skeleton className="h-20 w-full rounded-xl" />
-					<Skeleton className="h-20 w-full rounded-xl" />
-				</div>
+			<div
+				data-dash-section="quick-vault"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<DashboardSectionHeaderSkeleton
+					icon={<Package className="h-4 w-4" />}
+					iconClassName="border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+					actionClassName="w-[167px]"
+					title="Itens & Tesouros Relevantes"
+				/>
+				<DashboardSkeletonGroup className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+					{SKELETON_CARDS_2.map((key) => (
+						<Skeleton key={key} className="h-[90px] w-full rounded-xl" />
+					))}
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border">
+		<div
+			data-dash-section="quick-vault"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
+		>
 			{/* Section Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
 				<div className="flex items-center gap-2.5">

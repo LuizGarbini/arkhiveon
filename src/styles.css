@@ -1110,3 +1110,30 @@
     filter: none !important;
   }
 }
+
+/*
+ * Skeleton do painel: um único pulse por contêiner, sem shimmer.
+ * Entra só depois de 300 ms (visibility via animation-delay, sem timer em JS),
+ * e com prefers-reduced-motion nada se move.
+ */
+.dashboard-skeleton {
+  visibility: hidden;
+  animation:
+    dashboard-skeleton-in 0s linear 300ms forwards,
+    pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 300ms infinite;
+}
+.dashboard-skeleton [data-slot="skeleton"],
+.dashboard-skeleton .dashboard-skeleton {
+  visibility: inherit;
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-skeleton {
+    animation: dashboard-skeleton-in 0s linear 300ms forwards;
+  }
+}
+@keyframes dashboard-skeleton-in {
+  to {
+    visibility: visible;
+  }
+}
