@@ -809,6 +809,11 @@ describe("Selo de papel: só com o dado real", () => {
 			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
 		).toHaveLength(2);
 		expect(screen.queryByText(roleText)).toBeNull();
+		// Selo do hero usa o mesmo muted em baixa opacidade das barras dos números.
+		const heroRole = screen
+			.getAllByRole("status", { name: "Carregando papel na mesa" })
+			.find((el) => el.className.includes("h-6"));
+		expect(heroRole?.className).toContain("bg-muted-foreground/20");
 	});
 
 	it("retry da falha base: skeleton, sem 'Co-Mestre'", () => {

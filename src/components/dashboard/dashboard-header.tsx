@@ -90,7 +90,7 @@ export function DashboardHeader({
 							<Skeleton
 								role="status"
 								aria-label="Carregando papel na mesa"
-								className="dashboard-skeleton h-6 w-24 rounded-full"
+								className="dashboard-skeleton h-6 w-24 rounded-full bg-muted-foreground/20"
 							/>
 						) : countStatus === "ready" ? (
 							<span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
