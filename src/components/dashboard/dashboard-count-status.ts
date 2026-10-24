@@ -33,9 +33,15 @@ export function selectDashboardDataStatus(
 	state: RPGState,
 ): DashboardCountStatus {
 	return dashboardCountStatus({
-		isLoadingRemote: state.isLoadingRemote,
+		isLoadingRemote: state.isLoadingRemote || state.isRetryingBase,
 		hasCampaignSnapshot: state.hasLoadedCampaigns,
-		loadError: state.remoteLoadError,
+		// Qualquer falha base (campanhas, vínculos, plano, convites) ou da mesa.
+		loadError:
+			state.remoteLoadError ??
+			state.baseLoadError ??
+			(state.campaignLoadStatus === "error" && !state.isRetryingBase
+				? "base"
+				: null),
 		awaitingActiveCampaignData:
 			state.activeCampaignId !== null &&
 			state.remoteLoadedCampaignId !== state.activeCampaignId,

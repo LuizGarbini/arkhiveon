@@ -102,6 +102,14 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const isMesaError = useRPGStore(
 		(state) => selectDashboardDataStatus(state) === "error",
 	);
+	// Primeira carga sem campanhas em cache: nome e mundo viram barra curta,
+	// nunca "Sem campanha" / "Selecione um Mundo" antes do dado real.
+	const campaignsPending = useRPGStore(
+		(state) =>
+			!state.hasLoadedCampaigns &&
+			(state.campaignLoadStatus === "idle" ||
+				state.campaignLoadStatus === "loading"),
+	);
 	const pendingInvites = useRPGStore((state) => state.pendingInvites);
 	const acceptInvite = useRPGStore((state) => state.acceptInvite);
 	const switchCampaign = useRPGStore((state) => state.switchCampaign);
@@ -240,18 +248,36 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 					>
 						<div className="flex min-w-0 items-center gap-1.5">
 							<span className="truncate text-[12px] font-bold">
-								{activeCampaign?.name ?? "Sem campanha"}
+								{activeCampaign?.name ??
+									(campaignsPending ? (
+										<Skeleton
+											role="status"
+											aria-label="Carregando campanha"
+											className="dashboard-skeleton inline-block h-[0.7em] w-20 align-middle"
+										/>
+									) : (
+										"Sem campanha"
+									))}
 							</span>
-							{activeCampaign && <RoleBadge role={activeCampaign.myRole} />}
+							{activeCampaign &&
+								(isMesaLoading ? (
+									<Skeleton
+										role="status"
+										aria-label="Carregando papel na mesa"
+										className="dashboard-skeleton h-3.5 w-10 shrink-0 rounded-full"
+									/>
+								) : isMesaError ? null : (
+									<RoleBadge role={activeCampaign.myRole} />
+								))}
 						</div>
 						<span className="truncate text-[10px] text-muted-foreground">
 							{activeWorld ? (
 								activeWorld.name
-							) : isMesaLoading && activeCampaignId ? (
+							) : (isMesaLoading && activeCampaignId) || campaignsPending ? (
 								<Skeleton
 									role="status"
 									aria-label="Carregando mundo"
-									className="mt-0.5 inline-block h-2.5 w-16 align-middle"
+									className="dashboard-skeleton mt-0.5 inline-block h-2.5 w-16 align-middle"
 								/>
 							) : isMesaError && activeCampaignId ? (
 								<span data-testid="unavailable-value">

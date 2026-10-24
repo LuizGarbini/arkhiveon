@@ -11,6 +11,24 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.39-painel-carregando-sem-pulos",
+		version: "1.6.39",
+		date: "24/10/2026",
+		title: "Painel carrega sem tela preta e sem pulos",
+		description:
+			"Ao abrir o painel, o menu lateral, o topo e o destaque da mesa aparecem na hora, sem a tela preta “Carregando campanhas…”. Enquanto os dados chegam, cada seção mostra um rascunho com o mesmo formato do conteúdo real, então nada pula de lugar quando tudo carrega. O rascunho só aparece se a carga demorar, pisca de leve num só ritmo e fica parado para quem pediu menos movimento no sistema. No menu, “Plano” e os nomes ficam fixos e só os valores aparecem como uma barrinha; a sua inicial no avatar já aparece desde o começo.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.38-painel-falha-base",
+		version: "1.6.38",
+		date: "24/10/2026",
+		title: "Painel avisa direito quando a conexão cai",
+		description:
+			"Se não der para buscar suas campanhas, seu plano ou seus convites, o painel mostra um único aviso com “Tentar de novo”, em vez de ficar carregando sem fim ou mostrar uma mensagem técnica. O menu lateral e o topo do painel não mostram mais “Plano Free”, um papel errado (como “Co-Mestre”) nem nomes genéricos do mundo antes de saber os dados de verdade, e o botão Registrar Sessão só aparece com a mesa carregada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.37-painel-itens-mochila",
 		version: "1.6.37",
 		date: "24/10/2026",

@@ -5,6 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Quest } from "@/lib/store/types";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import { DashboardSkeletonGroup, SkeletonLine } from "./dashboard-skeleton";
+
+const QUEST_SKELETON_ROWS = ["q1", "q2", "q3"] as const;
+
+function QuestsTitle() {
+	return (
+		<div className="flex items-center gap-2.5">
+			<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400">
+				<Scroll className="h-4 w-4" />
+			</div>
+			<div>
+				<h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+					Missões em Andamento
+				</h2>
+			</div>
+		</div>
+	);
+}
 
 interface DashboardActiveQuestsProps {
 	quests: Quest[];
@@ -40,34 +58,62 @@ export function DashboardActiveQuests({
 	}
 
 	if (isLoading) {
+		// Mesma forma do carregado: cabeçalho real + 3 missões (chip, título,
+		// 2 linhas de descrição e meta) com os mesmos paddings.
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<div className="flex items-center justify-between gap-3 mb-4">
-					<Skeleton className="h-5 w-36" />
-					<Skeleton className="h-5 w-16 rounded-full" />
+			<div
+				data-dash-section="active-quests"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
+					<QuestsTitle />
+					<DashboardSkeletonGroup className="flex items-center gap-2">
+						<Skeleton className="h-[19px] w-16 rounded-full" />
+						<SkeletonLine textClassName="text-[11px]" className="w-20" />
+					</DashboardSkeletonGroup>
 				</div>
-				<div className="space-y-3">
-					<Skeleton className="h-20 w-full rounded-xl" />
-					<Skeleton className="h-20 w-full rounded-xl" />
-				</div>
+				<DashboardSkeletonGroup className="mt-4 space-y-3">
+					{QUEST_SKELETON_ROWS.map((row) => (
+						<div
+							key={row}
+							className="rounded-xl border border-border/60 bg-background/40 p-4"
+						>
+							<div className="flex items-center gap-2">
+								{/* Mesmo box do chip real (padding, borda e corpo de 9px). */}
+								<Skeleton className="w-16 rounded-md border border-transparent px-2 py-0.5 text-[9px]">
+									{"\u00a0"}
+								</Skeleton>
+								<SkeletonLine textClassName="text-sm" className="w-40" />
+							</div>
+							<div className="mt-2">
+								<SkeletonLine
+									textClassName="text-[12px] leading-relaxed"
+									className="w-full"
+								/>
+								{/* Em telas largas a descrição real cabe em 1 linha. */}
+								<SkeletonLine
+									textClassName="text-[12px] leading-relaxed lg:hidden"
+									className="w-3/4"
+								/>
+							</div>
+							<div className="mt-3">
+								<SkeletonLine textClassName="text-[11px]" className="w-48" />
+							</div>
+						</div>
+					))}
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border">
+		<div
+			data-dash-section="active-quests"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
+		>
 			{/* Section Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
-				<div className="flex items-center gap-2.5">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400">
-						<Scroll className="h-4 w-4" />
-					</div>
-					<div>
-						<h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-							Missões em Andamento
-						</h2>
-					</div>
-				</div>
+				<QuestsTitle />
 
 				<div className="flex items-center gap-2">
 					<span className="shrink-0 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">

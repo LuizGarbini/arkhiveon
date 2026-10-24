@@ -90,7 +90,10 @@ export function DashboardQuickNav({
 	countStatus = "ready",
 }: DashboardQuickNavProps) {
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+		<div
+			data-dash-section="quick-nav"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+		>
 			<div className="flex items-center justify-between border-b border-border/50 pb-3 mb-4">
 				<div className="flex items-center gap-2">
 					<div className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">

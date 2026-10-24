@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Session } from "@/lib/store/types";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
+import {
+	DashboardSectionHeaderSkeleton,
+	DashboardSkeletonGroup,
+	SkeletonLine,
+} from "./dashboard-skeleton";
 
 interface DashboardLatestSessionProps {
 	lastSession?: Session;
@@ -41,21 +46,33 @@ export function DashboardLatestSession({
 
 	if (isLoading) {
 		return (
-			<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-				<div className="flex items-center justify-between gap-3 mb-4">
-					<Skeleton className="h-5 w-32" />
-					<Skeleton className="h-5 w-20 rounded-full" />
-				</div>
-				<Skeleton className="h-7 w-3/4 mb-3" />
-				<Skeleton className="h-4 w-full mb-2" />
-				<Skeleton className="h-4 w-5/6 mb-4" />
-				<Skeleton className="h-16 w-full rounded-xl" />
+			<div
+				data-dash-section="latest-session"
+				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
+			>
+				<DashboardSectionHeaderSkeleton
+					icon={<ScrollText className="h-4 w-4" />}
+					iconClassName="border-primary/20 bg-primary/10 text-primary"
+					title="Última Sessão & Crônica"
+				/>
+				<DashboardSkeletonGroup className="mt-4 flex flex-col gap-4">
+					<div className="h-[66px] sm:h-[45px] space-y-2">
+						<SkeletonLine textClassName="text-[11px]" className="w-28" />
+						<SkeletonLine textClassName="text-lg" className="w-2/3" />
+						<SkeletonLine textClassName="text-[13px]" className="w-full" />
+					</div>
+					<Skeleton className="h-[17px] w-full" />
+					<Skeleton className="h-[41px] w-full rounded-xl" />
+				</DashboardSkeletonGroup>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border">
+		<div
+			data-dash-section="latest-session"
+			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
+		>
 			{/* Section Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
 				<div className="flex items-center gap-2.5">

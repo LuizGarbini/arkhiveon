@@ -142,6 +142,8 @@ function setDashboardState(partial: Partial<RPGState>) {
 		campaignLoadStatus: "ready",
 		isLoadingRemote: false,
 		remoteLoadError: null,
+		baseLoadError: null,
+		isRetryingBase: false,
 		remoteLoadedCampaignId: campaign.id,
 		characters: [],
 		npcs: [],
@@ -497,9 +499,14 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 	it("Grimório e topo: skeleton no lugar de 0 enquanto carrega", () => {
 		setDashboardState(beforeMesaData);
 		render(<Dashboard />);
-		expect(screen.getAllByRole("status", { name: /^Carregando/ }).length).toBe(
-			12,
-		);
+		// 4 números do topo + 8 do Grimório (o selo de papel é à parte)
+		expect(
+			screen
+				.getAllByRole("status", { name: /^Carregando/ })
+				.filter(
+					(el) => el.getAttribute("aria-label") !== "Carregando papel na mesa",
+				),
+		).toHaveLength(12);
 		expect(within(quickNavCount("Locais & Mapas")).queryByText("0")).toBeNull();
 	});
 
@@ -692,5 +699,228 @@ describe("Painel com falha na carga", () => {
 		expect(screen.queryByText("Selecione um Mundo")).toBeNull();
 		expect(screen.getByText("Mundo indisponível")).toBeTruthy();
 		expect(screen.getByTestId("unavailable-value").textContent).toContain("—");
+	});
+});
+
+describe("Painel: falha das consultas base (campanhas, vínculos, plano, convites)", () => {
+	afterEach(cleanup);
+
+	const baseFailures: Array<[string, Partial<RPGState>]> = [
+		// campanhas/vínculos falharam: nada da mesa foi pedido ainda
+		[
+			"campanhas",
+			{
+				campaignLoadStatus: "error",
+				hasLoadedCampaigns: false,
+				remoteLoadedCampaignId: null,
+				baseLoadError: "Não foi possível carregar os dados da mesa.",
+			},
+		],
+		// plano do mestre ou convites falharam
+		[
+			"plano/convites",
+			{ baseLoadError: "Não foi possível carregar os dados da mesa." },
+		],
+	];
+
+	for (const [name, partial] of baseFailures) {
+		it(`${name}: aviso único com 'Tentar de novo', sem Registrar Sessão`, () => {
+			setDashboardState(partial);
+			render(<Dashboard />);
+			expect(screen.getAllByRole("alert")).toHaveLength(1);
+			expect(
+				screen.getByText("Não foi possível carregar os dados da mesa"),
+			).toBeTruthy();
+			expect(screen.queryByText(/Failed to fetch|Erro ao carregar/)).toBeNull();
+			expect(screen.queryByText("Registrar Sessão")).toBeNull();
+			expect(
+				screen.queryAllByRole("status", { name: /^Carregando/ }),
+			).toHaveLength(0);
+		});
+	}
+
+	it("campanhas em erro sem flag base (estado antigo) também vira erro, não skeleton", () => {
+		setDashboardState({
+			campaignLoadStatus: "error",
+			hasLoadedCampaigns: false,
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		expect(screen.getAllByRole("alert")).toHaveLength(1);
+	});
+
+	it("Registrar Sessão fica escondido também durante o carregamento", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+	});
+
+	it("'Tentar de novo' na falha base chama a carga completa e volta ao skeleton", async () => {
+		const retryBaseLoad = vi.fn(async () => {
+			useRPGStore.setState({
+				baseLoadError: null,
+				isRetryingBase: true,
+				campaignLoadStatus: "loading",
+			});
+		});
+		setDashboardState({
+			campaignLoadStatus: "error",
+			hasLoadedCampaigns: false,
+			remoteLoadedCampaignId: null,
+			baseLoadError: "Não foi possível carregar os dados da mesa.",
+			retryBaseLoad,
+		});
+		render(<Dashboard />);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		});
+		expect(retryBaseLoad).toHaveBeenCalledTimes(1);
+		// Skeleton do painel, não a tela de texto "Carregando grimório...".
+		expect(screen.queryByText("Carregando grimório...")).toBeNull();
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(
+			screen.getAllByRole("status", { name: /^Carregando/ }).length,
+		).toBeGreaterThan(0);
+		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+	});
+});
+
+describe("Selo de papel: só com o dado real", () => {
+	afterEach(cleanup);
+
+	const cachedEditor = {
+		campaigns: [{ ...campaign, myRole: "editor" as const }],
+	};
+	const roleText = /Co-Mestre|Mestre|Jogador/;
+
+	function renderBoth() {
+		render(
+			<ToastProvider>
+				<CampaignSwitcher isCollapsed={false} />
+				<Dashboard />
+			</ToastProvider>,
+		);
+	}
+
+	it("carregando: skeleton no hero e na barra lateral, sem papel padrão", () => {
+		setDashboardState({ ...cachedEditor, isLoadingRemote: true });
+		renderBoth();
+		expect(
+			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(2);
+		expect(screen.queryByText(roleText)).toBeNull();
+		// Selo do hero usa o mesmo muted em baixa opacidade das barras dos números.
+		const heroRole = screen
+			.getAllByRole("status", { name: "Carregando papel na mesa" })
+			.find((el) => el.className.includes("h-6"));
+		expect(heroRole?.className).toContain("bg-muted-foreground/20");
+	});
+
+	it("retry da falha base: skeleton, sem 'Co-Mestre'", () => {
+		setDashboardState({
+			...cachedEditor,
+			isRetryingBase: true,
+			campaignLoadStatus: "loading",
+		});
+		renderBoth();
+		expect(
+			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(2);
+		expect(screen.queryByText(roleText)).toBeNull();
+	});
+
+	it("erro: papel escondido nos dois lugares", () => {
+		setDashboardState({
+			...cachedEditor,
+			baseLoadError: "Não foi possível carregar os dados da mesa.",
+		});
+		renderBoth();
+		expect(
+			screen.queryAllByRole("status", { name: "Carregando papel na mesa" }),
+		).toHaveLength(0);
+		expect(screen.queryByText(roleText)).toBeNull();
+	});
+
+	it("pronto: mostra o papel real (Mestre)", () => {
+		setDashboardState({});
+		renderBoth();
+		expect(screen.getByText("Mestre da Mesa")).toBeTruthy();
+		expect(screen.getByText("Mestre")).toBeTruthy();
+		expect(screen.queryByText("Co-Mestre")).toBeNull();
+	});
+});
+
+describe("Skeleton do painel com a forma real", () => {
+	afterEach(cleanup);
+
+	function section(name: string): HTMLElement {
+		const el = document.querySelector<HTMLElement>(
+			`[data-dash-section="${name}"]`,
+		);
+		if (!el) throw new Error(`seção ${name} não encontrada`);
+		return el;
+	}
+
+	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões: 3 linhas", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const actions = section("quick-actions");
+		expect(within(actions).getByText("Ações da Mesa")).toBeTruthy();
+		const actionRows = actions.querySelectorAll(
+			"[data-dashboard-skeleton] > div",
+		);
+		expect(actionRows).toHaveLength(4);
+		const quests = section("active-quests");
+		expect(within(quests).getByText("Missões em Andamento")).toBeTruthy();
+		expect(
+			quests.querySelectorAll("[data-dashboard-skeleton].mt-4 > div"),
+		).toHaveLength(3);
+	});
+
+	it("Grimório: grade 2×N com rótulos reais e barra só na contagem", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const nav = section("quick-nav");
+		expect(within(nav).getByText("Locais & Mapas")).toBeTruthy();
+		expect(
+			within(nav).getAllByRole("status", { name: /^Carregando/ }),
+		).toHaveLength(8);
+	});
+
+	it("um único pulse por contêiner: nenhuma barra anima sozinha fora dele", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const bars = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-slot="skeleton"]'),
+		);
+		expect(bars.length).toBeGreaterThan(0);
+		const loose = bars
+			.filter((bar) => bar.closest(".dashboard-skeleton") === null)
+			.map((bar) => bar.getAttribute("aria-label") ?? bar.className);
+		expect(loose).toEqual([]);
+	});
+
+	it("campanhas ainda chegando: o painel em skeleton, sem tela de texto", () => {
+		setDashboardState({
+			campaigns: [],
+			activeCampaignId: null,
+			hasLoadedCampaigns: false,
+			campaignLoadStatus: "loading",
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		expect(screen.queryByText("Carregando grimório...")).toBeNull();
+		expect(section("hero")).toBeTruthy();
+		expect(section("quick-actions")).toBeTruthy();
+		expect(screen.queryByText("Campanha em Foco")).toBeNull();
+	});
+
+	it("carregado: mesmas seções, sem skeleton", () => {
+		setDashboardState({});
+		render(<Dashboard />);
+		expect(section("quick-actions")).toBeTruthy();
+		expect(document.querySelectorAll("[data-dashboard-skeleton]")).toHaveLength(
+			0,
+		);
 	});
 });
