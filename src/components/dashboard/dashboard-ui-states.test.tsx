@@ -47,13 +47,14 @@ vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
 		to,
-		className,
+		...props
 	}: {
-		children: ReactNode;
+		children?: ReactNode;
 		to: string;
 		className?: string;
+		"aria-label"?: string;
 	}) => (
-		<a href={to} className={className}>
+		<a href={to} {...props}>
 			{children}
 		</a>
 	),
@@ -131,9 +132,11 @@ function setDashboardState(partial: Partial<RPGState>) {
 }
 
 function quickNavCount(title: string): HTMLElement {
-	const link = screen.getByText(title).closest("a");
-	if (!link) throw new Error(`link ${title} não encontrado`);
-	return link;
+	const card = screen.getByRole("link", {
+		name: `Abrir ${title}`,
+	}).parentElement;
+	if (!card) throw new Error(`card ${title} não encontrado`);
+	return card;
 }
 
 describe("Painel: estados dos números", () => {
@@ -223,6 +226,33 @@ describe("Painel: estados dos números", () => {
 		for (const pill of [/Herói/, /Ativa/, /Registrado/]) {
 			expect(screen.getByText(pill).className).toContain("whitespace-nowrap");
 		}
+	});
+
+	it("erro: botão e link do card são irmãos (nenhum botão dentro de <a>)", () => {
+		setDashboardState({ remoteLoadError: "falhou" });
+		render(<Dashboard />);
+		const countButtons = screen.getAllByRole("button", {
+			name: /Ver detalhes/,
+		});
+		expect(countButtons).toHaveLength(12);
+		for (const button of countButtons) expect(button.closest("a")).toBeNull();
+		for (const title of ["Personagens", "Sessões", "Missões", "Inventário"]) {
+			const [link] = screen.getAllByRole("link", { name: `Abrir ${title}` });
+			const card = link.parentElement;
+			expect(card?.querySelector("button")).toBeTruthy();
+			expect(link.className).toContain("absolute inset-0");
+		}
+		const nav = quickNavCount("Sessões & Diários");
+		expect(nav.querySelector(":scope > a")).toBeTruthy();
+		expect(nav.querySelector("button")?.className).toContain("min-h-[44px]");
+	});
+
+	it("rótulos do Grimório quebram em até 2 linhas em vez de cortar", () => {
+		setDashboardState({});
+		render(<Dashboard />);
+		const label = screen.getByText("Sessões & Diários");
+		expect(label.className).toContain("line-clamp-2");
+		expect(label.className).not.toContain("truncate");
 	});
 
 	it("conta só o que a lista mostra (mesmo filtro de visibilidade)", () => {

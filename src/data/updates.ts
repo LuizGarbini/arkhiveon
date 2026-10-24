@@ -11,12 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.34-painel-escopo-campanha",
-		version: "1.6.34",
+		id: "v1.6.35-painel-escopo-campanha",
+		version: "1.6.35",
 		date: "24/10/2026",
 		title: "Cards do painel só com a sua mesa",
 		description:
 			"Os cards de NPCs e itens do painel agora contam e listam só o que a campanha ativa vê, igual aos números do topo. Os registros do menu lateral mostram um bloco cinza enquanto carregam, e o “Ver todas” cabe numa linha no celular.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.33-painel-sem-cortes",
+		version: "1.6.33",
+		date: "24/10/2026",
+		title: "Painel sem textos cortados",
+		description:
+			"Os atalhos do Grimório mostram o nome inteiro, o banner do Discord cabe no celular e tocar no “—” de um número abre o aviso sem sair do painel.",
 		bullets: [],
 	},
 	{

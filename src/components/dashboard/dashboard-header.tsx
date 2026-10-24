@@ -122,10 +122,12 @@ export function DashboardHeader({
 				{/* Right Column: 4 Translucent Metric Cards (Clickable) */}
 				<div className="grid grid-cols-2 gap-3.5 sm:gap-4 select-none">
 					{/* 1. Personagens */}
-					<Link
-						to="/characters"
-						className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-purple-400/50 hover:bg-white/15"
-					>
+					<div className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-purple-400/50 hover:bg-white/15">
+						<Link
+							to="/characters"
+							aria-label={"Abrir Personagens"}
+							className="absolute inset-0 z-[1] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
 						<div className="flex items-center justify-between gap-2 w-full">
 							<p className="text-[11px] font-semibold uppercase tracking-wider text-white/75 whitespace-nowrap">
 								Personagens
@@ -148,13 +150,15 @@ export function DashboardHeader({
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-purple-300" />
 							</div>
 						</div>
-					</Link>
+					</div>
 
 					{/* 2. Sessões */}
-					<Link
-						to="/sessions"
-						className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-violet-400/50 hover:bg-white/15"
-					>
+					<div className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-violet-400/50 hover:bg-white/15">
+						<Link
+							to="/sessions"
+							aria-label={"Abrir Sessões"}
+							className="absolute inset-0 z-[1] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
 						<div className="flex items-center justify-between gap-2 w-full">
 							<p className="text-[11px] font-semibold uppercase tracking-wider text-white/75 whitespace-nowrap">
 								Sessões
@@ -177,13 +181,15 @@ export function DashboardHeader({
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-violet-300" />
 							</div>
 						</div>
-					</Link>
+					</div>
 
 					{/* 3. Missões */}
-					<Link
-						to="/quests"
-						className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-amber-400/50 hover:bg-white/15"
-					>
+					<div className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-amber-400/50 hover:bg-white/15">
+						<Link
+							to="/quests"
+							aria-label={"Abrir Missões"}
+							className="absolute inset-0 z-[1] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
 						<div className="flex items-center justify-between gap-2 w-full">
 							<p className="text-[11px] font-semibold uppercase tracking-wider text-white/75 whitespace-nowrap">
 								Missões
@@ -206,13 +212,15 @@ export function DashboardHeader({
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-amber-300" />
 							</div>
 						</div>
-					</Link>
+					</div>
 
 					{/* 4. Itens & Tesouros */}
-					<Link
-						to="/items"
-						className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-emerald-400/50 hover:bg-white/15"
-					>
+					<div className="group t-hover-lift relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4.5 sm:p-5 shadow-sm shadow-black/5 backdrop-blur-md hover:border-emerald-400/50 hover:bg-white/15">
+						<Link
+							to="/items"
+							aria-label={"Abrir Inventário"}
+							className="absolute inset-0 z-[1] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						/>
 						<div className="flex items-center justify-between gap-2 w-full">
 							<p className="text-[11px] font-semibold uppercase tracking-wider text-white/75 whitespace-nowrap">
 								Inventário
@@ -235,7 +243,7 @@ export function DashboardHeader({
 								<ArrowUpRight className="t-arrow-reveal h-3.5 w-3.5 text-emerald-300" />
 							</div>
 						</div>
-					</Link>
+					</div>
 				</div>
 			</div>
 		</header>
