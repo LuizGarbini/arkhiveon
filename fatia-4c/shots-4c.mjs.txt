@@ -1,0 +1,81 @@
+import { chromium } from "playwright";
+import { writeFileSync } from "node:fs";
+const OUT = "/workspace/arkhiveon/previews/dashboard-ui/fatia-4c";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const UID = "00000000-0000-4000-8000-000000000001";
+const T = "2026-10-20T12:00:00Z";
+const camp = { id: "c1", name: "QA Designer (teste)", description: "", owner_id: UID, world_id: "w1", system: "dnd5e", member_limit: 6, created_at: T, updated_at: T, my_role: "owner" };
+const world = { id: "w1", name: "Valência", is_default: false, owner_user_id: UID, created_at: T, updated_at: T };
+const ent = (id, data) => ({ id, data, created_at: T, updated_at: T, created_by: UID, world_id: "w1", publication_scope: "global", visibility: "public", campaign_ids: ["c1"], is_secret: false });
+const fixtures = {
+  characters: ["Aria", "Borin", "Cael", "Dara"].map((n, i) => ent(`ch${i}`, { name: n, playerName: "Jogador", class: "Guerreiro", race: "Humano", level: 3 + i, campaignId: "c1" })),
+  sessions: [1, 2, 3].map((n) => ent(`s${n}`, { title: `Sessão ${n}: A cripta`, number: n, summary: "O grupo desceu à cripta e encontrou o selo partido.", date: T, campaignId: "c1" })),
+  npcs: ["Lorde Vex", "Irmã Mara", "Tobias"].map((n, i) => ent(`n${i}`, { name: n, role: "Aliado", description: "Figura influente da cidade." })),
+  items: ["Espada Rúnica", "Amuleto"].map((n, i) => ent(`i${i}`, { name: n, type: "Arma", rarity: "rare", description: "Relíquia antiga." })),
+  locations: [], lores: [], custom_templates: [], image_assets: [],
+  activity_log: [0, 1, 2, 3, 4, 5].map((i) => ({ id: `a${i}`, created_at: T, action: "create", entity_kind: "npc", entity_id: `n${i}`, entity_name: `Registro ${i + 1}`, campaign_id: "c1" })),
+  memberships: [], invites: [], worlds: [world],
+  user_plans: [{ plan: "pro", storage_used_bytes: 12000000, user_id: UID }],
+  campaigns: [camp],
+  "rpc/get_user_accessible_campaigns": [camp],
+  "rpc/get_user_accessible_worlds": [world],
+};
+const SECTIONS = ["hero", "latest-session", "active-quests", "party-roster", "key-npcs", "quick-vault", "quick-actions", "quick-nav", "activity"];
+const browser = await chromium.launch();
+const report = {};
+for (const [w, h] of [[1440, 900], [390, 844]]) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+  await ctx.addInitScript(([UID]) => {
+    const b64 = (o) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const exp = Math.floor(Date.now() / 1000) + 86400;
+    const user = { id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" }, created_at: "2026-01-01T00:00:00Z" };
+    const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: UID, exp, role: "authenticated", aud: "authenticated" })}.assinatura-falsa`;
+    localStorage.setItem("sb-preview-bloqueado-auth-token", JSON.stringify({ access_token: token, refresh_token: "falso", token_type: "bearer", expires_in: 86400, expires_at: exp, user }));
+  }, [UID]);
+  const page = await ctx.newPage();
+  let release; const gate = new Promise((r) => { release = r; });
+  await page.route(/\.supabase\.co\/auth\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: UID, aud: "authenticated", role: "authenticated", email: "qa@exemplo.invalid", app_metadata: {}, user_metadata: { name: "Luiz QA" } }) }));
+  await page.route(/\.supabase\.co\/(storage|realtime|functions)\//, (route) => route.abort());
+  await page.route(/\.supabase\.co\/rest\/v1\//, async (route) => {
+    await gate;
+    const url = new URL(route.request().url());
+    const key = url.pathname.replace("/rest/v1/", "");
+    const rows = fixtures[key] ?? [];
+    const single = (route.request().headers().accept ?? "").includes("vnd.pgrst.object");
+    route.fulfill({ status: 200, contentType: "application/json", headers: { "content-range": `0-${rows.length}/*` }, body: JSON.stringify(single ? (rows[0] ?? null) : rows) });
+  });
+  const boxes = () => page.evaluate((names) => Object.fromEntries(names.map((n) => { const el = document.querySelector(`[data-dash-section="${n}"]`); if (!el) return [n, null]; const r = el.getBoundingClientRect(); return [n, { x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) }]; })), SECTIONS);
+  const t0 = Date.now();
+  await page.goto("http://127.0.0.1:4521/dashboard");
+  await sleep(150);
+  const blackGate = await page.getByText("Carregando campanhas").count();
+  const at150 = await page.evaluate(() => { const el = document.querySelector("[data-dashboard-skeleton]"); return el ? getComputedStyle(el).visibility : "none"; });
+  await sleep(1500);
+  const at1650 = await page.evaluate(() => { const el = document.querySelector("[data-dashboard-skeleton]"); return el ? getComputedStyle(el).visibility : "none"; });
+  await page.screenshot({ path: `${OUT}/${w}-01-carregando.png`, fullPage: true });
+  const loadingBoxes = await boxes();
+  const pageHLoading = await page.evaluate(() => document.documentElement.scrollHeight);
+  release();
+  await page.getByText("Aria").first().waitFor({ timeout: 15000 }).catch(() => {});
+  await sleep(1500);
+  await page.screenshot({ path: `${OUT}/${w}-02-carregado.png`, fullPage: true });
+  const loadedBoxes = await boxes();
+  const pageHLoaded = await page.evaluate(() => document.documentElement.scrollHeight);
+  const delta = Object.fromEntries(SECTIONS.map((n) => { const a = loadingBoxes[n], b = loadedBoxes[n]; if (!a || !b) return [n, { faltando: !a ? "carregando" : "carregado" }]; return [n, { dx: b.x - a.x, dy: b.y - a.y, dw: b.w - a.w, dh: b.h - a.h, hCarregando: a.h, hCarregado: b.h }]; }));
+  // reduced motion
+  const rm = await browser.newContext({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
+  await rm.close();
+  report[w] = { telaPretaCarregandoCampanhas: blackGate, skeletonVisibilidadeEm150ms: at150, skeletonVisibilidadeEm1650ms: at1650, alturaPagina: { carregando: pageHLoading, carregado: pageHLoaded }, delta };
+  await ctx.close();
+}
+// reduced-motion check
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  const page = await ctx.newPage();
+  await page.goto("http://127.0.0.1:4521/dashboard");
+  report.reducedMotion = await page.evaluate(() => { const d = document.createElement("div"); d.className = "dashboard-skeleton"; document.body.append(d); const a = getComputedStyle(d).animationName; d.remove(); return a; });
+  await ctx.close();
+}
+writeFileSync(`${OUT}/medicao.json`, JSON.stringify(report, null, 1));
+console.log(JSON.stringify(report, null, 1));
+await browser.close();
