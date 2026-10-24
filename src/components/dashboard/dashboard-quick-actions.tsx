@@ -17,7 +17,6 @@ interface DashboardQuickActionsProps {
 	campaignRole?: MembershipRole;
 	isViewer: boolean;
 	onInviteClick: () => void;
-	unclaimedLootCount: number;
 	isLoading?: boolean;
 	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
 	isUnavailable?: boolean;
@@ -27,7 +26,6 @@ export function DashboardQuickActions({
 	activeCampaign,
 	isViewer,
 	onInviteClick,
-	unclaimedLootCount,
 	isLoading,
 	isUnavailable,
 }: DashboardQuickActionsProps) {
@@ -119,8 +117,7 @@ export function DashboardQuickActions({
 								</div>
 							</div>
 							<span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300 tabular-nums shrink-0 ml-2 group-hover:bg-amber-500/20 transition-colors">
-								{unclaimedLootCount}{" "}
-								{unclaimedLootCount === 1 ? "item" : "itens"}
+								Abrir
 							</span>
 						</button>
 					}

@@ -36,7 +36,6 @@ function Dashboard() {
 	const lores = useRPGStore((s) => s.lores);
 	const quests = useRPGStore((s) => s.quests || []);
 	const factions = useRPGStore((s) => s.factions || []);
-	const partyLoot = useRPGStore((s) => s.partyLoot || []);
 	const visibleNpcs = useVisibleWorldEntities(npcs);
 	const visibleItems = useVisibleWorldEntities(items);
 	const visibleLocations = useVisibleWorldEntities(locations);
@@ -93,11 +92,6 @@ function Dashboard() {
 	const activityLoadError = useRPGStore((s) => s.activityLoadError);
 	const isLoadingActivity = useRPGStore((s) => s.isLoadingActivity);
 	const retryActivity = useRPGStore((s) => s.retryActivity);
-
-	const unclaimedLootCount = useMemo(
-		() => partyLoot.filter((l) => !l.isClaimed).length,
-		[partyLoot],
-	);
 
 	const lastSession = useMemo(
 		() =>
@@ -233,7 +227,6 @@ function Dashboard() {
 						campaignRole={activeCampaignRole}
 						isViewer={isViewer}
 						onInviteClick={() => setShowInviteDialog(true)}
-						unclaimedLootCount={unclaimedLootCount}
 						isLoading={isLoading}
 						isUnavailable={isUnavailable}
 					/>

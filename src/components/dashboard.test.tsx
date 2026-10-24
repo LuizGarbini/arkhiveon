@@ -92,7 +92,8 @@ describe("Dashboard Components", () => {
 			expect(screen.getByText("Mestre da Mesa")).toBeDefined();
 			expect(screen.getByText("D&D 5ª Edição (2014)")).toBeDefined();
 			expect(screen.getByText("Registrar Sessão")).toBeDefined();
-			expect(screen.getByText("Inventário")).toBeDefined();
+			expect(screen.getByText("Itens")).toBeDefined();
+			expect(screen.queryByText("Inventário")).toBeNull();
 		});
 
 		it("renders viewer status with disabled action buttons", () => {
@@ -407,13 +408,17 @@ describe("Dashboard Components", () => {
 					campaignRole="owner"
 					isViewer={false}
 					onInviteClick={vi.fn()}
-					unclaimedLootCount={3}
 				/>,
 			);
 
 			expect(screen.getByText("Ações da Mesa")).toBeDefined();
 			expect(screen.getByText("Mesa Virtual (VTT)")).toBeDefined();
 			expect(screen.getByText("Mochila do Grupo")).toBeDefined();
+			// Mochila ainda não é salva: sem contagem, só "Abrir"
+			expect(
+				screen.getByRole("button", { name: /Mochila do Grupo/ }).textContent,
+			).toContain("Abrir");
+			expect(screen.queryByText(/^\d+\s*itens?$/)).toBeNull();
 			expect(screen.getByText("Nova Ficha de Jogador")).toBeDefined();
 			expect(screen.getByText("Convidar Jogadores")).toBeDefined();
 		});
