@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.37-painel-itens-mochila",
+		version: "1.6.37",
+		date: "24/10/2026",
+		title: "Itens e Mochila com nomes mais claros",
+		description:
+			"No painel, o card do topo (agora sem subtítulo) e o atalho do Grimório se chamam “Itens”, porque contam os itens do mundo que a sua mesa vê. A Mochila do Grupo deixou de mostrar uma contagem que voltava a zero ao recarregar a página e agora mostra só “Abrir”, igual ao atalho da Mesa Virtual.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.36-painel-falha-carga",
 		version: "1.6.36",
 		date: "24/10/2026",

@@ -57,7 +57,7 @@ const navItems = [
 	},
 	{
 		to: "/items",
-		title: "Itens & Inventário",
+		title: "Itens",
 		key: "items" as const,
 		Icon: Package,
 		color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
