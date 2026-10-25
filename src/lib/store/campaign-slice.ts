@@ -106,7 +106,10 @@ export interface CampaignSlice {
 	switchWorld: (worldId: string) => Promise<void>;
 
 	loadWorlds: () => Promise<void>;
-	createWorld: (name: string) => Promise<World>;
+	createWorld: (
+		name: string,
+		options?: { activate?: boolean },
+	) => Promise<World>;
 	updateWorld: (id: string, data: Partial<Pick<World, "name">>) => void;
 	deleteWorld: (id: string) => Promise<void>;
 
@@ -175,7 +178,7 @@ export const createCampaignSlice: StateCreator<
 		}
 	},
 
-	createWorld: async (name) => {
+	createWorld: async (name, options) => {
 		const supabase = getSupabase();
 		if (!supabase) {
 			throw new Error("Supabase não está configurado.");
@@ -222,9 +225,10 @@ export const createCampaignSlice: StateCreator<
 			name,
 			isDefault: countOwnedWorlds(currentWorlds, user.id) === 0,
 		});
+		const activate = options?.activate !== false;
 		set((state) => ({
 			worlds: [...state.worlds.filter((w) => w.id !== created.id), created],
-			activeWorldId: created.id,
+			...(activate ? { activeWorldId: created.id } : {}),
 			syncError: null,
 		}));
 		return created;

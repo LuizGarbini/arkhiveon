@@ -15,10 +15,7 @@ import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { useActiveWorld } from "@/lib/worldbuilding/hooks";
 import {
-	campaignPerWorldLimitError,
-	countOwnedCampaignsInWorld,
 	countOwnedWorlds,
-	maxOwnedCampaignsPerWorld,
 	maxOwnedWorlds,
 	worldLimitError,
 } from "@/lib/worldbuilding/plan-limits";
@@ -133,6 +130,10 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	const toast = useToast();
 	const [isOpen, setIsOpen] = useState(false);
 	const [showCampaignForm, setShowCampaignForm] = useState(false);
+	const [campaignFormSession, setCampaignFormSession] = useState(0);
+	const [campaignWorldPreset, setCampaignWorldPreset] = useState<
+		string | undefined
+	>(undefined);
 	const [showWorldForm, setShowWorldForm] = useState(false);
 	const [worldToEdit, setWorldToEdit] = useState<
 		(typeof worlds)[number] | null
@@ -153,24 +154,9 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 		(campaign) => campaign.id === activeCampaignId,
 	);
 
-	function openCampaignForm() {
-		if (!activeWorld) {
-			toast.error({
-				title: "Nenhum Mundo ativo",
-				description: "Crie ou selecione um Mundo antes de criar uma campanha.",
-			});
-			return;
-		}
-		if (
-			countOwnedCampaignsInWorld(campaigns, activeWorld.id) >=
-			maxOwnedCampaignsPerWorld(userPlan)
-		) {
-			toast.error({
-				title: "Limite atingido",
-				description: campaignPerWorldLimitError(userPlan),
-			});
-			return;
-		}
+	function openCampaignForm(worldId?: string) {
+		setCampaignWorldPreset(worldId);
+		setCampaignFormSession((session) => session + 1);
 		setIsOpen(false);
 		setShowCampaignForm(true);
 	}
@@ -579,14 +565,23 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 			</DropdownMenu>
 
 			<CampaignForm
+				key={campaignFormSession}
 				open={showCampaignForm}
 				onOpenChange={setShowCampaignForm}
-				defaultWorldId={activeWorld?.id}
+				defaultWorldId={campaignWorldPreset}
 			/>
 			<WorldForm
 				open={showWorldForm}
 				onOpenChange={setShowWorldForm}
-				onCreated={() => setShowCampaignForm(true)}
+				onCreated={(worldId) => {
+					toast.success({
+						title: "Mundo criado",
+						action: {
+							label: "Criar campanha neste mundo",
+							onClick: () => openCampaignForm(worldId),
+						},
+					});
+				}}
 			/>
 			<WorldForm
 				open={!!worldToEdit}
