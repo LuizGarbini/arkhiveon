@@ -1,0 +1,162 @@
+[
+ {
+  "id": "3m-cheio-1440",
+  "base": "http://127.0.0.1:4532",
+  "amostras": 184,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1134593
+  },
+  "delta": {
+   "heroTop": {
+    "min": 198.8,
+    "max": 285.9,
+    "fim": 285.9,
+    "amostras": 97
+   },
+   "selosTop": {
+    "min": 281.6,
+    "max": 387.8,
+    "fim": 387.8,
+    "amostras": 97
+   },
+   "tituloTop": {
+    "min": 319.9,
+    "max": 426,
+    "fim": 426,
+    "amostras": 97
+   },
+   "subtituloTop": {
+    "min": 379.5,
+    "max": 485.7,
+    "fim": 485.7,
+    "amostras": 97
+   },
+   "registrarTop": null,
+   "cardPersonagens": {
+    "min": 243.3,
+    "max": 330.4,
+    "fim": 330.4,
+    "amostras": 97
+   },
+   "cardSessoes": {
+    "min": 243.3,
+    "max": 330.4,
+    "fim": 330.4,
+    "amostras": 97
+   },
+   "cardMissoes": {
+    "min": 389.4,
+    "max": 476.6,
+    "fim": 476.6,
+    "amostras": 97
+   },
+   "cardItens": {
+    "min": 389.4,
+    "max": 476.6,
+    "fim": 476.6,
+    "amostras": 97
+   },
+   "avisoTop": null,
+   "secH": {
+    "min": 439,
+    "max": 439,
+    "fim": null,
+    "amostras": 70
+   },
+   "secY": {
+    "min": 845.6,
+    "max": 845.6,
+    "fim": null,
+    "amostras": 70
+   },
+   "btnX": null,
+   "btnY": null
+  },
+  "indisponivelMax": 7,
+  "erroVisto": true,
+  "primeiraLentaMs": null,
+  "primeiraRenderMs": 23027,
+  "carregadoMs": 47303
+ },
+ {
+  "id": "3m-cheio-390",
+  "base": "http://127.0.0.1:4532",
+  "amostras": 186,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1134593
+  },
+  "delta": {
+   "heroTop": {
+    "min": 225.9,
+    "max": 404.3,
+    "fim": 404.3,
+    "amostras": 99
+   },
+   "selosTop": {
+    "min": 255.9,
+    "max": 434.3,
+    "fim": 434.3,
+    "amostras": 99
+   },
+   "tituloTop": {
+    "min": 294.2,
+    "max": 472.5,
+    "fim": 472.5,
+    "amostras": 99
+   },
+   "subtituloTop": {
+    "min": 336.2,
+    "max": 543.9,
+    "fim": 543.9,
+    "amostras": 99
+   },
+   "registrarTop": null,
+   "cardPersonagens": {
+    "min": 489.6,
+    "max": 659.3,
+    "fim": 659.3,
+    "amostras": 99
+   },
+   "cardSessoes": {
+    "min": 489.6,
+    "max": 659.3,
+    "fim": 659.3,
+    "amostras": 99
+   },
+   "cardMissoes": {
+    "min": 624.9,
+    "max": 797.4,
+    "fim": 797.4,
+    "amostras": 99
+   },
+   "cardItens": {
+    "min": 624.9,
+    "max": 797.4,
+    "fim": 797.4,
+    "amostras": 99
+   },
+   "avisoTop": null,
+   "secH": {
+    "min": 504.8,
+    "max": 504.8,
+    "fim": null,
+    "amostras": 71
+   },
+   "secY": {
+    "min": 1085.8,
+    "max": 1136.9,
+    "fim": null,
+    "amostras": 71
+   },
+   "btnX": null,
+   "btnY": null
+  },
+  "indisponivelMax": 7,
+  "erroVisto": true,
+  "primeiraLentaMs": null,
+  "primeiraRenderMs": 23006,
+  "carregadoMs": 47293
+ }
+]

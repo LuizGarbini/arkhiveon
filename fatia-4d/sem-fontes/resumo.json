@@ -1,0 +1,202 @@
+[
+ {
+  "id": "0m-cheio-390",
+  "base": "http://127.0.0.1:4531",
+  "amostras": 191,
+  "assetsJsCss": {
+   "n": 24,
+   "gzBytes": 1134211
+  },
+  "delta": {
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 103
+   },
+   "selosTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": 277.7,
+    "amostras": 103
+   },
+   "tituloTop": {
+    "min": 315.9,
+    "max": 348.8,
+    "fim": 348.8,
+    "amostras": 103
+   },
+   "subtituloTop": {
+    "min": 387.3,
+    "max": 420.2,
+    "fim": 420.2,
+    "amostras": 103
+   },
+   "registrarTop": {
+    "min": 506.5,
+    "max": 506.5,
+    "fim": 506.5,
+    "amostras": 13
+   },
+   "cardPersonagens": {
+    "min": 540.7,
+    "max": 573.5,
+    "fim": 573.5,
+    "amostras": 103
+   },
+   "cardSessoes": {
+    "min": 540.7,
+    "max": 573.5,
+    "fim": 573.5,
+    "amostras": 103
+   },
+   "cardMissoes": {
+    "min": 676,
+    "max": 708.8,
+    "fim": 708.8,
+    "amostras": 103
+   },
+   "cardItens": {
+    "min": 676,
+    "max": 708.8,
+    "fim": 708.8,
+    "amostras": 103
+   },
+   "avisoTop": {
+    "min": 58,
+    "max": 58,
+    "fim": null,
+    "amostras": 15
+   },
+   "secH": {
+    "min": 295.5,
+    "max": 295.5,
+    "fim": 295.5,
+    "amostras": 103
+   },
+   "secY": {
+    "min": 1136.9,
+    "max": 1167.7,
+    "fim": 1149.6,
+    "amostras": 103
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 199.4,
+    "fim": 199.4,
+    "amostras": 103
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 103
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43283,
+  "primeiraRenderMs": 23184,
+  "carregadoMs": 48819
+ },
+ {
+  "id": "3m-cheio-1440",
+  "base": "http://127.0.0.1:4531",
+  "amostras": 189,
+  "assetsJsCss": {
+   "n": 24,
+   "gzBytes": 1134211
+  },
+  "delta": {
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 101
+   },
+   "selosTop": {
+    "min": 281.6,
+    "max": 281.6,
+    "fim": 281.6,
+    "amostras": 101
+   },
+   "tituloTop": {
+    "min": 319.9,
+    "max": 319.9,
+    "fim": 319.9,
+    "amostras": 101
+   },
+   "subtituloTop": {
+    "min": 379.5,
+    "max": 379.5,
+    "fim": 379.5,
+    "amostras": 101
+   },
+   "registrarTop": {
+    "min": 444.8,
+    "max": 444.8,
+    "fim": 444.8,
+    "amostras": 13
+   },
+   "cardPersonagens": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": 243.3,
+    "amostras": 101
+   },
+   "cardSessoes": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": 243.3,
+    "amostras": 101
+   },
+   "cardMissoes": {
+    "min": 389.4,
+    "max": 389.4,
+    "fim": 389.4,
+    "amostras": 101
+   },
+   "cardItens": {
+    "min": 389.4,
+    "max": 389.4,
+    "fim": 389.4,
+    "amostras": 101
+   },
+   "avisoTop": {
+    "min": 69.9,
+    "max": 69.9,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 439,
+    "max": 439,
+    "fim": 439,
+    "amostras": 101
+   },
+   "secY": {
+    "min": 845.6,
+    "max": 846.5,
+    "fim": 846.5,
+    "amostras": 101
+   },
+   "btnX": {
+    "min": 897.1,
+    "max": 897.1,
+    "fim": 897.1,
+    "amostras": 101
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 101
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43192,
+  "primeiraRenderMs": 23159,
+  "carregadoMs": 48863
+ }
+]
