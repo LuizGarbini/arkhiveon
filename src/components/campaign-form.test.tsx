@@ -94,13 +94,17 @@ const createCampaign = vi.fn(async () => ({
 	name: "Mesa Nova",
 }));
 const switchCampaign = vi.fn(async () => undefined);
-const createWorld = vi.fn(async (name: string) => {
-	const created = world({ id: "w-new", name, ownerUserId: ME });
-	useRPGStore.setState((state) => ({
-		worlds: [...state.worlds, created],
-	}));
-	return created;
-});
+const createWorld = vi.fn(
+	async (name: string, options?: { activate?: boolean }) => {
+		const created = world({ id: "w-new", name, ownerUserId: ME });
+		const activate = options?.activate !== false;
+		useRPGStore.setState((state) => ({
+			worlds: [...state.worlds, created],
+			activeWorldId: activate ? created.id : state.activeWorldId,
+		}));
+		return created;
+	},
+);
 const switchWorld = vi.fn(async () => undefined);
 
 function renderWithToast(ui: ReactNode) {
@@ -244,7 +248,8 @@ describe("Nova Campanha pede o mundo", () => {
 		});
 		expect(screen.getByRole("heading", { name: "Nova Campanha" })).toBeTruthy();
 		expect(createCampaign).not.toHaveBeenCalled();
-		expect(createWorld).toHaveBeenCalledWith("Krynn");
+		expect(createWorld).toHaveBeenCalledWith("Krynn", { activate: false });
+		expect(useRPGStore.getState().activeWorldId).toBe(ownWorld.id);
 	});
 
 	it("erro ao criar mundo fica no campo", async () => {
@@ -275,6 +280,63 @@ describe("Nova Campanha pede o mundo", () => {
 		expect(screen.getByText("Nenhum mundo ainda")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Criar mundo" })).toBeTruthy();
 		expect(worldCombobox()).toBeNull();
+	});
+
+	it("conta sem mundos esconde a ajuda e desabilita Criar Campanha até escolher um mundo", async () => {
+		useRPGStore.setState({ worlds: [], campaigns: [] } as never);
+		renderWithToast(<CampaignForm open onOpenChange={() => {}} />);
+		fireEvent.change(screen.getByLabelText(/Nome da Campanha/), {
+			target: { value: "Mesa Nova" },
+		});
+		expect(
+			screen.queryByText(/Campanhas no mesmo mundo compartilham/),
+		).toBeNull();
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Criar Campanha",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+
+		fireEvent.click(screen.getByRole("button", { name: "Criar mundo" }));
+		fireEvent.change(screen.getByLabelText("Nome do mundo"), {
+			target: { value: "Krynn" },
+		});
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Criar mundo" }));
+		});
+		await waitFor(() => {
+			expect(worldCombobox()?.textContent).toContain("Krynn");
+		});
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Criar Campanha",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(false);
+		expect(useRPGStore.getState().activeWorldId).toBe(ownWorld.id);
+	});
+
+	it("erro substitui a ajuda e aria-describedby aponta para o erro", async () => {
+		renderWithToast(<CampaignForm open onOpenChange={() => {}} />);
+		fireEvent.change(screen.getByLabelText(/Nome da Campanha/), {
+			target: { value: "Mesa Nova" },
+		});
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Criar Campanha" }));
+		});
+		expect(
+			screen.queryByText(/Campanhas no mesmo mundo compartilham/),
+		).toBeNull();
+		const trigger = worldCombobox();
+		const describedBy = trigger?.getAttribute("aria-describedby") ?? "";
+		const ids = describedBy.split(/\s+/).filter(Boolean);
+		expect(ids).toHaveLength(1);
+		expect(document.getElementById(ids[0] ?? "")?.textContent).toBe(
+			"Escolha um mundo.",
+		);
 	});
 
 	it("limite de campanhas é do mundo escolhido e aparece no campo", async () => {

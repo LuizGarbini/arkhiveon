@@ -191,9 +191,12 @@ export function CampaignForm({
 	const campaignWorldName = worlds.find(
 		(world) => world.id === campaign?.worldId,
 	)?.name;
+	const showWorldHelp = !worldError && usableWorlds.length > 0;
 	const worldDescribedBy = worldError
-		? `${worldHelpId} ${worldErrorId}`
-		: worldHelpId;
+		? worldErrorId
+		: showWorldHelp
+			? worldHelpId
+			: undefined;
 
 	// Membros e Convites
 	const [members, setMembers] = useState<
@@ -270,7 +273,7 @@ export function CampaignForm({
 		setWorldCreateError(null);
 		setIsCreatingWorld(true);
 		try {
-			const created = await createWorld(nextName);
+			const created = await createWorld(nextName, { activate: false });
 			setSelectedWorldId(created.id);
 			setCreatingWorld(false);
 			setWorldError(null);
@@ -1019,19 +1022,20 @@ export function CampaignForm({
 										) : null}
 									</>
 								)}
-								<p
-									id={worldHelpId}
-									className="text-[11px] leading-relaxed text-muted-foreground"
-								>
-									Campanhas no mesmo mundo compartilham grimório, facções e
-									mural.
-								</p>
 								{worldError ? (
 									<p
 										id={worldErrorId}
 										className="text-[11px] font-medium text-destructive"
 									>
 										{worldError}
+									</p>
+								) : showWorldHelp ? (
+									<p
+										id={worldHelpId}
+										className="text-[11px] leading-relaxed text-muted-foreground"
+									>
+										Campanhas no mesmo mundo compartilham grimório, facções e
+										mural.
 									</p>
 								) : null}
 							</div>
@@ -1068,9 +1072,13 @@ export function CampaignForm({
 								</Button>
 								<Button
 									type="submit"
+									variant="default"
 									loading={isSaving}
 									loadingText="Salvando..."
-									disabled={!name.trim()}
+									disabled={
+										!name.trim() ||
+										(usableWorlds.length === 0 && !selectedWorldId)
+									}
 								>
 									Criar Campanha
 								</Button>

@@ -849,7 +849,10 @@ export interface RPGState {
 	// ----- Mundos -----
 	worlds: World[];
 	loadWorlds: () => Promise<void>;
-	createWorld: (name: string) => Promise<World>;
+	createWorld: (
+		name: string,
+		options?: { activate?: boolean },
+	) => Promise<World>;
 	updateWorld: (id: string, data: Partial<Pick<World, "name">>) => void;
 	deleteWorld: (id: string) => Promise<void>;
 
