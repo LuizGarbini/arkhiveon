@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.42-campanha-escolhe-mundo",
+		version: "1.6.42",
+		date: "25/10/2026",
+		title: "Nova campanha pede o mundo",
+		description:
+			"Ao criar uma campanha, você escolhe o mundo numa lista que começa vazia, com os mundos seus e os que você já mestra. Dá para criar um mundo novo ali mesmo, e ele já volta escolhido. Se a conta ainda não tem mundo, o campo mostra como criar o primeiro. Em Mundos > Novo, a campanha não abre sozinha: o aviso “Mundo criado” traz o botão para abrir a nova campanha já naquele mundo.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.40-painel-lento-missoes",
 		version: "1.6.40",
 		date: "25/10/2026",

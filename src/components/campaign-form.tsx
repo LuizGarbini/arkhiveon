@@ -1,9 +1,29 @@
-import { Globe2, Link as LinkIcon, Loader2, Shield, Trash2, User, UserPlus } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import {
+	Link as LinkIcon,
+	Loader2,
+	Shield,
+	Trash2,
+	User,
+	UserPlus,
+} from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
-import type { Campaign, Invite, MembershipRole, RpgSystem } from "@/lib/store/types";
+import type {
+	Campaign,
+	Invite,
+	MembershipRole,
+	RpgSystem,
+	World,
+} from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import {
+	campaignPerWorldLimitError,
+	countOwnedCampaignsInWorld,
+	maxOwnedCampaignsPerWorld,
+} from "@/lib/worldbuilding/plan-limits";
+import { isWorldStaff } from "@/lib/worldbuilding/visibility";
 import { Button } from "./ui/button";
 import {
 	Dialog,
@@ -14,7 +34,94 @@ import {
 	DialogTitle,
 } from "./ui/dialog";
 import { Input } from "./ui/input";
+import {
+	SelectContent,
+	SelectItem,
+	SelectRoot,
+	SelectSeparator,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 import { Textarea } from "./ui/textarea";
+
+const CREATE_WORLD_VALUE = "__create_world__";
+
+function worldsForNewCampaign(
+	worlds: readonly World[],
+	campaigns: readonly Pick<Campaign, "worldId" | "myRole">[],
+	userId: string | undefined,
+): World[] {
+	if (!userId) return [];
+	return worlds.filter(
+		(world) =>
+			world.ownerUserId === userId ||
+			campaigns.some(
+				(item) => item.worldId === world.id && isWorldStaff(item.myRole),
+			),
+	);
+}
+
+function WorldNameCreator({
+	error,
+	saving,
+	onSubmit,
+}: {
+	error: string | null;
+	saving: boolean;
+	onSubmit: (name: string) => void;
+}) {
+	const inputId = useId();
+	const errorId = useId();
+	const [name, setName] = useState("");
+
+	function confirm() {
+		const trimmed = name.trim();
+		if (!trimmed || saving) return;
+		onSubmit(trimmed);
+	}
+
+	return (
+		<div className="space-y-2">
+			<label
+				htmlFor={inputId}
+				className="text-[12px] font-semibold text-foreground"
+			>
+				Nome do mundo
+			</label>
+			<Input
+				id={inputId}
+				value={name}
+				onChange={(event) => setName(event.target.value)}
+				placeholder="Ex: Faerûn, Eberron..."
+				spellCheck={false}
+				autoComplete="off"
+				aria-invalid={error ? true : undefined}
+				aria-describedby={error ? errorId : undefined}
+				onKeyDown={(event) => {
+					if (event.key !== "Enter") return;
+					event.preventDefault();
+					confirm();
+				}}
+			/>
+			{error ? (
+				<p id={errorId} className="text-[11px] font-medium text-destructive">
+					{error}
+				</p>
+			) : null}
+			<Button
+				type="button"
+				size="sm"
+				className="min-h-11"
+				disabled={!name.trim()}
+				loading={saving}
+				loadingText="Criando..."
+				onClick={confirm}
+			>
+				Criar mundo
+			</Button>
+		</div>
+	);
+}
 
 interface CampaignFormProps {
 	open: boolean;
@@ -31,10 +138,14 @@ export function CampaignForm({
 	defaultTab = "general",
 	defaultWorldId,
 }: CampaignFormProps) {
+	const { user } = useAuth();
 	const createCampaign = useRPGStore((s) => s.createCampaign);
 	const updateCampaign = useRPGStore((s) => s.updateCampaign);
 	const switchCampaign = useRPGStore((s) => s.switchCampaign);
+	const createWorld = useRPGStore((s) => s.createWorld);
 	const worlds = useRPGStore((s) => s.worlds);
+	const campaigns = useRPGStore((s) => s.campaigns);
+	const userPlan = useRPGStore((s) => s.userPlan);
 	const loadCampaignMembersAndInvites = useRPGStore(
 		(s) => s.loadCampaignMembersAndInvites,
 	);
@@ -49,11 +160,40 @@ export function CampaignForm({
 	const [system, setSystem] = useState<RpgSystem>("dnd5e");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	const [worldError, setWorldError] = useState<string | null>(null);
+	const [creatingWorld, setCreatingWorld] = useState(false);
+	const [worldCreateError, setWorldCreateError] = useState<string | null>(null);
+	const [isCreatingWorld, setIsCreatingWorld] = useState(false);
+	const [selectedWorldId, setSelectedWorldId] = useState(() => {
+		if (campaign || !defaultWorldId) return "";
+		const state = useRPGStore.getState();
+		const allowed = worldsForNewCampaign(
+			state.worlds,
+			state.campaigns,
+			user?.id,
+		);
+		return allowed.some((world) => world.id === defaultWorldId)
+			? defaultWorldId
+			: "";
+	});
 	const nameInputId = useId();
 	const descInputId = useId();
-	const selectedWorld = worlds.find(
-		(world) => world.id === (campaign?.worldId ?? defaultWorldId),
+	const worldLabelId = useId();
+	const worldSelectId = useId();
+	const worldHelpId = useId();
+	const worldErrorId = useId();
+	const memberLimitInputId = useId();
+	const userId = user?.id;
+	const usableWorlds = useMemo(
+		() => worldsForNewCampaign(worlds, campaigns, userId),
+		[worlds, campaigns, userId],
 	);
+	const campaignWorldName = worlds.find(
+		(world) => world.id === campaign?.worldId,
+	)?.name;
+	const worldDescribedBy = worldError
+		? `${worldHelpId} ${worldErrorId}`
+		: worldHelpId;
 
 	// Membros e Convites
 	const [members, setMembers] = useState<
@@ -101,6 +241,7 @@ export function CampaignForm({
 		campaign?.name,
 		campaign?.description,
 		campaign?.system,
+		campaign?.memberLimit,
 		defaultTab,
 	]);
 
@@ -124,11 +265,45 @@ export function CampaignForm({
 		}
 	}, [open, campaign, fetchMembersAndInvites]);
 
+	async function handleCreateWorld(nextName: string) {
+		if (isCreatingWorld) return;
+		setWorldCreateError(null);
+		setIsCreatingWorld(true);
+		try {
+			const created = await createWorld(nextName);
+			setSelectedWorldId(created.id);
+			setCreatingWorld(false);
+			setWorldError(null);
+		} catch (error) {
+			setWorldCreateError(
+				error instanceof Error ? error.message : "Erro ao criar mundo.",
+			);
+		} finally {
+			setIsCreatingWorld(false);
+		}
+	}
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (!name.trim() || isSaving) return;
+		if (isSaving) return;
+		if (!name.trim()) return;
+
+		if (!campaign) {
+			if (!selectedWorldId) {
+				setWorldError("Escolha um mundo.");
+				return;
+			}
+			if (
+				countOwnedCampaignsInWorld(campaigns, selectedWorldId) >=
+				maxOwnedCampaignsPerWorld(userPlan)
+			) {
+				setWorldError(campaignPerWorldLimitError(userPlan));
+				return;
+			}
+		}
 
 		setFormError(null);
+		setWorldError(null);
 		setIsSaving(true);
 		try {
 			if (campaign) {
@@ -139,7 +314,7 @@ export function CampaignForm({
 				});
 			} else {
 				const created = await createCampaign(name.trim(), description.trim(), {
-					worldId: defaultWorldId,
+					worldId: selectedWorldId,
 					system,
 				});
 				await switchCampaign(created.id);
@@ -167,8 +342,10 @@ export function CampaignForm({
 			await createInvite(campaign.id, inviteEmail.trim(), inviteRole);
 			setInviteEmail("");
 			await fetchMembersAndInvites();
-		} catch (error: any) {
-			setInviteError(error.message || "Erro ao enviar convite.");
+		} catch (error: unknown) {
+			setInviteError(
+				error instanceof Error ? error.message : "Erro ao enviar convite.",
+			);
 		} finally {
 			setIsSendingInvite(false);
 		}
@@ -286,6 +463,15 @@ export function CampaignForm({
 										placeholder="Ex: Operação Hexatombe, A Maldição de Strahd..."
 										autoFocus
 									/>
+								</div>
+
+								<div className="space-y-1">
+									<p className="text-[12px] font-semibold text-foreground">
+										Mundo
+									</p>
+									<p className="text-[13px] text-foreground">
+										{campaignWorldName || "Mundo da campanha"}
+									</p>
 								</div>
 
 								{/* Seletor de Sistema RPG da Campanha */}
@@ -442,19 +628,25 @@ export function CampaignForm({
 								{isCampaignOwner && (
 									<div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:flex-row sm:items-end">
 										<div className="flex-1 space-y-1.5">
-											<label className="text-[12px] font-bold text-foreground" htmlFor="campaign-member-limit">
+											<label
+												className="text-[12px] font-bold text-foreground"
+												htmlFor={memberLimitInputId}
+											>
 												Limite de jogadores
 											</label>
 											<p className="text-[10px] text-muted-foreground">
-												Inclui membros e convites pendentes; o mestre nao ocupa vaga.
+												Inclui membros e convites pendentes; o mestre nao ocupa
+												vaga.
 											</p>
 											<Input
-												id="campaign-member-limit"
+												id={memberLimitInputId}
 												type="number"
 												min={1}
 												max={100}
 												value={memberLimit}
-												onChange={(event) => handleMemberLimitChange(event.target.value)}
+												onChange={(event) =>
+													handleMemberLimitChange(event.target.value)
+												}
 											/>
 										</div>
 										<Button
@@ -473,14 +665,16 @@ export function CampaignForm({
 									<div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
 										<div className="flex items-center justify-between">
 											<h4 className="text-[12px] font-bold text-sky-300 flex items-center gap-1.5">
-												<LinkIcon className="h-3.5 w-3.5 text-sky-400" /> Link de Convite Direto
+												<LinkIcon className="h-3.5 w-3.5 text-sky-400" /> Link
+												de Convite Direto
 											</h4>
 											<span className="text-[9px] font-bold text-sky-400/90 uppercase tracking-wider bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
 												Entrada Rápida
 											</span>
 										</div>
 										<p className="text-[11px] text-muted-foreground leading-normal">
-											Envie este link para seus amigos pelo WhatsApp ou Discord. Ao clicar, eles entram instantaneamente na mesa!
+											Envie este link para seus amigos pelo WhatsApp ou Discord.
+											Ao clicar, eles entram instantaneamente na mesa!
 										</p>
 										<Button
 											type="button"
@@ -491,12 +685,12 @@ export function CampaignForm({
 												void navigator.clipboard.writeText(link);
 												toast.success({
 													title: "Link Copiado! 🔗",
-													description: "Envie o link para seus amigos entrarem instantaneamente na mesa.",
+													description:
+														"Envie o link para seus amigos entrarem instantaneamente na mesa.",
 												});
 											}}
 											className="w-full gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
-										>
-										</Button>
+										></Button>
 									</div>
 								)}
 
@@ -533,10 +727,13 @@ export function CampaignForm({
 															title: "Limite Atualizado!",
 															description: `Limite alterado para ${memberLimit} participantes.`,
 														});
-													} catch (err: any) {
+													} catch (err: unknown) {
 														toast.error({
 															title: "Erro ao Atualizar Limite",
-															description: err?.message || "Erro ao atualizar limite.",
+															description:
+																err instanceof Error
+																	? err.message
+																	: "Erro ao atualizar limite.",
 														});
 													} finally {
 														setIsSavingMemberLimit(false);
@@ -597,8 +794,9 @@ export function CampaignForm({
 									</form>
 								) : (
 									<p className="text-[11px] text-amber-400 font-semibold p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
-										Limite de {effectiveMemberLimit} participantes atingido. Remova um membro ou
-										cancele um convite pendente antes de enviar outro.
+										Limite de {effectiveMemberLimit} participantes atingido.
+										Remova um membro ou cancele um convite pendente antes de
+										enviar outro.
 									</p>
 								)}
 
@@ -722,6 +920,124 @@ export function CampaignForm({
 
 							<div className="space-y-2">
 								<label
+									id={worldLabelId}
+									htmlFor={worldSelectId}
+									className="text-[12px] font-semibold text-foreground"
+								>
+									Mundo *
+								</label>
+								{usableWorlds.length === 0 && !creatingWorld ? (
+									<div
+										className="rounded-xl border border-dashed border-border/70 bg-card/55 px-3 py-4"
+										aria-invalid={worldError ? true : undefined}
+										aria-describedby={worldDescribedBy}
+									>
+										<p className="text-[13px] font-semibold text-foreground">
+											Nenhum mundo ainda
+										</p>
+										<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+											Crie um mundo para compartilhar grimório, facções e mural
+											entre as campanhas.
+										</p>
+										<Button
+											id={worldSelectId}
+											type="button"
+											size="sm"
+											className="mt-3 min-h-11"
+											aria-label="Criar mundo"
+											onClick={() => {
+												setCreatingWorld(true);
+												setWorldCreateError(null);
+												setWorldError(null);
+											}}
+										>
+											Criar mundo
+										</Button>
+									</div>
+								) : (
+									<>
+										{usableWorlds.length > 0 ? (
+											<SelectRoot<string>
+												modal={false}
+												value={selectedWorldId || null}
+												onValueChange={(next) => {
+													if (next === CREATE_WORLD_VALUE) {
+														setCreatingWorld(true);
+														setWorldCreateError(null);
+														setWorldError(null);
+														return;
+													}
+													if (!next) return;
+													setSelectedWorldId(next);
+													setCreatingWorld(false);
+													setWorldError(null);
+													setWorldCreateError(null);
+												}}
+											>
+												<SelectTrigger
+													id={worldSelectId}
+													className="min-h-11 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
+													aria-invalid={worldError ? true : undefined}
+													aria-describedby={worldDescribedBy}
+												>
+													<SelectValue>
+														{(value: string | null) => {
+															const selectedName = worlds.find(
+																(world) => world.id === value,
+															)?.name;
+															return selectedName ? (
+																selectedName
+															) : (
+																<span className="text-muted-foreground">
+																	Escolha um mundo
+																</span>
+															);
+														}}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent>
+													{usableWorlds.map((world) => (
+														<SelectItem key={world.id} value={world.id}>
+															{world.name}
+														</SelectItem>
+													))}
+													<SelectSeparator />
+													<SelectItem value={CREATE_WORLD_VALUE}>
+														Criar mundo novo…
+													</SelectItem>
+												</SelectContent>
+											</SelectRoot>
+										) : null}
+										{creatingWorld ? (
+											<WorldNameCreator
+												error={worldCreateError}
+												saving={isCreatingWorld}
+												onSubmit={(nextName) => {
+													void handleCreateWorld(nextName);
+												}}
+											/>
+										) : null}
+									</>
+								)}
+								<p
+									id={worldHelpId}
+									className="text-[11px] leading-relaxed text-muted-foreground"
+								>
+									Campanhas no mesmo mundo compartilham grimório, facções e
+									mural.
+								</p>
+								{worldError ? (
+									<p
+										id={worldErrorId}
+										className="text-[11px] font-medium text-destructive"
+									>
+										{worldError}
+									</p>
+								) : null}
+							</div>
+
+							<div className="space-y-2">
+								<label
 									htmlFor={descInputId}
 									className="text-[12px] font-semibold text-foreground"
 								>
@@ -734,18 +1050,6 @@ export function CampaignForm({
 									placeholder="Uma breve descrição da campanha..."
 									rows={3}
 								/>
-							</div>
-
-							<div className="space-y-3 rounded-xl border border-border/40 bg-muted/15 p-3.5">
-								<div className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
-									<Globe2 className="h-3.5 w-3.5 text-sky-300" />
-									Mundo da campanha
-								</div>
-								<p className="text-[11px] leading-relaxed text-muted-foreground">
-									{selectedWorld?.name ?? "Mundo ativo"}
-									{" — "}campanhas no mesmo Mundo compartilham grimório, facções
-									e mural.
-								</p>
 							</div>
 
 							{formError && (
