@@ -1139,6 +1139,14 @@ export type Database = {
 				Returns: { role: string; campaign_name: string | null }[];
 			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
+			set_character_hp: {
+				Args: {
+					p_character_id: string;
+					p_current: number;
+					p_max?: number;
+				};
+				Returns: Json;
+			};
 		};
 		Enums: {
 			[_ in never]: never;

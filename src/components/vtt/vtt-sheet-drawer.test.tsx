@@ -124,6 +124,44 @@ describe("VTTSheetDrawer · atributos", () => {
 		expect(screen.getByText("FOR: 12 − 1 = 11")).toBeTruthy();
 	});
 
+	it("ficha ligada mostra o PV da ficha antes do token", () => {
+		h.vtt.isGM = true;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 1,
+				hpMax: 2,
+			},
+		];
+		setCharacter({ health: 33, healthMax: 38 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(screen.getAllByText("33 / 38").length).toBeGreaterThan(0);
+		expect(screen.queryByText("1 / 2")).toBeNull();
+		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
+	});
+
+	it("jogador não vê nem edita o PV máximo", () => {
+		h.vtt.isGM = false;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 1,
+				hpMax: 2,
+			},
+		];
+		setCharacter({ health: 33, healthMax: 38 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(screen.getAllByText("33").length).toBeGreaterThan(0);
+		expect(screen.queryByText("33 / 38")).toBeNull();
+		expect(screen.queryByText("38")).toBeNull();
+		expect(screen.queryByRole("spinbutton", { name: "PV máximo" })).toBeNull();
+		h.vtt.isGM = true;
+	});
+
 	it("+0 sai sem sufixo (ficha antiga não vira −5)", () => {
 		setCharacter({ strength: 0 });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);

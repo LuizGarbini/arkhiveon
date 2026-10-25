@@ -24,6 +24,12 @@ import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
 import {
+	characterSheetOwnsHp,
+	saveLinkedCharacterHp,
+	selectSheetHealth,
+	tokenHpInsert,
+} from "@/lib/vtt/character-hp";
+import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
@@ -49,6 +55,11 @@ import type {
 import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls } from "@/lib/vtt/wall-sync";
+
+function readCampaignCharacters() {
+	if (typeof useRPGStore.getState !== "function") return [];
+	return useRPGStore.getState().characters;
+}
 
 export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
 	component: VTTPage,
@@ -1210,6 +1221,17 @@ function VTTSession() {
 				"É necessário estar conectado como mestre para colocar tokens.",
 			);
 
+		const sheetCharacter = tokenData.characterId
+			? readCampaignCharacters().find(
+					(character) => character.id === tokenData.characterId,
+				)
+			: undefined;
+		const hpColumns = tokenHpInsert({
+			characterId: tokenData.characterId,
+			sheetOwnsHp: characterSheetOwnsHp(sheetCharacter),
+			hpCurrent: tokenData.hpCurrent,
+			hpMax: tokenData.hpMax,
+		});
 		const insertPayload: Database["public"]["Tables"]["vtt_tokens"]["Insert"] =
 			{
 				scene_id: activeSceneId,
@@ -1222,8 +1244,8 @@ function VTTSession() {
 				y: tokenData.y || 0,
 				size_cells: tokenData.sizeCells || 1.0,
 				rotation: tokenData.rotation || 0,
-				hp_current: tokenData.hpCurrent ?? 20,
-				hp_max: tokenData.hpMax ?? 20,
+				hp_current: hpColumns.hp_current,
+				hp_max: hpColumns.hp_max,
 				elevation: tokenData.elevation || 0,
 				conditions: (tokenData.conditions || []) as unknown as Json,
 				auras: (tokenData.auras || []) as unknown as Json,
@@ -1287,24 +1309,56 @@ function VTTSession() {
 		const client = getSupabase();
 		if (!client) return false;
 
+		let pendingUpdates = updates;
+		const touchesHp =
+			updates.hpCurrent !== undefined || updates.hpMax !== undefined;
+		if (touchesHp) {
+			const token = useVTTStore.getState().tokens.find((t) => t.id === tokenId);
+			const character = token?.characterId
+				? readCampaignCharacters().find((item) => item.id === token.characterId)
+				: undefined;
+			if (token?.characterId && character && characterSheetOwnsHp(character)) {
+				const current =
+					updates.hpCurrent ??
+					selectSheetHealth({ characters: [character] }, character.id) ??
+					0;
+				const saved = await saveLinkedCharacterHp({
+					characterId: character.id,
+					current,
+					max: typeof updates.hpMax === "number" ? updates.hpMax : undefined,
+					canEditMax: isGM,
+				});
+				const rest = { ...updates };
+				delete rest.hpCurrent;
+				delete rest.hpMax;
+				if (Object.keys(rest).length === 0) return saved;
+				pendingUpdates = rest;
+			}
+		}
+
 		const dbUpdates: Database["public"]["Tables"]["vtt_tokens"]["Update"] = {};
-		if (updates.x !== undefined) dbUpdates.x = updates.x;
-		if (updates.y !== undefined) dbUpdates.y = updates.y;
-		if (updates.sizeCells !== undefined)
-			dbUpdates.size_cells = updates.sizeCells;
-		if (updates.rotation !== undefined) dbUpdates.rotation = updates.rotation;
-		if (updates.hpCurrent !== undefined)
-			dbUpdates.hp_current = updates.hpCurrent;
-		if (updates.hpMax !== undefined) dbUpdates.hp_max = updates.hpMax;
-		if (updates.elevation !== undefined)
-			dbUpdates.elevation = updates.elevation;
-		if (updates.conditions !== undefined)
-			dbUpdates.conditions = updates.conditions as unknown as Json;
-		if (updates.auras !== undefined)
-			dbUpdates.auras = updates.auras as unknown as Json;
-		if (updates.isLocked !== undefined) dbUpdates.is_locked = updates.isLocked;
-		if (updates.isHidden !== undefined) dbUpdates.is_hidden = updates.isHidden;
-		if (updates.layer !== undefined) dbUpdates.layer = updates.layer;
+		if (pendingUpdates.x !== undefined) dbUpdates.x = pendingUpdates.x;
+		if (pendingUpdates.y !== undefined) dbUpdates.y = pendingUpdates.y;
+		if (pendingUpdates.sizeCells !== undefined)
+			dbUpdates.size_cells = pendingUpdates.sizeCells;
+		if (pendingUpdates.rotation !== undefined)
+			dbUpdates.rotation = pendingUpdates.rotation;
+		if (pendingUpdates.hpCurrent !== undefined)
+			dbUpdates.hp_current = pendingUpdates.hpCurrent;
+		if (pendingUpdates.hpMax !== undefined)
+			dbUpdates.hp_max = pendingUpdates.hpMax;
+		if (pendingUpdates.elevation !== undefined)
+			dbUpdates.elevation = pendingUpdates.elevation;
+		if (pendingUpdates.conditions !== undefined)
+			dbUpdates.conditions = pendingUpdates.conditions as unknown as Json;
+		if (pendingUpdates.auras !== undefined)
+			dbUpdates.auras = pendingUpdates.auras as unknown as Json;
+		if (pendingUpdates.isLocked !== undefined)
+			dbUpdates.is_locked = pendingUpdates.isLocked;
+		if (pendingUpdates.isHidden !== undefined)
+			dbUpdates.is_hidden = pendingUpdates.isHidden;
+		if (pendingUpdates.layer !== undefined)
+			dbUpdates.layer = pendingUpdates.layer;
 
 		try {
 			const { data, error } = await client
@@ -1320,7 +1374,7 @@ function VTTSession() {
 				useVTTStore.getState().activeSceneId === activeSceneId
 			) {
 				// A completed write must not rewind a newer pointer gesture.
-				const acceptedUpdates = { ...updates };
+				const acceptedUpdates = { ...pendingUpdates };
 				if (useVTTStore.getState().draggedTokenId === tokenId) {
 					delete acceptedUpdates.x;
 					delete acceptedUpdates.y;
@@ -1338,7 +1392,7 @@ function VTTSession() {
 				return true;
 			// Status tem toast próprio no menu (com reversão): sem o aviso do
 			// rodapé para não avisar duas vezes.
-			const onlyConditions = Object.keys(updates).every(
+			const onlyConditions = Object.keys(pendingUpdates).every(
 				(k) => k === "conditions",
 			);
 			if (!onlyConditions)

@@ -331,7 +331,12 @@ export function SheetQuickStats({
 				className,
 			)}
 		>
-			<QuickStat label="PV" value={health} color="text-rose-400" />
+			<QuickStat
+				label="PV"
+				value={health}
+				color="text-rose-400"
+				compactValue={compact && health.length > 3}
+			/>
 			<QuickStat
 				label="CA"
 				value={String(combat.ac.total)}

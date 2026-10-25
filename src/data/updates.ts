@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.43-pv-da-ficha-na-mesa",
+		version: "1.6.43",
+		date: "25/10/2026",
+		title: "PV do token segue a ficha",
+		description:
+			"Na mesa, o token ligado a uma ficha mostra e altera o PV da ficha. O número que aparece é o que foi salvo, já limitado ao máximo. Se não der para salvar, o valor anterior volta e um aviso explica o que aconteceu. O jogador vê e muda só o PV atual; o mestre também pode mudar o máximo. Token sem ficha, e fichas de Ordem, continuam com o PV no próprio token.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.40-painel-lento-missoes",
 		version: "1.6.40",
 		date: "25/10/2026",

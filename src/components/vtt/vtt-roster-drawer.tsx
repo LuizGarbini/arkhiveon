@@ -20,6 +20,13 @@ import {
 } from "@/components/vtt/vtt-map-dropzone";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import {
+	characterSheetOwnsHp,
+	resolveTokenHp,
+	selectSheetHealth,
+	selectSheetHealthMax,
+	visibleHpLabel,
+} from "@/lib/vtt/character-hp";
 import { findFreeCell } from "@/lib/vtt/grid-math";
 import { dragHasFiles } from "@/lib/vtt/map-upload";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
@@ -262,7 +269,7 @@ export function VTTRosterDrawer({
 											{token.name}
 										</span>
 										<span className="text-xs tabular-nums text-muted-foreground">
-											{token.hpCurrent ?? "—"} / {token.hpMax ?? "—"} PV
+											{rosterHpText(token, characters, isGM)}
 											{token.layer === "gm" || token.isHidden
 												? " · Oculto"
 												: ""}
@@ -343,15 +350,16 @@ export function VTTRosterDrawer({
 										<Button
 											disabled={pending !== null}
 											className="h-11"
-											onClick={() =>
+											onClick={() => {
+												const ownsSheet = characterSheetOwnsHp(char);
 												void spawn(char.id, {
 													characterId: char.id,
 													name: char.characterName,
 													avatarUrl: char.imageUrl,
-													hpCurrent: char.health,
-													hpMax: char.healthMax,
-												})
-											}
+													hpCurrent: ownsSheet ? null : char.health,
+													hpMax: ownsSheet ? null : char.healthMax,
+												});
+											}}
 										>
 											<Plus className="size-4" />
 											Colocar
@@ -561,6 +569,23 @@ export function SceneMapTab({
 			)}
 		</div>
 	);
+}
+
+function rosterHpText(
+	token: VTTToken,
+	characters: Parameters<typeof selectSheetHealth>[0]["characters"],
+	isGM: boolean,
+): string {
+	const hp = resolveTokenHp({
+		tokenHpCurrent: token.hpCurrent,
+		tokenHpMax: token.hpMax,
+		sheetHealth: selectSheetHealth({ characters }, token.characterId),
+		sheetHealthMax: selectSheetHealthMax({ characters }, token.characterId),
+	});
+	if (!hp.fromSheet && token.hpCurrent == null && token.hpMax == null) {
+		return "— / — PV";
+	}
+	return `${visibleHpLabel(hp.current, hp.max, isGM || !hp.fromSheet)} PV`;
 }
 
 /**

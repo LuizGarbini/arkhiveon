@@ -10,6 +10,7 @@ import {
 import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
+	useId,
 	useRef,
 	useState,
 } from "react";
@@ -21,6 +22,7 @@ import {
 } from "@/components/character-sheet/view/sheet-header";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Tooltip,
@@ -44,6 +46,13 @@ import {
 import type { Character } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import {
+	characterSheetOwnsHp,
+	resolveTokenHp,
+	selectSheetHealth,
+	selectSheetHealthMax,
+	visibleHpLabel,
+} from "@/lib/vtt/character-hp";
 import {
 	clampSheetRect,
 	defaultSheetRect,
@@ -381,6 +390,9 @@ function SheetContent({
 	const isGM = useVTTStore((s) => s.isGM);
 	const role = useActiveCampaignRole();
 	const imageAssets = useImageAssetLookup();
+	const linkedId = token?.characterId ?? null;
+	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, linkedId));
+	const sheetHealthMax = useRPGStore((s) => selectSheetHealthMax(s, linkedId));
 
 	if (
 		token?.characterId &&
@@ -425,8 +437,18 @@ function SheetContent({
 		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
 		: SYSTEM_CONFIG.dnd5e;
 	const dice: DiceType = config.defaultDice || "d20";
-	const hpCurrent = token?.hpCurrent ?? character?.health ?? 0;
-	const hpMax = token?.hpMax ?? character?.healthMax ?? 0;
+	const sheetOwnsHp = characterSheetOwnsHp(character);
+	const hp = resolveTokenHp({
+		tokenHpCurrent: token?.hpCurrent,
+		tokenHpMax: token?.hpMax,
+		sheetHealth,
+		sheetHealthMax,
+		characterHealth: sheetOwnsHp ? undefined : character?.health,
+		characterHealthMax: sheetOwnsHp ? undefined : character?.healthMax,
+	});
+	const showMax = !hp.fromSheet || isGM;
+	// A faixa compacta usa o mesmo `atual/máximo` do restante da ficha.
+	const quickHp = showMax ? `${hp.current}/${hp.max}` : String(hp.current);
 
 	return (
 		<div className="space-y-4">
@@ -448,7 +470,7 @@ function SheetContent({
 						compact
 						character={character}
 						config={config}
-						health={`${hpCurrent}/${hpMax}`}
+						health={quickHp}
 					/>
 				</>
 			) : token?.characterId ? (
@@ -461,9 +483,19 @@ function SheetContent({
 
 			{token ? (
 				<HpControl
-					hpCurrent={hpCurrent}
-					hpMax={hpMax}
+					hpCurrent={hp.current}
+					hpMax={hp.max}
+					showMax={showMax}
 					onChange={(next) => void onUpdateToken(token.id, { hpCurrent: next })}
+					onChangeMax={
+						hp.fromSheet && isGM
+							? (nextMax) =>
+									void onUpdateToken(token.id, {
+										hpCurrent: hp.current,
+										hpMax: nextMax,
+									})
+							: undefined
+					}
 				/>
 			) : null}
 
@@ -538,12 +570,18 @@ function SheetContent({
 function HpControl({
 	hpCurrent,
 	hpMax,
+	showMax,
 	onChange,
+	onChangeMax,
 }: {
 	hpCurrent: number;
 	hpMax: number;
+	showMax: boolean;
 	onChange: (next: number) => void;
+	onChangeMax?: (next: number) => void;
 }) {
+	const maxFieldId = useId();
+	const [maxDraft, setMaxDraft] = useState<string | null>(null);
 	const ratio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
 	return (
 		<div className="space-y-2">
@@ -553,7 +591,7 @@ function HpControl({
 					Pontos de vida
 				</span>
 				<span className="font-mono tabular-nums">
-					{hpCurrent} / {hpMax}
+					{visibleHpLabel(hpCurrent, hpMax, showMax)}
 				</span>
 			</div>
 			<div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -586,6 +624,43 @@ function HpControl({
 					</Button>
 				))}
 			</div>
+			{showMax && onChangeMax ? (
+				<form
+					className="flex items-end gap-1.5"
+					onSubmit={(event) => {
+						event.preventDefault();
+						const nextMax = Number.parseInt(maxDraft ?? String(hpMax), 10);
+						if (!Number.isFinite(nextMax) || nextMax <= 0) return;
+						onChangeMax(nextMax);
+						setMaxDraft(null);
+					}}
+				>
+					<div className="min-w-0 flex-1 space-y-1">
+						<label htmlFor={maxFieldId} className="text-xs font-bold">
+							PV máximo
+						</label>
+						<Input
+							id={maxFieldId}
+							type="number"
+							min={1}
+							inputMode="numeric"
+							spellCheck={false}
+							autoComplete="off"
+							aria-label="PV máximo"
+							value={maxDraft ?? String(hpMax)}
+							onChange={(event) => setMaxDraft(event.target.value)}
+							className="h-11 text-base tabular-nums"
+						/>
+					</div>
+					<Button
+						type="submit"
+						variant="outline"
+						className="h-11 min-h-11 select-none"
+					>
+						Aplicar
+					</Button>
+				</form>
+			) : null}
 		</div>
 	);
 }

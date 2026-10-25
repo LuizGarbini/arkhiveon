@@ -9,7 +9,13 @@ import {
 } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useRPGStore } from "@/lib/store";
 import { playPingAudio } from "@/lib/vtt/audio";
+import {
+	readLinkedSheetHp,
+	resolveTokenHp,
+	selectLinkedSheetHpStamp,
+} from "@/lib/vtt/character-hp";
 import {
 	COMPACT_VISIBLE_CONDITIONS,
 	MAX_VISIBLE_CONDITIONS,
@@ -173,6 +179,13 @@ export function VTTCanvas({
 	const activeTool = useVTTStore((s) => s.activeTool);
 	const activeLayer = useVTTStore((s) => s.activeLayer);
 	const tokens = useVTTStore((s) => s.tokens);
+	const linkedCharacterIds = tokens
+		.map((token) => token.characterId)
+		.filter((id): id is string => Boolean(id))
+		.join("|");
+	const linkedSheetHp = useRPGStore((s) =>
+		selectLinkedSheetHpStamp(s.characters, linkedCharacterIds),
+	);
 	const selectedTokenIds = useVTTStore((s) => s.selectedTokenIds);
 	const setSelectedTokenIds = useVTTStore((s) => s.setSelectedTokenIds);
 	const setActiveTokenIdForMenu = useVTTStore((s) => s.setActiveTokenIdForMenu);
@@ -717,10 +730,17 @@ export function VTTCanvas({
 				tokenContainer.addChild(outerGlow);
 			}
 
-			// HP Bar (Above token)
-			if (token.hpMax && token.hpMax > 0 && !isGMLayer) {
-				const currentHp = Math.max(0, token.hpCurrent ?? 0);
-				const maxHp = Math.max(1, token.hpMax ?? currentHp ?? 1);
+			// HP Bar (Above token). Ficha ligada: PV vem do carimbo da ficha, não de hp_*.
+			const linkedHp = readLinkedSheetHp(linkedSheetHp, token.characterId);
+			const hp = resolveTokenHp({
+				tokenHpCurrent: token.hpCurrent,
+				tokenHpMax: token.hpMax,
+				sheetHealth: linkedHp?.health,
+				sheetHealthMax: linkedHp?.healthMax,
+			});
+			if (hp.max > 0 && !isGMLayer) {
+				const currentHp = Math.max(0, hp.current);
+				const maxHp = Math.max(1, hp.max);
 				const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
 
 				const barWidth = tokenRadius * 1.8;
@@ -890,6 +910,7 @@ export function VTTCanvas({
 		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
+		linkedSheetHp,
 	]);
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)

@@ -30,7 +30,14 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import {
+	resolveTokenHp,
+	selectSheetHealth,
+	selectSheetHealthMax,
+	visibleHpLabel,
+} from "@/lib/vtt/character-hp";
 import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import { StatusIcon } from "@/lib/vtt/status-icons";
@@ -59,6 +66,12 @@ export function VTTTokenMenu({
 	const viewport = useVTTStore((s) => s.viewport);
 
 	const [customHpMod, setCustomHpMod] = useState("");
+	const [maxDraft, setMaxDraft] = useState<string | null>(null);
+	const characterId = token?.characterId ?? null;
+	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, characterId));
+	const sheetHealthMax = useRPGStore((s) =>
+		selectSheetHealthMax(s, characterId),
+	);
 	const [viewerOpen, setViewerOpen] = useState(false);
 	// Quem abriu o visualizador (retrato ou item do menu) recebe o foco de volta.
 	const viewerOpenerRef = useRef<HTMLElement | null>(null);
@@ -90,10 +103,15 @@ export function VTTTokenMenu({
 		setViewerOpen(true);
 	};
 
+	const hp = resolveTokenHp({
+		tokenHpCurrent: token.hpCurrent,
+		tokenHpMax: token.hpMax,
+		sheetHealth,
+		sheetHealthMax,
+	});
+	const showMax = !hp.fromSheet || isGM;
 	const handleModifyHp = (amount: number) => {
-		const current = token.hpCurrent ?? 0;
-		const max = token.hpMax ?? current;
-		const nextHp = Math.max(0, Math.min(current + amount, max));
+		const nextHp = Math.max(0, Math.min(hp.current + amount, hp.max));
 		void onUpdateToken(token.id, { hpCurrent: nextHp });
 	};
 
@@ -303,8 +321,8 @@ export function VTTTokenMenu({
 								<Heart className="h-3.5 w-3.5 fill-rose-500/20" />
 								Pontos de Vida
 							</span>
-							<span className="font-mono text-foreground">
-								{token.hpCurrent ?? 0} / {token.hpMax ?? 0}
+							<span className="font-mono text-foreground tabular-nums">
+								{visibleHpLabel(hp.current, hp.max, showMax)}
 							</span>
 						</div>
 
@@ -369,6 +387,53 @@ export function VTTTokenMenu({
 								Cura
 							</Button>
 						</div>
+						{hp.fromSheet && isGM ? (
+							<form
+								className="flex items-end gap-1.5"
+								onSubmit={(event) => {
+									event.preventDefault();
+									const nextMax = Number.parseInt(
+										maxDraft ?? String(hp.max),
+										10,
+									);
+									if (!Number.isFinite(nextMax) || nextMax <= 0) return;
+									void onUpdateToken(token.id, {
+										hpCurrent: hp.current,
+										hpMax: nextMax,
+									});
+									setMaxDraft(null);
+								}}
+							>
+								<div className="min-w-0 flex-1 space-y-1">
+									<label
+										htmlFor={`${token.id}-hp-max`}
+										className="text-[11px] font-bold"
+									>
+										PV máximo
+									</label>
+									<Input
+										id={`${token.id}-hp-max`}
+										type="number"
+										min={1}
+										inputMode="numeric"
+										spellCheck={false}
+										autoComplete="off"
+										aria-label="PV máximo"
+										value={maxDraft ?? String(hp.max)}
+										onChange={(event) => setMaxDraft(event.target.value)}
+										className="h-11 text-base tabular-nums sm:text-xs bg-card-elevated border-border/70 rounded-xl font-mono"
+									/>
+								</div>
+								<Button
+									type="submit"
+									size="sm"
+									variant="outline"
+									className="h-11 min-h-11 select-none px-3 text-[10px] font-bold"
+								>
+									Aplicar
+								</Button>
+							</form>
+						) : null}
 					</div>
 
 					{/* Status Conditions */}
