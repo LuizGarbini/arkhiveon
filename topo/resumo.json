@@ -1,0 +1,2036 @@
+[
+ {
+  "id": "0m-vazio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24588,
+  "amostras": 181,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 93
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 93
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 93
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 15
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 93
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 93
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 93
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 93
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 93
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 93
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 93
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 93
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 93
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 15
+   },
+   "secH": {
+    "min": 244.3,
+    "max": 244.3,
+    "fim": 244.3,
+    "amostras": 93
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 93
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 93
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 93
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43445,
+  "primeiraRenderMs": 23298,
+  "carregadoMs": 47966
+ },
+ {
+  "id": "0m-cheio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24574,
+  "amostras": 181,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 93
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 93
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 93
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 93
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 93
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 93
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 93
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 93
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 93
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 93
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 93
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 93
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 13
+   },
+   "secH": {
+    "min": 244.3,
+    "max": 244.3,
+    "fim": 244.3,
+    "amostras": 93
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 93
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 93
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 93
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43408,
+  "primeiraRenderMs": 23310,
+  "carregadoMs": 48265
+ },
+ {
+  "id": "0m-vazio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 29.4,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 29.4,
+   "registrarTop": 29.4,
+   "cardPersonagens": 29.4,
+   "cardSessoes": 29.4,
+   "cardMissoes": 29.4,
+   "cardItens": 29.4,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 29.3,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 2,
+  "fonteProntaMs": 24088,
+  "amostras": 183,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 96
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 96
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 96
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 96
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 96
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 96
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 96
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 96
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 96
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 96
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 96
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 96
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 295.5,
+    "max": 295.5,
+    "fim": 295.5,
+    "amostras": 96
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 96
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 96
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 96
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43412,
+  "primeiraRenderMs": 22993,
+  "carregadoMs": 48554
+ },
+ {
+  "id": "0m-cheio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 20.1,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24897,
+  "amostras": 181,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 93
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 93
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 93
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 93
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 93
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 93
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 93
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 93
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 93
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 93
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 93
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 93
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 295.5,
+    "max": 295.5,
+    "fim": 295.5,
+    "amostras": 93
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 93
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 93
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 93
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43238,
+  "primeiraRenderMs": 23301,
+  "carregadoMs": 48314
+ },
+ {
+  "id": "3m-vazio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 29.4,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 29.4,
+   "registrarTop": 29.4,
+   "cardPersonagens": 29.4,
+   "cardSessoes": 29.4,
+   "cardMissoes": 29.4,
+   "cardItens": 29.4,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 29.3,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 2,
+  "fonteProntaMs": 24505,
+  "amostras": 181,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 94
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 94
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 94
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 94
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 94
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 94
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 94
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 94
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 94
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 94
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 94
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 94
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 13
+   },
+   "secH": {
+    "min": 548.8,
+    "max": 548.8,
+    "fim": 548.8,
+    "amostras": 94
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 94
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 94
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 94
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43287,
+  "primeiraRenderMs": 23063,
+  "carregadoMs": 48862
+ },
+ {
+  "id": "3m-vazio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24441,
+  "amostras": 182,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 95
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 95
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 95
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 95
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 95
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 95
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 95
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 95
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 95
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 95
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 95
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 95
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 439,
+    "max": 439,
+    "fim": 439,
+    "amostras": 95
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 95
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 95
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 95
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43439,
+  "primeiraRenderMs": 23072,
+  "carregadoMs": 48368
+ },
+ {
+  "id": "3m-cheio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24179,
+  "amostras": 182,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 95
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 95
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 95
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 15
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 95
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 95
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 95
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 95
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 95
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 95
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 95
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 95
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 95
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 15
+   },
+   "secH": {
+    "min": 439,
+    "max": 439,
+    "fim": 439,
+    "amostras": 95
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 95
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 95
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 95
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43098,
+  "primeiraRenderMs": 23158,
+  "carregadoMs": 48075
+ },
+ {
+  "id": "3m-cheio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 20.1,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24793,
+  "amostras": 183,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 95
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 95
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 95
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 95
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 95
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 95
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 95
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 95
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 95
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 95
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 95
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 95
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 13
+   },
+   "secH": {
+    "min": 548.8,
+    "max": 548.8,
+    "fim": 548.8,
+    "amostras": 95
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 95
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 95
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 95
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43457,
+  "primeiraRenderMs": 23320,
+  "carregadoMs": 49308
+ },
+ {
+  "id": "4m-cheio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24999,
+  "amostras": 178,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 91
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 91
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 91
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 91
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 91
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 91
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 91
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 91
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 91
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 91
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 91
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 91
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 13
+   },
+   "secH": {
+    "min": 475.3,
+    "max": 475.3,
+    "fim": 475.3,
+    "amostras": 91
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 91
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 91
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 91
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43143,
+  "primeiraRenderMs": 23212,
+  "carregadoMs": 48294
+ },
+ {
+  "id": "4m-vazio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 29.4,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 29.4,
+   "registrarTop": 29.4,
+   "cardPersonagens": 29.4,
+   "cardSessoes": 29.4,
+   "cardMissoes": 29.4,
+   "cardItens": 29.4,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 29.3,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 2,
+  "fonteProntaMs": 24612,
+  "amostras": 181,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 94
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 94
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 94
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 94
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 94
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 94
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 94
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 94
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 94
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 94
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 94
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 94
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 585,
+    "max": 585,
+    "fim": 585,
+    "amostras": 94
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 94
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 94
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 94
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43379,
+  "primeiraRenderMs": 23197,
+  "carregadoMs": 48938
+ },
+ {
+  "id": "4m-cheio-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 20.1,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24049,
+  "amostras": 184,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 97
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 97
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 631.9,
+    "fim": 631.9,
+    "amostras": 97
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 97
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 295.8,
+    "fim": 295.8,
+    "amostras": 97
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 366.9,
+    "fim": 366.9,
+    "amostras": 97
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 438.3,
+    "fim": 438.3,
+    "amostras": 97
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 524.7,
+    "fim": 524.7,
+    "amostras": 97
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 97
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 591.7,
+    "fim": 591.7,
+    "amostras": 97
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 97
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 727,
+    "fim": 727,
+    "amostras": 97
+   },
+   "avisoTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 585,
+    "max": 585,
+    "fim": 585,
+    "amostras": 97
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1187.8,
+    "fim": 1167.7,
+    "amostras": 97
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 203.4,
+    "fim": 203.4,
+    "amostras": 97
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": 59,
+    "amostras": 97
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43245,
+  "primeiraRenderMs": 23148,
+  "carregadoMs": 49195
+ },
+ {
+  "id": "4m-vazio-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": 0,
+   "secH": 0,
+   "secY": 0.8,
+   "btnX": 0,
+   "btnY": 0
+  },
+  "movimentosPosFonte": 1,
+  "fonteProntaMs": 24491,
+  "amostras": 184,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 97
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 97
+   },
+   "heroH": {
+    "min": 385,
+    "max": 385,
+    "fim": 385,
+    "amostras": 97
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 14
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 97
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 299.7,
+    "fim": 299.7,
+    "amostras": 97
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 338,
+    "fim": 338,
+    "amostras": 97
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 397.6,
+    "fim": 397.6,
+    "amostras": 97
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 462.9,
+    "fim": 462.9,
+    "amostras": 97
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 97
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 261.4,
+    "fim": 261.4,
+    "amostras": 97
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 97
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 407.6,
+    "fim": 407.6,
+    "amostras": 97
+   },
+   "avisoTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": null,
+    "amostras": 14
+   },
+   "secH": {
+    "min": 475.3,
+    "max": 475.3,
+    "fim": 475.3,
+    "amostras": 97
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 864.6,
+    "fim": 864.6,
+    "amostras": 97
+   },
+   "btnX": {
+    "min": 894.3,
+    "max": 897.1,
+    "fim": 894.3,
+    "amostras": 97
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": 23,
+    "amostras": 97
+   }
+  },
+  "indisponivelMax": 0,
+  "erroVisto": false,
+  "primeiraLentaMs": 43183,
+  "primeiraRenderMs": 23232,
+  "carregadoMs": 49290
+ },
+ {
+  "id": "controle-500-390",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": null,
+   "secH": null,
+   "secY": null,
+   "btnX": null,
+   "btnY": null
+  },
+  "movimentosPosFonte": 0,
+  "fonteProntaMs": 24424,
+  "amostras": 102,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 79.8,
+    "max": 79.8,
+    "fim": 79.8,
+    "amostras": 14
+   },
+   "discordH": {
+    "min": 146.2,
+    "max": 146.2,
+    "fim": 146.2,
+    "amostras": 14
+   },
+   "heroH": {
+    "min": 602.5,
+    "max": 772.3,
+    "fim": 772.3,
+    "amostras": 14
+   },
+   "faixaTop": {
+    "min": 277.7,
+    "max": 277.7,
+    "fim": 277.7,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 247.7,
+    "max": 247.7,
+    "fim": 247.7,
+    "amostras": 14
+   },
+   "selosTop": {
+    "min": 295.8,
+    "max": 430.6,
+    "fim": 430.6,
+    "amostras": 14
+   },
+   "tituloTop": {
+    "min": 366.9,
+    "max": 501.7,
+    "fim": 501.7,
+    "amostras": 14
+   },
+   "subtituloTop": {
+    "min": 408.9,
+    "max": 573.1,
+    "fim": 573.1,
+    "amostras": 14
+   },
+   "registrarTop": {
+    "min": 495.3,
+    "max": 659.5,
+    "fim": 659.5,
+    "amostras": 14
+   },
+   "cardPersonagens": {
+    "min": 562.3,
+    "max": 726.5,
+    "fim": 726.5,
+    "amostras": 14
+   },
+   "cardSessoes": {
+    "min": 562.3,
+    "max": 726.5,
+    "fim": 726.5,
+    "amostras": 14
+   },
+   "cardMissoes": {
+    "min": 697.6,
+    "max": 864.5,
+    "fim": 864.5,
+    "amostras": 14
+   },
+   "cardItens": {
+    "min": 697.6,
+    "max": 864.5,
+    "fim": 864.5,
+    "amostras": 14
+   },
+   "avisoTop": null,
+   "secH": {
+    "min": 548.8,
+    "max": 548.8,
+    "fim": null,
+    "amostras": 1
+   },
+   "secY": {
+    "min": 1158.5,
+    "max": 1158.5,
+    "fim": null,
+    "amostras": 1
+   },
+   "btnX": {
+    "min": 199.4,
+    "max": 199.4,
+    "fim": null,
+    "amostras": 1
+   },
+   "btnY": {
+    "min": 59,
+    "max": 59,
+    "fim": null,
+    "amostras": 1
+   }
+  },
+  "indisponivelMax": 7,
+  "erroVisto": true,
+  "primeiraLentaMs": null,
+  "primeiraRenderMs": 23175,
+  "carregadoMs": null
+ },
+ {
+  "id": "controle-500-1440",
+  "base": "http://127.0.0.1:4531",
+  "deltaPosFonte": {
+   "discordTop": 0,
+   "discordH": 0,
+   "heroH": 0,
+   "faixaTop": 0,
+   "heroTop": 0,
+   "selosTop": 0,
+   "tituloTop": 0,
+   "subtituloTop": 0,
+   "registrarTop": 0,
+   "cardPersonagens": 0,
+   "cardSessoes": 0,
+   "cardMissoes": 0,
+   "cardItens": 0,
+   "avisoTop": null,
+   "secH": null,
+   "secY": null,
+   "btnX": null,
+   "btnY": null
+  },
+  "movimentosPosFonte": 0,
+  "fonteProntaMs": 24423,
+  "amostras": 102,
+  "assetsJsCss": {
+   "n": 25,
+   "gzBytes": 1135803
+  },
+  "delta": {
+   "discordTop": {
+    "min": 98.9,
+    "max": 98.9,
+    "fim": 98.9,
+    "amostras": 14
+   },
+   "discordH": {
+    "min": 78.1,
+    "max": 78.1,
+    "fim": 78.1,
+    "amostras": 14
+   },
+   "heroH": {
+    "min": 385,
+    "max": 435.6,
+    "fim": 432.3,
+    "amostras": 14
+   },
+   "faixaTop": {
+    "min": 243.3,
+    "max": 243.3,
+    "fim": 243.3,
+    "amostras": 13
+   },
+   "heroTop": {
+    "min": 198.8,
+    "max": 198.8,
+    "fim": 198.8,
+    "amostras": 14
+   },
+   "selosTop": {
+    "min": 299.7,
+    "max": 348.7,
+    "fim": 347,
+    "amostras": 14
+   },
+   "tituloTop": {
+    "min": 338,
+    "max": 386.9,
+    "fim": 385.3,
+    "amostras": 14
+   },
+   "subtituloTop": {
+    "min": 397.6,
+    "max": 446.6,
+    "fim": 445,
+    "amostras": 14
+   },
+   "registrarTop": {
+    "min": 462.9,
+    "max": 511.8,
+    "fim": 510.2,
+    "amostras": 14
+   },
+   "cardPersonagens": {
+    "min": 261.4,
+    "max": 308.7,
+    "fim": 308.7,
+    "amostras": 14
+   },
+   "cardSessoes": {
+    "min": 261.4,
+    "max": 308.7,
+    "fim": 308.7,
+    "amostras": 14
+   },
+   "cardMissoes": {
+    "min": 407.6,
+    "max": 456.5,
+    "fim": 454.9,
+    "amostras": 14
+   },
+   "cardItens": {
+    "min": 407.6,
+    "max": 456.5,
+    "fim": 454.9,
+    "amostras": 14
+   },
+   "avisoTop": null,
+   "secH": {
+    "min": 439,
+    "max": 439,
+    "fim": null,
+    "amostras": 1
+   },
+   "secY": {
+    "min": 863.8,
+    "max": 863.8,
+    "fim": null,
+    "amostras": 1
+   },
+   "btnX": {
+    "min": 897.1,
+    "max": 897.1,
+    "fim": null,
+    "amostras": 1
+   },
+   "btnY": {
+    "min": 23,
+    "max": 23,
+    "fim": null,
+    "amostras": 1
+   }
+  },
+  "indisponivelMax": 7,
+  "erroVisto": true,
+  "primeiraLentaMs": null,
+  "primeiraRenderMs": 23171,
+  "carregadoMs": null
+ }
+]
