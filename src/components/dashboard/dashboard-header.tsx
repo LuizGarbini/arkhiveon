@@ -188,8 +188,13 @@ export function DashboardHeader({
 	const roleLabel = roleSealLabel(campaignRole);
 	// Sem papel no cache, reserva o selo do mestre (o caso que quebra em 2 linhas).
 	const reservedRoleLabel = campaignRole ? roleLabel : ROLE_SEAL_FALLBACK;
+	// Sem mesa ativa o retrato da lista ainda não diz o sistema. Reserva o
+	// selo mesmo com as campanhas já no store (o caso "mesa sem sistema" segue
+	// sem selo: a mesa existe e o campo veio vazio).
 	const reserveUnknownSystem =
-		countStatus !== "ready" && !hasCampaignSnapshot && !systemName;
+		countStatus !== "ready" &&
+		!systemName &&
+		(!hasCampaignSnapshot || !activeCampaign);
 	const systemSealText =
 		systemName ?? (reserveUnknownSystem ? SYSTEM_SEAL_FALLBACK : null);
 	const showSessionButton = !(countStatus === "ready" && isViewer);

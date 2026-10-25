@@ -1123,6 +1123,43 @@ describe("Skeleton do painel com a forma real", () => {
 		).toBe("D&D 5ª Edição (2014)");
 	});
 
+	it("campanhas prontas e mesa ainda não: selos ficam em placeholder", () => {
+		// loadCampaigns grava a lista antes de escolher a mesa ativa. Nesse
+		// intervalo o sistema e o papel ainda não existem — os placeholders
+		// não podem sair, nem o vazio da Última Sessão.
+		setDashboardState({
+			campaigns: [{ ...campaign, system: "dnd5e", myRole: "owner" }],
+			activeCampaignId: null,
+			activeWorldId: null,
+			hasLoadedCampaigns: true,
+			campaignLoadStatus: "ready",
+			isLoadingRemote: false,
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		const hero = section("hero");
+		const system = hero.querySelector('[data-seal="system"]');
+		const role = within(hero).getByRole("status", {
+			name: "Carregando papel na mesa",
+		});
+		expect(system?.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+		expect(
+			system
+				?.querySelector("[data-seal-label]")
+				?.getAttribute("data-seal-label"),
+		).toBe("D&D 5ª Edição (2014)");
+		expect(role.getAttribute("data-seal")).toBe("role");
+		expect(role.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+		expect(
+			role.querySelector("[data-seal-label]")?.getAttribute("data-seal-label"),
+		).toBe("Mestre da Mesa");
+		expect(screen.queryByText("D&D 5ª Edição (2014)")).toBeNull();
+		expect(screen.queryByText("Mestre da Mesa")).toBeNull();
+		expect(screen.queryByText("Jogador (Visualizador)")).toBeNull();
+		expect(screen.queryByText("Nenhuma sessão registrada")).toBeNull();
+		expect(screen.queryByText("Registrar 1ª Sessão")).toBeNull();
+	});
+
 	it("mesa sem sistema: não inventa selo de sistema no carregamento", () => {
 		setDashboardState({ isLoadingRemote: true });
 		render(<Dashboard />);
