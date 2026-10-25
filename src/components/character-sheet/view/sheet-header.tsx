@@ -312,6 +312,7 @@ export function SheetQuickStats({
 	config,
 	health,
 	compact = false,
+	showHealth = true,
 	className,
 }: {
 	character: Character;
@@ -319,6 +320,8 @@ export function SheetQuickStats({
 	/** Texto do PV (a página usa o PV da ficha; a mesa, o do token). */
 	health: string;
 	compact?: boolean;
+	/** Na mesa o PV fica só no controle; a faixa não repete o número. */
+	showHealth?: boolean;
 	className?: string;
 }) {
 	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
@@ -327,16 +330,22 @@ export function SheetQuickStats({
 		<dl
 			className={cn(
 				"grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60",
-				compact ? "grid-cols-4" : "sm:grid-cols-4",
+				compact
+					? showHealth
+						? "grid-cols-4"
+						: "grid-cols-3"
+					: "sm:grid-cols-4",
 				className,
 			)}
 		>
-			<QuickStat
-				label="PV"
-				value={health}
-				color="text-rose-400"
-				compactValue={compact && health.length > 3}
-			/>
+			{showHealth ? (
+				<QuickStat
+					label="PV"
+					value={health}
+					color="text-rose-400"
+					compactValue={compact && health.length > 3}
+				/>
+			) : null}
 			<QuickStat
 				label="CA"
 				value={String(combat.ac.total)}

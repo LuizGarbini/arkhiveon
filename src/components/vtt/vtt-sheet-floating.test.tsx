@@ -284,9 +284,7 @@ describe("Ficha flutuante: painel", () => {
 		expect(panel.querySelector("[title]")).toBeNull();
 		// Cabeçalho de arraste só com alça + X (padrão Figma); nome no título.
 		expect(screen.getByTestId("vtt-sheet-drag-handle").textContent).toBe("");
-		expect(
-			panel.querySelector('[class*="h-14"][class*="w-14"]'),
-		).toBeTruthy();
+		expect(panel.querySelector('[class*="h-14"][class*="w-14"]')).toBeTruthy();
 	});
 });
 
@@ -328,7 +326,15 @@ describe("Ficha no celular (390): Sheet de baixo", () => {
 		expect(panels()).toHaveLength(0);
 		expect(screen.queryByRole("button", { name: "Fechar ficha" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
-		expect(dialog.className).toContain("left-[4.75rem]");
+		expect(dialog.className).not.toContain("left-[4.75rem]");
+		expect(dialog.className).toContain("left-0");
+		expect(dialog.className).toContain("w-full");
+		expect(
+			document.querySelector("[data-slot='dialog-overlay']")?.className,
+		).not.toContain("left-[4.75rem]");
+		expect(
+			screen.queryByRole("button", { name: "Selecionar & Mover" }),
+		).toBeNull();
 		const handle = screen.getByTestId("bottom-sheet-handle");
 		fireEvent.pointerDown(handle, { clientY: 100, pointerId: 1 });
 		fireEvent.pointerMove(handle, { clientY: 260, pointerId: 1 });

@@ -192,7 +192,11 @@ describe("VTTTokenMenu — PV da ficha", () => {
 		});
 		expect(screen.getByText("33 / 38")).toBeTruthy();
 		expect(screen.queryByText("1 / 2")).toBeNull();
-		fireEvent.click(screen.getByRole("button", { name: "-5" }));
+		const damage = screen.getByRole("button", { name: "-5" });
+		expect(damage.getAttribute("data-slot")).toBe("button");
+		expect(damage.className).not.toContain("rose-");
+		expect(screen.getByTestId("vtt-hp-bar").className).toContain("bg-primary");
+		fireEvent.click(damage);
 		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
 	});
 

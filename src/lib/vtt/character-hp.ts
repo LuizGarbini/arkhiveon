@@ -2,6 +2,39 @@ import { showToast } from "@/components/ui/toast";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 
+/** Postgres `insufficient_privilege` — a RPC usa este código só para permissão. */
+const HP_PERMISSION_CODE = "42501";
+
+export class CharacterHpSaveError extends Error {
+	readonly code: string | null;
+
+	constructor(message: string, code: string | null) {
+		super(message);
+		this.name = "CharacterHpSaveError";
+		this.code = code;
+	}
+}
+
+export function toCharacterHpSaveError(error: unknown): CharacterHpSaveError {
+	if (error instanceof CharacterHpSaveError) return error;
+	if (typeof error === "object" && error !== null) {
+		const record = error as { message?: unknown; code?: unknown };
+		const message = typeof record.message === "string" ? record.message : "";
+		const code =
+			typeof record.code === "string" && record.code ? record.code : null;
+		if (message || code) {
+			return new CharacterHpSaveError(
+				message || "Não foi possível salvar os PV",
+				code,
+			);
+		}
+	}
+	if (error instanceof Error && error.message) {
+		return new CharacterHpSaveError(error.message, null);
+	}
+	return new CharacterHpSaveError("Não foi possível salvar os PV", null);
+}
+
 /** Ordem (incluindo fichas vindas do CRIS) não usa `health` da ficha na mesa. */
 const SHEET_HP_EXCLUDED_SYSTEMS = new Set(["ordem"]);
 
@@ -171,7 +204,7 @@ export async function commitCharacterHp(input: {
 	read: () => StoredHp | null;
 	write: (next: StoredHp) => void;
 	rpc: (args: SetCharacterHpArgs) => Promise<SetCharacterHpResult>;
-	onError: (message: string) => void;
+	onError: (error: CharacterHpSaveError) => void;
 }): Promise<boolean> {
 	const args = hpRpcArgs(input);
 	const optimistic: StoredHp = {
@@ -198,7 +231,7 @@ export async function commitCharacterHp(input: {
 		) {
 			input.write(input.previous);
 		}
-		input.onError(messageOf(error));
+		input.onError(toCharacterHpSaveError(error));
 		return false;
 	}
 }
@@ -209,9 +242,7 @@ export async function callSetCharacterHp(
 	const client = getSupabase();
 	if (!client) throw new Error("Sem conexão para alterar os PV.");
 	const { data, error } = await client.rpc("set_character_hp", args);
-	if (error) {
-		throw new Error(error.message || "Não foi possível alterar os PV.");
-	}
+	if (error) throw toCharacterHpSaveError(error);
 	return parseSetCharacterHpResult(data);
 }
 
@@ -254,10 +285,24 @@ export async function saveLinkedCharacterHp(input: {
 			}));
 		},
 		rpc: input.rpc ?? callSetCharacterHp,
-		onError: (message) => {
+		onError: (error) => {
+			if (error.code === HP_PERMISSION_CODE) {
+				showToast("error", {
+					title:
+						error.message && error.message !== "Não foi possível salvar os PV"
+							? error.message
+							: "Você não pode alterar os PV desta ficha.",
+				});
+				return;
+			}
 			showToast("error", {
-				title: "Não foi possível alterar os PV",
-				description: message,
+				title: "Não foi possível salvar os PV",
+				action: {
+					label: "Tentar de novo",
+					onClick: () => {
+						void saveLinkedCharacterHp(input);
+					},
+				},
 			});
 		},
 	});
@@ -295,13 +340,4 @@ function asInt(value: unknown): number | null {
 		if (Number.isFinite(parsed)) return Math.trunc(parsed);
 	}
 	return null;
-}
-
-function messageOf(error: unknown): string {
-	if (error instanceof Error && error.message) return error.message;
-	if (typeof error === "object" && error !== null && "message" in error) {
-		const message = error.message;
-		if (typeof message === "string" && message) return message;
-	}
-	return "Não foi possível alterar os PV.";
 }

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import type { VTTScene, VTTToken } from "./types";
 import { useVTTStore } from "./vtt-store";
@@ -99,5 +100,27 @@ describe("VTT scene lifecycle", () => {
 		expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
 		useVTTStore.getState().setActiveTokenIdForMenu(null);
 		expect(useVTTStore.getState().showRosterDrawer).toBe(true);
+	});
+
+	it("opening a sheet closes the token menu", () => {
+		useVTTStore.getState().setActiveTokenIdForMenu("token-a");
+		useVTTStore.getState().setShowCharacterSheetId("token-a");
+		expect(useVTTStore.getState().showCharacterSheetId).toBe("token-a");
+		expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
+	});
+
+	it("on a phone, opening the token menu closes the sheet", () => {
+		const original = window.matchMedia;
+		window.matchMedia = ((query: string) => ({
+			matches: query.includes("max-width"),
+			media: query,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as unknown as typeof window.matchMedia;
+		useVTTStore.getState().setShowCharacterSheetId("token-a");
+		useVTTStore.getState().setActiveTokenIdForMenu("token-a");
+		expect(useVTTStore.getState().activeTokenIdForMenu).toBe("token-a");
+		expect(useVTTStore.getState().showCharacterSheetId).toBeNull();
+		window.matchMedia = original;
 	});
 });

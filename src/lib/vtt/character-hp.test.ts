@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
@@ -15,6 +15,7 @@ import {
 	selectLinkedSheetHpStamp,
 	selectSheetHealth,
 	selectSheetHealthMax,
+	toCharacterHpSaveError,
 	tokenHpInsert,
 } from "./character-hp";
 
@@ -198,9 +199,9 @@ describe("commitCharacterHp", () => {
 		expect(stored).toEqual({ health: 30, healthMax: 40 });
 	});
 
-	it("reverts and reports the message when the RPC fails", async () => {
+	it("reverts and keeps 42501 apart from other failures", async () => {
 		let stored = { health: 33, healthMax: 38 };
-		const messages: string[] = [];
+		const codes: Array<string | null> = [];
 		const ok = await commitCharacterHp({
 			characterId: "lyra",
 			current: 28,
@@ -211,15 +212,21 @@ describe("commitCharacterHp", () => {
 				stored = next;
 			},
 			rpc: async () => {
-				throw new Error("Você não pode alterar os PV desta ficha.");
+				throw toCharacterHpSaveError({
+					message: "Você não pode alterar os PV desta ficha.",
+					code: "42501",
+				});
 			},
-			onError: (message) => {
-				messages.push(message);
+			onError: (error) => {
+				codes.push(error.code);
 			},
 		});
 		expect(ok).toBe(false);
 		expect(stored).toEqual({ health: 33, healthMax: 38 });
-		expect(messages).toEqual(["Você não pode alterar os PV desta ficha."]);
+		expect(codes).toEqual(["42501"]);
+		expect(
+			toCharacterHpSaveError(new Error("Failed to fetch")).code,
+		).toBeNull();
 	});
 
 	it("never sends p_max for a player", async () => {
@@ -250,7 +257,7 @@ describe("commitCharacterHp", () => {
 });
 
 describe("saveLinkedCharacterHp", () => {
-	it("rolls the sheet back and shows the existing error toast", async () => {
+	it("network failure offers retry of the same save and hides the raw error", async () => {
 		useRPGStore.setState({
 			characters: [
 				{
@@ -262,25 +269,70 @@ describe("saveLinkedCharacterHp", () => {
 			],
 		});
 		render(createElement(ToastProvider, null, createElement("div")));
-		let ok = true;
+		let calls = 0;
 		await act(async () => {
-			ok = await saveLinkedCharacterHp({
+			await saveLinkedCharacterHp({
 				characterId: "lyra",
 				current: 28,
-				max: 99,
 				canEditMax: false,
-				rpc: async () => {
-					throw new Error("Só o mestre pode alterar o PV máximo.");
+				rpc: async (args) => {
+					calls += 1;
+					expect(args).toEqual({ p_character_id: "lyra", p_current: 28 });
+					if (calls === 1) throw new Error("Failed to fetch");
+					return { health: 28, healthMax: 38 };
 				},
 			});
 		});
-		expect(ok).toBe(false);
+		expect(calls).toBe(1);
 		expect(useRPGStore.getState().characters[0]?.health).toBe(33);
 		expect(document.body.textContent).toContain(
-			"Não foi possível alterar os PV",
+			"Não foi possível salvar os PV",
 		);
+		expect(document.body.textContent).not.toContain("Failed to fetch");
+		expect(document.body.textContent).not.toContain(
+			"Você não pode alterar os PV desta ficha.",
+		);
+		await act(async () => {
+			screen.getByRole("button", { name: "Tentar de novo" }).click();
+		});
+		await waitFor(() => {
+			expect(useRPGStore.getState().characters[0]?.health).toBe(28);
+		});
+		expect(calls).toBe(2);
+	});
+
+	it("shows a permission message only for error 42501", async () => {
+		useRPGStore.setState({
+			characters: [
+				{
+					id: "lyra",
+					system: "dnd5e",
+					health: 33,
+					healthMax: 38,
+				} as Character,
+			],
+		});
+		render(createElement(ToastProvider, null, createElement("div")));
+		await act(async () => {
+			await saveLinkedCharacterHp({
+				characterId: "lyra",
+				current: 28,
+				canEditMax: false,
+				rpc: async () => {
+					throw toCharacterHpSaveError({
+						message: "Você não pode alterar os PV desta ficha.",
+						code: "42501",
+					});
+				},
+			});
+		});
 		expect(document.body.textContent).toContain(
-			"Só o mestre pode alterar o PV máximo.",
+			"Você não pode alterar os PV desta ficha.",
 		);
+		expect(document.body.textContent).not.toContain(
+			"Não foi possível salvar os PV",
+		);
+		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
+		expect(useRPGStore.getState().characters[0]?.health).toBe(33);
 	});
 });

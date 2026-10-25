@@ -10,7 +10,7 @@ const SCENE_ID = "scene-lyra";
 const TOKEN_ID = "token-lyra";
 const CHARACTER_ID = "char-lyra";
 const USER_ID = "preview-gm-user";
-const OUTPUT = path.join(os.homedir(), "projects", "b2b-previews");
+const OUTPUT = path.join(os.homedir(), "projects", "b2b-previews2");
 
 process.env.VITE_SUPABASE_URL = SUPABASE_URL;
 process.env.VITE_SUPABASE_ANON_KEY = "preview-anon-key";
@@ -18,7 +18,10 @@ process.env.VITE_SUPABASE_ANON_KEY = "preview-anon-key";
 const now = new Date().toISOString();
 let health = 33;
 const healthMax = 38;
-let denyNext = false;
+/** @type {null | "network" | "permission"} */
+let failMode = null;
+/** @type {Promise<void> | null} */
+let saveHold = null;
 const rpcBodies = [];
 const foreignHosts = [];
 
@@ -141,8 +144,12 @@ async function handleSupabase(route) {
 	if (url.includes("/rpc/set_character_hp")) {
 		const body = request.postDataJSON() ?? {};
 		rpcBodies.push(body);
-		if (denyNext) {
-			denyNext = false;
+		if (failMode === "network") {
+			failMode = null;
+			return route.abort("failed");
+		}
+		if (failMode === "permission") {
+			failMode = null;
 			return fulfill(
 				route,
 				{
@@ -151,6 +158,11 @@ async function handleSupabase(route) {
 				},
 				403,
 			);
+		}
+		if (saveHold) {
+			const hold = saveHold;
+			saveHold = null;
+			await hold;
 		}
 		const requested = Number(body.p_current);
 		health = Math.max(0, Math.min(requested, healthMax));
@@ -189,7 +201,8 @@ async function handleSupabase(route) {
 
 async function prepare(page) {
 	health = 33;
-	denyNext = false;
+	failMode = null;
+	saveHold = null;
 	await page.goto(`http://127.0.0.1:3117/campaigns/${CAMPAIGN_ID}/vtt`, {
 		waitUntil: "domcontentloaded",
 		timeout: 90000,
@@ -300,29 +313,123 @@ async function shoot(page, name) {
 	});
 }
 
+async function assertSharedHpStyle(page, where) {
+	const button = page.getByRole("button", { name: "-5" }).first();
+	const buttonClass = (await button.getAttribute("class")) ?? "";
+	const slot = await button.getAttribute("data-slot");
+	if (
+		slot !== "button" ||
+		buttonClass.includes("rose-") ||
+		buttonClass.includes("emerald-")
+	) {
+		throw new Error(
+			`${where}: −5 fora do botão do design system (${slot} ${buttonClass})`,
+		);
+	}
+	const barClass =
+		(await page.getByTestId("vtt-hp-bar").first().getAttribute("class")) ?? "";
+	if (!barClass.includes("bg-primary")) {
+		throw new Error(`${where}: barra sem bg-primary (${barClass})`);
+	}
+}
+
+async function resetHp(page) {
+	health = 33;
+	failMode = null;
+	saveHold = null;
+	await page.evaluate(() => {
+		const state = window.__rpg_store__.getState();
+		window.__rpg_store__.setState({
+			characters: state.characters.map((item) =>
+				item.id === "char-lyra"
+					? { ...item, health: 33, healthMax: 38 }
+					: item,
+			),
+		});
+	});
+}
+
+async function sheetHealth(page) {
+	return page.evaluate(
+		() =>
+			window.__rpg_store__
+				.getState()
+				.characters.find((item) => item.id === "char-lyra")?.health,
+	);
+}
+
 async function runViewport(page, width, height) {
 	const suffix = `${width}x${height}`;
+	const narrow = width < 700;
 	health = 33;
-	denyNext = false;
+	failMode = null;
+	saveHold = null;
 	await page.setViewportSize({ width, height });
 	await prepare(page);
 	await setRole(page, "owner");
-	const tokenX = width < 700 ? 180 : 480;
-	const tokenY = width < 700 ? 220 : 340;
+	const tokenX = narrow ? 180 : 480;
+	const tokenY = narrow ? 220 : 340;
 	await placeToken(page, tokenX, tokenY);
+
 	await openPanels(page, { menu: true, sheet: false });
 	await page.getByText("33 / 38").first().waitFor();
-	await page.waitForTimeout(400);
-	await shoot(page, `mestre-token-${suffix}`);
+	await assertSharedHpStyle(page, "menu do mestre");
+	await page.waitForTimeout(300);
+	await shoot(page, `mestre-menu-${suffix}`);
 
 	await openPanels(page, { menu: false, sheet: true });
 	await page.getByText("33 / 38").first().waitFor();
+	if ((await page.getByText("33 / 38").count()) !== 1) {
+		throw new Error("O PV do mestre aparece mais de uma vez.");
+	}
+	if ((await page.getByText("33/38").count()) !== 0) {
+		throw new Error("A ficha do mestre ainda repete 33/38.");
+	}
+	const menuStillOpen = await page.evaluate(
+		() => window.__vtt_store__.getState().activeTokenIdForMenu,
+	);
+	if (menuStillOpen) {
+		throw new Error("Abrir a ficha não fechou o menu do token.");
+	}
+	if (narrow) {
+		if (
+			(await page.getByRole("button", { name: "Fechar menu do token" }).count()) !==
+			0
+		) {
+			throw new Error("Em 390px o menu do token continua aberto com a ficha.");
+		}
+		if (
+			(await page
+				.getByRole("button", { name: "Selecionar & Mover" })
+				.count()) !== 0
+		) {
+			throw new Error(
+				"Em 390px o trilho de ferramentas aparece com a ficha aberta.",
+			);
+		}
+		const box = await page.getByRole("dialog").boundingBox();
+		if (!box || box.x > 2 || box.width < width - 8) {
+			throw new Error(
+				`Em 390px a ficha não ocupa a largura (${JSON.stringify(box)}).`,
+			);
+		}
+	}
+	await assertSharedHpStyle(page, "ficha do mestre");
 	await page.getByRole("spinbutton", { name: "PV máximo" }).waitFor();
 	await page.waitForTimeout(300);
 	await shoot(page, `mestre-ficha-${suffix}`);
 
 	await setRole(page, "viewer");
 	await placeToken(page, tokenX, tokenY);
+	await openPanels(page, { menu: true, sheet: false });
+	await page.getByText("33", { exact: true }).first().waitFor();
+	if ((await page.getByText("33 / 38").count()) !== 0) {
+		throw new Error("Jogador ainda vê o PV máximo no menu.");
+	}
+	await assertSharedHpStyle(page, "menu do jogador");
+	await page.waitForTimeout(300);
+	await shoot(page, `jogador-menu-${suffix}`);
+
 	await openPanels(page, { menu: false, sheet: true });
 	await page.getByText("33", { exact: true }).first().waitFor();
 	if ((await page.getByText("33 / 38").count()) !== 0) {
@@ -331,72 +438,98 @@ async function runViewport(page, width, height) {
 	if ((await page.getByRole("spinbutton", { name: "PV máximo" }).count()) !== 0) {
 		throw new Error("Jogador ainda pode editar o PV máximo.");
 	}
+	const ratio = await page.getByTestId("vtt-hp-bar").first().evaluate((bar) => {
+		const track = bar.parentElement;
+		if (!track) return 0;
+		const trackWidth = track.getBoundingClientRect().width;
+		if (trackWidth <= 0) return 0;
+		return bar.getBoundingClientRect().width / trackWidth;
+	});
+	if (Math.abs(ratio - 33 / 38) > 0.08) {
+		throw new Error(`A barra do jogador não é proporcional (razão ${ratio}).`);
+	}
+	await assertSharedHpStyle(page, "ficha do jogador");
 	await page.waitForTimeout(300);
-	await shoot(page, `jogador-ficha-sem-max-${suffix}`);
+	await shoot(page, `jogador-ficha-${suffix}`);
 
 	await setRole(page, "owner");
 	await placeToken(page, tokenX, tokenY);
 	await openPanels(page, { menu: false, sheet: true });
-	const damageButton = page.getByRole("button", { name: "-5" }).first();
-	try {
-		await damageButton.waitFor({ timeout: 8000 });
-	} catch (error) {
-		const state = await page.evaluate(() => {
-			const vtt = window.__vtt_store__.getState();
-			return {
-				isGM: vtt.isGM,
-				menu: vtt.activeTokenIdForMenu,
-				sheet: vtt.showCharacterSheetId,
-				open: vtt.openSheetIds,
-				scene: vtt.activeSceneId,
-				tokens: vtt.tokens.map((item) => item.id),
-			};
-		});
-		throw new Error(`Sem botão -5. ${JSON.stringify(state)}`, { cause: error });
-	}
-	const before = rpcBodies.length;
-	await damageButton.click();
-	const damageDeadline = Date.now() + 8000;
-	while (rpcBodies.length === before && Date.now() < damageDeadline) {
-		await page.waitForTimeout(50);
-	}
-	await page.getByText("28 / 38").first().waitFor();
-	const damage = rpcBodies[before];
-	if (!damage || damage.p_current !== 28 || "p_max" in damage) {
-		throw new Error(`RPC de dano inesperada: ${JSON.stringify(damage)}`);
-	}
-	await openPanels(page, { menu: true, sheet: true });
-	await page.getByText("28 / 38").nth(1).waitFor();
-	await fitSheetBelowMenu(page, width);
-	await page.waitForTimeout(400);
-	await shoot(page, `apos-dano-${suffix}`);
-
-	denyNext = true;
-	await page.getByRole("button", { name: "-5" }).first().click();
-	await page.getByText("Não foi possível alterar os PV").waitFor();
-	await page.getByText("Você não pode alterar os PV desta ficha.").waitFor();
-	await page.getByText("28 / 38").first().waitFor();
-	const reverted = await page.evaluate(
-		() =>
-			window.__rpg_store__
-				.getState()
-				.characters.find((item) => item.id === "char-lyra")?.health,
-	);
-	if (reverted !== 28) {
-		throw new Error(`O PV não voltou ao valor anterior (ficou ${reverted}).`);
-	}
-	await fitSheetBelowMenu(page, width);
-	await page.waitForTimeout(300);
-	await shoot(page, `erro-revertido-${suffix}`);
-}
-
-async function fitSheetBelowMenu(page, width) {
-	if (width >= 700) return;
-	await page.evaluate(() => {
-		const sheet = document.querySelector("[data-vtt-focus-scope='sheet']");
-		if (!(sheet instanceof HTMLElement)) return;
-		sheet.style.maxHeight = "52dvh";
+	await resetHp(page);
+	await page.getByText("33 / 38").first().waitFor();
+	let releaseSave = () => {};
+	saveHold = new Promise((resolve) => {
+		releaseSave = resolve;
 	});
+	try {
+		const beforeSave = rpcBodies.length;
+		await page.getByRole("button", { name: "-5" }).first().click();
+		await page.getByText("Salvando…").waitFor();
+		if (!(await page.getByRole("button", { name: "-5" }).first().isDisabled())) {
+			throw new Error("O botão −5 não travou enquanto salvava.");
+		}
+		await page.waitForTimeout(200);
+		await shoot(page, `salvando-${suffix}`);
+		releaseSave();
+		await page.getByText("28 / 38").first().waitFor();
+		await page.getByText("Salvando…").waitFor({ state: "hidden" });
+		if (rpcBodies.length !== beforeSave + 1 || rpcBodies[beforeSave]?.p_current !== 28) {
+			throw new Error(
+				`O salvamento não foi uma gravação só: ${JSON.stringify(rpcBodies.slice(beforeSave))}`,
+			);
+		}
+	} finally {
+		releaseSave();
+	}
+
+	await resetHp(page);
+	await page.getByText("33 / 38").first().waitFor();
+	failMode = "network";
+	const beforeNetwork = rpcBodies.length;
+	await page.getByRole("button", { name: "-5" }).first().click();
+	await page.getByText("Não foi possível salvar os PV").waitFor();
+	// No celular a ficha é um dialog e o aviso fica fora dele: o papel some
+	// da árvore, mas o botão continua na tela e recebe o clique.
+	const retry = page.getByText("Tentar de novo", { exact: true });
+	await retry.waitFor();
+	const healthAfterNetwork = await sheetHealth(page);
+	if (healthAfterNetwork !== 33) {
+		throw new Error(
+			`A falha de rede não devolveu o PV anterior (ficou ${healthAfterNetwork}).`,
+		);
+	}
+	await page.waitForTimeout(200);
+	await shoot(page, `erro-rede-${suffix}`);
+	await retry.click({ force: true });
+	await page.getByText("28 / 38").first().waitFor();
+	await page.getByText("Salvando…").waitFor({ state: "hidden" });
+	const retried = rpcBodies[beforeNetwork + 1];
+	if (!retried || retried.p_current !== 28) {
+		throw new Error(
+			`Tentar de novo não refez a mesma gravação: ${JSON.stringify(rpcBodies.slice(beforeNetwork))}`,
+		);
+	}
+	await page.getByText("Não foi possível salvar os PV").waitFor({ state: "detached" });
+	await page
+		.getByText("Tentar de novo", { exact: true })
+		.waitFor({ state: "detached" });
+
+	await resetHp(page);
+	await page.getByText("33 / 38").first().waitFor();
+	failMode = "permission";
+	await page.getByRole("button", { name: "-5" }).first().click();
+	await page.getByText("Você não pode alterar os PV desta ficha.").waitFor();
+	if ((await page.getByText("Não foi possível salvar os PV").count()) !== 0) {
+		throw new Error("Erro 42501 mostrou a mensagem de rede.");
+	}
+	if ((await page.getByText("Tentar de novo", { exact: true }).count()) !== 0) {
+		throw new Error("Erro 42501 ofereceu Tentar de novo.");
+	}
+	if ((await sheetHealth(page)) !== 33) {
+		throw new Error("A falta de permissão não devolveu o PV anterior.");
+	}
+	await page.waitForTimeout(200);
+	await shoot(page, `erro-permissao-${suffix}`);
 }
 
 async function main() {
@@ -440,6 +573,7 @@ async function main() {
 		}
 		console.log(`PNGs em ${OUTPUT}`);
 	} catch (error) {
+		console.error(error instanceof Error ? error.stack ?? error.message : error);
 		await page
 			.screenshot({ path: path.join(OUTPUT, "debug-falha.png") })
 			.catch(() => {});
@@ -447,7 +581,8 @@ async function main() {
 			.locator("body")
 			.innerText()
 			.catch(() => "");
-		console.error(text.slice(0, 2500));
+		console.error(text.slice(0, 1200));
+		process.exitCode = 1;
 		throw error;
 	} finally {
 		await Promise.race([

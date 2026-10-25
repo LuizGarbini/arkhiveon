@@ -55,6 +55,7 @@ export function VTTToolbar() {
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
 	const wallsStatus = useVTTStore((s) => s.wallsStatus);
 	const isMobile = useIsMobile();
+	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
 
 	// Global Keyboard Shortcuts
@@ -143,6 +144,8 @@ export function VTTToolbar() {
 		{ id: "token", label: "Camada de Tokens", icon: Users },
 		{ id: "gm", label: "Camada do Mestre", icon: ShieldAlert },
 	];
+
+	if (isMobile && sheetOpen) return null;
 
 	return (
 		<div className="absolute left-3 top-32 overflow-y-auto max-h-[calc(100dvh-14rem)] z-30 flex flex-col items-center w-14 p-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200">

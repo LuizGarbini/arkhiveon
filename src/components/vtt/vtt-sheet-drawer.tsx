@@ -1,16 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import {
-	AlertTriangle,
-	Dices,
-	GripHorizontal,
-	Heart,
-	Plus,
-	X,
-} from "lucide-react";
+import { AlertTriangle, Dices, GripHorizontal, Plus, X } from "lucide-react";
 import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
-	useId,
 	useRef,
 	useState,
 } from "react";
@@ -22,13 +14,13 @@ import {
 } from "@/components/character-sheet/view/sheet-header";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import { characterAttributeScore } from "@/core/rules";
 import {
 	isCharacterImageHidden,
@@ -51,7 +43,6 @@ import {
 	resolveTokenHp,
 	selectSheetHealth,
 	selectSheetHealthMax,
-	visibleHpLabel,
 } from "@/lib/vtt/character-hp";
 import {
 	clampSheetRect,
@@ -358,9 +349,8 @@ function MobileSheet({
 			title={<span className="sr-only">Ficha de {name}</span>}
 			aria-label={`Ficha de ${name}`}
 			data-vtt-focus-scope="sheet"
-			// Não cobre a barra de ferramentas da mesa (left-3 + w-14).
-			className="left-[4.75rem] right-0 w-auto max-h-[78dvh] bg-card-elevated backdrop-blur-none"
-			overlayClassName="left-[4.75rem] bg-black/30 backdrop-blur-none"
+			className="max-h-[78dvh] bg-card-elevated backdrop-blur-none"
+			overlayClassName="bg-black/60 backdrop-blur-none"
 		>
 			<SheetContent
 				token={token}
@@ -468,6 +458,7 @@ function SheetContent({
 					/>
 					<SheetQuickStats
 						compact
+						showHealth={false}
 						character={character}
 						config={config}
 						health={quickHp}
@@ -482,15 +473,15 @@ function SheetContent({
 			)}
 
 			{token ? (
-				<HpControl
+				<VttHpAdjust
 					hpCurrent={hp.current}
 					hpMax={hp.max}
 					showMax={showMax}
-					onChange={(next) => void onUpdateToken(token.id, { hpCurrent: next })}
+					onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
 					onChangeMax={
 						hp.fromSheet && isGM
 							? (nextMax) =>
-									void onUpdateToken(token.id, {
+									onUpdateToken(token.id, {
 										hpCurrent: hp.current,
 										hpMax: nextMax,
 									})
@@ -563,104 +554,6 @@ function SheetContent({
 					Rolar {config.defaultDice || "d20"}
 				</Button>
 			</div>
-		</div>
-	);
-}
-
-function HpControl({
-	hpCurrent,
-	hpMax,
-	showMax,
-	onChange,
-	onChangeMax,
-}: {
-	hpCurrent: number;
-	hpMax: number;
-	showMax: boolean;
-	onChange: (next: number) => void;
-	onChangeMax?: (next: number) => void;
-}) {
-	const maxFieldId = useId();
-	const [maxDraft, setMaxDraft] = useState<string | null>(null);
-	const ratio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
-	return (
-		<div className="space-y-2">
-			<div className="flex items-center justify-between text-xs font-bold">
-				<span className="flex items-center gap-1.5 text-rose-400">
-					<Heart className="h-3.5 w-3.5" />
-					Pontos de vida
-				</span>
-				<span className="font-mono tabular-nums">
-					{visibleHpLabel(hpCurrent, hpMax, showMax)}
-				</span>
-			</div>
-			<div className="h-2 overflow-hidden rounded-full bg-muted">
-				<div
-					className="h-full rounded-full bg-primary transition-[width] duration-150"
-					style={{ width: `${ratio * 100}%` }}
-				/>
-			</div>
-			<div className="grid grid-cols-4 gap-1.5">
-				{[-5, -1, 1, 5].map((delta) => (
-					<Button
-						type="button"
-						key={delta}
-						variant="outline"
-						size="sm"
-						className={cn(
-							"min-h-11 font-mono",
-							delta < 0 ? "text-destructive" : "text-primary",
-						)}
-						onClick={() =>
-							onChange(
-								Math.max(
-									0,
-									Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
-								),
-							)
-						}
-					>
-						{delta > 0 ? `+${delta}` : delta}
-					</Button>
-				))}
-			</div>
-			{showMax && onChangeMax ? (
-				<form
-					className="flex items-end gap-1.5"
-					onSubmit={(event) => {
-						event.preventDefault();
-						const nextMax = Number.parseInt(maxDraft ?? String(hpMax), 10);
-						if (!Number.isFinite(nextMax) || nextMax <= 0) return;
-						onChangeMax(nextMax);
-						setMaxDraft(null);
-					}}
-				>
-					<div className="min-w-0 flex-1 space-y-1">
-						<label htmlFor={maxFieldId} className="text-xs font-bold">
-							PV máximo
-						</label>
-						<Input
-							id={maxFieldId}
-							type="number"
-							min={1}
-							inputMode="numeric"
-							spellCheck={false}
-							autoComplete="off"
-							aria-label="PV máximo"
-							value={maxDraft ?? String(hpMax)}
-							onChange={(event) => setMaxDraft(event.target.value)}
-							className="h-11 text-base tabular-nums"
-						/>
-					</div>
-					<Button
-						type="submit"
-						variant="outline"
-						className="h-11 min-h-11 select-none"
-					>
-						Aplicar
-					</Button>
-				</form>
-			) : null}
 		</div>
 	);
 }

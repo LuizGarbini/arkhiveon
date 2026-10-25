@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { calculateAbilityModifier, formatModifier } from "@/core/rules";
 
@@ -137,7 +143,8 @@ describe("VTTSheetDrawer · atributos", () => {
 		];
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(screen.getAllByText("33 / 38").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("33 / 38")).toHaveLength(1);
+		expect(screen.queryByText("33/38")).toBeNull();
 		expect(screen.queryByText("1 / 2")).toBeNull();
 		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
 	});
@@ -160,6 +167,39 @@ describe("VTTSheetDrawer · atributos", () => {
 		expect(screen.queryByText("38")).toBeNull();
 		expect(screen.queryByRole("spinbutton", { name: "PV máximo" })).toBeNull();
 		h.vtt.isGM = true;
+	});
+
+	it("enquanto salva, mostra Salvando e ignora o segundo clique", async () => {
+		let resolveSave: (value: boolean) => void = () => {};
+		const onUpdateToken = vi.fn(
+			() =>
+				new Promise<boolean>((resolve) => {
+					resolveSave = resolve;
+				}),
+		);
+		h.vtt.isGM = true;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 1,
+				hpMax: 2,
+			},
+		];
+		setCharacter({ health: 33, healthMax: 38 });
+		render(<VTTSheetDrawer onUpdateToken={onUpdateToken} />);
+		const minus = screen.getByRole("button", { name: "-5" });
+		fireEvent.click(minus);
+		fireEvent.click(minus);
+		expect(onUpdateToken).toHaveBeenCalledTimes(1);
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
+		expect(screen.getByText("Salvando…")).toBeTruthy();
+		expect((minus as HTMLButtonElement).disabled).toBe(true);
+		await act(async () => {
+			resolveSave(true);
+		});
+		expect((minus as HTMLButtonElement).disabled).toBe(false);
 	});
 
 	it("+0 sai sem sufixo (ficha antiga não vira −5)", () => {

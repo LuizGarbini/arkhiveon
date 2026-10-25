@@ -1,7 +1,6 @@
 import {
 	Eye,
 	EyeOff,
-	Heart,
 	Lock,
 	Maximize2,
 	Minus,
@@ -14,6 +13,7 @@ import {
 	X,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,13 +30,13 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
 	resolveTokenHp,
 	selectSheetHealth,
 	selectSheetHealthMax,
-	visibleHpLabel,
 } from "@/lib/vtt/character-hp";
 import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
@@ -66,7 +66,8 @@ export function VTTTokenMenu({
 	const viewport = useVTTStore((s) => s.viewport);
 
 	const [customHpMod, setCustomHpMod] = useState("");
-	const [maxDraft, setMaxDraft] = useState<string | null>(null);
+	const isMobile = useIsMobile();
+	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const characterId = token?.characterId ?? null;
 	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, characterId));
 	const sheetHealthMax = useRPGStore((s) =>
@@ -95,6 +96,7 @@ export function VTTTokenMenu({
 	const onDeleteToken = (id: string) => runMutation(() => deleteToken(id));
 
 	if (!token || activeTokenIdForMenu !== token.id) return null;
+	if (isMobile && sheetOpen) return null;
 
 	const viewerSrc = tokenImageForViewer(token, isGM);
 	const viewerLabel = token.name.trim() || "Sem nome";
@@ -314,126 +316,50 @@ export function VTTTokenMenu({
 				className="min-w-0 space-y-3 disabled:opacity-60"
 			>
 				<div className="space-y-3">
-					{/* HP Adjustment Section */}
-					<div className="space-y-2">
-						<div className="flex items-center justify-between text-[11px] font-bold">
-							<span className="flex items-center gap-1.5 text-rose-400">
-								<Heart className="h-3.5 w-3.5 fill-rose-500/20" />
-								Pontos de Vida
-							</span>
-							<span className="font-mono text-foreground tabular-nums">
-								{visibleHpLabel(hp.current, hp.max, showMax)}
-							</span>
-						</div>
-
-						{/* Quick Health Buttons */}
-						<div className="grid grid-cols-4 gap-1.5">
-							<button
-								type="button"
-								onClick={() => handleModifyHp(-5)}
-								className="min-h-11 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								-5
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(-1)}
-								className="min-h-11 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								-1
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(1)}
-								className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								+1
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(5)}
-								className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								+5
-							</button>
-						</div>
-
-						{/* Custom HP Input */}
-						<div className="flex items-center gap-1.5 pt-1">
-							<Input
-								type="number"
-								aria-label="Quantidade de dano ou cura"
-								placeholder="Valor..."
-								value={customHpMod}
-								onChange={(e) => setCustomHpMod(e.target.value)}
-								className="h-11 text-base sm:text-xs bg-card-elevated border-border/70 rounded-xl font-mono"
-							/>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => handleCustomHp(true)}
-								className="h-11 px-3 text-[10px] font-bold border-rose-500/40 text-rose-300 hover:bg-rose-500/20"
-							>
-								Dano
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => handleCustomHp(false)}
-								className="h-11 px-3 text-[10px] font-bold border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
-							>
-								Cura
-							</Button>
-						</div>
-						{hp.fromSheet && isGM ? (
-							<form
-								className="flex items-end gap-1.5"
-								onSubmit={(event) => {
-									event.preventDefault();
-									const nextMax = Number.parseInt(
-										maxDraft ?? String(hp.max),
-										10,
-									);
-									if (!Number.isFinite(nextMax) || nextMax <= 0) return;
-									void onUpdateToken(token.id, {
-										hpCurrent: hp.current,
-										hpMax: nextMax,
-									});
-									setMaxDraft(null);
-								}}
-							>
-								<div className="min-w-0 flex-1 space-y-1">
-									<label
-										htmlFor={`${token.id}-hp-max`}
-										className="text-[11px] font-bold"
-									>
-										PV máximo
-									</label>
-									<Input
-										id={`${token.id}-hp-max`}
-										type="number"
-										min={1}
-										inputMode="numeric"
-										spellCheck={false}
-										autoComplete="off"
-										aria-label="PV máximo"
-										value={maxDraft ?? String(hp.max)}
-										onChange={(event) => setMaxDraft(event.target.value)}
-										className="h-11 text-base tabular-nums sm:text-xs bg-card-elevated border-border/70 rounded-xl font-mono"
-									/>
-								</div>
-								<Button
-									type="submit"
-									size="sm"
-									variant="outline"
-									className="h-11 min-h-11 select-none px-3 text-[10px] font-bold"
-								>
-									Aplicar
-								</Button>
-							</form>
-						) : null}
+					<VttHpAdjust
+						hpCurrent={hp.current}
+						hpMax={hp.max}
+						showMax={showMax}
+						onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
+						onChangeMax={
+							hp.fromSheet && isGM
+								? (nextMax) =>
+										onUpdateToken(token.id, {
+											hpCurrent: hp.current,
+											hpMax: nextMax,
+										})
+								: undefined
+						}
+					/>
+					<div className="flex items-center gap-1.5">
+						<Input
+							type="number"
+							aria-label="Quantidade de dano ou cura"
+							placeholder="Valor..."
+							value={customHpMod}
+							spellCheck={false}
+							autoComplete="off"
+							onChange={(e) => setCustomHpMod(e.target.value)}
+							className="h-11 bg-card-elevated border-border/70 rounded-xl font-mono text-base tabular-nums"
+						/>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							onClick={() => handleCustomHp(true)}
+							className="h-11 min-h-11 px-3 text-xs font-bold text-destructive"
+						>
+							Dano
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							onClick={() => handleCustomHp(false)}
+							className="h-11 min-h-11 px-3 text-xs font-bold text-primary"
+						>
+							Cura
+						</Button>
 					</div>
 
 					{/* Status Conditions */}
