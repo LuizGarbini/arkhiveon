@@ -7,6 +7,10 @@ import { useRPGStore } from "./store";
 import { BASE_LOAD_ERROR_MESSAGE } from "./store/helpers";
 import { BASE_LOAD_TIMEOUT_MS } from "./store/sync-slice";
 
+/** Prazo em que a carga ainda é só “lenta”; o teto vira erro. */
+const SLOW_MS = 20_000;
+const CEILING_MS = 60_000;
+
 /**
  * Consultas base do painel (antes de loadRemoteData): campanhas, vínculos,
  * plano do mestre e convites. Qualquer uma falhando leva ao estado de erro
@@ -18,6 +22,7 @@ type Table = "rpc" | "memberships" | "invites" | "campaigns" | "user_plans";
 const net = vi.hoisted(() => ({
 	failing: new Set<string>(),
 	hang: false,
+	release: [] as Array<() => void>,
 	rawMessage: "TypeError: Failed to fetch",
 }));
 
@@ -51,12 +56,16 @@ const CAMPAIGN_ROW = {
 };
 
 function response(table: string, okData: unknown) {
-	if (net.hang) return new Promise(() => {});
-	return Promise.resolve(
+	const payload = () =>
 		net.failing.has(table)
 			? { data: null, error: { message: net.rawMessage } }
-			: { data: okData, error: null },
-	);
+			: { data: okData, error: null };
+	if (net.hang) {
+		return new Promise((resolve) => {
+			net.release.push(() => resolve(payload()));
+		});
+	}
+	return Promise.resolve(payload());
 }
 
 /** Query encadeável: a própria promessa da resposta, com os métodos do builder. */
@@ -90,6 +99,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	net.failing.clear();
 	net.hang = false;
+	net.release = [];
 	mockSupabase.client = {
 		auth: {
 			getSession: vi.fn().mockResolvedValue({
@@ -137,10 +147,17 @@ beforeEach(() => {
 		remoteLoadError: null,
 		remoteLoadedCampaignId: null,
 		baseLoadError: null,
+		isBaseLoadSlow: false,
 		isRetryingBase: false,
 		syncError: null,
 	});
 });
+
+function releaseHang() {
+	net.hang = false;
+	const pending = net.release.splice(0);
+	for (const resume of pending) resume();
+}
 
 afterEach(() => {
 	vi.useRealTimers();
@@ -162,6 +179,7 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		const s = useRPGStore.getState();
 		expect(selectDashboardDataStatus(s)).toBe("ready");
 		expect(s.baseLoadError).toBeNull();
+		expect(s.isBaseLoadSlow).toBe(false);
 	});
 
 	it("campanhas (RPC + fallback de campaigns/memberships) falhando", async () => {
@@ -205,17 +223,58 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		expectGlobalError();
 	});
 
-	it("rede pendurada: depois do prazo o skeleton vira o aviso", async () => {
+	it("rede pendurada passa de 20s: fica lenta, sem erro e sem sair do skeleton", async () => {
 		vi.useFakeTimers();
 		net.hang = true;
 		void useRPGStore.getState().bootstrapCampaignData();
 		await vi.advanceTimersByTimeAsync(10);
 		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
-		await vi.advanceTimersByTimeAsync(BASE_LOAD_TIMEOUT_MS);
+		await vi.advanceTimersByTimeAsync(SLOW_MS);
+		const slow = useRPGStore.getState();
+		expect(slow.isBaseLoadSlow).toBe(true);
+		expect(slow.baseLoadError).toBeNull();
+		expect(slow.syncError).toBeNull();
+		expect(selectDashboardDataStatus(slow)).toBe("loading");
+		expect(slow.campaignLoadStatus).not.toBe("error");
+	});
+
+	it("erro real de rede vira erro e não fica só como conexão lenta", async () => {
+		net.failing = new Set(["rpc", "memberships", "invites", "campaigns"]);
+		await useRPGStore.getState().bootstrapCampaignData();
 		expectGlobalError();
+		expect(useRPGStore.getState().isBaseLoadSlow).toBe(false);
+	});
+
+	it("rede pendurada até o teto de 60s: aí sim vira erro", async () => {
+		vi.useFakeTimers();
+		net.hang = true;
+		void useRPGStore.getState().bootstrapCampaignData();
+		await vi.advanceTimersByTimeAsync(SLOW_MS);
+		expect(useRPGStore.getState().isBaseLoadSlow).toBe(true);
+		expect(useRPGStore.getState().baseLoadError).toBeNull();
+		await vi.advanceTimersByTimeAsync(CEILING_MS - SLOW_MS);
+		expect(BASE_LOAD_TIMEOUT_MS).toBe(CEILING_MS);
+		expectGlobalError();
+		expect(useRPGStore.getState().isBaseLoadSlow).toBe(false);
 		// Sem snapshot de campanhas, a raiz não pode ficar em
 		// "Carregando campanhas..." para sempre.
 		expect(useRPGStore.getState().campaignLoadStatus).toBe("error");
+	});
+
+	it("sucesso depois da lentidão ou do teto limpa slow e o erro", async () => {
+		vi.useFakeTimers();
+		net.hang = true;
+		const pending = useRPGStore.getState().bootstrapCampaignData();
+		await vi.advanceTimersByTimeAsync(CEILING_MS);
+		expect(useRPGStore.getState().baseLoadError).not.toBeNull();
+		expectGlobalError();
+		releaseHang();
+		await pending;
+		const s = useRPGStore.getState();
+		expect(s.isBaseLoadSlow).toBe(false);
+		expect(s.baseLoadError).toBeNull();
+		expect(s.syncError).toBeNull();
+		expect(selectDashboardDataStatus(s)).toBe("ready");
 	});
 
 	it("Tentar de novo volta ao skeleton e, com a rede de volta, fica pronto", async () => {

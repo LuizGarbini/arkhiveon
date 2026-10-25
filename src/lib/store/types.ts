@@ -802,6 +802,8 @@ export interface RPGState {
 	remoteLoadedCampaignId: string | null;
 	/** Falha das consultas base (campanhas, vínculos, plano, convites). Mensagem leiga. */
 	baseLoadError: string | null;
+	/** loadCampaigns passou de ~20s sem resposta: skeleton segue, sem erro. */
+	isBaseLoadSlow: boolean;
 	/** Nova tentativa da carga base em andamento (tela volta ao skeleton). */
 	isRetryingBase: boolean;
 	/** Sobe a cada nova tentativa; quem carrega dado base fora do store recarrega. */

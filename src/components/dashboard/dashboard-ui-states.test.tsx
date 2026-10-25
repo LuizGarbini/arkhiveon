@@ -143,6 +143,7 @@ function setDashboardState(partial: Partial<RPGState>) {
 		isLoadingRemote: false,
 		remoteLoadError: null,
 		baseLoadError: null,
+		isBaseLoadSlow: false,
 		isRetryingBase: false,
 		remoteLoadedCampaignId: campaign.id,
 		characters: [],
@@ -404,7 +405,6 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 			empty: "Nenhuma sessão registrada",
 			cta: "Registrar 1ª Sessão",
 		},
-		{ name: "Missões", empty: "Nenhuma missão ativa", cta: "Nova Missão" },
 		{
 			name: "Grupo",
 			empty: "Nenhum personagem cadastrado",
@@ -428,6 +428,89 @@ describe("Painel após reload: nada de vazio/CTA/0 antes dos dados", () => {
 			if (section.cta) expect(screen.getByText(section.cta)).toBeTruthy();
 		});
 	}
+
+	it("Missões: lista ou vazio na hora, sem skeleton, com Nova Missão fixa no título", () => {
+		setDashboardState(beforeMesaData);
+		const loading = render(<Dashboard />);
+		const quests = document.querySelector(
+			'[data-dash-section="active-quests"]',
+		);
+		if (!quests) throw new Error("seção de missões não encontrada");
+		expect(quests.querySelector("[data-dashboard-skeleton]")).toBeNull();
+		expect(screen.getByText("Nenhuma missão ativa")).toBeTruthy();
+		const nova = screen.getByRole("link", { name: "Nova Missão" });
+		expect(nova.tagName).toBe("A");
+		expect(nova.querySelector("button")).toBeNull();
+		expect(nova.closest("button")).toBeNull();
+		expect(nova.className).toContain("min-h-[44px]");
+		expect(nova.className).toContain("sm:min-h-8");
+		expect(nova.closest(".border-dashed")).toBeNull();
+		expect(
+			within(quests.firstElementChild as HTMLElement).getByText(/Ver todas/),
+		).toBeTruthy();
+		loading.unmount();
+
+		setDashboardState({});
+		render(<Dashboard />);
+		const after = screen.getByRole("link", { name: "Nova Missão" });
+		const loaded = document.querySelector(
+			'[data-dash-section="active-quests"]',
+		);
+		if (!loaded?.firstElementChild) throw new Error("cabeçalho não encontrado");
+		expect(after.closest(".border-dashed")).toBeNull();
+		expect(
+			within(loaded.firstElementChild as HTMLElement).getByText(/Ver todas/),
+		).toBeTruthy();
+		expect(loaded.querySelector("[data-dashboard-skeleton]")).toBeNull();
+	});
+
+	it("Missões em memória aparecem enquanto o resto do painel carrega", () => {
+		setDashboardState({
+			...beforeMesaData,
+			isLoadingRemote: true,
+			quests: [
+				{
+					id: "q-mem",
+					worldId: "world-shared",
+					publicationScope: "restricted",
+					campaignIds: [campaign.id],
+					visibility: "public",
+					createdAt: 1,
+					title: "Selo na memória",
+					description: "",
+					status: "active",
+					category: "main",
+				},
+			],
+		});
+		render(<Dashboard />);
+		expect(screen.getByText("Selo na memória")).toBeTruthy();
+		expect(screen.queryByText("Nenhuma missão ativa")).toBeNull();
+		expect(
+			document.querySelector(
+				'[data-dash-section="active-quests"] [data-dashboard-skeleton]',
+			),
+		).toBeNull();
+	});
+
+	it("jogador não vê Nova Missão e o título não reserva o espaço", () => {
+		setDashboardState({
+			campaigns: [{ ...campaign, myRole: "viewer" }],
+		});
+		render(<Dashboard />);
+		const quests = document.querySelector(
+			'[data-dash-section="active-quests"]',
+		);
+		if (!(quests instanceof HTMLElement)) {
+			throw new Error("seção de missões não encontrada");
+		}
+		expect(
+			within(quests).queryByRole("link", { name: "Nova Missão" }),
+		).toBeNull();
+		expect(within(quests).queryByText("Nova Missão")).toBeNull();
+		expect(within(quests).getByText(/Ver todas/)).toBeTruthy();
+		expect(quests.querySelector("[data-dashboard-skeleton]")).toBeNull();
+	});
 
 	it("Mochila usa o mesmo selo 'Abrir' da Mesa Virtual (sem mono âmbar)", () => {
 		setDashboardState({});
@@ -555,6 +638,58 @@ describe("Painel com falha na carga", () => {
 		},
 	];
 
+	it("conexão lenta: mantém o carregamento, uma linha, sem Indisponível", () => {
+		setDashboardState({
+			remoteLoadedCampaignId: null,
+			isLoadingRemote: true,
+			isBaseLoadSlow: true,
+		});
+		render(<Dashboard />);
+		const line = screen.getByText("Conexão lenta, ainda carregando…");
+		expect(
+			screen.getAllByText("Conexão lenta, ainda carregando…"),
+		).toHaveLength(1);
+		expect(line.getAttribute("role")).toBe("status");
+		expect(line.getAttribute("aria-live")).toBe("polite");
+		expect(screen.getAllByRole("status")).toContain(line);
+		expect(line.className).toContain("absolute");
+		expect(line.className).toContain("text-muted-foreground");
+		expect(line.className).not.toMatch(/animate|pulse/);
+		expect(line.querySelector("svg")).toBeNull();
+		expect(line.parentElement?.className).toContain("relative");
+		expect(line.parentElement?.className).toContain("py-6");
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(screen.queryByText(/Indisponível/)).toBeNull();
+		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
+		expect(screen.getByRole("link", { name: "Nova Missão" })).toBeTruthy();
+	});
+
+	it("aviso de erro cabe no celular: texto quebra e o botão não some", () => {
+		setDashboardState(failed);
+		render(<Dashboard />);
+		const alert = screen.getByRole("alert", {
+			name: "Falha ao carregar a mesa",
+		});
+		expect(alert.className).toContain("min-w-0");
+		expect(alert.className).toContain("w-full");
+		expect(alert.className).toContain("flex-col");
+		expect(alert.className).not.toContain("absolute");
+		expect(alert.className).not.toContain("truncate");
+		expect(alert.className).not.toContain("overflow-hidden");
+		expect(alert.className).not.toContain("whitespace-nowrap");
+		const title = screen.getByText(
+			"Não foi possível carregar os dados da mesa",
+		);
+		expect(title.className).toContain("break-words");
+		expect(title.className).not.toContain("truncate");
+		const detail = screen.getByText(/Confira sua conexão/);
+		expect(detail.className).toContain("break-words");
+		const button = screen.getByRole("button", { name: "Tentar de novo" });
+		expect(alert.contains(button)).toBe(true);
+		expect(button.className).not.toContain("hidden");
+		expect(button.className).toContain("min-h-[44px]");
+	});
+
 	it("falha global: UM aviso no topo com um único 'Tentar de novo'", () => {
 		setDashboardState(failed);
 		render(<Dashboard />);
@@ -591,7 +726,13 @@ describe("Painel com falha na carga", () => {
 					name: `${section.title}: indisponível`,
 				}),
 			).toBeNull();
-			expect(screen.queryByText(section.empty)).toBeNull();
+			// Missões não dependem da carga remota: vazio e o botão já estão no título.
+			if (section.title === "Missões em Andamento") {
+				expect(screen.getByText(section.empty)).toBeTruthy();
+				if (section.cta) expect(screen.getByText(section.cta)).toBeTruthy();
+			} else {
+				expect(screen.queryByText(section.empty)).toBeNull();
+			}
 			second.unmount();
 
 			// vazio de verdade: texto e CTA
@@ -649,7 +790,8 @@ describe("Painel com falha na carga", () => {
 
 		expect(remote.loadRemoteState).toHaveBeenCalledWith(campaign.id);
 		expect(screen.queryByRole("alert")).toBeNull();
-		expect(screen.queryByText("Nenhuma missão ativa")).toBeNull();
+		expect(screen.getByText("Nenhuma missão ativa")).toBeTruthy();
+		expect(screen.getByRole("link", { name: "Nova Missão" })).toBeTruthy();
 		expect(
 			screen.getAllByRole("status", { name: /^Carregando/ }).length,
 		).toBeGreaterThan(0);
@@ -861,7 +1003,7 @@ describe("Skeleton do painel com a forma real", () => {
 		return el;
 	}
 
-	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões: 3 linhas", () => {
+	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões sem skeleton", () => {
 		setDashboardState({ isLoadingRemote: true });
 		render(<Dashboard />);
 		const actions = section("quick-actions");
@@ -872,9 +1014,11 @@ describe("Skeleton do painel com a forma real", () => {
 		expect(actionRows).toHaveLength(4);
 		const quests = section("active-quests");
 		expect(within(quests).getByText("Missões em Andamento")).toBeTruthy();
+		expect(quests.querySelector("[data-dashboard-skeleton]")).toBeNull();
+		expect(within(quests).getByText("Nenhuma missão ativa")).toBeTruthy();
 		expect(
-			quests.querySelectorAll("[data-dashboard-skeleton].mt-4 > div"),
-		).toHaveLength(3);
+			within(quests).getByRole("link", { name: "Nova Missão" }),
+		).toBeTruthy();
 	});
 
 	it("Grimório: grade 2×N com rótulos reais e barra só na contagem", () => {
