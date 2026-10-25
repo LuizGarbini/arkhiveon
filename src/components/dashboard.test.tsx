@@ -211,12 +211,31 @@ describe("Dashboard Components", () => {
 			expect(screen.getByText("Templo do Sol")).toBeDefined();
 			expect(screen.getByText("500 PO e a bênção de Lathander")).toBeDefined();
 			expect(screen.queryByText("Limpar o Porão da Taverna")).toBeNull();
+			const nova = screen.getByRole("link", { name: "Nova Missão" });
+			expect(nova.tagName).toBe("A");
+			expect(nova.querySelector("button")).toBeNull();
+			expect(nova.closest("button")).toBeNull();
+			expect(nova.closest(".border-dashed")).toBeNull();
 		});
 
 		it("renders empty state when there are no active quests", () => {
 			render(<DashboardActiveQuests quests={[]} isViewer={false} />);
 
 			expect(screen.getByText("Nenhuma missão ativa")).toBeDefined();
+			const nova = screen.getByRole("link", { name: "Nova Missão" });
+			expect(nova.tagName).toBe("A");
+			expect(nova.getAttribute("href")).toBe("/quests");
+			expect(nova.querySelector("button")).toBeNull();
+			expect(nova.closest(".border-dashed")).toBeNull();
+			expect(nova.className).toContain("min-h-[44px]");
+			expect(nova.className).toContain("sm:min-h-8");
+		});
+
+		it("hides Nova Missão for a player without reserving the slot", () => {
+			render(<DashboardActiveQuests quests={[]} isViewer />);
+
+			expect(screen.queryByText("Nova Missão")).toBeNull();
+			expect(screen.getByText(/Ver todas/)).toBeDefined();
 		});
 	});
 

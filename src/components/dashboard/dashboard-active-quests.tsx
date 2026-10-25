@@ -2,12 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Gift, MapPin, Plus, Scroll, User } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { Quest } from "@/lib/store/types";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
-import { DashboardSkeletonGroup, SkeletonLine } from "./dashboard-skeleton";
-
-const QUEST_SKELETON_ROWS = ["q1", "q2", "q3"] as const;
 
 function QuestsTitle() {
 	return (
@@ -27,7 +23,6 @@ function QuestsTitle() {
 interface DashboardActiveQuestsProps {
 	quests: Quest[];
 	isViewer: boolean;
-	isLoading?: boolean;
 	/** Falha global da carga: estado neutro, sem vazio, CTA ou contagem. */
 	isUnavailable?: boolean;
 }
@@ -35,7 +30,6 @@ interface DashboardActiveQuestsProps {
 export function DashboardActiveQuests({
 	quests,
 	isViewer,
-	isLoading,
 	isUnavailable,
 }: DashboardActiveQuestsProps) {
 	const activeQuests = useMemo(
@@ -57,75 +51,40 @@ export function DashboardActiveQuests({
 		);
 	}
 
-	if (isLoading) {
-		// Mesma forma do carregado: cabeçalho real + 3 missões (chip, título,
-		// 2 linhas de descrição e meta) com os mesmos paddings.
-		return (
-			<div
-				data-dash-section="active-quests"
-				className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
-			>
-				<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
-					<QuestsTitle />
-					<DashboardSkeletonGroup className="flex items-center gap-2">
-						<Skeleton className="h-[19px] w-16 rounded-full" />
-						<SkeletonLine textClassName="text-[11px]" className="w-20" />
-					</DashboardSkeletonGroup>
-				</div>
-				<DashboardSkeletonGroup className="mt-4 space-y-3">
-					{QUEST_SKELETON_ROWS.map((row) => (
-						<div
-							key={row}
-							className="rounded-xl border border-border/60 bg-background/40 p-4"
-						>
-							<div className="flex items-center gap-2">
-								{/* Mesmo box do chip real (padding, borda e corpo de 9px). */}
-								<Skeleton className="w-16 rounded-md border border-transparent px-2 py-0.5 text-[9px]">
-									{"\u00a0"}
-								</Skeleton>
-								<SkeletonLine textClassName="text-sm" className="w-40" />
-							</div>
-							<div className="mt-2">
-								<SkeletonLine
-									textClassName="text-[12px] leading-relaxed"
-									className="w-full"
-								/>
-								{/* Em telas largas a descrição real cabe em 1 linha. */}
-								<SkeletonLine
-									textClassName="text-[12px] leading-relaxed lg:hidden"
-									className="w-3/4"
-								/>
-							</div>
-							<div className="mt-3">
-								<SkeletonLine textClassName="text-[11px]" className="w-48" />
-							</div>
-						</div>
-					))}
-				</DashboardSkeletonGroup>
-			</div>
-		);
-	}
-
 	return (
 		<div
 			data-dash-section="active-quests"
 			className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:border-border"
 		>
 			{/* Section Header */}
-			<div className="flex items-center justify-between gap-3 border-b border-border/50 pb-4">
+			<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border/50 pb-4">
 				<QuestsTitle />
 
-				<div className="flex items-center gap-2">
-					<span className="shrink-0 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
+				<div className="flex flex-wrap items-center gap-2">
+					<span className="shrink-0 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amber-400">
 						{activeQuests.length} Ativa{activeQuests.length === 1 ? "" : "s"}
 					</span>
 					<Link
 						to="/quests"
-						className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex shrink-0 items-center gap-1 whitespace-nowrap"
+						className="inline-flex min-h-[44px] shrink-0 select-none items-center gap-1 whitespace-nowrap text-[11px] font-semibold text-muted-foreground transition-colors duration-150 ease-out sm:min-h-8 [@media(hover:hover)]:hover:text-primary"
 					>
 						Ver todas ({quests.length})
 						<ArrowUpRight className="h-3 w-3" />
 					</Link>
+					{!isViewer && (
+						<Button
+							nativeButton={false}
+							size="sm"
+							variant="outline"
+							className="min-h-[44px] gap-1.5 px-3 text-xs sm:min-h-8"
+							render={
+								<Link to="/quests" role="link">
+									<Plus className="h-3.5 w-3.5" />
+									Nova Missão
+								</Link>
+							}
+						/>
+					)}
 				</div>
 			</div>
 
@@ -220,14 +179,6 @@ export function DashboardActiveQuests({
 							? `Todas as ${completedCount} missões anteriores foram concluídas!`
 							: "Adicione objetivos e ganchos de quests para guiar a aventura dos jogadores."}
 					</p>
-					{!isViewer && (
-						<Link to="/quests" className="mt-3">
-							<Button size="sm" variant="outline" className="gap-1.5 text-xs">
-								<Plus className="h-3.5 w-3.5" />
-								Nova Missão
-							</Button>
-						</Link>
-					)}
 				</div>
 			)}
 		</div>

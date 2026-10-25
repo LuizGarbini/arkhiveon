@@ -47,9 +47,16 @@ export function isCreationLimitReached(state: RPGState): boolean {
 	return state.globalRecordsCount >= FREE_CREATION_LIMIT;
 }
 
-/** Prazo da carga base: depois disso o skeleton vira o aviso único. */
-export const BASE_LOAD_TIMEOUT_MS = 20_000;
+/**
+ * Sem resposta de loadCampaigns: o skeleton continua e o painel avisa que a
+ * conexão está lenta. Não é erro.
+ */
+export const BASE_LOAD_SLOW_MS = 20_000;
+/** Teto só de loadCampaigns: sem resposta, aí sim vira o aviso de erro. */
+export const BASE_LOAD_TIMEOUT_MS = 60_000;
 let bootstrapToken = 0;
+/** Quantas vezes reportBaseLoadError rodou. Separa teto de falha real. */
+let baseLoadFailureSeq = 0;
 
 export interface SyncSlice {
 	isLoadingRemote: boolean;
@@ -59,6 +66,8 @@ export interface SyncSlice {
 	/** Mesa cujos dados remotos já chegaram nesta sessão (null = nenhuma ainda). */
 	remoteLoadedCampaignId: string | null;
 	baseLoadError: string | null;
+	/** loadCampaigns passou de ~20s e ainda não respondeu. */
+	isBaseLoadSlow: boolean;
 	isRetryingBase: boolean;
 	baseRetryNonce: number;
 	reportBaseLoadError: () => void;
@@ -271,62 +280,102 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 	remoteLoadError: null,
 	remoteLoadedCampaignId: null,
 	baseLoadError: null,
+	isBaseLoadSlow: false,
 	isRetryingBase: false,
 	baseRetryNonce: 0,
-	reportBaseLoadError: () =>
+	reportBaseLoadError: () => {
+		baseLoadFailureSeq += 1;
 		set((s) => ({
 			baseLoadError: BASE_LOAD_ERROR_MESSAGE,
 			syncError: BASE_LOAD_ERROR_MESSAGE,
 			isLoadingRemote: false,
 			isRetryingBase: false,
+			isBaseLoadSlow: false,
 			// Prazo estourado com as campanhas ainda pendentes: sai do
 			// "Carregando campanhas..." da raiz em vez de ficar nele para sempre.
 			campaignLoadStatus:
 				s.campaignLoadStatus === "idle" || s.campaignLoadStatus === "loading"
 					? "error"
 					: s.campaignLoadStatus,
-		})),
+		}));
+	},
 	bootstrapCampaignData: async () => {
 		const token = ++bootstrapToken;
-		let timedOut = false;
-		const timer = setTimeout(() => {
-			if (token !== bootstrapToken) return;
-			timedOut = true;
-			// Prazo estourado: troca o skeleton pelo aviso único.
+		const failureSeqAtStart = baseLoadFailureSeq;
+		// Nova tentativa: o aviso de lentidão só volta depois de ~20s desta carga.
+		set({ isBaseLoadSlow: false });
+		let campaignsSettled = false;
+		let ceilingSeq: number | null = null;
+		// Timers da carga de campanhas, não estado derivado de render: ~20s avisa
+		// lentidão sem trocar o skeleton; ~60s ou erro real vira falha. Não cobre
+		// loadRemoteData.
+		const slowTimer = setTimeout(() => {
+			if (token !== bootstrapToken || campaignsSettled) return;
+			set({ isBaseLoadSlow: true });
+		}, BASE_LOAD_SLOW_MS);
+		const ceilingTimer = setTimeout(() => {
+			if (token !== bootstrapToken || campaignsSettled) return;
 			get().reportBaseLoadError();
+			ceilingSeq = baseLoadFailureSeq;
 		}, BASE_LOAD_TIMEOUT_MS);
+		const clearCampaignTimers = () => {
+			clearTimeout(slowTimer);
+			clearTimeout(ceilingTimer);
+		};
 		try {
 			await get().loadCampaigns();
-			const state = get();
+			campaignsSettled = true;
+			clearCampaignTimers();
 			if (token !== bootstrapToken) return;
-			if (state.campaignLoadStatus !== "ready" || state.baseLoadError) {
+			const state = get();
+			const onlyCeilingFailed =
+				ceilingSeq != null &&
+				baseLoadFailureSeq === ceilingSeq &&
+				baseLoadFailureSeq === failureSeqAtStart + 1;
+			const realFailure =
+				state.campaignLoadStatus !== "ready" ||
+				(state.baseLoadError != null && !onlyCeilingFailed);
+			if (realFailure) {
 				// Falha das campanhas, do plano do mestre ou dos convites: estado de
 				// erro global (antes a falha das campanhas deixava o painel em "loading").
 				get().reportBaseLoadError();
 				return;
 			}
+			// Campanhas chegaram (mesmo depois do teto): some lentidão e o erro do prazo.
+			set({
+				isBaseLoadSlow: false,
+				baseLoadError: null,
+				syncError: null,
+			});
+			const fresh = get();
 			if (
-				state.campaigns.length > 0 &&
-				!state.activeCampaignId &&
-				!state.activeWorldId
+				fresh.campaigns.length > 0 &&
+				!fresh.activeCampaignId &&
+				!fresh.activeWorldId
 			) {
-				await get().switchCampaign(state.campaigns[0].id);
+				await get().switchCampaign(fresh.campaigns[0].id);
 			}
+			if (token !== bootstrapToken) return;
 			await get().loadRemoteData();
 			if (token !== bootstrapToken) return;
-			const after = get();
-			// Chegou depois do prazo e deu certo: some o aviso.
 			if (
-				timedOut &&
-				after.remoteLoadError === null &&
-				after.campaignLoadStatus === "ready"
+				get().remoteLoadError === null &&
+				get().campaignLoadStatus === "ready"
 			) {
-				set({ baseLoadError: null, syncError: null });
+				set({
+					isBaseLoadSlow: false,
+					baseLoadError: null,
+					syncError: null,
+				});
+			} else {
+				set({ isBaseLoadSlow: false });
 			}
 		} catch {
+			campaignsSettled = true;
 			if (token === bootstrapToken) get().reportBaseLoadError();
 		} finally {
-			clearTimeout(timer);
+			campaignsSettled = true;
+			clearCampaignTimers();
 			if (token === bootstrapToken) set({ isRetryingBase: false });
 		}
 	},
@@ -335,6 +384,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			baseLoadError: null,
 			remoteLoadError: null,
 			syncError: null,
+			isBaseLoadSlow: false,
 			isRetryingBase: true,
 			isLoadingRemote: true,
 			baseRetryNonce: s.baseRetryNonce + 1,
@@ -825,6 +875,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
 			baseLoadError: null,
+			isBaseLoadSlow: false,
 			isRetryingBase: false,
 			activityLoadError: null,
 			isLoadingActivity: false,
@@ -852,6 +903,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 			remoteLoadError: null,
 			remoteLoadedCampaignId: null,
 			baseLoadError: null,
+			isBaseLoadSlow: false,
 			isRetryingBase: false,
 			activityLoadError: null,
 			isLoadingActivity: false,

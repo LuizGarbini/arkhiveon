@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.40-painel-lento-missoes",
+		version: "1.6.40",
+		date: "25/10/2026",
+		title: "Painel não assusta quando a rede está lenta",
+		description:
+			"Se a conexão demorar, o painel continua no rascunho e mostra só “Conexão lenta, ainda carregando…”, em vez de dizer que a mesa está indisponível. O aviso de erro só aparece se a carga realmente falhar ou passar de um minuto, e o texto cabe inteiro no celular. Em Missões, a lista ou o vazio aparecem na hora, sem o rascunho que encolhia a seção, e “Nova Missão” fica fixo ao lado de “Ver todas”.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.39-painel-carregando-sem-pulos",
 		version: "1.6.39",
 		date: "24/10/2026",

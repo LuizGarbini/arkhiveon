@@ -84,6 +84,7 @@ function Dashboard() {
 	);
 
 	const countStatus = useRPGStore(selectDashboardDataStatus);
+	const isBaseLoadSlow = useRPGStore((s) => s.isBaseLoadSlow);
 	// Seções mostram skeleton (não estado vazio/CTA) até os dados da mesa chegarem.
 	const isLoading = countStatus === "loading";
 	// Falha global: um aviso no topo; seções ficam neutras (sem vazio/CTA/0).
@@ -121,10 +122,19 @@ function Dashboard() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-			{isUnavailable && (
+		<div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+			{isUnavailable ? (
 				<DashboardLoadErrorNotice onRetry={() => void retryBaseLoad()} />
-			)}
+			) : isBaseLoadSlow ? (
+				// biome-ignore lint/a11y/useSemanticElements: o aviso pede role="status" nesta frase
+				<p
+					role="status"
+					aria-live="polite"
+					className="absolute inset-x-4 top-0 min-w-0 text-sm text-muted-foreground sm:inset-x-6 lg:inset-x-8"
+				>
+					Conexão lenta, ainda carregando…
+				</p>
+			) : null}
 
 			<InviteBanner />
 
@@ -190,7 +200,6 @@ function Dashboard() {
 					<DashboardActiveQuests
 						quests={quests}
 						isViewer={isViewer}
-						isLoading={isLoading}
 						isUnavailable={isUnavailable}
 					/>
 
