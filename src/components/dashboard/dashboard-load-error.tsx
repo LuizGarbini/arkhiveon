@@ -31,7 +31,7 @@ export function DashboardLoadErrorNotice({ onRetry }: { onRetry: () => void }) {
 		<section
 			role="alert"
 			aria-label="Falha ao carregar a mesa"
-			className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+			className="flex w-full min-w-0 flex-col gap-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 		>
 			<div className="flex min-w-0 items-start gap-3">
 				<AlertTriangle
@@ -42,7 +42,7 @@ export function DashboardLoadErrorNotice({ onRetry }: { onRetry: () => void }) {
 					<p className="break-words text-sm font-bold text-foreground">
 						Não foi possível carregar os dados da mesa
 					</p>
-					<p className="mt-0.5 break-words text-xs text-muted-foreground">
+					<p className="mt-0.5 break-words text-xs text-foreground/80">
 						Confira sua conexão e tente de novo. Nada do que já estava salvo foi
 						perdido.
 					</p>

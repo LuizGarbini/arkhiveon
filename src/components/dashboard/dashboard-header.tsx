@@ -128,11 +128,16 @@ function HeroStatusBand({
 	isSlow: boolean;
 	onRetry?: () => void;
 }) {
+	const showError = isError && Boolean(onRetry);
+	const showSlow = !showError && isSlow;
 	return (
-		<div className="min-h-[1lh] text-sm" data-dash-status-band="">
-			{isError && onRetry ? (
+		<div
+			className={cn("min-h-[1lh] text-sm", (showError || showSlow) && "mb-4")}
+			data-dash-status-band=""
+		>
+			{showError && onRetry ? (
 				<DashboardLoadErrorNotice onRetry={onRetry} />
-			) : isSlow ? (
+			) : showSlow ? (
 				// biome-ignore lint/a11y/useSemanticElements: o aviso pede role="status" nesta frase
 				<p
 					role="status"
@@ -283,7 +288,7 @@ export function DashboardHeader({
 							)}
 						</div>
 
-						<h1 className="font-display mt-4 text-3xl font-bold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl drop-shadow-xs">
+						<h1 className="font-display mt-4 min-h-[2lh] text-3xl font-bold leading-[1.08] tracking-tight text-white sm:min-h-0 sm:text-4xl lg:text-5xl drop-shadow-xs">
 							{activeCampaign?.name ||
 								(countStatus === "loading" ? (
 									<DashboardSkeletonGroup>

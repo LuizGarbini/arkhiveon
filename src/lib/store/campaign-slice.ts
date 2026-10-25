@@ -18,6 +18,7 @@ import {
 	updateRemoteWorld,
 } from "../worldbuilding/world-service";
 import { BASE_LOAD_ERROR_MESSAGE, remoteErrorMessage } from "./helpers";
+import { CAMPAIGN_SWITCH_TIMEOUT_MS } from "./sync-slice";
 import type {
 	Campaign,
 	CampaignLoadStatus,
@@ -30,6 +31,16 @@ import type {
 	World,
 } from "./types";
 import { RPG_SYSTEMS } from "./types";
+
+/** Uma troca mais nova invalida o prazo e o resultado da anterior. */
+let campaignSwitchToken = 0;
+
+function readOwnerPlan(planData: unknown): UserPlan {
+	if (!planData || typeof planData !== "object" || !("plan" in planData)) {
+		return "free";
+	}
+	return planData.plan === "pro" ? "pro" : "free";
+}
 
 interface CampaignRecord {
 	created_at: string | null;
@@ -757,32 +768,71 @@ export const createCampaignSlice: StateCreator<
 	switchCampaign: async (id) => {
 		const state = get();
 		const activeCamp = state.campaigns.find((c) => c.id === id);
-		if (state.activeCampaignId === id) {
+		const alreadyLoaded =
+			state.activeCampaignId === id &&
+			state.remoteLoadedCampaignId === id &&
+			state.remoteLoadError == null &&
+			state.baseLoadError == null &&
+			!state.isRetryingBase;
+		if (alreadyLoaded) {
 			if (activeCamp) set({ activeWorldId: activeCamp.worldId });
 			return;
 		}
 
-		// Limpar entidades da mesa anterior sem derrubar bootstrap/campanhas
-		state.clearActiveCampaignEntities();
-		set({
-			activeCampaignId: id,
-			activeWorldId: activeCamp?.worldId ?? state.activeWorldId,
-		});
-
-		// Carregar o plano do criador da campanha ativa
-		const supabase = getSupabase();
-		if (activeCamp && supabase) {
-			const { data: planData } = await supabase
-				.from(SUPABASE_TABLES.userPlans)
-				.select("plan")
-				.eq("user_id", activeCamp.ownerId)
-				.maybeSingle();
-			const ownerPlan = (planData as any)?.plan || "free";
-			set({ activeCampaignOwnerPlan: ownerPlan as UserPlan });
+		if (state.activeCampaignId !== id) {
+			// Limpar entidades da mesa anterior sem derrubar bootstrap/campanhas
+			state.clearActiveCampaignEntities();
+			set({
+				activeCampaignId: id,
+				activeWorldId: activeCamp?.worldId ?? get().activeWorldId,
+			});
 		}
 
-		// Recarregar dados da nova campanha
-		await get().loadRemoteData();
+		const token = ++campaignSwitchToken;
+		const failSwitch = () => {
+			if (token !== campaignSwitchToken) return;
+			const current = get();
+			if (current.activeCampaignId !== id) return;
+			if (
+				current.remoteLoadedCampaignId === id &&
+				current.remoteLoadError == null
+			) {
+				return;
+			}
+			set({
+				isLoadingRemote: false,
+				isRetryingBase: false,
+				isBaseLoadSlow: false,
+				remoteLoadError: BASE_LOAD_ERROR_MESSAGE,
+				syncError: BASE_LOAD_ERROR_MESSAGE,
+			});
+		};
+		// Prazo da troca, não o teto de 60s de loadCampaigns. Se a rede
+		// responder depois, loadRemoteData ainda publica os dados.
+		const timer = setTimeout(failSwitch, CAMPAIGN_SWITCH_TIMEOUT_MS);
+
+		try {
+			const supabase = getSupabase();
+			if (activeCamp && supabase) {
+				const { data: planData } = await supabase
+					.from(SUPABASE_TABLES.userPlans)
+					.select("plan")
+					.eq("user_id", activeCamp.ownerId)
+					.maybeSingle();
+				if (token !== campaignSwitchToken || get().activeCampaignId !== id) {
+					return;
+				}
+				set({ activeCampaignOwnerPlan: readOwnerPlan(planData) });
+			}
+			if (token !== campaignSwitchToken || get().activeCampaignId !== id) {
+				return;
+			}
+			await get().loadRemoteData();
+		} catch {
+			failSwitch();
+		} finally {
+			clearTimeout(timer);
+		}
 	},
 
 	switchWorld: async (worldId) => {

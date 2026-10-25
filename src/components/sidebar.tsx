@@ -88,12 +88,12 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const factionsTabConfig = getFactionsTabConfig(activeCampaign?.system);
 	// O sistema da mesa vem das campanhas; até chegarem, o rótulo não cai no padrão.
+	// No erro, o nome (o do cache ou o fallback da bandeira) fica visível.
 	const worldLabelsPending = useRPGStore(
 		(s) =>
 			s.campaignLoadStatus !== "ready" &&
-			(s.activeCampaignId !== null ||
-				// Primeira carga sem nada em cache: ainda não dá para saber o sistema.
-				(!s.hasLoadedCampaigns && s.campaignLoadStatus !== "error")),
+			(s.campaignLoadStatus !== "error" || s.isRetryingBase) &&
+			(s.activeCampaignId !== null || !s.hasLoadedCampaigns),
 	);
 	// Piloto invisível: fora da allowlist o grupo Mundo fica idêntico.
 	const libraryEnabled = useLibraryPilot(activeCampaignId) === true;

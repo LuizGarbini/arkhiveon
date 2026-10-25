@@ -660,6 +660,8 @@ describe("Painel com falha na carga", () => {
 		const band = hero?.querySelector("[data-dash-status-band]");
 		expect(band?.contains(line)).toBe(true);
 		expect(band?.className).toContain("min-h-");
+		expect(hero?.querySelector("h1")?.className).toContain("mt-4");
+		expect(band?.className).toContain("mb-4");
 		expect(screen.queryByRole("alert")).toBeNull();
 		expect(screen.queryByText(/Indisponível/)).toBeNull();
 		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
@@ -686,6 +688,13 @@ describe("Painel com falha na carga", () => {
 		expect(title.className).not.toContain("truncate");
 		const detail = screen.getByText(/Confira sua conexão/);
 		expect(detail.className).toContain("break-words");
+		expect(detail.className).toContain("text-foreground/80");
+		expect(detail.className).not.toContain("text-muted-foreground");
+		expect(alert.className).toContain("gap-4");
+		const band = alert.closest("[data-dash-status-band]");
+		const heading = document.querySelector('[data-dash-section="hero"] h1');
+		expect(heading?.className).toContain("mt-4");
+		expect(band?.className).toContain("mb-4");
 		const button = screen.getByRole("button", { name: "Tentar de novo" });
 		expect(alert.contains(button)).toBe(true);
 		expect(button.className).not.toContain("hidden");
@@ -1168,7 +1177,7 @@ describe("Skeleton do painel com a forma real", () => {
 		expect(hero.querySelector('[data-seal="role"]')).toBeTruthy();
 	});
 
-	it("título em carregamento reserva uma linha, não duas", () => {
+	it("título em carregamento reserva duas linhas abaixo de sm, com uma barra", () => {
 		setDashboardState({
 			campaigns: [],
 			activeCampaignId: null,
@@ -1178,7 +1187,20 @@ describe("Skeleton do painel com a forma real", () => {
 		});
 		render(<Dashboard />);
 		const title = section("hero").querySelector("h1");
+		expect(title?.className).toContain("min-h-[2lh]");
+		expect(title?.className).toContain("sm:min-h-0");
 		expect(title?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(1);
+	});
+
+	it("nome curto também reserva duas linhas abaixo de sm", () => {
+		setDashboardState({
+			campaigns: [{ ...campaign, name: "QA" }],
+		});
+		render(<Dashboard />);
+		const title = section("hero").querySelector("h1");
+		expect(title?.textContent).toContain("QA");
+		expect(title?.className).toContain("min-h-[2lh]");
+		expect(title?.className).toContain("sm:min-h-0");
 	});
 
 	it("faixa do hero fica reservada na carga normal e com a mesa pronta", () => {

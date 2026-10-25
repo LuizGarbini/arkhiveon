@@ -304,3 +304,86 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		expect(s.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
 	});
 });
+
+describe("troca de campanha: falha ou ~10s vira erro, sem o teto de 60s", () => {
+	const other: Campaign = {
+		id: "camp-b",
+		name: "Outra mesa",
+		description: "",
+		ownerId: "owner-1",
+		worldId: "world-1",
+		myRole: "owner",
+		createdAt: 2,
+	};
+
+	const emptyRemote = {
+		characters: [],
+		npcs: [],
+		sessions: [],
+		items: [],
+		locations: [],
+		lores: [],
+		customTemplates: [],
+		imageAssets: [],
+		activityLog: [],
+		factions: [],
+		factionReputations: [],
+		worldNews: [],
+	};
+
+	function armSwitch() {
+		const current = useRPGStore.getState().campaigns[0];
+		useRPGStore.setState({
+			campaigns: [current, other],
+			activeCampaignId: current.id,
+			activeWorldId: current.worldId,
+			hasLoadedCampaigns: true,
+			campaignLoadStatus: "ready",
+			remoteLoadedCampaignId: current.id,
+			remoteLoadError: null,
+			baseLoadError: null,
+			isLoadingRemote: false,
+			isRetryingBase: false,
+			isBaseLoadSlow: false,
+			syncError: null,
+		});
+	}
+
+	it("rede da troca pendurada vira erro aos 10s e segue carregando antes disso", async () => {
+		vi.useFakeTimers();
+		armSwitch();
+		remote.loadRemoteState.mockImplementation(() => new Promise(() => {}));
+		void useRPGStore.getState().switchCampaign(other.id);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(9_998);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(1);
+		const s = useRPGStore.getState();
+		expect(selectDashboardDataStatus(s)).toBe("error");
+		expect(s.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(s.syncError).not.toContain("Failed to fetch");
+		expect(s.isLoadingRemote).toBe(false);
+		expect(s.isBaseLoadSlow).toBe(false);
+		// O teto de loadCampaigns continua 60s e não é o que derrubou a troca.
+		expect(s.campaignLoadStatus).toBe("ready");
+		expect(BASE_LOAD_TIMEOUT_MS).toBe(60_000);
+	});
+
+	it("troca que falha: Tentar de novo recarrega a mesa de destino", async () => {
+		armSwitch();
+		remote.loadRemoteState.mockRejectedValueOnce(new Error("500"));
+		await useRPGStore.getState().switchCampaign(other.id);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("error");
+		const callsBeforeRetry = remote.loadRemoteState.mock.calls.length;
+
+		remote.loadRemoteState.mockResolvedValueOnce(emptyRemote);
+		remote.fetchGlobalTotalCount.mockResolvedValue(0);
+		await useRPGStore.getState().retryBaseLoad();
+
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("ready");
+		expect(useRPGStore.getState().activeCampaignId).toBe(other.id);
+		expect(remote.loadRemoteState.mock.calls.length).toBe(callsBeforeRetry + 1);
+		expect(remote.loadRemoteState).toHaveBeenLastCalledWith(other.id);
+	});
+});

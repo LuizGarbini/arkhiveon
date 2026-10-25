@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "25/10/2026",
 		title: "O topo do painel não pula ao carregar",
 		description:
-			"Na Visão geral, os selos do sistema e do papel e o botão Registrar Sessão já ocupam o lugar final enquanto a mesa carrega, então a página não desce quando os dados chegam. O aviso de conexão lenta e o de falha usam a mesma faixa, dentro do destaque, com “Tentar de novo” só no erro. No celular, o banner do Discord reserva a altura do título quebrado para a fonte não empurrar o card.",
+			"Na Visão geral, os selos do sistema e do papel e o botão Registrar Sessão já ocupam o lugar final enquanto a mesa carrega, então a página não desce quando os dados chegam. No celular, o nome da campanha reserva duas linhas desde o início, mesmo quando ainda não chegou ou é curto. O aviso de conexão lenta e o de falha usam a mesma faixa, com o mesmo respiro dos selos, e “Tentar de novo” só no erro. Se a troca de mesa falhar ou demorar, o aviso aparece em seguida e tentar de novo refaz a troca. No menu, a seção de facções mostra o nome quando a carga falha, em vez de ficar só no ícone. No celular, o banner do Discord reserva a altura do título quebrado para a fonte não empurrar o card.",
 		bullets: [],
 	},
 	{
