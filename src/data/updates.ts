@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.41-painel-topo-sem-pulo",
+		version: "1.6.41",
+		date: "25/10/2026",
+		title: "O topo do painel não pula ao carregar",
+		description:
+			"Na Visão geral, os selos do sistema e do papel e o botão Registrar Sessão já ocupam o lugar final enquanto a mesa carrega, então a página não desce quando os dados chegam. O aviso de conexão lenta e o de falha usam a mesma faixa, dentro do destaque, com “Tentar de novo” só no erro. No celular, o banner do Discord reserva a altura do título quebrado para a fonte não empurrar o card.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.40-painel-lento-missoes",
 		version: "1.6.40",
 		date: "25/10/2026",

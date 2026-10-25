@@ -27,4 +27,13 @@ describe("Banner do Discord no celular", () => {
 		const titleRow = screen.getByText("Comunidade Arkhiveon").parentElement;
 		expect(titleRow?.className).toContain("flex-wrap");
 	});
+
+	it("reserva a altura do título quebrado no celular, sem mudar o desktop", () => {
+		render(<DiscordDitherBanner />);
+		const title = screen.getByRole("heading", { name: "Comunidade Arkhiveon" });
+		expect(title.className).toContain("max-[400px]:basis-full");
+		expect(title.parentElement?.className).toContain(
+			"max-[400px]:min-h-[calc(1.75rem+15.5px)]",
+		);
+	});
 });

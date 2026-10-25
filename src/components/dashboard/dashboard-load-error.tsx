@@ -25,7 +25,7 @@ export function DashboardRetryButton({ onRetry, className }: RetryButtonProps) {
 	);
 }
 
-/** Aviso único no topo quando a carga inteira da mesa falha. */
+/** Aviso único na faixa do hero quando a carga inteira da mesa falha. */
 export function DashboardLoadErrorNotice({ onRetry }: { onRetry: () => void }) {
 	return (
 		<section
