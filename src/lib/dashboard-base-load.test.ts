@@ -5,7 +5,10 @@ import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-coun
 import type { Campaign } from "./store";
 import { useRPGStore } from "./store";
 import { BASE_LOAD_ERROR_MESSAGE } from "./store/helpers";
-import { BASE_LOAD_TIMEOUT_MS } from "./store/sync-slice";
+import {
+	BASE_LOAD_TIMEOUT_MS,
+	CAMPAIGN_SWITCH_TIMEOUT_MS,
+} from "./store/sync-slice";
 
 /** Prazo em que a carga ainda é só “lenta”; o teto vira erro. */
 const SLOW_MS = 20_000;
@@ -302,6 +305,60 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		const s = useRPGStore.getState();
 		expect(selectDashboardDataStatus(s)).toBe("error");
 		expect(s.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+	});
+});
+
+describe("primeira carga: dados da mesa usam o prazo de ~10s da troca", () => {
+	const lateRemote = {
+		characters: [{ id: "late-hero", characterName: "Hera" }],
+		npcs: [],
+		sessions: [],
+		items: [],
+		locations: [],
+		lores: [],
+		customTemplates: [],
+		imageAssets: [],
+		activityLog: [],
+		factions: [],
+		factionReputations: [],
+		worldNews: [],
+	};
+
+	it("sem resposta em 10s mostra o erro e, se os dados chegarem depois, entram", async () => {
+		vi.useFakeTimers();
+		let releaseRemote: (value: unknown) => void = () => {};
+		remote.loadRemoteState.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseRemote = resolve;
+				}),
+		);
+		const pending = useRPGStore.getState().bootstrapCampaignData();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		expect(useRPGStore.getState().remoteLoadError).toBeNull();
+		await vi.advanceTimersByTimeAsync(CAMPAIGN_SWITCH_TIMEOUT_MS - 2);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(1);
+		const timedOut = useRPGStore.getState();
+		expect(selectDashboardDataStatus(timedOut)).toBe("error");
+		expect(timedOut.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(timedOut.remoteLoadError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(timedOut.baseLoadError).toBeNull();
+		expect(timedOut.isLoadingRemote).toBe(false);
+		expect(timedOut.isBaseLoadSlow).toBe(false);
+		expect(timedOut.campaignLoadStatus).toBe("ready");
+		expect(BASE_LOAD_TIMEOUT_MS).toBe(60_000);
+		expect(CAMPAIGN_SWITCH_TIMEOUT_MS).toBe(10_000);
+
+		releaseRemote(lateRemote);
+		await pending;
+		const done = useRPGStore.getState();
+		expect(selectDashboardDataStatus(done)).toBe("ready");
+		expect(done.remoteLoadError).toBeNull();
+		expect(done.syncError).toBeNull();
+		expect(done.remoteLoadedCampaignId).toBe("camp-qa");
+		expect(done.characters.some((c) => c.id === "late-hero")).toBe(true);
 	});
 });
 

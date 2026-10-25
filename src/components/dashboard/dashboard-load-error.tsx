@@ -25,6 +25,46 @@ export function DashboardRetryButton({ onRetry, className }: RetryButtonProps) {
 	);
 }
 
+const SLOW_CONNECTION_LABEL = "Conexão lenta, ainda carregando…";
+
+/**
+ * Faixa da Visão geral. A linha do aviso lento e a margem ficam reservadas
+ * sempre (carga e mesa pronta): o texto só muda de visibilidade. O card de
+ * erro ocupa a mesma faixa e pode crescer além da linha.
+ */
+export function DashboardHeroStatusBand({
+	isError,
+	isSlow,
+	onRetry,
+}: {
+	isError: boolean;
+	isSlow: boolean;
+	onRetry?: () => void;
+}) {
+	const showError = isError && Boolean(onRetry);
+	const showSlow = !showError && isSlow;
+	return (
+		<div className="mb-4 min-h-[1lh] text-sm" data-dash-status-band="">
+			{showError && onRetry ? (
+				<DashboardLoadErrorNotice onRetry={onRetry} />
+			) : (
+				<p
+					data-slow-line=""
+					role={showSlow ? "status" : undefined}
+					aria-live={showSlow ? "polite" : undefined}
+					aria-hidden={showSlow ? undefined : true}
+					className={cn(
+						"text-sm text-muted-foreground",
+						!showSlow && "invisible opacity-0",
+					)}
+				>
+					{SLOW_CONNECTION_LABEL}
+				</p>
+			)}
+		</div>
+	);
+}
+
 /** Aviso único na faixa do hero quando a carga inteira da mesa falha. */
 export function DashboardLoadErrorNotice({ onRetry }: { onRetry: () => void }) {
 	return (

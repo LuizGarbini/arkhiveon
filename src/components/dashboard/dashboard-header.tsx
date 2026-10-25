@@ -19,7 +19,7 @@ import { systemLabel } from "@/lib/store/helpers";
 import type { Campaign, MembershipRole } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { DashboardCount, type DashboardCountStatus } from "./dashboard-count";
-import { DashboardLoadErrorNotice } from "./dashboard-load-error";
+import { DashboardHeroStatusBand } from "./dashboard-load-error";
 import { DashboardSkeletonGroup, SkeletonLine } from "./dashboard-skeleton";
 
 /** Mesma caixa dos selos reais (borda, ícone e texto) para a quebra não mudar. */
@@ -119,38 +119,6 @@ function SealSpacer({
 	);
 }
 
-function HeroStatusBand({
-	isError,
-	isSlow,
-	onRetry,
-}: {
-	isError: boolean;
-	isSlow: boolean;
-	onRetry?: () => void;
-}) {
-	const showError = isError && Boolean(onRetry);
-	const showSlow = !showError && isSlow;
-	return (
-		<div
-			className={cn("min-h-[1lh] text-sm", (showError || showSlow) && "mb-4")}
-			data-dash-status-band=""
-		>
-			{showError && onRetry ? (
-				<DashboardLoadErrorNotice onRetry={onRetry} />
-			) : showSlow ? (
-				// biome-ignore lint/a11y/useSemanticElements: o aviso pede role="status" nesta frase
-				<p
-					role="status"
-					aria-live="polite"
-					className="text-sm text-muted-foreground"
-				>
-					Conexão lenta, ainda carregando…
-				</p>
-			) : null}
-		</div>
-	);
-}
-
 const SESSION_BUTTON_CLASS =
 	"h-[38px] gap-2 rounded-xl px-4.5 text-[13px] font-bold select-none";
 
@@ -218,7 +186,7 @@ export function DashboardHeader({
 			/>
 
 			<div className="relative z-[2] flex flex-col">
-				<HeroStatusBand
+				<DashboardHeroStatusBand
 					isError={countStatus === "error"}
 					isSlow={isBaseLoadSlow}
 					onRetry={onRetryBaseLoad}

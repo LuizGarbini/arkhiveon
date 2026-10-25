@@ -18,7 +18,7 @@ import {
 	updateRemoteWorld,
 } from "../worldbuilding/world-service";
 import { BASE_LOAD_ERROR_MESSAGE, remoteErrorMessage } from "./helpers";
-import { CAMPAIGN_SWITCH_TIMEOUT_MS } from "./sync-slice";
+import { armCampaignDataDeadline } from "./sync-slice";
 import type {
 	Campaign,
 	CampaignLoadStatus,
@@ -789,27 +789,14 @@ export const createCampaignSlice: StateCreator<
 		}
 
 		const token = ++campaignSwitchToken;
-		const failSwitch = () => {
-			if (token !== campaignSwitchToken) return;
-			const current = get();
-			if (current.activeCampaignId !== id) return;
-			if (
-				current.remoteLoadedCampaignId === id &&
-				current.remoteLoadError == null
-			) {
-				return;
-			}
-			set({
-				isLoadingRemote: false,
-				isRetryingBase: false,
-				isBaseLoadSlow: false,
-				remoteLoadError: BASE_LOAD_ERROR_MESSAGE,
-				syncError: BASE_LOAD_ERROR_MESSAGE,
-			});
-		};
-		// Prazo da troca, não o teto de 60s de loadCampaigns. Se a rede
-		// responder depois, loadRemoteData ainda publica os dados.
-		const timer = setTimeout(failSwitch, CAMPAIGN_SWITCH_TIMEOUT_MS);
+		// Mesmo prazo da primeira carga. Se a rede responder depois,
+		// loadRemoteData ainda publica os dados.
+		const deadline = armCampaignDataDeadline(
+			get,
+			set,
+			id,
+			() => token !== campaignSwitchToken,
+		);
 
 		try {
 			const supabase = getSupabase();
@@ -829,9 +816,9 @@ export const createCampaignSlice: StateCreator<
 			}
 			await get().loadRemoteData();
 		} catch {
-			failSwitch();
+			deadline.fail();
 		} finally {
-			clearTimeout(timer);
+			deadline.cancel();
 		}
 	},
 

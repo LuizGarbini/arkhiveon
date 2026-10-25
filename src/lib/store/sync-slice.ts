@@ -55,10 +55,48 @@ export const BASE_LOAD_SLOW_MS = 20_000;
 /** Teto só de loadCampaigns: sem resposta, aí sim vira o aviso de erro. */
 export const BASE_LOAD_TIMEOUT_MS = 60_000;
 /**
- * Troca de campanha (plano do mestre + dados da mesa). Não usa o teto de
+ * Carga da mesa ativa (primeira abertura e troca). Não usa o teto de
  * loadCampaigns: se falhar ou passar disso, o painel mostra o erro.
  */
 export const CAMPAIGN_SWITCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Prazo único da carga da mesa ativa: troca e primeira abertura. A resposta
+ * que chega depois ainda entra (loadRemoteData publica e limpa o erro).
+ */
+export function armCampaignDataDeadline(
+	get: () => RPGState,
+	set: (partial: Partial<RPGState>) => void,
+	campaignId: string,
+	isCancelled: () => boolean,
+): { fail: () => void; cancel: () => void } {
+	const fail = () => {
+		if (isCancelled()) return;
+		const current = get();
+		if (current.activeCampaignId !== campaignId) return;
+		if (
+			current.remoteLoadedCampaignId === campaignId &&
+			current.remoteLoadError == null
+		) {
+			return;
+		}
+		set({
+			isLoadingRemote: false,
+			isRetryingBase: false,
+			isBaseLoadSlow: false,
+			remoteLoadError: BASE_LOAD_ERROR_MESSAGE,
+			syncError: BASE_LOAD_ERROR_MESSAGE,
+		});
+	};
+	const timer = setTimeout(fail, CAMPAIGN_SWITCH_TIMEOUT_MS);
+	return {
+		fail,
+		cancel: () => {
+			clearTimeout(timer);
+		},
+	};
+}
+
 let bootstrapToken = 0;
 /** Descarta o resultado de uma carga da mesa substituída por outra. */
 let remoteLoadToken = 0;
@@ -313,9 +351,9 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		set({ isBaseLoadSlow: false });
 		let campaignsSettled = false;
 		let ceilingSeq: number | null = null;
-		// Timers da carga de campanhas, não estado derivado de render: ~20s avisa
-		// lentidão sem trocar o skeleton; ~60s ou erro real vira falha. Não cobre
-		// loadRemoteData — a troca de campanha tem o próprio prazo de ~10s.
+		// Timers só de loadCampaigns, não estado derivado de render: ~20s avisa
+		// lentidão sem trocar o skeleton; ~60s ou erro real vira falha.
+		// loadRemoteData (depois das campanhas) usa o prazo de ~10s da troca.
 		const slowTimer = setTimeout(() => {
 			if (token !== bootstrapToken || campaignsSettled) return;
 			set({ isBaseLoadSlow: true });
@@ -363,7 +401,20 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 				await get().switchCampaign(fresh.campaigns[0].id);
 			}
 			if (token !== bootstrapToken) return;
-			await get().loadRemoteData();
+			const campaignId = get().activeCampaignId;
+			const deadline = campaignId
+				? armCampaignDataDeadline(
+						get,
+						set,
+						campaignId,
+						() => token !== bootstrapToken,
+					)
+				: null;
+			try {
+				await get().loadRemoteData();
+			} finally {
+				deadline?.cancel();
+			}
 			if (token !== bootstrapToken) return;
 			if (
 				get().remoteLoadError === null &&

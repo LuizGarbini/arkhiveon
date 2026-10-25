@@ -1046,6 +1046,20 @@ describe("Skeleton do painel com a forma real", () => {
 		return el;
 	}
 
+	/** Caixa reservada da faixa: margem, linha mínima e texto no fluxo. */
+	function statusSlotBox(band: Element) {
+		const line = band.querySelector("[data-slow-line]");
+		const keepsSpace =
+			line != null &&
+			!line.className.includes("absolute") &&
+			!/\bhidden\b/.test(line.className);
+		return {
+			className: band.className,
+			lineText: line?.textContent ?? "",
+			keepsSpace,
+		};
+	}
+
 	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões sem skeleton", () => {
 		setDashboardState({ isLoadingRemote: true });
 		render(<Dashboard />);
@@ -1211,7 +1225,11 @@ describe("Skeleton do painel com a forma real", () => {
 		);
 		expect(loadingBand).toBeTruthy();
 		expect(loadingBand?.className).toContain("min-h-");
-		expect(loadingBand?.textContent?.trim()).toBe("");
+		expect(loadingBand?.className).toContain("mb-4");
+		const loadingLine = loadingBand?.querySelector("[data-slow-line]");
+		expect(loadingLine?.textContent).toBe("Conexão lenta, ainda carregando…");
+		expect(loadingLine?.getAttribute("aria-hidden")).toBe("true");
+		expect(loadingLine?.getAttribute("role")).toBeNull();
 		loading.unmount();
 
 		setDashboardState({});
@@ -1219,8 +1237,54 @@ describe("Skeleton do painel com a forma real", () => {
 		const readyBand = document.querySelector(
 			'[data-dash-section="hero"] [data-dash-status-band]',
 		);
-		expect(readyBand?.textContent?.trim()).toBe("");
-		expect(readyBand?.className).toContain(loadingBand?.className);
+		expect(readyBand?.className).toBe(loadingBand?.className);
+		expect(
+			readyBand?.querySelector("[data-slow-line]")?.getAttribute("aria-hidden"),
+		).toBe("true");
+	});
+
+	it("aviso lento não muda a altura da faixa, nem ao terminar a carga", () => {
+		setDashboardState({
+			isLoadingRemote: true,
+			remoteLoadedCampaignId: null,
+			isBaseLoadSlow: false,
+		});
+		const quiet = render(<Dashboard />);
+		const quietBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!quietBand) throw new Error("faixa ausente");
+		const quietBox = statusSlotBox(quietBand);
+		quiet.unmount();
+
+		setDashboardState({
+			isLoadingRemote: true,
+			remoteLoadedCampaignId: null,
+			isBaseLoadSlow: true,
+		});
+		const slow = render(<Dashboard />);
+		const slowBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!slowBand) throw new Error("faixa ausente");
+		expect(statusSlotBox(slowBand)).toEqual(quietBox);
+		expect(slowBand.className).toContain("mb-4");
+		expect(slowBand.className).toContain("min-h-[1lh]");
+		const slowLine = slowBand.querySelector("[data-slow-line]");
+		expect(slowLine?.getAttribute("role")).toBe("status");
+		expect(slowLine?.className).not.toMatch(/invisible|opacity-0/);
+		const quietLine = quietBand.querySelector("[data-slow-line]");
+		expect(quietLine?.className).toContain("invisible");
+		expect(quietLine?.className).toContain("opacity-0");
+		slow.unmount();
+
+		setDashboardState({});
+		render(<Dashboard />);
+		const readyBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!readyBand) throw new Error("faixa ausente");
+		expect(statusSlotBox(readyBand)).toEqual(quietBox);
 	});
 
 	it("campanhas ainda chegando: o painel em skeleton, sem tela de texto", () => {
