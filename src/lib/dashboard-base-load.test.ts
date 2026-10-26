@@ -5,7 +5,10 @@ import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-coun
 import type { Campaign } from "./store";
 import { useRPGStore } from "./store";
 import { BASE_LOAD_ERROR_MESSAGE } from "./store/helpers";
-import { BASE_LOAD_TIMEOUT_MS } from "./store/sync-slice";
+import {
+	BASE_LOAD_TIMEOUT_MS,
+	CAMPAIGN_SWITCH_TIMEOUT_MS,
+} from "./store/sync-slice";
 
 /** Prazo em que a carga ainda é só “lenta”; o teto vira erro. */
 const SLOW_MS = 20_000;
@@ -302,5 +305,142 @@ describe("painel: falhas das consultas base levam ao erro global", () => {
 		const s = useRPGStore.getState();
 		expect(selectDashboardDataStatus(s)).toBe("error");
 		expect(s.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+	});
+});
+
+describe("primeira carga: dados da mesa usam o prazo de ~10s da troca", () => {
+	const lateRemote = {
+		characters: [{ id: "late-hero", characterName: "Hera" }],
+		npcs: [],
+		sessions: [],
+		items: [],
+		locations: [],
+		lores: [],
+		customTemplates: [],
+		imageAssets: [],
+		activityLog: [],
+		factions: [],
+		factionReputations: [],
+		worldNews: [],
+	};
+
+	it("sem resposta em 10s mostra o erro e, se os dados chegarem depois, entram", async () => {
+		vi.useFakeTimers();
+		let releaseRemote: (value: unknown) => void = () => {};
+		remote.loadRemoteState.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseRemote = resolve;
+				}),
+		);
+		const pending = useRPGStore.getState().bootstrapCampaignData();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		expect(useRPGStore.getState().remoteLoadError).toBeNull();
+		await vi.advanceTimersByTimeAsync(CAMPAIGN_SWITCH_TIMEOUT_MS - 2);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(1);
+		const timedOut = useRPGStore.getState();
+		expect(selectDashboardDataStatus(timedOut)).toBe("error");
+		expect(timedOut.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(timedOut.remoteLoadError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(timedOut.baseLoadError).toBeNull();
+		expect(timedOut.isLoadingRemote).toBe(false);
+		expect(timedOut.isBaseLoadSlow).toBe(false);
+		expect(timedOut.campaignLoadStatus).toBe("ready");
+		expect(BASE_LOAD_TIMEOUT_MS).toBe(60_000);
+		expect(CAMPAIGN_SWITCH_TIMEOUT_MS).toBe(10_000);
+
+		releaseRemote(lateRemote);
+		await pending;
+		const done = useRPGStore.getState();
+		expect(selectDashboardDataStatus(done)).toBe("ready");
+		expect(done.remoteLoadError).toBeNull();
+		expect(done.syncError).toBeNull();
+		expect(done.remoteLoadedCampaignId).toBe("camp-qa");
+		expect(done.characters.some((c) => c.id === "late-hero")).toBe(true);
+	});
+});
+
+describe("troca de campanha: falha ou ~10s vira erro, sem o teto de 60s", () => {
+	const other: Campaign = {
+		id: "camp-b",
+		name: "Outra mesa",
+		description: "",
+		ownerId: "owner-1",
+		worldId: "world-1",
+		myRole: "owner",
+		createdAt: 2,
+	};
+
+	const emptyRemote = {
+		characters: [],
+		npcs: [],
+		sessions: [],
+		items: [],
+		locations: [],
+		lores: [],
+		customTemplates: [],
+		imageAssets: [],
+		activityLog: [],
+		factions: [],
+		factionReputations: [],
+		worldNews: [],
+	};
+
+	function armSwitch() {
+		const current = useRPGStore.getState().campaigns[0];
+		useRPGStore.setState({
+			campaigns: [current, other],
+			activeCampaignId: current.id,
+			activeWorldId: current.worldId,
+			hasLoadedCampaigns: true,
+			campaignLoadStatus: "ready",
+			remoteLoadedCampaignId: current.id,
+			remoteLoadError: null,
+			baseLoadError: null,
+			isLoadingRemote: false,
+			isRetryingBase: false,
+			isBaseLoadSlow: false,
+			syncError: null,
+		});
+	}
+
+	it("rede da troca pendurada vira erro aos 10s e segue carregando antes disso", async () => {
+		vi.useFakeTimers();
+		armSwitch();
+		remote.loadRemoteState.mockImplementation(() => new Promise(() => {}));
+		void useRPGStore.getState().switchCampaign(other.id);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(9_998);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("loading");
+		await vi.advanceTimersByTimeAsync(1);
+		const s = useRPGStore.getState();
+		expect(selectDashboardDataStatus(s)).toBe("error");
+		expect(s.syncError).toBe(BASE_LOAD_ERROR_MESSAGE);
+		expect(s.syncError).not.toContain("Failed to fetch");
+		expect(s.isLoadingRemote).toBe(false);
+		expect(s.isBaseLoadSlow).toBe(false);
+		// O teto de loadCampaigns continua 60s e não é o que derrubou a troca.
+		expect(s.campaignLoadStatus).toBe("ready");
+		expect(BASE_LOAD_TIMEOUT_MS).toBe(60_000);
+	});
+
+	it("troca que falha: Tentar de novo recarrega a mesa de destino", async () => {
+		armSwitch();
+		remote.loadRemoteState.mockRejectedValueOnce(new Error("500"));
+		await useRPGStore.getState().switchCampaign(other.id);
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("error");
+		const callsBeforeRetry = remote.loadRemoteState.mock.calls.length;
+
+		remote.loadRemoteState.mockResolvedValueOnce(emptyRemote);
+		remote.fetchGlobalTotalCount.mockResolvedValue(0);
+		await useRPGStore.getState().retryBaseLoad();
+
+		expect(selectDashboardDataStatus(useRPGStore.getState())).toBe("ready");
+		expect(useRPGStore.getState().activeCampaignId).toBe(other.id);
+		expect(remote.loadRemoteState.mock.calls.length).toBe(callsBeforeRetry + 1);
+		expect(remote.loadRemoteState).toHaveBeenLastCalledWith(other.id);
 	});
 });

@@ -20,6 +20,24 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.42-campanha-escolhe-mundo",
+		version: "1.6.42",
+		date: "25/10/2026",
+		title: "Nova campanha pede o mundo",
+		description:
+			"Ao criar uma campanha, você escolhe o mundo numa lista que começa vazia, com os mundos seus e os que você já mestra. Dá para criar um mundo novo ali mesmo: ele volta escolhido no campo e o mundo da barra lateral continua o mesmo. Se a conta ainda não tem mundo, o campo mostra só como criar o primeiro e “Criar Campanha” espera esse mundo. Se faltar o mundo, o aviso entra no lugar da explicação. A janela fica sólida, para o texto não se misturar com o que está atrás. Em Mundos > Novo, a campanha não abre sozinha: o aviso “Mundo criado” traz o botão para abrir a nova campanha já naquele mundo.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.41-painel-topo-sem-pulo",
+		version: "1.6.41",
+		date: "25/10/2026",
+		title: "O topo do painel não pula ao carregar",
+		description:
+			"Na Visão geral, os selos do sistema e do papel e o botão Registrar Sessão já ocupam o lugar final enquanto a mesa carrega, então a página não desce quando os dados chegam. No celular, o nome da campanha reserva duas linhas desde o início, mesmo quando ainda não chegou ou é curto. O aviso de conexão lenta fica na mesma faixa o tempo todo, com a mesma altura e o mesmo respiro, então o topo não desce quando ele aparece nem quando a carga termina. O aviso de falha usa essa faixa, e “Tentar de novo” só no erro. Se a troca de mesa falhar ou demorar, ou se os dados da mesa não chegarem em cerca de 10 segundos já na primeira abertura, o aviso aparece; se os dados chegarem depois, eles entram e o aviso sai. Tentar de novo refaz a carga. No menu, a seção de facções mostra o nome quando a carga falha, em vez de ficar só no ícone. No celular, o banner do Discord reserva a altura do título quebrado para a fonte não empurrar o card.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.40-painel-lento-missoes",
 		version: "1.6.40",
 		date: "25/10/2026",

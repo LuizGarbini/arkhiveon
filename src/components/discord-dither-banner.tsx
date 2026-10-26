@@ -121,8 +121,11 @@ export function DiscordDitherBanner() {
 						<DiscordIcon className="h-5 w-5 fill-current text-[#7289DA] group-hover:text-white transition-colors" />
 					</div>
 					<div className="min-w-0">
-						<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-							<h3 className="font-display text-sm font-bold text-white tracking-tight">
+						{/* Até 400px a Cinzel joga o selo para a 2ª linha (~22px). A base
+						    cheia reserva essa quebra antes da fonte; acima disso o
+						    título cabe numa linha e a troca de fonte não muda a altura. */}
+						<div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-[400px]:min-h-[calc(1.75rem+15.5px)]">
+							<h3 className="max-[400px]:basis-full font-display text-sm font-bold text-white tracking-tight">
 								Comunidade Arkhiveon
 							</h3>
 							<span className="rounded-full border border-[#5865F2]/40 bg-[#5865F2]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-200 backdrop-blur-md">

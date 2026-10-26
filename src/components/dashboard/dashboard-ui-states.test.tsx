@@ -652,12 +652,16 @@ describe("Painel com falha na carga", () => {
 		expect(line.getAttribute("role")).toBe("status");
 		expect(line.getAttribute("aria-live")).toBe("polite");
 		expect(screen.getAllByRole("status")).toContain(line);
-		expect(line.className).toContain("absolute");
+		expect(line.className).not.toContain("absolute");
 		expect(line.className).toContain("text-muted-foreground");
 		expect(line.className).not.toMatch(/animate|pulse/);
 		expect(line.querySelector("svg")).toBeNull();
-		expect(line.parentElement?.className).toContain("relative");
-		expect(line.parentElement?.className).toContain("py-6");
+		const hero = document.querySelector('[data-dash-section="hero"]');
+		const band = hero?.querySelector("[data-dash-status-band]");
+		expect(band?.contains(line)).toBe(true);
+		expect(band?.className).toContain("min-h-");
+		expect(hero?.querySelector("h1")?.className).toContain("mt-4");
+		expect(band?.className).toContain("mb-4");
 		expect(screen.queryByRole("alert")).toBeNull();
 		expect(screen.queryByText(/Indisponível/)).toBeNull();
 		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
@@ -684,13 +688,20 @@ describe("Painel com falha na carga", () => {
 		expect(title.className).not.toContain("truncate");
 		const detail = screen.getByText(/Confira sua conexão/);
 		expect(detail.className).toContain("break-words");
+		expect(detail.className).toContain("text-foreground/80");
+		expect(detail.className).not.toContain("text-muted-foreground");
+		expect(alert.className).toContain("gap-4");
+		const band = alert.closest("[data-dash-status-band]");
+		const heading = document.querySelector('[data-dash-section="hero"] h1');
+		expect(heading?.className).toContain("mt-4");
+		expect(band?.className).toContain("mb-4");
 		const button = screen.getByRole("button", { name: "Tentar de novo" });
 		expect(alert.contains(button)).toBe(true);
 		expect(button.className).not.toContain("hidden");
 		expect(button.className).toContain("min-h-[44px]");
 	});
 
-	it("falha global: UM aviso no topo com um único 'Tentar de novo'", () => {
+	it("falha global: UM aviso na faixa do hero, com um único 'Tentar de novo'", () => {
 		setDashboardState(failed);
 		render(<Dashboard />);
 		const alerts = screen.getAllByRole("alert");
@@ -698,11 +709,15 @@ describe("Painel com falha na carga", () => {
 		expect(alerts[0].textContent).toContain(
 			"Não foi possível carregar os dados da mesa",
 		);
+		const hero = document.querySelector('[data-dash-section="hero"]');
+		expect(hero?.contains(alerts[0])).toBe(true);
+		expect(alerts[0].closest("[data-dash-status-band]")).toBeTruthy();
 		expect(
 			screen.getAllByRole("button", { name: "Tentar de novo" }),
 		).toHaveLength(1);
-		// nada de criar em cima de uma carga que falhou
-		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+		// Papel ainda desconhecido: o botão fica, desativado, no mesmo lugar.
+		const session = screen.getByRole("button", { name: "Registrar Sessão" });
+		expect(session.hasAttribute("disabled")).toBe(true);
 	});
 
 	for (const section of sections) {
@@ -866,15 +881,21 @@ describe("Painel: falha das consultas base (campanhas, vínculos, plano, convite
 	];
 
 	for (const [name, partial] of baseFailures) {
-		it(`${name}: aviso único com 'Tentar de novo', sem Registrar Sessão`, () => {
+		it(`${name}: aviso único na faixa do hero, Registrar Sessão desativado`, () => {
 			setDashboardState(partial);
 			render(<Dashboard />);
-			expect(screen.getAllByRole("alert")).toHaveLength(1);
+			const alert = screen.getByRole("alert", {
+				name: "Falha ao carregar a mesa",
+			});
+			expect(
+				alert.closest('[data-dash-section="hero"] [data-dash-status-band]'),
+			).toBeTruthy();
 			expect(
 				screen.getByText("Não foi possível carregar os dados da mesa"),
 			).toBeTruthy();
 			expect(screen.queryByText(/Failed to fetch|Erro ao carregar/)).toBeNull();
-			expect(screen.queryByText("Registrar Sessão")).toBeNull();
+			const session = screen.getByRole("button", { name: "Registrar Sessão" });
+			expect(session.hasAttribute("disabled")).toBe(true);
 			expect(
 				screen.queryAllByRole("status", { name: /^Carregando/ }),
 			).toHaveLength(0);
@@ -891,9 +912,22 @@ describe("Painel: falha das consultas base (campanhas, vínculos, plano, convite
 		expect(screen.getAllByRole("alert")).toHaveLength(1);
 	});
 
-	it("Registrar Sessão fica escondido também durante o carregamento", () => {
+	it("Registrar Sessão fica presente e desativado durante o carregamento", () => {
 		setDashboardState({ isLoadingRemote: true });
 		render(<Dashboard />);
+		const session = screen.getByRole("button", { name: "Registrar Sessão" });
+		expect(session.hasAttribute("disabled")).toBe(true);
+	});
+
+	it("jogador: Registrar Sessão fica escondido quando o papel já é conhecido", () => {
+		setDashboardState({
+			campaigns: [{ ...campaign, myRole: "viewer" }],
+		});
+		render(<Dashboard />);
+		expect(screen.getByText("Jogador (Visualizador)")).toBeTruthy();
+		expect(
+			screen.queryByRole("button", { name: "Registrar Sessão" }),
+		).toBeNull();
 		expect(screen.queryByText("Registrar Sessão")).toBeNull();
 	});
 
@@ -923,7 +957,8 @@ describe("Painel: falha das consultas base (campanhas, vínculos, plano, convite
 		expect(
 			screen.getAllByRole("status", { name: /^Carregando/ }).length,
 		).toBeGreaterThan(0);
-		expect(screen.queryByText("Registrar Sessão")).toBeNull();
+		const session = screen.getByRole("button", { name: "Registrar Sessão" });
+		expect(session.hasAttribute("disabled")).toBe(true);
 	});
 });
 
@@ -951,11 +986,19 @@ describe("Selo de papel: só com o dado real", () => {
 			screen.getAllByRole("status", { name: "Carregando papel na mesa" }),
 		).toHaveLength(2);
 		expect(screen.queryByText(roleText)).toBeNull();
-		// Selo do hero usa o mesmo muted em baixa opacidade das barras dos números.
-		const heroRole = screen
-			.getAllByRole("status", { name: "Carregando papel na mesa" })
-			.find((el) => el.className.includes("h-6"));
-		expect(heroRole?.className).toContain("bg-muted-foreground/20");
+		const hero = document.querySelector('[data-dash-section="hero"]');
+		const heroRole = within(hero as HTMLElement).getByRole("status", {
+			name: "Carregando papel na mesa",
+		});
+		expect(heroRole.getAttribute("data-seal")).toBe("role");
+		expect(
+			heroRole.querySelector('[data-slot="skeleton"]')?.className,
+		).toContain("bg-muted-foreground/20");
+		expect(
+			heroRole
+				.querySelector("[data-seal-label]")
+				?.getAttribute("data-seal-label"),
+		).toBe("Co-Mestre");
 	});
 
 	it("retry da falha base: skeleton, sem 'Co-Mestre'", () => {
@@ -1003,6 +1046,20 @@ describe("Skeleton do painel com a forma real", () => {
 		return el;
 	}
 
+	/** Caixa reservada da faixa: margem, linha mínima e texto no fluxo. */
+	function statusSlotBox(band: Element) {
+		const line = band.querySelector("[data-slow-line]");
+		const keepsSpace =
+			line != null &&
+			!line.className.includes("absolute") &&
+			!/\bhidden\b/.test(line.className);
+		return {
+			className: band.className,
+			lineText: line?.textContent ?? "",
+			keepsSpace,
+		};
+	}
+
 	it("Ações da Mesa: cabeçalho real + 4 linhas; Missões sem skeleton", () => {
 		setDashboardState({ isLoadingRemote: true });
 		render(<Dashboard />);
@@ -1042,6 +1099,192 @@ describe("Skeleton do painel com a forma real", () => {
 			.filter((bar) => bar.closest(".dashboard-skeleton") === null)
 			.map((bar) => bar.getAttribute("aria-label") ?? bar.className);
 		expect(loose).toEqual([]);
+	});
+
+	it("carregando: selos do topo reservam sistema e papel no tamanho real", () => {
+		setDashboardState({
+			isLoadingRemote: true,
+			campaigns: [{ ...campaign, system: "dnd5e", myRole: "owner" }],
+		});
+		render(<Dashboard />);
+		const hero = section("hero");
+		const system = hero.querySelector('[data-seal="system"]');
+		const role = within(hero).getByRole("status", {
+			name: "Carregando papel na mesa",
+		});
+		expect(system).toBeTruthy();
+		expect(system?.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+		expect(
+			system
+				?.querySelector("[data-seal-label]")
+				?.getAttribute("data-seal-label"),
+		).toBe("D&D 5ª Edição (2014)");
+		expect(role.getAttribute("data-seal")).toBe("role");
+		expect(
+			role.querySelector("[data-seal-label]")?.getAttribute("data-seal-label"),
+		).toBe("Mestre da Mesa");
+		expect(screen.queryByText("D&D 5ª Edição (2014)")).toBeNull();
+		expect(screen.queryByText("Mestre da Mesa")).toBeNull();
+		expect(hero.querySelector(".flex-wrap")).toBeTruthy();
+	});
+
+	it("carregando sem retrato da mesa: ainda reserva o selo de sistema", () => {
+		setDashboardState({
+			isLoadingRemote: true,
+			hasLoadedCampaigns: false,
+			campaignLoadStatus: "loading",
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		const hero = section("hero");
+		const system = hero.querySelector('[data-seal="system"]');
+		expect(system).toBeTruthy();
+		expect(
+			system
+				?.querySelector("[data-seal-label]")
+				?.getAttribute("data-seal-label"),
+		).toBe("D&D 5ª Edição (2014)");
+	});
+
+	it("campanhas prontas e mesa ainda não: selos ficam em placeholder", () => {
+		// loadCampaigns grava a lista antes de escolher a mesa ativa. Nesse
+		// intervalo o sistema e o papel ainda não existem — os placeholders
+		// não podem sair, nem o vazio da Última Sessão.
+		setDashboardState({
+			campaigns: [{ ...campaign, system: "dnd5e", myRole: "owner" }],
+			activeCampaignId: null,
+			activeWorldId: null,
+			hasLoadedCampaigns: true,
+			campaignLoadStatus: "ready",
+			isLoadingRemote: false,
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		const hero = section("hero");
+		const system = hero.querySelector('[data-seal="system"]');
+		const role = within(hero).getByRole("status", {
+			name: "Carregando papel na mesa",
+		});
+		expect(system?.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+		expect(
+			system
+				?.querySelector("[data-seal-label]")
+				?.getAttribute("data-seal-label"),
+		).toBe("D&D 5ª Edição (2014)");
+		expect(role.getAttribute("data-seal")).toBe("role");
+		expect(role.querySelector('[data-slot="skeleton"]')).toBeTruthy();
+		expect(
+			role.querySelector("[data-seal-label]")?.getAttribute("data-seal-label"),
+		).toBe("Mestre da Mesa");
+		expect(screen.queryByText("D&D 5ª Edição (2014)")).toBeNull();
+		expect(screen.queryByText("Mestre da Mesa")).toBeNull();
+		expect(screen.queryByText("Jogador (Visualizador)")).toBeNull();
+		expect(screen.queryByText("Nenhuma sessão registrada")).toBeNull();
+		expect(screen.queryByText("Registrar 1ª Sessão")).toBeNull();
+	});
+
+	it("mesa sem sistema: não inventa selo de sistema no carregamento", () => {
+		setDashboardState({ isLoadingRemote: true });
+		render(<Dashboard />);
+		const hero = section("hero");
+		expect(hero.querySelector('[data-seal="system"]')).toBeNull();
+		expect(hero.querySelector('[data-seal="role"]')).toBeTruthy();
+	});
+
+	it("título em carregamento reserva duas linhas abaixo de sm, com uma barra", () => {
+		setDashboardState({
+			campaigns: [],
+			activeCampaignId: null,
+			hasLoadedCampaigns: false,
+			campaignLoadStatus: "loading",
+			remoteLoadedCampaignId: null,
+		});
+		render(<Dashboard />);
+		const title = section("hero").querySelector("h1");
+		expect(title?.className).toContain("min-h-[2lh]");
+		expect(title?.className).toContain("sm:min-h-0");
+		expect(title?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(1);
+	});
+
+	it("nome curto também reserva duas linhas abaixo de sm", () => {
+		setDashboardState({
+			campaigns: [{ ...campaign, name: "QA" }],
+		});
+		render(<Dashboard />);
+		const title = section("hero").querySelector("h1");
+		expect(title?.textContent).toContain("QA");
+		expect(title?.className).toContain("min-h-[2lh]");
+		expect(title?.className).toContain("sm:min-h-0");
+	});
+
+	it("faixa do hero fica reservada na carga normal e com a mesa pronta", () => {
+		setDashboardState({ isLoadingRemote: true });
+		const loading = render(<Dashboard />);
+		const loadingBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		expect(loadingBand).toBeTruthy();
+		expect(loadingBand?.className).toContain("min-h-");
+		expect(loadingBand?.className).toContain("mb-4");
+		const loadingLine = loadingBand?.querySelector("[data-slow-line]");
+		expect(loadingLine?.textContent).toBe("Conexão lenta, ainda carregando…");
+		expect(loadingLine?.getAttribute("aria-hidden")).toBe("true");
+		expect(loadingLine?.getAttribute("role")).toBeNull();
+		loading.unmount();
+
+		setDashboardState({});
+		render(<Dashboard />);
+		const readyBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		expect(readyBand?.className).toBe(loadingBand?.className);
+		expect(
+			readyBand?.querySelector("[data-slow-line]")?.getAttribute("aria-hidden"),
+		).toBe("true");
+	});
+
+	it("aviso lento não muda a altura da faixa, nem ao terminar a carga", () => {
+		setDashboardState({
+			isLoadingRemote: true,
+			remoteLoadedCampaignId: null,
+			isBaseLoadSlow: false,
+		});
+		const quiet = render(<Dashboard />);
+		const quietBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!quietBand) throw new Error("faixa ausente");
+		const quietBox = statusSlotBox(quietBand);
+		quiet.unmount();
+
+		setDashboardState({
+			isLoadingRemote: true,
+			remoteLoadedCampaignId: null,
+			isBaseLoadSlow: true,
+		});
+		const slow = render(<Dashboard />);
+		const slowBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!slowBand) throw new Error("faixa ausente");
+		expect(statusSlotBox(slowBand)).toEqual(quietBox);
+		expect(slowBand.className).toContain("mb-4");
+		expect(slowBand.className).toContain("min-h-[1lh]");
+		const slowLine = slowBand.querySelector("[data-slow-line]");
+		expect(slowLine?.getAttribute("role")).toBe("status");
+		expect(slowLine?.className).not.toMatch(/invisible|opacity-0/);
+		const quietLine = quietBand.querySelector("[data-slow-line]");
+		expect(quietLine?.className).toContain("invisible");
+		expect(quietLine?.className).toContain("opacity-0");
+		slow.unmount();
+
+		setDashboardState({});
+		render(<Dashboard />);
+		const readyBand = document.querySelector(
+			'[data-dash-section="hero"] [data-dash-status-band]',
+		);
+		if (!readyBand) throw new Error("faixa ausente");
+		expect(statusSlotBox(readyBand)).toEqual(quietBox);
 	});
 
 	it("campanhas ainda chegando: o painel em skeleton, sem tela de texto", () => {

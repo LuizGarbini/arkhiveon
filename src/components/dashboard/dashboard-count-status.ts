@@ -5,7 +5,10 @@ interface CountStatusInput {
 	isLoadingRemote: boolean;
 	hasCampaignSnapshot: boolean;
 	loadError: string | null;
-	/** Há mesa ativa, mas os dados dela ainda não chegaram nesta sessão. */
+	/**
+	 * Mesa ainda sem dados nesta sessão: a lista chegou e a mesa ativa ainda
+	 * não foi escolhida, ou o id já existe e a carga remota não.
+	 */
 	awaitingActiveCampaignData?: boolean;
 }
 
@@ -43,7 +46,14 @@ export function selectDashboardDataStatus(
 				? "base"
 				: null),
 		awaitingActiveCampaignData:
-			state.activeCampaignId !== null &&
-			state.remoteLoadedCampaignId !== state.activeCampaignId,
+			(state.activeCampaignId !== null &&
+				state.remoteLoadedCampaignId !== state.activeCampaignId) ||
+			// loadCampaigns grava a lista e só depois escolhe a mesa. Nesse
+			// intervalo não há sistema nem papel; mundo vazio (id de mundo
+			// sem mesa) não entra aqui.
+			(state.hasLoadedCampaigns &&
+				state.campaigns.length > 0 &&
+				state.activeCampaignId === null &&
+				state.activeWorldId === null),
 	});
 }
