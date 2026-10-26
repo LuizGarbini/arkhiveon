@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.43-publicar-cena",
+		version: "1.6.43",
+		date: "26/10/2026",
+		title: "Publicar cena num passo só",
+		description:
+			"Publicar cena agora acontece num passo só no servidor (preparação; entra no ar quando a migração for aplicada).",
+		bullets: [],
+	},
+	{
 		id: "v1.6.42-campanha-escolhe-mundo",
 		version: "1.6.42",
 		date: "25/10/2026",
