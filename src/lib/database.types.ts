@@ -1138,6 +1138,7 @@ export type Database = {
 				Args: { p_campaign_id: string };
 				Returns: { role: string; campaign_name: string | null }[];
 			};
+			publish_scene: { Args: { p_scene_id: string }; Returns: string };
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 			set_character_hp: {
 				Args: {
