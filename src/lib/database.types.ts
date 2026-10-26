@@ -10,7 +10,7 @@ export type Database = {
 	// Allows to automatically instantiate createClient with right options
 	// instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
 	__InternalSupabase: {
-		PostgrestVersion: "14.5";
+		PostgrestVersion: "14.15";
 	};
 	public: {
 		Tables: {
@@ -58,6 +58,105 @@ export type Database = {
 					},
 				];
 			};
+			campaign_library_files: {
+				Row: {
+					campaign_id: string;
+					content_type: string;
+					created_at: string;
+					id: string;
+					r2_key: string;
+					ready_at: string | null;
+					size_bytes: number;
+					status: string;
+					title: string;
+					uploaded_by: string;
+				};
+				Insert: {
+					campaign_id: string;
+					content_type?: string;
+					created_at?: string;
+					id?: string;
+					r2_key: string;
+					ready_at?: string | null;
+					size_bytes: number;
+					status?: string;
+					title: string;
+					uploaded_by: string;
+				};
+				Update: {
+					campaign_id?: string;
+					content_type?: string;
+					created_at?: string;
+					id?: string;
+					r2_key?: string;
+					ready_at?: string | null;
+					size_bytes?: number;
+					status?: string;
+					title?: string;
+					uploaded_by?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "campaign_library_files_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			campaign_library_form_values: {
+				Row: {
+					field_values: Json;
+					file_id: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					field_values?: Json;
+					file_id: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Update: {
+					field_values?: Json;
+					file_id?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "campaign_library_form_values_file_id_fkey";
+						columns: ["file_id"];
+						isOneToOne: false;
+						referencedRelation: "campaign_library_files";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			campaign_library_pilot_campaigns: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "campaign_library_pilot_campaigns_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: true;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			campaigns: {
 				Row: {
 					created_at: string;
@@ -68,7 +167,7 @@ export type Database = {
 					name: string;
 					owner_id: string;
 					spotify_jam_link: string | null;
-					system: string;
+					system: string | null;
 					updated_at: string;
 					world_id: string;
 				};
@@ -81,7 +180,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
-					system?: string;
+					system?: string | null;
 					updated_at?: string;
 					world_id: string;
 				};
@@ -94,7 +193,7 @@ export type Database = {
 					name?: string;
 					owner_id?: string;
 					spotify_jam_link?: string | null;
-					system?: string;
+					system?: string | null;
 					updated_at?: string;
 					world_id?: string;
 				};
@@ -294,6 +393,51 @@ export type Database = {
 					},
 				];
 			};
+			feats: {
+				Row: {
+					ability_increase: string;
+					category: string;
+					created_at: string;
+					description: string;
+					id: string;
+					is_homebrew: boolean;
+					name: string;
+					prerequisites: string;
+					source: string;
+					system: string;
+					updated_at: string;
+					user_id: string | null;
+				};
+				Insert: {
+					ability_increase?: string;
+					category?: string;
+					created_at?: string;
+					description?: string;
+					id?: string;
+					is_homebrew?: boolean;
+					name: string;
+					prerequisites?: string;
+					source?: string;
+					system?: string;
+					updated_at?: string;
+					user_id?: string | null;
+				};
+				Update: {
+					ability_increase?: string;
+					category?: string;
+					created_at?: string;
+					description?: string;
+					id?: string;
+					is_homebrew?: boolean;
+					name?: string;
+					prerequisites?: string;
+					source?: string;
+					system?: string;
+					updated_at?: string;
+					user_id?: string | null;
+				};
+				Relationships: [];
+			};
 			ia_mesa_pilot_campaigns: {
 				Row: {
 					campaign_id: string;
@@ -377,6 +521,13 @@ export type Database = {
 						referencedRelation: "campaigns";
 						referencedColumns: ["id"];
 					},
+					{
+						foreignKeyName: "image_assets_world_id_fkey";
+						columns: ["world_id"];
+						isOneToOne: false;
+						referencedRelation: "worlds";
+						referencedColumns: ["id"];
+					},
 				];
 			};
 			invites: {
@@ -419,7 +570,7 @@ export type Database = {
 			};
 			items: {
 				Row: {
-					campaign_id: string | null;
+					campaign_id: string;
 					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
@@ -435,7 +586,7 @@ export type Database = {
 					world_id: string;
 				};
 				Insert: {
-					campaign_id?: string | null;
+					campaign_id: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -451,7 +602,7 @@ export type Database = {
 					world_id: string;
 				};
 				Update: {
-					campaign_id?: string | null;
+					campaign_id?: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -485,7 +636,7 @@ export type Database = {
 			};
 			locations: {
 				Row: {
-					campaign_id: string | null;
+					campaign_id: string;
 					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
@@ -501,7 +652,7 @@ export type Database = {
 					world_id: string;
 				};
 				Insert: {
-					campaign_id?: string | null;
+					campaign_id: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -517,7 +668,7 @@ export type Database = {
 					world_id: string;
 				};
 				Update: {
-					campaign_id?: string | null;
+					campaign_id?: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -551,7 +702,7 @@ export type Database = {
 			};
 			lores: {
 				Row: {
-					campaign_id: string | null;
+					campaign_id: string;
 					campaign_ids: string[];
 					category: string;
 					created_at: string;
@@ -568,7 +719,7 @@ export type Database = {
 					world_id: string;
 				};
 				Insert: {
-					campaign_id?: string | null;
+					campaign_id: string;
 					campaign_ids?: string[];
 					category?: string;
 					created_at?: string;
@@ -585,7 +736,7 @@ export type Database = {
 					world_id: string;
 				};
 				Update: {
-					campaign_id?: string | null;
+					campaign_id?: string;
 					campaign_ids?: string[];
 					category?: string;
 					created_at?: string;
@@ -697,7 +848,7 @@ export type Database = {
 			};
 			npcs: {
 				Row: {
-					campaign_id: string | null;
+					campaign_id: string;
 					campaign_ids: string[];
 					created_at: string;
 					created_by: string;
@@ -712,7 +863,7 @@ export type Database = {
 					world_id: string;
 				};
 				Insert: {
-					campaign_id?: string | null;
+					campaign_id: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -727,7 +878,7 @@ export type Database = {
 					world_id: string;
 				};
 				Update: {
-					campaign_id?: string | null;
+					campaign_id?: string;
 					campaign_ids?: string[];
 					created_at?: string;
 					created_by?: string;
@@ -801,6 +952,385 @@ export type Database = {
 						columns: ["campaign_id"];
 						isOneToOne: false;
 						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			spells: {
+				Row: {
+					casting_time: string;
+					components: string;
+					created_at: string;
+					description: string;
+					duration: string;
+					id: string;
+					is_homebrew: boolean;
+					level: number;
+					name: string;
+					range: string;
+					school: string;
+					system: string;
+					updated_at: string;
+					user_id: string | null;
+				};
+				Insert: {
+					casting_time?: string;
+					components?: string;
+					created_at?: string;
+					description?: string;
+					duration?: string;
+					id?: string;
+					is_homebrew?: boolean;
+					level?: number;
+					name: string;
+					range?: string;
+					school?: string;
+					system?: string;
+					updated_at?: string;
+					user_id?: string | null;
+				};
+				Update: {
+					casting_time?: string;
+					components?: string;
+					created_at?: string;
+					description?: string;
+					duration?: string;
+					id?: string;
+					is_homebrew?: boolean;
+					level?: number;
+					name?: string;
+					range?: string;
+					school?: string;
+					system?: string;
+					updated_at?: string;
+					user_id?: string | null;
+				};
+				Relationships: [];
+			};
+			user_plans: {
+				Row: {
+					created_at: string;
+					last_upload_time: string | null;
+					plan: string;
+					storage_used_bytes: number;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					last_upload_time?: string | null;
+					plan?: string;
+					storage_used_bytes?: number;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Update: {
+					created_at?: string;
+					last_upload_time?: string | null;
+					plan?: string;
+					storage_used_bytes?: number;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
+			vtt_combatants: {
+				Row: {
+					created_at: string;
+					dex: number | null;
+					id: string;
+					initiative: number | null;
+					scene_id: string;
+					sort_key: number;
+					token_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					dex?: number | null;
+					id?: string;
+					initiative?: number | null;
+					scene_id: string;
+					sort_key: number;
+					token_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					dex?: number | null;
+					id?: string;
+					initiative?: number | null;
+					scene_id?: string;
+					sort_key?: number;
+					token_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_combatants_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_combatants_token_id_fkey";
+						columns: ["token_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_tokens";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			vtt_fog_states: {
+				Row: {
+					created_at: string;
+					id: string;
+					revealed_paths: Json;
+					scene_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					id?: string;
+					revealed_paths?: Json;
+					scene_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					id?: string;
+					revealed_paths?: Json;
+					scene_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_fog_states_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: true;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			vtt_scenes: {
+				Row: {
+					campaign_id: string;
+					combat_round: number | null;
+					combat_turn_id: string | null;
+					created_at: string;
+					fog_enabled: boolean;
+					fog_exploration: boolean;
+					grid_color: string;
+					grid_opacity: number;
+					grid_scale_distance: number;
+					grid_scale_unit: string;
+					grid_size: number;
+					grid_type: string;
+					height: number;
+					id: string;
+					is_active: boolean;
+					map_image_url: string | null;
+					name: string;
+					order_index: number;
+					updated_at: string;
+					width: number;
+				};
+				Insert: {
+					campaign_id: string;
+					combat_round?: number | null;
+					combat_turn_id?: string | null;
+					created_at?: string;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
+					grid_color?: string;
+					grid_opacity?: number;
+					grid_scale_distance?: number;
+					grid_scale_unit?: string;
+					grid_size?: number;
+					grid_type?: string;
+					height?: number;
+					id?: string;
+					is_active?: boolean;
+					map_image_url?: string | null;
+					name?: string;
+					order_index?: number;
+					updated_at?: string;
+					width?: number;
+				};
+				Update: {
+					campaign_id?: string;
+					combat_round?: number | null;
+					combat_turn_id?: string | null;
+					created_at?: string;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
+					grid_color?: string;
+					grid_opacity?: number;
+					grid_scale_distance?: number;
+					grid_scale_unit?: string;
+					grid_size?: number;
+					grid_type?: string;
+					height?: number;
+					id?: string;
+					is_active?: boolean;
+					map_image_url?: string | null;
+					name?: string;
+					order_index?: number;
+					updated_at?: string;
+					width?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_scenes_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			vtt_tokens: {
+				Row: {
+					auras: Json;
+					avatar_url: string | null;
+					character_id: string | null;
+					conditions: Json;
+					controlled_by: Json;
+					created_at: string;
+					elevation: number;
+					hp_current: number | null;
+					hp_max: number | null;
+					id: string;
+					is_hidden: boolean;
+					is_locked: boolean;
+					layer: string;
+					name: string;
+					npc_id: string | null;
+					rotation: number;
+					scene_id: string;
+					size_cells: number;
+					updated_at: string;
+					vision_range: number;
+					x: number;
+					y: number;
+				};
+				Insert: {
+					auras?: Json;
+					avatar_url?: string | null;
+					character_id?: string | null;
+					conditions?: Json;
+					controlled_by?: Json;
+					created_at?: string;
+					elevation?: number;
+					hp_current?: number | null;
+					hp_max?: number | null;
+					id?: string;
+					is_hidden?: boolean;
+					is_locked?: boolean;
+					layer?: string;
+					name?: string;
+					npc_id?: string | null;
+					rotation?: number;
+					scene_id: string;
+					size_cells?: number;
+					updated_at?: string;
+					vision_range?: number;
+					x?: number;
+					y?: number;
+				};
+				Update: {
+					auras?: Json;
+					avatar_url?: string | null;
+					character_id?: string | null;
+					conditions?: Json;
+					controlled_by?: Json;
+					created_at?: string;
+					elevation?: number;
+					hp_current?: number | null;
+					hp_max?: number | null;
+					id?: string;
+					is_hidden?: boolean;
+					is_locked?: boolean;
+					layer?: string;
+					name?: string;
+					npc_id?: string | null;
+					rotation?: number;
+					scene_id?: string;
+					size_cells?: number;
+					updated_at?: string;
+					vision_range?: number;
+					x?: number;
+					y?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_tokens_character_id_fkey";
+						columns: ["character_id"];
+						isOneToOne: false;
+						referencedRelation: "characters";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_tokens_npc_id_fkey";
+						columns: ["npc_id"];
+						isOneToOne: false;
+						referencedRelation: "npcs";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_tokens_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			vtt_walls: {
+				Row: {
+					created_at: string;
+					created_by: string | null;
+					id: string;
+					kind: string;
+					scene_id: string;
+					updated_at: string;
+					x1: number;
+					x2: number;
+					y1: number;
+					y2: number;
+				};
+				Insert: {
+					created_at?: string;
+					created_by?: string | null;
+					id?: string;
+					kind?: string;
+					scene_id: string;
+					updated_at?: string;
+					x1: number;
+					x2: number;
+					y1: number;
+					y2: number;
+				};
+				Update: {
+					created_at?: string;
+					created_by?: string | null;
+					id?: string;
+					kind?: string;
+					scene_id?: string;
+					updated_at?: string;
+					x1?: number;
+					x2?: number;
+					y1?: number;
+					y2?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_walls_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
 						referencedColumns: ["id"];
 					},
 				];
@@ -885,261 +1415,81 @@ export type Database = {
 				};
 				Relationships: [];
 			};
-			user_plans: {
-				Row: {
-					created_at: string;
-					last_upload_time: string | null;
-					plan: string;
-					storage_used_bytes: number;
-					updated_at: string;
-					user_id: string;
-				};
-				Insert: {
-					created_at?: string;
-					last_upload_time?: string | null;
-					plan?: string;
-					storage_used_bytes?: number;
-					updated_at?: string;
-					user_id?: string;
-				};
-				Update: {
-					created_at?: string;
-					last_upload_time?: string | null;
-					plan?: string;
-					storage_used_bytes?: number;
-					updated_at?: string;
-					user_id?: string;
-				};
-				Relationships: [];
-			};
-			vtt_scenes: {
-				Row: {
-					id: string;
-					campaign_id: string;
-					name: string;
-					map_image_url: string | null;
-					grid_type: string;
-					grid_size: number;
-					grid_color: string;
-					grid_opacity: number;
-					grid_scale_distance: number;
-					grid_scale_unit: string;
-					width: number;
-					height: number;
-					fog_enabled: boolean;
-					fog_exploration: boolean;
-					is_active: boolean;
-					order_index: number;
-					created_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					id?: string;
-					campaign_id: string;
-					name?: string;
-					map_image_url?: string | null;
-					grid_type?: string;
-					grid_size?: number;
-					grid_color?: string;
-					grid_opacity?: number;
-					grid_scale_distance?: number;
-					grid_scale_unit?: string;
-					width?: number;
-					height?: number;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
-					is_active?: boolean;
-					order_index?: number;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Update: {
-					id?: string;
-					campaign_id?: string;
-					name?: string;
-					map_image_url?: string | null;
-					grid_type?: string;
-					grid_size?: number;
-					grid_color?: string;
-					grid_opacity?: number;
-					grid_scale_distance?: number;
-					grid_scale_unit?: string;
-					width?: number;
-					height?: number;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
-					is_active?: boolean;
-					order_index?: number;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [];
-			};
-			vtt_tokens: {
-				Row: {
-					id: string;
-					scene_id: string;
-					character_id: string | null;
-					npc_id: string | null;
-					name: string;
-					avatar_url: string | null;
-					layer: string;
-					x: number;
-					y: number;
-					size_cells: number;
-					rotation: number;
-					hp_current: number | null;
-					hp_max: number | null;
-					elevation: number;
-					conditions: Json;
-					auras: Json;
-					vision_range: number;
-					is_locked: boolean;
-					is_hidden: boolean;
-					controlled_by: Json;
-					created_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					id?: string;
-					scene_id: string;
-					character_id?: string | null;
-					npc_id?: string | null;
-					name?: string;
-					avatar_url?: string | null;
-					layer?: string;
-					x?: number;
-					y?: number;
-					size_cells?: number;
-					rotation?: number;
-					hp_current?: number | null;
-					hp_max?: number | null;
-					elevation?: number;
-					conditions?: Json;
-					auras?: Json;
-					vision_range?: number;
-					is_locked?: boolean;
-					is_hidden?: boolean;
-					controlled_by?: Json;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Update: {
-					id?: string;
-					scene_id?: string;
-					character_id?: string | null;
-					npc_id?: string | null;
-					name?: string;
-					avatar_url?: string | null;
-					layer?: string;
-					x?: number;
-					y?: number;
-					size_cells?: number;
-					rotation?: number;
-					hp_current?: number | null;
-					hp_max?: number | null;
-					elevation?: number;
-					conditions?: Json;
-					auras?: Json;
-					vision_range?: number;
-					is_locked?: boolean;
-					is_hidden?: boolean;
-					controlled_by?: Json;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [];
-			};
-			vtt_fog_states: {
-				Row: {
-					id: string;
-					scene_id: string;
-					revealed_paths: Json;
-					created_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					id?: string;
-					scene_id: string;
-					revealed_paths?: Json;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Update: {
-					id?: string;
-					scene_id?: string;
-					revealed_paths?: Json;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [];
-			};
-			/** 0046 (Paredes F1, merge do Luiz): só mestre lê/escreve. */
-			vtt_walls: {
-				Row: {
-					id: string;
-					scene_id: string;
-					x1: number;
-					y1: number;
-					x2: number;
-					y2: number;
-					kind: string;
-					created_by: string | null;
-					created_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					id?: string;
-					scene_id: string;
-					x1: number;
-					y1: number;
-					x2: number;
-					y2: number;
-					kind?: string;
-					created_by?: string | null;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Update: {
-					id?: string;
-					scene_id?: string;
-					x1?: number;
-					y1?: number;
-					x2?: number;
-					y2?: number;
-					kind?: string;
-					created_by?: string | null;
-					created_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [];
-			};
 		};
 		Views: {
 			[_ in never]: never;
 		};
 		Functions: {
-			get_user_accessible_campaigns: {
-				Args: Record<PropertyKey, never>;
+			can_attach_campaign_to_world: {
+				Args: { p_world_id: string };
+				Returns: boolean;
+			};
+			can_fill_library_file: { Args: { p_file_id: string }; Returns: boolean };
+			can_view_image_asset: {
+				Args: {
+					p_campaign_id: string;
+					p_is_private: boolean;
+					p_world_id: string;
+				};
+				Returns: boolean;
+			};
+			get_campaign_members: {
+				Args: { p_campaign_id: string };
 				Returns: {
-					created_at: string | null;
-					description: string | null;
+					created_at: string;
+					email: string;
+					membership_id: string;
+					role: string;
+					user_id: string;
+				}[];
+			};
+			get_user_accessible_campaigns: {
+				Args: never;
+				Returns: {
+					created_at: string;
+					description: string;
 					id: string;
-					member_limit: number | null;
-					my_role: string | null;
-					name: string | null;
-					owner_id: string | null;
-					system: string | null;
-					updated_at: string | null;
-					world_id: string | null;
+					member_limit: number;
+					my_role: string;
+					name: string;
+					owner_id: string;
+					system: string;
+					updated_at: string;
+					world_id: string;
+				}[];
+			};
+			get_user_accessible_worlds: {
+				Args: never;
+				Returns: {
+					created_at: string;
+					id: string;
+					is_default: boolean;
+					name: string;
+					owner_user_id: string;
+					updated_at: string;
 				}[];
 			};
 			join_campaign_via_link: {
 				Args: { p_campaign_id: string };
-				Returns: { role: string; campaign_name: string | null }[];
+				Returns: {
+					campaign_name: string;
+					role: string;
+				}[];
+			};
+			promote_orphan_restricted_scopes: {
+				Args: { p_campaign_id: string; p_world_id: string };
+				Returns: undefined;
 			};
 			publish_scene: { Args: { p_scene_id: string }; Returns: string };
+			set_character_hp: {
+				Args: { p_character_id: string; p_current: number; p_max?: number };
+				Returns: Json;
+			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
+			user_scene_campaign_role: {
+				Args: { p_scene_id: string };
+				Returns: string;
+			};
 		};
 		Enums: {
 			[_ in never]: never;
