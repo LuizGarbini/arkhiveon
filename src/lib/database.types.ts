@@ -912,66 +912,120 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			vtt_combatants: {
+				Row: {
+					created_at: string;
+					dex: number | null;
+					id: string;
+					initiative: number | null;
+					scene_id: string;
+					sort_key: number;
+					token_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					dex?: number | null;
+					id?: string;
+					initiative?: number | null;
+					scene_id: string;
+					sort_key: number;
+					token_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					dex?: number | null;
+					id?: string;
+					initiative?: number | null;
+					scene_id?: string;
+					sort_key?: number;
+					token_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_combatants_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_combatants_token_id_fkey";
+						columns: ["token_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_tokens";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			vtt_scenes: {
 				Row: {
-					id: string;
 					campaign_id: string;
-					name: string;
-					map_image_url: string | null;
-					grid_type: string;
-					grid_size: number;
+					combat_round: number | null;
+					combat_turn_id: string | null;
+					created_at: string;
+					fog_enabled: boolean;
+					fog_exploration: boolean;
 					grid_color: string;
 					grid_opacity: number;
 					grid_scale_distance: number;
 					grid_scale_unit: string;
-					width: number;
+					grid_size: number;
+					grid_type: string;
 					height: number;
-					fog_enabled: boolean;
-					fog_exploration: boolean;
+					id: string;
 					is_active: boolean;
+					map_image_url: string | null;
+					name: string;
 					order_index: number;
-					created_at: string;
 					updated_at: string;
+					width: number;
 				};
 				Insert: {
-					id?: string;
 					campaign_id: string;
-					name?: string;
-					map_image_url?: string | null;
-					grid_type?: string;
-					grid_size?: number;
+					combat_round?: number | null;
+					combat_turn_id?: string | null;
+					created_at?: string;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
 					grid_color?: string;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
-					width?: number;
+					grid_size?: number;
+					grid_type?: string;
 					height?: number;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
+					id?: string;
 					is_active?: boolean;
+					map_image_url?: string | null;
+					name?: string;
 					order_index?: number;
-					created_at?: string;
 					updated_at?: string;
+					width?: number;
 				};
 				Update: {
-					id?: string;
 					campaign_id?: string;
-					name?: string;
-					map_image_url?: string | null;
-					grid_type?: string;
-					grid_size?: number;
+					combat_round?: number | null;
+					combat_turn_id?: string | null;
+					created_at?: string;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
 					grid_color?: string;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
-					width?: number;
+					grid_size?: number;
+					grid_type?: string;
 					height?: number;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
+					id?: string;
 					is_active?: boolean;
+					map_image_url?: string | null;
+					name?: string;
 					order_index?: number;
-					created_at?: string;
 					updated_at?: string;
+					width?: number;
 				};
 				Relationships: [];
 			};
