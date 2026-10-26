@@ -11,12 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.43-mesa-ordem-iniciativa",
-		version: "1.6.43",
+		id: "v1.6.45-mesa-ordem-iniciativa",
+		version: "1.6.45",
 		date: "26/10/2026",
 		title: "A mesa guarda a ordem de iniciativa",
 		description:
 			"A base da mesa virtual ficou pronta para a ordem de iniciativa. Cada token na cena pode ficar na fila com a iniciativa, a destreza e a ordem em que entrou. A cena guarda a rodada e de quem é a vez. Na cena ativa, a fila do jogador traz só o token que está à mostra. Token oculto ou da camada do mestre fica de fora. Só o mestre muda a fila, a rodada e a vez.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.43-publicar-cena",
+		version: "1.6.43",
+		date: "26/10/2026",
+		title: "Publicar cena num passo só",
+		description:
+			"Publicar cena agora acontece num passo só no servidor (preparação; entra no ar quando a migração for aplicada).",
 		bullets: [],
 	},
 	{

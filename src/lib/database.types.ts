@@ -912,120 +912,66 @@ export type Database = {
 				};
 				Relationships: [];
 			};
-			vtt_combatants: {
-				Row: {
-					created_at: string;
-					dex: number | null;
-					id: string;
-					initiative: number | null;
-					scene_id: string;
-					sort_key: number;
-					token_id: string;
-					updated_at: string;
-				};
-				Insert: {
-					created_at?: string;
-					dex?: number | null;
-					id?: string;
-					initiative?: number | null;
-					scene_id: string;
-					sort_key: number;
-					token_id: string;
-					updated_at?: string;
-				};
-				Update: {
-					created_at?: string;
-					dex?: number | null;
-					id?: string;
-					initiative?: number | null;
-					scene_id?: string;
-					sort_key?: number;
-					token_id?: string;
-					updated_at?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: "vtt_combatants_scene_id_fkey";
-						columns: ["scene_id"];
-						isOneToOne: false;
-						referencedRelation: "vtt_scenes";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "vtt_combatants_token_id_fkey";
-						columns: ["token_id"];
-						isOneToOne: false;
-						referencedRelation: "vtt_tokens";
-						referencedColumns: ["id"];
-					},
-				];
-			};
 			vtt_scenes: {
 				Row: {
+					id: string;
 					campaign_id: string;
-					combat_round: number | null;
-					combat_turn_id: string | null;
-					created_at: string;
-					fog_enabled: boolean;
-					fog_exploration: boolean;
+					name: string;
+					map_image_url: string | null;
+					grid_type: string;
+					grid_size: number;
 					grid_color: string;
 					grid_opacity: number;
 					grid_scale_distance: number;
 					grid_scale_unit: string;
-					grid_size: number;
-					grid_type: string;
-					height: number;
-					id: string;
-					is_active: boolean;
-					map_image_url: string | null;
-					name: string;
-					order_index: number;
-					updated_at: string;
 					width: number;
+					height: number;
+					fog_enabled: boolean;
+					fog_exploration: boolean;
+					is_active: boolean;
+					order_index: number;
+					created_at: string;
+					updated_at: string;
 				};
 				Insert: {
+					id?: string;
 					campaign_id: string;
-					combat_round?: number | null;
-					combat_turn_id?: string | null;
-					created_at?: string;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
+					name?: string;
+					map_image_url?: string | null;
+					grid_type?: string;
+					grid_size?: number;
 					grid_color?: string;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
-					grid_size?: number;
-					grid_type?: string;
-					height?: number;
-					id?: string;
-					is_active?: boolean;
-					map_image_url?: string | null;
-					name?: string;
-					order_index?: number;
-					updated_at?: string;
 					width?: number;
+					height?: number;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
+					is_active?: boolean;
+					order_index?: number;
+					created_at?: string;
+					updated_at?: string;
 				};
 				Update: {
+					id?: string;
 					campaign_id?: string;
-					combat_round?: number | null;
-					combat_turn_id?: string | null;
-					created_at?: string;
-					fog_enabled?: boolean;
-					fog_exploration?: boolean;
+					name?: string;
+					map_image_url?: string | null;
+					grid_type?: string;
+					grid_size?: number;
 					grid_color?: string;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
-					grid_size?: number;
-					grid_type?: string;
-					height?: number;
-					id?: string;
-					is_active?: boolean;
-					map_image_url?: string | null;
-					name?: string;
-					order_index?: number;
-					updated_at?: string;
 					width?: number;
+					height?: number;
+					fog_enabled?: boolean;
+					fog_exploration?: boolean;
+					is_active?: boolean;
+					order_index?: number;
+					created_at?: string;
+					updated_at?: string;
 				};
 				Relationships: [];
 			};
@@ -1192,6 +1138,7 @@ export type Database = {
 				Args: { p_campaign_id: string };
 				Returns: { role: string; campaign_name: string | null }[];
 			};
+			publish_scene: { Args: { p_scene_id: string }; Returns: string };
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 		};
 		Enums: {
