@@ -1,5 +1,5 @@
 -- 0051: combatentes da mesa (VTT), ordem de iniciativa.
--- NÃO APLICADA. Merge e aplicação só pelo Luiz.
+-- APLICADA em produção (26/10/2026), PR #172.
 --
 -- Uma linha por token na cena. Iniciativa entre -50 e 100, inclusive
 -- (INITIATIVE_MIN / INITIATIVE_MAX em src/lib/vtt/combat.ts); null = ainda
