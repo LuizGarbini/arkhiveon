@@ -1,0 +1,299 @@
+{
+  "momento": "Sombra oculta e na vez, rodada 2, campanha A Forja dos Deuses, cena Observatório esquecido",
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "deviceScaleFactor": 1
+  },
+  "jogador": {
+    "isGM": false,
+    "round": 2,
+    "turnId": "c-sombra",
+    "status": "ready",
+    "panelOpen": true,
+    "activeTool": "select",
+    "viewport": {
+      "x": 76,
+      "y": 0,
+      "scale": 1
+    },
+    "zoomPercent": 100,
+    "zoomLabel": "100%",
+    "sheet": {
+      "x": 0,
+      "y": 617.0625,
+      "w": 390,
+      "h": 226.9375
+    },
+    "overlay": {
+      "present": false,
+      "backdropFilter": null,
+      "webkitBackdropFilter": null,
+      "filter": null
+    },
+    "screenTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "x": 296,
+        "y": 220,
+        "r": 35,
+        "aboveSheet": true,
+        "onScreen": true,
+        "hit": {
+          "tag": "CANVAS",
+          "slot": null,
+          "role": null
+        }
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "x": 496,
+        "y": 300,
+        "r": 35,
+        "aboveSheet": false,
+        "onScreen": false,
+        "hit": null
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "x": 696,
+        "y": 220,
+        "r": 35,
+        "aboveSheet": false,
+        "onScreen": false,
+        "hit": null
+      }
+    ],
+    "rows": [
+      {
+        "label": "Lia",
+        "current": null,
+        "text": "Lia 18"
+      },
+      {
+        "label": "Nix",
+        "current": null,
+        "text": "Nix 12"
+      }
+    ],
+    "hasVezDoMestre": true,
+    "hasSombra": false,
+    "hasWordSO": false,
+    "currentRow": null,
+    "dialogOpen": true,
+    "bodyTextLength": 137,
+    "mapa": {
+      "point": {
+        "x": 240,
+        "y": 360,
+        "tag": "CANVAS"
+      },
+      "canvasHits": 164,
+      "handFree": true,
+      "zoom": {
+        "beforePercent": 100,
+        "afterPercent": 115,
+        "beforeLabel": "100%",
+        "afterLabel": "115%",
+        "before": {
+          "x": 76,
+          "y": 0,
+          "scale": 1
+        },
+        "after": {
+          "x": 51.400000000000006,
+          "y": -53.99999999999994,
+          "scale": 1.15
+        }
+      },
+      "pan": {
+        "gesture": "arraste com a ferramenta Mão no mapa",
+        "before": {
+          "x": 51.400000000000006,
+          "y": -53.99999999999994,
+          "scale": 1.15
+        },
+        "after": {
+          "x": 123.4,
+          "y": -25.999999999999943,
+          "scale": 1.15
+        },
+        "delta": {
+          "x": 72,
+          "y": 28
+        }
+      },
+      "panelOpenAfter": true,
+      "dialogOpenAfter": true,
+      "activeTool": "pan"
+    },
+    "harnessConsole": {
+      "unauthorized401": 14,
+      "realtimeSocketClosed": true
+    },
+    "dom": {
+      "file": "dom-b-390.txt",
+      "hasSombra": false,
+      "hasWordSO": false
+    }
+  },
+  "mestre": {
+    "isGM": true,
+    "round": 2,
+    "turnId": "c-sombra",
+    "status": "ready",
+    "panelOpen": true,
+    "activeTool": "select",
+    "viewport": {
+      "x": 76,
+      "y": 0,
+      "scale": 1
+    },
+    "zoomPercent": 100,
+    "zoomLabel": "100%",
+    "sheet": {
+      "x": 0,
+      "y": 503.6875,
+      "w": 390,
+      "h": 340.3125
+    },
+    "overlay": {
+      "present": false,
+      "backdropFilter": null,
+      "webkitBackdropFilter": null,
+      "filter": null
+    },
+    "screenTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "x": 296,
+        "y": 220,
+        "r": 35,
+        "aboveSheet": true,
+        "onScreen": true,
+        "hit": {
+          "tag": "CANVAS",
+          "slot": null,
+          "role": null
+        }
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "x": 496,
+        "y": 300,
+        "r": 35,
+        "aboveSheet": false,
+        "onScreen": false,
+        "hit": null
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "x": 696,
+        "y": 220,
+        "r": 35,
+        "aboveSheet": false,
+        "onScreen": false,
+        "hit": null
+      }
+    ],
+    "rows": [
+      {
+        "label": "Sombra",
+        "current": "true",
+        "text": "Sombra"
+      },
+      {
+        "label": "Lia",
+        "current": null,
+        "text": "Lia"
+      },
+      {
+        "label": "Nix",
+        "current": null,
+        "text": "Nix"
+      }
+    ],
+    "hasVezDoMestre": false,
+    "hasSombra": true,
+    "hasWordSO": false,
+    "currentRow": {
+      "label": "Sombra",
+      "current": "true",
+      "text": "Sombra"
+    },
+    "dialogOpen": true,
+    "bodyTextLength": 174,
+    "mapa": {
+      "point": {
+        "x": 240,
+        "y": 300,
+        "tag": "CANVAS"
+      },
+      "canvasHits": 124,
+      "handFree": true,
+      "zoom": {
+        "beforePercent": 100,
+        "afterPercent": 115,
+        "beforeLabel": "100%",
+        "afterLabel": "115%",
+        "before": {
+          "x": 76,
+          "y": 0,
+          "scale": 1
+        },
+        "after": {
+          "x": 51.400000000000006,
+          "y": -45,
+          "scale": 1.15
+        }
+      },
+      "pan": {
+        "gesture": "arraste com a ferramenta Mão no mapa",
+        "before": {
+          "x": 51.400000000000006,
+          "y": -45,
+          "scale": 1.15
+        },
+        "after": {
+          "x": 123.4,
+          "y": -17,
+          "scale": 1.15
+        },
+        "delta": {
+          "x": 72,
+          "y": 28
+        }
+      },
+      "panelOpenAfter": true,
+      "dialogOpenAfter": true,
+      "activeTool": "pan"
+    },
+    "harnessConsole": {
+      "unauthorized401": 13,
+      "realtimeSocketClosed": true
+    }
+  },
+  "sips": {
+    "jogador-vez-oculto-390x844.png": {
+      "pixelWidth": 390,
+      "pixelHeight": 844
+    },
+    "mestre-vez-oculto-390x844.png": {
+      "pixelWidth": 390,
+      "pixelHeight": 844
+    }
+  },
+  "nota": "Overlay ausente (sem data-slot=dialog-overlay; backdrop-filter e filter nulos). Lia está no canvas acima da folha. Nix (x=496) e Sombra (x=696) ficam fora dos 390px, nas mesmas coordenadas de mundo da captura anterior. Zoom e pan medidos com a folha ainda aberta, depois do print."
+}
