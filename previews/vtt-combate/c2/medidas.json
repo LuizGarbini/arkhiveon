@@ -2,5 +2,10 @@
 	"mestre-1440x900.png": { "pixelWidth": 1440, "pixelHeight": 900 },
 	"mestre-390x844.png": { "pixelWidth": 390, "pixelHeight": 844 },
 	"jogador-1440x900.png": { "pixelWidth": 1440, "pixelHeight": 900 },
-	"jogador-390x844.png": { "pixelWidth": 390, "pixelHeight": 844 }
+	"jogador-390x844.png": { "pixelWidth": 390, "pixelHeight": 844 },
+	"jogador-vez-lia-1440x900.png": { "pixelWidth": 1440, "pixelHeight": 900 },
+	"jogador-vez-lia-390x844.png": { "pixelWidth": 390, "pixelHeight": 844 },
+	"jogador-vez-oculto-1440x900.png": { "pixelWidth": 1440, "pixelHeight": 900 },
+	"jogador-vez-oculto-390x844.png": { "pixelWidth": 390, "pixelHeight": 844 },
+	"mestre-vez-oculto-1440x900.png": { "pixelWidth": 1440, "pixelHeight": 900 }
 }

@@ -1,0 +1,375 @@
+{
+  "momento": "Sombra oculta e na vez, rodada 2, campanha A Forja dos Deuses, cena Observatório esquecido",
+  "jogador1440": {
+    "isGM": false,
+    "role": "viewer",
+    "round": 2,
+    "turnId": "c-sombra",
+    "status": "ready",
+    "visibleTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia"
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix"
+      }
+    ],
+    "storeTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "layer": "token"
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "layer": "token"
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "layer": "token"
+      }
+    ],
+    "turnRingTokenId": null,
+    "rows": [
+      {
+        "label": "Lia",
+        "current": null,
+        "text": "Lia 18"
+      },
+      {
+        "label": "Nix",
+        "current": null,
+        "text": "Nix 12"
+      }
+    ],
+    "hasVezDoMestre": true,
+    "hasSombra": false,
+    "hasWordSO": false,
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "screenTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "layer": "token",
+        "x": 296,
+        "y": 220,
+        "r": 35
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "layer": "token",
+        "x": 496,
+        "y": 300,
+        "r": 35
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "layer": "token",
+        "x": 696,
+        "y": 220,
+        "r": 35
+      }
+    ]
+  },
+  "jogador390": {
+    "isGM": false,
+    "role": "viewer",
+    "round": 2,
+    "turnId": "c-sombra",
+    "status": "ready",
+    "visibleTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia"
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix"
+      }
+    ],
+    "storeTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "layer": "token"
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "layer": "token"
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "layer": "token"
+      }
+    ],
+    "turnRingTokenId": null,
+    "rows": [
+      {
+        "label": "Lia",
+        "current": null,
+        "text": "Lia 18"
+      },
+      {
+        "label": "Nix",
+        "current": null,
+        "text": "Nix 12"
+      }
+    ],
+    "hasVezDoMestre": true,
+    "hasSombra": false,
+    "hasWordSO": false,
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "screenTokens": [
+      {
+        "id": "tok-lia",
+        "name": "Lia",
+        "hidden": false,
+        "layer": "token",
+        "x": 296,
+        "y": 220,
+        "r": 35
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix",
+        "hidden": false,
+        "layer": "token",
+        "x": 496,
+        "y": 300,
+        "r": 35
+      },
+      {
+        "id": "tok-sombra",
+        "name": "Sombra",
+        "hidden": true,
+        "layer": "token",
+        "x": 696,
+        "y": 220,
+        "r": 35
+      }
+    ]
+  },
+  "pixels": {
+    "1440x900": {
+      "label": "1440x900",
+      "playerFile": "jogador-vez-oculto-1440x900.png",
+      "gmFile": "mestre-vez-oculto-1440x900.png",
+      "soPlayer": {
+        "name": "Sombra",
+        "center": {
+          "x": 696,
+          "y": 220,
+          "r": 35
+        },
+        "raw": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        },
+        "onScreen": true,
+        "map": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        }
+      },
+      "soGm": {
+        "name": "Sombra",
+        "center": {
+          "x": 696,
+          "y": 220,
+          "r": 35
+        },
+        "raw": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        },
+        "onScreen": true,
+        "map": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        }
+      },
+      "empty": {
+        "x": 645,
+        "y": 377,
+        "w": 102,
+        "h": 104
+      },
+      "playerSo": {
+        "meanLuma": 18.69199346405229,
+        "green": 0,
+        "purple": 0,
+        "pixels": 10608
+      },
+      "gmSo": {
+        "meanLuma": 32.40318627450981,
+        "green": 0,
+        "purple": 236,
+        "pixels": 10608
+      },
+      "playerSoVsEmpty": {
+        "meanAbs": 0,
+        "green": 0,
+        "purple": 0,
+        "pixels": 10608
+      },
+      "gmSoVsEmpty": {
+        "meanAbs": 14.053575917546505,
+        "green": 0,
+        "purple": 236,
+        "pixels": 10608
+      },
+      "emptyVsEmpty": {
+        "meanAbs": 0,
+        "green": 0,
+        "purple": 0,
+        "pixels": 10608
+      },
+      "compared": true,
+      "crop": {
+        "w": 102,
+        "h": 104
+      }
+    },
+    "390x844": {
+      "label": "390x844",
+      "playerFile": "jogador-vez-oculto-390x844.png",
+      "gmFile": "mestre-vez-oculto-390x844.png",
+      "soPlayer": {
+        "name": "Sombra",
+        "center": {
+          "x": 696,
+          "y": 220,
+          "r": 35
+        },
+        "raw": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        },
+        "onScreen": false,
+        "map": null
+      },
+      "soGm": {
+        "name": "Sombra",
+        "center": {
+          "x": 696,
+          "y": 220,
+          "r": 35
+        },
+        "raw": {
+          "x": 645,
+          "y": 167,
+          "w": 102,
+          "h": 104
+        },
+        "onScreen": false,
+        "map": null
+      },
+      "compared": true,
+      "reason": "recorte do token SO fora do mapa visivel",
+      "onScreen": false,
+      "intersectionPixels": 0,
+      "motivo": "O token SO está no mundo em (620, 220), que cai na tela em x=696. O recorte (x=645, y=167, 102×104) fica fora dos 390px tanto no print do mestre quanto no do jogador. Não há pixel desse token no PNG.",
+      "faixaDireitaDoMapa": {
+        "rect": {
+          "x": 340,
+          "y": 80,
+          "w": 50,
+          "h": 280
+        },
+        "jogador": {
+          "purple": 0,
+          "green": 0
+        },
+        "mestre": {
+          "purple": 0,
+          "green": 0
+        }
+      },
+      "mapaVisivelJogadorVsMestreMeanAbs": 0.221,
+      "anelLia390MeanAbsContraVezOculto": 3.779,
+      "gradeEscuraUniformeMean": 7.52
+    }
+  },
+  "painelAtributos1440": [],
+  "painelAtributos390": [],
+  "liaRingExpected": {
+    "390": "tok-lia",
+    "1440": "tok-lia"
+  },
+  "leaks": {
+    "1440x900": [],
+    "390x844": []
+  },
+  "limpo": true,
+  "notaAtributo390": "O único data-* com a substring title é data-slot=dialog-title, o título Combate da folha. Não nomeia combatente.",
+  "store": {
+    "visiveis": [
+      {
+        "id": "tok-lia",
+        "name": "Lia"
+      },
+      {
+        "id": "tok-nix",
+        "name": "Nix"
+      }
+    ],
+    "anel": null,
+    "sombraNoStore": {
+      "id": "tok-sombra",
+      "hidden": true,
+      "desenhado": false,
+      "naFila": false,
+      "nota": "O mock da captura devolve o token oculto, como no print original. O jogador não o desenha e a fila não o lista."
+    }
+  },
+  "resultado": {
+    "limpo": true,
+    "textoDaVez": "Vez do mestre",
+    "rodada": 2,
+    "fila": [
+      "Lia 18",
+      "Nix 12"
+    ],
+    "sombraNoTexto": false,
+    "soComoPalavra": false,
+    "ariaCurrent": false,
+    "anel": null
+  }
+}
