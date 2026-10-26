@@ -11,12 +11,30 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.43-rolagens-da-mesa",
-		version: "1.6.43",
+		id: "v1.6.46-rolagens-da-mesa",
+		version: "1.6.46",
 		date: "26/10/2026",
 		title: "Dados e chat da mesa passam pelo servidor",
 		description:
 			"A rolagem da mesa agora acontece no servidor. Quem está na campanha vê o feed. Numa rolagem secreta, a mesa vê que o mestre rolou, sem a fórmula e sem o resultado; o total fica só com o mestre. O chat segue a mesma regra de quem participa da campanha. Quando o mestre começa ou limpa a sessão, o feed que o jogador vê recomeça. O que já tinha sido rolado continua guardado para o mestre. Nada é apagado.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.45-mesa-ordem-iniciativa",
+		version: "1.6.45",
+		date: "26/10/2026",
+		title: "A mesa guarda a ordem de iniciativa",
+		description:
+			"A base da mesa virtual ficou pronta para a ordem de iniciativa. Cada token na cena pode ficar na fila com a iniciativa, a destreza e a ordem em que entrou. A cena guarda a rodada e de quem é a vez. Na cena ativa, a fila do jogador traz só o token que está à mostra. Token oculto ou da camada do mestre fica de fora. Só o mestre muda a fila, a rodada e a vez.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.43-publicar-cena",
+		version: "1.6.43",
+		date: "26/10/2026",
+		title: "Publicar cena num passo só",
+		description:
+			"Publicar cena agora acontece num passo só no servidor (preparação; entra no ar quando a migração for aplicada).",
 		bullets: [],
 	},
 	{
