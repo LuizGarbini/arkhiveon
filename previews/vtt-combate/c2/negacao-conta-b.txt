@@ -1,0 +1,27 @@
+Prova da conta B (jogador / viewer) no Postgres local.
+Data: 26/10/2026.
+
+Stack: container supabase_db_arkhiveon-b2b (porta 54322).
+`supabase start` neste repositório não sobe: a porta 54322 já está
+com o projeto arkhiveon-b2b. A prova rodou nesse Postgres local.
+
+schema_migrations nesse banco vai até 0052 e não tem a 0051
+(a tabela vtt_combatants não existia). A migration já commitada
+supabase/migrations/0051_vtt_combat.sql foi aplicada só dentro
+de uma transação. O ROLLBACK desfez a tabela, as colunas
+combat_round/combat_turn_id e os usuários de teste.
+Depois do ROLLBACK: vtt_combatants ausente e combat_round ausente.
+
+Conta B: membership role = viewer na campanha de teste
+(jogador-c2-prova@teste.local). Papel authenticated + JWT sub
+dessa conta. Tentativas:
+
+acao                                          sqlstate   linhas
+insert vtt_combatants                         42501      0
+  detalhe: new row violates row-level security policy for table "vtt_combatants"
+update vtt_combatants                         0_LINHAS   0
+delete vtt_combatants                         0_LINHAS   0
+update vtt_scenes combat_round/combat_turn_id 0_LINHAS   0
+
+Insert recusado com 42501. Update, delete e a troca de rodada/vez
+não alteraram nenhuma linha.
