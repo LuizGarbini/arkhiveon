@@ -9,6 +9,7 @@ import {
 	Radio,
 	Ruler,
 	ShieldAlert,
+	Swords,
 	Users,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -19,6 +20,10 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+	COMBAT_UNAVAILABLE_LABEL,
+	useCombatStore,
+} from "@/lib/vtt/combat-store";
 import {
 	hasOpenVttDialog,
 	isVttShortcutBlocked,
@@ -54,6 +59,8 @@ export function VTTToolbar() {
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
 	const wallsStatus = useVTTStore((s) => s.wallsStatus);
+	const combatOpen = useCombatStore((s) => s.panelOpen);
+	const combatStatus = useCombatStore((s) => s.status);
 	const isMobile = useIsMobile();
 	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
 
@@ -87,6 +94,10 @@ export function VTTToolbar() {
 
 			if (e.ctrlKey || e.metaKey || e.altKey) return;
 			const key = e.key.toLowerCase();
+			if (key === "c") {
+				useCombatStore.getState().togglePanel();
+				return;
+			}
 			if (key === "v") setActiveTool("select");
 			if (key === "h") setActiveTool("pan");
 			if (key === "r") setActiveTool("ruler");
@@ -231,6 +242,40 @@ export function VTTToolbar() {
 						</TooltipContent>
 					</Tooltip>
 				)}
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<button
+								type="button"
+								onClick={() => useCombatStore.getState().togglePanel()}
+								aria-label="Combate"
+								aria-pressed={combatOpen}
+								aria-keyshortcuts="C"
+								className={cn(
+									"group relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+									combatOpen
+										? "bg-primary/15 text-primary ring-1 ring-primary/40"
+										: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
+								)}
+							/>
+						}
+					>
+						<Swords className="h-4.5 w-4.5" />
+						<span
+							className={cn(
+								"absolute bottom-1 right-1 font-mono text-[8px] leading-none font-extrabold opacity-60",
+								combatOpen ? "text-primary" : "text-muted-foreground",
+							)}
+						>
+							C
+						</span>
+					</TooltipTrigger>
+					<TooltipContent side="right" sideOffset={8}>
+						{combatStatus === "unavailable"
+							? COMBAT_UNAVAILABLE_LABEL
+							: "Combate (C)"}
+					</TooltipContent>
+				</Tooltip>
 			</div>
 
 			{/* Divider for Layers (GM Only) */}

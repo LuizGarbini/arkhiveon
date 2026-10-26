@@ -11,6 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.48-ordem-de-iniciativa",
+		version: "1.6.48",
+		date: "26/10/2026",
+		title: "Ordem de iniciativa na mesa",
+		description:
+			"A mesa mostra a ordem de iniciativa. O mestre adiciona os tokens selecionados, ajusta o número, passa a vez e encerra o combate. O jogador acompanha a fila. Quando a vez é de um token que ele não vê, aparece só “Vez do mestre”. No celular, a ordem abre na folha de baixo.",
+		bullets: [
+			"Atalho C abre o combate. Um anel na cor da mesa marca o token da vez.",
+			"A iniciativa vem da ficha (zero conta). Sem ficha, o mestre digita o valor.",
+			"No empate, a Destreza decide; se continuar empatado, vale a ordem do arraste.",
+			"Se não salvar, a ordem volta ao que estava e aparece um aviso.",
+		],
+	},
+	{
 		id: "v1.6.46-tipos-do-banco-combate",
 		version: "1.6.46",
 		date: "26/10/2026",

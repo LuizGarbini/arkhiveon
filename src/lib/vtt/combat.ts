@@ -224,3 +224,21 @@ export function visibleCombatants(
 ): Combatant[] {
 	return ordered.filter((c) => visibleTokenIds.has(c.tokenId));
 }
+
+/**
+ * Token que recebe o anel da vez. Na vez de um combatente que o jogador não
+ * vê, não há anel (a UI diz "Vez do mestre"). Sem combate, também não.
+ */
+export function turnRingTokenId(
+	turn: CombatTurn,
+	ordered: readonly Combatant[],
+	visibleTokenIds: ReadonlySet<string>,
+	isGM: boolean,
+): string | null {
+	if (turn.round === null) return null;
+	if (!isGM) {
+		const view = playerTurnView(turn, ordered, visibleTokenIds);
+		return view.kind === "turn" ? view.tokenId : null;
+	}
+	return ordered.find((c) => c.id === turn.turnId)?.tokenId ?? null;
+}
