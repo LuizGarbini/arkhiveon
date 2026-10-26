@@ -1,0 +1,21 @@
+{
+  "request": {
+    "url": "http://127.0.0.1:54321/rest/v1/rpc/set_character_hp",
+    "method": "POST",
+    "user": "Ana (viewer, dona da Lyra)",
+    "body": {
+      "p_character_id": "a3000000-0000-0000-0000-0000000000b1",
+      "(ficha)": "Bram, do Bruno",
+      "p_current": 1
+    }
+  },
+  "response": {
+    "status": 403,
+    "body": {
+      "code": "42501",
+      "details": null,
+      "hint": null,
+      "message": "Você não pode alterar os PV desta ficha."
+    }
+  }
+}
