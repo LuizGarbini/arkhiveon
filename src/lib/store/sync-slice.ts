@@ -631,12 +631,7 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		let isCleanedUp = false;
 		let channel: ReturnType<typeof supabase.channel> | null = null;
 
-		void supabase.auth.getUser().then(async ({ data }) => {
-			if (isCleanedUp) return;
-			// O join só respeita a RLS de `characters` se o JWT já estiver no
-			// payload. Sessão restaurada não dispara SIGNED_IN, então sem este
-			// await o canal entra como anon e o PV da outra mesa nunca chega.
-			await supabase.realtime.setAuth();
+		void supabase.auth.getUser().then(({ data }) => {
 			if (isCleanedUp) return;
 			const currentUserId = data.user?.id ?? null;
 
