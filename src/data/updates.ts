@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.46-tipos-do-banco-combate",
+		version: "1.6.46",
+		date: "26/10/2026",
+		title: "Tipos do banco atualizados para o combate",
+		description:
+			"Os tipos gerados do banco agora incluem a ordem de iniciativa da mesa (combatentes, rodada e vez). Nada muda no que você vê ou faz no app; é a base para as próximas telas de combate.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.45-mesa-ordem-iniciativa",
 		version: "1.6.45",
 		date: "26/10/2026",
