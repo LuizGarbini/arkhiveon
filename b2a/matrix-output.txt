@@ -1,0 +1,260 @@
+BEGIN
+DO
+INSERT 0 6
+INSERT 0 2
+INSERT 0 2
+INSERT 0 5
+INSERT 0 1
+CREATE TABLE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+  n  |                             cenario                             |                          obtido                          
+-----+-----------------------------------------------------------------+----------------------------------------------------------
+ 101 | mestre | ficha depois                                           | 5/10
+ 101 | mestre | PV atual 5                                             | permitido {"health": 5, "healthMax": 10}
+ 102 | mestre | ficha depois                                           | 5/15
+ 102 | mestre | PV atual 5 e max 15                                    | permitido {"health": 5, "healthMax": 15}
+ 103 | mestre | ficha depois                                           | 10/10
+ 103 | mestre | PV atual 50 (acima do max 10)                          | permitido {"health": 10, "healthMax": 10}
+ 104 | mestre | ficha depois                                           | 8/10
+ 104 | mestre | PV atual -3                                            | negado (22023: O PV atual tem que ser zero ou mais.)
+ 105 | mestre | ficha depois                                           | 8/10
+ 105 | mestre | PV atual nulo                                          | negado (22023: O PV atual tem que ser zero ou mais.)
+ 106 | editor | ficha depois                                           | 5/10
+ 106 | editor | PV atual 5                                             | permitido {"health": 5, "healthMax": 10}
+ 107 | editor | ficha depois                                           | 5/15
+ 107 | editor | PV atual 5 e max 15                                    | permitido {"health": 5, "healthMax": 15}
+ 108 | editor | ficha depois                                           | 10/10
+ 108 | editor | PV atual 50 (acima do max 10)                          | permitido {"health": 10, "healthMax": 10}
+ 109 | editor | ficha depois                                           | 8/10
+ 109 | editor | PV atual -3                                            | negado (22023: O PV atual tem que ser zero ou mais.)
+ 110 | editor | ficha depois                                           | 8/10
+ 110 | editor | PV atual nulo                                          | negado (22023: O PV atual tem que ser zero ou mais.)
+ 111 | dono | ficha depois                                             | 5/10
+ 111 | dono | PV atual 5                                               | permitido {"health": 5, "healthMax": 10}
+ 112 | dono | ficha depois                                             | 8/10
+ 112 | dono | PV atual 5 e max 15                                      | negado (42501: Só o mestre pode alterar o PV máximo.)
+ 113 | dono | ficha depois                                             | 10/10
+ 113 | dono | PV atual 50 (acima do max 10)                            | permitido {"health": 10, "healthMax": 10}
+ 114 | dono | ficha depois                                             | 8/10
+ 114 | dono | PV atual -3                                              | negado (22023: O PV atual tem que ser zero ou mais.)
+ 115 | dono | ficha depois                                             | 8/10
+ 115 | dono | PV atual nulo                                            | negado (22023: O PV atual tem que ser zero ou mais.)
+ 116 | outro jogador | ficha depois                                    | 8/10
+ 116 | outro jogador | PV atual 5                                      | negado (42501: Você não pode alterar os PV desta ficha.)
+ 117 | outro jogador | ficha depois                                    | 8/10
+ 117 | outro jogador | PV atual 5 e max 15                             | negado (42501: Você não pode alterar os PV desta ficha.)
+ 118 | outro jogador | ficha depois                                    | 8/10
+ 118 | outro jogador | PV atual 50 (acima do max 10)                   | negado (42501: Você não pode alterar os PV desta ficha.)
+ 119 | outro jogador | ficha depois                                    | 8/10
+ 119 | outro jogador | PV atual -3                                     | negado (22023: O PV atual tem que ser zero ou mais.)
+ 120 | outro jogador | ficha depois                                    | 8/10
+ 120 | outro jogador | PV atual nulo                                   | negado (22023: O PV atual tem que ser zero ou mais.)
+ 121 | de fora | ficha depois                                          | 8/10
+ 121 | de fora | PV atual 5                                            | negado (42501: Você não pode alterar os PV desta ficha.)
+ 122 | de fora | ficha depois                                          | 8/10
+ 122 | de fora | PV atual 5 e max 15                                   | negado (42501: Você não pode alterar os PV desta ficha.)
+ 123 | de fora | ficha depois                                          | 8/10
+ 123 | de fora | PV atual 50 (acima do max 10)                         | negado (42501: Você não pode alterar os PV desta ficha.)
+ 124 | de fora | ficha depois                                          | 8/10
+ 124 | de fora | PV atual -3                                           | negado (22023: O PV atual tem que ser zero ou mais.)
+ 125 | de fora | ficha depois                                          | 8/10
+ 125 | de fora | PV atual nulo                                         | negado (22023: O PV atual tem que ser zero ou mais.)
+ 126 | sem login | PV atual 5                                          | negado (28000: Entre na sua conta para alterar os PV.)
+ 200 | dono | UPDATE direto: health 999, healthMax 999, notes trocadas | permitido 0 linhas alteradas
+ 201 | outro jogador | UPDATE direto                                   | permitido 0 linhas alteradas
+(53 rows)
+
+ROLLBACK

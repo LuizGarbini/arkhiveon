@@ -1,0 +1,192 @@
+BEGIN
+DO
+INSERT 0 6
+INSERT 0 2
+INSERT 0 2
+INSERT 0 5
+INSERT 0 1
+CREATE TABLE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_ok 
+-----------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_ok 
+-----------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_ok 
+-----------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_ok 
+-----------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+DO
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+ reset_sheet 
+-------------
+ 
+(1 row)
+
+INSERT 0 1
+ assert_denied 
+---------------
+ 
+(1 row)
+
+UPDATE 1
+INSERT 0 1
+DO
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+DO
+ n  |                   cenario                   | esperado  |                             obtido                              | status 
+----+---------------------------------------------+-----------+-----------------------------------------------------------------+--------
+  1 | mestre ok (current e max, clampa)           | permitido | permitido {"health": 12, "healthMax": 12}                       | ok
+  2 | editor ok (current e max)                   | permitido | permitido {"health": 4, "healthMax": 20}                        | ok
+  3 | dono ok (current)                           | permitido | permitido {"health": 0, "healthMax": 10}                        | ok
+  4 | dono ok (current clampado no max atual)     | permitido | permitido {"health": 10, "healthMax": 10}                       | ok
+  5 | dono alterando max negado                   | negado    | negado (42501: Só o mestre pode alterar o PV máximo.)           | ok
+  6 | viewer sem ser dono negado                  | negado    | negado (42501: Você não pode alterar os PV desta ficha.)        | ok
+  7 | outsider negado                             | negado    | negado (42501: Você não pode alterar os PV desta ficha.)        | ok
+  8 | membro de outra campanha negado             | negado    | negado (42501: Você não pode alterar os PV desta ficha.)        | ok
+  9 | sem login negado                            | negado    | negado (28000: Entre na sua conta para alterar os PV.)          | ok
+ 10 | anon sem execute negado                     | negado    | negado (42501: permission denied for function set_character_hp) | ok
+ 11 | current negativo negado                     | negado    | negado (22023: O PV atual tem que ser zero ou mais.)            | ok
+ 12 | max zero negado                             | negado    | negado (22023: O PV máximo tem que ser maior que zero.)         | ok
+ 13 | ficha inexistente negado                    | negado    | negado (P0002: Ficha não encontrada.)                           | ok
+ 14 | dono sem healthMax não clampa               | permitido | permitido {"health": 15}                                        | ok
+ 15 | dono só por user_id ok (current)            | permitido | permitido {"health": 6, "healthMax": 10}                        | ok
+ 16 | dono só por user_id alterando max negado    | negado    | negado (42501: Só o mestre pode alterar o PV máximo.)           | ok
+ 17 | dono só por created_by ok (current)         | permitido | permitido {"health": 7, "healthMax": 10}                        | ok
+ 18 | dono só por created_by alterando max negado | negado    | negado (42501: Só o mestre pode alterar o PV máximo.)           | ok
+(18 rows)
+
+NOTICE:  0050: todos os cenários passaram
+DO
+ROLLBACK
