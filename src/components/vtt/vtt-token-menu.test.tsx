@@ -226,6 +226,21 @@ describe("VTTTokenMenu — PV da ficha", () => {
 		setup({ characterId: null, hpCurrent: 7, hpMax: 10 });
 		expect(screen.getByText("7 / 10")).toBeTruthy();
 	});
+
+	it("o mestre só ajusta PV pelos botões −5/−1/+1/+5", () => {
+		sheet("dnd5e");
+		setup({ characterId: "char-1", hpCurrent: 1, hpMax: 2 });
+		for (const name of ["-5", "-1", "+1", "+5"]) {
+			expect(screen.getByRole("button", { name })).toBeTruthy();
+		}
+		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
+		expect(screen.queryByPlaceholderText("Valor...")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Dano" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Cura" })).toBeNull();
+		expect(
+			screen.queryByRole("spinbutton", { name: "Quantidade de dano ou cura" }),
+		).toBeNull();
+	});
 });
 
 describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {

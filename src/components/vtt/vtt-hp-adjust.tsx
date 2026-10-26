@@ -28,23 +28,42 @@ export function VttHpAdjust({
 	const pendingRef = useRef(false);
 	const ratio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
 
-	const run = (operation: () => Promise<unknown> | unknown) => {
+	const run = (
+		operation: () => Promise<unknown> | unknown,
+		trigger?: HTMLElement | null,
+	) => {
 		if (pendingRef.current) return;
 		pendingRef.current = true;
 		setSaving(true);
-		void Promise.resolve(operation()).finally(() => {
-			pendingRef.current = false;
-			setSaving(false);
-		});
+		let pending: Promise<unknown>;
+		try {
+			pending = Promise.resolve(operation());
+		} catch (error) {
+			pending = Promise.reject(error);
+		}
+		void pending
+			.catch(() => undefined)
+			.finally(() => {
+				// Falha ou reversão reabilita o mesmo botão. Sem blur ele segue
+				// com o anel de foco e parece que o ajuste ficou selecionado.
+				trigger?.blur();
+				pendingRef.current = false;
+				setSaving(false);
+			});
 	};
 
 	return (
 		<div className="space-y-2" aria-busy={saving}>
-			{saving ? (
-				<output className="text-xs font-semibold text-muted-foreground">
-					Salvando…
-				</output>
-			) : null}
+			<output
+				data-testid="vtt-hp-saving"
+				aria-hidden={saving ? undefined : true}
+				className={cn(
+					"pointer-events-none block h-[18px] overflow-hidden text-xs font-semibold leading-[18px] text-muted-foreground",
+					saving ? "opacity-100" : "opacity-0",
+				)}
+			>
+				Salvando…
+			</output>
 			<div className="flex items-center justify-between text-xs font-bold">
 				<span className="flex items-center gap-1.5 text-primary">
 					<Heart className="h-3.5 w-3.5" />
@@ -73,16 +92,20 @@ export function VttHpAdjust({
 							"min-h-11 font-mono tabular-nums",
 							delta < 0 ? "text-destructive" : "text-primary",
 						)}
-						onClick={() =>
-							run(() =>
-								onChange(
-									Math.max(
-										0,
-										Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
+						onClick={(event) => {
+							const button = event.currentTarget;
+							button.blur();
+							run(
+								() =>
+									onChange(
+										Math.max(
+											0,
+											Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
+										),
 									),
-								),
-							)
-						}
+								button,
+							);
+						}}
 					>
 						{delta > 0 ? `+${delta}` : delta}
 					</Button>
@@ -96,7 +119,14 @@ export function VttHpAdjust({
 						if (pendingRef.current) return;
 						const nextMax = Number.parseInt(maxDraft ?? String(hpMax), 10);
 						if (!Number.isFinite(nextMax) || nextMax <= 0) return;
-						run(() => onChangeMax(nextMax));
+						const submitter = event.currentTarget.querySelector(
+							"button[type='submit']",
+						);
+						if (submitter instanceof HTMLButtonElement) submitter.blur();
+						run(
+							() => onChangeMax(nextMax),
+							submitter instanceof HTMLButtonElement ? submitter : null,
+						);
 						setMaxDraft(null);
 					}}
 				>

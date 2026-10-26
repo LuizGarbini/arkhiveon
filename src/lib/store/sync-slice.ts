@@ -631,331 +631,312 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 		let isCleanedUp = false;
 		let channel: ReturnType<typeof supabase.channel> | null = null;
 
-		void (async () => {
-			try {
-				// O join só respeita a RLS de `characters` se o JWT já estiver no
-				// payload. Sessão restaurada não dispara SIGNED_IN, então sem este
-				// await o canal entra como anon e o PV da outra mesa nunca chega.
-				const { data } = await supabase.auth.getUser();
-				if (isCleanedUp) return;
-				await supabase.realtime.setAuth();
-				if (isCleanedUp) return;
-				const currentUserId = data.user?.id ?? null;
+		void supabase.auth.getUser().then(async ({ data }) => {
+			if (isCleanedUp) return;
+			// O join só respeita a RLS de `characters` se o JWT já estiver no
+			// payload. Sessão restaurada não dispara SIGNED_IN, então sem este
+			// await o canal entra como anon e o PV da outra mesa nunca chega.
+			await supabase.realtime.setAuth();
+			if (isCleanedUp) return;
+			const currentUserId = data.user?.id ?? null;
 
-				channel = supabase
-					.channel(channelName)
-					.on(
-						"postgres_changes",
-						{ event: "*", schema: "public" },
-						(payload) => {
-							const { eventType, table, new: newRow, old: oldRow } = payload;
+			channel = supabase
+				.channel(channelName)
+				.on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+					const { eventType, table, new: newRow, old: oldRow } = payload;
 
-							const tableToKey: Record<string, keyof RPGState> = {
-								characters: "characters",
-								npcs: "npcs",
-								sessions: "sessions",
-								items: "items",
-								locations: "locations",
-								lores: "lores",
-								custom_templates: "customTemplates",
-								image_assets: "imageAssets",
-								activity_log: "activityLog",
-								factions: "factions",
-								faction_reputations: "factionReputations",
-								world_news: "worldNews",
-								news_comments: "newsComments",
-							};
+					const tableToKey: Record<string, keyof RPGState> = {
+						characters: "characters",
+						npcs: "npcs",
+						sessions: "sessions",
+						items: "items",
+						locations: "locations",
+						lores: "lores",
+						custom_templates: "customTemplates",
+						image_assets: "imageAssets",
+						activity_log: "activityLog",
+						factions: "factions",
+						faction_reputations: "factionReputations",
+						world_news: "worldNews",
+						news_comments: "newsComments",
+					};
 
-							if (table === "invites") {
-								void get().loadInvites();
-								return;
-							}
-							if (table === "memberships") {
-								void get().loadCampaigns();
-								return;
-							}
+					if (table === "invites") {
+						void get().loadInvites();
+						return;
+					}
+					if (table === "memberships") {
+						void get().loadCampaigns();
+						return;
+					}
 
-							const storeKey = tableToKey[table];
-							if (!storeKey) return;
+					const storeKey = tableToKey[table];
+					if (!storeKey) return;
 
-							const activeCampaignId = get().activeCampaignId;
-							if (!activeCampaignId) return;
+					const activeCampaignId = get().activeCampaignId;
+					if (!activeCampaignId) return;
 
-							const activeCamp = get().campaigns.find(
-								(c) => c.id === activeCampaignId,
-							);
-							const activeWorldId = activeCamp?.worldId;
+					const activeCamp = get().campaigns.find(
+						(c) => c.id === activeCampaignId,
+					);
+					const activeWorldId = activeCamp?.worldId;
 
-							const worldEntityTables = new Set([
-								"npcs",
-								"items",
-								"locations",
-								"lores",
-								"factions",
-								"world_news",
-								// Galeria de imagens é do mundo (migração 0036 traz `world_id`).
-								"image_assets",
-							]);
+					const worldEntityTables = new Set([
+						"npcs",
+						"items",
+						"locations",
+						"lores",
+						"factions",
+						"world_news",
+						// Galeria de imagens é do mundo (migração 0036 traz `world_id`).
+						"image_assets",
+					]);
 
-							const rowCampaignId =
-								eventType === "DELETE"
-									? oldRow && "campaign_id" in oldRow
-										? (oldRow as { campaign_id: string }).campaign_id
-										: null
-									: newRow && "campaign_id" in newRow
-										? (newRow as { campaign_id: string }).campaign_id
-										: null;
+					const rowCampaignId =
+						eventType === "DELETE"
+							? oldRow && "campaign_id" in oldRow
+								? (oldRow as { campaign_id: string }).campaign_id
+								: null
+							: newRow && "campaign_id" in newRow
+								? (newRow as { campaign_id: string }).campaign_id
+								: null;
 
-							const rowWorldId =
-								eventType === "DELETE"
-									? oldRow && "world_id" in oldRow
-										? (oldRow as { world_id: string }).world_id
-										: null
-									: newRow && "world_id" in newRow
-										? (newRow as { world_id: string }).world_id
-										: null;
+					const rowWorldId =
+						eventType === "DELETE"
+							? oldRow && "world_id" in oldRow
+								? (oldRow as { world_id: string }).world_id
+								: null
+							: newRow && "world_id" in newRow
+								? (newRow as { world_id: string }).world_id
+								: null;
 
-							const rowNewsId =
-								eventType === "DELETE"
-									? oldRow && "news_id" in oldRow
-										? (oldRow as { news_id: string }).news_id
-										: null
-									: newRow && "news_id" in newRow
-										? (newRow as { news_id: string }).news_id
-										: null;
+					const rowNewsId =
+						eventType === "DELETE"
+							? oldRow && "news_id" in oldRow
+								? (oldRow as { news_id: string }).news_id
+								: null
+							: newRow && "news_id" in newRow
+								? (newRow as { news_id: string }).news_id
+								: null;
 
-							const belongsToActiveCampaign =
-								rowCampaignId === activeCampaignId;
-							const belongsToActiveWorld =
-								worldEntityTables.has(table) &&
-								rowWorldId != null &&
-								rowWorldId === activeWorldId;
+					const belongsToActiveCampaign = rowCampaignId === activeCampaignId;
+					const belongsToActiveWorld =
+						worldEntityTables.has(table) &&
+						rowWorldId != null &&
+						rowWorldId === activeWorldId;
 
-							const belongsToActiveWorldNews =
-								table === "news_comments" &&
-								rowNewsId != null &&
-								get().worldNews.some(
-									(n) => n.id === rowNewsId && n.worldId === activeWorldId,
-								);
+					const belongsToActiveWorldNews =
+						table === "news_comments" &&
+						rowNewsId != null &&
+						get().worldNews.some(
+							(n) => n.id === rowNewsId && n.worldId === activeWorldId,
+						);
 
-							const belongsToWorldCampaignReputation =
-								table === "faction_reputations" &&
-								rowCampaignId != null &&
-								get().campaigns.some(
-									(c) => c.id === rowCampaignId && c.worldId === activeWorldId,
-								);
+					const belongsToWorldCampaignReputation =
+						table === "faction_reputations" &&
+						rowCampaignId != null &&
+						get().campaigns.some(
+							(c) => c.id === rowCampaignId && c.worldId === activeWorldId,
+						);
 
-							const countTables = [
-								"characters",
-								"npcs",
-								"sessions",
-								"items",
-								"locations",
-								"lores",
-							];
-							const isCountTable = countTables.includes(table);
+					const countTables = [
+						"characters",
+						"npcs",
+						"sessions",
+						"items",
+						"locations",
+						"lores",
+					];
+					const isCountTable = countTables.includes(table);
 
-							const activeOwnerId = activeCamp?.ownerId;
+					const activeOwnerId = activeCamp?.ownerId;
 
-							const ownerCampaignIds = activeOwnerId
-								? get()
-										.campaigns.filter((c) => c.ownerId === activeOwnerId)
-										.map((c) => c.id)
-								: activeCampaignId
-									? [activeCampaignId]
-									: [];
+					const ownerCampaignIds = activeOwnerId
+						? get()
+								.campaigns.filter((c) => c.ownerId === activeOwnerId)
+								.map((c) => c.id)
+						: activeCampaignId
+							? [activeCampaignId]
+							: [];
 
-							const belongsToOwnerCampaigns =
-								rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
+					const belongsToOwnerCampaigns =
+						rowCampaignId && ownerCampaignIds.includes(rowCampaignId);
 
-							const isRelevant =
-								belongsToActiveCampaign ||
-								belongsToActiveWorld ||
-								belongsToActiveWorldNews ||
-								belongsToWorldCampaignReputation;
+					const isRelevant =
+						belongsToActiveCampaign ||
+						belongsToActiveWorld ||
+						belongsToActiveWorldNews ||
+						belongsToWorldCampaignReputation;
 
-							const isOwnAction = isRealtimeEchoOfLocalMutation(
-								get,
-								storeKey,
-								eventType,
-								newRow,
-								oldRow,
-								currentUserId,
-							);
-
-							const newRowCasted = newRow as SupabasePayloadRow | null;
-							const oldRowCasted = oldRow as SupabasePayloadRow | null;
-
-							if (
-								isRelevant &&
-								!isOwnAction &&
-								currentUserId != null &&
-								table in ENTITY_KIND_LABELS
-							) {
-								const entityName = extractEntityName(
-									newRowCasted ?? oldRowCasted,
-								);
-								const label = ENTITY_KIND_LABELS[table] || "Registro";
-								const notification = buildEntityNotification(
-									eventType,
-									label,
-									entityName,
-								);
-								if (notification) {
-									get().addNotification(notification);
-								}
-							}
-
-							if (!isRelevant) {
-								if (isCountTable && belongsToOwnerCampaigns) {
-									applyGlobalRecordsCountChange(set, eventType);
-								}
-								return;
-							}
-
-							if (isCountTable && belongsToOwnerCampaigns) {
-								applyGlobalRecordsCountChange(set, eventType);
-							}
-
-							set((state) => {
-								const currentArray = state[storeKey] as Array<
-									{ id: string } & Record<string, unknown>
-								>;
-
-								if (eventType === "INSERT") {
-									// Evita duplicata se já foi adicionado localmente
-									if (currentArray.some((item) => item.id === newRow.id))
-										return state;
-
-									let processed: Record<string, unknown>;
-									const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
-										? mapFlatWorldbuildingRow(table, newRow)
-										: null;
-									if (flatMapped) {
-										processed = flatMapped;
-										// Reputações locais usam UUID próprio; o trigger do DB
-										// gera outro id. Deduplica pela chave natural.
-										if (table === "faction_reputations") {
-											const factionId = processed.factionId as string;
-											const campaignId = processed.campaignId as string;
-											const withoutLocalSeed = currentArray.filter(
-												(item) =>
-													!(
-														"factionId" in item &&
-														item.factionId === factionId &&
-														item.campaignId === campaignId
-													),
-											);
-											return {
-												[storeKey]: [processed, ...withoutLocalSeed].slice(
-													0,
-													1000,
-												),
-											};
-										}
-									} else if (table === "activity_log") {
-										processed = {
-											id: newRow.id,
-											action: newRow.action,
-											entityKind: newRow.entity_kind,
-											entityId: newRow.entity_id,
-											entityName: newRow.entity_name,
-											timestamp: new Date(newRow.created_at).getTime(),
-										};
-									} else if (table === "image_assets") {
-										processed = {
-											id: newRow.id,
-											campaignId: newRow.campaign_id,
-											worldId: newRow.world_id ?? undefined,
-											createdBy: newRow.created_by,
-											name: newRow.name,
-											url: newRow.url,
-											storageKey: newRow.storage_key ?? undefined,
-											mimeType: newRow.mime_type,
-											sizeBytes: newRow.size_bytes ?? 0,
-											width: newRow.width ?? undefined,
-											height: newRow.height ?? undefined,
-											isPrivate: newRow.is_private ?? false,
-											createdAt: new Date(newRow.created_at).getTime(),
-											updatedAt: newRow.updated_at
-												? new Date(newRow.updated_at).getTime()
-												: undefined,
-										};
-									} else {
-										processed = { id: newRow.id, ...newRow.data };
-									}
-
-									return {
-										[storeKey]: [processed, ...currentArray].slice(
-											0,
-											table === "activity_log" ? 200 : 1000,
-										),
-									};
-								}
-
-								if (eventType === "UPDATE") {
-									if (table === "image_assets") {
-										return {
-											[storeKey]: currentArray.map((item) =>
-												item.id === newRow.id
-													? {
-															...item,
-															name: newRow.name,
-															isPrivate: newRow.is_private,
-															updatedAt: newRow.updated_at
-																? new Date(newRow.updated_at).getTime()
-																: Date.now(),
-														}
-													: item,
-											),
-										};
-									}
-
-									const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
-										? mapFlatWorldbuildingRow(table, newRow)
-										: null;
-									if (flatMapped) {
-										return {
-											[storeKey]: currentArray.map((item) =>
-												item.id === newRow.id
-													? { ...item, ...flatMapped }
-													: item,
-											),
-										};
-									}
-
-									return {
-										[storeKey]: currentArray.map((item) =>
-											item.id === newRow.id
-												? { ...item, ...newRow.data }
-												: item,
-										),
-									};
-								}
-
-								if (eventType === "DELETE") {
-									return {
-										[storeKey]: currentArray.filter(
-											(item) => item.id !== oldRow.id,
-										),
-									};
-								}
-
-								return state;
-							});
-						},
+					const isOwnAction = isRealtimeEchoOfLocalMutation(
+						get,
+						storeKey,
+						eventType,
+						newRow,
+						oldRow,
+						currentUserId,
 					);
 
-				channel.subscribe((status, err) => {
-					console.log("[Realtime subscription status]", status, err);
-					if (status === "CHANNEL_ERROR") {
-						console.error("Realtime channel error:", err);
+					const newRowCasted = newRow as SupabasePayloadRow | null;
+					const oldRowCasted = oldRow as SupabasePayloadRow | null;
+
+					if (
+						isRelevant &&
+						!isOwnAction &&
+						currentUserId != null &&
+						table in ENTITY_KIND_LABELS
+					) {
+						const entityName = extractEntityName(newRowCasted ?? oldRowCasted);
+						const label = ENTITY_KIND_LABELS[table] || "Registro";
+						const notification = buildEntityNotification(
+							eventType,
+							label,
+							entityName,
+						);
+						if (notification) {
+							get().addNotification(notification);
+						}
 					}
+
+					if (!isRelevant) {
+						if (isCountTable && belongsToOwnerCampaigns) {
+							applyGlobalRecordsCountChange(set, eventType);
+						}
+						return;
+					}
+
+					if (isCountTable && belongsToOwnerCampaigns) {
+						applyGlobalRecordsCountChange(set, eventType);
+					}
+
+					set((state) => {
+						const currentArray = state[storeKey] as Array<
+							{ id: string } & Record<string, unknown>
+						>;
+
+						if (eventType === "INSERT") {
+							// Evita duplicata se já foi adicionado localmente
+							if (currentArray.some((item) => item.id === newRow.id))
+								return state;
+
+							let processed: Record<string, unknown>;
+							const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
+								? mapFlatWorldbuildingRow(table, newRow)
+								: null;
+							if (flatMapped) {
+								processed = flatMapped;
+								// Reputações locais usam UUID próprio; o trigger do DB
+								// gera outro id. Deduplica pela chave natural.
+								if (table === "faction_reputations") {
+									const factionId = processed.factionId as string;
+									const campaignId = processed.campaignId as string;
+									const withoutLocalSeed = currentArray.filter(
+										(item) =>
+											!(
+												"factionId" in item &&
+												item.factionId === factionId &&
+												item.campaignId === campaignId
+											),
+									);
+									return {
+										[storeKey]: [processed, ...withoutLocalSeed].slice(0, 1000),
+									};
+								}
+							} else if (table === "activity_log") {
+								processed = {
+									id: newRow.id,
+									action: newRow.action,
+									entityKind: newRow.entity_kind,
+									entityId: newRow.entity_id,
+									entityName: newRow.entity_name,
+									timestamp: new Date(newRow.created_at).getTime(),
+								};
+							} else if (table === "image_assets") {
+								processed = {
+									id: newRow.id,
+									campaignId: newRow.campaign_id,
+									worldId: newRow.world_id ?? undefined,
+									createdBy: newRow.created_by,
+									name: newRow.name,
+									url: newRow.url,
+									storageKey: newRow.storage_key ?? undefined,
+									mimeType: newRow.mime_type,
+									sizeBytes: newRow.size_bytes ?? 0,
+									width: newRow.width ?? undefined,
+									height: newRow.height ?? undefined,
+									isPrivate: newRow.is_private ?? false,
+									createdAt: new Date(newRow.created_at).getTime(),
+									updatedAt: newRow.updated_at
+										? new Date(newRow.updated_at).getTime()
+										: undefined,
+								};
+							} else {
+								processed = { id: newRow.id, ...newRow.data };
+							}
+
+							return {
+								[storeKey]: [processed, ...currentArray].slice(
+									0,
+									table === "activity_log" ? 200 : 1000,
+								),
+							};
+						}
+
+						if (eventType === "UPDATE") {
+							if (table === "image_assets") {
+								return {
+									[storeKey]: currentArray.map((item) =>
+										item.id === newRow.id
+											? {
+													...item,
+													name: newRow.name,
+													isPrivate: newRow.is_private,
+													updatedAt: newRow.updated_at
+														? new Date(newRow.updated_at).getTime()
+														: Date.now(),
+												}
+											: item,
+									),
+								};
+							}
+
+							const flatMapped = FLAT_WORLDBUILDING_TABLES.has(table)
+								? mapFlatWorldbuildingRow(table, newRow)
+								: null;
+							if (flatMapped) {
+								return {
+									[storeKey]: currentArray.map((item) =>
+										item.id === newRow.id ? { ...item, ...flatMapped } : item,
+									),
+								};
+							}
+
+							return {
+								[storeKey]: currentArray.map((item) =>
+									item.id === newRow.id ? { ...item, ...newRow.data } : item,
+								),
+							};
+						}
+
+						if (eventType === "DELETE") {
+							return {
+								[storeKey]: currentArray.filter(
+									(item) => item.id !== oldRow.id,
+								),
+							};
+						}
+
+						return state;
+					});
 				});
-			} catch (error) {
-				console.error("[Realtime] não foi possível assinar as mudanças", error);
-			}
-		})();
+
+			channel.subscribe((status, err) => {
+				console.log("[Realtime subscription status]", status, err);
+				if (status === "CHANNEL_ERROR") {
+					console.error("Realtime channel error:", err);
+				}
+			});
+		});
 
 		return () => {
 			isCleanedUp = true;

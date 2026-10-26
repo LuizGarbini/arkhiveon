@@ -510,6 +510,7 @@ export function VTTCanvas({
 
 		const gridSize = scene.gridSize || 70;
 		const foreground = cssVarColor("--foreground", 0xfafafa);
+		const hpFill = cssVarColor("--primary", foreground);
 		// Celular/toque: 1 ícone de status maior + "+N" (lido por render, não
 		// por frame).
 		const compactStatus =
@@ -751,9 +752,6 @@ export function VTTCanvas({
 				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, 3);
 				hpBar.fill({ color: 0x000000, alpha: 0.8 });
 
-				const fillColor =
-					hpRatio > 0.5 ? 0x22c55e : hpRatio > 0.2 ? 0xf59e0b : 0xef4444;
-
 				if (hpRatio > 0) {
 					hpBar.roundRect(
 						-barWidth / 2,
@@ -762,7 +760,7 @@ export function VTTCanvas({
 						barHeight,
 						3,
 					);
-					hpBar.fill({ color: fillColor });
+					hpBar.fill({ color: hpFill });
 				}
 
 				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, 3);

@@ -16,7 +16,6 @@ import { useRef, useState } from "react";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
 	SelectContent,
 	SelectItem,
@@ -65,7 +64,6 @@ export function VTTTokenMenu({
 	const isGM = useVTTStore((s) => s.isGM);
 	const viewport = useVTTStore((s) => s.viewport);
 
-	const [customHpMod, setCustomHpMod] = useState("");
 	const isMobile = useIsMobile();
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const characterId = token?.characterId ?? null;
@@ -112,17 +110,6 @@ export function VTTTokenMenu({
 		sheetHealthMax,
 	});
 	const showMax = !hp.fromSheet || isGM;
-	const handleModifyHp = (amount: number) => {
-		const nextHp = Math.max(0, Math.min(hp.current + amount, hp.max));
-		void onUpdateToken(token.id, { hpCurrent: nextHp });
-	};
-
-	const handleCustomHp = (isDamage: boolean) => {
-		const val = Number.parseInt(customHpMod, 10);
-		if (Number.isNaN(val) || val <= 0) return;
-		handleModifyHp(isDamage ? -val : val);
-		setCustomHpMod("");
-	};
 
 	// Status: otimista. Aplica na mesa na hora e grava; se o servidor recusar,
 	// volta ao que estava (se ninguém mexeu de novo) e avisa com toast.
@@ -331,36 +318,6 @@ export function VTTTokenMenu({
 								: undefined
 						}
 					/>
-					<div className="flex items-center gap-1.5">
-						<Input
-							type="number"
-							aria-label="Quantidade de dano ou cura"
-							placeholder="Valor..."
-							value={customHpMod}
-							spellCheck={false}
-							autoComplete="off"
-							onChange={(e) => setCustomHpMod(e.target.value)}
-							className="h-11 bg-card-elevated border-border/70 rounded-xl font-mono text-base tabular-nums"
-						/>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => handleCustomHp(true)}
-							className="h-11 min-h-11 px-3 text-xs font-bold text-destructive"
-						>
-							Dano
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => handleCustomHp(false)}
-							className="h-11 min-h-11 px-3 text-xs font-bold text-primary"
-						>
-							Cura
-						</Button>
-					</div>
 
 					{/* Status Conditions */}
 					<div className="space-y-1.5">
