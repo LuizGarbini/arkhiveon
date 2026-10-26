@@ -61,6 +61,7 @@ export type Database = {
 			campaigns: {
 				Row: {
 					created_at: string;
+					current_feed_session_id: string | null;
 					data: Json;
 					description: string;
 					id: string;
@@ -74,6 +75,7 @@ export type Database = {
 				};
 				Insert: {
 					created_at?: string;
+					current_feed_session_id?: string | null;
 					data?: Json;
 					description?: string;
 					id?: string;
@@ -87,6 +89,7 @@ export type Database = {
 				};
 				Update: {
 					created_at?: string;
+					current_feed_session_id?: string | null;
 					data?: Json;
 					description?: string;
 					id?: string;
@@ -99,6 +102,13 @@ export type Database = {
 					world_id?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "campaigns_current_feed_session_id_fkey";
+						columns: ["current_feed_session_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_feed_sessions";
+						referencedColumns: ["id"];
+					},
 					{
 						foreignKeyName: "campaigns_world_id_fkey";
 						columns: ["world_id"];
@@ -1114,6 +1124,127 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			/** 0052: uma sessão do feed da mesa. O jogador só lê a corrente. */
+			vtt_feed_sessions: {
+				Row: {
+					id: string;
+					campaign_id: string;
+					started_by: string | null;
+					started_at: string;
+				};
+				Insert: {
+					id?: string;
+					campaign_id: string;
+					started_by?: string | null;
+					started_at?: string;
+				};
+				Update: {
+					id?: string;
+					campaign_id?: string;
+					started_by?: string | null;
+					started_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_feed_sessions_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			/**
+			 * 0052: feed público. Rolagem secreta deixa formula nula.
+			 * Não há total nem details nesta linha.
+			 */
+			vtt_rolls: {
+				Row: {
+					id: string;
+					campaign_id: string;
+					scene_id: string | null;
+					session_id: string;
+					author_id: string;
+					character_id: string | null;
+					kind: string;
+					formula: string | null;
+					label: string | null;
+					message: string | null;
+					is_secret: boolean;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					campaign_id: string;
+					scene_id?: string | null;
+					session_id: string;
+					author_id: string;
+					character_id?: string | null;
+					kind: string;
+					formula?: string | null;
+					label?: string | null;
+					message?: string | null;
+					is_secret?: boolean;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					campaign_id?: string;
+					scene_id?: string | null;
+					session_id?: string;
+					author_id?: string;
+					character_id?: string | null;
+					kind?: string;
+					formula?: string | null;
+					label?: string | null;
+					message?: string | null;
+					is_secret?: boolean;
+					created_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_rolls_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_rolls_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_feed_sessions";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			/** 0052: total e dados. Fora do Realtime. */
+			vtt_roll_results: {
+				Row: {
+					roll_id: string;
+					total: number;
+					details: Json;
+				};
+				Insert: {
+					roll_id: string;
+					total: number;
+					details: Json;
+				};
+				Update: {
+					roll_id?: string;
+					total?: number;
+					details?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_roll_results_roll_id_fkey";
+						columns: ["roll_id"];
+						isOneToOne: true;
+						referencedRelation: "vtt_rolls";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 		};
 		Views: {
 			[_ in never]: never;
@@ -1137,6 +1268,30 @@ export type Database = {
 			join_campaign_via_link: {
 				Args: { p_campaign_id: string };
 				Returns: { role: string; campaign_name: string | null }[];
+			};
+			post_table_message: {
+				Args: {
+					p_campaign_id: string;
+					p_scene_id: string | null;
+					p_message: string;
+					p_character_id?: string | null;
+				};
+				Returns: string;
+			};
+			roll_dice: {
+				Args: {
+					p_campaign_id: string;
+					p_scene_id: string | null;
+					p_formula: string;
+					p_secret: boolean;
+					p_label: string | null;
+					p_character_id?: string | null;
+				};
+				Returns: Json;
+			};
+			start_feed_session: {
+				Args: { p_campaign_id: string };
+				Returns: string;
 			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 		};
