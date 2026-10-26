@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
+import { Flag } from "lucide-react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
+import { getFactionsTabConfig } from "@/lib/systems";
 import { Sidebar } from "./sidebar";
 
 const auth = vi.hoisted(() => ({
@@ -175,10 +177,13 @@ describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
 		expect(screen.getByText(/0\.0MB \/ 100MB/)).toBeTruthy();
 	});
 
-	it("campanhas ainda não confirmadas: rótulo do mundo pendente, sem 'Facções & Ordens'", () => {
+	it("campanhas ainda carregando: rótulo do mundo pendente, sem 'Facções & Ordens'", () => {
 		auth.planStatus = "ready";
+		auth.planLoading = false;
 		useRPGStore.setState({
-			campaignLoadStatus: "error",
+			campaignLoadStatus: "loading",
+			hasLoadedCampaigns: false,
+			isRetryingBase: false,
 			activeCampaignId: "camp-1",
 			campaigns: [
 				{
@@ -195,5 +200,43 @@ describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
 		render(<Sidebar isOpen />);
 		expect(screen.getByTestId("nav-/factions").dataset.pending).toBe("true");
 		expect(screen.queryByText("Facções & Ordens")).toBeNull();
+	});
+
+	it("erro 500: item da bandeira entre NPCs e Mural mostra o nome", () => {
+		auth.planStatus = "ready";
+		auth.planLoading = false;
+		const fallback = getFactionsTabConfig(undefined);
+		expect(fallback.Icon).toBe(Flag);
+		useRPGStore.setState({
+			campaignLoadStatus: "error",
+			hasLoadedCampaigns: false,
+			isRetryingBase: false,
+			activeCampaignId: "camp-1",
+			remoteLoadError: "falhou",
+			baseLoadError: "Não foi possível carregar os dados da mesa.",
+			campaigns: [
+				{
+					id: "camp-1",
+					name: "QA Designer (teste)",
+					description: "",
+					ownerId: "o",
+					worldId: "w",
+					myRole: "editor",
+					createdAt: 1,
+				},
+			],
+		});
+		render(<Sidebar isOpen />);
+		const factions = screen.getByTestId("nav-/factions");
+		expect(factions.dataset.pending).toBe("false");
+		expect(factions.textContent).toBe(fallback.label);
+		const items = screen
+			.getAllByRole("listitem")
+			.map((item) => item.textContent);
+		const npcs = items.indexOf("NPCs");
+		const flag = items.indexOf(fallback.label);
+		const mural = items.indexOf("Mural");
+		expect(flag).toBe(npcs + 1);
+		expect(mural).toBe(flag + 1);
 	});
 });

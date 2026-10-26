@@ -28,16 +28,16 @@ export {
 	systemLabel,
 } from "./store/helpers";
 export { npcDefaults } from "./store/npc-slice";
-export { sessionDefaults } from "./store/session-slice";
-export { questDefaults } from "./store/quest-slice";
 export { partyLootDefaults } from "./store/party-loot-slice";
-export { factionDefaults } from "./store/worldbuilding-slice";
+export { questDefaults } from "./store/quest-slice";
+export { sessionDefaults } from "./store/session-slice";
 export {
 	FREE_CREATION_LIMIT,
 	isCreationLimitReached,
 } from "./store/sync-slice";
 // Re-export types for convenience
 export * from "./store/types";
+export { factionDefaults } from "./store/worldbuilding-slice";
 
 const IMAGE_FIELDS = new Set(["imageUrl", "mapUrl"]);
 
@@ -95,6 +95,8 @@ export const useRPGStore = create<RPGState>()(
 					description: c.description,
 					worldId: c.worldId,
 					myRole: c.myRole,
+					// Sem o sistema o selo só aparece quando a rede volta e a linha quebra.
+					system: c.system,
 				})),
 				spotifyJamLink: state.spotifyJamLink,
 				spotifyJamActive: state.spotifyJamActive,

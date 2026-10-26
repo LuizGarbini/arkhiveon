@@ -8,7 +8,6 @@ import { selectDashboardDataStatus } from "@/components/dashboard/dashboard-coun
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardKeyNpcs } from "@/components/dashboard/dashboard-key-npcs";
 import { DashboardLatestSession } from "@/components/dashboard/dashboard-latest-session";
-import { DashboardLoadErrorNotice } from "@/components/dashboard/dashboard-load-error";
 import { DashboardPartyRoster } from "@/components/dashboard/dashboard-party-roster";
 import { DashboardQuickActions } from "@/components/dashboard/dashboard-quick-actions";
 import { DashboardQuickNav } from "@/components/dashboard/dashboard-quick-nav";
@@ -123,19 +122,6 @@ function Dashboard() {
 
 	return (
 		<div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-			{isUnavailable ? (
-				<DashboardLoadErrorNotice onRetry={() => void retryBaseLoad()} />
-			) : isBaseLoadSlow ? (
-				// biome-ignore lint/a11y/useSemanticElements: o aviso pede role="status" nesta frase
-				<p
-					role="status"
-					aria-live="polite"
-					className="absolute inset-x-4 top-0 min-w-0 text-sm text-muted-foreground sm:inset-x-6 lg:inset-x-8"
-				>
-					Conexão lenta, ainda carregando…
-				</p>
-			) : null}
-
 			<InviteBanner />
 
 			{/* Discord Community Dithering Banner */}
@@ -148,6 +134,9 @@ function Dashboard() {
 				isViewer={isViewer}
 				counts={counts}
 				countStatus={countStatus}
+				hasCampaignSnapshot={hasAuthoritativeCampaignSnapshot}
+				isBaseLoadSlow={isBaseLoadSlow}
+				onRetryBaseLoad={() => void retryBaseLoad()}
 			/>
 
 			{/* Special Ordem Paranormal Banner if applicable */}

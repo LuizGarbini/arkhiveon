@@ -107,6 +107,7 @@ describe("Dashboard Components", () => {
 			);
 
 			expect(screen.getByText("Jogador (Visualizador)")).toBeDefined();
+			expect(screen.queryByText("Registrar Sessão")).toBeNull();
 		});
 	});
 
