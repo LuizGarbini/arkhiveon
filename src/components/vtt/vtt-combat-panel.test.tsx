@@ -566,4 +566,40 @@ describe("painel de combate", () => {
 			screen.getByRole("button", { name: "Adicionar selecionados" }),
 		).toBeTruthy();
 	});
+
+	it("no celular o sheet de combate não cobre o mapa com overlay", async () => {
+		window.matchMedia = ((query: string) => ({
+			matches: query.includes("max-width"),
+			media: query,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+			addListener: () => {},
+			removeListener: () => {},
+			dispatchEvent: () => false,
+			onchange: null,
+		})) as unknown as typeof window.matchMedia;
+		const onMap = vi.fn();
+		render(
+			<>
+				<div
+					aria-label="mapa"
+					role="application"
+					onPointerDown={onMap}
+					onWheel={onMap}
+				/>
+				<VTTCombatPanel />
+			</>,
+		);
+		expect(await screen.findByRole("dialog", { name: "Combate" })).toBeTruthy();
+		expect(document.querySelector("[data-slot='dialog-overlay']")).toBeNull();
+		expect(document.querySelector(".backdrop-blur-md")).toBeNull();
+		const map = screen.getByRole("application", { name: "mapa" });
+		expect(map.closest("[aria-hidden='true']")).toBeNull();
+		expect(map.hasAttribute("inert")).toBe(false);
+		fireEvent.pointerDown(map);
+		fireEvent.wheel(map);
+		expect(onMap).toHaveBeenCalled();
+		expect(screen.getByRole("dialog", { name: "Combate" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+	});
 });

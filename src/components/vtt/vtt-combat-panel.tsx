@@ -440,6 +440,7 @@ export function VTTCombatPanel() {
 		return (
 			<BottomSheet
 				open
+				modal={false}
 				onOpenChange={(next) => {
 					if (!next) useCombatStore.getState().setPanelOpen(false);
 				}}

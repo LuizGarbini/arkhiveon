@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "26/10/2026",
 		title: "Ordem de iniciativa na mesa",
 		description:
-			"A mesa mostra a ordem de iniciativa. O mestre adiciona os tokens selecionados, ajusta o número, passa a vez e encerra o combate. O jogador acompanha a fila. Quando a vez é de um token que ele não vê, aparece só “Vez do mestre”. No celular, a ordem abre na folha de baixo.",
+			"A mesa mostra a ordem de iniciativa. O mestre adiciona os tokens selecionados, ajusta o número, passa a vez e encerra o combate. O jogador acompanha a fila. Quando a vez é de um token que ele não vê, aparece só “Vez do mestre”. No celular, a ordem abre na folha de baixo, sem escurecer o mapa: dá para mover e aproximar a mesa com a ordem aberta.",
 		bullets: [
 			"Atalho C abre o combate. Um anel na cor da mesa marca o token da vez.",
 			"A iniciativa vem da ficha (zero conta). Sem ficha, o mestre digita o valor.",
