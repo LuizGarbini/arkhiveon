@@ -63,6 +63,21 @@ function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function gitHead() {
+	return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+		encoding: "utf8",
+	}).trim();
+}
+
+function localIsoTimestamp(date = new Date()) {
+	const pad = (value, size = 2) => String(value).padStart(size, "0");
+	const offsetMinutes = -date.getTimezoneOffset();
+	const sign = offsetMinutes >= 0 ? "+" : "-";
+	const absolute = Math.abs(offsetMinutes);
+	const offset = `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}${offset}`;
+}
+
 async function waitUntil(list, from, ms) {
 	const start = Date.now();
 	while (Date.now() - start < ms) {
@@ -79,7 +94,7 @@ function clientFor(token, anonKey) {
 	});
 }
 
-function subscribeRolls(client, onRoll) {
+function subscribeRolls(client, onRoll, onStatus) {
 	const channel = client.channel(`proof-rolls-${randomUUID()}`);
 	channel.on(
 		"postgres_changes",
@@ -94,6 +109,7 @@ function subscribeRolls(client, onRoll) {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => reject(new Error("timeout ao assinar vtt_rolls")), 20000);
 		channel.subscribe((status, err) => {
+			if (onStatus) onStatus(status === "SUBSCRIBED" ? "subscribed" : String(err?.message || status));
 			if (status === "SUBSCRIBED") {
 				clearTimeout(timer);
 				resolve(channel);
@@ -223,12 +239,30 @@ async function main() {
 	const rollEvents = [];
 	const resultEvents = [];
 	let resultsStatus = "pending";
+	const outsiderFeed = [];
+	const outsiderResults = [];
+	let outsiderFeedStatus = "pending";
+	let outsiderResultsStatus = "pending";
 	const rollsChannel = await subscribeRolls(player, (payload) => rollEvents.push(payload));
 	const resultsChannel = await subscribeResults(
 		player,
 		(payload) => resultEvents.push(payload),
 		(status) => {
 			resultsStatus = status;
+		},
+	);
+	const outsiderRollsChannel = await subscribeRolls(
+		outsider,
+		(payload) => outsiderFeed.push(payload),
+		(status) => {
+			outsiderFeedStatus = status;
+		},
+	);
+	const outsiderResultsChannel = await subscribeResults(
+		outsider,
+		(payload) => outsiderResults.push(payload),
+		(status) => {
+			outsiderResultsStatus = status;
 		},
 	);
 	await sleep(400);
@@ -277,10 +311,15 @@ async function main() {
 		.eq("campaign_id", CAMP);
 	if (during.error) throw new Error(`leitura do jogador: ${during.error.message}`);
 
+	const head = gitHead();
+	const capturado = localIsoTimestamp();
+
 	writeFileSync(
 		"out/proofs-0052/payload-b.json",
 		`${JSON.stringify(
 			{
+				head,
+				capturado,
 				realtime: rollEvents,
 				resultadosRealtime: resultEvents,
 				resultadosCanal: resultsStatus,
@@ -323,6 +362,7 @@ async function main() {
 	if ("total" in (freshRow ?? {}) || "details" in (freshRow ?? {})) {
 		throw new Error("a mensagem nova trouxe total ou details");
 	}
+	await sleep(400);
 
 	const after = await player
 		.from("vtt_rolls")
@@ -335,10 +375,15 @@ async function main() {
 		`select count(*) from public.vtt_rolls where id in ('${secretId}', '${normalId}');`,
 	).trim();
 
+	const leituraDoFeed = outside.data ?? [];
+	const capturadoDepois = localIsoTimestamp();
+
 	writeFileSync(
 		"out/proofs-0052/payload-b-sessao.json",
 		`${JSON.stringify(
 			{
+				head,
+				capturado: capturadoDepois,
 				eventosDepoisDaNovaSessao: afterOldUpdate,
 				eventosNaAssinaturaNova: replay,
 				mensagemNova: fresh,
@@ -351,9 +396,29 @@ async function main() {
 			2,
 		)}\n`,
 	);
+	writeFileSync(
+		"out/proofs-0052/payload-fora.json",
+		`${JSON.stringify(
+			{
+				head,
+				capturado: capturadoDepois,
+				realtimeFeed: outsiderFeed,
+				realtimeResultados: outsiderResults,
+				canalStatus: {
+					feed: outsiderFeedStatus,
+					resultados: outsiderResultsStatus,
+				},
+				leituraDoFeed,
+			},
+			null,
+			2,
+		)}\n`,
+	);
 
 	await player.removeChannel(secondChannel);
 	await player.removeChannel(resultsChannel);
+	await outsider.removeChannel(outsiderRollsChannel);
+	await outsider.removeChannel(outsiderResultsChannel);
 	gm.realtime.disconnect();
 	player.realtime.disconnect();
 	outsider.realtime.disconnect();
@@ -367,7 +432,10 @@ async function main() {
 	if ((after.data ?? []).length !== 1) {
 		throw new Error(`jogador vê ${after.data?.length ?? 0} linhas, esperava 1`);
 	}
-	if (!outside.error && (outside.data ?? []).length !== 0) {
+	if (outsiderFeed.length > 0 || outsiderResults.length > 0) {
+		throw new Error("quem está fora recebeu evento ao vivo");
+	}
+	if (leituraDoFeed.length !== 0) {
 		throw new Error("quem está fora leu o feed");
 	}
 	if (!anonRead.error) throw new Error("anônimo leu o feed");
@@ -377,6 +445,9 @@ async function main() {
 	console.log(`secreta formula=${secretEvents[0].new.formula} chaves=${Object.keys(secretEvents[0].new).join(",")}`);
 	console.log(`normal formula=${normalEvents[0].new.formula} chaves=${Object.keys(normalEvents[0].new).join(",")}`);
 	console.log(`canal de resultados: ${resultsStatus}, eventos: ${resultEvents.length}`);
+	console.log(
+		`fora da campanha: feed=${outsiderFeed.length} resultados=${outsiderResults.length} leitura=${leituraDoFeed.length}`,
+	);
 	console.log(`depois da sessão o jogador recebeu ${afterOldUpdate.length} eventos antigos e ${fresh.length} novos`);
 }
 
