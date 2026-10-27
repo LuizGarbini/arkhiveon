@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.47-rolagens-da-mesa",
+		version: "1.6.47",
+		date: "26/10/2026",
+		title: "Dados e chat da mesa passam pelo servidor",
+		description:
+			"A rolagem da mesa agora acontece no servidor. Quem está na campanha vê o feed. Numa rolagem secreta, a mesa vê que o mestre rolou, sem a fórmula e sem o resultado; o total fica só com o mestre. O chat segue a mesma regra de quem participa da campanha. Quando o mestre começa ou limpa a sessão, o feed que o jogador vê recomeça. O que já tinha sido rolado continua guardado para o mestre. Nada é apagado.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.46-tipos-do-banco-combate",
 		version: "1.6.46",
 		date: "26/10/2026",
