@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { playPingAudio } from "@/lib/vtt/audio";
+import { currentTurnRingTokenId, useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	COMPACT_VISIBLE_CONDITIONS,
 	MAX_VISIBLE_CONDITIONS,
@@ -128,6 +129,63 @@ export function VTTCanvas({
 
 	// Display containers map for direct 60fps WebGL interpolation without React state thrashing
 	const tokenDisplayObjectsRef = useRef<Map<string, Container>>(new Map());
+	// Anel da vez: um Graphics no token ativo. Não entra no ticker.
+	const turnRingRef = useRef<Graphics | null>(null);
+	const turnRingTokenRef = useRef<string | null>(null);
+	const turnRingSigRef = useRef("");
+	const sceneRef = useRef(scene);
+	sceneRef.current = scene;
+	const paintTurnRingRef = useRef<() => void>(() => {});
+	paintTurnRingRef.current = () => {
+		const combat = useCombatStore.getState();
+		const vtt = useVTTStore.getState();
+		let tokenVis = "gm";
+		if (!vtt.isGM) {
+			tokenVis = "";
+			for (const token of vtt.tokens) {
+				tokenVis += `${token.id}:${token.layer}:${token.isHidden ? 1 : 0}|`;
+			}
+		}
+		const turnExists = combat.turnId
+			? combat.combatants.some((c) => c.id === combat.turnId)
+			: false;
+		const sig = `${combat.status}:${combat.round ?? ""}:${combat.turnId ?? ""}:${turnExists ? 1 : 0}:${tokenVis}`;
+		const node = turnRingRef.current;
+		const paintedId = turnRingTokenRef.current;
+		const hostNow = paintedId
+			? tokenDisplayObjectsRef.current.get(paintedId)
+			: null;
+		const attached = Boolean(node && hostNow && node.parent === hostNow);
+		if (sig === turnRingSigRef.current && attached) return;
+
+		if (node) {
+			node.parent?.removeChild(node);
+			node.destroy();
+			turnRingRef.current = null;
+			turnRingTokenRef.current = null;
+		}
+		turnRingSigRef.current = sig;
+		const id = currentTurnRingTokenId();
+		if (!id) return;
+		const host = tokenDisplayObjectsRef.current.get(id);
+		const token = vtt.tokens.find((item) => item.id === id);
+		const grid = sceneRef.current?.gridSize || 70;
+		if (!host || !token) return;
+		const radius = (token.sizeCells * grid) / 2 + 6;
+		const ring = new Graphics();
+		ring.label = "turn-ring";
+		ring.eventMode = "none";
+		ring.circle(0, 0, radius);
+		// Cor lida de --primary. O número só entra se a variável não existir.
+		ring.stroke({
+			width: 3,
+			color: cssVarColor("--primary", 0x6d28d9),
+			alpha: 1,
+		});
+		host.addChild(ring);
+		turnRingRef.current = ring;
+		turnRingTokenRef.current = id;
+	};
 
 	// Interaction refs
 	const isDraggingViewportRef = useRef(false);
@@ -875,6 +933,8 @@ export function VTTCanvas({
 				tokensLayer.addChild(tokenContainer);
 			}
 		}
+		// Containers novos: o anel antigo ficou no container descartado.
+		paintTurnRingRef.current();
 	}, [
 		rendererReady,
 		tokens,
@@ -891,6 +951,33 @@ export function VTTCanvas({
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 	]);
+
+	useEffect(() => {
+		// Anel da vez no canvas. Não é estado derivado: assina as stores e
+		// desenha uma vez quando muda o token da vez (ou a visibilidade que
+		// esconde esse token do jogador). Não há ticker. Iniciativa e pan
+		// não trocam a assinatura, então o stroke não roda de novo.
+		if (!rendererReady) return;
+		const paint = () => paintTurnRingRef.current();
+		const unCombat = useCombatStore.subscribe(paint);
+		const unVtt = useVTTStore.subscribe((state, prev) => {
+			if (state.isGM === prev.isGM && state.tokens === prev.tokens) return;
+			paint();
+		});
+		paint();
+		return () => {
+			unCombat();
+			unVtt();
+			const node = turnRingRef.current;
+			if (node) {
+				node.parent?.removeChild(node);
+				node.destroy();
+				turnRingRef.current = null;
+			}
+			turnRingTokenRef.current = null;
+			turnRingSigRef.current = "";
+		};
+	}, [rendererReady]);
 
 	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
 	useEffect(() => {
