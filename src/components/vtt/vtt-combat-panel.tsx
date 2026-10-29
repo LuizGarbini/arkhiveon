@@ -1,6 +1,13 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { GripVertical } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { Button } from "@/components/ui/button";
@@ -25,15 +32,19 @@ import {
 	useCombatStore,
 } from "@/lib/vtt/combat-store";
 import { loadCombat, subscribeCombat } from "@/lib/vtt/combat-sync";
+import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { InitiativePortrait } from "./initiative-portrait";
 
 function InitiativeField({
 	name,
+	portrait,
 	value,
 	disabled,
 	onCommit,
 }: {
 	name: string;
+	portrait: ReactNode;
 	value: number | null;
 	disabled: boolean;
 	onCommit: (value: number | null) => void;
@@ -65,6 +76,7 @@ function InitiativeField({
 				htmlFor={fieldId}
 				className="flex min-h-11 min-w-0 flex-1 items-center gap-2"
 			>
+				{portrait}
 				<span className="min-w-0 flex-1 truncate font-semibold text-foreground">
 					{name}
 				</span>
@@ -117,9 +129,9 @@ function CombatPanelContent() {
 		() => playerTurnView({ round, turnId }, ordered, visibleIds),
 		[round, turnId, ordered, visibleIds],
 	);
-	const names = useMemo(() => {
-		const map = new Map<string, string>();
-		for (const token of tokens) map.set(token.id, token.name);
+	const tokenById = useMemo(() => {
+		const map = new Map<string, VTTToken>();
+		for (const token of tokens) map.set(token.id, token);
 		return map;
 	}, [tokens]);
 	const inCombat = useMemo(
@@ -248,7 +260,11 @@ function CombatPanelContent() {
 					className="min-h-0 flex-1 overflow-y-auto"
 				>
 					{rows.map((combatant) => {
-						const name = names.get(combatant.tokenId) ?? "Token";
+						const token = tokenById.get(combatant.tokenId);
+						const name = token?.name ?? "Token";
+						const portrait = (
+							<InitiativePortrait name={name} token={token} isGM={isGM} />
+						);
 						const active = combatant.id === activeId;
 						return (
 							<li
@@ -296,6 +312,7 @@ function CombatPanelContent() {
 								{isGM ? (
 									<InitiativeField
 										name={name}
+										portrait={portrait}
 										value={combatant.initiative}
 										disabled={busy}
 										onCommit={(value) => {
@@ -306,6 +323,7 @@ function CombatPanelContent() {
 									/>
 								) : (
 									<div className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-2">
+										{portrait}
 										<span className="min-w-0 flex-1 truncate font-semibold text-foreground">
 											{name}
 										</span>
