@@ -7,10 +7,13 @@ export function QuickStat({
 	label,
 	value,
 	color,
+	compactValue = false,
 }: {
 	label: string;
 	value: string;
 	color: string;
+	/** Valor longo (ex.: `33/38`) na faixa de 4 colunas da ficha na mesa. */
+	compactValue?: boolean;
 }) {
 	// Célula da faixa de status `<dl>` (2×2 no celular, 4 colunas a partir de sm).
 	return (
@@ -20,7 +23,8 @@ export function QuickStat({
 			</dt>
 			<dd
 				className={cn(
-					"mt-1.5 truncate font-display text-xl font-bold leading-none tabular-nums sm:text-2xl",
+					"mt-1.5 truncate font-display font-bold leading-none tabular-nums",
+					compactValue ? "text-base sm:text-lg" : "text-xl sm:text-2xl",
 					color,
 				)}
 			>

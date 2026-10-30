@@ -8,6 +8,8 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useRPGStore } from "@/lib/store";
+import type { Character } from "@/lib/store/types";
 import type { VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { VTTTokenMenu } from "./vtt-token-menu";
@@ -159,6 +161,85 @@ describe("VTTTokenMenu — status", () => {
 		expect(onUpdateToken).toHaveBeenLastCalledWith("tok-1", {
 			conditions: [],
 		});
+	});
+});
+
+describe("VTTTokenMenu — PV da ficha", () => {
+	const previous = useRPGStore.getState().characters;
+	afterEach(() => {
+		useRPGStore.setState({ characters: previous });
+	});
+
+	function sheet(system: "dnd5e" | "ordem") {
+		useRPGStore.setState({
+			characters: [
+				{
+					id: "char-1",
+					system,
+					health: 33,
+					healthMax: 38,
+				} as Character,
+			],
+		});
+	}
+
+	it("shows the sheet HP and sends the next current value", () => {
+		sheet("dnd5e");
+		const { onUpdateToken } = setup({
+			characterId: "char-1",
+			hpCurrent: 1,
+			hpMax: 2,
+		});
+		expect(screen.getByText("33 / 38")).toBeTruthy();
+		expect(screen.queryByText("1 / 2")).toBeNull();
+		const damage = screen.getByRole("button", { name: "-5" });
+		expect(damage.getAttribute("data-slot")).toBe("button");
+		expect(damage.className).not.toContain("rose-");
+		expect(screen.getByTestId("vtt-hp-bar").className).toContain("bg-primary");
+		fireEvent.click(damage);
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
+	});
+
+	it("hides the maximum from a player and still changes the current HP", () => {
+		sheet("dnd5e");
+		const { onUpdateToken } = setup(
+			{ characterId: "char-1", hpCurrent: 1, hpMax: 2 },
+			false,
+		);
+		expect(screen.getByText("33")).toBeTruthy();
+		expect(screen.queryByText("33 / 38")).toBeNull();
+		expect(screen.queryByText("38")).toBeNull();
+		expect(screen.queryByRole("spinbutton", { name: "PV máximo" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "-5" }));
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
+	});
+
+	it("keeps token HP for Ordem/CRIS", () => {
+		sheet("ordem");
+		setup({ characterId: "char-1", hpCurrent: 4, hpMax: 9 });
+		expect(screen.getByText("4 / 9")).toBeTruthy();
+		expect(screen.queryByText("33 / 38")).toBeNull();
+	});
+
+	it("falls back to token HP when the token has no sheet", () => {
+		sheet("dnd5e");
+		setup({ characterId: null, hpCurrent: 7, hpMax: 10 });
+		expect(screen.getByText("7 / 10")).toBeTruthy();
+	});
+
+	it("o mestre só ajusta PV pelos botões −5/−1/+1/+5", () => {
+		sheet("dnd5e");
+		setup({ characterId: "char-1", hpCurrent: 1, hpMax: 2 });
+		for (const name of ["-5", "-1", "+1", "+5"]) {
+			expect(screen.getByRole("button", { name })).toBeTruthy();
+		}
+		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
+		expect(screen.queryByPlaceholderText("Valor...")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Dano" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Cura" })).toBeNull();
+		expect(
+			screen.queryByRole("spinbutton", { name: "Quantidade de dano ou cura" }),
+		).toBeNull();
 	});
 });
 

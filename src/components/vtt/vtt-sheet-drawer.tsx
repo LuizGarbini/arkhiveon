@@ -1,12 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-	AlertTriangle,
-	Dices,
-	GripHorizontal,
-	Heart,
-	Plus,
-	X,
-} from "lucide-react";
+import { AlertTriangle, Dices, GripHorizontal, Plus, X } from "lucide-react";
 import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
@@ -27,6 +20,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import { characterAttributeScore } from "@/core/rules";
 import {
 	isCharacterImageHidden,
@@ -44,6 +38,12 @@ import {
 import type { Character } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import {
+	characterSheetOwnsHp,
+	resolveTokenHp,
+	selectSheetHealth,
+	selectSheetHealthMax,
+} from "@/lib/vtt/character-hp";
 import {
 	clampSheetRect,
 	defaultSheetRect,
@@ -349,9 +349,8 @@ function MobileSheet({
 			title={<span className="sr-only">Ficha de {name}</span>}
 			aria-label={`Ficha de ${name}`}
 			data-vtt-focus-scope="sheet"
-			// Não cobre a barra de ferramentas da mesa (left-3 + w-14).
-			className="left-[4.75rem] right-0 w-auto max-h-[78dvh] bg-card-elevated backdrop-blur-none"
-			overlayClassName="left-[4.75rem] bg-black/30 backdrop-blur-none"
+			className="max-h-[78dvh] bg-card-elevated backdrop-blur-none"
+			overlayClassName="bg-black/60 backdrop-blur-none"
 		>
 			<SheetContent
 				token={token}
@@ -381,6 +380,9 @@ function SheetContent({
 	const isGM = useVTTStore((s) => s.isGM);
 	const role = useActiveCampaignRole();
 	const imageAssets = useImageAssetLookup();
+	const linkedId = token?.characterId ?? null;
+	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, linkedId));
+	const sheetHealthMax = useRPGStore((s) => selectSheetHealthMax(s, linkedId));
 
 	if (
 		token?.characterId &&
@@ -425,8 +427,18 @@ function SheetContent({
 		? (SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.dnd5e)
 		: SYSTEM_CONFIG.dnd5e;
 	const dice: DiceType = config.defaultDice || "d20";
-	const hpCurrent = token?.hpCurrent ?? character?.health ?? 0;
-	const hpMax = token?.hpMax ?? character?.healthMax ?? 0;
+	const sheetOwnsHp = characterSheetOwnsHp(character);
+	const hp = resolveTokenHp({
+		tokenHpCurrent: token?.hpCurrent,
+		tokenHpMax: token?.hpMax,
+		sheetHealth,
+		sheetHealthMax,
+		characterHealth: sheetOwnsHp ? undefined : character?.health,
+		characterHealthMax: sheetOwnsHp ? undefined : character?.healthMax,
+	});
+	const showMax = !hp.fromSheet || isGM;
+	// A faixa compacta usa o mesmo `atual/máximo` do restante da ficha.
+	const quickHp = showMax ? `${hp.current}/${hp.max}` : String(hp.current);
 
 	return (
 		<div className="space-y-4">
@@ -446,9 +458,10 @@ function SheetContent({
 					/>
 					<SheetQuickStats
 						compact
+						showHealth={false}
 						character={character}
 						config={config}
-						health={`${hpCurrent}/${hpMax}`}
+						health={quickHp}
 					/>
 				</>
 			) : token?.characterId ? (
@@ -460,10 +473,20 @@ function SheetContent({
 			)}
 
 			{token ? (
-				<HpControl
-					hpCurrent={hpCurrent}
-					hpMax={hpMax}
-					onChange={(next) => void onUpdateToken(token.id, { hpCurrent: next })}
+				<VttHpAdjust
+					hpCurrent={hp.current}
+					hpMax={hp.max}
+					showMax={showMax}
+					onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
+					onChangeMax={
+						hp.fromSheet && isGM
+							? (nextMax) =>
+									onUpdateToken(token.id, {
+										hpCurrent: hp.current,
+										hpMax: nextMax,
+									})
+							: undefined
+					}
 				/>
 			) : null}
 
@@ -530,61 +553,6 @@ function SheetContent({
 					<Dices className="h-4 w-4" />
 					Rolar {config.defaultDice || "d20"}
 				</Button>
-			</div>
-		</div>
-	);
-}
-
-function HpControl({
-	hpCurrent,
-	hpMax,
-	onChange,
-}: {
-	hpCurrent: number;
-	hpMax: number;
-	onChange: (next: number) => void;
-}) {
-	const ratio = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0;
-	return (
-		<div className="space-y-2">
-			<div className="flex items-center justify-between text-xs font-bold">
-				<span className="flex items-center gap-1.5 text-rose-400">
-					<Heart className="h-3.5 w-3.5" />
-					Pontos de vida
-				</span>
-				<span className="font-mono tabular-nums">
-					{hpCurrent} / {hpMax}
-				</span>
-			</div>
-			<div className="h-2 overflow-hidden rounded-full bg-muted">
-				<div
-					className="h-full rounded-full bg-primary transition-[width] duration-150"
-					style={{ width: `${ratio * 100}%` }}
-				/>
-			</div>
-			<div className="grid grid-cols-4 gap-1.5">
-				{[-5, -1, 1, 5].map((delta) => (
-					<Button
-						type="button"
-						key={delta}
-						variant="outline"
-						size="sm"
-						className={cn(
-							"min-h-11 font-mono",
-							delta < 0 ? "text-destructive" : "text-primary",
-						)}
-						onClick={() =>
-							onChange(
-								Math.max(
-									0,
-									Math.min(hpCurrent + delta, hpMax || hpCurrent + delta),
-								),
-							)
-						}
-					>
-						{delta > 0 ? `+${delta}` : delta}
-					</Button>
-				))}
 			</div>
 		</div>
 	);
