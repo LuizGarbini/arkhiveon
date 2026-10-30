@@ -160,6 +160,7 @@ export type Database = {
 			campaigns: {
 				Row: {
 					created_at: string;
+					current_feed_session_id: string | null;
 					data: Json;
 					description: string;
 					id: string;
@@ -173,6 +174,7 @@ export type Database = {
 				};
 				Insert: {
 					created_at?: string;
+					current_feed_session_id?: string | null;
 					data?: Json;
 					description?: string;
 					id?: string;
@@ -186,6 +188,7 @@ export type Database = {
 				};
 				Update: {
 					created_at?: string;
+					current_feed_session_id?: string | null;
 					data?: Json;
 					description?: string;
 					id?: string;
@@ -1415,6 +1418,90 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			vtt_feed_sessions: {
+				Row: {
+					campaign_id: string;
+					id: string;
+					started_at: string;
+					started_by: string | null;
+				};
+				Insert: {
+					campaign_id: string;
+					id?: string;
+					started_at?: string;
+					started_by?: string | null;
+				};
+				Update: {
+					campaign_id?: string;
+					id?: string;
+					started_at?: string;
+					started_by?: string | null;
+				};
+				Relationships: [];
+			};
+			vtt_roll_results: {
+				Row: {
+					details: Json;
+					roll_id: string;
+					total: number;
+				};
+				Insert: {
+					details: Json;
+					roll_id: string;
+					total: number;
+				};
+				Update: {
+					details?: Json;
+					roll_id?: string;
+					total?: number;
+				};
+				Relationships: [];
+			};
+			vtt_rolls: {
+				Row: {
+					author_id: string;
+					campaign_id: string;
+					character_id: string | null;
+					created_at: string;
+					formula: string | null;
+					id: string;
+					is_secret: boolean;
+					kind: string;
+					label: string | null;
+					message: string | null;
+					scene_id: string | null;
+					session_id: string;
+				};
+				Insert: {
+					author_id: string;
+					campaign_id: string;
+					character_id?: string | null;
+					created_at?: string;
+					formula?: string | null;
+					id?: string;
+					is_secret?: boolean;
+					kind: string;
+					label?: string | null;
+					message?: string | null;
+					scene_id?: string | null;
+					session_id: string;
+				};
+				Update: {
+					author_id?: string;
+					campaign_id?: string;
+					character_id?: string | null;
+					created_at?: string;
+					formula?: string | null;
+					id?: string;
+					is_secret?: boolean;
+					kind?: string;
+					label?: string | null;
+					message?: string | null;
+					scene_id?: string | null;
+					session_id?: string;
+				};
+				Relationships: [];
+			};
 		};
 		Views: {
 			[_ in never]: never;
@@ -1480,7 +1567,31 @@ export type Database = {
 				Args: { p_campaign_id: string; p_world_id: string };
 				Returns: undefined;
 			};
+			post_table_message: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id?: string | null;
+					p_message: string;
+					p_scene_id: string | null;
+				};
+				Returns: string;
+			};
 			publish_scene: { Args: { p_scene_id: string }; Returns: string };
+			roll_dice: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id?: string | null;
+					p_formula: string;
+					p_label: string | null;
+					p_scene_id: string | null;
+					p_secret: boolean;
+				};
+				Returns: Json;
+			};
+			start_feed_session: {
+				Args: { p_campaign_id: string };
+				Returns: string;
+			};
 			set_character_hp: {
 				Args: { p_character_id: string; p_current: number; p_max?: number };
 				Returns: Json;

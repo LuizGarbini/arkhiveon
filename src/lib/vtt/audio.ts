@@ -76,3 +76,29 @@ export function playPingAudio() {
 		console.warn("Could not play ping audio effect:", err);
 	}
 }
+
+/** Estalo curto de dados, no mesmo sintetizador do ping. Sem arquivo externo. */
+export function playDiceAudio() {
+	const ctx = getAudioContext();
+	if (!ctx) return;
+	try {
+		const now = ctx.currentTime;
+		for (let i = 0; i < 3; i++) {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			const start = now + i * 0.045;
+			osc.type = "triangle";
+			osc.frequency.setValueAtTime(180 + i * 70, start);
+			osc.frequency.exponentialRampToValueAtTime(90, start + 0.06);
+			gain.gain.setValueAtTime(0.001, start);
+			gain.gain.linearRampToValueAtTime(0.12, start + 0.008);
+			gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.09);
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(start);
+			osc.stop(start + 0.1);
+		}
+	} catch (err) {
+		console.warn("Could not play dice audio effect:", err);
+	}
+}

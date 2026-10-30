@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTCombatPanel } from "@/components/vtt/vtt-combat-panel";
+import { VTTFeedPanel } from "@/components/vtt/vtt-feed-panel";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
@@ -1462,6 +1463,7 @@ function VTTSession() {
 				<>
 					<VTTToolbar />
 					<VTTCombatPanel />
+					<VTTFeedPanel />
 				</>
 			)}
 
