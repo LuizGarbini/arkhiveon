@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ImageAssetCard } from "@/components/images/image-asset-card";
 import { ImageLightbox } from "@/components/images/image-lightbox";
 import { ImageUploadDialog } from "@/components/images/image-upload-dialog";
+import type { ImageVisibilityChange } from "@/components/images/image-visibility-menu";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,23 +147,19 @@ function ImagesRoute() {
 	function permissionsFor(asset: ImageAsset) {
 		const role = roleForAsset(asset, campaigns);
 		const isOwner = role === "owner";
-		const isOwnPublic =
-			role === "editor" && asset.createdBy === userId && !asset.isPrivate;
+		// 0054: quem subiu gerencia a própria imagem; o mestre gerencia todas.
+		const isOwn = role !== undefined && asset.createdBy === userId;
 		return {
-			canRename: isOwner || isOwnPublic,
-			canDelete: isOwner || isOwnPublic,
-			canTogglePrivate: isOwner,
+			canRename: isOwner || isOwn,
+			canDelete: isOwner || isOwn,
+			canSetVisibility: isOwner || isOwn,
 		};
 	}
 
 	function handlersFor(asset: ImageAsset) {
 		return {
-			onTogglePrivate: () =>
-				updateImageAsset(
-					asset.id,
-					{ isPrivate: !asset.isPrivate },
-					imageSyncNotice,
-				),
+			onSetVisibility: ({ isPrivate, audience }: ImageVisibilityChange) =>
+				updateImageAsset(asset.id, { isPrivate, audience }, imageSyncNotice),
 			onRename: (name: string) =>
 				updateImageAsset(asset.id, { name }, imageSyncNotice),
 			onDelete: () => removeImageAsset(asset.id, imageSyncNotice),

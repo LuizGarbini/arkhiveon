@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.53-quem-ve-a-imagem",
+		version: "1.6.53",
+		date: "30/10/2026",
+		title: "Escolha quem vê cada imagem",
+		description:
+			"Na Biblioteca de imagens, quem subiu a imagem decide quem vê. Ela é pública por padrão. Ao tirar o “Pública”, você marca livremente “Co-mestres” e “Jogadores”: os dois, só um deles ou nenhum (aí só o mestre vê). As imagens que já eram privadas continuam como estavam: co-mestres veem, jogadores não. O jogador também pode subir e esconder as próprias imagens, mas o mestre sempre vê tudo da mesa.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.52-imagens-publicas-por-padrao",
 		version: "1.6.52",
 		date: "30/10/2026",
