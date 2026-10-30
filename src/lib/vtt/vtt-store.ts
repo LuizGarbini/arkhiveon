@@ -34,6 +34,15 @@ export type VTTTool =
 /** Paredes da cena: `missing` = tabela ainda não existe (migração não aplicada). */
 export type VTTWallsStatus = "idle" | "loading" | "ready" | "missing" | "error";
 
+/** Mesmo corte de `useIsMobile` (390px cabe aqui). */
+function isPhoneViewport(): boolean {
+	return (
+		typeof window !== "undefined" &&
+		typeof window.matchMedia === "function" &&
+		window.matchMedia("(max-width: 639px)").matches
+	);
+}
+
 export type { VTTRulerMeasurement } from "./types";
 
 // Default vibrant palette for player colors
@@ -455,10 +464,17 @@ export const useVTTStore = create<VTTState>((set) => ({
 			return { selectedTokenIds: [id] };
 		}),
 	// The token menu and the Biblioteca (roster) close each other.
+	// No celular, menu e ficha nunca ficam abertos juntos.
 	setActiveTokenIdForMenu: (id) =>
 		set(
 			id
-				? { activeTokenIdForMenu: id, showRosterDrawer: false }
+				? {
+						activeTokenIdForMenu: id,
+						showRosterDrawer: false,
+						...(isPhoneViewport()
+							? { showCharacterSheetId: null, openSheetIds: [] }
+							: {}),
+					}
 				: { activeTokenIdForMenu: null },
 		),
 	setHoveredStatusTokenId: (id) => set({ hoveredStatusTokenId: id }),
@@ -612,6 +628,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 				showCharacterSheetId: id,
 				openSheetIds: open,
 				showRosterDrawer: false,
+				activeTokenIdForMenu: null,
 			};
 		}),
 	closeCharacterSheet: (id) =>

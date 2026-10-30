@@ -1,7 +1,6 @@
 import {
 	Eye,
 	EyeOff,
-	Heart,
 	Lock,
 	Maximize2,
 	Minus,
@@ -14,9 +13,9 @@ import {
 	X,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
 	SelectContent,
 	SelectItem,
@@ -30,7 +29,14 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
+import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import {
+	resolveTokenHp,
+	selectSheetHealth,
+	selectSheetHealthMax,
+} from "@/lib/vtt/character-hp";
 import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import { StatusIcon } from "@/lib/vtt/status-icons";
@@ -58,7 +64,13 @@ export function VTTTokenMenu({
 	const isGM = useVTTStore((s) => s.isGM);
 	const viewport = useVTTStore((s) => s.viewport);
 
-	const [customHpMod, setCustomHpMod] = useState("");
+	const isMobile = useIsMobile();
+	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
+	const characterId = token?.characterId ?? null;
+	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, characterId));
+	const sheetHealthMax = useRPGStore((s) =>
+		selectSheetHealthMax(s, characterId),
+	);
 	const [viewerOpen, setViewerOpen] = useState(false);
 	// Quem abriu o visualizador (retrato ou item do menu) recebe o foco de volta.
 	const viewerOpenerRef = useRef<HTMLElement | null>(null);
@@ -82,6 +94,7 @@ export function VTTTokenMenu({
 	const onDeleteToken = (id: string) => runMutation(() => deleteToken(id));
 
 	if (!token || activeTokenIdForMenu !== token.id) return null;
+	if (isMobile && sheetOpen) return null;
 
 	const viewerSrc = tokenImageForViewer(token, isGM);
 	const viewerLabel = token.name.trim() || "Sem nome";
@@ -90,19 +103,13 @@ export function VTTTokenMenu({
 		setViewerOpen(true);
 	};
 
-	const handleModifyHp = (amount: number) => {
-		const current = token.hpCurrent ?? 0;
-		const max = token.hpMax ?? current;
-		const nextHp = Math.max(0, Math.min(current + amount, max));
-		void onUpdateToken(token.id, { hpCurrent: nextHp });
-	};
-
-	const handleCustomHp = (isDamage: boolean) => {
-		const val = Number.parseInt(customHpMod, 10);
-		if (Number.isNaN(val) || val <= 0) return;
-		handleModifyHp(isDamage ? -val : val);
-		setCustomHpMod("");
-	};
+	const hp = resolveTokenHp({
+		tokenHpCurrent: token.hpCurrent,
+		tokenHpMax: token.hpMax,
+		sheetHealth,
+		sheetHealthMax,
+	});
+	const showMax = !hp.fromSheet || isGM;
 
 	// Status: otimista. Aplica na mesa na hora e grava; se o servidor recusar,
 	// volta ao que estava (se ninguém mexeu de novo) e avisa com toast.
@@ -296,80 +303,21 @@ export function VTTTokenMenu({
 				className="min-w-0 space-y-3 disabled:opacity-60"
 			>
 				<div className="space-y-3">
-					{/* HP Adjustment Section */}
-					<div className="space-y-2">
-						<div className="flex items-center justify-between text-[11px] font-bold">
-							<span className="flex items-center gap-1.5 text-rose-400">
-								<Heart className="h-3.5 w-3.5 fill-rose-500/20" />
-								Pontos de Vida
-							</span>
-							<span className="font-mono text-foreground">
-								{token.hpCurrent ?? 0} / {token.hpMax ?? 0}
-							</span>
-						</div>
-
-						{/* Quick Health Buttons */}
-						<div className="grid grid-cols-4 gap-1.5">
-							<button
-								type="button"
-								onClick={() => handleModifyHp(-5)}
-								className="min-h-11 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								-5
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(-1)}
-								className="min-h-11 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 font-mono font-bold text-xs hover:bg-rose-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								-1
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(1)}
-								className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								+1
-							</button>
-							<button
-								type="button"
-								onClick={() => handleModifyHp(5)}
-								className="min-h-11 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono font-bold text-xs hover:bg-emerald-500/20 cursor-pointer active:scale-[0.98] transition-all"
-							>
-								+5
-							</button>
-						</div>
-
-						{/* Custom HP Input */}
-						<div className="flex items-center gap-1.5 pt-1">
-							<Input
-								type="number"
-								aria-label="Quantidade de dano ou cura"
-								placeholder="Valor..."
-								value={customHpMod}
-								onChange={(e) => setCustomHpMod(e.target.value)}
-								className="h-11 text-base sm:text-xs bg-card-elevated border-border/70 rounded-xl font-mono"
-							/>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => handleCustomHp(true)}
-								className="h-11 px-3 text-[10px] font-bold border-rose-500/40 text-rose-300 hover:bg-rose-500/20"
-							>
-								Dano
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => handleCustomHp(false)}
-								className="h-11 px-3 text-[10px] font-bold border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
-							>
-								Cura
-							</Button>
-						</div>
-					</div>
+					<VttHpAdjust
+						hpCurrent={hp.current}
+						hpMax={hp.max}
+						showMax={showMax}
+						onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
+						onChangeMax={
+							hp.fromSheet && isGM
+								? (nextMax) =>
+										onUpdateToken(token.id, {
+											hpCurrent: hp.current,
+											hpMax: nextMax,
+										})
+								: undefined
+						}
+					/>
 
 					{/* Status Conditions */}
 					<div className="space-y-1.5">
