@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ImageAssetCard } from "@/components/images/image-asset-card";
 import { ImageLightbox } from "@/components/images/image-lightbox";
 import { ImageUploadDialog } from "@/components/images/image-upload-dialog";
+import type { ImageVisibilityChange } from "@/components/images/image-visibility-menu";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,6 @@ import {
 } from "@/lib/image-gallery";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
-import type { ImageVisibility } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -158,8 +158,8 @@ function ImagesRoute() {
 
 	function handlersFor(asset: ImageAsset) {
 		return {
-			onSetVisibility: (visibility: ImageVisibility) =>
-				updateImageAsset(asset.id, { visibility }, imageSyncNotice),
+			onSetVisibility: ({ isPrivate, audience }: ImageVisibilityChange) =>
+				updateImageAsset(asset.id, { isPrivate, audience }, imageSyncNotice),
 			onRename: (name: string) =>
 				updateImageAsset(asset.id, { name }, imageSyncNotice),
 			onDelete: () => removeImageAsset(asset.id, imageSyncNotice),

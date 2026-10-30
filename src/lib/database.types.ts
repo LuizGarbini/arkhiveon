@@ -472,7 +472,8 @@ export type Database = {
 					height: number | null;
 					id: string;
 					is_private: boolean;
-					visibility: string;
+					visible_to_co_gms: boolean;
+					visible_to_players: boolean;
 					mime_type: string;
 					name: string;
 					size_bytes: number;
@@ -490,7 +491,8 @@ export type Database = {
 					height?: number | null;
 					id?: string;
 					is_private?: boolean;
-					visibility?: string;
+					visible_to_co_gms?: boolean;
+					visible_to_players?: boolean;
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;
@@ -508,7 +510,8 @@ export type Database = {
 					height?: number | null;
 					id?: string;
 					is_private?: boolean;
-					visibility?: string;
+					visible_to_co_gms?: boolean;
+					visible_to_players?: boolean;
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;

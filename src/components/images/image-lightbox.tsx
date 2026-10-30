@@ -17,10 +17,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-	IMAGE_VISIBILITY_LABEL,
-	visibilityFromRow,
-} from "@/lib/image-visibility";
+import { audienceFromRow, imageVisibilityLabel } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { formatAssetMeta, ImageAssetBadges } from "./image-asset-badges";
@@ -238,17 +235,20 @@ export function ImageLightbox({
 											) : (
 												<UnlockKeyhole className="h-3.5 w-3.5" />
 											)}
-											{
-												IMAGE_VISIBILITY_LABEL[
-													visibilityFromRow(asset.visibility, asset.isPrivate)
-												]
-											}
+											{imageVisibilityLabel(
+												asset.isPrivate,
+												audienceFromRow(
+													asset.audience?.coGms,
+													asset.audience?.players,
+												),
+											)}
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="start" className="w-56">
 											<ImageVisibilityMenuItems
-												value={visibilityFromRow(
-													asset.visibility,
-													asset.isPrivate,
+												isPrivate={asset.isPrivate}
+												audience={audienceFromRow(
+													asset.audience?.coGms,
+													asset.audience?.players,
 												)}
 												onChange={handlers.onSetVisibility}
 											/>

@@ -1,39 +1,39 @@
 /**
- * Quem vê uma imagem da Biblioteca (coluna `image_assets.visibility`, migração 0054).
+ * Quem vê uma imagem privada da Biblioteca (migração 0054).
+ * Colunas: `is_private` + `visible_to_co_gms` + `visible_to_players`, livres entre si.
  * O mestre (dono da campanha) sempre vê tudo; quem subiu sempre vê a própria.
+ * Os dois desmarcados = "só o mestre".
  */
-export type ImageVisibility = "public" | "players" | "co_gm" | "gm_only";
+export interface ImageAudience {
+	coGms: boolean;
+	players: boolean;
+}
 
-export const IMAGE_VISIBILITIES: readonly ImageVisibility[] = [
-	"public",
-	"players",
-	"co_gm",
-	"gm_only",
-];
-
-export const IMAGE_VISIBILITY_LABEL: Record<ImageVisibility, string> = {
-	public: "Pública",
-	players: "Jogadores da mesa",
-	co_gm: "Mestre e co-mestres",
-	gm_only: "Só o mestre",
+/** Igual ao default do banco: reproduz a regra antiga (co-mestres sim, jogadores não). */
+export const DEFAULT_PRIVATE_AUDIENCE: ImageAudience = {
+	coGms: true,
+	players: false,
 };
 
-export function isImageVisibility(value: unknown): value is ImageVisibility {
-	return (
-		typeof value === "string" &&
-		(IMAGE_VISIBILITIES as readonly string[]).includes(value)
-	);
+/** Lê da linha; banco sem a 0054 cai no default (a regra antiga). */
+export function audienceFromRow(
+	coGms: unknown,
+	players: unknown,
+): ImageAudience {
+	return {
+		coGms: typeof coGms === "boolean" ? coGms : DEFAULT_PRIVATE_AUDIENCE.coGms,
+		players:
+			typeof players === "boolean" ? players : DEFAULT_PRIVATE_AUDIENCE.players,
+	};
 }
 
-/** Lê a visibilidade da linha; banco sem a 0054 cai no `is_private` antigo. */
-export function visibilityFromRow(
-	visibility: unknown,
+export function imageVisibilityLabel(
 	isPrivate: boolean,
-): ImageVisibility {
-	if (isImageVisibility(visibility)) return visibility;
-	return isPrivate ? "gm_only" : "public";
-}
-
-export function isPrivateVisibility(visibility: ImageVisibility): boolean {
-	return visibility !== "public";
+	audience: ImageAudience = DEFAULT_PRIVATE_AUDIENCE,
+): string {
+	if (!isPrivate) return "Pública";
+	if (audience.coGms && audience.players) return "Co-mestres e jogadores";
+	if (audience.coGms) return "Só co-mestres";
+	if (audience.players) return "Só jogadores";
+	return "Só o mestre";
 }

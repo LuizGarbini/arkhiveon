@@ -5,9 +5,9 @@ import type {
 	TablesUpdate,
 } from "./database.types";
 import {
-	type ImageVisibility,
-	isPrivateVisibility,
-	visibilityFromRow,
+	audienceFromRow,
+	DEFAULT_PRIVATE_AUDIENCE,
+	type ImageAudience,
 } from "./image-visibility";
 import {
 	fetchCampaignWorldId,
@@ -49,7 +49,7 @@ export interface RemoteImageAsset {
 	width?: number;
 	height?: number;
 	isPrivate: boolean;
-	visibility?: ImageVisibility;
+	audience?: ImageAudience;
 	createdAt: number;
 	updatedAt?: number;
 }
@@ -214,10 +214,7 @@ function fromImageAssetRow(row: Record<string, unknown>): RemoteImageAsset {
 		width: typeof row.width === "number" ? row.width : undefined,
 		height: typeof row.height === "number" ? row.height : undefined,
 		isPrivate: booleanValue(row.is_private, false),
-		visibility: visibilityFromRow(
-			row.visibility,
-			booleanValue(row.is_private, false),
-		),
+		audience: audienceFromRow(row.visible_to_co_gms, row.visible_to_players),
 		createdAt: toTimestamp(row.created_at as string | null) ?? Date.now(),
 		updatedAt: toTimestamp(row.updated_at as string | null),
 	};
@@ -514,7 +511,7 @@ async function selectWorldEntities(
 }
 
 const IMAGE_ASSET_COLUMNS =
-	"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,visibility,created_at,updated_at";
+	"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,visible_to_co_gms,visible_to_players,created_at,updated_at";
 
 /** `image_assets.world_id` ainda não existe (migração 0036 não aplicada). */
 function isMissingImageAssetWorldColumn(error: unknown): boolean {
@@ -660,7 +657,8 @@ export async function createRemoteImageAsset(
 		width: asset.width ?? null,
 		height: asset.height ?? null,
 		is_private: asset.isPrivate,
-		visibility: asset.visibility ?? (asset.isPrivate ? "gm_only" : "public"),
+		visible_to_co_gms: (asset.audience ?? DEFAULT_PRIVATE_AUDIENCE).coGms,
+		visible_to_players: (asset.audience ?? DEFAULT_PRIVATE_AUDIENCE).players,
 	};
 	if (asset.createdBy) row.created_by = asset.createdBy;
 
@@ -673,15 +671,15 @@ export async function createRemoteImageAsset(
 
 export async function updateRemoteImageAsset(
 	id: string,
-	patch: Partial<Pick<RemoteImageAsset, "name" | "isPrivate" | "visibility">>,
+	patch: Partial<Pick<RemoteImageAsset, "name" | "isPrivate" | "audience">>,
 ): Promise<void> {
 	const supabase = requireSupabase();
 	const row: ImageAssetUpdate = {};
 	if (typeof patch.name === "string") row.name = patch.name;
 	if (typeof patch.isPrivate === "boolean") row.is_private = patch.isPrivate;
-	if (patch.visibility) {
-		row.visibility = patch.visibility;
-		row.is_private = isPrivateVisibility(patch.visibility);
+	if (patch.audience) {
+		row.visible_to_co_gms = patch.audience.coGms;
+		row.visible_to_players = patch.audience.players;
 	}
 
 	const { error } = await supabase

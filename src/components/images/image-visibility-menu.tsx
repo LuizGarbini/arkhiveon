@@ -1,39 +1,63 @@
 import {
+	DropdownMenuCheckboxItem,
 	DropdownMenuGroup,
 	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import {
-	IMAGE_VISIBILITIES,
-	IMAGE_VISIBILITY_LABEL,
-	type ImageVisibility,
-	isImageVisibility,
-} from "@/lib/image-visibility";
+import type { ImageAudience } from "@/lib/image-visibility";
 
-/** Itens de menu "Quem vê": o mestre sempre vê, mesmo em "Só o mestre". */
+export interface ImageVisibilityChange {
+	isPrivate: boolean;
+	audience: ImageAudience;
+}
+
+/**
+ * Itens de menu "Quem vê": "Pública" liga/desliga a privacidade; quando privada,
+ * co-mestres e jogadores são marcados livremente. O mestre sempre vê.
+ */
 export function ImageVisibilityMenuItems({
-	value,
+	isPrivate,
+	audience,
 	onChange,
 }: {
-	value: ImageVisibility;
-	onChange: (visibility: ImageVisibility) => void;
+	isPrivate: boolean;
+	audience: ImageAudience;
+	onChange: (next: ImageVisibilityChange) => void;
 }) {
 	return (
 		<DropdownMenuGroup>
 			<DropdownMenuLabel>Quem vê</DropdownMenuLabel>
-			<DropdownMenuRadioGroup
-				value={value}
-				onValueChange={(next) => {
-					if (isImageVisibility(next) && next !== value) onChange(next);
-				}}
+			<DropdownMenuCheckboxItem
+				checked={!isPrivate}
+				closeOnClick={false}
+				onCheckedChange={(checked) =>
+					onChange({ isPrivate: !checked, audience })
+				}
 			>
-				{IMAGE_VISIBILITIES.map((option) => (
-					<DropdownMenuRadioItem key={option} value={option}>
-						{IMAGE_VISIBILITY_LABEL[option]}
-					</DropdownMenuRadioItem>
-				))}
-			</DropdownMenuRadioGroup>
+				Pública
+			</DropdownMenuCheckboxItem>
+			<DropdownMenuCheckboxItem
+				checked={isPrivate && audience.coGms}
+				disabled={!isPrivate}
+				closeOnClick={false}
+				onCheckedChange={(checked) =>
+					onChange({ isPrivate, audience: { ...audience, coGms: checked } })
+				}
+			>
+				Co-mestres
+			</DropdownMenuCheckboxItem>
+			<DropdownMenuCheckboxItem
+				checked={isPrivate && audience.players}
+				disabled={!isPrivate}
+				closeOnClick={false}
+				onCheckedChange={(checked) =>
+					onChange({ isPrivate, audience: { ...audience, players: checked } })
+				}
+			>
+				Jogadores
+			</DropdownMenuCheckboxItem>
+			<DropdownMenuLabel className="font-normal">
+				O mestre sempre vê.
+			</DropdownMenuLabel>
 		</DropdownMenuGroup>
 	);
 }

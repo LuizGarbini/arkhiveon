@@ -9,14 +9,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-	type ImageVisibility,
-	visibilityFromRow,
-} from "@/lib/image-visibility";
+import { audienceFromRow } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { formatAssetMeta, ImageAssetBadges } from "./image-asset-badges";
-import { ImageVisibilityMenuItems } from "./image-visibility-menu";
+import {
+	type ImageVisibilityChange,
+	ImageVisibilityMenuItems,
+} from "./image-visibility-menu";
 
 export interface ImageAssetPermissions {
 	canRename: boolean;
@@ -26,7 +26,7 @@ export interface ImageAssetPermissions {
 }
 
 export interface ImageAssetHandlers {
-	onSetVisibility: (visibility: ImageVisibility) => void;
+	onSetVisibility: (change: ImageVisibilityChange) => void;
 	onRename: (name: string) => void;
 	onDelete: () => void;
 }
@@ -161,9 +161,10 @@ export function ImageAssetCard({
 									<>
 										<DropdownMenuSeparator />
 										<ImageVisibilityMenuItems
-											value={visibilityFromRow(
-												asset.visibility,
-												asset.isPrivate,
+											isPrivate={asset.isPrivate}
+											audience={audienceFromRow(
+												asset.audience?.coGms,
+												asset.audience?.players,
 											)}
 											onChange={handlers.onSetVisibility}
 										/>
