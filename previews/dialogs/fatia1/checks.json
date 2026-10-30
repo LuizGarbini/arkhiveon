@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-10-30T20:21:14.398Z",
+  "checks": [
+    {
+      "name": "[desktop] select nativo na ficha = 0",
+      "pass": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "[desktop] select nativo no diálogo = 0",
+      "pass": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "[desktop] clique fora salva o nome no cabeçalho",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[desktop] reabrir mostra o nome salvo",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[desktop] nome salvo não aparece como rascunho",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "[desktop] nome vazio não apaga o personagem",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[desktop] rascunho restaurado com o nome vazio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "[desktop] sem erro de página",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "[mobile] select nativo na ficha = 0",
+      "pass": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "[mobile] select nativo no diálogo = 0",
+      "pass": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "[mobile] clique fora salva o nome no cabeçalho",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[mobile] reabrir mostra o nome salvo",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[mobile] nome salvo não aparece como rascunho",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "[mobile] nome vazio não apaga o personagem",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[mobile] rascunho restaurado com o nome vazio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "[mobile] sem erro de página",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}
