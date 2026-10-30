@@ -60,6 +60,11 @@ interface EntityImagePickerProps {
 	previewShape?: "rounded" | "circle";
 }
 
+/** URL http(s) do R2; data-URL e blob: nunca vão para o banco. */
+export function isRemoteImageUrl(url: string): boolean {
+	return /^https?:\/\//.test(url);
+}
+
 export function EntityImagePicker({
 	value,
 	onChange,
@@ -151,15 +156,32 @@ export function EntityImagePicker({
 				folder,
 				campaignId: resolvedCampaignId,
 			});
-			addImageAsset({
-				createdBy: session?.user.id ?? "",
-				name: libraryName?.trim() || readableFileName(file.name),
-				url,
-				mimeType: file.type || "image/webp",
-				sizeBytes: file.size,
-				width: dimensions.width,
-				height: dimensions.height,
-			});
+			// Imagem de item/NPC nunca vai para o banco como data-URL: só URL do R2.
+			if (!isRemoteImageUrl(url)) {
+				console.error(
+					"Upload da imagem não devolveu URL do R2; nada foi salvo.",
+				);
+				return;
+			}
+			// Padrão: pública para a mesa. Quem quiser, torna privada na Biblioteca.
+			const created = addImageAsset(
+				{
+					createdBy: session?.user.id ?? "",
+					name: libraryName?.trim() || readableFileName(file.name),
+					url,
+					mimeType: file.type || "image/webp",
+					sizeBytes: file.size,
+					width: dimensions.width,
+					height: dimensions.height,
+					isPrivate: false,
+				},
+				{
+					// Liga a entidade à Biblioteca só depois que a linha existe no banco.
+					onSynced: () => {
+						if (created) onChange({ imageUrl: url, imageAssetId: created.id });
+					},
+				},
+			);
 			onChange({
 				imageUrl: url,
 				imageAssetId: "",

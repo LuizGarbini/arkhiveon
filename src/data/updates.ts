@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.51-imagens-publicas-por-padrao",
+		version: "1.6.51",
+		date: "30/10/2026",
+		title: "Imagens de itens e NPCs entram públicas na Biblioteca",
+		description:
+			"A imagem que você sobe num item ou NPC agora entra na Biblioteca de imagens como pública para a mesa. Antes ela entrava privada e só o mestre via. Se quiser esconder, é só tornar privada na Biblioteca, como antes. A imagem também fica ligada à Biblioteca, então renomear ou privar lá vale para o item ou NPC.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.50-feed-da-mesa",
 		version: "1.6.50",
 		date: "30/10/2026",
