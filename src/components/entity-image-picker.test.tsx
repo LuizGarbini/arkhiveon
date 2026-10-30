@@ -175,3 +175,50 @@ describe("EntityImagePicker · aviso de imagem privada", () => {
 		expect(addImageAsset).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("EntityImagePicker · upload de item/NPC", () => {
+	afterEach(cleanup);
+
+	beforeEach(() => {
+		upload.mockClear();
+		addImageAsset.mockReset();
+	});
+
+	it("grava a imagem na Biblioteca como pública por padrão", async () => {
+		addImageAsset.mockReturnValue({ id: "novo-asset" });
+		renderPicker();
+		await pickFromLibrary("publica");
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar recorte" }));
+		await waitFor(() => expect(addImageAsset).toHaveBeenCalledTimes(1));
+		expect(addImageAsset.mock.calls[0][0]).toMatchObject({ isPrivate: false });
+	});
+
+	it("liga a entidade ao imageAssetId quando a Biblioteca confirma", async () => {
+		addImageAsset.mockImplementation(
+			(_asset: unknown, options?: { onSynced?: () => void }) => {
+				queueMicrotask(() => options?.onSynced?.());
+				return { id: "novo-asset" };
+			},
+		);
+		const onChange = renderPicker();
+		await pickFromLibrary("publica");
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar recorte" }));
+		await waitFor(() =>
+			expect(onChange).toHaveBeenCalledWith({
+				imageUrl: "https://r2.test/npcs/copia.webp",
+				imageAssetId: "novo-asset",
+			}),
+		);
+	});
+
+	it("nunca salva data-URL no item/NPC", async () => {
+		upload.mockResolvedValueOnce("data:image/webp;base64,AAAA");
+		const onChange = renderPicker();
+		await pickFromLibrary("publica");
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar recorte" }));
+		await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+		await new Promise((r) => setTimeout(r, 0));
+		expect(addImageAsset).not.toHaveBeenCalled();
+		expect(onChange).not.toHaveBeenCalled();
+	});
+});
