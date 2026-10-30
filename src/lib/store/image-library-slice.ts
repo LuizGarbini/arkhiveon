@@ -5,6 +5,7 @@ import {
 	resolveImageAssetPrivacy,
 } from "../image-asset-privacy";
 import { imageStorage } from "../image-storage";
+import { isPrivateVisibility } from "../image-visibility";
 import {
 	createRemoteImageAsset,
 	deleteRemoteImageAsset,
@@ -23,7 +24,7 @@ export interface ImageLibrarySlice {
 	) => ImageAsset | null;
 	updateImageAsset: (
 		id: string,
-		asset: Partial<Pick<ImageAsset, "name" | "isPrivate">>,
+		asset: Partial<Pick<ImageAsset, "name" | "isPrivate" | "visibility">>,
 		options?: ImageAssetSyncOptions,
 	) => void;
 	removeImageAsset: (id: string, options?: ImageAssetSyncOptions) => void;
@@ -72,6 +73,11 @@ export const createImageLibrarySlice: StateCreator<
 			width: asset.width,
 			height: asset.height,
 			isPrivate: resolveImageAssetPrivacy(role, asset.isPrivate),
+			visibility:
+				asset.visibility ??
+				(resolveImageAssetPrivacy(role, asset.isPrivate)
+					? "gm_only"
+					: "public"),
 			createdAt: Date.now(),
 		};
 
@@ -98,9 +104,15 @@ export const createImageLibrarySlice: StateCreator<
 
 	updateImageAsset: (id, asset, options) => {
 		const previous = get().imageAssets.find((item) => item.id === id);
-		const patch: Partial<Pick<ImageAsset, "name" | "isPrivate">> = {};
+		const patch: Partial<
+			Pick<ImageAsset, "name" | "isPrivate" | "visibility">
+		> = {};
 		if (typeof asset.name === "string") patch.name = asset.name.trim();
 		if (typeof asset.isPrivate === "boolean") patch.isPrivate = asset.isPrivate;
+		if (asset.visibility) {
+			patch.visibility = asset.visibility;
+			patch.isPrivate = isPrivateVisibility(asset.visibility);
+		}
 		if (Object.keys(patch).length === 0) return;
 
 		set((state) => ({

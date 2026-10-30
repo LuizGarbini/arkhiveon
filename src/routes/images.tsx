@@ -30,6 +30,7 @@ import {
 } from "@/lib/image-gallery";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
+import type { ImageVisibility } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -146,23 +147,19 @@ function ImagesRoute() {
 	function permissionsFor(asset: ImageAsset) {
 		const role = roleForAsset(asset, campaigns);
 		const isOwner = role === "owner";
-		const isOwnPublic =
-			role === "editor" && asset.createdBy === userId && !asset.isPrivate;
+		// 0054: quem subiu gerencia a própria imagem; o mestre gerencia todas.
+		const isOwn = role !== undefined && asset.createdBy === userId;
 		return {
-			canRename: isOwner || isOwnPublic,
-			canDelete: isOwner || isOwnPublic,
-			canTogglePrivate: isOwner,
+			canRename: isOwner || isOwn,
+			canDelete: isOwner || isOwn,
+			canSetVisibility: isOwner || isOwn,
 		};
 	}
 
 	function handlersFor(asset: ImageAsset) {
 		return {
-			onTogglePrivate: () =>
-				updateImageAsset(
-					asset.id,
-					{ isPrivate: !asset.isPrivate },
-					imageSyncNotice,
-				),
+			onSetVisibility: (visibility: ImageVisibility) =>
+				updateImageAsset(asset.id, { visibility }, imageSyncNotice),
 			onRename: (name: string) =>
 				updateImageAsset(asset.id, { name }, imageSyncNotice),
 			onDelete: () => removeImageAsset(asset.id, imageSyncNotice),

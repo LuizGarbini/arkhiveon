@@ -1,33 +1,32 @@
-import {
-	Check,
-	LockKeyhole,
-	MoreHorizontal,
-	Pencil,
-	Trash2,
-	UnlockKeyhole,
-	X,
-} from "lucide-react";
+import { Check, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	type ImageVisibility,
+	visibilityFromRow,
+} from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { formatAssetMeta, ImageAssetBadges } from "./image-asset-badges";
+import { ImageVisibilityMenuItems } from "./image-visibility-menu";
 
 export interface ImageAssetPermissions {
 	canRename: boolean;
 	canDelete: boolean;
-	canTogglePrivate: boolean;
+	/** Mestre (qualquer imagem) ou quem subiu (a própria). */
+	canSetVisibility: boolean;
 }
 
 export interface ImageAssetHandlers {
-	onTogglePrivate: () => void;
+	onSetVisibility: (visibility: ImageVisibility) => void;
 	onRename: (name: string) => void;
 	onDelete: () => void;
 }
@@ -48,7 +47,7 @@ export function ImageAssetCard({
 }) {
 	const [isRenaming, setIsRenaming] = useState(false);
 	const [draftName, setDraftName] = useState(asset.name);
-	const hasMenu = permissions.canTogglePrivate || permissions.canDelete;
+	const hasMenu = permissions.canSetVisibility || permissions.canDelete;
 
 	function startRename() {
 		setDraftName(asset.name);
@@ -158,11 +157,18 @@ export function ImageAssetCard({
 										Renomear
 									</DropdownMenuItem>
 								)}
-								{permissions.canTogglePrivate && (
-									<DropdownMenuItem onClick={handlers.onTogglePrivate}>
-										{asset.isPrivate ? <UnlockKeyhole /> : <LockKeyhole />}
-										{asset.isPrivate ? "Mostrar para a mesa" : "Tornar privada"}
-									</DropdownMenuItem>
+								{permissions.canSetVisibility && (
+									<>
+										<DropdownMenuSeparator />
+										<ImageVisibilityMenuItems
+											value={visibilityFromRow(
+												asset.visibility,
+												asset.isPrivate,
+											)}
+											onChange={handlers.onSetVisibility}
+										/>
+										<DropdownMenuSeparator />
+									</>
 								)}
 								{permissions.canDelete && (
 									<DropdownMenuItem

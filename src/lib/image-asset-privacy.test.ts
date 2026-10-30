@@ -6,26 +6,23 @@ import {
 } from "./image-asset-privacy";
 
 describe("resolveImageAssetPrivacy", () => {
-	it("keeps private as the master's default", () => {
-		expect(resolveImageAssetPrivacy("owner", undefined)).toBe(true);
-		expect(resolveImageAssetPrivacy("owner", true)).toBe(true);
-		expect(resolveImageAssetPrivacy("owner", false)).toBe(false);
+	it("imagem nova é pública por padrão, para mestre e jogador", () => {
+		expect(resolveImageAssetPrivacy("owner", undefined)).toBe(false);
+		expect(resolveImageAssetPrivacy("viewer", undefined)).toBe(false);
+		expect(resolveImageAssetPrivacy("editor", undefined)).toBe(false);
 	});
 
-	it("never asks for private when RLS would refuse it", () => {
-		expect(resolveImageAssetPrivacy("editor", undefined)).toBe(false);
-		expect(resolveImageAssetPrivacy("editor", true)).toBe(false);
-		expect(resolveImageAssetPrivacy("viewer", true)).toBe(false);
-		expect(resolveImageAssetPrivacy(undefined, true)).toBe(false);
+	it("respeita quem pediu para privar, inclusive o jogador", () => {
+		expect(resolveImageAssetPrivacy("owner", true)).toBe(true);
+		expect(resolveImageAssetPrivacy("viewer", true)).toBe(true);
 	});
 });
 
 describe("canWriteImageLibrary", () => {
-	it("blocks only players", () => {
+	it("todo membro da mesa pode subir imagem (0054)", () => {
 		expect(canWriteImageLibrary("owner")).toBe(true);
 		expect(canWriteImageLibrary("editor")).toBe(true);
-		expect(canWriteImageLibrary(undefined)).toBe(true);
-		expect(canWriteImageLibrary("viewer")).toBe(false);
+		expect(canWriteImageLibrary("viewer")).toBe(true);
 	});
 });
 

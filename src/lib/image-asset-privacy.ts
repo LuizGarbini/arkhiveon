@@ -2,29 +2,24 @@ import { remoteErrorMessage } from "./store/helpers";
 import type { MembershipRole } from "./store/types";
 
 /**
- * Regras de `image_assets` (RLS em supabase/migrations/0005_image_assets.sql):
- * - INSERT só para `owner` e `editor`;
- * - `is_private = true` só quando quem envia é o `owner` (mestre).
+ * Regras de `image_assets` (RLS da migração 0054):
+ * - qualquer membro da mesa sobe imagem (jogador incluído);
+ * - qualquer um pode privar a própria imagem; o mestre sempre vê tudo.
  */
 
-/** Pode gravar uma linha em `image_assets`? `undefined` = papel ainda não carregado; a RLS decide. */
+/** Pode gravar uma linha em `image_assets`? Desde a 0054, todo membro pode; a RLS decide. */
 export function canWriteImageLibrary(
-	role: MembershipRole | undefined,
+	_role: MembershipRole | undefined,
 ): boolean {
-	return role !== "viewer";
+	return true;
 }
 
-/**
- * Decide `isPrivate` de uma imagem nova. Só o mestre pode criar imagem privada;
- * para qualquer outro papel a imagem vai para a mesa (`false`), senão o INSERT
- * é recusado pela RLS e a imagem some da galeria.
- */
+/** Decide `isPrivate` de uma imagem nova. Padrão: pública para a mesa. */
 export function resolveImageAssetPrivacy(
-	role: MembershipRole | undefined,
+	_role: MembershipRole | undefined,
 	requested: boolean | undefined,
 ): boolean {
-	if (role !== "owner") return false;
-	return requested ?? true;
+	return requested ?? false;
 }
 
 export type ImageAssetSyncAction = "create" | "update" | "delete";

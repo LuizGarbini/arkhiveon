@@ -11,7 +11,16 @@ import {
 import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogTitle } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	IMAGE_VISIBILITY_LABEL,
+	visibilityFromRow,
+} from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { formatAssetMeta, ImageAssetBadges } from "./image-asset-badges";
@@ -21,6 +30,7 @@ import {
 	type ImageAssetPermissions,
 } from "./image-asset-card";
 import { ImageViewer } from "./image-viewer";
+import { ImageVisibilityMenuItems } from "./image-visibility-menu";
 
 const SWIPE_MIN_PX = 48;
 
@@ -212,20 +222,38 @@ export function ImageLightbox({
 										Renomear
 									</Button>
 								)}
-								{permissions.canTogglePrivate && (
-									<Button
-										type="button"
-										variant="outline"
-										className="h-[44px] flex-1 gap-2 sm:h-9 sm:flex-none"
-										onClick={handlers.onTogglePrivate}
-									>
-										{asset.isPrivate ? (
-											<UnlockKeyhole className="h-3.5 w-3.5" />
-										) : (
-											<LockKeyhole className="h-3.5 w-3.5" />
-										)}
-										{asset.isPrivate ? "Mostrar para a mesa" : "Tornar privada"}
-									</Button>
+								{permissions.canSetVisibility && (
+									<DropdownMenu>
+										<DropdownMenuTrigger
+											render={
+												<Button
+													type="button"
+													variant="outline"
+													className="h-[44px] flex-1 gap-2 sm:h-9 sm:flex-none"
+												/>
+											}
+										>
+											{asset.isPrivate ? (
+												<LockKeyhole className="h-3.5 w-3.5" />
+											) : (
+												<UnlockKeyhole className="h-3.5 w-3.5" />
+											)}
+											{
+												IMAGE_VISIBILITY_LABEL[
+													visibilityFromRow(asset.visibility, asset.isPrivate)
+												]
+											}
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="start" className="w-56">
+											<ImageVisibilityMenuItems
+												value={visibilityFromRow(
+													asset.visibility,
+													asset.isPrivate,
+												)}
+												onChange={handlers.onSetVisibility}
+											/>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								)}
 								{permissions.canDelete && (
 									<Button

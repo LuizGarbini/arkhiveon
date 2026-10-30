@@ -1,3 +1,4 @@
+import type { ImageVisibility } from "../image-visibility";
 import type { TableResources } from "../table-resources";
 import type { UserPlan } from "../user-plan";
 export type { UserPlan };
@@ -788,6 +789,8 @@ export interface ImageAsset {
 	width?: number;
 	height?: number;
 	isPrivate: boolean;
+	/** Quem vê (0054). `isPrivate` = visibility diferente de "public". */
+	visibility?: ImageVisibility;
 	createdAt: number;
 	updatedAt?: number;
 }
@@ -887,7 +890,7 @@ export interface RPGState {
 	) => ImageAsset | null;
 	updateImageAsset: (
 		id: string,
-		asset: Partial<Pick<ImageAsset, "name" | "isPrivate">>,
+		asset: Partial<Pick<ImageAsset, "name" | "isPrivate" | "visibility">>,
 		options?: ImageAssetSyncOptions,
 	) => void;
 	removeImageAsset: (id: string, options?: ImageAssetSyncOptions) => void;

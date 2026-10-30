@@ -103,7 +103,7 @@ insert into _res values
 	pg_temp.sign_sql('{a0000000-0000-0000-0000-000000000001}'))),
 (5, 'dono de A pede a privada', 'ok:privada', pg_temp.as_user('00000000-0000-0000-0000-0000000000a1',
 	pg_temp.sign_sql('{a0000000-0000-0000-0000-000000000001}'))),
-(6, 'GM (co-mestre owner) de A pede a privada', 'ok:privada', pg_temp.as_user('00000000-0000-0000-0000-0000000000a2',
+(6, 'GM (co-mestre owner) de A pede a privada do mestre (0054: gm_only esconde do co-mestre)', 'bloqueado', pg_temp.as_user('00000000-0000-0000-0000-0000000000a2',
 	pg_temp.sign_sql('{a0000000-0000-0000-0000-000000000001}'))),
 (7, 'viewer de A pede a pública (fica com a url pública, sem assinatura)', 'bloqueado', pg_temp.as_user('00000000-0000-0000-0000-0000000000f1',
 	pg_temp.sign_sql('{a0000000-0000-0000-0000-000000000002}'))),
