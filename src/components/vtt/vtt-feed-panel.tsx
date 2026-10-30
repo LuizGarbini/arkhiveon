@@ -192,16 +192,25 @@ function FeedComposer({
 				>
 					Fórmula
 				</label>
-				<Input
-					id={formulaId}
-					value={formula}
-					onChange={(event) => setFormula(event.target.value)}
-					placeholder="2d6+3"
-					spellCheck={false}
-					autoComplete="off"
-					aria-invalid={formulaInvalid || undefined}
-					className="h-11 min-h-11"
-				/>
+				<div className="flex gap-2">
+					<Input
+						id={formulaId}
+						value={formula}
+						onChange={(event) => setFormula(event.target.value)}
+						placeholder="2d6+3"
+						spellCheck={false}
+						autoComplete="off"
+						aria-invalid={formulaInvalid || undefined}
+						className="h-11 min-h-11"
+					/>
+					<Button
+						type="submit"
+						className="h-11 min-h-11 shrink-0 px-3"
+						disabled={!parsed || rolling}
+					>
+						{rolling ? "Rolando…" : "Rolar"}
+					</Button>
+				</div>
 				{formulaInvalid && (
 					<p role="alert" className="text-sm text-destructive">
 						{FORMULA_HINT}
@@ -213,7 +222,7 @@ function FeedComposer({
 							key={faces}
 							type="button"
 							variant="outline"
-							className="h-11 min-h-11 min-w-11 px-2 tabular-nums"
+							className="h-11 min-h-11 min-w-11 shrink-0 px-2 tabular-nums"
 							disabled={rolling}
 							aria-label={`Rolar 1d${faces}`}
 							onClick={() => sendRoll(`1d${faces}`, isGM && mode === "secret")}
@@ -234,13 +243,6 @@ function FeedComposer({
 						<option value="secret">Secreta do mestre</option>
 					</Select>
 				)}
-				<Button
-					type="submit"
-					className="h-11 min-h-11"
-					disabled={!parsed || rolling}
-				>
-					{rolling ? "Rolando…" : "Rolar"}
-				</Button>
 			</form>
 			{chatPending && (
 				<p
@@ -281,29 +283,31 @@ function FeedComposer({
 				>
 					Mensagem
 				</label>
-				<Input
-					id={messageId}
-					value={message}
-					onChange={(event) => setMessage(event.target.value)}
-					placeholder="Escreva para a mesa"
-					spellCheck={false}
-					autoComplete="off"
-					aria-invalid={chatTooLong || undefined}
-					className="h-11 min-h-11"
-				/>
+				<div className="flex gap-2">
+					<Input
+						id={messageId}
+						value={message}
+						onChange={(event) => setMessage(event.target.value)}
+						placeholder="Escreva para a mesa"
+						spellCheck={false}
+						autoComplete="off"
+						aria-invalid={chatTooLong || undefined}
+						className="h-11 min-h-11"
+					/>
+					<Button
+						type="submit"
+						variant="outline"
+						className="h-11 min-h-11 shrink-0 px-3"
+						disabled={!canSendChat(message) || chatting}
+					>
+						{chatting ? "Enviando…" : "Enviar"}
+					</Button>
+				</div>
 				{chatTooLong && (
 					<p role="alert" className="text-sm text-destructive">
 						{CHAT_LIMIT_HINT}
 					</p>
 				)}
-				<Button
-					type="submit"
-					variant="outline"
-					className="h-11 min-h-11"
-					disabled={!canSendChat(message) || chatting}
-				>
-					{chatting ? "Enviando…" : "Enviar"}
-				</Button>
 			</form>
 		</div>
 	);
@@ -441,7 +445,7 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 	const sessionStartedAt = useRollStore((state) => state.sessionStartedAt);
 	const sessionNumber = useRollStore((state) => state.sessionNumber);
 	const [expanded, setExpanded] = useState<string | null>(null);
-	const bottomRef = useRef<HTMLDivElement>(null);
+	const listRef = useRef<HTMLUListElement>(null);
 	const names = useMemo(() => {
 		const map = new Map<string, string>();
 		for (const character of characters) {
@@ -469,8 +473,9 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 
 	const lastRowId = rows.at(-1)?.id;
 	useEffect(() => {
-		if (!lastRowId) return;
-		bottomRef.current?.scrollIntoView?.({ block: "nearest" });
+		const list = listRef.current;
+		if (!list || !lastRowId) return;
+		list.scrollTop = list.scrollHeight;
 	}, [lastRowId]);
 
 	if (!campaignId || !sceneId) return null;
@@ -539,6 +544,7 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 			)}
 			{rows.length > 0 && (
 				<ul
+					ref={listRef}
 					aria-label="Rolagens e mensagens"
 					className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
 				>
@@ -625,7 +631,6 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 					})}
 				</ul>
 			)}
-			<div ref={bottomRef} />
 			<FeedComposer isGM={isGM} campaignId={campaignId} sceneId={sceneId} />
 		</div>
 	);
@@ -710,7 +715,7 @@ export function VTTFeedPanel() {
 		<aside
 			aria-label="Rolagens e chat"
 			data-testid="feed-panel"
-			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[min(32rem,calc(100dvh-14rem))] w-80 flex-col gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
+			className="pointer-events-auto absolute top-32 left-20 z-30 flex h-[calc(100dvh-9rem)] w-80 flex-col gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
 		>
 			{header}
 			{body}
