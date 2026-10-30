@@ -1,5 +1,6 @@
 import {
 	BrickWall,
+	Dices,
 	Eye,
 	Grid,
 	Hand,
@@ -24,6 +25,7 @@ import {
 	COMBAT_UNAVAILABLE_LABEL,
 	useCombatStore,
 } from "@/lib/vtt/combat-store";
+import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	hasOpenVttDialog,
 	isVttShortcutBlocked,
@@ -61,6 +63,7 @@ export function VTTToolbar() {
 	const wallsStatus = useVTTStore((s) => s.wallsStatus);
 	const combatOpen = useCombatStore((s) => s.panelOpen);
 	const combatStatus = useCombatStore((s) => s.status);
+	const feedOpen = useRollStore((s) => s.panelOpen);
 	const isMobile = useIsMobile();
 	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
 
@@ -274,6 +277,29 @@ export function VTTToolbar() {
 						{combatStatus === "unavailable"
 							? COMBAT_UNAVAILABLE_LABEL
 							: "Combate (C)"}
+					</TooltipContent>
+				</Tooltip>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<button
+								type="button"
+								onClick={() => useRollStore.getState().togglePanel()}
+								aria-label="Rolagens e chat"
+								aria-pressed={feedOpen}
+								className={cn(
+									"group relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+									feedOpen
+										? "bg-primary/15 text-primary ring-1 ring-primary/40"
+										: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
+								)}
+							/>
+						}
+					>
+						<Dices className="h-4.5 w-4.5" />
+					</TooltipTrigger>
+					<TooltipContent side="right" sideOffset={8}>
+						Rolagens e chat
 					</TooltipContent>
 				</Tooltip>
 			</div>

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.50-feed-da-mesa",
+		version: "1.6.50",
+		date: "30/10/2026",
+		title: "Rolagens e chat na mesa",
+		description:
+			"A mesa agora tem um feed com as rolagens e as mensagens, no computador e no celular. Quem rola um dado, a mesa vê o resultado. Se o mestre rolar em segredo, os jogadores veem só que ele rolou, sem o número. O mestre pode começar uma sessão nova e o feed fica em branco para todo mundo. O que já tinha sido rolado não é apagado, mas a mesa passa a ver só a sessão nova. No celular, o feed abre embaixo e o mapa continua livre para mover e aproximar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.49-foto-na-iniciativa",
 		version: "1.6.49",
 		date: "29/10/2026",

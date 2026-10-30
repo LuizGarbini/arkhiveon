@@ -37,12 +37,31 @@ export interface TableRollResult {
 	details: TableRollDetails;
 }
 
+export type FeedStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
+
+export interface FeedSnapshot {
+	entries: TableFeedEntry[];
+	results: Record<string, TableRollResult>;
+	sessionId: string | null;
+	sessionStartedAt: string | null;
+	sessionNumber: number | null;
+}
+
 interface RollState {
 	entries: TableFeedEntry[];
 	results: Record<string, TableRollResult>;
+	status: FeedStatus;
+	panelOpen: boolean;
+	sessionId: string | null;
+	sessionStartedAt: string | null;
+	sessionNumber: number | null;
 	setEntries: (entries: TableFeedEntry[]) => void;
 	upsertEntry: (entry: TableFeedEntry) => void;
 	setResult: (result: TableRollResult) => void;
+	setStatus: (status: FeedStatus) => void;
+	setPanelOpen: (open: boolean) => void;
+	togglePanel: () => void;
+	applyFeed: (snapshot: FeedSnapshot) => void;
 	reset: () => void;
 }
 
@@ -51,6 +70,11 @@ const emptyResults: Record<string, TableRollResult> = {};
 export const useRollStore = create<RollState>((set) => ({
 	entries: [],
 	results: emptyResults,
+	status: "idle",
+	panelOpen: false,
+	sessionId: null,
+	sessionStartedAt: null,
+	sessionNumber: null,
 	setEntries: (entries) => set({ entries }),
 	upsertEntry: (entry) =>
 		set((state) => {
@@ -64,7 +88,28 @@ export const useRollStore = create<RollState>((set) => ({
 		set((state) => ({
 			results: { ...state.results, [result.rollId]: result },
 		})),
-	reset: () => set({ entries: [], results: emptyResults }),
+	setStatus: (status) => set({ status }),
+	setPanelOpen: (open) => set({ panelOpen: open }),
+	togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
+	applyFeed: (snapshot) =>
+		set({
+			entries: snapshot.entries,
+			results: snapshot.results,
+			sessionId: snapshot.sessionId,
+			sessionStartedAt: snapshot.sessionStartedAt,
+			sessionNumber: snapshot.sessionNumber,
+			status: "ready",
+		}),
+	reset: () =>
+		set({
+			entries: [],
+			results: emptyResults,
+			status: "idle",
+			panelOpen: false,
+			sessionId: null,
+			sessionStartedAt: null,
+			sessionNumber: null,
+		}),
 }));
 
 export const selectRollEntries = (state: RollState) => state.entries;
