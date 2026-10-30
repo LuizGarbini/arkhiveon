@@ -11,12 +11,12 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { playPingAudio } from "@/lib/vtt/audio";
-import { currentTurnRingTokenId, useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	readLinkedSheetHp,
 	resolveTokenHp,
 	selectLinkedSheetHpStamp,
 } from "@/lib/vtt/character-hp";
+import { currentTurnRingTokenId, useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	COMPACT_VISIBLE_CONDITIONS,
 	MAX_VISIBLE_CONDITIONS,
