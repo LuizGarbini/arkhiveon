@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.49-foto-na-iniciativa",
+		version: "1.6.49",
+		date: "29/10/2026",
+		title: "Foto na ordem de iniciativa",
+		description:
+			"Na ordem de iniciativa, quem tem foto aparece com ela ao lado do nome, no computador e no celular. Quem não tem foto continua só com o nome. O jogador não vê a foto de um token oculto nem de um token da camada do mestre.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.48-ordem-de-iniciativa",
 		version: "1.6.48",
 		date: "26/10/2026",

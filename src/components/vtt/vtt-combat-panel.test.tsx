@@ -602,4 +602,119 @@ describe("painel de combate", () => {
 		expect(screen.getByRole("dialog", { name: "Combate" })).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
 	});
+
+	it("mostra a foto, só o nome sem foto, e esconde foto oculta do jogador", async () => {
+		const lia = "https://img.test/lia.png";
+		const sombra = "https://img.test/sombra.png";
+		const sentinela = "https://img.test/sentinela.png";
+		const seen: string[] = [];
+		const pending: Array<{ onload: (() => void) | null }> = [];
+		class FakeImage {
+			onload: (() => void) | null = null;
+			onerror: (() => void) | null = null;
+			referrerPolicy = "";
+			crossOrigin: string | null = null;
+			set src(value: string) {
+				seen.push(value);
+				pending.push(this);
+			}
+		}
+		vi.stubGlobal("Image", FakeImage);
+		const portraitOf = (label: string) =>
+			screen.getByRole("listitem", { name: label });
+		try {
+			db.combatants = [
+				row("c-lia", "tok-lia", 18, 14, 0),
+				row("c-goblin", "tok-goblin", 12, 10, 1),
+				row("c-sombra", "tok-sombra", 20, 12, 2),
+				row("c-sentinela", "tok-sentinela", 9, 10, 3),
+			];
+			db.round = 1;
+			db.turnId = "c-lia";
+			useVTTStore.setState({
+				isGM: true,
+				tokens: [
+					token({ id: "tok-lia", name: "Lia", avatarUrl: lia }),
+					token({ id: "tok-goblin", name: "Goblin" }),
+					token({
+						id: "tok-sombra",
+						name: "Sombra",
+						isHidden: true,
+						avatarUrl: sombra,
+					}),
+					token({
+						id: "tok-sentinela",
+						name: "Sentinela",
+						layer: "gm",
+						avatarUrl: sentinela,
+					}),
+				],
+			});
+			render(<VTTCombatPanel />);
+			expect(
+				await screen.findByRole("listitem", { name: "Goblin" }),
+			).toBeTruthy();
+			expect(
+				portraitOf("Goblin").querySelector("[data-slot='avatar']"),
+			).toBeNull();
+			expect(
+				[...document.querySelectorAll("[data-slot='avatar-fallback']")].map(
+					(node) => node.textContent,
+				),
+			).toEqual(["Sombra", "Lia", "Sentinela"]);
+			expect(new Set(seen)).toEqual(new Set([lia, sombra, sentinela]));
+			await act(async () => {
+				for (const image of pending) image.onload?.();
+			});
+			expect(portraitOf("Lia").querySelector("img")?.getAttribute("src")).toBe(
+				lia,
+			);
+			expect(
+				portraitOf("Sombra").querySelector("img")?.getAttribute("src"),
+			).toBe(sombra);
+			expect(
+				portraitOf("Sentinela").querySelector("img")?.getAttribute("src"),
+			).toBe(sentinela);
+
+			cleanup();
+			seen.length = 0;
+			pending.length = 0;
+			window.matchMedia = ((query: string) => ({
+				matches: query.includes("max-width"),
+				media: query,
+				addEventListener: () => {},
+				removeEventListener: () => {},
+				addListener: () => {},
+				removeListener: () => {},
+				dispatchEvent: () => false,
+				onchange: null,
+			})) as unknown as typeof window.matchMedia;
+			useVTTStore.setState({ isGM: false });
+			render(<VTTCombatPanel />);
+			expect(
+				await screen.findByRole("dialog", { name: "Combate" }),
+			).toBeTruthy();
+			expect(screen.queryByText("Sombra")).toBeNull();
+			expect(screen.queryByText("Sentinela")).toBeNull();
+			expect(
+				portraitOf("Goblin").querySelector("[data-slot='avatar']"),
+			).toBeNull();
+			expect(new Set(seen)).toEqual(new Set([lia]));
+			expect(document.body.innerHTML).not.toContain(sombra);
+			expect(document.body.innerHTML).not.toContain(sentinela);
+			await act(async () => {
+				for (const image of pending) image.onload?.();
+			});
+			expect(portraitOf("Lia").querySelector("img")?.getAttribute("src")).toBe(
+				lia,
+			);
+			expect(
+				portraitOf("Lia").querySelector("[data-slot='avatar-fallback']"),
+			).toBeNull();
+			expect(screen.getByText("18")).toBeTruthy();
+			expect(screen.queryByRole("spinbutton")).toBeNull();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 });
