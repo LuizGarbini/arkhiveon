@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.51-pv-da-ficha-na-mesa",
+		version: "1.6.51",
+		date: "30/10/2026",
+		title: "PV do token segue a ficha",
+		description:
+			"Na mesa, o token ligado a uma ficha mostra e altera o PV da ficha, e quem está na outra sessão vê a mudança na hora, sem recarregar. O número que aparece é o que foi salvo, já limitado ao máximo. Se a rede ou o servidor falhar, aparece “Não foi possível salvar os PV” com “Tentar de novo”, que refaz a mesma gravação. O aviso de permissão só aparece quando a conta não pode alterar aquele PV. Enquanto salva, os botões ficam travados para um clique duplo não aplicar o dano duas vezes. No celular, abrir a ficha fecha o menu do token e a ficha ocupa a largura da tela, sem o trilho atrás. Os botões −5, −1, +1 e +5 e a barra usam o mesmo estilo no menu e na ficha. Na ficha do mestre o PV aparece num lugar só. O jogador vê e muda só o PV atual; o mestre também pode mudar o máximo. Token sem ficha, e fichas de Ordem, continuam com o PV no próprio token.",
+		bullets: ["O dono da ficha agora consegue mudar o próprio PV."],
+	},
+	{
 		id: "v1.6.50-feed-da-mesa",
 		version: "1.6.50",
 		date: "30/10/2026",
