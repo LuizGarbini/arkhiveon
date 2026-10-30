@@ -11,13 +11,72 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.44-pv-da-ficha-na-mesa",
-		version: "1.6.44",
-		date: "26/10/2026",
+		id: "v1.6.51-pv-da-ficha-na-mesa",
+		version: "1.6.51",
+		date: "30/10/2026",
 		title: "PV do token segue a ficha",
 		description:
 			"Na mesa, o token ligado a uma ficha mostra e altera o PV da ficha, e quem está na outra sessão vê a mudança na hora, sem recarregar. O número que aparece é o que foi salvo, já limitado ao máximo. Se a rede ou o servidor falhar, aparece “Não foi possível salvar os PV” com “Tentar de novo”, que refaz a mesma gravação. O aviso de permissão só aparece quando a conta não pode alterar aquele PV. Enquanto salva, os botões ficam travados para um clique duplo não aplicar o dano duas vezes. No celular, abrir a ficha fecha o menu do token e a ficha ocupa a largura da tela, sem o trilho atrás. Os botões −5, −1, +1 e +5 e a barra usam o mesmo estilo no menu e na ficha. Na ficha do mestre o PV aparece num lugar só. O jogador vê e muda só o PV atual; o mestre também pode mudar o máximo. Token sem ficha, e fichas de Ordem, continuam com o PV no próprio token.",
 		bullets: ["O dono da ficha agora consegue mudar o próprio PV."],
+	},
+	{
+		id: "v1.6.50-feed-da-mesa",
+		version: "1.6.50",
+		date: "30/10/2026",
+		title: "Rolagens e chat na mesa",
+		description:
+			"A mesa agora tem um feed com as rolagens e as mensagens, no computador e no celular. Quem rola um dado, a mesa vê o resultado. Se o mestre rolar em segredo, os jogadores veem só que ele rolou, sem o número. O mestre pode começar uma sessão nova e o feed fica em branco para todo mundo. O que já tinha sido rolado não é apagado, mas a mesa passa a ver só a sessão nova. No celular, o feed abre embaixo e o mapa continua livre para mover e aproximar.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.49-foto-na-iniciativa",
+		version: "1.6.49",
+		date: "29/10/2026",
+		title: "Foto na ordem de iniciativa",
+		description:
+			"Na ordem de iniciativa, quem tem foto aparece com ela ao lado do nome, no computador e no celular. Quem não tem foto continua só com o nome. O jogador não vê a foto de um token oculto nem de um token da camada do mestre.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.48-ordem-de-iniciativa",
+		version: "1.6.48",
+		date: "26/10/2026",
+		title: "Ordem de iniciativa na mesa",
+		description:
+			"A mesa mostra a ordem de iniciativa. O mestre adiciona os tokens selecionados, ajusta o número, passa a vez e encerra o combate. O jogador acompanha a fila. Quando a vez é de um token que ele não vê, aparece só “Vez do mestre”. No celular, a ordem abre na folha de baixo, sem escurecer o mapa: dá para mover e aproximar a mesa com a ordem aberta.",
+		bullets: [
+			"Atalho C abre o combate. Um anel na cor da mesa marca o token da vez.",
+			"A iniciativa vem da ficha (zero conta). Sem ficha, o mestre digita o valor.",
+			"No empate, a Destreza decide; se continuar empatado, vale a ordem do arraste.",
+			"Se não salvar, a ordem volta ao que estava e aparece um aviso.",
+		],
+	},
+	{
+		id: "v1.6.47-rolagens-da-mesa",
+		version: "1.6.47",
+		date: "26/10/2026",
+		title: "Dados e chat da mesa passam pelo servidor",
+		description:
+			"A rolagem da mesa agora acontece no servidor. Quem está na campanha vê o feed. Numa rolagem secreta, a mesa vê que o mestre rolou, sem a fórmula e sem o resultado; o total fica só com o mestre. O chat segue a mesma regra de quem participa da campanha. Quando o mestre começa ou limpa a sessão, o feed que o jogador vê recomeça. O que já tinha sido rolado continua guardado para o mestre. Nada é apagado.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.46-tipos-do-banco-combate",
+		version: "1.6.46",
+		date: "26/10/2026",
+		title: "Tipos do banco atualizados para o combate",
+		description:
+			"Os tipos gerados do banco agora incluem a ordem de iniciativa da mesa (combatentes, rodada e vez). Nada muda no que você vê ou faz no app; é a base para as próximas telas de combate.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.45-mesa-ordem-iniciativa",
+		version: "1.6.45",
+		date: "26/10/2026",
+		title: "A mesa guarda a ordem de iniciativa",
+		description:
+			"A base da mesa virtual ficou pronta para a ordem de iniciativa. Cada token na cena pode ficar na fila com a iniciativa, a destreza e a ordem em que entrou. A cena guarda a rodada e de quem é a vez. Na cena ativa, a fila do jogador traz só o token que está à mostra. Token oculto ou da camada do mestre fica de fora. Só o mestre muda a fila, a rodada e a vez.",
+		bullets: [],
 	},
 	{
 		id: "v1.6.43-publicar-cena",

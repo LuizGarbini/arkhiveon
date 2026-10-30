@@ -40,16 +40,19 @@ function DialogContent({
 	className,
 	children,
 	showCloseButton = true,
+	showOverlay = true,
 	overlayClassName,
 	...props
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean;
+	/** `false` não desenha o overlay. O padrão continua com overlay. */
+	showOverlay?: boolean;
 	/** Classes extras do overlay (ex.: sheet da mesa sem blur). */
 	overlayClassName?: string;
 }) {
 	return (
 		<DialogPortal>
-			<DialogOverlay className={overlayClassName} />
+			{showOverlay ? <DialogOverlay className={overlayClassName} /> : null}
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(

@@ -12,8 +12,9 @@ export const BOTTOM_SHEET_DRAG_CLOSE_PX = 80;
 
 /**
  * Sheet de baixo do DS (padrão aprovado no detalhe de números da ficha):
- * Dialog do DS ancorado embaixo, sem X. Fecha tocando fora (overlay),
- * arrastando a alça para baixo ou com Esc.
+ * Dialog do DS ancorado embaixo, sem X. No padrão modal, fecha tocando fora
+ * (overlay), arrastando a alça para baixo ou com Esc. Com `modal={false}`,
+ * não há overlay e o toque fora não fecha.
  */
 export function BottomSheet({
 	open,
@@ -23,6 +24,7 @@ export function BottomSheet({
 	titleClassName = "font-semibold text-foreground",
 	className,
 	overlayClassName,
+	modal = true,
 	children,
 	...rest
 }: {
@@ -33,6 +35,11 @@ export function BottomSheet({
 	titleClassName?: string;
 	className?: string;
 	overlayClassName?: string;
+	/**
+	 * `false`: sem overlay, e o resto da tela continua recebendo ponteiro.
+	 * O padrão continua modal.
+	 */
+	modal?: boolean;
 	children: ReactNode;
 	"aria-label"?: string;
 	"data-vtt-focus-scope"?: string;
@@ -58,6 +65,8 @@ export function BottomSheet({
 	return (
 		<Dialog
 			open={open}
+			modal={modal}
+			disablePointerDismissal={!modal}
 			onOpenChange={(next) => {
 				onOpenChange(next);
 				if (!next) setDragY(0);
@@ -66,6 +75,7 @@ export function BottomSheet({
 			<DialogContent
 				{...rest}
 				showCloseButton={false}
+				showOverlay={modal}
 				overlayClassName={overlayClassName}
 				style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
 				className={cn(

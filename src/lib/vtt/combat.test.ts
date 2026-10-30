@@ -14,6 +14,7 @@ import {
 	setInitiative,
 	sortCombatants,
 	startCombat,
+	turnRingTokenId,
 	visibleCombatants,
 } from "./combat";
 
@@ -221,5 +222,21 @@ describe("visão do jogador", () => {
 
 	it("sem combate: 'none'", () => {
 		expect(playerTurnView(NO_COMBAT, order, visible)).toEqual({ kind: "none" });
+	});
+});
+
+describe("anel da vez", () => {
+	const ordered = [c("a", 10, 10, 0), c("b", 8, 10, 1)];
+	const turn = { round: 1, turnId: "b" };
+
+	it("mestre marca o token da vez; jogador na vez oculta não marca ninguém", () => {
+		expect(turnRingTokenId(turn, ordered, new Set(["t-a"]), true)).toBe("t-b");
+		expect(turnRingTokenId(turn, ordered, new Set(["t-a"]), false)).toBeNull();
+		expect(turnRingTokenId(turn, ordered, new Set(["t-a", "t-b"]), false)).toBe(
+			"t-b",
+		);
+		expect(
+			turnRingTokenId(NO_COMBAT, ordered, new Set(["t-b"]), true),
+		).toBeNull();
 	});
 });

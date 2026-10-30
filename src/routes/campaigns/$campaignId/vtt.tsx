@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
+import { VTTCombatPanel } from "@/components/vtt/vtt-combat-panel";
+import { VTTFeedPanel } from "@/components/vtt/vtt-feed-panel";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
@@ -23,6 +25,7 @@ import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
+import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	characterSheetOwnsHp,
 	saveLinkedCharacterHp,
@@ -141,9 +144,11 @@ function VTTSession() {
 			const win = window as unknown as {
 				__vtt_store__?: typeof useVTTStore;
 				__rpg_store__?: typeof useRPGStore;
+				__combat_store__?: typeof useCombatStore;
 			};
 			win.__vtt_store__ = useVTTStore;
 			win.__rpg_store__ = useRPGStore;
+			win.__combat_store__ = useCombatStore;
 		}
 	}, []);
 
@@ -1508,7 +1513,13 @@ function VTTSession() {
 				</div>
 			)}
 			{/* Left Floating Toolbar */}
-			{currentActiveScene && <VTTToolbar />}
+			{currentActiveScene && (
+				<>
+					<VTTToolbar />
+					<VTTCombatPanel />
+					<VTTFeedPanel />
+				</>
+			)}
 
 			{/* Fog of War Contextual Controls */}
 			<VTTFogControls
