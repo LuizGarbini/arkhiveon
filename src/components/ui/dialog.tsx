@@ -4,8 +4,75 @@ import type * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-	return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+/**
+ * Razões reais do @base-ui/react 1.0.0 (`utils/reason-parts`):
+ * clique fora e Esc salvam; o X usa `close-press` e descarta.
+ */
+const DISMISS_SAVE_REASONS = new Set(["outside-press", "escape-key"]);
+
+export function isDialogDismissSaveReason(reason: string | undefined): boolean {
+	return reason !== undefined && DISMISS_SAVE_REASONS.has(reason);
+}
+
+function isPromiseLike(value: void | Promise<void>): value is Promise<void> {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof value.then === "function"
+	);
+}
+
+/** Chama o save e só então `done`. Uma promise é aguardada; o fechamento sempre acontece. */
+export function runDismissSaveThen(
+	save: (() => void | Promise<void>) | undefined,
+	done: () => void,
+): void {
+	if (!save) {
+		done();
+		return;
+	}
+	let result: void | Promise<void>;
+	try {
+		result = save();
+	} catch {
+		done();
+		return;
+	}
+	if (isPromiseLike(result)) {
+		void Promise.resolve(result)
+			.finally(done)
+			.catch(() => {});
+		return;
+	}
+	done();
+}
+
+function Dialog({
+	onDismissSave,
+	onOpenChange,
+	...props
+}: DialogPrimitive.Root.Props & {
+	onDismissSave?: () => void | Promise<void>;
+}) {
+	return (
+		<DialogPrimitive.Root
+			data-slot="dialog"
+			{...props}
+			onOpenChange={(open, eventDetails) => {
+				if (
+					!open &&
+					onDismissSave &&
+					isDialogDismissSaveReason(eventDetails.reason)
+				) {
+					runDismissSaveThen(onDismissSave, () => {
+						onOpenChange?.(open, eventDetails);
+					});
+					return;
+				}
+				onOpenChange?.(open, eventDetails);
+			}}
+		/>
+	);
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
