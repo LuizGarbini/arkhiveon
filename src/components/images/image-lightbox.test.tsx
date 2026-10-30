@@ -42,12 +42,12 @@ function Harness({ onRename = vi.fn() }: { onRename?: (n: string) => void }) {
 			permissionsFor={() => ({
 				canRename: true,
 				canDelete: true,
-				canTogglePrivate: true,
+				canSetVisibility: true,
 			})}
 			handlersFor={() => ({
 				onRename,
 				onDelete: vi.fn(),
-				onTogglePrivate: vi.fn(),
+				onSetVisibility: vi.fn(),
 			})}
 			originLabelFor={() => null}
 		/>
@@ -98,7 +98,7 @@ describe("ImageLightbox (wrapper do ImageViewer)", () => {
 			);
 		});
 		expect(onRename).toHaveBeenCalledWith("Dragão vermelho");
-		expect(screen.getByRole("button", { name: "Tornar privada" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Pública" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Remover imagem" })).toBeTruthy();
 	});
 });
