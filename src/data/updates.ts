@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.56-vinculo-de-itens-na-ficha",
+		version: "1.6.56",
+		date: "30/10/2026",
+		title: "Regra de quem vincula itens da campanha na ficha, agora no servidor",
+		description:
+			"O servidor passa a conferir quem pode vincular ou desvincular itens da campanha numa ficha. Mestre, co-mestres e editores vinculam em qualquer ficha da mesa. O jogador vincula só na ficha que ele criou. Quem não está na campanha não vincula nada. Item secreto do mestre só o mestre ou co-mestre vincula.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.55-dialog-salva-ao-fechar",
 		version: "1.6.55",
 		date: "30/10/2026",

@@ -54,16 +54,16 @@ begin
 	end;
 end $$;
 
--- 2: > 50 MB recusado
+-- 2: > 200 MB recusado (limite da 0042)
 do $$
 declare v_id uuid := gen_random_uuid();
 begin
 	begin
 		insert into public.campaign_library_files (id, campaign_id, r2_key, title, size_bytes, uploaded_by)
 		values (v_id, '20000000-0000-0000-0000-0000000000a1',
-			'library/20000000-0000-0000-0000-0000000000a1/' || v_id || '.pdf', 'x', 52428801, '00000000-0000-0000-0000-0000000000a1');
-		raise exception 'falhou 2: >50MB aceito';
-	exception when check_violation then raise notice 'ok 2: >50 MB recusado';
+			'library/20000000-0000-0000-0000-0000000000a1/' || v_id || '.pdf', 'x', 209715201, '00000000-0000-0000-0000-0000000000a1');
+		raise exception 'falhou 2: >200MB aceito';
+	exception when check_violation then raise notice 'ok 2: >200 MB recusado';
 	end;
 end $$;
 

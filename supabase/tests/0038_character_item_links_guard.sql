@@ -1,4 +1,5 @@
--- Teste da migration 0038 (trigger de vínculo ficha ↔ item).
+-- Teste da migration 0038 (trigger de vínculo ficha ↔ item), com a regra
+-- atual (0039/0056): editor da campanha também vincula em ficha alheia.
 --
 -- RODAR SÓ EM POSTGRES LOCAL/DESCARTÁVEL (supabase db start, container ou
 -- PGlite). NUNCA no projeto de produção. Tudo roda numa transação com ROLLBACK.
@@ -79,17 +80,13 @@ do $$ begin
 	raise notice 'ok 2: editor vincula na própria ficha';
 end $$;
 
--- 3. Editor vincula na ficha do mestre → recusado
+-- 3. Editor vincula na ficha do mestre → passa (0039/#112: editor liberado)
 do $$ begin
 	perform pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
-	begin
-		update public.characters
-			set data = jsonb_set(data, '{inventoryList}', (data->'inventoryList') || pg_temp.sword('x'))
-			where id = '40000000-0000-0000-0000-00000000000a';
-		raise exception 'FALHOU 3: editor vinculou em ficha alheia';
-	exception when insufficient_privilege then
-		raise notice 'ok 3: editor recusado na ficha alheia';
-	end;
+	update public.characters
+		set data = jsonb_set(data, '{inventoryList}', (data->'inventoryList') || pg_temp.sword('x'))
+		where id = '40000000-0000-0000-0000-00000000000a';
+	raise notice 'ok 3: editor vincula em ficha alheia';
 end $$;
 
 -- 4. Item de outro mundo → recusado (mesmo para o mestre)
@@ -126,25 +123,25 @@ do $$ begin
 	raise notice 'ok 5: editor muda PV de ficha alheia sem tocar vínculo';
 end $$;
 
--- 6. Editor tenta desvincular na ficha alheia → recusado
+-- 6. Jogador (viewer) tenta desvincular na ficha alheia → recusado
 do $$ begin
-	perform pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
+	perform pg_temp.as_user('00000000-0000-0000-0000-00000000000f');
 	begin
 		update public.characters
 			set data = jsonb_set(data, '{inventoryList}', '[]'::jsonb)
 			where id = '40000000-0000-0000-0000-00000000000a';
-		raise exception 'FALHOU 6: editor desvinculou em ficha alheia';
+		raise exception 'FALHOU 6: jogador desvinculou em ficha alheia';
 	exception when insufficient_privilege then
-		raise notice 'ok 6: editor não desvincula em ficha alheia';
+		raise notice 'ok 6: jogador não desvincula em ficha alheia';
 	end;
 end $$;
 
--- 7. Editor tenta "assumir" a ficha (created_by) e vincular no mesmo update → recusado
+-- 7. Jogador tenta "assumir" a ficha (created_by) e vincular no mesmo update → recusado
 do $$ begin
-	perform pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
+	perform pg_temp.as_user('00000000-0000-0000-0000-00000000000f');
 	begin
 		update public.characters
-			set created_by = '00000000-0000-0000-0000-00000000000e',
+			set created_by = '00000000-0000-0000-0000-00000000000f',
 				data = jsonb_set(data, '{inventoryList}', (data->'inventoryList') || pg_temp.sword('y'))
 			where id = '40000000-0000-0000-0000-00000000000a';
 		raise exception 'FALHOU 7: troca de created_by liberou o vínculo';
