@@ -20,6 +20,24 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.55-dialog-salva-ao-fechar",
+		version: "1.6.55",
+		date: "30/10/2026",
+		title: "Renomear o personagem salva ao fechar",
+		description:
+			"Na ficha, ao renomear o personagem, clicar fora da janela ou apertar Esc salva o nome. Se o nome ficar vazio, ele vira um rascunho e volta quando você abre de novo.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.54-imagens-sem-acesso-anonimo",
+		version: "1.6.54",
+		date: "30/10/2026",
+		title: "Reforço de segurança nas imagens",
+		description:
+			"Fechamos uma porta técnica: quem não está logado não consegue mais nem perguntar ao servidor quem pode ver cada imagem. Para quem está logado, nada muda.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.53-quem-ve-a-imagem",
 		version: "1.6.53",
 		date: "30/10/2026",

@@ -4,6 +4,7 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
+	runDismissSaveThen,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -25,11 +26,14 @@ export function BottomSheet({
 	className,
 	overlayClassName,
 	modal = true,
+	onDismissSave,
 	children,
 	...rest
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	/** Clique fora, Esc ou arraste além do limite. O X não existe neste sheet. */
+	onDismissSave?: () => void | Promise<void>;
 	title: ReactNode;
 	subtitle?: ReactNode;
 	titleClassName?: string;
@@ -58,7 +62,9 @@ export function BottomSheet({
 	const onPointerEnd = () => {
 		if (dragStart.current === null) return;
 		dragStart.current = null;
-		if (dragY > BOTTOM_SHEET_DRAG_CLOSE_PX) onOpenChange(false);
+		if (dragY > BOTTOM_SHEET_DRAG_CLOSE_PX) {
+			runDismissSaveThen(onDismissSave, () => onOpenChange(false));
+		}
 		setDragY(0);
 	};
 
@@ -67,6 +73,7 @@ export function BottomSheet({
 			open={open}
 			modal={modal}
 			disablePointerDismissal={!modal}
+			onDismissSave={onDismissSave}
 			onOpenChange={(next) => {
 				onOpenChange(next);
 				if (!next) setDragY(0);
