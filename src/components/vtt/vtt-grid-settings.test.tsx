@@ -43,6 +43,7 @@ beforeEach(() => {
 		showGridSettings: true,
 		activeSceneId: scene.id,
 		scenes: [{ ...scene }],
+		gridMoreOpen: false,
 	});
 });
 afterEach(() => {
@@ -182,5 +183,22 @@ describe("VTTGridSettings — tamanho da célula", () => {
 		render(<VTTGridSettings onUpdateSceneSettings={vi.fn()} />);
 		expect(screen.getByLabelText("Distância por célula")).toBeTruthy();
 		expect(screen.queryByLabelText("Escala")).toBeNull();
+	});
+
+	it("“Mais ajustes” abre e fecha o resto do painel", () => {
+		render(<VTTGridSettings onUpdateSceneSettings={() => true} />);
+		const toggle = screen.getByRole("button", { name: "Mais ajustes" });
+		expect(toggle.getAttribute("aria-expanded")).toBe("false");
+		fireEvent.click(toggle);
+		expect(useVTTStore.getState().gridMoreOpen).toBe(true);
+		expect(toggle.getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("painel não usa blur, só bg-card", () => {
+		render(<VTTGridSettings onUpdateSceneSettings={() => true} />);
+		const panel = screen.getByRole("region", { name: "Ajuste do grid" });
+		expect(panel.className).not.toContain("backdrop-blur");
+		expect(panel.className).toContain("bg-card");
+		expect(panel.className).not.toContain("42dvh");
 	});
 });

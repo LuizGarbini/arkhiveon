@@ -44,6 +44,7 @@ import {
 } from "@/lib/vtt/scene-create";
 import {
 	previousSceneSettings,
+	sceneSaveSucceeded,
 	sceneSettingsPatchToDb,
 } from "@/lib/vtt/scene-settings";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
@@ -1152,11 +1153,13 @@ function VTTSession() {
 		const client = getSupabase();
 		if (!client) return true;
 
-		const { error } = await client
+		const result = await client
 			.from("vtt_scenes")
 			.update(sceneSettingsPatchToDb(patch))
-			.eq("id", activeSceneId);
-		if (error) {
+			.eq("id", activeSceneId)
+			.select("id");
+		const saved = sceneSaveSucceeded(result);
+		if (!saved) {
 			updateScene(activeSceneId, previous);
 			showToast("error", {
 				title: "Não foi possível salvar o grid",
