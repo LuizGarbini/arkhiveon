@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TOOLBAR_WITH_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -43,6 +43,19 @@ describe("toolbar esquerda com a barra do grid em 390 px", () => {
 		});
 		render(<VTTToolbar />);
 		expect(toolbarClass()).toContain(TOOLBAR_WITH_GRID_BAR_CLASS.open);
+	});
+
+	it("ao fechar 'Mais ajustes' a toolbar volta a aparecer", () => {
+		useVTTStore.setState({
+			isGM: true,
+			showGridSettings: true,
+			gridMoreOpen: true,
+		});
+		render(<VTTToolbar />);
+		expect(toolbarClass()).toContain(TOOLBAR_WITH_GRID_BAR_CLASS.open);
+		act(() => useVTTStore.setState({ gridMoreOpen: false }));
+		expect(toolbarClass()).not.toContain("max-sm:hidden");
+		expect(toolbarClass()).toContain(TOOLBAR_WITH_GRID_BAR_CLASS.closed);
 	});
 
 	it("jogador não sofre ajuste mesmo com a flag ligada", () => {
