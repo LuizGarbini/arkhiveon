@@ -16,7 +16,16 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "02/11/2026",
 		title: "Alterar a ficha em lote pelo assistente",
 		description:
-			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra quantas alterações valem e, à parte, os campos rejeitados — esses não entram na conta. A lista segue agrupada por seção, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez: o painel só diz que aplicou depois que o salvamento termina. Se falhar, a ficha volta ao que era e dá para tentar de novo. Com um lote em revisão, o campo de texto recolhe para a lista caber; o texto colado continua lá quando o campo volta.",
+			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra quantas alterações valem e, à parte, os campos rejeitados — esses não entram na conta. A lista segue agrupada por seção, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez: o painel só diz que aplicou depois que o salvamento termina. Se falhar, a ficha volta ao que era e dá para tentar de novo. Com um lote em revisão, o campo de texto recolhe para a lista caber; a pergunta enviada fica na conversa.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.59-ia-mesa-ux",
+		version: "1.6.59",
+		date: "02/11/2026",
+		title: "O assistente da mesa avisa o limite e trava o envio",
+		description:
+			"Quando o limite do dia acaba, o aviso no painel fica neutro e mostra a hora em que volta, no horário de São Paulo. O campo esvazia, fica desabilitado e mostra só esse motivo. A pergunta entra na conversa na hora e o campo limpa no envio; enquanto a resposta carrega não dá para enviar de novo. Se a chave ou o modelo falhar, o aviso diz que não deu para responder agora e que nada foi enviado, e “Tentar de novo” reenvia a pergunta que já está na conversa. Campanha ainda não liberada continua com o aviso de que o assistente não está disponível nela. O painel vazio diz “Pergunte sobre regras, a cena ou a ficha.”",
 		bullets: [],
 	},
 	{
