@@ -442,3 +442,71 @@ describe("Mundos > Novo", () => {
 		expect(worldCombobox()?.textContent).not.toContain("Valência");
 	});
 });
+
+describe("Convite usa o Select do design system", () => {
+	const createInvite = vi.fn(async () => undefined);
+
+	beforeEach(() => {
+		createInvite.mockClear();
+		useRPGStore.setState({ createInvite: createInvite as never } as never);
+	});
+
+	it("sem <select> nativo; Co-Mestre envia role editor", async () => {
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={ownCampaign}
+				defaultTab="members"
+			/>,
+		);
+		const trigger = await screen.findByRole("combobox", {
+			name: "Papel do convidado",
+		});
+		expect(document.querySelector("select")).toBeNull();
+		expect(trigger.textContent).toContain("Jogador (Ver)");
+		await chooseOption(trigger, "Co-Mestre (Editar)");
+		expect(trigger.textContent).toContain("Co-Mestre (Editar)");
+		fireEvent.change(
+			screen.getByPlaceholderText("e-mail-do-jogador@gmail.com"),
+			{
+				target: { value: "amigo@example.com" },
+			},
+		);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Convidar" }));
+		});
+		await waitFor(() =>
+			expect(createInvite).toHaveBeenCalledWith(
+				ownCampaign.id,
+				"amigo@example.com",
+				"editor",
+			),
+		);
+	});
+
+	it("padrão continua viewer", async () => {
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={ownCampaign}
+				defaultTab="members"
+			/>,
+		);
+		fireEvent.change(
+			await screen.findByPlaceholderText("e-mail-do-jogador@gmail.com"),
+			{ target: { value: "p@example.com" } },
+		);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "Convidar" }));
+		});
+		await waitFor(() =>
+			expect(createInvite).toHaveBeenCalledWith(
+				ownCampaign.id,
+				"p@example.com",
+				"viewer",
+			),
+		);
+	});
+});

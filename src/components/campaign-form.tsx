@@ -769,16 +769,34 @@ export function CampaignForm({
 												className="flex-1"
 												required
 											/>
-											<select
+											<SelectRoot
 												value={inviteRole}
-												onChange={(e) =>
-													setInviteRole(e.target.value as "editor" | "viewer")
-												}
-												className="rounded-lg border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground outline-hidden focus:border-primary"
+												onValueChange={(next) => {
+													if (next === "editor" || next === "viewer") {
+														setInviteRole(next);
+													}
+												}}
+												disabled={isSendingInvite}
 											>
-												<option value="viewer">Jogador (Ver)</option>
-												<option value="editor">Co-Mestre (Editar)</option>
-											</select>
+												<SelectTrigger
+													aria-label="Papel do convidado"
+													className="w-auto shrink-0 text-[11px] font-medium"
+												>
+													<SelectValue>
+														{(value: string | null) =>
+															value === "editor"
+																? "Co-Mestre (Editar)"
+																: "Jogador (Ver)"
+														}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent className="w-auto min-w-(--anchor-width)">
+													<SelectItem value="viewer">Jogador (Ver)</SelectItem>
+													<SelectItem value="editor">
+														Co-Mestre (Editar)
+													</SelectItem>
+												</SelectContent>
+											</SelectRoot>
 											<Button
 												type="submit"
 												size="sm"
