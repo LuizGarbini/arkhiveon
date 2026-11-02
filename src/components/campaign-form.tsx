@@ -760,13 +760,13 @@ export function CampaignForm({
 											<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
 											Jogador
 										</h3>
-										<div className="flex gap-2">
+										<div className="flex flex-wrap gap-2 sm:flex-nowrap">
 											<Input
 												type="email"
 												value={inviteEmail}
 												onChange={(e) => setInviteEmail(e.target.value)}
 												placeholder="e-mail-do-jogador@gmail.com"
-												className="flex-1"
+												className="basis-full min-w-0 sm:basis-0 sm:flex-1"
 												required
 											/>
 											<SelectRoot
