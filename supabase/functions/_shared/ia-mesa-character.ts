@@ -454,7 +454,7 @@ export function summarizeCharacter(row: CharacterRow): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------------------
-// Declarações para o modelo (formato Gemini functionDeclarations)
+// Declarações das ferramentas de ficha (schema da allowlist).
 // ---------------------------------------------------------------------------
 
 const WEAPON_SCHEMA = {

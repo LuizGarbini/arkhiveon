@@ -92,6 +92,85 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe("VTTAiChat: estados do painel", () => {
+	async function openAndType(text: string) {
+		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
+		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: text },
+		});
+	}
+
+	it("carregando usa skeleton e a resposta entra no lugar dele", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openAndType("quem está na cena?");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByRole("status", { name: "Carregando resposta" }),
+		).toBeTruthy();
+		expect(document.querySelector("[data-slot='skeleton']")).toBeTruthy();
+		expect(screen.queryByText("Pensando…")).toBeNull();
+		resolveAsk({
+			ok: true,
+			reply: "A cripta está em silêncio.",
+			proposal: null,
+		});
+		expect(await screen.findByText("A cripta está em silêncio.")).toBeTruthy();
+		expect(
+			screen.queryByRole("status", { name: "Carregando resposta" }),
+		).toBeNull();
+	});
+
+	it("erro do Claude fica no painel, com tentar de novo e o texto preservado", async () => {
+		h.ask.mockResolvedValue({ ok: false, code: "unavailable" });
+		await openAndType("atualiza a ficha");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByRole("button", { name: "Tentar de novo" }),
+		).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toMatch(
+			/não está disponível/,
+		);
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.value).toBe("atualiza a ficha");
+		expect(input.disabled).toBe(false);
+		h.ask.mockResolvedValue({ ok: true, reply: "Pronto.", proposal: null });
+		fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		expect(await screen.findByText("Pronto.")).toBeTruthy();
+		expect(h.ask).toHaveBeenCalledTimes(2);
+	});
+
+	it("limite diário substitui a resposta e trava o envio", async () => {
+		h.ask.mockResolvedValue({
+			ok: false,
+			code: "daily_limit",
+			resetsAt: "2026-11-03T03:00:00.000Z",
+		});
+		await openAndType("quem está na cena?");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByText(
+				"Limite diário da mesa atingido. Volta terça-feira, 3 de novembro às 00:00.",
+			),
+		).toBeTruthy();
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.disabled).toBe(true);
+		expect(input.value).toBe("quem está na cena?");
+		expect(
+			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
+		).toBe(true);
+	});
+});
+
 describe("VTTAiChat: editar ficha existente", () => {
 	it("mostra o diff antes → depois, sem gravar nada", async () => {
 		await askForPatch();

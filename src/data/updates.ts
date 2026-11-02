@@ -11,10 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.58-assistente-claude",
+		version: "1.6.58",
+		date: "02/11/2026",
+		title: "Assistente da mesa no Claude, com limite do dia",
+		description:
+			"O assistente da mesa passa a responder pelo Claude. Pergunta do dia a dia usa o modelo rápido; mudar uma ficha usa o modelo mais cuidadoso. Cada mesa tem um limite de pedidos por dia. Quando acaba, o aviso aparece no próprio painel, com o dia e a hora em que volta, e o campo de envio fica desabilitado. Se a IA não estiver disponível, o texto que você digitou continua lá e dá para tentar de novo. O botão só aparece nas campanhas liberadas.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.56-vinculo-de-itens-na-ficha",
 		version: "1.6.56",
 		date: "30/10/2026",
-		title: "Regra de quem vincula itens da campanha na ficha, agora no servidor",
+		title:
+			"Regra de quem vincula itens da campanha na ficha, agora no servidor",
 		description:
 			"O servidor passa a conferir quem pode vincular ou desvincular itens da campanha numa ficha. Mestre, co-mestres e editores vinculam em qualquer ficha da mesa. O jogador vincula só na ficha que ele criou. Quem não está na campanha não vincula nada. Item secreto do mestre só o mestre ou co-mestre vincula.",
 		bullets: [],
