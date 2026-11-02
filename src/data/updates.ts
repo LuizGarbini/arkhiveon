@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.61-espera-da-ia-compacta",
-		version: "1.6.61",
+		id: "v1.6.62-espera-da-ia-compacta",
+		version: "1.6.62",
 		date: "02/11/2026",
 		title: "Espera do assistente em uma linha",
 		description:
