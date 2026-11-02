@@ -460,6 +460,45 @@ describe("VTTAiChat: edição em lote", () => {
 		).toBe("");
 	});
 
+	it("lote: o texto colado fica no campo na proposta e só limpa após Aplicar", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		const pasted = `FOR 18. ${"x".repeat(1300)}`;
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: pasted },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("heading", { name: "1 alteração" });
+		const input = document.querySelector("textarea") as HTMLTextAreaElement;
+		expect(input.value).toBe(pasted);
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		expect(input.value).toBe("");
+	});
+
+	it("lote: no erro e no 413 o texto colado continua no campo", async () => {
+		await openPanel();
+		const pasted = "y".repeat(1500);
+		for (const code of ["offline", "input_too_large"]) {
+			h.ask.mockResolvedValueOnce({ ok: false, code });
+			const input = screen.getByLabelText(
+				"Mensagem para o assistente",
+			) as HTMLTextAreaElement;
+			fireEvent.change(input, { target: { value: pasted } });
+			fireEvent.click(screen.getByLabelText("Enviar"));
+			expect(await screen.findByRole("alert")).toBeTruthy();
+			expect(input.value).toBe(pasted);
+		}
+	});
+
 	it("Aplicar grava uma vez e destaca a linha", async () => {
 		h.state.characters = [batchSheet];
 		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
@@ -619,7 +658,13 @@ describe("VTTAiChat: edição em lote", () => {
 		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
 			target: { value: "abc" },
 		});
-		expect(screen.getByText(/3\/20000/)).toBeTruthy();
+		expect(screen.queryByText(/\/20000/)).toBeNull();
+		expect(screen.queryByText("Modo edição em lote")).toBeNull();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "a".repeat(1201) },
+		});
+		expect(screen.getByText(/1201\/20000/)).toBeTruthy();
+		expect(screen.getByText("Modo edição em lote")).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
 			target: { value: "a".repeat(20_001) },
 		});

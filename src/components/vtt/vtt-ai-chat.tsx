@@ -77,6 +77,7 @@ const SAVE_FAILED = "Não foi possível salvar. Nada foi alterado.";
 
 const TRANSIENT_FAILURE = "Não consegui responder agora. Nada foi enviado.";
 const NOT_ALLOWED = "O assistente não está disponível nesta campanha.";
+const CHAT_INPUT_MAX_CHARS = 1200;
 const EMPTY_THREAD = "Pergunte sobre regras, a cena ou a ficha.";
 
 /** Hover e foco visíveis, com tokens que já existem. O anel não fica cortado. */
@@ -172,7 +173,11 @@ export function VTTAiChat({
 	const inputId = useId();
 	const limitNoticeId = useId();
 	const counterId = useId();
+	// Sem gatilho explícito de lote: texto acima do limite do chat (1.200) é
+	// tratado como colagem para edição em lote. Derivado no render.
+	const batchMode = draft.length > CHAT_INPUT_MAX_CHARS;
 	const overLimit = draft.length > IA_MESA_INPUT_MAX_CHARS;
+	const batchModeId = useId();
 	const limitHintId = useId();
 	const limitNotice =
 		panel.kind === "limit" ? formatDailyLimitNotice(panel.resetsAt) : "";
@@ -218,8 +223,10 @@ export function VTTAiChat({
 				{ id: newId(), role: "user", text, time: nowLabel() },
 			]);
 		}
-		// A bolha já leva a pergunta; o campo esvazia no envio, antes da resposta.
-		if (!fromBubble) setDraft("");
+		// Chat normal: a bolha já leva a pergunta e o campo esvazia no envio.
+		// Lote: o texto colado fica no campo até um Aplicar bem-sucedido.
+		const keepForBatch = !fromBubble && batchMode;
+		if (!fromBubble && !keepForBatch) setDraft("");
 		setPanel({ kind: "loading", reading: readingPrompt(text) });
 		scrollToEnd();
 		try {
@@ -230,6 +237,9 @@ export function VTTAiChat({
 			});
 			if (result.ok) {
 				setPanel({ kind: "idle" });
+				if (keepForBatch && result.proposal?.kind !== "sheet_batch") {
+					setDraft("");
+				}
 				setMessages((prev) => [
 					...prev,
 					{
@@ -614,21 +624,21 @@ export function VTTAiChat({
 								onKeyDown={onKeyDown}
 								rows={2}
 								placeholder={
-									panel.kind === "limit"
-										? ""
-										: "Cole um resumo ou peça uma alteração..."
+									panel.kind === "limit" ? "" : "Peça algo para a IA..."
 								}
 								disabled={inputLocked}
 								spellCheck={false}
 								autoComplete="off"
-								aria-describedby={[
-									counterId,
-									panel.kind === "limit"
-										? `${limitNoticeId} ${limitHintId}`
-										: "",
-								]
-									.filter(Boolean)
-									.join(" ")}
+								aria-describedby={
+									[
+										batchMode ? `${batchModeId} ${counterId}` : "",
+										panel.kind === "limit"
+											? `${limitNoticeId} ${limitHintId}`
+											: "",
+									]
+										.filter(Boolean)
+										.join(" ") || undefined
+								}
 								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 disabled:opacity-60 sm:text-sm"
 							/>
 							{panel.kind === "limit" && (
@@ -659,16 +669,23 @@ export function VTTAiChat({
 								</Button>
 							</div>
 						</div>
-						<p
-							id={counterId}
-							className={cn(
-								"mt-1.5 text-right text-[11px] tabular-nums",
-								overLimit ? "text-destructive" : "text-muted-foreground",
-							)}
-						>
-							<span className="sr-only">Tamanho do texto: </span>
-							{draft.length}/{IA_MESA_INPUT_MAX_CHARS}
-						</p>
+						{batchMode && (
+							<div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+								<span id={batchModeId} className="text-muted-foreground">
+									Modo edição em lote
+								</span>
+								<span
+									id={counterId}
+									className={cn(
+										"tabular-nums",
+										overLimit ? "text-destructive" : "text-muted-foreground",
+									)}
+								>
+									<span className="sr-only">Tamanho do texto: </span>
+									{draft.length}/{IA_MESA_INPUT_MAX_CHARS}
+								</span>
+							</div>
+						)}
 						<p className="mt-2 text-center text-[11px] text-muted-foreground">
 							A IA sugere. Nada é salvo sem sua confirmação.
 						</p>
