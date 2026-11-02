@@ -669,6 +669,11 @@ export interface ImageAssetSyncOptions {
 	onSyncError?: (notice: { title: string; description: string }) => void;
 }
 
+/** `quiet`: quem chamou mostra o erro e o store não abre toast. */
+export interface CharacterUpdateOptions {
+	quiet?: boolean;
+}
+
 export interface Membership {
 	id: string;
 	campaignId: string;
@@ -899,7 +904,11 @@ export interface RPGState {
 	addCharacter: (
 		character: Partial<Omit<Character, "id" | "createdAt">>,
 	) => Character;
-	updateCharacter: (id: string, character: Partial<Character>) => void;
+	updateCharacter: (
+		id: string,
+		character: Partial<Character>,
+		options?: CharacterUpdateOptions,
+	) => Promise<void>;
 	removeCharacter: (id: string) => void;
 	transferCharacterToCampaign: (
 		id: string,

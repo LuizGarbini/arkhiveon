@@ -11,10 +11,20 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.57-rascunho-vazio-e-erro-ao-salvar",
+		version: "1.6.57",
+		date: "01/11/2026",
+		title: "Rascunho vazio some, e erro ao salvar deixa a janela aberta",
+		description:
+			"Campo obrigatório em branco, ou valor igual ao que já está salvo, não fica guardado. Abrir de novo mostra o valor salvo. Se a gravação falhar ao fechar ou no botão Salvar, a janela continua aberta, o aviso aparece embaixo do campo e dá pra tentar de novo. Formulário inválido ainda fecha e guarda o rascunho. O X continua descartando, como Cancelar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.56-vinculo-de-itens-na-ficha",
 		version: "1.6.56",
 		date: "30/10/2026",
-		title: "Regra de quem vincula itens da campanha na ficha, agora no servidor",
+		title:
+			"Regra de quem vincula itens da campanha na ficha, agora no servidor",
 		description:
 			"O servidor passa a conferir quem pode vincular ou desvincular itens da campanha numa ficha. Mestre, co-mestres e editores vinculam em qualquer ficha da mesa. O jogador vincula só na ficha que ele criou. Quem não está na campanha não vincula nada. Item secreto do mestre só o mestre ou co-mestre vincula.",
 		bullets: [],

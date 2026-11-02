@@ -100,6 +100,38 @@ describe("Dialog onDismissSave", () => {
 		);
 	});
 
+	it("promise rejeitada no clique fora não fecha", async () => {
+		const onOpenChange = vi.fn();
+		render(
+			<OpenDialog
+				onDismissSave={() => Promise.reject(new Error("rede"))}
+				onOpenChange={onOpenChange}
+			/>,
+		);
+		clickOutside();
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		expect(onOpenChange).not.toHaveBeenCalled();
+		expect(screen.getByText("Corpo")).toBeTruthy();
+	});
+
+	it("promise rejeitada no Esc não fecha", async () => {
+		const onOpenChange = vi.fn();
+		render(
+			<OpenDialog
+				onDismissSave={() => Promise.reject(new Error("rede"))}
+				onOpenChange={onOpenChange}
+			/>,
+		);
+		fireEvent.keyDown(document, { key: "Escape" });
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		expect(onOpenChange).not.toHaveBeenCalled();
+		expect(screen.getByText("Corpo")).toBeTruthy();
+	});
+
 	it("o X fecha sem chamar onDismissSave", () => {
 		const onDismissSave = vi.fn();
 		const onOpenChange = vi.fn();

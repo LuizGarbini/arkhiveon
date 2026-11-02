@@ -123,6 +123,7 @@ async function tabBSavesSpeed35() {
 					.updateCharacter(
 						character.id,
 						buildModuleSaveUpdate(changes, character),
+						{ quiet: true },
 					)
 			}
 		/>,
@@ -169,14 +170,18 @@ describe("Editar módulo com cópia desatualizada (caminho real da tela)", () =>
 		expect(showToastMock).not.toHaveBeenCalled();
 	});
 
-	it("offline + 'Tentar de novo' salva Deslocamento 35 sem apagar a Corda", async () => {
+	it("offline no Salvar mantém o editor e a segunda tentativa grava o deslocamento", async () => {
 		db.offline = true;
 		await tabBSavesSpeed35();
-		expect(showToastMock).toHaveBeenCalledTimes(1);
-		const toast = showToastMock.mock.calls[0][1];
-		expect(toast.action.label).toBe("Tentar de novo");
+		expect(showToastMock).not.toHaveBeenCalled();
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toContain("não foi salva");
+		const save = screen.getByRole("button", {
+			name: /salvar/i,
+		}) as HTMLButtonElement;
+		expect(save.disabled).toBe(false);
 		db.offline = false;
-		toast.action.onClick();
+		fireEvent.click(save);
 		await flush();
 		expect(savedData().speed).toBe(35);
 		expect(ids(savedData().inventoryList)).toEqual(["inv-espada", "inv-corda"]);

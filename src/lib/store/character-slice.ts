@@ -22,7 +22,16 @@ import {
 } from "./helpers";
 import { trackPendingSave } from "./pending-saves";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
-import type { Character, RPGState } from "./types";
+import type { Character, CharacterUpdateOptions, RPGState } from "./types";
+
+const OFFLINE_SAVE_MESSAGE =
+	"A ficha não foi salva. Verifique a conexão e tente de novo.";
+
+/** A promise rejeita para quem espera, e não vira rejeição solta para quem ignora. */
+function settleSave(pending: Promise<void>): Promise<void> {
+	void pending.catch(() => {});
+	return pending;
+}
 
 export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	system: "dnd5e",
@@ -98,7 +107,11 @@ export interface CharacterSlice {
 	addCharacter: (
 		character: Partial<Omit<Character, "id" | "createdAt">>,
 	) => Character;
-	updateCharacter: (id: string, character: Partial<Character>) => void;
+	updateCharacter: (
+		id: string,
+		character: Partial<Character>,
+		options?: CharacterUpdateOptions,
+	) => Promise<void>;
 	removeCharacter: (id: string) => void;
 	transferCharacterToCampaign: (
 		id: string,
@@ -266,15 +279,16 @@ export const createCharacterSlice: StateCreator<
 		});
 		return created;
 	},
-	updateCharacter: (id, character) => {
+	updateCharacter: (id, character, options) => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {
-			set({ syncError: "Nenhuma campanha ativa para atualizar personagem." });
-			return;
+			const message = "Nenhuma campanha ativa para atualizar personagem.";
+			set({ syncError: message });
+			return settleSave(Promise.reject(new Error(message)));
 		}
 		const originalCharacters = get().characters;
 		const existing = originalCharacters.find((c) => c.id === id);
-		if (!existing) return;
+		if (!existing) return Promise.resolve();
 		// Rede de segurança: só vai pro banco o que difere da cópia local.
 		// Uma tela que mande a ficha inteira não regrava campos intocados.
 		const current = existing as unknown as Record<string, unknown>;
@@ -283,7 +297,7 @@ export const createCharacterSlice: StateCreator<
 				([key, value]) => !isDeepEqual(value, current[key]),
 			),
 		) as Partial<Character>;
-		if (Object.keys(changes).length === 0) return;
+		if (Object.keys(changes).length === 0) return Promise.resolve();
 		const updated = {
 			...existing,
 			...changes,
@@ -308,7 +322,7 @@ export const createCharacterSlice: StateCreator<
 			...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
 			updatedAt: updated.updatedAt,
 		};
-		void trackPendingSave(
+		const pending = trackPendingSave(
 			updateRemoteCharacterPatch(updated, patch, campaignId),
 		)
 			.then((saved) => {
@@ -322,7 +336,8 @@ export const createCharacterSlice: StateCreator<
 				}));
 				return createRemoteActivity(log, campaignId);
 			})
-			.catch((error) => {
+			.then(() => undefined)
+			.catch((error: unknown) => {
 				const offline = isNetworkError(error);
 				const message = remoteErrorMessage(error);
 				// Reverte só esta ficha; não descarta mudanças de outras fichas.
@@ -336,22 +351,30 @@ export const createCharacterSlice: StateCreator<
 					// Sem rede: só o toast (sem erro técnico no banner).
 					syncError: offline ? state.syncError : message,
 				}));
-				if (offline) {
-					showToast("error", {
-						title:
-							"A ficha não foi salva. Verifique a conexão e tente de novo.",
-						action: {
-							label: "Tentar de novo",
-							onClick: () => get().updateCharacter(id, changes),
-						},
-					});
-					return;
+				const friendly = offline
+					? OFFLINE_SAVE_MESSAGE
+					: message.trim() || "A ficha não foi salva";
+				if (!options?.quiet) {
+					if (offline) {
+						showToast("error", {
+							title: friendly,
+							action: {
+								label: "Tentar de novo",
+								onClick: () => {
+									void get().updateCharacter(id, changes);
+								},
+							},
+						});
+					} else {
+						showToast("error", {
+							title: "A ficha não foi salva",
+							description: message,
+						});
+					}
 				}
-				showToast("error", {
-					title: "A ficha não foi salva",
-					description: message,
-				});
+				throw new Error(friendly);
 			});
+		return settleSave(pending);
 	},
 	removeCharacter: (id) => {
 		const campaignId = get().activeCampaignId;
