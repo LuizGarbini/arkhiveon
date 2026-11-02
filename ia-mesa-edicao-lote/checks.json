@@ -1,0 +1,86 @@
+[
+  {
+    "n": "[1440x900] contador de tamanho",
+    "p": true
+  },
+  {
+    "n": "[1440x900] total 15 alterações e Aplicar habilitado",
+    "p": true,
+    "d": {
+      "m": "15 alterações"
+    }
+  },
+  {
+    "n": "[1440x900] ficha gravada (15 campos)",
+    "p": false,
+    "d": {
+      "level": 4,
+      "dex": 16
+    }
+  },
+  {
+    "n": "[1440x900v] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[1440x900] rejeitado inline, Aplicar desabilitado, nada gravado",
+    "p": true,
+    "d": {
+      "disabled": true,
+      "same": true,
+      "writes": 0
+    }
+  },
+  {
+    "n": "[1440x900] texto colado preservado",
+    "p": true
+  },
+  {
+    "n": "[1440x900i] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[390x844] contador de tamanho",
+    "p": true
+  },
+  {
+    "n": "[390x844] total 15 alterações e Aplicar habilitado",
+    "p": true,
+    "d": {
+      "m": "15 alterações"
+    }
+  },
+  {
+    "n": "[390x844] ficha gravada (15 campos)",
+    "p": false,
+    "d": {
+      "level": 4,
+      "dex": 16
+    }
+  },
+  {
+    "n": "[390x844v] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[390x844] rejeitado inline, Aplicar desabilitado, nada gravado",
+    "p": true,
+    "d": {
+      "disabled": true,
+      "same": true,
+      "writes": 0
+    }
+  },
+  {
+    "n": "[390x844] texto colado preservado",
+    "p": true
+  },
+  {
+    "n": "[390x844i] sem erro de página",
+    "p": true,
+    "d": []
+  }
+]
