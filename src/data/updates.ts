@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.59-ia-mesa-ux",
+		version: "1.6.59",
+		date: "02/11/2026",
+		title: "O assistente da mesa avisa o limite e trava o envio",
+		description:
+			"Quando o limite do dia acaba, o campo fica desabilitado e mostra a hora em que volta, no horário de São Paulo. A pergunta entra na conversa na hora, e enquanto a resposta carrega não dá para enviar de novo. Se a chave ou o modelo falhar, o aviso diz que não deu para responder agora e que nada foi enviado. Campanha ainda não liberada continua com o aviso de que o assistente não está disponível nela. O painel vazio diz que ainda não há mensagens, e os botões de enviar, tentar de novo e o botão flutuante mostram hover e foco.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.58-assistente-claude",
 		version: "1.6.58",
 		date: "02/11/2026",

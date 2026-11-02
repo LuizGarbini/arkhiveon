@@ -126,28 +126,54 @@ describe("VTTAiChat: estados do painel", () => {
 		).toBeNull();
 	});
 
-	it("erro do Claude fica no painel, com tentar de novo e o texto preservado", async () => {
+	it("chave ausente ou falha do modelo diz que não conseguiu responder", async () => {
 		h.ask.mockResolvedValue({ ok: false, code: "unavailable" });
 		await openAndType("atualiza a ficha");
 		fireEvent.click(screen.getByLabelText("Enviar"));
+		const retry = await screen.findByRole("button", { name: "Tentar de novo" });
 		expect(
-			await screen.findByRole("button", { name: "Tentar de novo" }),
+			screen.getByText("Não consegui responder agora. Nada foi enviado."),
 		).toBeTruthy();
-		expect(screen.getByRole("alert").textContent).toMatch(
-			/não está disponível/,
-		);
+		expect(screen.queryByText(/não está disponível/i)).toBeNull();
+		expect(retry.className).toContain("focus-visible:ring-2");
+		expect(retry.className).toContain("[@media(hover:hover)]:hover:ring-2");
 		const input = screen.getByLabelText(
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
 		expect(input.value).toBe("atualiza a ficha");
 		expect(input.disabled).toBe(false);
-		h.ask.mockResolvedValue({ ok: true, reply: "Pronto.", proposal: null });
-		fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
-		expect(await screen.findByText("Pronto.")).toBeTruthy();
+		h.ask.mockResolvedValue({ ok: false, code: "model_error" });
+		fireEvent.click(retry);
+		expect(
+			await screen.findByText(
+				"Não consegui responder agora. Nada foi enviado.",
+			),
+		).toBeTruthy();
 		expect(h.ask).toHaveBeenCalledTimes(2);
+		expect(h.ask.mock.calls[1][0]).toMatchObject({
+			message: "atualiza a ficha",
+			history: [],
+		});
+		expect(
+			screen
+				.getAllByText("atualiza a ficha")
+				.filter((el) => el.tagName === "P"),
+		).toHaveLength(1);
 	});
 
-	it("limite diário substitui a resposta e trava o envio", async () => {
+	it("campanha fora da allowlist mantém a copy de não disponível", async () => {
+		h.ask.mockResolvedValue({ ok: false, code: "not_allowed" });
+		await openAndType("quem está na cena?");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByText(/não está disponível nesta campanha/i),
+		).toBeTruthy();
+		expect(
+			screen.queryByText("Não consegui responder agora. Nada foi enviado."),
+		).toBeNull();
+	});
+
+	it("limite diário trava o campo e mostra a hora de volta em São Paulo", async () => {
 		h.ask.mockResolvedValue({
 			ok: false,
 			code: "daily_limit",
@@ -155,19 +181,81 @@ describe("VTTAiChat: estados do painel", () => {
 		});
 		await openAndType("quem está na cena?");
 		fireEvent.click(screen.getByLabelText("Enviar"));
-		expect(
-			await screen.findByText(
-				"Limite diário da mesa atingido. Volta terça-feira, 3 de novembro às 00:00.",
-			),
-		).toBeTruthy();
+		const bubble = await screen.findByText(
+			"Limite diário da mesa atingido. Volta terça-feira, 3 de novembro às 00:00.",
+		);
+		expect(bubble.className).toContain("text-destructive");
+		expect(bubble.className).toContain("bg-destructive/10");
+		expect(bubble.className).not.toMatch(/#[0-9a-fA-F]{3,8}/);
 		const input = screen.getByLabelText(
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
 		expect(input.disabled).toBe(true);
 		expect(input.value).toBe("quem está na cena?");
+		expect(input.placeholder).toBe("Limite diário atingido · volta às 00:00");
+		expect(
+			screen.getByText("Limite diário atingido · volta às 00:00"),
+		).toBeTruthy();
 		expect(
 			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
 		).toBe(true);
+	});
+
+	it("a pergunta vira bolha na hora e o envio fica travado", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openAndType("quem está na cena?");
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		const bubble = screen
+			.getAllByText("quem está na cena?")
+			.find((el) => el.tagName === "P");
+		expect(bubble?.className).toContain("bg-primary/15");
+		expect(input.disabled).toBe(true);
+		expect(
+			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
+		).toBe(true);
+		fireEvent.keyDown(input, { key: "Enter" });
+		fireEvent.submit(input.closest("form") as HTMLFormElement);
+		expect(h.ask).toHaveBeenCalledTimes(1);
+		resolveAsk({
+			ok: true,
+			reply: "A cripta está em silêncio.",
+			proposal: null,
+		});
+		expect(await screen.findByText("A cripta está em silêncio.")).toBeTruthy();
+		expect(
+			screen
+				.getAllByText("quem está na cena?")
+				.filter((el) => el.tagName === "P"),
+		).toHaveLength(1);
+	});
+});
+
+describe("VTTAiChat: estados visíveis", () => {
+	it("sem mensagens, o painel mostra um texto curto", () => {
+		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
+		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
+		expect(screen.getByText("Nenhuma mensagem ainda.")).toBeTruthy();
+		expect(screen.queryByText(/Posso propor NPCs/)).toBeNull();
+	});
+
+	it("Enviar e o botão flutuante têm hover e focus-visible", () => {
+		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
+		const fab = screen.getByLabelText("Abrir assistente da mesa");
+		expect(fab.className).toContain("focus-visible:ring-2");
+		expect(fab.className).toContain("[@media(hover:hover)]:hover:ring-2");
+		fireEvent.click(fab);
+		const send = screen.getByLabelText("Enviar");
+		expect(send.className).toContain("focus-visible:ring-2");
+		expect(send.className).toContain("[@media(hover:hover)]:hover:ring-2");
+		expect(send.className).toContain("focus-visible:ring-ring");
 	});
 });
 
