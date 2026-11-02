@@ -1,0 +1,50 @@
+[
+  {
+    "n": "[1440x900] botão flutuante",
+    "p": true
+  },
+  {
+    "n": "[1440x900] bolha do usuário + input travado",
+    "p": true
+  },
+  {
+    "n": "[1440x900] copy de falha",
+    "p": true
+  },
+  {
+    "n": "[1440x900] limite: input desabilitado com motivo 00:00",
+    "p": true,
+    "d": {
+      "ph": "Limite diário atingido · volta às 00:00"
+    }
+  },
+  {
+    "n": "[1440x900] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[390x844] botão flutuante",
+    "p": true
+  },
+  {
+    "n": "[390x844] bolha do usuário + input travado",
+    "p": true
+  },
+  {
+    "n": "[390x844] copy de falha",
+    "p": true
+  },
+  {
+    "n": "[390x844] limite: input desabilitado com motivo 00:00",
+    "p": true,
+    "d": {
+      "ph": "Limite diário atingido · volta às 00:00"
+    }
+  },
+  {
+    "n": "[390x844] sem erro de página",
+    "p": true,
+    "d": []
+  }
+]
