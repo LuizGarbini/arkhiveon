@@ -22,7 +22,7 @@ function isPromiseLike(value: void | Promise<void>): value is Promise<void> {
 	);
 }
 
-/** Chama o save e só então `done`. Uma promise é aguardada; o fechamento sempre acontece. */
+/** Chama o save e só então `done`. Promise rejeitada deixa o dialog aberto. */
 export function runDismissSaveThen(
 	save: (() => void | Promise<void>) | undefined,
 	done: () => void,
@@ -39,9 +39,7 @@ export function runDismissSaveThen(
 		return;
 	}
 	if (isPromiseLike(result)) {
-		void Promise.resolve(result)
-			.finally(done)
-			.catch(() => {});
+		void Promise.resolve(result).then(done, () => {});
 		return;
 	}
 	done();

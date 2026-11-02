@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.60-rascunho-vazio-e-erro-ao-salvar",
+		version: "1.6.60",
+		date: "02/11/2026",
+		title: "Rascunho vazio some, e erro ao salvar deixa a janela aberta",
+		description:
+			"Campo obrigatório em branco, ou valor igual ao que já está salvo, não fica guardado. Abrir de novo mostra o valor salvo. Se a gravação falhar ao fechar ou no botão Salvar, a janela continua aberta, o aviso aparece embaixo do campo e dá pra tentar de novo. Esse aviso é sempre uma frase simples, sem o texto técnico do servidor. Falha ao renomear ou ao salvar o módulo não abre o aviso geral de “Falha ao sincronizar”. Formulário inválido ainda fecha e guarda o rascunho. O X continua descartando, como Cancelar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.59-ia-mesa-ux",
 		version: "1.6.59",
 		date: "02/11/2026",

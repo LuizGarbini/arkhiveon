@@ -152,6 +152,30 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		expect(showToastMock).not.toHaveBeenCalled();
 	});
 
+	it("save quiet não grava syncError; sem quiet o banner continua", async () => {
+		db.rlsHidesRow = true;
+		await expect(
+			useRPGStore
+				.getState()
+				.updateCharacter("ficha-1", { notes: "quiet" }, { quiet: true }),
+		).rejects.toThrow();
+		expect(showToastMock).not.toHaveBeenCalled();
+		expect(useRPGStore.getState().syncError).toBeNull();
+		expect(useRPGStore.getState().characters[0].notes).toBe("");
+
+		showToastMock.mockClear();
+		await expect(
+			useRPGStore.getState().updateCharacter("ficha-1", { notes: "alto" }),
+		).rejects.toThrow();
+		expect(useRPGStore.getState().syncError).toMatch(
+			/não tem permissão para editar esta ficha/,
+		);
+		expect(showToastMock).toHaveBeenCalledWith(
+			"error",
+			expect.objectContaining({ title: "A ficha não foi salva" }),
+		);
+	});
+
 	it("UPDATE com 0 linhas (RLS) vira erro visível e desfaz a mudança local", async () => {
 		db.rlsHidesRow = true;
 		useRPGStore

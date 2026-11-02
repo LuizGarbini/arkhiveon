@@ -312,22 +312,26 @@ function CharacterSheetPage() {
 				onOpenChange={(open) => {
 					if (!open) setEditingModule(null);
 				}}
-				onSave={(_patch, changes) => {
+				onSave={(_patch, changes) =>
 					updateCharacter(
 						currentCharacter.id,
 						buildModuleSaveUpdate(changes, currentCharacter),
-					);
-					setEditingModule(null);
-				}}
+						{ quiet: true },
+					)
+				}
 			/>
 
 			<CharacterNameDialog
 				character={currentCharacter}
 				open={isNameDialogOpen}
 				onOpenChange={setIsNameDialogOpen}
-				onSave={(characterName) => {
-					updateCharacter(currentCharacter.id, { characterName });
-				}}
+				onSave={(characterName) =>
+					updateCharacter(
+						currentCharacter.id,
+						{ characterName },
+						{ quiet: true },
+					)
+				}
 			/>
 
 			{activeCampaignId && (

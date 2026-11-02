@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	clearAllDrafts,
 	clearDraft,
+	persistDraft,
 	readDraft,
+	readRestorableDraft,
 	writeDraft,
 } from "./form-draft";
 
@@ -81,6 +83,70 @@ describe("form draft", () => {
 		expect(readDraft("character-name", "borin")).toBeNull();
 		expect(readDraft("outro", null)).toBeNull();
 		expect(sessionStorage.getItem("rpg-notes-storage")).toBe("fica");
+	});
+
+	it("não grava rascunho vazio e apaga o que já estava salvo", () => {
+		const policy = {
+			saved: { name: "Thalia", note: "antiga" },
+			required: ["name"] as const,
+		};
+		writeDraft("character-name", "thalia", { name: "Lyra", note: "antiga" });
+
+		persistDraft(
+			"character-name",
+			"thalia",
+			{ name: "   ", note: "nova" },
+			policy,
+		);
+		expect(sessionStorage.getItem(key("character-name", "thalia"))).toBeNull();
+
+		writeDraft("character-name", "thalia", { name: "Lyra" });
+		persistDraft(
+			"character-name",
+			"thalia",
+			{ name: "  Thalia  " },
+			{ saved: { name: "Thalia" }, required: ["name"] },
+		);
+		expect(sessionStorage.getItem(key("character-name", "thalia"))).toBeNull();
+	});
+
+	it("não restaura rascunho vazio e remove a chave", () => {
+		writeDraft("character-name", "thalia", { name: "" });
+		expect(
+			readRestorableDraft("character-name", "thalia", {
+				saved: { name: "Thalia" },
+				required: ["name"],
+			}),
+		).toBeNull();
+		expect(sessionStorage.getItem(key("character-name", "thalia"))).toBeNull();
+
+		writeDraft("character-name", "thalia", { name: "Thalia" });
+		expect(
+			readRestorableDraft("character-name", "thalia", {
+				saved: { name: "Thalia" },
+				required: ["name"],
+			}),
+		).toBeNull();
+		expect(sessionStorage.getItem(key("character-name", "thalia"))).toBeNull();
+	});
+
+	it("grava e restaura rascunho com conteúdo diferente do salvo", () => {
+		const policy = {
+			saved: { title: "História" },
+			required: ["title"] as const,
+		};
+		persistDraft(
+			"sheet-module",
+			"thalia",
+			{ title: "novo texto livre" },
+			policy,
+		);
+		expect(readRestorableDraft("sheet-module", "thalia", policy)).toEqual({
+			title: "novo texto livre",
+		});
+		expect(
+			sessionStorage.getItem(key("sheet-module", "thalia")),
+		).not.toBeNull();
 	});
 
 	it("não lança se sessionStorage estiver indisponível ou recusar a escrita", () => {
