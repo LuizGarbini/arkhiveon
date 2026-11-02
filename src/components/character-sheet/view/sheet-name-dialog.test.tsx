@@ -144,12 +144,17 @@ describe("CharacterNameDialog salva ao fechar", () => {
 	});
 
 	it("falha ao salvar no clique fora mantém o dialog, o erro e o rascunho", async () => {
-		const onSave = vi.fn(() => Promise.reject(new Error("Sem rede")));
+		const technical =
+			'new row violates row-level security policy for table "characters"';
+		const onSave = vi.fn(() => Promise.reject(new Error(technical)));
 		render(<Harness onSave={onSave} />);
 		fireEvent.change(input(), { target: { value: "Lyra Cinzal" } });
 		clickOutside();
 		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toContain("Sem rede");
+		expect(alert.textContent).toBe(
+			"Não foi possível salvar o nome. Tente de novo.",
+		);
+		expect(alert.textContent).not.toContain(technical);
 		expect(input().getAttribute("aria-describedby")).toBe(alert.id);
 		expect(screen.getByText("dialog-aberto")).toBeTruthy();
 		expect(
@@ -166,17 +171,21 @@ describe("CharacterNameDialog salva ao fechar", () => {
 	});
 
 	it("falha no Salvar mantém a janela e o botão tenta de novo", async () => {
+		const technical = "duplicate key value violates unique constraint";
 		let attempt = 0;
 		const onSave = vi.fn(() => {
 			attempt += 1;
-			if (attempt === 1) return Promise.reject(new Error("Sem rede"));
+			if (attempt === 1) return Promise.reject(new Error(technical));
 			return Promise.resolve();
 		});
 		render(<Harness onSave={onSave} />);
 		fireEvent.change(input(), { target: { value: "Lyra Cinzal" } });
 		fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
 		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toContain("Sem rede");
+		expect(alert.textContent).toBe(
+			"Não foi possível salvar o nome. Tente de novo.",
+		);
+		expect(alert.textContent).not.toContain(technical);
 		expect(input().getAttribute("aria-describedby")).toBe(alert.id);
 		expect(screen.getByText("dialog-aberto")).toBeTruthy();
 		expect(

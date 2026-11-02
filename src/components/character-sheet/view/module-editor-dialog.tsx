@@ -69,9 +69,9 @@ function isPromiseLike(value: void | Promise<void>): value is Promise<void> {
 	);
 }
 
-function saveErrorMessage(error: unknown): string {
-	if (error instanceof Error && error.message.trim()) return error.message;
-	return "Não foi possível salvar o módulo. Tente de novo.";
+/** O texto do servidor fica de fora: o campo mostra sempre esta frase. */
+function saveErrorMessage(_error: unknown): string {
+	return "Não foi possível salvar. Tente de novo.";
 }
 
 function moduleFields(source: {

@@ -175,7 +175,9 @@ describe("Editar módulo com cópia desatualizada (caminho real da tela)", () =>
 		await tabBSavesSpeed35();
 		expect(showToastMock).not.toHaveBeenCalled();
 		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toContain("não foi salva");
+		expect(alert.textContent).toBe("Não foi possível salvar. Tente de novo.");
+		expect(alert.textContent).not.toMatch(/Failed to fetch|TypeError/);
+		expect(useRPGStore.getState().syncError).toBeNull();
 		const save = screen.getByRole("button", {
 			name: /salvar/i,
 		}) as HTMLButtonElement;
@@ -185,5 +187,15 @@ describe("Editar módulo com cópia desatualizada (caminho real da tela)", () =>
 		await flush();
 		expect(savedData().speed).toBe(35);
 		expect(ids(savedData().inventoryList)).toEqual(["inv-espada", "inv-corda"]);
+	});
+
+	it("RLS no Salvar quiet mostra frase em português e não acende o banner", async () => {
+		db.rlsHidesRow = true;
+		await tabBSavesSpeed35();
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toBe("Não foi possível salvar. Tente de novo.");
+		expect(alert.textContent).not.toMatch(/permissão|row-level|characters/);
+		expect(useRPGStore.getState().syncError).toBeNull();
+		expect(showToastMock).not.toHaveBeenCalled();
 	});
 });

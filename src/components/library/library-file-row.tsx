@@ -53,7 +53,7 @@ interface LibraryFileRowProps {
 	file: LibraryFile;
 	canManage: boolean;
 	onDelete: (file: LibraryFile) => void;
-	/** Salva o novo nome; rejeita com a mensagem de erro pra mostrar na linha. */
+	/** Salva o novo nome. Se rejeitar, a linha mostra um aviso fixo. */
 	onRename: (file: LibraryFile, title: string) => Promise<void>;
 }
 
@@ -124,7 +124,7 @@ export function LibraryFileRow({
 			await onRename(file, check.title);
 			clearDraft(LIBRARY_TITLE_DRAFT_FORM_ID, file.id);
 			setEdit({ mode: "view" });
-		} catch (error) {
+		} catch {
 			persistDraft(
 				LIBRARY_TITLE_DRAFT_FORM_ID,
 				file.id,
@@ -134,10 +134,7 @@ export function LibraryFileRow({
 			setEdit({
 				...edit,
 				saving: false,
-				error:
-					error instanceof Error && error.message
-						? error.message
-						: "Não deu pra salvar o nome. Tente de novo.",
+				error: "Não deu pra salvar o nome. Tente de novo.",
 			});
 		}
 	}

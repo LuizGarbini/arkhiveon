@@ -348,8 +348,9 @@ export const createCharacterSlice: StateCreator<
 					activityLog: state.activityLog.filter(
 						(l) => !(l.entityId === id && l.action === "update"),
 					),
-					// Sem rede: só o toast (sem erro técnico no banner).
-					syncError: offline ? state.syncError : message,
+					// Sem rede, ou save quiet: o aviso fica no toast ou no campo.
+					// Não acende o banner global "Falha ao sincronizar".
+					syncError: offline || options?.quiet ? state.syncError : message,
 				}));
 				const friendly = offline
 					? OFFLINE_SAVE_MESSAGE

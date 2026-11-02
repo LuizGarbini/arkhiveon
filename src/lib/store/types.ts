@@ -669,7 +669,7 @@ export interface ImageAssetSyncOptions {
 	onSyncError?: (notice: { title: string; description: string }) => void;
 }
 
-/** `quiet`: quem chamou mostra o erro e o store não abre toast. */
+/** `quiet`: quem chamou mostra o erro. O store não abre toast nem grava `syncError`. */
 export interface CharacterUpdateOptions {
 	quiet?: boolean;
 }

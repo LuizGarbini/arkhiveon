@@ -54,8 +54,8 @@ function isPromiseLike(value: void | Promise<void>): value is Promise<void> {
 	);
 }
 
-function saveErrorMessage(error: unknown): string {
-	if (error instanceof Error && error.message.trim()) return error.message;
+/** O texto do servidor fica de fora: o campo mostra sempre esta frase. */
+function saveErrorMessage(_error: unknown): string {
 	return "Não foi possível salvar o nome. Tente de novo.";
 }
 
