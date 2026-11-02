@@ -156,7 +156,7 @@ describe("ia-mesa-chat: modelo e cache", () => {
 		const request = firstRequest(callModel);
 		expect(request.model).toBe("claude-sonnet-4-5");
 		expect(request.model).toBe(IA_MESA_MODEL_SONNET);
-		expect(request.max_tokens).toBe(2048);
+		expect(request.max_tokens).toBe(8192);
 	});
 
 	it("cache_control ephemeral fica no fim do prefixo fixo, não na cena nem na mensagem", () => {

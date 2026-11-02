@@ -18,6 +18,10 @@ import {
 } from "../_shared/ia-mesa-character.ts";
 import { isIaMesaPilotCampaign } from "../_shared/ia-mesa-guard.ts";
 import {
+	canEditCampaignSheet,
+	snapshotFromCharacterRow,
+} from "../_shared/ia-mesa-sheet-batch.ts";
+import {
 	loadIaMesaCharacter,
 	loadIaMesaContext,
 	mesaDbFromClient,
@@ -157,11 +161,69 @@ serve(async (req) => {
 						? { character: summarizeCharacter(row) }
 						: { error: "Personagem não encontrado nesta campanha." };
 				},
-				callModel: (request) =>
+				canEditSheet: async (characterId) => {
+					if (!user) return false;
+					try {
+						const { data: campaign, error: campaignError } = await userClient
+							.from("campaigns")
+							.select("owner_id")
+							.eq("id", campaignId)
+							.maybeSingle();
+						if (campaignError || !campaign) return false;
+						const { data: membership } = await userClient
+							.from("memberships")
+							.select("role")
+							.eq("campaign_id", campaignId)
+							.eq("user_id", user.id)
+							.maybeSingle();
+						const { data: character, error: characterError } = await userClient
+							.from("characters")
+							.select("user_id, created_by, campaign_id")
+							.eq("id", characterId)
+							.eq("campaign_id", campaignId)
+							.maybeSingle();
+						if (characterError) return false;
+						return canEditCampaignSheet({
+							userId: user.id,
+							campaignId,
+							campaignOwnerId:
+								typeof campaign.owner_id === "string" ? campaign.owner_id : null,
+							membershipRole:
+								typeof membership?.role === "string" ? membership.role : null,
+							character: character
+								? {
+										campaignId:
+											typeof character.campaign_id === "string"
+												? character.campaign_id
+												: "",
+										userId:
+											typeof character.user_id === "string"
+												? character.user_id
+												: null,
+										createdBy:
+											typeof character.created_by === "string"
+												? character.created_by
+												: null,
+									}
+								: null,
+						});
+					} catch {
+						return false;
+					}
+				},
+				loadSheet: async (characterId) => {
+					const row = await loadIaMesaCharacter(db, {
+						campaignId,
+						characterId,
+					});
+					return row ? snapshotFromCharacterRow(row) : null;
+				},
+				callModel: (request, options) =>
 					callClaudeModel({
 						apiKey,
 						request,
 						onFailure: refundOnce,
+						timeoutMs: options?.timeoutMs,
 					}),
 			},
 		);

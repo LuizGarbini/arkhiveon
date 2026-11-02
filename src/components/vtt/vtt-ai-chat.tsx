@@ -31,6 +31,7 @@ import {
 	describeProposal,
 	errorMessage,
 	formatDailyLimitNotice,
+	IA_MESA_INPUT_MAX_CHARS,
 	type IaMesaCharacterPatchProposal,
 	type IaMesaNpcProposal,
 	type IaMesaProposal,
@@ -40,9 +41,16 @@ import {
 	proposalToNpcInput,
 	toHistory,
 } from "@/lib/ai-mesa/proposal";
+import {
+	commitCharacterBatch,
+	reviewSheetBatch,
+	snapshotFromCharacter,
+} from "@/lib/ai-mesa/sheet-batch";
+import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { SheetBatchReview } from "./sheet-batch-review";
 
 interface ChatMessage {
 	id: string;
@@ -56,16 +64,24 @@ interface ChatMessage {
 	/** Valores da ficha antes do Aplicar (para Desfazer um patch). */
 	undoPatch?: Partial<Character>;
 	applyError?: string;
+	highlighted?: boolean;
 }
 
 const WELCOME =
-	"Oi! Posso propor NPCs novos ou alterações numa ficha desta campanha (atributos, PV, CA, itens e dano de arma). Nada é salvo sem sua confirmação.";
+	"Oi! Posso propor NPCs novos ou um lote de alterações numa ficha desta campanha (atributos, perícias, PV, CA, deslocamento, itens). Nada é salvo sem sua confirmação.";
 
 type PanelState =
 	| { kind: "idle" }
-	| { kind: "loading" }
+	| { kind: "loading"; reading?: boolean }
 	| { kind: "error"; text: string }
 	| { kind: "limit"; resetsAt: string };
+
+function readingPrompt(text: string): boolean {
+	return (
+		text.length >= 400 ||
+		(/\b(atualiz|edit|alter|mud)\w*/i.test(text) && /\bficha\b/i.test(text))
+	);
+}
 
 function nowLabel(): string {
 	return new Date().toLocaleTimeString("pt-BR", {
@@ -102,6 +118,7 @@ export function VTTAiChat({
 	 */
 	placement?: "absolute" | "fixed";
 }) {
+	const { user } = useAuth();
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [panel, setPanel] = useState<PanelState>({ kind: "idle" });
@@ -110,6 +127,7 @@ export function VTTAiChat({
 	]);
 	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const applyingRef = useRef(false);
 
 	// Composer cresce com o texto até o `max-h-52` do CSS; depois rola dentro.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: recalcula a cada texto/abertura.
@@ -121,6 +139,8 @@ export function VTTAiChat({
 	}, [draft, open]);
 	const inputId = useId();
 	const limitNoticeId = useId();
+	const counterId = useId();
+	const overLimit = draft.length > IA_MESA_INPUT_MAX_CHARS;
 	const limitNotice =
 		panel.kind === "limit" ? formatDailyLimitNotice(panel.resetsAt) : "";
 	const inputLocked = panel.kind === "loading" || panel.kind === "limit";
@@ -135,10 +155,17 @@ export function VTTAiChat({
 	const send = async () => {
 		const text = draft.trim();
 		if (!text || panel.kind === "loading" || panel.kind === "limit") return;
+		if (draft.length > IA_MESA_INPUT_MAX_CHARS) {
+			setPanel({
+				kind: "error",
+				text: errorMessage("input_too_large"),
+			});
+			return;
+		}
 		const history = toHistory(
 			messages.filter((m) => m.id !== "welcome" && !m.isError),
 		);
-		setPanel({ kind: "loading" });
+		setPanel({ kind: "loading", reading: readingPrompt(text) });
 		scrollToEnd();
 		const result = await askMesaAssistant({
 			campaignId,
@@ -146,7 +173,10 @@ export function VTTAiChat({
 			history,
 		});
 		if (result.ok) {
-			setDraft("");
+			const keepDraft =
+				result.proposal?.kind === "sheet_batch" &&
+				result.proposal.rejections.length > 0;
+			if (!keepDraft) setDraft("");
 			setPanel({ kind: "idle" });
 			setMessages((prev) => [
 				...prev,
@@ -198,7 +228,105 @@ export function VTTAiChat({
 			prev.map((m) => (m.id === id ? { ...m, ...changes } : m)),
 		);
 
+	const handleSheetBatch = (message: ChatMessage, action: ProposalAction) => {
+		if (!message.proposal || message.proposal.kind !== "sheet_batch") return;
+		const proposal = message.proposal;
+		if (action === "ignore") {
+			if (message.status !== "pending" || applyingRef.current) return;
+			patch(message.id, { status: "ignored", applyError: undefined });
+			return;
+		}
+		if (action === "undo") {
+			if (message.status !== "applied" || !message.undoPatch) return;
+			useRPGStore
+				.getState()
+				.updateCharacter(proposal.characterId, message.undoPatch);
+			patch(message.id, {
+				status: "undone",
+				highlighted: false,
+				applyError: undefined,
+			});
+			return;
+		}
+		if (
+			action !== "apply" ||
+			message.status !== "pending" ||
+			applyingRef.current
+		) {
+			return;
+		}
+		const store = useRPGStore.getState();
+		if (store.activeCampaignId !== campaignId) {
+			patch(message.id, {
+				applyError:
+					"Esta mesa não é a campanha ativa. Troque para ela no menu de campanhas e aplique de novo.",
+			});
+			return;
+		}
+		const character = store.characters.find(
+			(c) => c.id === proposal.characterId,
+		);
+		if (!character) {
+			patch(message.id, {
+				applyError: "Ficha não encontrada nesta campanha. Nada foi alterado.",
+			});
+			return;
+		}
+		const review = reviewSheetBatch(snapshotFromCharacter(character), proposal);
+		if (review.rejections.length > 0 || review.diff.length === 0) {
+			patch(message.id, {
+				applyError: "Há campos rejeitados. Nada foi alterado.",
+			});
+			return;
+		}
+		const campaign = store.campaigns.find((c) => c.id === campaignId);
+		const userId = user?.id ?? null;
+		const allowed =
+			campaign?.myRole === "owner" ||
+			campaign?.myRole === "editor" ||
+			(!!userId && campaign?.ownerId === userId) ||
+			(!!userId && character.createdBy === userId);
+		applyingRef.current = true;
+		patch(message.id, { status: "applying", applyError: undefined });
+		try {
+			const result = commitCharacterBatch({
+				allowed,
+				character,
+				proposal,
+				write: (id, changes) => store.updateCharacter(id, changes),
+			});
+			if (!result.ok) {
+				patch(message.id, { status: "pending", applyError: result.error });
+				return;
+			}
+			patch(message.id, {
+				status: "applied",
+				undoPatch: result.before,
+				highlighted: true,
+				applyError: undefined,
+			});
+			window.setTimeout(() => {
+				setMessages((prev) =>
+					prev.map((item) =>
+						item.id === message.id ? { ...item, highlighted: false } : item,
+					),
+				);
+			}, 1000);
+		} catch {
+			patch(message.id, {
+				status: "pending",
+				applyError: "Não foi possível salvar. Nada foi alterado.",
+			});
+		} finally {
+			applyingRef.current = false;
+		}
+	};
+
 	const act = (message: ChatMessage, action: ProposalAction) => {
+		if (message.proposal?.kind === "sheet_batch") {
+			handleSheetBatch(message, action);
+			return;
+		}
 		if (!message.proposal || !message.status) return;
 		const next = nextProposalStatus(message.status, action);
 		if (!next) return;
@@ -319,7 +447,9 @@ export function VTTAiChat({
 						))}
 						{panel.kind === "loading" && (
 							<output
-								aria-label="Carregando resposta"
+								aria-label={
+									panel.reading ? "Lendo o prompt" : "Carregando resposta"
+								}
 								className="block max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2.5"
 							>
 								<Skeleton className="h-3 w-40" />
@@ -364,17 +494,22 @@ export function VTTAiChat({
 								id={inputId}
 								ref={inputRef}
 								value={draft}
-								onChange={(e) => setDraft(e.target.value)}
+								onChange={(e) => {
+									const next = e.target.value;
+									setDraft(next.length > 50_000 ? next.slice(0, 50_000) : next);
+								}}
 								onKeyDown={onKeyDown}
 								rows={2}
-								maxLength={1200}
-								placeholder="Peça algo para a IA..."
+								placeholder="Cole um resumo ou peça uma alteração..."
 								disabled={inputLocked}
 								spellCheck={false}
 								autoComplete="off"
-								aria-describedby={
-									panel.kind === "limit" ? limitNoticeId : undefined
-								}
+								aria-describedby={[
+									counterId,
+									panel.kind === "limit" ? limitNoticeId : "",
+								]
+									.filter(Boolean)
+									.join(" ")}
 								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 disabled:opacity-60 sm:text-sm"
 							/>
 							<div className="flex items-center justify-between gap-2 px-2 pb-2">
@@ -391,12 +526,22 @@ export function VTTAiChat({
 									size="icon"
 									className="size-11 rounded-full"
 									aria-label="Enviar"
-									disabled={!draft.trim() || inputLocked}
+									disabled={!draft.trim() || inputLocked || overLimit}
 								>
 									<SendHorizontal />
 								</Button>
 							</div>
 						</div>
+						<p
+							id={counterId}
+							className={cn(
+								"mt-1.5 text-right text-[11px] tabular-nums",
+								overLimit ? "text-destructive" : "text-muted-foreground",
+							)}
+						>
+							<span className="sr-only">Tamanho do texto: </span>
+							{draft.length}/{IA_MESA_INPUT_MAX_CHARS}
+						</p>
 						<p className="mt-2 text-center text-[11px] text-muted-foreground">
 							A IA sugere. Nada é salvo sem sua confirmação.
 						</p>
@@ -459,10 +604,86 @@ function MessageItem({
 			>
 				{message.text}
 			</p>
-			{message.proposal && message.status && (
-				<ProposalCard message={message} onAct={onAct} />
-			)}
+			{message.proposal &&
+				message.status &&
+				(message.proposal.kind === "sheet_batch" ? (
+					<SheetBatchCard message={message} onAct={onAct} />
+				) : (
+					<ProposalCard message={message} onAct={onAct} />
+				))}
 		</div>
+	);
+}
+
+function SheetBatchCard({
+	message,
+	onAct,
+}: {
+	message: ChatMessage;
+	onAct: (message: ChatMessage, action: ProposalAction) => void;
+}) {
+	const proposal = message.proposal;
+	const character = useRPGStore((s) =>
+		proposal?.kind === "sheet_batch"
+			? s.characters.find((c) => c.id === proposal.characterId)
+			: undefined,
+	);
+	const review = useMemo(() => {
+		if (!proposal || proposal.kind !== "sheet_batch" || !character) return null;
+		return reviewSheetBatch(snapshotFromCharacter(character), proposal);
+	}, [character, proposal]);
+	if (!proposal || proposal.kind !== "sheet_batch") return null;
+	if (message.status === "ignored" || message.status === "undone") {
+		return (
+			<p className="text-xs text-muted-foreground">
+				{message.status === "undone"
+					? "Desfeito. A ficha voltou ao que era."
+					: "Proposta descartada. Nada foi salvo."}
+			</p>
+		);
+	}
+	const rows = review
+		? [
+				...review.diff.map((row) => ({
+					section: row.section,
+					field: row.field,
+					label: row.label,
+					before: row.before,
+					after: row.after,
+				})),
+				...review.rejections.map((row) => ({
+					section: row.section,
+					field: row.field,
+					label: row.label,
+					reason: row.reason,
+				})),
+			]
+		: [
+				{
+					section: "Ficha",
+					field: "characterId",
+					label: "Ficha",
+					reason:
+						"Esta ficha não está na campanha ativa. Nada pode ser aplicado aqui.",
+				},
+			];
+	const phase =
+		message.status === "applying"
+			? "applying"
+			: message.status === "applied"
+				? "applied"
+				: "ready";
+	return (
+		<SheetBatchReview
+			characterName={proposal.characterName}
+			rows={rows}
+			phase={phase}
+			highlighted={message.highlighted === true && message.status === "applied"}
+			error={message.applyError}
+			onApply={() => onAct(message, "apply")}
+			onCancel={() => onAct(message, "ignore")}
+			onUndo={() => onAct(message, "undo")}
+		/>
 	);
 }
 
@@ -505,7 +726,9 @@ function ProposalCard({
 		(!patchState || patchState.missing > 0 || patchState.rows.length === 0);
 	const count = isPatch
 		? (patchState?.rows.length ?? 0)
-		: describeProposal(proposal as IaMesaNpcProposal).length;
+		: proposal.kind === "npc"
+			? describeProposal(proposal).length
+			: 0;
 
 	return (
 		<div
@@ -535,9 +758,9 @@ function ProposalCard({
 					rows={patchState?.rows ?? []}
 					missing={patchState?.missing ?? 0}
 				/>
-			) : (
+			) : proposal.kind === "npc" ? (
 				<NpcProposalBody proposal={proposal} />
-			)}
+			) : null}
 
 			{message.applyError && (
 				<p

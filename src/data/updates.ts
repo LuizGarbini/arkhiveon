@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.59-edicao-lote-ficha",
+		version: "1.6.59",
+		date: "02/11/2026",
+		title: "Alterar a ficha em lote pelo assistente",
+		description:
+			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra o total e a lista agrupada por seção da ficha, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez. Se um campo for rejeitado, o motivo aparece na própria linha, Aplicar fica desabilitado e o texto colado continua no campo. O contador mostra o limite de tamanho antes do envio.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.58-assistente-claude",
 		version: "1.6.58",
 		date: "02/11/2026",

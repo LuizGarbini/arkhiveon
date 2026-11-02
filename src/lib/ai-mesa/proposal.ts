@@ -4,6 +4,7 @@ import type {
 	IaMesaNpcProposal,
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
+import { sanitizeSheetBatchProposal } from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 import type { Npc } from "../store/types";
 
 export type {
@@ -13,6 +14,7 @@ export type {
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 export {
+	IA_MESA_INPUT_MAX_CHARS,
 	IA_MESA_REFUSAL,
 	isBlockedRequest,
 	parseToolCall,
@@ -27,6 +29,7 @@ export {
 export type ProposalStatus =
 	| "pending"
 	| "confirmed"
+	| "applying"
 	| "applied"
 	| "ignored"
 	| "undone";
@@ -109,6 +112,7 @@ export type IaMesaErrorCode =
 	| "not_allowed"
 	| "unauthorized"
 	| "bad_request"
+	| "input_too_large"
 	| "offline"
 	| "not_deployed"
 	| "model_error";
@@ -151,6 +155,8 @@ export function errorMessage(code: IaMesaErrorCode | string): string {
 			return "Sua sessão expirou. Entre de novo para usar o assistente.";
 		case "bad_request":
 			return "Não entendi o pedido. Escreva uma mensagem e tente de novo.";
+		case "input_too_large":
+			return "Esse texto passa de 20.000 caracteres. Encurte e tente de novo. Nada foi enviado.";
 		case "not_deployed":
 			return "O assistente ainda não foi publicado no servidor desta mesa. Nada foi enviado.";
 		case "offline":
@@ -192,6 +198,9 @@ export function classifyHttpFailure(
 		return { ok: false, code: "unavailable" };
 	}
 	if (status === 404) return { ok: false, code: "not_deployed" };
+	if (status === 413 || code === "input_too_large") {
+		return { ok: false, code: "input_too_large" };
+	}
 	if (status === 400) return { ok: false, code: "bad_request" };
 	return { ok: false, code: "model_error" };
 }
@@ -211,6 +220,9 @@ export function normalizeResponse(data: unknown): IaMesaResult {
 	}
 	const reply = typeof raw.reply === "string" ? raw.reply : "";
 	const p = raw.proposal as Record<string, unknown> | null | undefined;
+	if (p && typeof p === "object" && p.kind === "sheet_batch") {
+		return { ok: true, reply, proposal: sanitizeSheetBatchProposal(p) };
+	}
 	if (p && typeof p === "object" && p.kind === "character_patch") {
 		// Re-saneia no cliente: nunca confia no formato vindo da rede.
 		return { ok: true, reply, proposal: parseCharacterPatch(p) };

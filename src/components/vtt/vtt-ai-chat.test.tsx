@@ -7,12 +7,15 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { snapshotFromCharacter } from "@/lib/ai-mesa/sheet-batch";
 import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
+import { validateSheetBatch } from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 
 const h = vi.hoisted(() => ({
 	state: {
 		activeCampaignId: "rise",
 		characters: [] as unknown[],
+		campaigns: [] as { id: string; myRole?: string }[],
 		updateCharacter: vi.fn(),
 		addNpc: vi.fn(),
 		removeNpc: vi.fn(),
@@ -86,7 +89,9 @@ async function askForPatch(header = /Alterar ficha · 2 mudanças/) {
 }
 
 beforeEach(() => {
+	h.state.activeCampaignId = "rise";
 	h.state.characters = [dante];
+	h.state.campaigns = [];
 	h.state.updateCharacter.mockReset();
 	h.ask.mockReset();
 });
@@ -225,5 +230,179 @@ describe("VTTAiChat: editar ficha existente", () => {
 			).disabled,
 		).toBe(true);
 		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+	});
+});
+
+const batchSheet = {
+	id: "dante-1",
+	characterName: "Dante Diavolo",
+	createdBy: "other",
+	strength: 16,
+	dexterity: 12,
+	health: 30,
+	armorClass: 16,
+	inventoryList: dante.inventoryList,
+};
+
+function batchProposal(
+	changes: { field: string; value: string }[],
+	character: typeof batchSheet = batchSheet,
+) {
+	const proposal = validateSheetBatch(
+		{ characterId: character.id, changes },
+		snapshotFromCharacter(character as never),
+	);
+	if (!proposal) throw new Error("lote inválido no teste");
+	return proposal;
+}
+
+describe("VTTAiChat: edição em lote", () => {
+	async function openPanel() {
+		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
+		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
+	}
+
+	it("lendo um prompt longo mostra o skeleton", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openPanel();
+		const paste = `${"Força 18 Destreza 14 Constituição 16. ".repeat(20)}atualiza a ficha`;
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: paste },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByRole("status", { name: "Lendo o prompt" }),
+		).toBeTruthy();
+		expect(document.querySelector("[data-slot='skeleton']")).toBeTruthy();
+		resolveAsk({ ok: true, reply: "Pronto.", proposal: null });
+		expect(await screen.findByText("Pronto.")).toBeTruthy();
+	});
+
+	it("campo rejeitado desabilita Aplicar e preserva o texto", async () => {
+		h.state.characters = [batchSheet];
+		const proposal = batchProposal([
+			{ field: "strength", value: "18" },
+			{ field: "armorClass", value: "80" },
+		]);
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Encontrei campos que não dá para aplicar.",
+			proposal,
+		});
+		await openPanel();
+		const pasted = "resumo colado da ficha com CA 80";
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: pasted },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByText("CA tem que ficar entre 0 e 50."),
+		).toBeTruthy();
+		expect(
+			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		expect(
+			(
+				screen.getByLabelText(
+					"Mensagem para o assistente",
+				) as HTMLTextAreaElement
+			).value,
+		).toBe(pasted);
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+	});
+
+	it("Aplicar grava uma vez e destaca a linha", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha: FOR 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("heading", { name: "1 alteração" });
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		await waitFor(() =>
+			expect(h.state.updateCharacter).toHaveBeenCalledTimes(1),
+		);
+		const [id, changes] = h.state.updateCharacter.mock.calls[0];
+		expect(id).toBe("dante-1");
+		expect(changes.strength).toBe(18);
+		expect(Object.keys(changes)).toEqual(["strength"]);
+		const row = document.querySelector("[data-field='strength']");
+		expect(row?.getAttribute("data-highlighted")).toBe("true");
+		expect(row?.className).toContain("bg-primary/15");
+	});
+
+	it("Cancelar não grava", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Cancelar" });
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		expect(screen.getByText(/Nada foi salvo/)).toBeTruthy();
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+	});
+
+	it("permissão negada não grava", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "viewer" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Aplicar" });
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		expect(await screen.findByRole("alert")).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toMatch(/Nada foi alterado/);
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+	});
+
+	it("mostra o contador e trava o envio acima do limite", async () => {
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "abc" },
+		});
+		expect(screen.getByText(/3\/20000/)).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "a".repeat(20_001) },
+		});
+		expect(
+			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
+		).toBe(true);
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(h.ask).not.toHaveBeenCalled();
+		expect(
+			(
+				screen.getByLabelText(
+					"Mensagem para o assistente",
+				) as HTMLTextAreaElement
+			).value,
+		).toHaveLength(20_001);
 	});
 });
