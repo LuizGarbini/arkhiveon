@@ -101,9 +101,10 @@ export function describeProposal(proposal: IaMesaNpcProposal): ProposalLine[] {
 }
 
 export type IaMesaErrorCode =
-	| "missing_key"
+	| "unavailable"
 	| "invalid_key"
 	| "rate_limited"
+	| "daily_limit"
 	| "forbidden"
 	| "not_allowed"
 	| "unauthorized"
@@ -112,14 +113,36 @@ export type IaMesaErrorCode =
 	| "not_deployed"
 	| "model_error";
 
+const SAO_PAULO = "America/Sao_Paulo";
+
+/** Aviso do limite. Dia e hora saem de `resets_at`, no fuso America/Sao_Paulo. */
+export function formatDailyLimitNotice(resetsAtIso: string): string {
+	const date = new Date(resetsAtIso);
+	if (Number.isNaN(date.getTime())) return "Limite diário da mesa atingido.";
+	const day = new Intl.DateTimeFormat("pt-BR", {
+		timeZone: SAO_PAULO,
+		weekday: "long",
+		day: "numeric",
+		month: "long",
+	}).format(date);
+	const time = new Intl.DateTimeFormat("pt-BR", {
+		timeZone: SAO_PAULO,
+		hour: "2-digit",
+		minute: "2-digit",
+	}).format(date);
+	return `Limite diário da mesa atingido. Volta ${day} às ${time}.`;
+}
+
 export function errorMessage(code: IaMesaErrorCode | string): string {
 	switch (code) {
-		case "missing_key":
-			return "O assistente ainda não está ligado nesta mesa: falta configurar a chave da IA no servidor. Nada foi enviado à IA.";
+		case "unavailable":
+			return "O assistente não está disponível nesta mesa agora. Nada foi enviado.";
 		case "invalid_key":
 			return "A chave da IA configurada no servidor foi recusada. Peça para o administrador revisar.";
 		case "rate_limited":
 			return "Muitos pedidos seguidos. Espere alguns segundos e tente de novo.";
+		case "daily_limit":
+			return "Limite diário da mesa atingido.";
 		case "forbidden":
 			return "Só o mestre (ou editor) desta campanha pode usar o assistente.";
 		case "not_allowed":
@@ -139,7 +162,39 @@ export function errorMessage(code: IaMesaErrorCode | string): string {
 
 export type IaMesaResult =
 	| { ok: true; reply: string; proposal: IaMesaProposal | null }
-	| { ok: false; code: IaMesaErrorCode };
+	| { ok: false; code: IaMesaErrorCode; resetsAt?: string };
+
+/** Traduz o status HTTP da Edge Function. Não repete corpo, header nem chave. */
+export function classifyHttpFailure(
+	status: number | undefined,
+	body: unknown,
+): IaMesaResult {
+	const record =
+		body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+	const code = typeof record?.code === "string" ? record.code : undefined;
+	const resetsAt =
+		typeof record?.resets_at === "string" ? record.resets_at : undefined;
+	if (status === 401 || code === "unauthorized") {
+		return { ok: false, code: "unauthorized" };
+	}
+	if (status === 403) {
+		return {
+			ok: false,
+			code: code === "not_allowed" ? "not_allowed" : "forbidden",
+		};
+	}
+	if (status === 429 || code === "daily_limit") {
+		return resetsAt
+			? { ok: false, code: "daily_limit", resetsAt }
+			: { ok: false, code: "daily_limit" };
+	}
+	if (status === 503 || code === "unavailable") {
+		return { ok: false, code: "unavailable" };
+	}
+	if (status === 404) return { ok: false, code: "not_deployed" };
+	if (status === 400) return { ok: false, code: "bad_request" };
+	return { ok: false, code: "model_error" };
+}
 
 /** Normaliza a resposta da Edge Function (nunca confia no formato). */
 export function normalizeResponse(data: unknown): IaMesaResult {
@@ -148,7 +203,11 @@ export function normalizeResponse(data: unknown): IaMesaResult {
 	const raw = data as Record<string, unknown>;
 	if (raw.ok !== true) {
 		const code = typeof raw.code === "string" ? raw.code : "model_error";
-		return { ok: false, code: code as IaMesaErrorCode };
+		const resetsAt =
+			typeof raw.resets_at === "string" ? raw.resets_at : undefined;
+		return resetsAt
+			? { ok: false, code: code as IaMesaErrorCode, resetsAt }
+			: { ok: false, code: code as IaMesaErrorCode };
 	}
 	const reply = typeof raw.reply === "string" ? raw.reply : "";
 	const p = raw.proposal as Record<string, unknown> | null | undefined;

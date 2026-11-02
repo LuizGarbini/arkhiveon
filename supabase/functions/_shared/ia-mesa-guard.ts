@@ -232,7 +232,7 @@ export function buildSystemPrompt(
 	].join("\n");
 }
 
-/** Declarações das ferramentas allowlisted, no formato do Gemini (functionDeclarations). */
+/** Declarações das ferramentas allowlisted (schema convertido para a Messages API). */
 export const IA_MESA_TOOL_DECLARATIONS = [
 	{
 		name: "propose_npc",

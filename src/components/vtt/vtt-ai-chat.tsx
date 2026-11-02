@@ -19,6 +19,7 @@ import {
 	useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	applyCharacterPatch,
 	buildCharacterPatchDiff,
@@ -29,6 +30,7 @@ import { askMesaAssistant } from "@/lib/ai-mesa/client";
 import {
 	describeProposal,
 	errorMessage,
+	formatDailyLimitNotice,
 	type IaMesaCharacterPatchProposal,
 	type IaMesaNpcProposal,
 	type IaMesaProposal,
@@ -58,6 +60,12 @@ interface ChatMessage {
 
 const WELCOME =
 	"Oi! Posso propor NPCs novos ou alterações numa ficha desta campanha (atributos, PV, CA, itens e dano de arma). Nada é salvo sem sua confirmação.";
+
+type PanelState =
+	| { kind: "idle" }
+	| { kind: "loading" }
+	| { kind: "error"; text: string }
+	| { kind: "limit"; resetsAt: string };
 
 function nowLabel(): string {
 	return new Date().toLocaleTimeString("pt-BR", {
@@ -96,7 +104,7 @@ export function VTTAiChat({
 }) {
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState("");
-	const [isSending, setIsSending] = useState(false);
+	const [panel, setPanel] = useState<PanelState>({ kind: "idle" });
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{ id: "welcome", role: "assistant", text: WELCOME, time: "" },
 	]);
@@ -112,6 +120,10 @@ export function VTTAiChat({
 		el.style.height = `${el.scrollHeight}px`;
 	}, [draft, open]);
 	const inputId = useId();
+	const limitNoticeId = useId();
+	const limitNotice =
+		panel.kind === "limit" ? formatDailyLimitNotice(panel.resetsAt) : "";
+	const inputLocked = panel.kind === "loading" || panel.kind === "limit";
 
 	const scrollToEnd = () => {
 		requestAnimationFrame(() => {
@@ -122,45 +134,46 @@ export function VTTAiChat({
 
 	const send = async () => {
 		const text = draft.trim();
-		if (!text || isSending) return;
-		const userMessage: ChatMessage = {
-			id: newId(),
-			role: "user",
-			text,
-			time: nowLabel(),
-		};
+		if (!text || panel.kind === "loading" || panel.kind === "limit") return;
 		const history = toHistory(
 			messages.filter((m) => m.id !== "welcome" && !m.isError),
 		);
-		setMessages((prev) => [...prev, userMessage]);
-		setDraft("");
-		setIsSending(true);
+		setPanel({ kind: "loading" });
 		scrollToEnd();
 		const result = await askMesaAssistant({
 			campaignId,
 			message: text,
 			history,
 		});
-		setIsSending(false);
-		setMessages((prev) => [
-			...prev,
-			result.ok
-				? {
-						id: newId(),
-						role: "assistant",
-						text: result.reply,
-						time: nowLabel(),
-						proposal: result.proposal ?? undefined,
-						status: result.proposal ? "pending" : undefined,
-					}
-				: {
-						id: newId(),
-						role: "assistant",
-						text: errorMessage(result.code),
-						time: nowLabel(),
-						isError: true,
-					},
-		]);
+		if (result.ok) {
+			setDraft("");
+			setPanel({ kind: "idle" });
+			setMessages((prev) => [
+				...prev,
+				{
+					id: newId(),
+					role: "user",
+					text,
+					time: nowLabel(),
+				},
+				{
+					id: newId(),
+					role: "assistant",
+					text: result.reply,
+					time: nowLabel(),
+					proposal: result.proposal ?? undefined,
+					status: result.proposal ? "pending" : undefined,
+				},
+			]);
+			scrollToEnd();
+			return;
+		}
+		if (result.code === "daily_limit") {
+			setPanel({ kind: "limit", resetsAt: result.resetsAt ?? "" });
+			scrollToEnd();
+			return;
+		}
+		setPanel({ kind: "error", text: errorMessage(result.code) });
 		scrollToEnd();
 	};
 
@@ -304,13 +317,38 @@ export function VTTAiChat({
 						{messages.map((message) => (
 							<MessageItem key={message.id} message={message} onAct={act} />
 						))}
-						{isSending && (
-							<div className="max-w-[85%] rounded-2xl bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
-								<span className="inline-flex items-center gap-1.5">
-									<Sparkles className="size-3.5 animate-pulse text-primary" />
-									Pensando…
-								</span>
+						{panel.kind === "loading" && (
+							<output
+								aria-label="Carregando resposta"
+								className="block max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2.5"
+							>
+								<Skeleton className="h-3 w-40" />
+								<Skeleton className="h-3 w-56" />
+								<Skeleton className="h-3 w-32" />
+							</output>
+						)}
+						{panel.kind === "error" && (
+							<div
+								role="alert"
+								className="max-w-[85%] space-y-2 rounded-2xl border border-destructive/40 bg-muted px-3.5 py-2.5"
+							>
+								<p className="text-sm">{panel.text}</p>
+								<Button
+									type="button"
+									className="min-h-11"
+									onClick={() => void send()}
+								>
+									Tentar de novo
+								</Button>
 							</div>
+						)}
+						{panel.kind === "limit" && (
+							<output
+								id={limitNoticeId}
+								className="block max-w-[85%] rounded-2xl border border-border/70 bg-muted px-3.5 py-2.5 text-sm"
+							>
+								{limitNotice}
+							</output>
 						)}
 					</div>
 
@@ -331,7 +369,13 @@ export function VTTAiChat({
 								rows={2}
 								maxLength={1200}
 								placeholder="Peça algo para a IA..."
-								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 sm:text-sm"
+								disabled={inputLocked}
+								spellCheck={false}
+								autoComplete="off"
+								aria-describedby={
+									panel.kind === "limit" ? limitNoticeId : undefined
+								}
+								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 disabled:opacity-60 sm:text-sm"
 							/>
 							<div className="flex items-center justify-between gap-2 px-2 pb-2">
 								{sceneName ? (
@@ -347,7 +391,7 @@ export function VTTAiChat({
 									size="icon"
 									className="size-11 rounded-full"
 									aria-label="Enviar"
-									disabled={!draft.trim() || isSending}
+									disabled={!draft.trim() || inputLocked}
 								>
 									<SendHorizontal />
 								</Button>

@@ -1,46 +1,33 @@
-// Assistente da mesa (piloto) — Edge Function.
+// Assistente da mesa (piloto) — Edge Function. Só Claude (Anthropic Messages).
 //
-// Segurança (trava do Chefe):
-// 1. Valida o JWT do usuário (verify_jwt + auth.getUser).
-// 2. Valida que o campaign_id está na allowlist do piloto (tabela
-//    `ia_mesa_pilot_campaigns`, lida com o cliente do usuário).
-// 3. Valida que o usuário é mestre/editor da campaign_id pedida (RLS do próprio
-//    usuário; nunca service role).
-// 4. Só então chama o modelo, com system prompt fixo e ferramentas
-//    allowlisted: `propose_npc`, `read_character` (leitura das fichas DESTA
-//    campanha, com o cliente do usuário/RLS) e `propose_character_patch`.
-//    Sem código, SQL, segredos, env ou outras campanhas.
-// 5. NÃO grava nada no banco. Devolve a proposta (NPC novo ou patch de ficha
-//    existente); o cliente só salva depois de Confirmar → Aplicar.
-//
-// Segredos esperados (Supabase → Edge Functions → Secrets):
-//   GEMINI_API_KEY   (obrigatório; sem ele a função responde code=missing_key)
-//   GEMINI_MODEL     (opcional; padrão gemini-3.5-flash-lite)
+// 1. Valida o JWT com auth.getUser antes de qualquer chamada de modelo.
+// 2. Campanha na allowlist `ia_mesa_pilot_campaigns`; senão 403 not_allowed.
+// 3. Mestre/editor da campanha (RLS do usuário).
+// 4. ANTHROPIC_API_KEY só via Deno.env; ausente → 503 unavailable.
+// 5. Limite diário atômico (service role chama a função; o cliente não).
+// 6. Modelo no servidor: Haiku, ou Sonnet só para edição de ficha.
+// Não grava a proposta. Não loga chave, header nem corpo da Anthropic.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import {
-	buildSystemPrompt,
-	cleanHistory,
-	cleanUserMessage,
-	IA_MESA_REFUSAL,
-	IA_MESA_TOOL_DECLARATIONS,
-	isBlockedRequest,
-	isCampaignId,
-	isIaMesaPilotCampaign,
-	parseToolCall,
-} from "../_shared/ia-mesa-guard.ts";
-import {
 	type CharacterRow,
-	READ_CHARACTER_TOOL,
 	rowItemIds,
 	rowName,
 	summarizeCharacter,
-	toRoster,
 } from "../_shared/ia-mesa-character.ts";
-
-/** Máximo de idas ao modelo (leitura de ficha → proposta). */
-const MAX_MODEL_ROUNDS = 3;
+import { isIaMesaPilotCampaign } from "../_shared/ia-mesa-guard.ts";
+import {
+	loadIaMesaCharacter,
+	loadIaMesaContext,
+	mesaDbFromClient,
+} from "./context.ts";
+import { handleIaMesaTurn, resolveDailyLimit } from "./logic.ts";
+import {
+	callClaudeModel,
+	createOnce,
+	invokeDailyRefund,
+} from "./model-call.ts";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
@@ -61,200 +48,172 @@ serve(async (req) => {
 		const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 		const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 		const authHeader = req.headers.get("Authorization") ?? "";
-
 		const userClient = createClient(supabaseUrl, supabaseAnonKey, {
 			global: { headers: { Authorization: authHeader } },
+			auth: { persistSession: false, autoRefreshToken: false },
 		});
 
 		const {
 			data: { user },
 			error: authError,
 		} = await userClient.auth.getUser();
-		if (authError || !user) {
-			return json({ ok: false, code: "unauthorized" }, 401);
-		}
 
 		const body = await req.json().catch(() => null);
-		const campaignId = body?.campaignId;
-		const message = cleanUserMessage(body?.message);
-		if (!isCampaignId(campaignId) || !message) {
-			return json({ ok: false, code: "bad_request" }, 400);
-		}
-
-		// Piloto: só campanhas em `ia_mesa_pilot_campaigns`. Demais: 403.
-		if (!(await isIaMesaPilotCampaign(userClient, campaignId))) {
-			return json({ ok: false, code: "not_allowed" }, 403);
-		}
-
-		// Escopo: só a campanha pedida, e só se o usuário for mestre/editor dela.
-		const { data: campaign, error: campaignError } = await userClient
-			.from("campaigns")
-			.select("id, name, system, owner_id")
-			.eq("id", campaignId)
-			.maybeSingle();
-		if (campaignError || !campaign) {
-			return json({ ok: false, code: "forbidden" }, 403);
-		}
-		let isStaff = campaign.owner_id === user.id;
-		if (!isStaff) {
-			const { data: membership } = await userClient
-				.from("memberships")
-				.select("role")
-				.eq("campaign_id", campaignId)
-				.eq("user_id", user.id)
-				.maybeSingle();
-			isStaff =
-				membership?.role === "owner" || membership?.role === "editor";
-		}
-		if (!isStaff) {
-			return json({ ok: false, code: "forbidden" }, 403);
-		}
-
-		if (isBlockedRequest(message)) {
-			return json({ ok: true, reply: IA_MESA_REFUSAL, proposal: null });
-		}
-
-		const apiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
-		if (!apiKey) {
-			return json({ ok: false, code: "missing_key" }, 200);
-		}
-		const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
-
-		// Fichas da campanha atual, lidas com o cliente do usuário (RLS). Só
-		// esta campanha; nunca service role.
-		const { data: characterRows } = await userClient
-			.from("characters")
-			.select("id, name, system, data")
-			.eq("campaign_id", campaignId)
-			.order("name", { ascending: true })
-			.limit(40);
-		const rows: CharacterRow[] = Array.isArray(characterRows)
-			? (characterRows as CharacterRow[])
-			: [];
-		const roster = toRoster(rows);
+		const apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 		const scope = {
-			characters: rows.map((row) => ({
-				id: row.id,
-				name: rowName(row),
-				itemIds: rowItemIds(row),
-			})),
+			characters: [] as { id: string; name: string; itemIds: string[] }[],
 		};
+		const rowsById = new Map<string, CharacterRow>();
+		let askerId: string | null = null;
+		let contextRole: "gm" | "player" = "gm";
+		let chargedCampaignId: string | null = null;
+		const refundOnce = createOnce(async () => {
+			if (!chargedCampaignId) return;
+			await refundDaily(supabaseUrl, chargedCampaignId);
+		});
+		const campaignId =
+			body && typeof body === "object" && typeof body.campaignId === "string"
+				? body.campaignId
+				: "";
+		const db = mesaDbFromClient(userClient);
 
-		const history = cleanHistory(body?.history);
-		const contents: Array<Record<string, unknown>> = [
-			...history.map((item) => ({
-				role: item.role === "assistant" ? "model" : "user",
-				parts: [{ text: item.text }],
-			})),
-			{ role: "user", parts: [{ text: message }] },
-		];
-		const systemText = buildSystemPrompt(
+		const result = await handleIaMesaTurn(
 			{
-				name: String(campaign.name ?? "Campanha"),
-				system: String(campaign.system ?? ""),
+				user: authError || !user ? null : { id: user.id },
+				campaignId: body?.campaignId,
+				message: body?.message,
+				history: body?.history,
+				clientModel: body?.model,
+				now: new Date(),
+				apiKey: apiKey || null,
+				dailyLimit: resolveDailyLimit(Deno.env.get("IA_MESA_DAILY_LIMIT")),
 			},
-			roster,
-		);
-
-		let reply = "";
-		let proposal = null;
-		let proposalRejected = false;
-		for (let round = 0; round < MAX_MODEL_ROUNDS; round++) {
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						"x-goog-api-key": apiKey,
-					},
-					body: JSON.stringify({
-						systemInstruction: { parts: [{ text: systemText }] },
-						contents,
-						tools: [{ functionDeclarations: IA_MESA_TOOL_DECLARATIONS }],
-						// allowedFunctionNames só é aceito com mode ANY/VALIDATED (doc da
-						// Gemini API). Em AUTO a API responde 400. As ferramentas
-						// declaradas já são só as da allowlist.
-						toolConfig: { functionCallingConfig: { mode: "AUTO" } },
-						generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-					}),
+			{
+				isAllowed: (campaignId) =>
+					isIaMesaPilotCampaign(userClient, campaignId),
+				isStaff: async (campaignId, userId) => {
+					const { data: campaign, error: campaignError } = await userClient
+						.from("campaigns")
+						.select("id, owner_id")
+						.eq("id", campaignId)
+						.maybeSingle();
+					if (campaignError || !campaign) return false;
+					if (campaign.owner_id === userId) return true;
+					const { data: membership } = await userClient
+						.from("memberships")
+						.select("role")
+						.eq("campaign_id", campaignId)
+						.eq("user_id", userId)
+						.maybeSingle();
+					return membership?.role === "owner" || membership?.role === "editor";
 				},
-			);
-
-			if (!response.ok) {
-				// Loga o corpo do erro da Gemini (sem a chave) para diagnóstico.
-				const errorBody = await response.text().catch(() => "");
-				console.error(
-					"ia-mesa-chat: model error",
-					response.status,
-					`model=${model}`,
-					errorBody.slice(0, 2000),
-				);
-				const code =
-					response.status === 401 || response.status === 403
-						? "invalid_key"
-						: response.status === 429
-							? "rate_limited"
-							: "model_error";
-				return json({ ok: false, code }, 200);
-			}
-
-			const payload = await response.json();
-			const modelContent = payload?.candidates?.[0]?.content;
-			const parts: Array<Record<string, unknown>> = modelContent?.parts ?? [];
-			const readResponses: Array<Record<string, unknown>> = [];
-			let calledProposalTool = false;
-			for (const part of parts) {
-				if (typeof part.text === "string" && !part.thought)
-					reply += part.text;
-				const call = part.functionCall as
-					| { name?: unknown; args?: unknown }
-					| undefined;
-				if (!call) continue;
-				if (call.name === READ_CHARACTER_TOOL) {
-					const id = (call.args as { characterId?: unknown } | undefined)
-						?.characterId;
-					const row = rows.find((r) => r.id === id);
-					readResponses.push({
-						functionResponse: {
-							name: READ_CHARACTER_TOOL,
-							response: row
-								? { character: summarizeCharacter(row) }
-								: { error: "Personagem não encontrado nesta campanha." },
-						},
+				consume: async (id, limit) => {
+					const outcome = await consumeDaily(supabaseUrl, id, limit);
+					if (outcome === "allowed") chargedCampaignId = id;
+					return outcome;
+				},
+				loadContext: async () => {
+					const loaded = await loadIaMesaContext(db, {
+						campaignId,
+						userId: user?.id ?? "",
+						role: "gm",
 					});
-					continue;
-				}
-				calledProposalTool = true;
-				if (!proposal) {
-					proposal = parseToolCall(call.name, call.args, scope);
-					if (!proposal) proposalRejected = true;
-				}
-			}
-
-			if (proposal || calledProposalTool || readResponses.length === 0) break;
-			// Devolve a leitura ao modelo (mantém as partes originais, inclusive
-			// assinaturas de raciocínio) e pede a próxima etapa.
-			contents.push({ role: "model", parts });
-			contents.push({ role: "user", parts: readResponses });
-		}
-
-		reply = cleanUserMessage(reply);
-		if (!proposal && proposalRejected) reply = "";
-		if (!reply) {
-			reply = proposal
-				? "Pronto, montei uma proposta. Revise e confirme para salvar."
-				: proposalRejected
-					? "Não consegui montar uma alteração válida para essa ficha. Nada foi alterado."
-					: "Não consegui montar uma proposta. Diga qual personagem e o que mudar, ou descreva o NPC que você quer criar.";
-		}
-
-		return json({ ok: true, reply, proposal });
+					rowsById.clear();
+					scope.characters = [];
+					askerId = loaded.asker?.id ?? null;
+					if (loaded.asker) {
+						rowsById.set(loaded.asker.id, loaded.asker);
+						scope.characters.push({
+							id: loaded.asker.id,
+							name: rowName(loaded.asker),
+							itemIds: rowItemIds(loaded.asker),
+						});
+					}
+					contextRole = loaded.context.role;
+					return loaded.context;
+				},
+				scope,
+				lookupCharacter: async (id) => {
+					if (contextRole === "player" && id !== askerId) {
+						return { error: "Personagem não disponível." };
+					}
+					let row = rowsById.get(id);
+					if (!row) {
+						const loaded = await loadIaMesaCharacter(db, {
+							campaignId,
+							characterId: id,
+						});
+						if (loaded) {
+							row = loaded;
+							rowsById.set(row.id, row);
+							scope.characters.push({
+								id: row.id,
+								name: rowName(row),
+								itemIds: rowItemIds(row),
+							});
+						}
+					}
+					return row
+						? { character: summarizeCharacter(row) }
+						: { error: "Personagem não encontrado nesta campanha." };
+				},
+				callModel: (request) =>
+					callClaudeModel({
+						apiKey,
+						request,
+						onFailure: refundOnce,
+					}),
+			},
+		);
+		return json(result.body, result.status);
 	} catch (error) {
-		console.error("ia-mesa-chat: unexpected", error);
+		console.error(
+			"ia-mesa-chat: unexpected",
+			error instanceof Error ? error.name : "error",
+		);
 		return json({ ok: false, code: "model_error" }, 500);
 	}
 });
+
+async function consumeDaily(
+	supabaseUrl: string,
+	campaignId: string,
+	limit: number,
+): Promise<"allowed" | "limited" | "error"> {
+	const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+	if (!serviceKey) return "error";
+	const admin = createClient(supabaseUrl, serviceKey, {
+		auth: { persistSession: false, autoRefreshToken: false },
+	});
+	const { data, error } = await admin.rpc("ia_mesa_consume_daily_request", {
+		p_campaign_id: campaignId,
+		p_limit: limit,
+	});
+	if (error) {
+		console.error("ia-mesa-chat: daily usage failed");
+		return "error";
+	}
+	return data === true ? "allowed" : "limited";
+}
+
+async function refundDaily(
+	supabaseUrl: string,
+	campaignId: string,
+): Promise<void> {
+	const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+	if (!serviceKey) {
+		console.error("ia-mesa-chat: refund skipped");
+		return;
+	}
+	try {
+		const admin = createClient(supabaseUrl, serviceKey, {
+			auth: { persistSession: false, autoRefreshToken: false },
+		});
+		await invokeDailyRefund(admin, campaignId);
+	} catch {
+		console.error("ia-mesa-chat: refund failed");
+	}
+}
 
 function json(body: Record<string, unknown>, status = 200): Response {
 	return new Response(JSON.stringify(body), {
