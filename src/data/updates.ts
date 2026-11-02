@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.59-edicao-lote-ficha",
-		version: "1.6.59",
+		id: "v1.6.60-edicao-lote-ficha",
+		version: "1.6.60",
 		date: "02/11/2026",
 		title: "Alterar a ficha em lote pelo assistente",
 		description:
