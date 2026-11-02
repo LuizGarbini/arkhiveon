@@ -388,8 +388,10 @@ export function clampGridSize(value: number): number {
  * desenha o mesmo grid). Até 2 casas decimais.
  */
 export function normalizeGridOffset(value: number, gridSize: number): number {
-	if (!Number.isFinite(value) || gridSize <= 0) return 0;
+	if (!Number.isFinite(value) || !Number.isFinite(gridSize) || gridSize <= 0)
+		return 0;
 	const wrapped = roundGrid(((value % gridSize) + gridSize) % gridSize);
+	// Mesma faixa do CHECK da 0058: 0 <= offset < célula.
 	return wrapped >= gridSize ? 0 : wrapped;
 }
 

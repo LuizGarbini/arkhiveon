@@ -25,6 +25,8 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 /** Espera depois do último passo do slider antes de gravar. */
 const GRID_SIZE_SAVE_DEBOUNCE_MS = 300;
+/** Texto de ajuda do Field para o par de deslocamento. */
+const OFFSET_HINT = "Alinha o grid ao desenho do mapa";
 
 const PRESET_COLORS = [
 	"#ffffff",
@@ -307,9 +309,10 @@ export function VTTGridSettings({
 				>
 					<OffsetField
 						id={offsetXId}
-						label="Offset X"
-						decreaseLabel="Diminuir offset X"
-						increaseLabel="Aumentar offset X"
+						label="Deslocamento X"
+						hint={OFFSET_HINT}
+						decreaseLabel="Diminuir deslocamento X"
+						increaseLabel="Aumentar deslocamento X"
 						disabled={savingSize}
 						value={offsetXDraft ?? String(gridOffsetX)}
 						onChange={setOffsetXDraft}
@@ -321,9 +324,10 @@ export function VTTGridSettings({
 					/>
 					<OffsetField
 						id={offsetYId}
-						label="Offset Y"
-						decreaseLabel="Diminuir offset Y"
-						increaseLabel="Aumentar offset Y"
+						label="Deslocamento Y"
+						hint={OFFSET_HINT}
+						decreaseLabel="Diminuir deslocamento Y"
+						increaseLabel="Aumentar deslocamento Y"
 						disabled={savingSize}
 						value={offsetYDraft ?? String(gridOffsetY)}
 						onChange={setOffsetYDraft}
@@ -535,6 +539,7 @@ export function VTTGridSettings({
 function OffsetField({
 	id,
 	label,
+	hint,
 	decreaseLabel,
 	increaseLabel,
 	disabled,
@@ -546,6 +551,7 @@ function OffsetField({
 }: {
 	id: string;
 	label: string;
+	hint: string;
 	decreaseLabel: string;
 	increaseLabel: string;
 	disabled: boolean;
@@ -556,7 +562,7 @@ function OffsetField({
 	onNudge: (delta: number) => void;
 }) {
 	return (
-		<Field label={label} htmlFor={id}>
+		<Field label={label} htmlFor={id} hint={hint}>
 			<div className="flex items-center gap-1.5">
 				<Button
 					type="button"

@@ -1,5 +1,6 @@
 -- ROLLBACK (não aplicar nesta fatia; só o Luiz, no Supabase local):
 -- drop function if exists public.scale_scene_geometry(uuid, double precision);
+-- alter table public.vtt_scenes drop constraint if exists vtt_scenes_grid_offset_range;
 -- alter table public.vtt_scenes drop constraint if exists vtt_scenes_grid_size_range;
 -- alter table public.vtt_scenes drop constraint if exists vtt_scenes_map_scale_range;
 -- alter table public.vtt_scenes drop column if exists grid_offset_x;
@@ -53,6 +54,21 @@ alter table public.vtt_scenes
 alter table public.vtt_scenes
 	add constraint vtt_scenes_grid_size_range
 	check (grid_size >= 10 and grid_size <= 400);
+
+-- grid_size permanece not null (e o check acima exige 10–400), então a
+-- comparação não trata nulo. Mesma faixa do normalizeGridOffset no front:
+-- 0 <= offset < célula.
+alter table public.vtt_scenes
+	drop constraint if exists vtt_scenes_grid_offset_range;
+
+alter table public.vtt_scenes
+	add constraint vtt_scenes_grid_offset_range
+	check (
+		grid_offset_x >= 0
+		and grid_offset_x < grid_size
+		and grid_offset_y >= 0
+		and grid_offset_y < grid_size
+	);
 
 create or replace function public.scale_scene_geometry(
 	p_scene_id uuid,

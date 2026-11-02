@@ -223,7 +223,7 @@ describe("VTTGridSettings — offset", () => {
 	it("jogador não vê o painel", () => {
 		useVTTStore.setState({ isGM: false });
 		render(<VTTGridSettings onUpdateSceneSettings={vi.fn()} />);
-		expect(screen.queryByLabelText("Offset X")).toBeNull();
+		expect(screen.queryByLabelText("Deslocamento X")).toBeNull();
 		expect(screen.queryByRole("region", { name: "Ajuste do grid" })).toBeNull();
 	});
 
@@ -233,18 +233,22 @@ describe("VTTGridSettings — offset", () => {
 			scenes: [{ ...scene, gridOffsetX: 12, gridOffsetY: 7 }],
 		});
 		render(<VTTGridSettings onUpdateSceneSettings={save} />);
-		const input = screen.getByLabelText("Offset X");
+		const input = screen.getByLabelText("Deslocamento X");
 		expect((input as HTMLInputElement).value).toBe("12");
-		expect((screen.getByLabelText("Offset Y") as HTMLInputElement).value).toBe(
-			"7",
-		);
+		expect(
+			(screen.getByLabelText("Deslocamento Y") as HTMLInputElement).value,
+		).toBe("7");
+		expect(
+			screen.getAllByText("Alinha o grid ao desenho do mapa"),
+		).toHaveLength(2);
+		expect(screen.queryByText("Velocidade de Movimento (metros)")).toBeNull();
 		input.focus();
 		const event = new KeyboardEvent("keydown", { key: "g", bubbles: true });
 		Object.defineProperty(event, "target", { value: input });
 		expect(isVttShortcutBlocked(event)).toBe(true);
 		await act(async () => {
 			fireEvent.click(
-				screen.getByRole("button", { name: "Aumentar offset X" }),
+				screen.getByRole("button", { name: "Aumentar deslocamento X" }),
 			);
 		});
 		expect(save).toHaveBeenCalledWith({ gridOffsetX: 13 });
@@ -255,7 +259,7 @@ describe("VTTGridSettings — offset", () => {
 		render(<VTTGridSettings onUpdateSceneSettings={save} />);
 		await act(async () => {
 			fireEvent.click(
-				screen.getByRole("button", { name: "Diminuir offset X" }),
+				screen.getByRole("button", { name: "Diminuir deslocamento X" }),
 			);
 		});
 		expect(save).toHaveBeenCalledWith({ gridOffsetX: 69 });

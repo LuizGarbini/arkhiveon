@@ -4,6 +4,7 @@ import {
 	findFreeCell,
 	flatHexCenters,
 	gridSizeFromCellCount,
+	normalizeGridOffset,
 	type OccupiedFootprint,
 	pointyHexCenters,
 	rulerTickPoints,
@@ -265,6 +266,24 @@ describe("centros de hex com origem", () => {
 					Math.abs(c.x - origin.x) < 1e-6 && Math.abs(c.y - origin.y) < 1e-6,
 			),
 		).toBe(true);
+	});
+});
+
+describe("normalizeGridOffset", () => {
+	it("fica em 0 <= offset < célula, como o CHECK da 0058", () => {
+		const gridSize = 70;
+		const samples = [-1, 0, 12, 69.999, 70, 80, 140, -0.01, Number.NaN];
+		for (const value of samples) {
+			const offset = normalizeGridOffset(value, gridSize);
+			expect(offset).toBeGreaterThanOrEqual(0);
+			expect(offset).toBeLessThan(gridSize);
+		}
+		expect(normalizeGridOffset(80, gridSize)).toBe(10);
+		expect(normalizeGridOffset(-1, gridSize)).toBe(69);
+		expect(normalizeGridOffset(gridSize, gridSize)).toBe(0);
+		expect(normalizeGridOffset(12.345, 50)).toBe(12.35);
+		expect(normalizeGridOffset(3, Number.NaN)).toBe(0);
+		expect(normalizeGridOffset(3, 0)).toBe(0);
 	});
 });
 

@@ -55,6 +55,10 @@ export const vttScenes = pgTable(
 			"vtt_scenes_map_scale_range",
 			sql`${table.mapScale} > 0 and ${table.mapScale} <= 8`,
 		),
+		check(
+			"vtt_scenes_grid_offset_range",
+			sql`${table.gridOffsetX} >= 0 and ${table.gridOffsetX} < ${table.gridSize} and ${table.gridOffsetY} >= 0 and ${table.gridOffsetY} < ${table.gridSize}`,
+		),
 	],
 );
 

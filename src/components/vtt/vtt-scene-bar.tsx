@@ -233,53 +233,70 @@ export function VTTSceneBar({
 						)}
 					</div>
 				</div>
-				<div className="flex h-14 items-center gap-2 border-t border-border/50 px-3 sm:px-5">
-					<span className="hidden text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:block">
-						Cenas
-					</span>
-					<nav
-						ref={sceneNavRef}
-						aria-label="Cenas da mesa"
-						className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
-					>
-						{scenes
-							.filter((scene) => isGM || scene.isActive)
-							.map((scene) => (
-								<button
-									type="button"
-									key={scene.id}
-									data-scene-id={scene.id}
-									onClick={() => setActiveSceneId(scene.id)}
-									aria-pressed={scene.id === activeSceneId}
-									className={cn(
-										"flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
-										scene.id === activeSceneId
-											? "border-primary/40 bg-primary/10 text-foreground"
-											: "border-transparent text-muted-foreground hover:bg-accent",
-									)}
-								>
-									<Compass className="size-4 shrink-0" />
-									<span className="max-w-36 truncate">{scene.name}</span>
-									<span
+				<div className="grid h-14 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-border/50 px-3 sm:px-5">
+					<div className="flex min-w-0 items-center gap-2">
+						<span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:block">
+							Cenas
+						</span>
+						<nav
+							ref={sceneNavRef}
+							aria-label="Cenas da mesa"
+							className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+						>
+							{scenes
+								.filter((scene) => isGM || scene.isActive)
+								.map((scene) => (
+									<button
+										type="button"
+										key={scene.id}
+										data-scene-id={scene.id}
+										onClick={() => setActiveSceneId(scene.id)}
+										aria-pressed={scene.id === activeSceneId}
 										className={cn(
-											"shrink-0 whitespace-nowrap rounded-md px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-1",
-											scene.isActive
-												? "bg-primary/15 text-primary"
-												: "bg-muted text-muted-foreground",
+											"flex h-11 min-w-[92px] flex-1 basis-0 items-center gap-1.5 overflow-hidden rounded-xl border px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] sm:h-auto sm:min-h-11 sm:w-auto sm:min-w-0 sm:flex-none sm:shrink-0 sm:basis-auto sm:gap-2 sm:overflow-visible sm:px-3",
+											scene.id === activeSceneId
+												? "border-primary/40 bg-primary/10 text-foreground"
+												: "border-transparent text-muted-foreground [@media(hover:hover)]:hover:bg-accent",
 										)}
 									>
-										{scene.isActive ? "Em jogo" : "Preparação"}
-									</span>
-								</button>
-							))}
-						{scenes.length === 0 && (
-							<span className="text-xs text-muted-foreground">
-								Sua história começa com uma cena
-							</span>
-						)}
-					</nav>
+										<Compass className="size-4 shrink-0" />
+										<span className="flex min-w-0 flex-col items-start leading-tight sm:block sm:max-w-36">
+											<span className="w-full truncate">{scene.name}</span>
+											<span
+												className={cn(
+													"w-full truncate text-[10px] sm:hidden",
+													scene.isActive
+														? "text-primary"
+														: "text-muted-foreground",
+												)}
+											>
+												{scene.isActive ? "Em jogo" : "Preparação"}
+											</span>
+										</span>
+										<span
+											className={cn(
+												"hidden shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] sm:inline",
+												scene.isActive
+													? "bg-primary/15 text-primary"
+													: "bg-muted text-muted-foreground",
+											)}
+										>
+											{scene.isActive ? "Em jogo" : "Preparação"}
+										</span>
+									</button>
+								))}
+							{scenes.length === 0 && (
+								<span className="truncate text-xs text-muted-foreground">
+									Sua história começa com uma cena
+								</span>
+							)}
+						</nav>
+					</div>
 					{isGM && (
-						<>
+						<div
+							data-scene-actions
+							className="flex shrink-0 items-center gap-2"
+						>
 							{activeScene && !activeScene.isActive && (
 								<Button
 									variant="outline"
@@ -334,7 +351,7 @@ export function VTTSceneBar({
 								<Plus className="size-4" />
 								<span className="hidden sm:inline">Nova cena</span>
 							</Button>
-						</>
+						</div>
 					)}
 				</div>
 				{error && !isCreateModalOpen && (

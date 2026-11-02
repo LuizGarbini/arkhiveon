@@ -11,6 +11,7 @@
 -- O owner grava grid_offset e chama a RPC (tokens e paredes escalam).
 -- O jogador não altera grid_offset (RLS, 0 linhas) e a RPC levanta 42501.
 -- anon não tem EXECUTE.
+-- Offset igual à célula ou negativo viola vtt_scenes_grid_offset_range (23514).
 
 begin;
 
@@ -265,6 +266,55 @@ begin
 		raise exception 'falhou 6: anon mudou a escala para %', v_scale;
 	end if;
 	raise notice 'OK 6: anon sem EXECUTE e a chamada leva 42501';
+end $$;
+
+-- 7. Offset fora de [0, grid_size) viola o CHECK e não grava.
+do $$
+declare
+	v_size double precision;
+	v_x double precision;
+	v_y double precision;
+	v_result text;
+	v_attempt text;
+begin
+	v_result := pg_temp.as_user(
+		'00000000-0000-0000-0000-0000000000a1',
+		$q$update public.vtt_scenes
+			set grid_size = 50
+			where id = '40000000-0000-0000-0000-0000000000a1'$q$
+	);
+	if v_result is distinct from 'permitido' then
+		raise exception 'falhou 7: owner não ajustou a célula %', v_result;
+	end if;
+
+	foreach v_attempt in array array[
+		'grid_offset_x = 50',
+		'grid_offset_x = -0.01',
+		'grid_offset_y = 50',
+		'grid_offset_y = -1'
+	]
+	loop
+		v_result := pg_temp.as_user(
+			'00000000-0000-0000-0000-0000000000a1',
+			format(
+				'update public.vtt_scenes set %s where id = %L',
+				v_attempt,
+				'40000000-0000-0000-0000-0000000000a1'
+			)
+		);
+		if v_result not like 'negado (23514:%vtt_scenes_grid_offset_range%' then
+			raise exception 'falhou 7: % devolveu %', v_attempt, v_result;
+		end if;
+	end loop;
+
+	select grid_size, grid_offset_x, grid_offset_y
+	into v_size, v_x, v_y
+	from public.vtt_scenes
+	where id = '40000000-0000-0000-0000-0000000000a1';
+	if v_size is distinct from 50 or v_x is distinct from 12 or v_y is distinct from 7 then
+		raise exception 'falhou 7: cena mudou para célula % offset % / %', v_size, v_x, v_y;
+	end if;
+	raise notice 'OK 7: offset igual à célula ou negativo viola o CHECK';
 end $$;
 
 do $$
