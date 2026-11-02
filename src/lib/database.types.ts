@@ -1592,6 +1592,10 @@ export type Database = {
 				Returns: string;
 			};
 			publish_scene: { Args: { p_scene_id: string }; Returns: string };
+			scale_scene_geometry: {
+				Args: { p_factor: number; p_scene_id: string };
+				Returns: undefined;
+			};
 			roll_dice: {
 				Args: {
 					p_campaign_id: string;
