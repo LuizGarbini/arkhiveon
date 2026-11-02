@@ -204,9 +204,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	updateFactionReputation: (factionId, campaignId, status) => {
-		if (
-			!denyUnlessWorldStaff(get, set, "Sem permissão para editar reputação.")
-		) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para editar reputação.")) {
 			return;
 		}
 		const original = get().factionReputations;
@@ -254,9 +252,7 @@ export const createWorldbuildingSlice: StateCreator<
 			});
 			return null;
 		}
-		if (
-			!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")
-		) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return null;
 		}
 
@@ -316,9 +312,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	updateWorldNews: (id, news) => {
-		if (
-			!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")
-		) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return;
 		}
 		const ctx = activeWorldContext(get);
@@ -350,9 +344,7 @@ export const createWorldbuildingSlice: StateCreator<
 	},
 
 	removeWorldNews: (id) => {
-		if (
-			!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")
-		) {
+		if (!denyUnlessWorldStaff(get, set, "Sem permissão para gerenciar o mural.")) {
 			return;
 		}
 		const originalNews = get().worldNews;
