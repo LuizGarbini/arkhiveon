@@ -1,5 +1,6 @@
 import { Maximize, Minus, Plus, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ZOOM_ABOVE_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
 import type { VTTDiagonalRule } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -60,7 +61,7 @@ export function VTTZoomControls() {
 							</span>
 						</output>
 					)}
-					<fieldset className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none">
+					<fieldset className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-border/70 bg-card p-1 shadow-lg select-none">
 						<legend className="sr-only">Regra de diagonal</legend>
 						{DIAGONAL_RULES.map((rule) => (
 							<button
@@ -85,11 +86,9 @@ export function VTTZoomControls() {
 				<div
 					data-slot="vtt-zoom-controls"
 					className={cn(
-						"absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none",
+						"absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card p-1 shadow-lg select-none",
 						gridBarOpen &&
-							(gridMoreOpen
-								? "max-sm:bottom-[calc(env(safe-area-inset-bottom)+28rem)]"
-								: "max-sm:bottom-[calc(env(safe-area-inset-bottom)+10rem)]"),
+							ZOOM_ABOVE_GRID_BAR_CLASS[gridMoreOpen ? "open" : "closed"],
 					)}
 				>
 					<button

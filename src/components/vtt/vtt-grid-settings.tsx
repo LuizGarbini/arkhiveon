@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { GRID_BAR_MOBILE_CLASS } from "@/lib/vtt/grid-bar-layout";
 import {
 	clampGridSize,
 	DEFAULT_GRID_SCALE_DISTANCE,
@@ -122,6 +123,8 @@ export function VTTGridSettings({
 				// 390 px: barra de ~130 px só com a célula; o resto em "Mais ajustes".
 				// O zoom sobe para cima dela (vtt-zoom-controls), nunca fica coberto.
 				"inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] p-2.5",
+				"max-sm:flex max-sm:flex-col max-sm:overflow-hidden",
+				GRID_BAR_MOBILE_CLASS[gridMoreOpen ? "open" : "closed"],
 				"sm:inset-x-auto sm:bottom-auto sm:left-20 sm:top-32 sm:w-80 sm:max-h-[calc(100dvh-13rem)] sm:overflow-y-auto sm:p-4 sm:space-y-3.5 sm:zoom-in-95",
 			)}
 		>
@@ -220,8 +223,9 @@ export function VTTGridSettings({
 					id={gridSizeHintId}
 					aria-live="polite"
 					className={cn(
-						"truncate text-[11px] text-muted-foreground sm:block",
-						!savingSize && "hidden",
+						// Linha reservada (2 linhas) e quebra de texto: "Salvando…" não
+						// muda a altura da barra e o aviso de grid livre nunca é cortado.
+						"min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground",
 					)}
 				>
 					{savingSize
@@ -237,7 +241,7 @@ export function VTTGridSettings({
 				className={cn(
 					"space-y-3.5",
 					gridMoreOpen
-						? "mt-2.5 h-64 overflow-y-auto border-t border-border/70 pt-2.5"
+						? "mt-2.5 min-h-0 flex-1 overflow-y-auto border-t border-border/70 pt-2.5"
 						: "hidden",
 					"sm:mt-0 sm:block sm:h-auto sm:overflow-visible sm:border-0 sm:pt-0",
 				)}
