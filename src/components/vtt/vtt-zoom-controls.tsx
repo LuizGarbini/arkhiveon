@@ -18,6 +18,9 @@ export function VTTZoomControls() {
 	const scenes = useVTTStore((s) => s.scenes);
 	const activeSceneId = useVTTStore((s) => s.activeSceneId);
 	const scene = scenes.find((s) => s.id === activeSceneId);
+	// 390 px: com a barra do grid aberta, o zoom sobe para ficar acima dela.
+	const gridBarOpen = useVTTStore((s) => s.isGM && s.showGridSettings);
+	const gridMoreOpen = useVTTStore((s) => s.gridMoreOpen);
 	const zoom = (scale: number) => {
 		const x = window.innerWidth / 2;
 		const y = window.innerHeight / 2;
@@ -79,7 +82,16 @@ export function VTTZoomControls() {
 				</div>
 			)}
 			{scene && (
-				<div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none">
+				<div
+					data-slot="vtt-zoom-controls"
+					className={cn(
+						"absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur-md select-none",
+						gridBarOpen &&
+							(gridMoreOpen
+								? "max-sm:bottom-[calc(env(safe-area-inset-bottom)+28rem)]"
+								: "max-sm:bottom-[calc(env(safe-area-inset-bottom)+10rem)]"),
+					)}
+				>
 					<button
 						type="button"
 						className={button}

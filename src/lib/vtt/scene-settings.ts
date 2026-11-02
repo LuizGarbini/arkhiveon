@@ -30,3 +30,14 @@ export function previousSceneSettings(
 	}
 	return prev;
 }
+
+/**
+ * Resultado do update com `.select("id")`. A RLS que bloqueia o update não
+ * dá erro: devolve 0 linhas. Por isso 0 linhas também conta como falha.
+ */
+export function sceneSaveSucceeded(result: {
+	data: { id: string }[] | null;
+	error: unknown;
+}): boolean {
+	return !result.error && (result.data?.length ?? 0) > 0;
+}
