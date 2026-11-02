@@ -10,25 +10,24 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
-import { isIaMesaPilotCampaign } from "../_shared/ia-mesa-guard.ts";
 import {
 	type CharacterRow,
 	rowItemIds,
 	rowName,
 	summarizeCharacter,
 } from "../_shared/ia-mesa-character.ts";
+import { isIaMesaPilotCampaign } from "../_shared/ia-mesa-guard.ts";
 import {
-	ANTHROPIC_MESSAGES_URL,
-	ANTHROPIC_VERSION,
-	describeCacheUsage,
-	fogShapesFromPaths,
-	handleIaMesaTurn,
-	type MesaContextToken,
-	openModelAbort,
-	pickAskerCharacter,
-	readCacheUsage,
-	resolveDailyLimit,
-} from "./logic.ts";
+	loadIaMesaCharacter,
+	loadIaMesaContext,
+	mesaDbFromClient,
+} from "./context.ts";
+import { handleIaMesaTurn, resolveDailyLimit } from "./logic.ts";
+import {
+	callClaudeModel,
+	createOnce,
+	invokeDailyRefund,
+} from "./model-call.ts";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
@@ -67,6 +66,16 @@ serve(async (req) => {
 		const rowsById = new Map<string, CharacterRow>();
 		let askerId: string | null = null;
 		let contextRole: "gm" | "player" = "gm";
+		let chargedCampaignId: string | null = null;
+		const refundOnce = createOnce(async () => {
+			if (!chargedCampaignId) return;
+			await refundDaily(supabaseUrl, chargedCampaignId);
+		});
+		const campaignId =
+			body && typeof body === "object" && typeof body.campaignId === "string"
+				? body.campaignId
+				: "";
+		const db = mesaDbFromClient(userClient);
 
 		const result = await handleIaMesaTurn(
 			{
@@ -96,91 +105,64 @@ serve(async (req) => {
 						.eq("campaign_id", campaignId)
 						.eq("user_id", userId)
 						.maybeSingle();
-					return (
-						membership?.role === "owner" || membership?.role === "editor"
-					);
+					return membership?.role === "owner" || membership?.role === "editor";
 				},
-				consume: (campaignId, limit) =>
-					consumeDaily(supabaseUrl, campaignId, limit),
+				consume: async (id, limit) => {
+					const outcome = await consumeDaily(supabaseUrl, id, limit);
+					if (outcome === "allowed") chargedCampaignId = id;
+					return outcome;
+				},
 				loadContext: async () => {
-					const userId = user?.id ?? "";
-					const { data: characterRows } = await userClient
-						.from("characters")
-						.select("id, name, system, data, user_id, created_by")
-						.eq("campaign_id", body?.campaignId)
-						.limit(40);
-					const rows = Array.isArray(characterRows) ? characterRows : [];
+					const loaded = await loadIaMesaContext(db, {
+						campaignId,
+						userId: user?.id ?? "",
+						role: "gm",
+					});
 					rowsById.clear();
 					scope.characters = [];
-					for (const row of rows) {
-						if (!row || typeof row !== "object" || typeof row.id !== "string") {
-							continue;
-						}
-						const character = row as CharacterRow;
-						rowsById.set(character.id, character);
+					askerId = loaded.asker?.id ?? null;
+					if (loaded.asker) {
+						rowsById.set(loaded.asker.id, loaded.asker);
 						scope.characters.push({
-							id: character.id,
-							name: rowName(character),
-							itemIds: rowItemIds(character),
+							id: loaded.asker.id,
+							name: rowName(loaded.asker),
+							itemIds: rowItemIds(loaded.asker),
 						});
 					}
-					const asker = pickAskerCharacter(rows, userId);
-					askerId =
-						asker && typeof asker.id === "string" ? asker.id : null;
-					const sheetText = askerId
-						? JSON.stringify(summarizeCharacter(rowsById.get(askerId) as CharacterRow))
-						: "";
-
-					const { data: sceneRow } = await userClient
-						.from("vtt_scenes")
-						.select("id, name, fog_enabled")
-						.eq("campaign_id", body?.campaignId)
-						.eq("is_active", true)
-						.maybeSingle();
-					let sceneName = "Sem cena ativa";
-					let fogEnabled = false;
-					let tokens: MesaContextToken[] = [];
-					let fog = fogShapesFromPaths([]);
-					if (sceneRow && typeof sceneRow.id === "string") {
-						sceneName =
-							typeof sceneRow.name === "string" && sceneRow.name.trim()
-								? sceneRow.name
-								: sceneName;
-						fogEnabled = sceneRow.fog_enabled === true;
-						const { data: tokenRows } = await userClient
-							.from("vtt_tokens")
-							.select("name, layer, x, y, is_hidden, character_id")
-							.eq("scene_id", sceneRow.id);
-						tokens = mapTokens(tokenRows);
-						const { data: fogRow } = await userClient
-							.from("vtt_fog_states")
-							.select("revealed_paths")
-							.eq("scene_id", sceneRow.id)
-							.maybeSingle();
-						fog = fogShapesFromPaths(fogRow?.revealed_paths);
-					}
-					contextRole = "gm";
-					return {
-						role: contextRole,
-						sheetText,
-						sceneName,
-						gmNotes: "",
-						fogEnabled,
-						tokens,
-						fog,
-					};
+					contextRole = loaded.context.role;
+					return loaded.context;
 				},
 				scope,
 				lookupCharacter: async (id) => {
 					if (contextRole === "player" && id !== askerId) {
 						return { error: "Personagem não disponível." };
 					}
-					const row = rowsById.get(id);
+					let row = rowsById.get(id);
+					if (!row) {
+						const loaded = await loadIaMesaCharacter(db, {
+							campaignId,
+							characterId: id,
+						});
+						if (loaded) {
+							row = loaded;
+							rowsById.set(row.id, row);
+							scope.characters.push({
+								id: row.id,
+								name: rowName(row),
+								itemIds: rowItemIds(row),
+							});
+						}
+					}
 					return row
 						? { character: summarizeCharacter(row) }
 						: { error: "Personagem não encontrado nesta campanha." };
 				},
-				callModel: (request) => callClaude(apiKey, request),
+				callModel: (request) =>
+					callClaudeModel({
+						apiKey,
+						request,
+						onFailure: refundOnce,
+					}),
 			},
 		);
 		return json(result.body, result.status);
@@ -192,28 +174,6 @@ serve(async (req) => {
 		return json({ ok: false, code: "model_error" }, 500);
 	}
 });
-
-function mapTokens(value: unknown): MesaContextToken[] {
-	if (!Array.isArray(value)) return [];
-	const tokens: MesaContextToken[] = [];
-	for (const item of value) {
-		if (!item || typeof item !== "object") continue;
-		const raw = item as Record<string, unknown>;
-		const layer =
-			raw.layer === "gm" || raw.layer === "map" || raw.layer === "token"
-				? raw.layer
-				: "token";
-		tokens.push({
-			name: typeof raw.name === "string" ? raw.name : "Token",
-			layer,
-			x: typeof raw.x === "number" ? raw.x : 0,
-			y: typeof raw.y === "number" ? raw.y : 0,
-			hidden: raw.is_hidden === true,
-			characterId: typeof raw.character_id === "string" ? raw.character_id : null,
-		});
-	}
-	return tokens;
-}
 
 async function consumeDaily(
 	supabaseUrl: string,
@@ -236,49 +196,22 @@ async function consumeDaily(
 	return data === true ? "allowed" : "limited";
 }
 
-async function callClaude(
-	apiKey: string,
-	request: unknown,
-): Promise<{
-	content: unknown;
-	usage: {
-		cache_read_input_tokens: number;
-		cache_creation_input_tokens: number;
-	};
-} | null> {
-	const abort = openModelAbort();
+async function refundDaily(
+	supabaseUrl: string,
+	campaignId: string,
+): Promise<void> {
+	const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+	if (!serviceKey) {
+		console.error("ia-mesa-chat: refund skipped");
+		return;
+	}
 	try {
-		const response = await fetch(ANTHROPIC_MESSAGES_URL, {
-			method: "POST",
-			signal: abort.signal,
-			headers: {
-				"content-type": "application/json",
-				"x-api-key": apiKey,
-				"anthropic-version": ANTHROPIC_VERSION,
-			},
-			body: JSON.stringify(request),
+		const admin = createClient(supabaseUrl, serviceKey, {
+			auth: { persistSession: false, autoRefreshToken: false },
 		});
-		if (!response.ok) {
-			await response.body?.cancel().catch(() => undefined);
-			console.error("ia-mesa-chat: model error", response.status);
-			return null;
-		}
-		const payload: unknown = await response.json();
-		const usage = readCacheUsage(payload);
-		console.info("ia-mesa-chat: usage", describeCacheUsage(usage));
-		const content =
-			payload && typeof payload === "object"
-				? (payload as { content?: unknown }).content
-				: [];
-		return { content, usage };
-	} catch (error) {
-		console.error(
-			"ia-mesa-chat: model error",
-			error instanceof Error ? error.name : "error",
-		);
-		return null;
-	} finally {
-		abort.cancel();
+		await invokeDailyRefund(admin, campaignId);
+	} catch {
+		console.error("ia-mesa-chat: refund failed");
 	}
 }
 
