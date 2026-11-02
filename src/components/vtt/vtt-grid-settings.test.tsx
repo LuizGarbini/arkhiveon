@@ -39,6 +39,7 @@ const size = () => useVTTStore.getState().scenes[0].gridSize;
 
 beforeEach(() => {
 	useVTTStore.setState({
+		isGM: true,
 		showGridSettings: true,
 		activeSceneId: scene.id,
 		scenes: [{ ...scene }],

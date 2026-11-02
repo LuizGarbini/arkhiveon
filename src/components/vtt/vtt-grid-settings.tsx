@@ -47,6 +47,7 @@ export function VTTGridSettings({
 		s.scenes.find((scene) => scene.id === s.activeSceneId),
 	);
 	const showGridSettings = useVTTStore((s) => s.showGridSettings);
+	const isGM = useVTTStore((s) => s.isGM);
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const setDiagonalRule = useVTTStore((s) => s.setDiagonalRule);
@@ -63,7 +64,8 @@ export function VTTGridSettings({
 	const sizeBeforeEditRef = useRef<number | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	if (!showGridSettings || !activeScene) return null;
+	// Ajuste do grid é só do mestre, mesmo se a flag do painel vazar.
+	if (!isGM || !showGridSettings || !activeScene) return null;
 
 	const sceneId = activeScene.id;
 	const gridSize = activeScene.gridSize;
@@ -137,13 +139,7 @@ export function VTTGridSettings({
 			</div>
 
 			{/* Tamanho da célula: campo inteiro 10–400 + −/+ + slider auxiliar */}
-			<div className="space-y-1.5">
-				<label
-					htmlFor={gridSizeId}
-					className="text-[10px] font-bold text-muted-foreground"
-				>
-					Tamanho da célula (px)
-				</label>
+			<Field label="Tamanho da célula (px)" htmlFor={gridSizeId}>
 				<div className="flex items-center gap-1.5">
 					<Button
 						type="button"
@@ -210,7 +206,7 @@ export function VTTGridSettings({
 							? `Grid livre: a célula de ${gridSize} px ainda vale para a régua e os tokens.`
 							: `De ${GRID_SIZE_MIN} a ${GRID_SIZE_MAX} px.`}
 				</p>
-			</div>
+			</Field>
 
 			{/* Grid Type */}
 			<Field label="Tipo de Grid">

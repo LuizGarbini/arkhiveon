@@ -126,6 +126,7 @@ it("keeps the running dice renderer when unrelated tokens update", () => {
 });
 it("associates grid scale and unit labels with inputs", () => {
 	useVTTStore.setState({
+		isGM: true,
 		showGridSettings: true,
 		activeSceneId: "scene",
 		scenes: [
