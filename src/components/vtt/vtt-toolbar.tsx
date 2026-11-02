@@ -168,7 +168,7 @@ export function VTTToolbar() {
 		<div
 			data-slot="vtt-toolbar"
 			className={cn(
-				"absolute left-3 top-32 overflow-y-auto max-h-[calc(100dvh-14rem)] z-30 flex flex-col items-center w-14 p-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200",
+				"absolute left-3 top-32 overflow-y-auto max-h-[calc(100dvh-14rem)] z-30 flex flex-col items-center w-14 p-1 rounded-2xl border border-border/70 bg-card shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200",
 				// 390 px: com a barra do grid aberta, a toolbar termina acima dela
 				// e rola por dentro; com "Mais ajustes" aberto recolhe junto.
 				gridBarOpen &&

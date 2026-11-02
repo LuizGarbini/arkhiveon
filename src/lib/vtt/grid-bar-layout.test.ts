@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+	BAR_CLOSED_REM,
+	BAR_OPEN_REM,
+	BOTTOM_MARGIN_REM,
+	GAP_REM,
 	GRID_BAR_MOBILE_CLASS,
+	TOOLBAR_TOP_REM,
 	TOOLBAR_WITH_GRID_BAR_CLASS,
 	ZOOM_ABOVE_GRID_BAR_CLASS,
+	zoomOffsetRem,
 } from "./grid-bar-layout";
 
 const REM = 16;
@@ -22,6 +28,26 @@ const zoomBottom = (k: "closed" | "open") =>
 	rem(ZOOM_ABOVE_GRID_BAR_CLASS[k], /\+([\d.]+)rem\)/);
 
 describe("grid-bar-layout (390×844)", () => {
+	it("zoom = barra + margem + gap → 11.75 e 29.25 rem", () => {
+		expect(zoomOffsetRem(false)).toBe(11.75);
+		expect(zoomOffsetRem(true)).toBe(29.25);
+		expect(zoomOffsetRem(false)).toBe(
+			BAR_CLOSED_REM + BOTTOM_MARGIN_REM + GAP_REM,
+		);
+		expect(zoomOffsetRem(true)).toBe(
+			BAR_OPEN_REM + BOTTOM_MARGIN_REM + GAP_REM,
+		);
+	});
+
+	it("classes literais batem com as constantes", () => {
+		expect(barH("closed")).toBe(BAR_CLOSED_REM * REM);
+		expect(barH("open")).toBe(BAR_OPEN_REM * REM);
+		expect(zoomBottom("closed")).toBe(zoomOffsetRem(false) * REM);
+		expect(zoomBottom("open")).toBe(zoomOffsetRem(true) * REM);
+		const sub = rem(TOOLBAR_WITH_GRID_BAR_CLASS.closed, /-([\d.]+)rem\)\]/);
+		expect(sub).toBe((TOOLBAR_TOP_REM + zoomOffsetRem(false)) * REM);
+	});
+
 	it("barra tem altura fixa fechada e aberta", () => {
 		expect(barH("closed")).toBe(168);
 		expect(barH("open")).toBe(448);
