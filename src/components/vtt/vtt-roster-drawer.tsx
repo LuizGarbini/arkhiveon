@@ -130,6 +130,10 @@ export function VTTRosterDrawer({
 				gridSize: scene.gridSize,
 				sizeCells,
 				bounds: { width: scene.width, height: scene.height },
+				origin: {
+					x: scene.gridOffsetX ?? 0,
+					y: scene.gridOffsetY ?? 0,
+				},
 			},
 		);
 		try {

@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
 	calculateGridDistance,
 	findFreeCell,
+	flatHexCenters,
+	gridSizeFromCellCount,
 	type OccupiedFootprint,
+	pointyHexCenters,
 	rulerTickPoints,
 	snapToGrid,
+	squareGridLines,
+	ZERO_ORIGIN,
 } from "./grid-math";
 
 const origin = { x: 0, y: 0 };
@@ -173,4 +178,128 @@ describe("findFreeCell", () => {
 			);
 		},
 	);
+});
+
+describe("snapToGrid com origem", () => {
+	const gridOrigin = { x: 12, y: 7 };
+
+	it("quadrado: a primeira casa com célula 50 fica em 37/32", () => {
+		expect(snapToGrid({ x: 20, y: 20 }, "square", 50, 1, gridOrigin)).toEqual({
+			x: 37,
+			y: 32,
+		});
+	});
+
+	it.each(["square", "hex_pointy", "hex_flat"] as const)(
+		"%s: encaixar de novo não move, e difere do grid sem offset",
+		(gridType) => {
+			const point = { x: gridOrigin.x + 4, y: gridOrigin.y + 3 };
+			const snapped = snapToGrid(point, gridType, 60, 1, gridOrigin);
+			const again = snapToGrid(snapped, gridType, 60, 1, gridOrigin);
+			expect(again.x).toBeCloseTo(snapped.x, 5);
+			expect(again.y).toBeCloseTo(snapped.y, 5);
+			const bare = snapToGrid(point, gridType, 60, 1);
+			expect(
+				Math.hypot(bare.x - snapped.x, bare.y - snapped.y),
+			).toBeGreaterThan(1);
+		},
+	);
+
+	it("casa livre com origem encaixa no grid deslocado", () => {
+		const p = findFreeCell({ x: 200, y: 200 }, [], {
+			gridType: "square",
+			gridSize: 50,
+			bounds: { width: 2000, height: 1500 },
+			origin: gridOrigin,
+		});
+		expect(p).toEqual(
+			snapToGrid({ x: 200, y: 200 }, "square", 50, 1, gridOrigin),
+		);
+	});
+});
+
+describe("squareGridLines", () => {
+	it("offset zero repete as linhas antigas, do canto até a borda", () => {
+		expect(squareGridLines(200, 140, 70, ZERO_ORIGIN)).toEqual({
+			xs: [0, 70, 140],
+			ys: [0, 70, 140],
+		});
+	});
+
+	it("offset 12/7 começa as linhas em 12 e 7", () => {
+		expect(squareGridLines(200, 150, 50, { x: 12, y: 7 })).toEqual({
+			xs: [12, 62, 112, 162],
+			ys: [7, 57, 107],
+		});
+	});
+});
+
+describe("centros de hex com origem", () => {
+	it("hex pontudo sem offset inclui a origem e o vizinho ímpar", () => {
+		const centers = pointyHexCenters(180, 180, 60, ZERO_ORIGIN);
+		expect(centers).toContainEqual({ x: 0, y: 0 });
+		const r = 30;
+		const h = r * Math.sqrt(3);
+		const odd = centers.find(
+			(c) => Math.abs(c.x - 1.5 * r) < 1e-6 && Math.abs(c.y - h / 2) < 1e-6,
+		);
+		expect(odd).toBeDefined();
+	});
+
+	it("hex plano sem offset inclui a origem", () => {
+		expect(flatHexCenters(180, 180, 60, ZERO_ORIGIN)).toContainEqual({
+			x: 0,
+			y: 0,
+		});
+	});
+
+	it.each([
+		["hex_pointy", pointyHexCenters],
+		["hex_flat", flatHexCenters],
+	] as const)("%s desloca o lattice pela origem", (_name, centersOf) => {
+		const origin = { x: 12, y: 7 };
+		const shifted = centersOf(180, 180, 60, origin);
+		expect(
+			shifted.some(
+				(c) =>
+					Math.abs(c.x - origin.x) < 1e-6 && Math.abs(c.y - origin.y) < 1e-6,
+			),
+		).toBe(true);
+	});
+});
+
+describe("gridSizeFromCellCount", () => {
+	it("contar 40×30 num mapa 2000×1500 dá célula de 50", () => {
+		expect(gridSizeFromCellCount(2000, 1500, 40, 30, "square")).toBe(50);
+	});
+
+	it("rejeita contagem inválida", () => {
+		expect(gridSizeFromCellCount(2000, 1500, 0, 30, "square")).toBeNull();
+		expect(gridSizeFromCellCount(0, 1500, 40, 30, "square")).toBeNull();
+	});
+});
+
+describe("régua com offset", () => {
+	it("6 células a 1,5 m medem 9 m mesmo com o grid deslocado", () => {
+		const gridOrigin = { x: 12, y: 7 };
+		const cell = 50;
+		const start = { x: gridOrigin.x, y: gridOrigin.y };
+		const end = { x: gridOrigin.x + cell * 6, y: gridOrigin.y };
+		const ticks = rulerTickPoints(
+			start,
+			end,
+			cell,
+			1.5,
+			"m",
+			"euclidean",
+			gridOrigin,
+		);
+		expect(ticks).toHaveLength(6);
+		expect(ticks[0]).toMatchObject({
+			x: start.x + cell,
+			y: start.y,
+			distance: 1.5,
+		});
+		expect(ticks[5]?.distance).toBe(9);
+	});
 });

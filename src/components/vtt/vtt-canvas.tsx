@@ -27,9 +27,13 @@ import {
 import { drawFogGeometry } from "@/lib/vtt/fog-math";
 import {
 	calculateGridDistance,
+	flatHexCenters,
 	getFlatHexCorners,
 	getPointyHexCorners,
+	pointyHexCenters,
 	snapToGrid,
+	squareGridLines,
+	ZERO_ORIGIN,
 } from "@/lib/vtt/grid-math";
 import {
 	canControlVTTToken,
@@ -439,6 +443,8 @@ export function VTTCanvas({
 	const sceneGridSize = scene?.gridSize;
 	const sceneGridColor = scene?.gridColor;
 	const sceneGridOpacity = scene?.gridOpacity;
+	const sceneGridOffsetX = scene?.gridOffsetX ?? 0;
+	const sceneGridOffsetY = scene?.gridOffsetY ?? 0;
 	const sceneWidth = scene?.width;
 	const sceneHeight = scene?.height;
 	// 3a. Mapa (imagem ou fundo): só quando a imagem ou o tamanho da cena muda.
@@ -482,8 +488,8 @@ export function VTTCanvas({
 		};
 	}, [sceneMapImageUrl, sceneWidth, sceneHeight, rendererReady]);
 
-	// 3b. Grid procedural: redesenha só quando célula, tipo, cor ou opacidade
-	// mudam. Arrastar o tamanho da célula não recarrega a textura do mapa.
+	// 3b. Grid procedural: redesenha só quando célula, offset, tipo, cor ou
+	// opacidade mudam. Arrastar a célula ou o offset não recarrega o mapa.
 	useEffect(() => {
 		if (!rendererReady) return;
 		const grid = gridLayerRef.current;
@@ -506,51 +512,56 @@ export function VTTCanvas({
 		const colorHex =
 			Number.parseInt(sceneGridColor.replace("#", "0x"), 16) || 0xffffff;
 
+		const gridOrigin = { x: sceneGridOffsetX, y: sceneGridOffsetY };
 		if (sceneGridType === "square") {
+			const lines = squareGridLines(
+				sceneWidth,
+				sceneHeight,
+				sceneGridSize,
+				gridOrigin,
+			);
 			grid.beginPath();
-			for (let x = 0; x <= sceneWidth; x += sceneGridSize) {
+			for (const x of lines.xs) {
 				grid.moveTo(x, 0);
 				grid.lineTo(x, sceneHeight);
 			}
-			for (let y = 0; y <= sceneHeight; y += sceneGridSize) {
+			for (const y of lines.ys) {
 				grid.moveTo(0, y);
 				grid.lineTo(sceneWidth, y);
 			}
 			grid.stroke({ width: 1, color: colorHex, alpha: sceneGridOpacity });
 		} else if (sceneGridType === "hex_pointy") {
 			const r = sceneGridSize / 2;
-			const h = r * Math.sqrt(3);
 			grid.beginPath();
-
-			for (let x = 0; x <= sceneWidth + r; x += 1.5 * r) {
-				const col = Math.round(x / (1.5 * r));
-				const offsetY = col % 2 !== 0 ? h / 2 : 0;
-				for (let y = offsetY; y <= sceneHeight + h; y += h) {
-					const corners = getPointyHexCorners(x, y, r);
-					grid.moveTo(corners[0].x, corners[0].y);
-					for (let i = 1; i < 6; i++) {
-						grid.lineTo(corners[i].x, corners[i].y);
-					}
-					grid.closePath();
+			for (const center of pointyHexCenters(
+				sceneWidth,
+				sceneHeight,
+				sceneGridSize,
+				gridOrigin,
+			)) {
+				const corners = getPointyHexCorners(center.x, center.y, r);
+				grid.moveTo(corners[0].x, corners[0].y);
+				for (let i = 1; i < 6; i++) {
+					grid.lineTo(corners[i].x, corners[i].y);
 				}
+				grid.closePath();
 			}
 			grid.stroke({ width: 1, color: colorHex, alpha: sceneGridOpacity });
 		} else if (sceneGridType === "hex_flat") {
 			const r = sceneGridSize / 2;
-			const w = r * Math.sqrt(3);
 			grid.beginPath();
-
-			for (let y = 0; y <= sceneHeight + r; y += 1.5 * r) {
-				const row = Math.round(y / (1.5 * r));
-				const offsetX = row % 2 !== 0 ? w / 2 : 0;
-				for (let x = offsetX; x <= sceneWidth + w; x += w) {
-					const corners = getFlatHexCorners(x, y, r);
-					grid.moveTo(corners[0].x, corners[0].y);
-					for (let i = 1; i < 6; i++) {
-						grid.lineTo(corners[i].x, corners[i].y);
-					}
-					grid.closePath();
+			for (const center of flatHexCenters(
+				sceneWidth,
+				sceneHeight,
+				sceneGridSize,
+				gridOrigin,
+			)) {
+				const corners = getFlatHexCorners(center.x, center.y, r);
+				grid.moveTo(corners[0].x, corners[0].y);
+				for (let i = 1; i < 6; i++) {
+					grid.lineTo(corners[i].x, corners[i].y);
 				}
+				grid.closePath();
 			}
 			grid.stroke({ width: 1, color: colorHex, alpha: sceneGridOpacity });
 		}
@@ -559,6 +570,8 @@ export function VTTCanvas({
 		sceneGridSize,
 		sceneGridColor,
 		sceneGridOpacity,
+		sceneGridOffsetX,
+		sceneGridOffsetY,
 		sceneWidth,
 		sceneHeight,
 		rendererReady,
@@ -1262,6 +1275,10 @@ export function VTTCanvas({
 		const container = containerRef.current;
 		if (!container) return;
 
+		const gridOrigin = scene
+			? { x: scene.gridOffsetX ?? 0, y: scene.gridOffsetY ?? 0 }
+			: ZERO_ORIGIN;
+
 		const screenToWorld = (screenX: number, screenY: number) => {
 			const rect = container.getBoundingClientRect();
 			const clientX = screenX - rect.left;
@@ -1402,6 +1419,7 @@ export function VTTCanvas({
 					scene.gridType,
 					scene.gridSize,
 					e.shiftKey,
+					gridOrigin,
 				);
 				const now = Date.now();
 				const last = lastWallClickRef.current;
@@ -1443,12 +1461,24 @@ export function VTTCanvas({
 
 			// Ruler Start
 			if (activeTool === "ruler" && isLeftClick && scene) {
-				const snapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
+				const snapped = snapToGrid(
+					worldPoint,
+					scene.gridType,
+					scene.gridSize,
+					1,
+					gridOrigin,
+				);
 				rulerStartRef.current = snapped;
 			}
 
 			if (activeTool === "template" && isLeftClick && scene) {
-				const snapped = snapToGrid(worldPoint, scene.gridType, scene.gridSize);
+				const snapped = snapToGrid(
+					worldPoint,
+					scene.gridType,
+					scene.gridSize,
+					1,
+					gridOrigin,
+				);
 				templateStartRef.current = snapped;
 			}
 		};
@@ -1471,6 +1501,7 @@ export function VTTCanvas({
 						scene.gridType,
 						scene.gridSize,
 						e.shiftKey,
+						gridOrigin,
 					);
 					const c = wallCursorRef.current;
 					if (!c || c.x !== p.x || c.y !== p.y) {
@@ -1600,6 +1631,8 @@ export function VTTCanvas({
 					worldPoint,
 					scene.gridType,
 					scene.gridSize,
+					1,
+					gridOrigin,
 				);
 				const start = rulerStartRef.current;
 
@@ -1640,6 +1673,7 @@ export function VTTCanvas({
 					scene.gridScaleUnit,
 					userColor,
 					diagonalRule,
+					gridOrigin,
 				);
 			}
 
@@ -1648,6 +1682,8 @@ export function VTTCanvas({
 					worldPoint,
 					scene.gridType,
 					scene.gridSize,
+					1,
+					gridOrigin,
 				);
 				const start = templateStartRef.current;
 				const template: VTTSpellTemplate = {
@@ -1769,6 +1805,7 @@ export function VTTCanvas({
 						scene.gridType,
 						scene.gridSize,
 						token.sizeCells,
+						gridOrigin,
 					);
 
 					// Apply snapped position locally and persist to Supabase
@@ -1809,6 +1846,8 @@ export function VTTCanvas({
 					screenToWorld(e.clientX, e.clientY),
 					scene.gridType,
 					scene.gridSize,
+					1,
+					gridOrigin,
 				);
 				const placed: VTTSpellTemplate = {
 					id: crypto.randomUUID(),

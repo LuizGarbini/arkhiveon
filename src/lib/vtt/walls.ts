@@ -30,11 +30,12 @@ export function snapWallPoint(
 	gridType: VTTGridType,
 	gridSize: number,
 	free = false,
+	origin: WallPoint = { x: 0, y: 0 },
 ): WallPoint {
 	if (free || gridType !== "square" || gridSize <= 0) return point;
 	return {
-		x: Math.round(point.x / gridSize) * gridSize,
-		y: Math.round(point.y / gridSize) * gridSize,
+		x: Math.round((point.x - origin.x) / gridSize) * gridSize + origin.x,
+		y: Math.round((point.y - origin.y) / gridSize) * gridSize + origin.y,
 	};
 }
 
