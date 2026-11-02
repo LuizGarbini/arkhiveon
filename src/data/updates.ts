@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.65-offset-do-grid",
+		version: "1.6.65",
+		date: "02/11/2026",
+		title: "O grid pode sair do canto e a célula aceita decimal",
+		description:
+			"No ajuste do grid, o mestre define o deslocamento X e Y em pixels, com botões de 1 px, para as linhas caírem em cima do desenho do mapa. Contar os quadrados do mapa (colunas por linhas) calcula o tamanho da célula. O campo da célula aceita décimos, de 10 a 400. Quem joga não vê esse painel. Mudar o tamanho do desenho do mapa, junto com tokens e paredes, fica numa função do servidor que só o mestre pode chamar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.64-celula-do-grid-10-a-400",
 		version: "1.6.64",
 		date: "02/11/2026",
