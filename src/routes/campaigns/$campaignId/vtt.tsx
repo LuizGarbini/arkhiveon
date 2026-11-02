@@ -3,6 +3,7 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Compass, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { showToast } from "@/components/ui/toast";
 import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
 import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTCombatPanel } from "@/components/vtt/vtt-combat-panel";
@@ -25,13 +26,13 @@ import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
-import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	characterSheetOwnsHp,
 	saveLinkedCharacterHp,
 	selectSheetHealth,
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
+import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
@@ -41,6 +42,10 @@ import {
 	newSceneId,
 	singleFlight,
 } from "@/lib/vtt/scene-create";
+import {
+	previousSceneSettings,
+	sceneSettingsPatchToDb,
+} from "@/lib/vtt/scene-settings";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTAura,
@@ -53,6 +58,7 @@ import type {
 	VTTRemoteMeasurement,
 	VTTRulerMeasurement,
 	VTTScene,
+	VTTSceneSettingsPatch,
 	VTTToken,
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
@@ -1117,32 +1123,36 @@ function VTTSession() {
 		useVTTStore.getState().removeScene(sceneId);
 	};
 
-	const handleUpdateSceneSettings = async (settings: {
-		gridType: VTTGridType;
-		gridSize: number;
-		gridColor: string;
-		gridOpacity: number;
-		gridScaleDistance: number;
-		gridScaleUnit: VTTGridScaleUnit;
-	}) => {
-		if (!activeSceneId) return;
+	// Patch parcial: o painel manda só o que mudou. Grava otimista e, se o
+	// servidor recusar, volta os campos do patch ao valor anterior com aviso.
+	const handleUpdateSceneSettings = async (
+		patch: VTTSceneSettingsPatch,
+	): Promise<boolean> => {
+		if (!activeSceneId) return false;
+		const current = useVTTStore
+			.getState()
+			.scenes.find((s) => s.id === activeSceneId);
+		if (!current) return false;
+		const previous = previousSceneSettings(current, patch);
 
-		updateScene(activeSceneId, settings);
+		updateScene(activeSceneId, patch);
 
 		const client = getSupabase();
-		if (!client) return;
+		if (!client) return true;
 
-		await client
+		const { error } = await client
 			.from("vtt_scenes")
-			.update({
-				grid_type: settings.gridType,
-				grid_size: settings.gridSize,
-				grid_color: settings.gridColor,
-				grid_opacity: settings.gridOpacity,
-				grid_scale_distance: settings.gridScaleDistance,
-				grid_scale_unit: settings.gridScaleUnit,
-			})
+			.update(sceneSettingsPatchToDb(patch))
 			.eq("id", activeSceneId);
+		if (error) {
+			updateScene(activeSceneId, previous);
+			showToast("error", {
+				title: "Não foi possível salvar o grid",
+				description: "O ajuste voltou ao valor anterior. Tente de novo.",
+			});
+			return false;
+		}
+		return true;
 	};
 
 	const handleUpdateScene = async (

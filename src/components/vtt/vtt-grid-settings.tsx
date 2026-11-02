@@ -1,54 +1,124 @@
-import { Sliders, X } from "lucide-react";
-import { useId } from "react";
+import { Minus, Plus, Sliders, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import {
+	clampGridSize,
+	DEFAULT_GRID_SCALE_DISTANCE,
+	GRID_SIZE_MAX,
+	GRID_SIZE_MIN,
+} from "@/lib/vtt/grid-math";
 import type {
 	VTTDiagonalRule,
 	VTTGridScaleUnit,
 	VTTGridType,
+	VTTSceneSettingsPatch,
 } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
+/** Espera depois do último passo do slider antes de gravar. */
+const GRID_SIZE_SAVE_DEBOUNCE_MS = 300;
+
+const PRESET_COLORS = [
+	"#ffffff",
+	"#000000",
+	"#38bdf8",
+	"#a855f7",
+	"#22c55e",
+	"#f59e0b",
+	"#ef4444",
+];
+
 interface VTTGridSettingsProps {
-	onUpdateSceneSettings: (settings: {
-		gridType: VTTGridType;
-		gridSize: number;
-		gridColor: string;
-		gridOpacity: number;
-		gridScaleDistance: number;
-		gridScaleUnit: VTTGridScaleUnit;
-	}) => void;
+	/** Grava só os campos do patch; resolve `false` se o servidor recusar. */
+	onUpdateSceneSettings: (
+		patch: VTTSceneSettingsPatch,
+	) => Promise<boolean> | boolean | undefined;
 }
 
 export function VTTGridSettings({
 	onUpdateSceneSettings,
 }: VTTGridSettingsProps) {
-	const scenes = useVTTStore((s) => s.scenes);
-	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const activeScene = useVTTStore((s) =>
+		s.scenes.find((scene) => scene.id === s.activeSceneId),
+	);
 	const showGridSettings = useVTTStore((s) => s.showGridSettings);
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const setDiagonalRule = useVTTStore((s) => s.setDiagonalRule);
+	const updateSceneLocal = useVTTStore((s) => s.updateScene);
 	const gridScaleId = useId();
 	const gridUnitId = useId();
+	const gridSizeId = useId();
+	const gridSizeHintId = useId();
 
-	const activeScene = scenes.find((s) => s.id === activeSceneId);
+	// Texto do campo numérico enquanto o mestre digita (null = mostra a cena).
+	const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+	const [savingSize, setSavingSize] = useState(false);
+	// Valor gravado antes do arraste/edição em curso, para reverter no erro.
+	const sizeBeforeEditRef = useRef<number | null>(null);
+	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 	if (!showGridSettings || !activeScene) return null;
 
-	const presetColors = [
-		"#ffffff",
-		"#000000",
-		"#38bdf8",
-		"#a855f7",
-		"#22c55e",
-		"#f59e0b",
-		"#ef4444",
-	];
+	const sceneId = activeScene.id;
+	const gridSize = activeScene.gridSize;
+
+	const commitGridSize = async (value: number) => {
+		if (saveTimerRef.current) {
+			clearTimeout(saveTimerRef.current);
+			saveTimerRef.current = null;
+		}
+		const next = clampGridSize(value);
+		const before = sizeBeforeEditRef.current ?? gridSize;
+		sizeBeforeEditRef.current = null;
+		if (next === before) {
+			updateSceneLocal(sceneId, { gridSize: before });
+			return;
+		}
+		setSavingSize(true);
+		try {
+			const ok = await onUpdateSceneSettings({ gridSize: next });
+			if (ok === false) updateSceneLocal(sceneId, { gridSize: before });
+		} finally {
+			setSavingSize(false);
+		}
+	};
+
+	// Arraste: pré-visualização só local (store → canvas); grava com debounce.
+	const previewGridSize = (value: number) => {
+		if (sizeBeforeEditRef.current === null)
+			sizeBeforeEditRef.current = gridSize;
+		const next = clampGridSize(value);
+		updateSceneLocal(sceneId, { gridSize: next });
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		saveTimerRef.current = setTimeout(() => {
+			void commitGridSize(next);
+		}, GRID_SIZE_SAVE_DEBOUNCE_MS);
+	};
+
+	const commitSizeDraft = () => {
+		if (sizeDraft === null) return;
+		const parsed = Number.parseInt(sizeDraft, 10);
+		setSizeDraft(null);
+		if (Number.isNaN(parsed)) return;
+		void commitGridSize(parsed);
+	};
 
 	return (
-		<div className="absolute left-3 top-32 z-40 max-h-[calc(100dvh-13rem)] overflow-y-auto w-[min(20rem,calc(100%-1.5rem))] sm:left-20 p-4 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl text-foreground pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-150 space-y-3.5">
+		<section
+			aria-label="Ajuste do grid"
+			className={cn(
+				"absolute z-40 overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-4 text-foreground shadow-2xl backdrop-blur-md pointer-events-auto select-none animate-in fade-in duration-150 space-y-3.5",
+				// 390 px: barra compacta embaixo, sem cobrir o grid sendo ajustado.
+				"inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] max-h-[42dvh]",
+				"sm:inset-x-auto sm:bottom-auto sm:left-20 sm:top-32 sm:w-80 sm:max-h-[calc(100dvh-13rem)] sm:zoom-in-95",
+			)}
+		>
 			<div className="flex items-center justify-between pb-2 border-b border-border/70">
 				<div className="flex items-center gap-2">
 					<Sliders className="h-4 w-4 text-primary" />
@@ -66,6 +136,82 @@ export function VTTGridSettings({
 				</button>
 			</div>
 
+			{/* Tamanho da célula: campo inteiro 10–400 + −/+ + slider auxiliar */}
+			<div className="space-y-1.5">
+				<label
+					htmlFor={gridSizeId}
+					className="text-[10px] font-bold text-muted-foreground"
+				>
+					Tamanho da célula (px)
+				</label>
+				<div className="flex items-center gap-1.5">
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						aria-label="Diminuir célula"
+						disabled={savingSize || gridSize <= GRID_SIZE_MIN}
+						onClick={() => void commitGridSize(gridSize - 1)}
+						className="size-11 shrink-0 rounded-xl"
+					>
+						<Minus className="h-4 w-4" />
+					</Button>
+					<Input
+						id={gridSizeId}
+						type="number"
+						inputMode="numeric"
+						step={1}
+						min={GRID_SIZE_MIN}
+						max={GRID_SIZE_MAX}
+						aria-describedby={gridSizeHintId}
+						disabled={savingSize}
+						value={sizeDraft ?? String(gridSize)}
+						onChange={(e) => setSizeDraft(e.target.value)}
+						onBlur={commitSizeDraft}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								commitSizeDraft();
+							}
+							if (e.key === "Escape") setSizeDraft(null);
+						}}
+						className="h-11 text-center text-base tabular-nums"
+					/>
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						aria-label="Aumentar célula"
+						disabled={savingSize || gridSize >= GRID_SIZE_MAX}
+						onClick={() => void commitGridSize(gridSize + 1)}
+						className="size-11 shrink-0 rounded-xl"
+					>
+						<Plus className="h-4 w-4" />
+					</Button>
+				</div>
+				<Slider
+					min={GRID_SIZE_MIN}
+					max={GRID_SIZE_MAX}
+					step={1}
+					value={gridSize}
+					disabled={savingSize}
+					thumbLabel="Tamanho da célula"
+					onValueChange={(value) => previewGridSize(value)}
+					onValueCommitted={(value) => void commitGridSize(value)}
+				/>
+				<p
+					id={gridSizeHintId}
+					aria-live="polite"
+					className="text-[11px] text-muted-foreground"
+				>
+					{savingSize
+						? "Salvando…"
+						: activeScene.gridType === "none"
+							? `Grid livre: a célula de ${gridSize} px ainda vale para a régua e os tokens.`
+							: `De ${GRID_SIZE_MIN} a ${GRID_SIZE_MAX} px.`}
+				</p>
+			</div>
+
 			{/* Grid Type */}
 			<Field label="Tipo de Grid">
 				<Select
@@ -74,11 +220,6 @@ export function VTTGridSettings({
 					onChange={(e) =>
 						onUpdateSceneSettings({
 							gridType: e.target.value as VTTGridType,
-							gridSize: activeScene.gridSize,
-							gridColor: activeScene.gridColor,
-							gridOpacity: activeScene.gridOpacity,
-							gridScaleDistance: activeScene.gridScaleDistance,
-							gridScaleUnit: activeScene.gridScaleUnit,
 						})
 					}
 					className="h-11 text-base"
@@ -90,9 +231,9 @@ export function VTTGridSettings({
 				</Select>
 			</Field>
 
-			{/* Scale & unit used by the ruler and templates */}
+			{/* Distância por célula & unidade usadas pela régua e templates */}
 			<div className="grid grid-cols-2 gap-2">
-				<Field label="Escala" htmlFor={gridScaleId}>
+				<Field label="Distância por célula" htmlFor={gridScaleId}>
 					<Input
 						id={gridScaleId}
 						type="number"
@@ -100,16 +241,13 @@ export function VTTGridSettings({
 						min="0.5"
 						inputMode="decimal"
 						value={activeScene.gridScaleDistance}
-						onChange={(e) =>
+						onChange={(e) => {
+							const value = Number(e.target.value);
 							onUpdateSceneSettings({
-								gridType: activeScene.gridType,
-								gridSize: activeScene.gridSize,
-								gridColor: activeScene.gridColor,
-								gridOpacity: activeScene.gridOpacity,
-								gridScaleDistance: Number(e.target.value) || 1,
-								gridScaleUnit: activeScene.gridScaleUnit,
-							})
-						}
+								gridScaleDistance:
+									value > 0 ? value : DEFAULT_GRID_SCALE_DISTANCE,
+							});
+						}}
 						className="h-11 text-base tabular-nums"
 					/>
 				</Field>
@@ -119,11 +257,6 @@ export function VTTGridSettings({
 						value={activeScene.gridScaleUnit}
 						onChange={(e) =>
 							onUpdateSceneSettings({
-								gridType: activeScene.gridType,
-								gridSize: activeScene.gridSize,
-								gridColor: activeScene.gridColor,
-								gridOpacity: activeScene.gridOpacity,
-								gridScaleDistance: activeScene.gridScaleDistance,
 								gridScaleUnit: e.target.value as VTTGridScaleUnit,
 							})
 						}
@@ -166,38 +299,8 @@ export function VTTGridSettings({
 				</div>
 			</fieldset>
 
-			{/* Grid Size Slider */}
 			{activeScene.gridType !== "none" && (
 				<>
-					<div className="space-y-1">
-						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-							<span>Tamanho da Célula</span>
-							<span className="font-mono text-foreground">
-								{activeScene.gridSize}px
-							</span>
-						</div>
-						<input
-							type="range"
-							min={30}
-							max={180}
-							step={5}
-							value={activeScene.gridSize}
-							aria-label="Tamanho da célula"
-							aria-valuetext={`${activeScene.gridSize} pixels`}
-							onChange={(e) =>
-								onUpdateSceneSettings({
-									gridType: activeScene.gridType,
-									gridSize: Number(e.target.value),
-									gridColor: activeScene.gridColor,
-									gridOpacity: activeScene.gridOpacity,
-									gridScaleDistance: activeScene.gridScaleDistance,
-									gridScaleUnit: activeScene.gridScaleUnit,
-								})
-							}
-							className="vtt-range w-full cursor-pointer"
-						/>
-					</div>
-
 					{/* Grid Opacity Slider */}
 					<div className="space-y-1">
 						<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
@@ -206,25 +309,18 @@ export function VTTGridSettings({
 								{Math.round(activeScene.gridOpacity * 100)}%
 							</span>
 						</div>
-						<input
-							type="range"
+						<Slider
 							min={0}
 							max={1}
 							step={0.05}
 							value={activeScene.gridOpacity}
-							aria-label="Opacidade do grid"
-							aria-valuetext={`${Math.round(activeScene.gridOpacity * 100)}%`}
-							onChange={(e) =>
-								onUpdateSceneSettings({
-									gridType: activeScene.gridType,
-									gridSize: activeScene.gridSize,
-									gridColor: activeScene.gridColor,
-									gridOpacity: Number(e.target.value),
-									gridScaleDistance: activeScene.gridScaleDistance,
-									gridScaleUnit: activeScene.gridScaleUnit,
-								})
+							thumbLabel="Opacidade do grid"
+							onValueCommitted={(value) =>
+								onUpdateSceneSettings({ gridOpacity: value })
 							}
-							className="vtt-range w-full cursor-pointer"
+							onValueChange={(value) =>
+								updateSceneLocal(sceneId, { gridOpacity: value })
+							}
 						/>
 					</div>
 
@@ -234,22 +330,13 @@ export function VTTGridSettings({
 							Cor do Grid
 						</span>
 						<div className="flex flex-wrap items-center gap-2">
-							{presetColors.map((color) => (
+							{PRESET_COLORS.map((color) => (
 								<button
 									type="button"
 									key={color}
 									aria-label={`Cor do grid ${color}`}
 									aria-pressed={activeScene.gridColor === color}
-									onClick={() =>
-										onUpdateSceneSettings({
-											gridType: activeScene.gridType,
-											gridSize: activeScene.gridSize,
-											gridColor: color,
-											gridOpacity: activeScene.gridOpacity,
-											gridScaleDistance: activeScene.gridScaleDistance,
-											gridScaleUnit: activeScene.gridScaleUnit,
-										})
-									}
+									onClick={() => onUpdateSceneSettings({ gridColor: color })}
 									style={{ backgroundColor: color }}
 									className={`h-11 w-11 rounded-full border transition-all cursor-pointer ${
 										activeScene.gridColor === color
@@ -262,6 +349,6 @@ export function VTTGridSettings({
 					</div>
 				</>
 			)}
-		</div>
+		</section>
 	);
 }

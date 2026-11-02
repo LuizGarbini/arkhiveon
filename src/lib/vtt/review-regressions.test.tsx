@@ -149,7 +149,9 @@ it("associates grid scale and unit labels with inputs", () => {
 		],
 	});
 	render(<VTTGridSettings onUpdateSceneSettings={vi.fn()} />);
-	expect(screen.getByRole("spinbutton", { name: "Escala" })).toBeTruthy();
+	expect(
+		screen.getByRole("spinbutton", { name: "Distância por célula" }),
+	).toBeTruthy();
 	expect(screen.getByRole("combobox", { name: "Unidade" })).toBeTruthy();
 });
 
