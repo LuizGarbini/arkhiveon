@@ -1,6 +1,7 @@
 import {
 	Check,
 	ChevronDown,
+	Clock,
 	Compass,
 	FileText,
 	IdCard,
@@ -58,8 +59,13 @@ interface ChatMessage {
 	applyError?: string;
 }
 
-const WELCOME =
-	"Oi! Posso propor NPCs novos ou alterações numa ficha desta campanha (atributos, PV, CA, itens e dano de arma). Nada é salvo sem sua confirmação.";
+const TRANSIENT_FAILURE = "Não consegui responder agora. Nada foi enviado.";
+const NOT_ALLOWED = "O assistente não está disponível nesta campanha.";
+const EMPTY_THREAD = "Pergunte sobre regras, a cena ou a ficha.";
+
+/** Hover e foco visíveis, com tokens que já existem. O anel não fica cortado. */
+const tactileControl =
+	"overflow-visible focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(hover:hover)]:hover:ring-2 [@media(hover:hover)]:hover:ring-primary/40";
 
 type PanelState =
 	| { kind: "idle" }
@@ -72,6 +78,26 @@ function nowLabel(): string {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+}
+
+/** Hora de volta do limite, no fuso do servidor traduzido para São Paulo. */
+function formatDailyLimitHint(resetsAtIso: string): string {
+	const date = new Date(resetsAtIso);
+	if (Number.isNaN(date.getTime())) return "Limite diário atingido";
+	const time = new Intl.DateTimeFormat("pt-BR", {
+		timeZone: "America/Sao_Paulo",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).format(date);
+	return `Limite diário atingido · volta às ${time}`;
+}
+
+function failureCopy(code: string): string {
+	if (code === "unavailable" || code === "model_error")
+		return TRANSIENT_FAILURE;
+	if (code === "not_allowed") return NOT_ALLOWED;
+	return errorMessage(code);
 }
 
 let messageSeq = 0;
@@ -105,11 +131,10 @@ export function VTTAiChat({
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [panel, setPanel] = useState<PanelState>({ kind: "idle" });
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{ id: "welcome", role: "assistant", text: WELCOME, time: "" },
-	]);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const busyRef = useRef(false);
 
 	// Composer cresce com o texto até o `max-h-52` do CSS; depois rola dentro.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: recalcula a cada texto/abertura.
@@ -121,8 +146,11 @@ export function VTTAiChat({
 	}, [draft, open]);
 	const inputId = useId();
 	const limitNoticeId = useId();
+	const limitHintId = useId();
 	const limitNotice =
 		panel.kind === "limit" ? formatDailyLimitNotice(panel.resetsAt) : "";
+	const limitHint =
+		panel.kind === "limit" ? formatDailyLimitHint(panel.resetsAt) : "";
 	const inputLocked = panel.kind === "loading" || panel.kind === "limit";
 
 	const scrollToEnd = () => {
@@ -132,49 +160,73 @@ export function VTTAiChat({
 		});
 	};
 
-	const send = async () => {
-		const text = draft.trim();
-		if (!text || panel.kind === "loading" || panel.kind === "limit") return;
-		const history = toHistory(
-			messages.filter((m) => m.id !== "welcome" && !m.isError),
-		);
-		setPanel({ kind: "loading" });
-		scrollToEnd();
-		const result = await askMesaAssistant({
-			campaignId,
-			message: text,
-			history,
-		});
-		if (result.ok) {
-			setDraft("");
-			setPanel({ kind: "idle" });
+	const send = async (bubbleText?: string) => {
+		const fromBubble = typeof bubbleText === "string";
+		const text = (fromBubble ? bubbleText : draft).trim();
+		if (
+			!text ||
+			busyRef.current ||
+			panel.kind === "loading" ||
+			panel.kind === "limit"
+		)
+			return;
+		busyRef.current = true;
+		const prior = messages.filter((m) => m.id !== "welcome" && !m.isError);
+		const last = prior[prior.length - 1];
+		const alreadyShown = last?.role === "user" && last.text === text;
+		const history = toHistory(alreadyShown ? prior.slice(0, -1) : prior);
+		if (!alreadyShown) {
 			setMessages((prev) => [
 				...prev,
-				{
-					id: newId(),
-					role: "user",
-					text,
-					time: nowLabel(),
-				},
-				{
-					id: newId(),
-					role: "assistant",
-					text: result.reply,
-					time: nowLabel(),
-					proposal: result.proposal ?? undefined,
-					status: result.proposal ? "pending" : undefined,
-				},
+				{ id: newId(), role: "user", text, time: nowLabel() },
 			]);
-			scrollToEnd();
-			return;
 		}
-		if (result.code === "daily_limit") {
-			setPanel({ kind: "limit", resetsAt: result.resetsAt ?? "" });
-			scrollToEnd();
-			return;
-		}
-		setPanel({ kind: "error", text: errorMessage(result.code) });
+		// A bolha já leva a pergunta; o campo esvazia no envio, antes da resposta.
+		if (!fromBubble) setDraft("");
+		setPanel({ kind: "loading" });
 		scrollToEnd();
+		try {
+			const result = await askMesaAssistant({
+				campaignId,
+				message: text,
+				history,
+			});
+			if (result.ok) {
+				setPanel({ kind: "idle" });
+				setMessages((prev) => [
+					...prev,
+					{
+						id: newId(),
+						role: "assistant",
+						text: result.reply,
+						time: nowLabel(),
+						proposal: result.proposal ?? undefined,
+						status: result.proposal ? "pending" : undefined,
+					},
+				]);
+				scrollToEnd();
+				return;
+			}
+			if (result.code === "daily_limit") {
+				setPanel({ kind: "limit", resetsAt: result.resetsAt ?? "" });
+				scrollToEnd();
+				return;
+			}
+			setPanel({ kind: "error", text: failureCopy(result.code) });
+			scrollToEnd();
+		} finally {
+			busyRef.current = false;
+		}
+	};
+
+	const retryFromBubble = () => {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i];
+			if (message.role === "user" && message.id !== "welcome") {
+				void send(message.text);
+				return;
+			}
+		}
 	};
 
 	const onSubmit = (event: FormEvent) => {
@@ -314,6 +366,9 @@ export function VTTAiChat({
 						className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
 						aria-live="polite"
 					>
+						{messages.length === 0 && (
+							<p className="text-sm text-muted-foreground">{EMPTY_THREAD}</p>
+						)}
 						{messages.map((message) => (
 							<MessageItem key={message.id} message={message} onAct={act} />
 						))}
@@ -335,8 +390,11 @@ export function VTTAiChat({
 								<p className="text-sm">{panel.text}</p>
 								<Button
 									type="button"
-									className="min-h-11"
-									onClick={() => void send()}
+									className={cn(
+										"min-h-11 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+										tactileControl,
+									)}
+									onClick={retryFromBubble}
 								>
 									Tentar de novo
 								</Button>
@@ -345,8 +403,12 @@ export function VTTAiChat({
 						{panel.kind === "limit" && (
 							<output
 								id={limitNoticeId}
-								className="block max-w-[85%] rounded-2xl border border-border/70 bg-muted px-3.5 py-2.5 text-sm"
+								className="flex max-w-[85%] items-start gap-2 rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground"
 							>
+								<Clock
+									className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
 								{limitNotice}
 							</output>
 						)}
@@ -368,15 +430,27 @@ export function VTTAiChat({
 								onKeyDown={onKeyDown}
 								rows={2}
 								maxLength={1200}
-								placeholder="Peça algo para a IA..."
+								placeholder={
+									panel.kind === "limit" ? "" : "Peça algo para a IA..."
+								}
 								disabled={inputLocked}
 								spellCheck={false}
 								autoComplete="off"
 								aria-describedby={
-									panel.kind === "limit" ? limitNoticeId : undefined
+									panel.kind === "limit"
+										? `${limitNoticeId} ${limitHintId}`
+										: undefined
 								}
 								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 disabled:opacity-60 sm:text-sm"
 							/>
+							{panel.kind === "limit" && (
+								<p
+									id={limitHintId}
+									className="px-3 pb-1 text-xs text-muted-foreground"
+								>
+									{limitHint}
+								</p>
+							)}
 							<div className="flex items-center justify-between gap-2 px-2 pb-2">
 								{sceneName ? (
 									<span className="inline-flex max-w-[70%] items-center gap-1.5 truncate rounded-full border border-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground">
@@ -389,7 +463,7 @@ export function VTTAiChat({
 								<Button
 									type="submit"
 									size="icon"
-									className="size-11 rounded-full"
+									className={cn("size-11 rounded-full", tactileControl)}
 									aria-label="Enviar"
 									disabled={!draft.trim() || inputLocked}
 								>
@@ -417,6 +491,7 @@ export function VTTAiChat({
 				}}
 				className={cn(
 					"right-4 bottom-4 z-[70] size-14 rounded-full shadow-2xl",
+					tactileControl,
 					placement === "fixed" ? "fixed" : "absolute",
 					open && "hidden sm:inline-flex",
 				)}
