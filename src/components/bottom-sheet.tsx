@@ -32,7 +32,10 @@ export function BottomSheet({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	/** Clique fora, Esc ou arraste além do limite. O X não existe neste sheet. */
+	/**
+	 * Clique fora, Esc ou arraste além do limite. O X não existe neste sheet.
+	 * Se a promise rejeitar, o sheet continua aberto.
+	 */
 	onDismissSave?: () => void | Promise<void>;
 	title: ReactNode;
 	subtitle?: ReactNode;

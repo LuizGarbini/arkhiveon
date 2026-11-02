@@ -1,5 +1,14 @@
+import { isDeepEqual } from "./deep-equal";
+
 const FORM_DRAFT_PREFIX = "arkhiveon:draft:";
 const FORM_DRAFT_VERSION = 1;
+
+export type DraftPolicy<T extends object> = {
+	/** Valor já salvo ou o inicial do formulário. */
+	saved: T;
+	/** Campos obrigatórios. String em branco (depois do trim) conta como vazio. */
+	required: readonly (keyof T)[];
+};
 
 export type FormDraftEnvelope<T> = {
 	v: 1;
@@ -82,6 +91,80 @@ export function clearDraft(formId: string, entityId?: string | null): void {
 	} catch {
 		// sessionStorage indisponível
 	}
+}
+
+function isBlankDraftValue(value: unknown): boolean {
+	if (value == null) return true;
+	if (typeof value === "string") return value.trim() === "";
+	return false;
+}
+
+function normalizeDraftValue(value: unknown): unknown {
+	if (typeof value === "string") return value.trim();
+	return value;
+}
+
+function isDraftRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Vazio: algum campo obrigatório em branco, ou o valor (com trim nas strings)
+ * igual ao salvo/inicial.
+ */
+export function isVacantDraft<T extends object>(
+	values: T,
+	policy: DraftPolicy<T>,
+): boolean {
+	const current = values as Record<string, unknown>;
+	const saved = policy.saved as Record<string, unknown>;
+	for (const key of policy.required) {
+		if (isBlankDraftValue(current[String(key)])) return true;
+	}
+	const keys = new Set([...Object.keys(current), ...Object.keys(saved)]);
+	for (const key of keys) {
+		if (
+			!isDeepEqual(
+				normalizeDraftValue(current[key]),
+				normalizeDraftValue(saved[key]),
+			)
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Grava só se o rascunho não for vazio. Se for, apaga a chave. */
+export function persistDraft<T extends object>(
+	formId: string,
+	entityId: string | null | undefined,
+	values: T,
+	policy: DraftPolicy<T>,
+): void {
+	if (isVacantDraft(values, policy)) {
+		clearDraft(formId, entityId);
+		return;
+	}
+	writeDraft(formId, entityId, values);
+}
+
+/**
+ * Lê o rascunho. Se for vazio em relação ao salvo, apaga a chave e devolve null.
+ */
+export function readRestorableDraft<T extends object>(
+	formId: string,
+	entityId: string | null | undefined,
+	policy: DraftPolicy<T>,
+): T | null {
+	const stored = readDraft<unknown>(formId, entityId);
+	if (!isDraftRecord(stored)) return null;
+	const values = stored as T;
+	if (isVacantDraft(values, policy)) {
+		clearDraft(formId, entityId);
+		return null;
+	}
+	return values;
 }
 
 /** Remove todas as chaves `arkhiveon:draft:`. */

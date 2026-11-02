@@ -24,7 +24,11 @@ function clickOutside() {
 	fireEvent.click(overlay as Element);
 }
 
-function Harness({ onSave }: { onSave: (name: string) => void }) {
+function Harness({
+	onSave,
+}: {
+	onSave: (name: string) => void | Promise<void>;
+}) {
 	const [open, setOpen] = useState(true);
 	return (
 		<>
@@ -61,28 +65,44 @@ describe("CharacterNameDialog salva ao fechar", () => {
 		expect(screen.getByText("dialog-fechado")).toBeTruthy();
 	});
 
-	it("nome vazio vira rascunho e é restaurado ao reabrir", () => {
+	it("nome vazio não é gravado nem restaurado e reabrir mostra o salvo", () => {
+		seedDraft("   ");
 		const onSave = vi.fn();
 		render(<Harness onSave={onSave} />);
-		fireEvent.change(input(), { target: { value: "" } });
+		expect(input().value).toBe("Thalia Ventoclaro");
+		expect(screen.queryByText("Rascunho restaurado")).toBeNull();
+		expect(sessionStorage.getItem(draftKey)).toBeNull();
+
+		fireEvent.change(input(), { target: { value: "  " } });
 		clickOutside();
 		expect(onSave).not.toHaveBeenCalled();
 		expect(screen.getByText("dialog-fechado")).toBeTruthy();
-		const raw = sessionStorage.getItem(draftKey);
-		expect(raw).not.toBeNull();
-		expect(JSON.parse(raw ?? "").values).toEqual({ name: "" });
+		expect(sessionStorage.getItem(draftKey)).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "Reabrir" }));
-		expect(input().value).toBe("");
-		const hint = screen.getByText("Rascunho restaurado");
-		expect(hint.className).toContain("text-muted-foreground");
+		expect(input().value).toBe("Thalia Ventoclaro");
+		expect(screen.queryByText("Rascunho restaurado")).toBeNull();
+	});
+
+	it("nome igual ao salvo não é restaurado e a chave some", () => {
+		seedDraft("Thalia Ventoclaro");
+		const onSave = vi.fn();
+		render(<Harness onSave={onSave} />);
+		expect(input().value).toBe("Thalia Ventoclaro");
+		expect(screen.queryByText("Rascunho restaurado")).toBeNull();
+		expect(sessionStorage.getItem(draftKey)).toBeNull();
+		clickOutside();
+		expect(onSave).not.toHaveBeenCalled();
+		expect(sessionStorage.getItem(draftKey)).toBeNull();
 	});
 
 	it("Cancelar limpa o rascunho e descarta o que foi digitado", () => {
-		seedDraft("");
+		seedDraft("Rascunho");
 		const onSave = vi.fn();
 		render(<Harness onSave={onSave} />);
-		expect(screen.getByText("Rascunho restaurado")).toBeTruthy();
+		expect(input().value).toBe("Rascunho");
+		const hint = screen.getByText("Rascunho restaurado");
+		expect(hint.className).toContain("text-muted-foreground");
 		fireEvent.change(input(), { target: { value: "Lyra" } });
 		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 		expect(onSave).not.toHaveBeenCalled();
@@ -113,7 +133,7 @@ describe("CharacterNameDialog salva ao fechar", () => {
 	});
 
 	it("Salvar nome apaga o rascunho", () => {
-		seedDraft("");
+		seedDraft("Rascunho");
 		const onSave = vi.fn();
 		render(<Harness onSave={onSave} />);
 		fireEvent.change(input(), { target: { value: "Lyra Cinzal" } });
@@ -121,5 +141,67 @@ describe("CharacterNameDialog salva ao fechar", () => {
 		expect(onSave).toHaveBeenCalledWith("Lyra Cinzal");
 		expect(sessionStorage.getItem(draftKey)).toBeNull();
 		expect(screen.getByText("dialog-fechado")).toBeTruthy();
+	});
+
+	it("falha ao salvar no clique fora mantém o dialog, o erro e o rascunho", async () => {
+		const technical =
+			'new row violates row-level security policy for table "characters"';
+		const onSave = vi.fn(() => Promise.reject(new Error(technical)));
+		render(<Harness onSave={onSave} />);
+		fireEvent.change(input(), { target: { value: "Lyra Cinzal" } });
+		clickOutside();
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toBe(
+			"Não foi possível salvar o nome. Tente de novo.",
+		);
+		expect(alert.textContent).not.toContain(technical);
+		expect(input().getAttribute("aria-describedby")).toBe(alert.id);
+		expect(screen.getByText("dialog-aberto")).toBeTruthy();
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Salvar nome",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(false);
+		expect(JSON.parse(sessionStorage.getItem(draftKey) ?? "").values).toEqual({
+			name: "Lyra Cinzal",
+		});
+		expect(onSave).toHaveBeenCalledTimes(1);
+	});
+
+	it("falha no Salvar mantém a janela e o botão tenta de novo", async () => {
+		const technical = "duplicate key value violates unique constraint";
+		let attempt = 0;
+		const onSave = vi.fn(() => {
+			attempt += 1;
+			if (attempt === 1) return Promise.reject(new Error(technical));
+			return Promise.resolve();
+		});
+		render(<Harness onSave={onSave} />);
+		fireEvent.change(input(), { target: { value: "Lyra Cinzal" } });
+		fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toBe(
+			"Não foi possível salvar o nome. Tente de novo.",
+		);
+		expect(alert.textContent).not.toContain(technical);
+		expect(input().getAttribute("aria-describedby")).toBe(alert.id);
+		expect(screen.getByText("dialog-aberto")).toBeTruthy();
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Salvar nome",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(false);
+		expect(JSON.parse(sessionStorage.getItem(draftKey) ?? "").values).toEqual({
+			name: "Lyra Cinzal",
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+		await screen.findByText("dialog-fechado");
+		expect(onSave).toHaveBeenCalledTimes(2);
+		expect(sessionStorage.getItem(draftKey)).toBeNull();
 	});
 });
