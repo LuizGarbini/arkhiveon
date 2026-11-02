@@ -1,7 +1,7 @@
 {
-  "name": "arkhiveon",
-  "version": "1.6.57",
-  "private": true,
+	"name": "arkhiveon",
+	"version": "1.6.60",
+	"private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner --port 3000 --host 127.0.0.1",

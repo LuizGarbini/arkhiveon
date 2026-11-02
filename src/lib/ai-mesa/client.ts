@@ -4,6 +4,7 @@ import {
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import { getSupabase } from "../supabase";
 import {
+	classifyHttpFailure,
 	IA_MESA_REFUSAL,
 	type IaMesaHistoryItem,
 	type IaMesaResult,
@@ -44,21 +45,22 @@ export async function askMesaAssistant(input: {
 		if (error) {
 			const status = (error as { context?: { status?: number } }).context
 				?.status;
-			if (status === 401) return { ok: false, code: "unauthorized" };
-			if (status === 403) {
-				const code =
-					data &&
-					typeof data === "object" &&
-					(data as { code?: unknown }).code === "not_allowed"
-						? "not_allowed"
-						: "forbidden";
-				return { ok: false, code };
-			}
-			if (status === 404) return { ok: false, code: "not_deployed" };
-			return { ok: false, code: "model_error" };
+			return classifyHttpFailure(status, await readErrorBody(error, data));
 		}
 		return normalizeResponse(data);
 	} catch {
 		return { ok: false, code: "offline" };
+	}
+}
+
+async function readErrorBody(error: unknown, data: unknown): Promise<unknown> {
+	if (data && typeof data === "object") return data;
+	const context = (error as { context?: { json?: () => Promise<unknown> } })
+		.context;
+	if (!context || typeof context.json !== "function") return null;
+	try {
+		return await context.json();
+	} catch {
+		return null;
 	}
 }
