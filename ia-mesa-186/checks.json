@@ -1,0 +1,66 @@
+[
+  {
+    "n": "[1440x900] skeleton carregando",
+    "p": true
+  },
+  {
+    "n": "[1440x900] resposta",
+    "p": true
+  },
+  {
+    "n": "[1440x900] erro inline com Tentar de novo e texto preservado",
+    "p": true,
+    "d": {
+      "retry": 1,
+      "v": "E quanto de dano faz?"
+    }
+  },
+  {
+    "n": "[1440x900] limite no painel e campo desabilitado",
+    "p": true,
+    "d": {
+      "lim": 1
+    }
+  },
+  {
+    "n": "[1440x900] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[1440x900] fora da allowlist sem botão",
+    "p": true
+  },
+  {
+    "n": "[390x844] skeleton carregando",
+    "p": true
+  },
+  {
+    "n": "[390x844] resposta",
+    "p": true
+  },
+  {
+    "n": "[390x844] erro inline com Tentar de novo e texto preservado",
+    "p": true,
+    "d": {
+      "retry": 1,
+      "v": "E quanto de dano faz?"
+    }
+  },
+  {
+    "n": "[390x844] limite no painel e campo desabilitado",
+    "p": true,
+    "d": {
+      "lim": 1
+    }
+  },
+  {
+    "n": "[390x844] sem erro de página",
+    "p": true,
+    "d": []
+  },
+  {
+    "n": "[390x844] fora da allowlist sem botão",
+    "p": true
+  }
+]
