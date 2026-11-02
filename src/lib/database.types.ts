@@ -1132,6 +1132,8 @@ export type Database = {
 					fog_enabled: boolean;
 					fog_exploration: boolean;
 					grid_color: string;
+					grid_offset_x: number;
+					grid_offset_y: number;
 					grid_opacity: number;
 					grid_scale_distance: number;
 					grid_scale_unit: string;
@@ -1141,6 +1143,7 @@ export type Database = {
 					id: string;
 					is_active: boolean;
 					map_image_url: string | null;
+					map_scale: number;
 					name: string;
 					order_index: number;
 					updated_at: string;
@@ -1154,6 +1157,8 @@ export type Database = {
 					fog_enabled?: boolean;
 					fog_exploration?: boolean;
 					grid_color?: string;
+					grid_offset_x?: number;
+					grid_offset_y?: number;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
@@ -1163,6 +1168,7 @@ export type Database = {
 					id?: string;
 					is_active?: boolean;
 					map_image_url?: string | null;
+					map_scale?: number;
 					name?: string;
 					order_index?: number;
 					updated_at?: string;
@@ -1176,6 +1182,8 @@ export type Database = {
 					fog_enabled?: boolean;
 					fog_exploration?: boolean;
 					grid_color?: string;
+					grid_offset_x?: number;
+					grid_offset_y?: number;
 					grid_opacity?: number;
 					grid_scale_distance?: number;
 					grid_scale_unit?: string;
@@ -1185,6 +1193,7 @@ export type Database = {
 					id?: string;
 					is_active?: boolean;
 					map_image_url?: string | null;
+					map_scale?: number;
 					name?: string;
 					order_index?: number;
 					updated_at?: string;

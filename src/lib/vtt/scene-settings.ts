@@ -16,6 +16,8 @@ export function sceneSettingsPatchToDb(
 		db.grid_scale_distance = patch.gridScaleDistance;
 	if (patch.gridScaleUnit !== undefined)
 		db.grid_scale_unit = patch.gridScaleUnit;
+	if (patch.gridOffsetX !== undefined) db.grid_offset_x = patch.gridOffsetX;
+	if (patch.gridOffsetY !== undefined) db.grid_offset_y = patch.gridOffsetY;
 	return db;
 }
 

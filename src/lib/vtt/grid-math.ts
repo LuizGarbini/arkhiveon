@@ -5,6 +5,9 @@ export interface Point {
 	y: number;
 }
 
+/** Origem do grid sem offset. */
+export const ZERO_ORIGIN: Readonly<Point> = Object.freeze({ x: 0, y: 0 });
+
 /**
  * Snap pixel coordinates (world position) to the center of the nearest grid cell or vertex.
  * Correctly accounts for multi-cell tokens (1x1, 2x2, 3x3, 4x4) in Square and Hexagonal grids.
@@ -14,8 +17,19 @@ export function snapToGrid(
 	gridType: VTTGridType,
 	gridSize: number,
 	tokenSizeCells = 1,
+	origin: Point = ZERO_ORIGIN,
 ): Point {
 	if (gridType === "none" || gridSize <= 0) return point;
+	if (origin.x !== 0 || origin.y !== 0) {
+		// Offset do grid: encaixa no grid sem offset e devolve deslocado.
+		const local = snapToGrid(
+			{ x: point.x - origin.x, y: point.y - origin.y },
+			gridType,
+			gridSize,
+			tokenSizeCells,
+		);
+		return { x: local.x + origin.x, y: local.y + origin.y };
+	}
 
 	const isEven = tokenSizeCells % 2 === 0;
 
@@ -243,6 +257,8 @@ export interface FindFreeCellOptions {
 	bounds: { width: number; height: number };
 	/** Raio máximo da busca, em casas. */
 	maxRings?: number;
+	/** Offset do grid (origem das linhas). */
+	origin?: Point;
 }
 
 function footprintsOverlap(
@@ -290,9 +306,10 @@ export function findFreeCell(
 		sizeCells = 1,
 		bounds,
 		maxRings = 10,
+		origin: gridOrigin = ZERO_ORIGIN,
 	}: FindFreeCellOptions,
 ): Point {
-	const start = snapToGrid(origin, gridType, gridSize, sizeCells);
+	const start = snapToGrid(origin, gridType, gridSize, sizeCells, gridOrigin);
 	if (gridSize <= 0) return start;
 	const half = (sizeCells * gridSize) / 2;
 	const isFree = (p: Point) =>
@@ -314,6 +331,7 @@ export function findFreeCell(
 				gridType,
 				gridSize,
 				sizeCells,
+				gridOrigin,
 			);
 			const key = `${p.x.toFixed(2)}:${p.y.toFixed(2)}`;
 			if (seen.has(key)) continue;
@@ -336,8 +354,54 @@ export const GRID_SIZE_MAX = 400;
 /** Distância por célula padrão (D&D: 1,5 m). */
 export const DEFAULT_GRID_SCALE_DISTANCE = 1.5;
 
-/** Arredonda para inteiro e prende o tamanho da célula em 10–400 px. */
+/** Casas decimais aceitas na célula e no offset (0,01 px). */
+const GRID_DECIMALS = 100;
+
+function roundGrid(value: number): number {
+	return Math.round(value * GRID_DECIMALS) / GRID_DECIMALS;
+}
+
+/** Prende o tamanho da célula em 10–400 px, com até 2 casas decimais. */
 export function clampGridSize(value: number): number {
 	if (!Number.isFinite(value)) return GRID_SIZE_MIN;
-	return Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, Math.round(value)));
+	return Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, roundGrid(value)));
+}
+
+/**
+ * Normaliza o offset para 0 ≤ offset < célula (deslocar uma célula inteira
+ * desenha o mesmo grid). Até 2 casas decimais.
+ */
+export function normalizeGridOffset(value: number, gridSize: number): number {
+	if (!Number.isFinite(value) || gridSize <= 0) return 0;
+	const wrapped = roundGrid(((value % gridSize) + gridSize) % gridSize);
+	return wrapped >= gridSize ? 0 : wrapped;
+}
+
+/** Primeira coordenada de linha do grid dentro da cena (≥ 0). */
+export function firstGridLine(offset: number, step: number): number {
+	if (step <= 0) return 0;
+	return ((offset % step) + step) % step;
+}
+
+/**
+ * "Contar quadrados": quantas casas o mapa tem na largura → tamanho da
+ * célula. Quadrado: largura / colunas. Hex pontudo: as colunas andam 1,5·r
+ * (= 0,75 · célula). Hex plano: as colunas andam r·√3 (= célula · √3/2).
+ * Devolve null se a entrada não dá um tamanho válido.
+ */
+export function gridSizeFromCellCount(
+	mapWidth: number,
+	columns: number,
+	gridType: VTTGridType,
+): number | null {
+	if (!(mapWidth > 0) || !(columns >= 1) || !Number.isFinite(columns))
+		return null;
+	const perColumn = mapWidth / columns;
+	const size =
+		gridType === "hex_pointy"
+			? perColumn / 0.75
+			: gridType === "hex_flat"
+				? perColumn / (Math.sqrt(3) / 2)
+				: perColumn;
+	return clampGridSize(size);
 }

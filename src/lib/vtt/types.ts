@@ -14,6 +14,11 @@ export interface VTTScene {
 	gridOpacity: number;
 	gridScaleDistance: number;
 	gridScaleUnit: VTTGridScaleUnit;
+	/** Offset do grid em px (0 ≤ offset < gridSize). Migration 0058. */
+	gridOffsetX: number;
+	gridOffsetY: number;
+	/** Escala do sprite do mapa (1 = tamanho original). UI só na F3. */
+	mapScale: number;
 	width: number;
 	height: number;
 	fogEnabled: boolean;
@@ -34,6 +39,8 @@ export type VTTSceneSettingsPatch = Partial<
 		| "gridOpacity"
 		| "gridScaleDistance"
 		| "gridScaleUnit"
+		| "gridOffsetX"
+		| "gridOffsetY"
 	>
 >;
 

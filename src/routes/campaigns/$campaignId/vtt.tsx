@@ -255,6 +255,9 @@ function VTTSession() {
 				gridOpacity: row.grid_opacity,
 				gridScaleDistance: row.grid_scale_distance,
 				gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
+				gridOffsetX: row.grid_offset_x ?? 0,
+				gridOffsetY: row.grid_offset_y ?? 0,
+				mapScale: row.map_scale ?? 1,
 				width: row.width,
 				height: row.height,
 				fogEnabled: row.fog_enabled,
@@ -414,6 +417,9 @@ function VTTSession() {
 							gridOpacity: row.grid_opacity,
 							gridScaleDistance: row.grid_scale_distance,
 							gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
+							gridOffsetX: row.grid_offset_x ?? 0,
+							gridOffsetY: row.grid_offset_y ?? 0,
+							mapScale: row.map_scale ?? 1,
 							width: row.width,
 							height: row.height,
 							fogEnabled: row.fog_enabled,
@@ -436,6 +442,9 @@ function VTTSession() {
 							gridOpacity: row.grid_opacity,
 							gridScaleDistance: row.grid_scale_distance,
 							gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
+							gridOffsetX: row.grid_offset_x ?? 0,
+							gridOffsetY: row.grid_offset_y ?? 0,
+							mapScale: row.map_scale ?? 1,
 							width: row.width,
 							height: row.height,
 							fogEnabled: row.fog_enabled,
@@ -1053,6 +1062,9 @@ function VTTSession() {
 				gridOpacity: data.grid_opacity,
 				gridScaleDistance: data.grid_scale_distance,
 				gridScaleUnit: data.grid_scale_unit as VTTGridScaleUnit,
+				gridOffsetX: data.grid_offset_x ?? 0,
+				gridOffsetY: data.grid_offset_y ?? 0,
+				mapScale: data.map_scale ?? 1,
 				width: data.width,
 				height: data.height,
 				fogEnabled: data.fog_enabled,
@@ -1178,6 +1190,10 @@ function VTTSession() {
 			dbUpdates.grid_scale_distance = updates.gridScaleDistance;
 		if (updates.gridScaleUnit !== undefined)
 			dbUpdates.grid_scale_unit = updates.gridScaleUnit;
+		if (updates.gridOffsetX !== undefined)
+			dbUpdates.grid_offset_x = updates.gridOffsetX;
+		if (updates.gridOffsetY !== undefined)
+			dbUpdates.grid_offset_y = updates.gridOffsetY;
 		if (updates.width !== undefined) dbUpdates.width = updates.width;
 		if (updates.height !== undefined) dbUpdates.height = updates.height;
 		if (updates.fogEnabled !== undefined)
