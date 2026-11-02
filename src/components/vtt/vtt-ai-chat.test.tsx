@@ -135,13 +135,20 @@ describe("VTTAiChat: estados do painel", () => {
 			screen.getByText("Não consegui responder agora. Nada foi enviado."),
 		).toBeTruthy();
 		expect(screen.queryByText(/não está disponível/i)).toBeNull();
+		expect(screen.getByRole("alert").className).toContain(
+			"border-destructive/40",
+		);
 		expect(retry.className).toContain("focus-visible:ring-2");
+		expect(retry.className).toContain("focus-visible:ring-ring");
+		expect(retry.className).toContain("focus-visible:ring-offset-2");
+		expect(retry.className).toContain("focus-visible:ring-offset-background");
 		expect(retry.className).toContain("[@media(hover:hover)]:hover:ring-2");
 		const input = screen.getByLabelText(
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
-		expect(input.value).toBe("atualiza a ficha");
+		expect(input.value).toBe("");
 		expect(input.disabled).toBe(false);
+		fireEvent.change(input, { target: { value: "texto que não deve ir" } });
 		h.ask.mockResolvedValue({ ok: false, code: "model_error" });
 		fireEvent.click(retry);
 		expect(
@@ -154,6 +161,7 @@ describe("VTTAiChat: estados do painel", () => {
 			message: "atualiza a ficha",
 			history: [],
 		});
+		expect(input.value).toBe("texto que não deve ir");
 		expect(
 			screen
 				.getAllByText("atualiza a ficha")
@@ -184,18 +192,29 @@ describe("VTTAiChat: estados do painel", () => {
 		const bubble = await screen.findByText(
 			"Limite diário da mesa atingido. Volta terça-feira, 3 de novembro às 00:00.",
 		);
-		expect(bubble.className).toContain("text-destructive");
-		expect(bubble.className).toContain("bg-destructive/10");
+		const bubbleClass = bubble.className.split(/\s+/);
+		expect(bubbleClass).toContain("bg-muted/40");
+		expect(bubbleClass).toContain("border-border");
+		expect(bubbleClass).toContain("text-foreground");
+		expect(bubble.className).not.toContain("destructive");
 		expect(bubble.className).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+		expect(bubble.querySelector("svg")?.getAttribute("class")).toContain(
+			"text-muted-foreground",
+		);
 		const input = screen.getByLabelText(
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
 		expect(input.disabled).toBe(true);
-		expect(input.value).toBe("quem está na cena?");
-		expect(input.placeholder).toBe("Limite diário atingido · volta às 00:00");
+		expect(input.value).toBe("");
+		expect(input.placeholder).toBe("");
+		const hint = screen.getByText("Limite diário atingido · volta às 00:00");
+		expect(hint.className).toContain("text-muted-foreground");
+		expect(hint.className).not.toContain("destructive");
 		expect(
-			screen.getByText("Limite diário atingido · volta às 00:00"),
-		).toBeTruthy();
+			screen
+				.getAllByText("quem está na cena?")
+				.filter((el) => el.tagName === "P"),
+		).toHaveLength(1);
 		expect(
 			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
 		).toBe(true);
@@ -217,6 +236,7 @@ describe("VTTAiChat: estados do painel", () => {
 			.getAllByText("quem está na cena?")
 			.find((el) => el.tagName === "P");
 		expect(bubble?.className).toContain("bg-primary/15");
+		expect(input.value).toBe("");
 		expect(input.disabled).toBe(true);
 		expect(
 			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
@@ -242,7 +262,9 @@ describe("VTTAiChat: estados visíveis", () => {
 	it("sem mensagens, o painel mostra um texto curto", () => {
 		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
 		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
-		expect(screen.getByText("Nenhuma mensagem ainda.")).toBeTruthy();
+		const empty = screen.getByText("Pergunte sobre regras, a cena ou a ficha.");
+		expect(empty.className).toContain("text-muted-foreground");
+		expect(screen.queryByText("Nenhuma mensagem ainda.")).toBeNull();
 		expect(screen.queryByText(/Posso propor NPCs/)).toBeNull();
 	});
 

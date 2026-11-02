@@ -1,6 +1,7 @@
 import {
 	Check,
 	ChevronDown,
+	Clock,
 	Compass,
 	FileText,
 	IdCard,
@@ -60,7 +61,7 @@ interface ChatMessage {
 
 const TRANSIENT_FAILURE = "Não consegui responder agora. Nada foi enviado.";
 const NOT_ALLOWED = "O assistente não está disponível nesta campanha.";
-const EMPTY_THREAD = "Nenhuma mensagem ainda.";
+const EMPTY_THREAD = "Pergunte sobre regras, a cena ou a ficha.";
 
 /** Hover e foco visíveis, com tokens que já existem. O anel não fica cortado. */
 const tactileControl =
@@ -159,8 +160,9 @@ export function VTTAiChat({
 		});
 	};
 
-	const send = async () => {
-		const text = draft.trim();
+	const send = async (bubbleText?: string) => {
+		const fromBubble = typeof bubbleText === "string";
+		const text = (fromBubble ? bubbleText : draft).trim();
 		if (
 			!text ||
 			busyRef.current ||
@@ -179,6 +181,8 @@ export function VTTAiChat({
 				{ id: newId(), role: "user", text, time: nowLabel() },
 			]);
 		}
+		// A bolha já leva a pergunta; o campo esvazia no envio, antes da resposta.
+		if (!fromBubble) setDraft("");
 		setPanel({ kind: "loading" });
 		scrollToEnd();
 		try {
@@ -188,7 +192,6 @@ export function VTTAiChat({
 				history,
 			});
 			if (result.ok) {
-				setDraft("");
 				setPanel({ kind: "idle" });
 				setMessages((prev) => [
 					...prev,
@@ -213,6 +216,16 @@ export function VTTAiChat({
 			scrollToEnd();
 		} finally {
 			busyRef.current = false;
+		}
+	};
+
+	const retryFromBubble = () => {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i];
+			if (message.role === "user" && message.id !== "welcome") {
+				void send(message.text);
+				return;
+			}
 		}
 	};
 
@@ -377,8 +390,11 @@ export function VTTAiChat({
 								<p className="text-sm">{panel.text}</p>
 								<Button
 									type="button"
-									className={cn("min-h-11", tactileControl)}
-									onClick={() => void send()}
+									className={cn(
+										"min-h-11 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+										tactileControl,
+									)}
+									onClick={retryFromBubble}
 								>
 									Tentar de novo
 								</Button>
@@ -387,8 +403,12 @@ export function VTTAiChat({
 						{panel.kind === "limit" && (
 							<output
 								id={limitNoticeId}
-								className="block max-w-[85%] rounded-2xl border border-destructive/40 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive"
+								className="flex max-w-[85%] items-start gap-2 rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground"
 							>
+								<Clock
+									className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+									aria-hidden
+								/>
 								{limitNotice}
 							</output>
 						)}
@@ -411,7 +431,7 @@ export function VTTAiChat({
 								rows={2}
 								maxLength={1200}
 								placeholder={
-									panel.kind === "limit" ? limitHint : "Peça algo para a IA..."
+									panel.kind === "limit" ? "" : "Peça algo para a IA..."
 								}
 								disabled={inputLocked}
 								spellCheck={false}
@@ -426,7 +446,7 @@ export function VTTAiChat({
 							{panel.kind === "limit" && (
 								<p
 									id={limitHintId}
-									className="px-3 pb-1 text-xs text-destructive"
+									className="px-3 pb-1 text-xs text-muted-foreground"
 								>
 									{limitHint}
 								</p>

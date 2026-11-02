@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "02/11/2026",
 		title: "O assistente da mesa avisa o limite e trava o envio",
 		description:
-			"Quando o limite do dia acaba, o campo fica desabilitado e mostra a hora em que volta, no horário de São Paulo. A pergunta entra na conversa na hora, e enquanto a resposta carrega não dá para enviar de novo. Se a chave ou o modelo falhar, o aviso diz que não deu para responder agora e que nada foi enviado. Campanha ainda não liberada continua com o aviso de que o assistente não está disponível nela. O painel vazio diz que ainda não há mensagens, e os botões de enviar, tentar de novo e o botão flutuante mostram hover e foco.",
+			"Quando o limite do dia acaba, o aviso no painel fica neutro e mostra a hora em que volta, no horário de São Paulo. O campo esvazia, fica desabilitado e mostra só esse motivo. A pergunta entra na conversa na hora e o campo limpa no envio; enquanto a resposta carrega não dá para enviar de novo. Se a chave ou o modelo falhar, o aviso diz que não deu para responder agora e que nada foi enviado, e “Tentar de novo” reenvia a pergunta que já está na conversa. Campanha ainda não liberada continua com o aviso de que o assistente não está disponível nela. O painel vazio diz “Pergunte sobre regras, a cena ou a ficha.”",
 		bullets: [],
 	},
 	{
