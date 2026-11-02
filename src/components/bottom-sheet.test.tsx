@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BOTTOM_SHEET_DRAG_CLOSE_PX, BottomSheet } from "./bottom-sheet";
 
@@ -37,6 +43,29 @@ describe("BottomSheet onDismissSave", () => {
 			BOTTOM_SHEET_DRAG_CLOSE_PX + 1,
 		);
 		expect(order).toEqual(["save", "close"]);
+	});
+
+	it("promise rejeitada no arraste não fecha", async () => {
+		const onOpenChange = vi.fn();
+		render(
+			<BottomSheet
+				open
+				title="Ficha"
+				onDismissSave={() => Promise.reject(new Error("rede"))}
+				onOpenChange={onOpenChange}
+			>
+				<p>Conteudo</p>
+			</BottomSheet>,
+		);
+		drag(
+			screen.getByTestId("bottom-sheet-handle"),
+			BOTTOM_SHEET_DRAG_CLOSE_PX + 1,
+		);
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		expect(onOpenChange).not.toHaveBeenCalled();
+		expect(screen.getByText("Conteudo")).toBeTruthy();
 	});
 
 	it("arrastar até o limite não salva nem fecha", () => {

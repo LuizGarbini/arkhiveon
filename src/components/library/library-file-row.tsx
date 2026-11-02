@@ -16,10 +16,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+	clearDraft,
+	persistDraft,
+	readRestorableDraft,
+} from "@/lib/form-draft";
+import {
 	checkTitleDraft,
 	formatBytes,
 	type LibraryFile,
 } from "@/lib/library/library-storage";
+
+const LIBRARY_TITLE_DRAFT_FORM_ID = "library-file-title";
+
+function libraryTitlePolicy(title: string) {
+	return {
+		saved: { title },
+		required: ["title"] as const,
+	};
+}
 
 const dateParts = new Intl.DateTimeFormat("pt-BR", {
 	day: "2-digit",
@@ -39,7 +53,7 @@ interface LibraryFileRowProps {
 	file: LibraryFile;
 	canManage: boolean;
 	onDelete: (file: LibraryFile) => void;
-	/** Salva o novo nome; rejeita com a mensagem de erro pra mostrar na linha. */
+	/** Salva o novo nome. Se rejeitar, a linha mostra um aviso fixo. */
 	onRename: (file: LibraryFile, title: string) => Promise<void>;
 }
 
@@ -64,9 +78,17 @@ export function LibraryFileRow({
 	const hintId = useId();
 
 	function startEdit(focus: boolean) {
+		const restored = readRestorableDraft<{ title: string }>(
+			LIBRARY_TITLE_DRAFT_FORM_ID,
+			file.id,
+			libraryTitlePolicy(file.title),
+		);
 		setEdit({
 			mode: "edit",
-			draft: file.title,
+			draft:
+				restored && typeof restored.title === "string"
+					? restored.title
+					: file.title,
 			focus,
 			saving: false,
 			error: null,
@@ -74,6 +96,7 @@ export function LibraryFileRow({
 	}
 
 	function cancelEdit() {
+		clearDraft(LIBRARY_TITLE_DRAFT_FORM_ID, file.id);
 		setEdit({ mode: "view" });
 	}
 
@@ -81,7 +104,14 @@ export function LibraryFileRow({
 		event.preventDefault();
 		if (edit.mode !== "edit" || edit.saving) return;
 		const check = checkTitleDraft(edit.draft);
+		const policy = libraryTitlePolicy(file.title);
 		if (!check.ok) {
+			persistDraft(
+				LIBRARY_TITLE_DRAFT_FORM_ID,
+				file.id,
+				{ title: edit.draft },
+				policy,
+			);
 			setEdit({ ...edit, error: check.error });
 			return;
 		}
@@ -92,15 +122,19 @@ export function LibraryFileRow({
 		setEdit({ ...edit, saving: true, error: null });
 		try {
 			await onRename(file, check.title);
+			clearDraft(LIBRARY_TITLE_DRAFT_FORM_ID, file.id);
 			setEdit({ mode: "view" });
-		} catch (error) {
+		} catch {
+			persistDraft(
+				LIBRARY_TITLE_DRAFT_FORM_ID,
+				file.id,
+				{ title: check.title },
+				policy,
+			);
 			setEdit({
 				...edit,
 				saving: false,
-				error:
-					error instanceof Error && error.message
-						? error.message
-						: "Não deu pra salvar o nome. Tente de novo.",
+				error: "Não deu pra salvar o nome. Tente de novo.",
 			});
 		}
 	}

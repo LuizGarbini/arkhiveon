@@ -1,9 +1,5 @@
 import type { StateCreator } from "zustand";
-import {
-	entityNameOf,
-	generateEntry,
-	pushLog,
-} from "./helpers";
+import { entityNameOf, generateEntry, pushLog } from "./helpers";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Quest, RPGState } from "./types";
 import { worldEntityDefaultsForCampaign } from "./worldbuilding-slice";
@@ -30,12 +26,10 @@ export interface QuestSlice {
 	removeQuest: (id: string) => void;
 }
 
-export const createQuestSlice: StateCreator<
-	RPGState,
-	[],
-	[],
-	QuestSlice
-> = (set, get) => ({
+export const createQuestSlice: StateCreator<RPGState, [], [], QuestSlice> = (
+	set,
+	get,
+) => ({
 	quests: [],
 	addQuest: (quest) => {
 		const campaignId = get().activeCampaignId;

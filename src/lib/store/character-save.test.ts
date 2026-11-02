@@ -164,10 +164,10 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		expect(showToastMock).not.toHaveBeenCalled();
 	});
 
-	it("saveCharacter só resolve depois do banco, sem toast", async () => {
+	it("save quiet só resolve depois do banco, sem toast", async () => {
 		const pending = useRPGStore
 			.getState()
-			.saveCharacter("ficha-1", { notes: "gravado" });
+			.updateCharacter("ficha-1", { notes: "gravado" }, { quiet: true });
 		expect(useRPGStore.getState().characters[0].notes).toBe("gravado");
 		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe("");
 		await pending;
@@ -183,7 +183,7 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		try {
 			const pending = useRPGStore
 				.getState()
-				.saveCharacter("ficha-1", { notes: "PV 9/12" });
+				.updateCharacter("ficha-1", { notes: "PV 9/12" }, { quiet: true });
 			await expect(pending).resolves.toBeUndefined();
 			expect(useRPGStore.getState().characters[0].notes).toBe("PV 9/12");
 			expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe(
@@ -202,17 +202,54 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		}
 	});
 
-	it("saveCharacter com RLS bloqueada reverte, rejeita e não mostra toast", async () => {
+	it("save quiet com RLS bloqueada reverte, rejeita e não mostra toast", async () => {
 		db.rlsHidesRow = true;
 		const pending = useRPGStore
 			.getState()
-			.saveCharacter("ficha-1", { notes: "não entra" });
+			.updateCharacter("ficha-1", { notes: "não entra" }, { quiet: true });
 		await expect(pending).rejects.toThrow(/permissão/);
 		expect(showToastMock).not.toHaveBeenCalled();
 		const state = useRPGStore.getState();
 		expect(state.syncError).toBeNull();
 		expect(state.characters[0].notes).toBe("");
 		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe("");
+	});
+
+	it("save quiet sem rede rejeita com OFFLINE_SAVE_MESSAGE e reverte", async () => {
+		db.offline = true;
+		const pending = useRPGStore
+			.getState()
+			.updateCharacter("ficha-1", { notes: "sem rede" }, { quiet: true });
+		await expect(pending).rejects.toThrow(
+			"A ficha não foi salva. Verifique a conexão e tente de novo.",
+		);
+		expect(showToastMock).not.toHaveBeenCalled();
+		expect(useRPGStore.getState().syncError).toBeNull();
+		expect(useRPGStore.getState().characters[0].notes).toBe("");
+	});
+
+	it("save quiet não grava syncError; sem quiet o banner continua", async () => {
+		db.rlsHidesRow = true;
+		await expect(
+			useRPGStore
+				.getState()
+				.updateCharacter("ficha-1", { notes: "quiet" }, { quiet: true }),
+		).rejects.toThrow();
+		expect(showToastMock).not.toHaveBeenCalled();
+		expect(useRPGStore.getState().syncError).toBeNull();
+		expect(useRPGStore.getState().characters[0].notes).toBe("");
+
+		showToastMock.mockClear();
+		await expect(
+			useRPGStore.getState().updateCharacter("ficha-1", { notes: "alto" }),
+		).rejects.toThrow();
+		expect(useRPGStore.getState().syncError).toMatch(
+			/não tem permissão para editar esta ficha/,
+		);
+		expect(showToastMock).toHaveBeenCalledWith(
+			"error",
+			expect.objectContaining({ title: "A ficha não foi salva" }),
+		);
 	});
 
 	it("UPDATE com 0 linhas (RLS) vira erro visível e desfaz a mudança local", async () => {

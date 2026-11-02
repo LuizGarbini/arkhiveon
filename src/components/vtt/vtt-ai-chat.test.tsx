@@ -8,17 +8,25 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { snapshotFromCharacter } from "@/lib/ai-mesa/sheet-batch";
+import type { Character, CharacterUpdateOptions } from "@/lib/store/types";
 import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
 import { validateSheetBatch } from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 
 const h = vi.hoisted(() => ({
+	/** Save quiet do lote: `updateCharacter(id, changes, { quiet: true })`. */
+	quietSave: vi.fn((_id: string, _changes: Record<string, unknown>) =>
+		Promise.resolve(),
+	),
 	state: {
 		activeCampaignId: "rise",
 		characters: [] as unknown[],
 		campaigns: [] as { id: string; myRole?: string }[],
-		updateCharacter: vi.fn(),
-		saveCharacter: vi.fn((_id: string, _changes: Record<string, unknown>) =>
-			Promise.resolve(),
+		updateCharacter: vi.fn(
+			(
+				_id: string,
+				_changes: Partial<Character>,
+				_options?: CharacterUpdateOptions,
+			): Promise<void> => Promise.resolve(),
 		),
 		addNpc: vi.fn(),
 		removeNpc: vi.fn(),
@@ -96,11 +104,21 @@ beforeEach(() => {
 	h.state.characters = [dante];
 	h.state.campaigns = [];
 	h.state.updateCharacter.mockReset();
-	h.state.saveCharacter.mockReset();
-	h.state.saveCharacter.mockImplementation(() => Promise.resolve());
+	h.state.updateCharacter.mockImplementation((id, changes, options) =>
+		options?.quiet ? h.quietSave(id, changes) : Promise.resolve(),
+	);
+	h.quietSave.mockReset();
+	h.quietSave.mockImplementation(() => Promise.resolve());
 	h.ask.mockReset();
 });
 afterEach(cleanup);
+
+/** Chamadas de `updateCharacter` fora do save quiet do lote. */
+function loudUpdates() {
+	return h.state.updateCharacter.mock.calls.filter(
+		([, , options]) => !options?.quiet,
+	);
+}
 
 describe("VTTAiChat: estados do painel", () => {
 	async function openAndType(text: string) {
@@ -325,14 +343,14 @@ describe("VTTAiChat: editar ficha existente", () => {
 			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
 				.disabled,
 		).toBe(true);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("Ignorar (rejeitar) não grava nada", async () => {
 		await askForPatch();
 		fireEvent.click(screen.getByRole("button", { name: "Ignorar" }));
 		expect(screen.getByText(/Nada foi salvo/)).toBeTruthy();
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("Confirmar → Aplicar grava o patch; Desfazer volta o antes", async () => {
@@ -340,13 +358,13 @@ describe("VTTAiChat: editar ficha existente", () => {
 		fireEvent.click(
 			screen.getByRole("button", { name: "Confirmar alteração" }),
 		);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		expect(h.state.updateCharacter).toHaveBeenCalledTimes(1);
 		const [id, changes] = h.state.updateCharacter.mock.calls[0];
 		expect(id).toBe("dante-1");
 		expect(changes.strength).toBe(18);
-		expect(changes.inventoryList[0].weapon.magicBonus).toBe(1);
+		expect(changes.inventoryList?.[0]?.weapon?.magicBonus).toBe(1);
 		expect(screen.getByText(/ficha de Dante Diavolo atualizada/)).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
@@ -367,7 +385,7 @@ describe("VTTAiChat: editar ficha existente", () => {
 				}) as HTMLButtonElement
 			).disabled,
 		).toBe(true);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 });
 
@@ -448,8 +466,8 @@ describe("VTTAiChat: edição em lote", () => {
 		const stored = document.querySelector("textarea");
 		expect(stored?.closest("form")?.hidden).toBe(true);
 		expect((stored as HTMLTextAreaElement).value).toBe("");
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
-		expect(h.state.saveCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
+		expect(h.quietSave).not.toHaveBeenCalled();
 		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 		expect(
 			(
@@ -517,7 +535,7 @@ describe("VTTAiChat: edição em lote", () => {
 			true,
 		);
 		let releaseSave: () => void = () => {};
-		h.state.saveCharacter.mockImplementation(
+		h.quietSave.mockImplementation(
 			(id: string, changes: Record<string, unknown>) => {
 				return new Promise<void>((resolve) => {
 					releaseSave = () => {
@@ -539,16 +557,16 @@ describe("VTTAiChat: edição em lote", () => {
 				.disabled,
 		).toBe(true);
 		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
-		expect(h.state.saveCharacter).toHaveBeenCalledTimes(1);
+		expect(h.quietSave).toHaveBeenCalledTimes(1);
 		releaseSave();
 		expect(
 			await screen.findByText("Aplicado. A ficha foi atualizada."),
 		).toBeTruthy();
-		const [id, changes] = h.state.saveCharacter.mock.calls[0];
+		const [id, changes] = h.quietSave.mock.calls[0];
 		expect(id).toBe("dante-1");
 		expect(changes.strength).toBe(18);
 		expect(Object.keys(changes)).toEqual(["strength"]);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 		const dock = document.querySelector("[data-slot='sheet-batch-dock']");
 		expect(dock?.className).toContain("flex-1");
 		const row = dock?.querySelector("[data-field='strength']");
@@ -565,14 +583,14 @@ describe("VTTAiChat: edição em lote", () => {
 	it("falha do save não mostra Aplicado, mantém o lote e deixa tentar de novo", async () => {
 		h.state.characters = [batchSheet];
 		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
-		h.state.saveCharacter.mockImplementationOnce(() => {
+		h.quietSave.mockImplementationOnce(() => {
 			h.state.characters = [{ ...batchSheet, strength: 18 }];
 			return Promise.reject(new Error("blocked")).catch((error: unknown) => {
 				h.state.characters = [batchSheet];
 				throw error;
 			});
 		});
-		h.state.saveCharacter.mockImplementationOnce(() => Promise.resolve());
+		h.quietSave.mockImplementationOnce(() => Promise.resolve());
 		h.ask.mockResolvedValue({
 			ok: true,
 			reply: "Revise e aplique.",
@@ -603,8 +621,8 @@ describe("VTTAiChat: edição em lote", () => {
 			await screen.findByText("Aplicado. A ficha foi atualizada."),
 		).toBeTruthy();
 		expect(screen.queryByRole("alert")).toBeNull();
-		expect(h.state.saveCharacter).toHaveBeenCalledTimes(2);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(h.quietSave).toHaveBeenCalledTimes(2);
+		expect(loudUpdates()).toEqual([]);
 		expect(
 			(
 				screen.getByLabelText(
@@ -630,7 +648,7 @@ describe("VTTAiChat: edição em lote", () => {
 		await screen.findByRole("button", { name: "Cancelar" });
 		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 		expect(screen.getByText(/Nada foi salvo/)).toBeTruthy();
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("permissão negada não grava", async () => {
@@ -650,7 +668,7 @@ describe("VTTAiChat: edição em lote", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		expect(await screen.findByRole("alert")).toBeTruthy();
 		expect(screen.getByRole("alert").textContent).toMatch(/Nada foi alterado/);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("mostra o contador e trava o envio acima do limite", async () => {

@@ -377,7 +377,7 @@ export function VTTAiChat({
 					character,
 					proposal,
 					write: (id, changes) => {
-						persisted = store.saveCharacter(id, changes);
+						persisted = store.updateCharacter(id, changes, { quiet: true });
 					},
 				});
 				if (!result.ok) {
