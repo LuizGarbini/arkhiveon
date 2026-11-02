@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-11-02T12:42:43.509Z",
+  "checks": [
+    {
+      "name": "[1440x900] rascunho vazio não restaurado",
+      "pass": true,
+      "detail": {
+        "restoredEmpty": 0,
+        "val": "Elbereth"
+      }
+    },
+    {
+      "name": "[1440x900] falha mantém dialog aberto, erro e Salvar ativo",
+      "pass": true,
+      "detail": {
+        "stillOpen": true,
+        "alertTxt": "preview: falha simulada",
+        "saveEnabled": true
+      }
+    },
+    {
+      "name": "[1440x900] retry salva",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[1440x900] Esc salva valor válido",
+      "pass": true,
+      "detail": "Lyra Cinzal Veloz"
+    },
+    {
+      "name": "[1440x900] clique fora salva valor válido",
+      "pass": true,
+      "detail": "Lyra a Paciente"
+    },
+    {
+      "name": "[1440x900] sem select nativo",
+      "pass": true
+    },
+    {
+      "name": "[1440x900] sem erro de página",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "[390x844] rascunho vazio não restaurado",
+      "pass": true,
+      "detail": {
+        "restoredEmpty": 0,
+        "val": "Elbereth"
+      }
+    },
+    {
+      "name": "[390x844] falha mantém dialog aberto, erro e Salvar ativo",
+      "pass": true,
+      "detail": {
+        "stillOpen": true,
+        "alertTxt": "preview: falha simulada",
+        "saveEnabled": true
+      }
+    },
+    {
+      "name": "[390x844] retry salva",
+      "pass": true,
+      "detail": "Lyra Cinzal"
+    },
+    {
+      "name": "[390x844] Esc salva valor válido",
+      "pass": true,
+      "detail": "Lyra Cinzal Veloz"
+    },
+    {
+      "name": "[390x844] clique fora salva valor válido",
+      "pass": true,
+      "detail": "Lyra a Paciente"
+    },
+    {
+      "name": "[390x844] sem select nativo",
+      "pass": true
+    },
+    {
+      "name": "[390x844] sem erro de página",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}
