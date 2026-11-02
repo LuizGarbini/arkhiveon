@@ -12,6 +12,8 @@ const db = vi.hoisted(() => ({
 	rlsHidesRow: false,
 	/** Simula estar sem rede: o fetch do supabase-js rejeita. */
 	offline: false,
+	/** Insert em activity_log rejeita; a escrita da ficha segue. */
+	activityFails: false,
 }));
 
 const showToastMock = vi.hoisted(() => vi.fn());
@@ -44,7 +46,16 @@ vi.mock("../supabase", () => {
 				},
 			}),
 		}),
-		insert: async () => ({ error: null }),
+		insert: async () => {
+			if (table === "activity" && db.activityFails) {
+				const failure = new Error(
+					"user@example.com token=sekret notes=PV 9/12",
+				);
+				failure.name = "ActivityWriteError";
+				return { error: failure };
+			}
+			return { error: null };
+		},
 	});
 	return {
 		SUPABASE_TABLES: new Proxy({}, { get: (_t, key) => String(key) }),
@@ -108,6 +119,7 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		db.rows.clear();
 		db.rlsHidesRow = false;
 		db.offline = false;
+		db.activityFails = false;
 		showToastMock.mockClear();
 		const character = baseCharacter();
 		db.rows.set(character.id, {
@@ -163,6 +175,31 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 			"gravado",
 		);
 		expect(showToastMock).not.toHaveBeenCalled();
+	});
+
+	it("escrita ok e atividade rejeitada: save resolve, ficha fica e só avisa o nome do erro", async () => {
+		db.activityFails = true;
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const pending = useRPGStore
+				.getState()
+				.saveCharacter("ficha-1", { notes: "PV 9/12" });
+			await expect(pending).resolves.toBeUndefined();
+			expect(useRPGStore.getState().characters[0].notes).toBe("PV 9/12");
+			expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe(
+				"PV 9/12",
+			);
+			expect(useRPGStore.getState().syncError).toBeNull();
+			expect(showToastMock).not.toHaveBeenCalled();
+			expect(warn.mock.calls).toEqual([
+				[
+					"Não foi possível registrar a atividade da ficha.",
+					"ActivityWriteError",
+				],
+			]);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 
 	it("saveCharacter com RLS bloqueada reverte, rejeita e não mostra toast", async () => {

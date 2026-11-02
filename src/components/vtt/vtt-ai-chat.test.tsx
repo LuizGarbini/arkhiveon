@@ -403,7 +403,7 @@ describe("VTTAiChat: edição em lote", () => {
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
 		expect(input.closest("form")?.hidden).toBe(false);
-		expect(input.value).toBe("atualiza a ficha: FOR 18");
+		expect(input.value).toBe("");
 	});
 
 	it("falha do save não mostra Aplicado, mantém o lote e deixa tentar de novo", async () => {
@@ -434,6 +434,9 @@ describe("VTTAiChat: edição em lote", () => {
 			/Não foi possível salvar\. Nada foi alterado\./,
 		);
 		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		expect(
+			(document.querySelector("textarea") as HTMLTextAreaElement).value,
+		).toBe("atualiza a ficha: FOR 18");
 		const row = document.querySelector("[data-field='strength']");
 		expect(row?.textContent).toContain("16");
 		expect(row?.textContent).toContain("18");
@@ -446,6 +449,13 @@ describe("VTTAiChat: edição em lote", () => {
 		expect(screen.queryByRole("alert")).toBeNull();
 		expect(h.state.saveCharacter).toHaveBeenCalledTimes(2);
 		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(
+			(
+				screen.getByLabelText(
+					"Mensagem para o assistente",
+				) as HTMLTextAreaElement
+			).value,
+		).toBe("");
 	});
 
 	it("Cancelar não grava", async () => {
@@ -496,17 +506,19 @@ describe("VTTAiChat: edição em lote", () => {
 		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
 			target: { value: "a".repeat(20_001) },
 		});
+		expect(screen.getByText(/20001\/20000/).className).toContain(
+			"text-destructive",
+		);
 		expect(
 			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
 		).toBe(true);
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		fireEvent.keyDown(input, { key: "Enter" });
 		fireEvent.click(screen.getByLabelText("Enviar"));
 		expect(h.ask).not.toHaveBeenCalled();
-		expect(
-			(
-				screen.getByLabelText(
-					"Mensagem para o assistente",
-				) as HTMLTextAreaElement
-			).value,
-		).toHaveLength(20_001);
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(input.value).toHaveLength(20_001);
 	});
 });

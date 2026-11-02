@@ -82,7 +82,7 @@ function persistCharacterUpdate(
 	return trackPendingSave(
 		updateRemoteCharacterPatch(updated, patch, campaignId),
 	)
-		.then((saved) => {
+		.then(async (saved) => {
 			// Adota a versão mesclada do banco (traz o que outra pessoa salvou
 			// enquanto esta cópia estava desatualizada), sem pisar numa edição
 			// local mais nova que chegou nesse meio-tempo.
@@ -91,7 +91,14 @@ function persistCharacterUpdate(
 					c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
 				),
 			}));
-			return createRemoteActivity(log, campaignId);
+			// A ficha já está gravada. Falha no histórico não desfaz o save.
+			try {
+				await createRemoteActivity(log, campaignId);
+			} catch (error) {
+				const name =
+					error instanceof Error && error.name ? error.name : "Error";
+				console.warn("Não foi possível registrar a atividade da ficha.", name);
+			}
 		})
 		.catch((error) => {
 			const offline = isNetworkError(error);

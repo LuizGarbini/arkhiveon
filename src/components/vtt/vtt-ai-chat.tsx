@@ -227,6 +227,7 @@ export function VTTAiChat({
 			!event.nativeEvent.isComposing
 		) {
 			event.preventDefault();
+			if (overLimit) return;
 			void send();
 		}
 	};
@@ -328,6 +329,7 @@ export function VTTAiChat({
 					return;
 				}
 				await persisted;
+				setDraft("");
 				patch(message.id, {
 					status: "applied",
 					undoPatch: result.before,
