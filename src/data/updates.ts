@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.61-espera-da-ia-compacta",
+		version: "1.6.61",
+		date: "02/11/2026",
+		title: "Espera do assistente em uma linha",
+		description:
+			"Enquanto o assistente da mesa responde, a espera aparece numa linha só, com três pontos. Quando a resposta chega, ou se der erro ou acabar o limite do dia, essa espera some e não fica uma mensagem vazia.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.58-assistente-claude",
 		version: "1.6.58",
 		date: "02/11/2026",

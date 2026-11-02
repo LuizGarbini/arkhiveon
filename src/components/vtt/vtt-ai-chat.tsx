@@ -19,7 +19,6 @@ import {
 	useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
 	applyCharacterPatch,
 	buildCharacterPatchDiff,
@@ -146,6 +145,8 @@ export function VTTAiChat({
 			history,
 		});
 		if (result.ok) {
+			const reply = result.reply.trim();
+			const proposal = result.proposal ?? undefined;
 			setDraft("");
 			setPanel({ kind: "idle" });
 			setMessages((prev) => [
@@ -156,14 +157,18 @@ export function VTTAiChat({
 					text,
 					time: nowLabel(),
 				},
-				{
-					id: newId(),
-					role: "assistant",
-					text: result.reply,
-					time: nowLabel(),
-					proposal: result.proposal ?? undefined,
-					status: result.proposal ? "pending" : undefined,
-				},
+				...(reply || proposal
+					? [
+							{
+								id: newId(),
+								role: "assistant" as const,
+								text: reply,
+								time: nowLabel(),
+								proposal,
+								status: proposal ? ("pending" as const) : undefined,
+							},
+						]
+					: []),
 			]);
 			scrollToEnd();
 			return;
@@ -320,11 +325,9 @@ export function VTTAiChat({
 						{panel.kind === "loading" && (
 							<output
 								aria-label="Carregando resposta"
-								className="block max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2.5"
+								className="inline-flex h-5 items-center text-sm leading-5 text-muted-foreground motion-safe:animate-pulse"
 							>
-								<Skeleton className="h-3 w-40" />
-								<Skeleton className="h-3 w-56" />
-								<Skeleton className="h-3 w-32" />
+								<span aria-hidden="true">...</span>
 							</output>
 						)}
 						{panel.kind === "error" && (
@@ -448,17 +451,22 @@ function MessageItem({
 			</div>
 		);
 	}
+	const hasText = message.text.trim().length > 0;
+	const hasProposal = Boolean(message.proposal && message.status);
+	if (!hasText && !hasProposal) return null;
 	return (
 		<div className="space-y-3">
-			<p
-				role={message.isError ? "alert" : undefined}
-				className={cn(
-					"max-w-[85%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2.5 text-sm",
-					message.isError && "border border-destructive/40",
-				)}
-			>
-				{message.text}
-			</p>
+			{hasText && (
+				<p
+					role={message.isError ? "alert" : undefined}
+					className={cn(
+						"max-w-[85%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2.5 text-sm",
+						message.isError && "border border-destructive/40",
+					)}
+				>
+					{message.text}
+				</p>
+			)}
 			{message.proposal && message.status && (
 				<ProposalCard message={message} onAct={onAct} />
 			)}
