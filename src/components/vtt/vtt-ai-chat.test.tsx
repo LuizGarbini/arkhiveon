@@ -86,14 +86,31 @@ function emptyAssistantBubbles(): Element[] {
 
 function expectCompactLoading(status: HTMLElement) {
 	expect(status.getAttribute("aria-label")).toBe("Carregando resposta");
-	expect(status.className).toContain("text-muted-foreground");
-	expect(status.className).toContain("h-5");
-	expect(status.className).toContain("leading-5");
-	expect(status.className).toMatch(/motion-safe:animate-pulse/);
+	expect(status.classList.contains("flex")).toBe(true);
+	expect(status.classList.contains("items-center")).toBe(true);
+	expect(status.classList.contains("gap-1")).toBe(true);
+	expect(status.classList.contains("h-5")).toBe(true);
+	expect(status.classList.contains("px-3.5")).toBe(true);
 	expect(status.className).not.toContain("bg-muted");
 	expect(status.className).not.toContain("rounded-2xl");
+	expect(status.className).not.toMatch(/animate-pulse/);
 	expect(status.querySelectorAll("[data-slot='skeleton']").length).toBe(0);
-	expect(status.querySelector("[aria-hidden='true']")?.textContent).toBe("...");
+	expect(status.querySelector(":scope > .sr-only")?.textContent).toBe(
+		"Carregando resposta…",
+	);
+	const dots = [...status.querySelectorAll(":scope > [aria-hidden='true']")];
+	expect(dots).toHaveLength(3);
+	const delays = ["0ms", "150ms", "300ms"];
+	for (const [index, dot] of dots.entries()) {
+		expect(dot.tagName).toBe("SPAN");
+		expect(dot.classList.contains("size-1.5")).toBe(true);
+		expect(dot.classList.contains("rounded-full")).toBe(true);
+		expect(dot.classList.contains("bg-muted-foreground")).toBe(true);
+		expect(dot.className).toMatch(/(?:^|\s)motion-safe:animate-pulse(?:\s|$)/);
+		expect(dot.className).not.toMatch(/(?:^|\s)animate-pulse(?:\s|$)/);
+		expect((dot as HTMLElement).style.animationDelay).toBe(delays[index]);
+		expect(dot.textContent).toBe("");
+	}
 }
 
 async function askForPatch(header = /Alterar ficha · 2 mudanças/) {

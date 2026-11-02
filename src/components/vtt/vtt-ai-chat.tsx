@@ -325,9 +325,24 @@ export function VTTAiChat({
 						{panel.kind === "loading" && (
 							<output
 								aria-label="Carregando resposta"
-								className="inline-flex h-5 items-center text-sm leading-5 text-muted-foreground motion-safe:animate-pulse"
+								className="flex h-5 items-center gap-1 px-3.5"
 							>
-								<span aria-hidden="true">...</span>
+								<span className="sr-only">Carregando resposta…</span>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "0ms" }}
+								/>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "150ms" }}
+								/>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "300ms" }}
+								/>
 							</output>
 						)}
 						{panel.kind === "error" && (
