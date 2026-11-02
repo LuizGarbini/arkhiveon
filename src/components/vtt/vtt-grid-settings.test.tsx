@@ -13,6 +13,7 @@ import {
 	previousSceneSettings,
 	sceneSettingsPatchToDb,
 } from "@/lib/vtt/scene-settings";
+import { isVttShortcutBlocked } from "@/lib/vtt/shortcut-guard";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { VTTGridSettings } from "./vtt-grid-settings";
@@ -27,6 +28,9 @@ const scene: VTTScene = {
 	gridOpacity: 0.2,
 	gridScaleDistance: 1.5,
 	gridScaleUnit: "m",
+	gridOffsetX: 0,
+	gridOffsetY: 0,
+	mapScale: 1,
 	width: 4096,
 	height: 4096,
 	fogEnabled: false,
@@ -52,9 +56,10 @@ afterEach(() => {
 });
 
 describe("clampGridSize", () => {
-	it("prende em 10–400 e arredonda para inteiro", () => {
+	it("prende em 10–400 com até 2 casas decimais", () => {
 		expect(clampGridSize(5)).toBe(10);
-		expect(clampGridSize(25.4)).toBe(25);
+		expect(clampGridSize(25.4)).toBe(25.4);
+		expect(clampGridSize(25.456)).toBe(25.46);
 		expect(clampGridSize(400)).toBe(400);
 		expect(clampGridSize(9999)).toBe(400);
 		expect(clampGridSize(Number.NaN)).toBe(10);
@@ -200,5 +205,80 @@ describe("VTTGridSettings — tamanho da célula", () => {
 		expect(panel.className).not.toContain("backdrop-blur");
 		expect(panel.className).toContain("bg-card");
 		expect(panel.className).not.toContain("42dvh");
+	});
+
+	it("aceita célula decimal", async () => {
+		const save = vi.fn().mockResolvedValue(true);
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		const input = screen.getByLabelText("Tamanho da célula (px)");
+		fireEvent.change(input, { target: { value: "25.5" } });
+		await act(async () => {
+			fireEvent.keyDown(input, { key: "Enter" });
+		});
+		expect(save).toHaveBeenCalledWith({ gridSize: 25.5 });
+	});
+});
+
+describe("VTTGridSettings — offset", () => {
+	it("jogador não vê o painel", () => {
+		useVTTStore.setState({ isGM: false });
+		render(<VTTGridSettings onUpdateSceneSettings={vi.fn()} />);
+		expect(screen.queryByLabelText("Offset X")).toBeNull();
+		expect(screen.queryByRole("region", { name: "Ajuste do grid" })).toBeNull();
+	});
+
+	it("nudge de 1 px grava o offset e o atalho da mesa fica bloqueado no campo", async () => {
+		const save = vi.fn().mockResolvedValue(true);
+		useVTTStore.setState({
+			scenes: [{ ...scene, gridOffsetX: 12, gridOffsetY: 7 }],
+		});
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		const input = screen.getByLabelText("Offset X");
+		expect((input as HTMLInputElement).value).toBe("12");
+		expect((screen.getByLabelText("Offset Y") as HTMLInputElement).value).toBe(
+			"7",
+		);
+		input.focus();
+		const event = new KeyboardEvent("keydown", { key: "g", bubbles: true });
+		Object.defineProperty(event, "target", { value: input });
+		expect(isVttShortcutBlocked(event)).toBe(true);
+		await act(async () => {
+			fireEvent.click(
+				screen.getByRole("button", { name: "Aumentar offset X" }),
+			);
+		});
+		expect(save).toHaveBeenCalledWith({ gridOffsetX: 13 });
+	});
+
+	it("nudge abaixo de zero volta para o fim da célula", async () => {
+		const save = vi.fn().mockResolvedValue(true);
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		await act(async () => {
+			fireEvent.click(
+				screen.getByRole("button", { name: "Diminuir offset X" }),
+			);
+		});
+		expect(save).toHaveBeenCalledWith({ gridOffsetX: 69 });
+	});
+
+	it("contar 40×30 em 2000×1500 grava célula de 50", async () => {
+		const save = vi.fn().mockResolvedValue(true);
+		useVTTStore.setState({
+			scenes: [{ ...scene, width: 2000, height: 1500 }],
+		});
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		fireEvent.change(screen.getByLabelText("Colunas"), {
+			target: { value: "40" },
+		});
+		fireEvent.change(screen.getByLabelText("Linhas"), {
+			target: { value: "30" },
+		});
+		expect(screen.getByText("40 × 30 → 50 px")).toBeTruthy();
+		await act(async () => {
+			fireEvent.click(
+				screen.getByRole("button", { name: "Usar este tamanho" }),
+			);
+		});
+		expect(save).toHaveBeenCalledWith({ gridSize: 50 });
 	});
 });

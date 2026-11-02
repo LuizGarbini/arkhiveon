@@ -12,6 +12,8 @@ import {
 	DEFAULT_GRID_SCALE_DISTANCE,
 	GRID_SIZE_MAX,
 	GRID_SIZE_MIN,
+	gridSizeFromCellCount,
+	normalizeGridOffset,
 } from "@/lib/vtt/grid-math";
 import type {
 	VTTDiagonalRule,
@@ -60,9 +62,17 @@ export function VTTGridSettings({
 	const gridUnitId = useId();
 	const gridSizeId = useId();
 	const gridSizeHintId = useId();
+	const offsetXId = useId();
+	const offsetYId = useId();
+	const columnsId = useId();
+	const rowsId = useId();
 
 	// Texto do campo numérico enquanto o mestre digita (null = mostra a cena).
 	const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+	const [offsetXDraft, setOffsetXDraft] = useState<string | null>(null);
+	const [offsetYDraft, setOffsetYDraft] = useState<string | null>(null);
+	const [columnsDraft, setColumnsDraft] = useState("");
+	const [rowsDraft, setRowsDraft] = useState("");
 	const [savingSize, setSavingSize] = useState(false);
 	// Valor gravado antes do arraste/edição em curso, para reverter no erro.
 	const sizeBeforeEditRef = useRef<number | null>(null);
@@ -109,10 +119,49 @@ export function VTTGridSettings({
 
 	const commitSizeDraft = () => {
 		if (sizeDraft === null) return;
-		const parsed = Number.parseInt(sizeDraft, 10);
+		const parsed = Number.parseFloat(sizeDraft);
 		setSizeDraft(null);
 		if (Number.isNaN(parsed)) return;
 		void commitGridSize(parsed);
+	};
+
+	const gridOffsetX = activeScene.gridOffsetX ?? 0;
+	const gridOffsetY = activeScene.gridOffsetY ?? 0;
+	const countedSize =
+		columnsDraft.trim() !== "" && rowsDraft.trim() !== ""
+			? gridSizeFromCellCount(
+					activeScene.width,
+					activeScene.height,
+					Number(columnsDraft),
+					Number(rowsDraft),
+					activeScene.gridType,
+				)
+			: null;
+
+	const commitOffset = async (
+		axis: "gridOffsetX" | "gridOffsetY",
+		value: number,
+	) => {
+		const next = normalizeGridOffset(value, gridSize);
+		const before = axis === "gridOffsetX" ? gridOffsetX : gridOffsetY;
+		if (next === before) return;
+		setSavingSize(true);
+		try {
+			const ok = await onUpdateSceneSettings({ [axis]: next });
+			if (ok === false) updateSceneLocal(sceneId, { [axis]: before });
+		} finally {
+			setSavingSize(false);
+		}
+	};
+
+	const commitOffsetDraft = (axis: "gridOffsetX" | "gridOffsetY") => {
+		const draft = axis === "gridOffsetX" ? offsetXDraft : offsetYDraft;
+		if (draft === null) return;
+		const parsed = Number.parseFloat(draft);
+		if (axis === "gridOffsetX") setOffsetXDraft(null);
+		else setOffsetYDraft(null);
+		if (Number.isNaN(parsed)) return;
+		void commitOffset(axis, parsed);
 	};
 
 	return (
@@ -159,10 +208,12 @@ export function VTTGridSettings({
 					<Input
 						id={gridSizeId}
 						type="number"
-						inputMode="numeric"
-						step={1}
+						inputMode="decimal"
+						step="0.01"
 						min={GRID_SIZE_MIN}
 						max={GRID_SIZE_MAX}
+						spellCheck={false}
+						autoComplete="off"
 						aria-describedby={gridSizeHintId}
 						disabled={savingSize}
 						value={sizeDraft ?? String(gridSize)}
@@ -246,6 +297,99 @@ export function VTTGridSettings({
 					"sm:mt-0 sm:block sm:h-auto sm:overflow-visible sm:border-0 sm:pt-0",
 				)}
 			>
+				<form
+					className="space-y-2"
+					onSubmit={(event) => {
+						event.preventDefault();
+						commitOffsetDraft("gridOffsetX");
+						commitOffsetDraft("gridOffsetY");
+					}}
+				>
+					<OffsetField
+						id={offsetXId}
+						label="Offset X"
+						decreaseLabel="Diminuir offset X"
+						increaseLabel="Aumentar offset X"
+						disabled={savingSize}
+						value={offsetXDraft ?? String(gridOffsetX)}
+						onChange={setOffsetXDraft}
+						onCommit={() => commitOffsetDraft("gridOffsetX")}
+						onCancel={() => setOffsetXDraft(null)}
+						onNudge={(delta) =>
+							void commitOffset("gridOffsetX", gridOffsetX + delta)
+						}
+					/>
+					<OffsetField
+						id={offsetYId}
+						label="Offset Y"
+						decreaseLabel="Diminuir offset Y"
+						increaseLabel="Aumentar offset Y"
+						disabled={savingSize}
+						value={offsetYDraft ?? String(gridOffsetY)}
+						onChange={setOffsetYDraft}
+						onCommit={() => commitOffsetDraft("gridOffsetY")}
+						onCancel={() => setOffsetYDraft(null)}
+						onNudge={(delta) =>
+							void commitOffset("gridOffsetY", gridOffsetY + delta)
+						}
+					/>
+				</form>
+
+				<form
+					className="space-y-2"
+					onSubmit={(event) => {
+						event.preventDefault();
+						if (countedSize != null) void commitGridSize(countedSize);
+					}}
+				>
+					<p className="text-[10px] font-bold text-muted-foreground">
+						Contar quadrados
+					</p>
+					<div className="grid grid-cols-2 gap-2">
+						<Field label="Colunas" htmlFor={columnsId}>
+							<Input
+								id={columnsId}
+								type="number"
+								inputMode="numeric"
+								min={1}
+								step={1}
+								spellCheck={false}
+								autoComplete="off"
+								value={columnsDraft}
+								onChange={(event) => setColumnsDraft(event.target.value)}
+								className="h-11 text-base tabular-nums"
+							/>
+						</Field>
+						<Field label="Linhas" htmlFor={rowsId}>
+							<Input
+								id={rowsId}
+								type="number"
+								inputMode="numeric"
+								min={1}
+								step={1}
+								spellCheck={false}
+								autoComplete="off"
+								value={rowsDraft}
+								onChange={(event) => setRowsDraft(event.target.value)}
+								className="h-11 text-base tabular-nums"
+							/>
+						</Field>
+					</div>
+					<p className="min-h-[1lh] text-[11px] tabular-nums text-muted-foreground">
+						{countedSize != null
+							? `${columnsDraft} × ${rowsDraft} → ${countedSize} px`
+							: "Informe colunas e linhas do mapa."}
+					</p>
+					<Button
+						type="submit"
+						variant="outline"
+						disabled={savingSize || countedSize == null}
+						className="h-11 w-full rounded-xl"
+					>
+						Usar este tamanho
+					</Button>
+				</form>
+
 				{/* Grid Type */}
 				<Field label="Tipo de Grid">
 					<Select
@@ -385,6 +529,79 @@ export function VTTGridSettings({
 				)}
 			</div>
 		</section>
+	);
+}
+
+function OffsetField({
+	id,
+	label,
+	decreaseLabel,
+	increaseLabel,
+	disabled,
+	value,
+	onChange,
+	onCommit,
+	onCancel,
+	onNudge,
+}: {
+	id: string;
+	label: string;
+	decreaseLabel: string;
+	increaseLabel: string;
+	disabled: boolean;
+	value: string;
+	onChange: (value: string) => void;
+	onCommit: () => void;
+	onCancel: () => void;
+	onNudge: (delta: number) => void;
+}) {
+	return (
+		<Field label={label} htmlFor={id}>
+			<div className="flex items-center gap-1.5">
+				<Button
+					type="button"
+					variant="outline"
+					size="icon"
+					aria-label={decreaseLabel}
+					disabled={disabled}
+					onClick={() => onNudge(-1)}
+					className="size-11 shrink-0 rounded-xl"
+				>
+					<Minus className="h-4 w-4" />
+				</Button>
+				<Input
+					id={id}
+					type="number"
+					inputMode="decimal"
+					step="0.01"
+					spellCheck={false}
+					autoComplete="off"
+					disabled={disabled}
+					value={value}
+					onChange={(event) => onChange(event.target.value)}
+					onBlur={onCommit}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							onCommit();
+						}
+						if (event.key === "Escape") onCancel();
+					}}
+					className="h-11 text-center text-base tabular-nums"
+				/>
+				<Button
+					type="button"
+					variant="outline"
+					size="icon"
+					aria-label={increaseLabel}
+					disabled={disabled}
+					onClick={() => onNudge(1)}
+					className="size-11 shrink-0 rounded-xl"
+				>
+					<Plus className="h-4 w-4" />
+				</Button>
+			</div>
+		</Field>
 	);
 }
 
