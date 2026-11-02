@@ -900,6 +900,8 @@ export interface RPGState {
 		character: Partial<Omit<Character, "id" | "createdAt">>,
 	) => Character;
 	updateCharacter: (id: string, character: Partial<Character>) => void;
+	/** Mesma gravação de `updateCharacter`, mas devolve a Promise do remoto e não mostra toast. */
+	saveCharacter: (id: string, character: Partial<Character>) => Promise<void>;
 	removeCharacter: (id: string) => void;
 	transferCharacterToCampaign: (
 		id: string,

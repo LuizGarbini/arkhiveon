@@ -24,6 +24,115 @@ import { trackPendingSave } from "./pending-saves";
 import { FREE_CREATION_LIMIT, isCreationLimitReached } from "./sync-slice";
 import type { Character, RPGState } from "./types";
 
+/**
+ * Grava o patch da ficha. `toast` liga o aviso global dos outros fluxos.
+ * Sem toast, a Promise rejeita e quem chamou mostra o erro no próprio card.
+ */
+function persistCharacterUpdate(
+	set: (
+		partial: Partial<RPGState> | ((state: RPGState) => Partial<RPGState>),
+	) => void,
+	get: () => RPGState,
+	id: string,
+	character: Partial<Character>,
+	toast: boolean,
+): Promise<void> {
+	const campaignId = get().activeCampaignId;
+	if (!campaignId) {
+		const message = "Nenhuma campanha ativa para atualizar personagem.";
+		if (toast) set({ syncError: message });
+		return Promise.reject(new Error(message));
+	}
+	const originalCharacters = get().characters;
+	const existing = originalCharacters.find((c) => c.id === id);
+	if (!existing) return Promise.reject(new Error("Ficha não encontrada."));
+	// Rede de segurança: só vai pro banco o que difere da cópia local.
+	// Uma tela que mande a ficha inteira não regrava campos intocados.
+	const current = existing as unknown as Record<string, unknown>;
+	const changes = Object.fromEntries(
+		Object.entries(character).filter(
+			([key, value]) => !isDeepEqual(value, current[key]),
+		),
+	) as Partial<Character>;
+	if (Object.keys(changes).length === 0) return Promise.resolve();
+	const updated = {
+		...existing,
+		...changes,
+		...(changes.sheetLayout
+			? { sheetLayout: lockSheetLayoutTitles(changes.sheetLayout) }
+			: {}),
+		updatedAt: Date.now(),
+	};
+	const log = {
+		action: "update" as const,
+		entityKind: "character" as const,
+		entityId: id,
+		entityName: entityNameOf(updated),
+	};
+	set((state) => ({
+		characters: state.characters.map((c) => (c.id === id ? updated : c)),
+		activityLog: pushLog(state.activityLog, log),
+		syncError: null,
+	}));
+	const patch: Record<string, unknown> = {
+		...changes,
+		...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
+		updatedAt: updated.updatedAt,
+	};
+	return trackPendingSave(
+		updateRemoteCharacterPatch(updated, patch, campaignId),
+	)
+		.then((saved) => {
+			// Adota a versão mesclada do banco (traz o que outra pessoa salvou
+			// enquanto esta cópia estava desatualizada), sem pisar numa edição
+			// local mais nova que chegou nesse meio-tempo.
+			set((state) => ({
+				characters: state.characters.map((c) =>
+					c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
+				),
+			}));
+			return createRemoteActivity(log, campaignId);
+		})
+		.catch((error) => {
+			const offline = isNetworkError(error);
+			const message = remoteErrorMessage(error);
+			// Reverte só esta ficha; não descarta mudanças de outras fichas.
+			set((state) => ({
+				characters: state.characters.map((c) =>
+					c.id === id && c.updatedAt === updated.updatedAt ? existing : c,
+				),
+				activityLog: state.activityLog.filter(
+					(l) => !(l.entityId === id && l.action === "update"),
+				),
+				// Sem rede: só o toast (sem erro técnico no banner).
+				// Sem toast: quem chamou (o lote) mostra o erro no card.
+				syncError: toast
+					? offline
+						? state.syncError
+						: message
+					: state.syncError,
+			}));
+			if (toast) {
+				if (offline) {
+					showToast("error", {
+						title:
+							"A ficha não foi salva. Verifique a conexão e tente de novo.",
+						action: {
+							label: "Tentar de novo",
+							onClick: () => get().updateCharacter(id, changes),
+						},
+					});
+				} else {
+					showToast("error", {
+						title: "A ficha não foi salva",
+						description: message,
+					});
+				}
+			}
+			throw error;
+		});
+}
+
 export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	system: "dnd5e",
 	characterName: "",
@@ -99,6 +208,8 @@ export interface CharacterSlice {
 		character: Partial<Omit<Character, "id" | "createdAt">>,
 	) => Character;
 	updateCharacter: (id: string, character: Partial<Character>) => void;
+	/** Mesma gravação de `updateCharacter`, mas devolve a Promise do remoto e não mostra toast. */
+	saveCharacter: (id: string, character: Partial<Character>) => Promise<void>;
 	removeCharacter: (id: string) => void;
 	transferCharacterToCampaign: (
 		id: string,
@@ -267,92 +378,10 @@ export const createCharacterSlice: StateCreator<
 		return created;
 	},
 	updateCharacter: (id, character) => {
-		const campaignId = get().activeCampaignId;
-		if (!campaignId) {
-			set({ syncError: "Nenhuma campanha ativa para atualizar personagem." });
-			return;
-		}
-		const originalCharacters = get().characters;
-		const existing = originalCharacters.find((c) => c.id === id);
-		if (!existing) return;
-		// Rede de segurança: só vai pro banco o que difere da cópia local.
-		// Uma tela que mande a ficha inteira não regrava campos intocados.
-		const current = existing as unknown as Record<string, unknown>;
-		const changes = Object.fromEntries(
-			Object.entries(character).filter(
-				([key, value]) => !isDeepEqual(value, current[key]),
-			),
-		) as Partial<Character>;
-		if (Object.keys(changes).length === 0) return;
-		const updated = {
-			...existing,
-			...changes,
-			...(changes.sheetLayout
-				? { sheetLayout: lockSheetLayoutTitles(changes.sheetLayout) }
-				: {}),
-			updatedAt: Date.now(),
-		};
-		const log = {
-			action: "update" as const,
-			entityKind: "character" as const,
-			entityId: id,
-			entityName: entityNameOf(updated),
-		};
-		set((state) => ({
-			characters: state.characters.map((c) => (c.id === id ? updated : c)),
-			activityLog: pushLog(state.activityLog, log),
-			syncError: null,
-		}));
-		const patch: Record<string, unknown> = {
-			...changes,
-			...(changes.sheetLayout ? { sheetLayout: updated.sheetLayout } : {}),
-			updatedAt: updated.updatedAt,
-		};
-		void trackPendingSave(
-			updateRemoteCharacterPatch(updated, patch, campaignId),
-		)
-			.then((saved) => {
-				// Adota a versão mesclada do banco (traz o que outra pessoa salvou
-				// enquanto esta cópia estava desatualizada), sem pisar numa edição
-				// local mais nova que chegou nesse meio-tempo.
-				set((state) => ({
-					characters: state.characters.map((c) =>
-						c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
-					),
-				}));
-				return createRemoteActivity(log, campaignId);
-			})
-			.catch((error) => {
-				const offline = isNetworkError(error);
-				const message = remoteErrorMessage(error);
-				// Reverte só esta ficha; não descarta mudanças de outras fichas.
-				set((state) => ({
-					characters: state.characters.map((c) =>
-						c.id === id && c.updatedAt === updated.updatedAt ? existing : c,
-					),
-					activityLog: state.activityLog.filter(
-						(l) => !(l.entityId === id && l.action === "update"),
-					),
-					// Sem rede: só o toast (sem erro técnico no banner).
-					syncError: offline ? state.syncError : message,
-				}));
-				if (offline) {
-					showToast("error", {
-						title:
-							"A ficha não foi salva. Verifique a conexão e tente de novo.",
-						action: {
-							label: "Tentar de novo",
-							onClick: () => get().updateCharacter(id, changes),
-						},
-					});
-					return;
-				}
-				showToast("error", {
-					title: "A ficha não foi salva",
-					description: message,
-				});
-			});
+		void persistCharacterUpdate(set, get, id, character, true).catch(() => {});
 	},
+	saveCharacter: (id, character) =>
+		persistCharacterUpdate(set, get, id, character, false),
 	removeCharacter: (id) => {
 		const campaignId = get().activeCampaignId;
 		if (!campaignId) {

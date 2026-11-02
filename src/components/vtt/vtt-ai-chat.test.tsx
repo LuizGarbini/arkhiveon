@@ -17,6 +17,9 @@ const h = vi.hoisted(() => ({
 		characters: [] as unknown[],
 		campaigns: [] as { id: string; myRole?: string }[],
 		updateCharacter: vi.fn(),
+		saveCharacter: vi.fn((_id: string, _changes: Record<string, unknown>) =>
+			Promise.resolve(),
+		),
 		addNpc: vi.fn(),
 		removeNpc: vi.fn(),
 		syncError: null,
@@ -93,6 +96,8 @@ beforeEach(() => {
 	h.state.characters = [dante];
 	h.state.campaigns = [];
 	h.state.updateCharacter.mockReset();
+	h.state.saveCharacter.mockReset();
+	h.state.saveCharacter.mockImplementation(() => Promise.resolve());
 	h.ask.mockReset();
 });
 afterEach(cleanup);
@@ -129,6 +134,22 @@ describe("VTTAiChat: estados do painel", () => {
 		expect(
 			screen.queryByRole("status", { name: "Carregando resposta" }),
 		).toBeNull();
+	});
+
+	it("erro de rede ou 413 fica no painel e o texto colado continua no campo", async () => {
+		h.ask.mockResolvedValue({ ok: false, code: "input_too_large" });
+		await openAndType("resumo colado que o servidor recusou");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(await screen.findByRole("alert")).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toMatch(/20\.000 caracteres/);
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.value).toBe("resumo colado que o servidor recusou");
+		h.ask.mockResolvedValue({ ok: false, code: "offline" });
+		fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		expect(await screen.findByText(/Sem conexão com o servidor/)).toBeTruthy();
+		expect(input.value).toBe("resumo colado que o servidor recusou");
 	});
 
 	it("erro do Claude fica no painel, com tentar de novo e o texto preservado", async () => {
@@ -307,6 +328,12 @@ describe("VTTAiChat: edição em lote", () => {
 			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
 				.disabled,
 		).toBe(true);
+		const stored = document.querySelector("textarea");
+		expect(stored?.closest("form")?.hidden).toBe(true);
+		expect((stored as HTMLTextAreaElement).value).toBe(pasted);
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(h.state.saveCharacter).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
 		expect(
 			(
 				screen.getByLabelText(
@@ -314,7 +341,6 @@ describe("VTTAiChat: edição em lote", () => {
 				) as HTMLTextAreaElement
 			).value,
 		).toBe(pasted);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
 	});
 
 	it("Aplicar grava uma vez e destaca a linha", async () => {
@@ -331,17 +357,95 @@ describe("VTTAiChat: edição em lote", () => {
 		});
 		fireEvent.click(screen.getByLabelText("Enviar"));
 		await screen.findByRole("heading", { name: "1 alteração" });
-		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
-		await waitFor(() =>
-			expect(h.state.updateCharacter).toHaveBeenCalledTimes(1),
+		expect(document.querySelector("textarea")?.closest("form")?.hidden).toBe(
+			true,
 		);
-		const [id, changes] = h.state.updateCharacter.mock.calls[0];
+		let releaseSave: () => void = () => {};
+		h.state.saveCharacter.mockImplementation(
+			(id: string, changes: Record<string, unknown>) => {
+				return new Promise<void>((resolve) => {
+					releaseSave = () => {
+						h.state.characters = h.state.characters.map((character) => {
+							if (!character || typeof character !== "object") return character;
+							const current = character as Record<string, unknown>;
+							return current.id === id ? { ...current, ...changes } : character;
+						});
+						resolve();
+					};
+				});
+			},
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		const applying = await screen.findByRole("button", { name: "Aplicando…" });
+		expect((applying as HTMLButtonElement).disabled).toBe(true);
+		expect(
+			(screen.getByRole("button", { name: "Cancelar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		expect(h.state.saveCharacter).toHaveBeenCalledTimes(1);
+		releaseSave();
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		const [id, changes] = h.state.saveCharacter.mock.calls[0];
 		expect(id).toBe("dante-1");
 		expect(changes.strength).toBe(18);
 		expect(Object.keys(changes)).toEqual(["strength"]);
-		const row = document.querySelector("[data-field='strength']");
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		const dock = document.querySelector("[data-slot='sheet-batch-dock']");
+		expect(dock?.className).toContain("flex-1");
+		const row = dock?.querySelector("[data-field='strength']");
 		expect(row?.getAttribute("data-highlighted")).toBe("true");
 		expect(row?.className).toContain("bg-primary/15");
+		expect(dock?.textContent).toContain("Desfazer");
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.closest("form")?.hidden).toBe(false);
+		expect(input.value).toBe("atualiza a ficha: FOR 18");
+	});
+
+	it("falha do save não mostra Aplicado, mantém o lote e deixa tentar de novo", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.state.saveCharacter.mockImplementationOnce(() => {
+			h.state.characters = [{ ...batchSheet, strength: 18 }];
+			return Promise.reject(new Error("blocked")).catch((error: unknown) => {
+				h.state.characters = [batchSheet];
+				throw error;
+			});
+		});
+		h.state.saveCharacter.mockImplementationOnce(() => Promise.resolve());
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha: FOR 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Aplicar" });
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toMatch(
+			/Não foi possível salvar\. Nada foi alterado\./,
+		);
+		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		const row = document.querySelector("[data-field='strength']");
+		expect(row?.textContent).toContain("16");
+		expect(row?.textContent).toContain("18");
+		const retry = screen.getByRole("button", { name: "Aplicar" });
+		expect((retry as HTMLButtonElement).disabled).toBe(false);
+		fireEvent.click(retry);
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(h.state.saveCharacter).toHaveBeenCalledTimes(2);
+		expect(h.state.updateCharacter).not.toHaveBeenCalled();
 	});
 
 	it("Cancelar não grava", async () => {

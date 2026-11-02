@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "02/11/2026",
 		title: "Alterar a ficha em lote pelo assistente",
 		description:
-			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra o total e a lista agrupada por seção da ficha, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez. Se um campo for rejeitado, o motivo aparece na própria linha, Aplicar fica desabilitado e o texto colado continua no campo. O contador mostra o limite de tamanho antes do envio.",
+			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra quantas alterações valem e, à parte, os campos rejeitados — esses não entram na conta. A lista segue agrupada por seção, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez: o painel só diz que aplicou depois que o salvamento termina. Se falhar, a ficha volta ao que era e dá para tentar de novo. Com um lote em revisão, o campo de texto recolhe para a lista caber; o texto colado continua lá quando o campo volta.",
 		bullets: [],
 	},
 	{

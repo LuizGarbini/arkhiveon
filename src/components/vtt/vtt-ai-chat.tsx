@@ -50,7 +50,10 @@ import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
-import { SheetBatchReview } from "./sheet-batch-review";
+import {
+	SheetBatchReview,
+	type SheetBatchReviewRow,
+} from "./sheet-batch-review";
 
 interface ChatMessage {
 	id: string;
@@ -65,7 +68,11 @@ interface ChatMessage {
 	undoPatch?: Partial<Character>;
 	applyError?: string;
 	highlighted?: boolean;
+	/** Diff congelado no Aplicar, para a lista não sumir com a escrita otimista. */
+	batchRows?: SheetBatchReviewRow[];
 }
+
+const SAVE_FAILED = "Não foi possível salvar. Nada foi alterado.";
 
 const WELCOME =
 	"Oi! Posso propor NPCs novos ou um lote de alterações numa ficha desta campanha (atributos, perícias, PV, CA, deslocamento, itens). Nada é salvo sem sua confirmação.";
@@ -144,6 +151,9 @@ export function VTTAiChat({
 	const limitNotice =
 		panel.kind === "limit" ? formatDailyLimitNotice(panel.resetsAt) : "";
 	const inputLocked = panel.kind === "loading" || panel.kind === "limit";
+	const dockMessage = dockedSheetBatch(messages);
+	const composerCollapsed =
+		dockMessage?.status === "pending" || dockMessage?.status === "applying";
 
 	const scrollToEnd = () => {
 		requestAnimationFrame(() => {
@@ -173,9 +183,7 @@ export function VTTAiChat({
 			history,
 		});
 		if (result.ok) {
-			const keepDraft =
-				result.proposal?.kind === "sheet_batch" &&
-				result.proposal.rejections.length > 0;
+			const keepDraft = result.proposal?.kind === "sheet_batch";
 			if (!keepDraft) setDraft("");
 			setPanel({ kind: "idle" });
 			setMessages((prev) => [
@@ -233,7 +241,11 @@ export function VTTAiChat({
 		const proposal = message.proposal;
 		if (action === "ignore") {
 			if (message.status !== "pending" || applyingRef.current) return;
-			patch(message.id, { status: "ignored", applyError: undefined });
+			patch(message.id, {
+				status: "ignored",
+				applyError: undefined,
+				batchRows: undefined,
+			});
 			return;
 		}
 		if (action === "undo") {
@@ -245,6 +257,7 @@ export function VTTAiChat({
 				status: "undone",
 				highlighted: false,
 				applyError: undefined,
+				batchRows: undefined,
 			});
 			return;
 		}
@@ -286,40 +299,59 @@ export function VTTAiChat({
 			campaign?.myRole === "editor" ||
 			(!!userId && campaign?.ownerId === userId) ||
 			(!!userId && character.createdBy === userId);
+		const batchRows = rowsFromReview(review);
 		applyingRef.current = true;
-		patch(message.id, { status: "applying", applyError: undefined });
-		try {
-			const result = commitCharacterBatch({
-				allowed,
-				character,
-				proposal,
-				write: (id, changes) => store.updateCharacter(id, changes),
-			});
-			if (!result.ok) {
-				patch(message.id, { status: "pending", applyError: result.error });
-				return;
+		patch(message.id, {
+			status: "applying",
+			applyError: undefined,
+			batchRows,
+			highlighted: false,
+		});
+		void (async () => {
+			let persisted: Promise<void> = Promise.resolve();
+			try {
+				const result = commitCharacterBatch({
+					allowed,
+					character,
+					proposal,
+					write: (id, changes) => {
+						persisted = store.saveCharacter(id, changes);
+					},
+				});
+				if (!result.ok) {
+					patch(message.id, {
+						status: "pending",
+						applyError: result.error,
+						batchRows: undefined,
+						highlighted: false,
+					});
+					return;
+				}
+				await persisted;
+				patch(message.id, {
+					status: "applied",
+					undoPatch: result.before,
+					highlighted: true,
+					applyError: undefined,
+					batchRows,
+				});
+				window.setTimeout(() => {
+					setMessages((prev) =>
+						prev.map((item) =>
+							item.id === message.id ? { ...item, highlighted: false } : item,
+						),
+					);
+				}, 1000);
+			} catch {
+				patch(message.id, {
+					status: "pending",
+					applyError: SAVE_FAILED,
+					highlighted: false,
+				});
+			} finally {
+				applyingRef.current = false;
 			}
-			patch(message.id, {
-				status: "applied",
-				undoPatch: result.before,
-				highlighted: true,
-				applyError: undefined,
-			});
-			window.setTimeout(() => {
-				setMessages((prev) =>
-					prev.map((item) =>
-						item.id === message.id ? { ...item, highlighted: false } : item,
-					),
-				);
-			}, 1000);
-		} catch {
-			patch(message.id, {
-				status: "pending",
-				applyError: "Não foi possível salvar. Nada foi alterado.",
-			});
-		} finally {
-			applyingRef.current = false;
-		}
+		})();
 	};
 
 	const act = (message: ChatMessage, action: ProposalAction) => {
@@ -439,11 +471,19 @@ export function VTTAiChat({
 
 					<div
 						ref={listRef}
-						className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
+						className={cn(
+							"space-y-3 overflow-y-auto overscroll-contain px-4 py-4",
+							dockMessage ? "max-h-36 shrink-0 sm:max-h-44" : "min-h-0 flex-1",
+						)}
 						aria-live="polite"
 					>
 						{messages.map((message) => (
-							<MessageItem key={message.id} message={message} onAct={act} />
+							<MessageItem
+								key={message.id}
+								message={message}
+								onAct={act}
+								docked={dockMessage?.id === message.id}
+							/>
 						))}
 						{panel.kind === "loading" && (
 							<output
@@ -482,7 +522,17 @@ export function VTTAiChat({
 						)}
 					</div>
 
+					{dockMessage ? (
+						<div
+							data-slot="sheet-batch-dock"
+							className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-3"
+						>
+							<SheetBatchCard message={dockMessage} onAct={act} fill />
+						</div>
+					) : null}
+
 					<form
+						hidden={composerCollapsed}
 						onSubmit={onSubmit}
 						className="border-t border-border/70 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
 					>
@@ -572,12 +622,58 @@ export function VTTAiChat({
 	);
 }
 
+function dockedSheetBatch(messages: ChatMessage[]): ChatMessage | undefined {
+	const open = [...messages]
+		.reverse()
+		.find(
+			(message) =>
+				message.proposal?.kind === "sheet_batch" &&
+				(message.status === "pending" || message.status === "applying"),
+		);
+	if (open) return open;
+	const applied = [...messages]
+		.reverse()
+		.find(
+			(message) =>
+				message.proposal?.kind === "sheet_batch" &&
+				message.status === "applied",
+		);
+	if (!applied) return undefined;
+	const index = messages.findIndex((message) => message.id === applied.id);
+	const hasNewer = messages
+		.slice(index + 1)
+		.some((message) => message.id !== "welcome");
+	return hasNewer ? undefined : applied;
+}
+
+function rowsFromReview(
+	review: ReturnType<typeof reviewSheetBatch>,
+): SheetBatchReviewRow[] {
+	return [
+		...review.diff.map((row) => ({
+			section: row.section,
+			field: row.field,
+			label: row.label,
+			before: row.before,
+			after: row.after,
+		})),
+		...review.rejections.map((row) => ({
+			section: row.section,
+			field: row.field,
+			label: row.label,
+			reason: row.reason,
+		})),
+	];
+}
+
 function MessageItem({
 	message,
 	onAct,
+	docked = false,
 }: {
 	message: ChatMessage;
 	onAct: (message: ChatMessage, action: ProposalAction) => void;
+	docked?: boolean;
 }) {
 	if (message.role === "user") {
 		return (
@@ -607,7 +703,9 @@ function MessageItem({
 			{message.proposal &&
 				message.status &&
 				(message.proposal.kind === "sheet_batch" ? (
-					<SheetBatchCard message={message} onAct={onAct} />
+					docked ? null : (
+						<SheetBatchCard message={message} onAct={onAct} />
+					)
 				) : (
 					<ProposalCard message={message} onAct={onAct} />
 				))}
@@ -618,9 +716,11 @@ function MessageItem({
 function SheetBatchCard({
 	message,
 	onAct,
+	fill = false,
 }: {
 	message: ChatMessage;
 	onAct: (message: ChatMessage, action: ProposalAction) => void;
+	fill?: boolean;
 }) {
 	const proposal = message.proposal;
 	const character = useRPGStore((s) =>
@@ -642,31 +742,25 @@ function SheetBatchCard({
 			</p>
 		);
 	}
-	const rows = review
-		? [
-				...review.diff.map((row) => ({
-					section: row.section,
-					field: row.field,
-					label: row.label,
-					before: row.before,
-					after: row.after,
-				})),
-				...review.rejections.map((row) => ({
-					section: row.section,
-					field: row.field,
-					label: row.label,
-					reason: row.reason,
-				})),
-			]
-		: [
-				{
-					section: "Ficha",
-					field: "characterId",
-					label: "Ficha",
-					reason:
-						"Esta ficha não está na campanha ativa. Nada pode ser aplicado aqui.",
-				},
-			];
+	const useFrozen =
+		!!message.batchRows &&
+		(message.status === "applying" ||
+			message.status === "applied" ||
+			(message.status === "pending" && !!message.applyError));
+	const rows =
+		useFrozen && message.batchRows
+			? message.batchRows
+			: review
+				? rowsFromReview(review)
+				: [
+						{
+							section: "Ficha",
+							field: "characterId",
+							label: "Ficha",
+							reason:
+								"Esta ficha não está na campanha ativa. Nada pode ser aplicado aqui.",
+						},
+					];
 	const phase =
 		message.status === "applying"
 			? "applying"
@@ -678,6 +772,7 @@ function SheetBatchCard({
 			characterName={proposal.characterName}
 			rows={rows}
 			phase={phase}
+			fill={fill}
 			highlighted={message.highlighted === true && message.status === "applied"}
 			error={message.applyError}
 			onApply={() => onAct(message, "apply")}

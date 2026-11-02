@@ -13,12 +13,32 @@ export interface SheetBatchReviewRow {
 	reason?: string;
 }
 
+function dedupeRejected(rows: SheetBatchReviewRow[]): SheetBatchReviewRow[] {
+	const seen = new Set<string>();
+	const out: SheetBatchReviewRow[] = [];
+	for (const row of rows) {
+		if (!row.reason || seen.has(row.field)) continue;
+		seen.add(row.field);
+		out.push(row);
+	}
+	return out;
+}
+
+function batchTitle(changes: number, rejected: number): string {
+	const changesLabel = changes === 1 ? "1 alteração" : `${changes} alterações`;
+	if (rejected === 0) return changesLabel;
+	const rejectedLabel =
+		rejected === 1 ? "1 campo rejeitado" : `${rejected} campos rejeitados`;
+	return `${changesLabel} · ${rejectedLabel}`;
+}
+
 export function SheetBatchReview({
 	characterName,
 	rows,
 	phase,
 	highlighted = false,
 	error,
+	fill = false,
 	onApply,
 	onCancel,
 	onUndo,
@@ -28,29 +48,33 @@ export function SheetBatchReview({
 	phase: SheetBatchPhase;
 	highlighted?: boolean;
 	error?: string;
+	/** O card preenche o vão do painel (a lista rola e o rodapé fica visível). */
+	fill?: boolean;
 	onApply: () => void;
 	onCancel: () => void;
 	onUndo: () => void;
 }) {
-	const total = rows.length;
+	const rejected = dedupeRejected(rows);
+	const accepted = rows.filter((row) => !row.reason);
+	const total = accepted.length;
 	const many = total > 10;
-	const fullscreen = phase === "ready" || phase === "applying";
-	const blocked =
-		rows.some((row) => row.reason) ||
-		rows.every((row) => row.reason) ||
-		total === 0;
+	const showApplied = phase === "applied" && !error;
+	const applying = phase === "applying" && !error;
+	const fullscreen = !fill && (phase === "ready" || phase === "applying");
+	const blocked = rejected.length > 0 || total === 0;
 	const groups = SHEET_SECTIONS.flatMap((section) => {
-		const inSection = rows.filter((row) => row.section === section);
+		const inSection = accepted.filter((row) => row.section === section);
 		return inSection.length ? [{ section, rows: inSection }] : [];
 	});
-	const title = total === 1 ? "1 alteração" : `${total} alterações`;
+	const title = batchTitle(total, rejected.length);
 
 	return (
 		<div
 			data-phase={phase}
 			className={cn(
 				"flex flex-col bg-card text-card-foreground",
-				many && "max-h-96 overflow-hidden",
+				fill && "h-full min-h-0 flex-1 overflow-hidden",
+				many && !fill && "max-h-96 overflow-hidden",
 				fullscreen &&
 					"max-sm:fixed max-sm:inset-0 max-sm:z-[90] max-sm:max-h-none max-sm:bg-popover",
 			)}
@@ -63,11 +87,28 @@ export function SheetBatchReview({
 					{characterName}
 				</p>
 			</header>
+			{rejected.length > 0 ? (
+				<ul
+					data-slot="sheet-batch-rejections"
+					className="m-0 shrink-0 list-none px-2.5 pb-1"
+				>
+					{rejected.map((row) => (
+						<li
+							key={row.field}
+							data-field={row.field}
+							className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1 py-1.5 text-sm"
+						>
+							<span className="font-semibold text-foreground">{row.label}</span>
+							<span className="text-xs text-destructive">{row.reason}</span>
+						</li>
+					))}
+				</ul>
+			) : null}
 			<div
 				data-slot="sheet-batch-list"
 				className={cn(
 					"min-h-0 px-2.5 pb-2",
-					many && "flex-1 overflow-y-auto overscroll-contain",
+					(many || fill) && "flex-1 overflow-y-auto overscroll-contain",
 					fullscreen && "max-sm:flex-1",
 				)}
 			>
@@ -82,31 +123,23 @@ export function SheetBatchReview({
 									key={`${row.field}-${index}`}
 									data-field={row.field}
 									data-highlighted={
-										highlighted && !row.reason ? "true" : "false"
+										highlighted && showApplied ? "true" : "false"
 									}
 									className={cn(
 										"flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1 py-1.5 text-sm transition-colors duration-150 ease-out",
-										highlighted && !row.reason && "bg-primary/15",
+										highlighted && showApplied && "bg-primary/15",
 									)}
 								>
 									<span className="font-semibold text-foreground">
 										{row.label}
 									</span>
-									{row.reason ? (
-										<span className="text-xs text-destructive">
-											{row.reason}
-										</span>
-									) : (
-										<>
-											<span className="text-muted-foreground line-through tabular-nums">
-												{row.before}
-											</span>
-											<span className="sr-only">para</span>
-											<span className="text-foreground tabular-nums">
-												{row.after}
-											</span>
-										</>
-									)}
+									<span className="text-muted-foreground line-through tabular-nums">
+										{row.before}
+									</span>
+									<span className="sr-only">para</span>
+									<span className="text-foreground tabular-nums">
+										{row.after}
+									</span>
 								</li>
 							))}
 						</ul>
@@ -122,7 +155,7 @@ export function SheetBatchReview({
 						{error}
 					</p>
 				) : null}
-				{phase === "applied" ? (
+				{showApplied ? (
 					<div className="flex items-center gap-2">
 						<p className="text-xs text-muted-foreground">
 							Aplicado. A ficha foi atualizada.
@@ -142,7 +175,7 @@ export function SheetBatchReview({
 							type="button"
 							variant="outline"
 							className="min-h-11 flex-1"
-							disabled={phase === "applying"}
+							disabled={applying}
 							onClick={onCancel}
 						>
 							Cancelar
@@ -150,10 +183,10 @@ export function SheetBatchReview({
 						<Button
 							type="button"
 							className="min-h-11 flex-1"
-							disabled={blocked || phase === "applying"}
+							disabled={blocked || applying}
 							onClick={onApply}
 						>
-							{phase === "applying" ? "Aplicando" : "Aplicar"}
+							{applying ? "Aplicando…" : "Aplicar"}
 						</Button>
 					</div>
 				)}

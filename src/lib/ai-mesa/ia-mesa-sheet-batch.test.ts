@@ -7,6 +7,7 @@ import { CHARACTER_NUMERIC_FIELD_KEYS } from "../../../supabase/functions/_share
 import {
 	canEditCampaignSheet,
 	commitSheetBatch,
+	reviewSheetBatch,
 	SHEET_BATCH_FIELD_ENUM,
 	SHEET_SAVES,
 	SHEET_SKILLS,
@@ -361,6 +362,55 @@ describe("propose_sheet_batch: lote e gravação", () => {
 				"wisdom",
 			].sort(),
 		);
+	});
+
+	it("o mesmo campo rejeitado no servidor e no cliente vira uma linha só", () => {
+		const reviewed = reviewSheetBatch(snapshot(), {
+			kind: "sheet_batch",
+			characterId: "dante-1",
+			characterName: "Dante Diavolo",
+			changes: [
+				{ field: "strength", value: "18" },
+				{ field: "gold", value: "100" },
+			],
+			diff: [
+				{
+					section: "Atributos",
+					field: "strength",
+					label: "FOR",
+					before: "16",
+					after: "18",
+				},
+			],
+			rejections: [
+				{
+					field: "gold",
+					label: "gold",
+					section: "Ficha",
+					reason: "Ouro não faz parte da ficha.",
+				},
+			],
+		});
+		const gold = reviewed.rejections.filter((row) => row.field === "gold");
+		expect(gold).toHaveLength(1);
+		expect(gold[0]?.reason).toBe("Ouro não faz parte da ficha.");
+		expect(reviewed.diff.map((row) => row.field)).toEqual(["strength"]);
+
+		const duplicated = validateSheetBatch(
+			{
+				characterId: "dante-1",
+				changes: [
+					{ field: "gold", value: "10" },
+					{ field: "gold", value: "12" },
+					{ field: "strength", value: "18" },
+				],
+			},
+			snapshot(),
+		);
+		expect(
+			duplicated?.rejections.filter((row) => row.field === "gold"),
+		).toHaveLength(1);
+		expect(duplicated?.diff.map((row) => row.field)).toEqual(["strength"]);
 	});
 
 	it("campo inválido volta com o motivo e não grava nada", async () => {

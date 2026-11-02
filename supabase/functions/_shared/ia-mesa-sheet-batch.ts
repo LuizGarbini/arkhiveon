@@ -927,7 +927,7 @@ function collect(
 	diff.sort(
 		(a, b) => (FIELD_RANK.get(a.field) ?? 999) - (FIELD_RANK.get(b.field) ?? 999),
 	);
-	return { changes, diff, rejections, ops };
+	return { changes, diff, rejections: dedupeRejections(rejections), ops };
 }
 
 /**
@@ -1005,13 +1005,13 @@ export function reviewSheetBatch(
 	};
 }
 
+/** Uma linha por campo. Servidor e cliente podem rejeitar o mesmo field com motivos diferentes. */
 function dedupeRejections(list: SheetRejection[]): SheetRejection[] {
 	const seen = new Set<string>();
 	const out: SheetRejection[] = [];
 	for (const item of list) {
-		const key = `${item.field}:${item.reason}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
+		if (seen.has(item.field)) continue;
+		seen.add(item.field);
 		out.push(item);
 	}
 	return out;

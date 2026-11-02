@@ -197,17 +197,111 @@ describe("SheetBatchReview", () => {
 			/>,
 		);
 		expect(
-			(screen.getByRole("button", { name: "Aplicando" }) as HTMLButtonElement)
+			(screen.getByRole("button", { name: "Aplicando…" }) as HTMLButtonElement)
 				.disabled,
 		).toBe(true);
 		expect(
 			(screen.getByRole("button", { name: "Cancelar" }) as HTMLButtonElement)
 				.disabled,
 		).toBe(true);
+		expect(screen.queryByText(/Aplicado/)).toBeNull();
 	});
 
-	it("aplicado destaca a linha e o erro fica no rodapé", () => {
+	it("conta só as alterações e deixa os rejeitados visíveis, um por campo", () => {
+		const changes = Array.from({ length: 15 }, (_, index) => ({
+			section: "Atributos",
+			field: `extra-${index}`,
+			label: `Campo ${index + 1}`,
+			before: "1",
+			after: "2",
+		}));
 		const { container } = render(
+			<SheetBatchReview
+				characterName="Dante"
+				phase="ready"
+				rows={[
+					...changes,
+					{
+						section: "Ficha",
+						field: "gold",
+						label: "gold",
+						reason: "Ouro não faz parte da ficha.",
+					},
+					{
+						section: "Ficha",
+						field: "gold",
+						label: "gold",
+						reason: "Campo não editável.",
+					},
+					{
+						section: "Combate",
+						field: "armorClass",
+						label: "CA",
+						reason: "CA tem que ficar entre 0 e 50.",
+					},
+				]}
+				{...handlers}
+			/>,
+		);
+		expect(
+			screen.getByRole("heading", {
+				name: "15 alterações · 2 campos rejeitados",
+			}),
+		).toBeTruthy();
+		const rejected = container.querySelector(
+			"[data-slot='sheet-batch-rejections']",
+		);
+		const list = container.querySelector("[data-slot='sheet-batch-list']");
+		expect(rejected?.querySelectorAll("[data-field='gold']")).toHaveLength(1);
+		expect(rejected?.textContent).toContain("Ouro não faz parte da ficha.");
+		expect(rejected?.textContent).not.toContain("Campo não editável.");
+		expect(rejected?.textContent).toContain("CA tem que ficar entre 0 e 50.");
+		expect(list?.querySelector("[data-field='gold']")).toBeNull();
+		expect(list?.querySelector("[data-field='armorClass']")).toBeNull();
+		expect(list?.textContent).toContain("Campo 1");
+		expect(
+			rejected &&
+				list &&
+				rejected.compareDocumentPosition(list) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+	});
+
+	it("aplicado mostra o destaque, Aplicado e Desfazer juntos", () => {
+		const { container } = render(
+			<SheetBatchReview
+				characterName="Dante"
+				phase="applied"
+				highlighted
+				rows={[
+					{
+						section: "Atributos",
+						field: "strength",
+						label: "FOR",
+						before: "16",
+						after: "18",
+					},
+				]}
+				{...handlers}
+			/>,
+		);
+		const row = container.querySelector("[data-field='strength']");
+		expect(row?.getAttribute("data-highlighted")).toBe("true");
+		expect(row?.className).toContain("bg-primary/15");
+		const actions = container.querySelector(
+			"[data-slot='sheet-batch-actions']",
+		);
+		expect(actions?.textContent).toContain("Aplicado. A ficha foi atualizada.");
+		expect(actions?.querySelector("button")?.textContent).toContain("Desfazer");
+		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("erro de salvamento não aparece junto de Aplicado e deixa tentar de novo", () => {
+		render(
 			<SheetBatchReview
 				characterName="Dante"
 				phase="applied"
@@ -225,9 +319,13 @@ describe("SheetBatchReview", () => {
 				{...handlers}
 			/>,
 		);
-		const row = container.querySelector("[data-field='strength']");
-		expect(row?.getAttribute("data-highlighted")).toBe("true");
-		expect(row?.className).toContain("bg-primary/15");
-		expect(screen.getByRole("alert").textContent).toMatch(/Nada foi alterado/);
+		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		expect(screen.getByRole("alert").textContent).toMatch(
+			/Não foi possível salvar\. Nada foi alterado\./,
+		);
+		expect(
+			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(false);
 	});
 });

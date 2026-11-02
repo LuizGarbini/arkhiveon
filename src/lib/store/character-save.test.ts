@@ -152,6 +152,32 @@ describe("salvamento concorrente da ficha (mestre × jogador)", () => {
 		expect(showToastMock).not.toHaveBeenCalled();
 	});
 
+	it("saveCharacter só resolve depois do banco, sem toast", async () => {
+		const pending = useRPGStore
+			.getState()
+			.saveCharacter("ficha-1", { notes: "gravado" });
+		expect(useRPGStore.getState().characters[0].notes).toBe("gravado");
+		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe("");
+		await pending;
+		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe(
+			"gravado",
+		);
+		expect(showToastMock).not.toHaveBeenCalled();
+	});
+
+	it("saveCharacter com RLS bloqueada reverte, rejeita e não mostra toast", async () => {
+		db.rlsHidesRow = true;
+		const pending = useRPGStore
+			.getState()
+			.saveCharacter("ficha-1", { notes: "não entra" });
+		await expect(pending).rejects.toThrow(/permissão/);
+		expect(showToastMock).not.toHaveBeenCalled();
+		const state = useRPGStore.getState();
+		expect(state.syncError).toBeNull();
+		expect(state.characters[0].notes).toBe("");
+		expect((db.rows.get("ficha-1")?.data as Partial<Character>).notes).toBe("");
+	});
+
 	it("UPDATE com 0 linhas (RLS) vira erro visível e desfaz a mudança local", async () => {
 		db.rlsHidesRow = true;
 		useRPGStore
