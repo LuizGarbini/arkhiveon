@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
 	BAR_CLOSED_REM,
@@ -5,13 +6,14 @@ import {
 	BOTTOM_MARGIN_REM,
 	GAP_REM,
 	GRID_BAR_MOBILE_CLASS,
+	ROOT_FONT_PX,
 	TOOLBAR_TOP_REM,
 	TOOLBAR_WITH_GRID_BAR_CLASS,
 	ZOOM_ABOVE_GRID_BAR_CLASS,
 	zoomOffsetRem,
 } from "./grid-bar-layout";
 
-const REM = 16;
+const REM = ROOT_FONT_PX;
 const MOBILE_H = 844;
 const TOOLBAR_TOP = 8 * REM; // top-32
 const BAR_MARGIN = 0.75 * REM;
@@ -49,10 +51,17 @@ describe("grid-bar-layout (390×844)", () => {
 	});
 
 	it("barra tem altura fixa fechada e aberta", () => {
-		expect(barH("closed")).toBe(168);
-		expect(barH("open")).toBe(448);
+		// Medido no Playwright 390×844: 152 (681–833) e 406 (427–833).
+		expect(barH("closed")).toBe(152.25);
+		expect(barH("open")).toBe(406);
 		expect(GRID_BAR_MOBILE_CLASS.closed.startsWith("max-sm:")).toBe(true);
 		expect(GRID_BAR_MOBILE_CLASS.open.startsWith("max-sm:")).toBe(true);
+	});
+
+	it("ROOT_FONT_PX bate com o font-size do html em styles.css", () => {
+		const css = readFileSync("src/styles.css", "utf8");
+		const m = css.match(/html\s*\{[^}]*font-size:\s*([\d.]+)px/);
+		expect(Number(m?.[1])).toBe(ROOT_FONT_PX);
 	});
 
 	it("zoom fica 0.5rem acima do topo da barra (derivado da altura)", () => {
