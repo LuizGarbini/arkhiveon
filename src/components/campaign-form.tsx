@@ -760,28 +760,47 @@ export function CampaignForm({
 											<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
 											Jogador
 										</h3>
-										<div className="flex gap-2">
+										<div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
 											<Input
 												type="email"
 												value={inviteEmail}
 												onChange={(e) => setInviteEmail(e.target.value)}
 												placeholder="e-mail-do-jogador@gmail.com"
-												className="flex-1"
+												className="basis-full min-w-0 sm:basis-0 sm:flex-1"
 												required
 											/>
-											<select
+											<SelectRoot
 												value={inviteRole}
-												onChange={(e) =>
-													setInviteRole(e.target.value as "editor" | "viewer")
-												}
-												className="rounded-lg border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground outline-hidden focus:border-primary"
+												onValueChange={(next) => {
+													if (next === "editor" || next === "viewer") {
+														setInviteRole(next);
+													}
+												}}
+												disabled={isSendingInvite}
 											>
-												<option value="viewer">Jogador (Ver)</option>
-												<option value="editor">Co-Mestre (Editar)</option>
-											</select>
+												<SelectTrigger
+													aria-label="Papel do convidado"
+													className="w-auto shrink-0 text-[11px] font-medium"
+												>
+													<SelectValue>
+														{(value: string | null) =>
+															value === "editor"
+																? "Co-Mestre (Editar)"
+																: "Jogador (Ver)"
+														}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent className="w-auto min-w-(--anchor-width)">
+													<SelectItem value="viewer">Jogador (Ver)</SelectItem>
+													<SelectItem value="editor">
+														Co-Mestre (Editar)
+													</SelectItem>
+												</SelectContent>
+											</SelectRoot>
 											<Button
 												type="submit"
-												size="sm"
+												size="lg"
+												className="shrink-0"
 												loading={isSendingInvite}
 												loadingText="Enviando..."
 												disabled={!inviteEmail.trim()}

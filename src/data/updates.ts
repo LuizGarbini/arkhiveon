@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.63-convite-select-ds",
+		version: "1.6.63",
+		date: "02/11/2026",
+		title: "O papel no convite usa o seletor do app",
+		description:
+			"Na aba de jogadores, a escolha entre Jogador (Ver) e Co-Mestre (Editar) agora abre o mesmo seletor do resto do app, e não a lista do sistema. Dá para escolher pelo teclado, o foco aparece no campo, e enquanto o convite está sendo enviado o seletor fica travado. O convite continua saindo com o papel escolhido.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.62-espera-da-ia-compacta",
 		version: "1.6.62",
 		date: "02/11/2026",
