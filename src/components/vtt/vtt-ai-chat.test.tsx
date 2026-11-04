@@ -43,7 +43,7 @@ vi.mock("@/lib/store", () => {
 });
 vi.mock("@/lib/ai-mesa/client", () => ({ askMesaAssistant: h.ask }));
 
-import { VTTAiChat } from "./vtt-ai-chat";
+import { readingPrompt, VTTAiChat } from "./vtt-ai-chat";
 
 const dante = {
 	id: "dante-1",
@@ -520,6 +520,44 @@ describe("VTTAiChat: edição em lote", () => {
 		expect(await screen.findByText("Pronto.")).toBeTruthy();
 	});
 
+	it("pergunta curta mostra os três pontos, não o skeleton", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "O que muda na ficha do mago?" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		const status = await screen.findByRole("status", {
+			name: "Carregando resposta",
+		});
+		expectCompactLoading(status);
+		expect(screen.queryByRole("status", { name: "Lendo o prompt" })).toBeNull();
+		expect(document.querySelector("[data-slot='skeleton']")).toBeNull();
+		resolveAsk({ ok: true, reply: "Pronto.", proposal: null });
+		expect(await screen.findByText("Pronto.")).toBeTruthy();
+	});
+
+	it("skeleton mostra o texto Lendo o prompt e barras visíveis", async () => {
+		h.ask.mockReturnValue(new Promise(() => {}));
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "Atualiza a ficha do Dante: Força 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		const status = await screen.findByRole("status", {
+			name: "Lendo o prompt",
+		});
+		expect(status.textContent).toContain("Lendo o prompt");
+		for (const bar of status.querySelectorAll("[data-slot='skeleton']")) {
+			expect(bar.className).toContain("bg-muted-foreground/20");
+		}
+	});
+
 	it("campo rejeitado desabilita Aplicar e o campo esvazia no envio", async () => {
 		h.state.characters = [batchSheet];
 		const proposal = batchProposal([
@@ -781,5 +819,31 @@ describe("VTTAiChat: edição em lote", () => {
 		expect(h.ask).not.toHaveBeenCalled();
 		expect(screen.queryByRole("alert")).toBeNull();
 		expect(input.value).toHaveLength(20_001);
+	});
+});
+
+describe("readingPrompt", () => {
+	it.each([
+		"Atualiza a ficha do Dante: Força 18",
+		"edita a ficha do mago",
+		"Muda na ficha do mago a CA para 15",
+		"Dante subiu de nível. Altera a ficha com PV 40",
+		"Por favor, atualiza a ficha do mago",
+	])("comando de edição liga o skeleton: %s", (text) => {
+		expect(readingPrompt(text)).toBe(true);
+	});
+
+	it.each([
+		"O que muda na ficha do mago?",
+		"Como edito a ficha?",
+		"Qual atributo da ficha muda com o nível?",
+		"Quanto dano faz uma espada longa?",
+		"Muda o clima da cena",
+	])("pergunta ou texto curto fica nos pontos: %s", (text) => {
+		expect(readingPrompt(text)).toBe(false);
+	});
+
+	it("texto de 400+ caracteres liga o skeleton", () => {
+		expect(readingPrompt("a".repeat(400))).toBe(true);
 	});
 });

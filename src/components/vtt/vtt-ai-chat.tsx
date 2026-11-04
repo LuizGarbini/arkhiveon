@@ -90,11 +90,25 @@ type PanelState =
 	| { kind: "error"; text: string }
 	| { kind: "limit"; resetsAt: string };
 
-function readingPrompt(text: string): boolean {
-	return (
-		text.length >= 400 ||
-		(/\b(atualiz|edit|alter|mud)\w*/i.test(text) && /\bficha\b/i.test(text))
-	);
+const EDIT_VERB = String.raw`(?:atualiz|edit|alter|mud|troc|ajust|coloc)\p{L}*`;
+/** Verbo de edição no início de uma frase/linha (comando). */
+const EDIT_COMMAND_START = new RegExp(
+	String.raw`(?:^|[.!\n]\s*)${EDIT_VERB}\b`,
+	"iu",
+);
+/** "atualiza a ficha", "muda na ficha do mago" como comando. */
+const EDIT_THE_SHEET = new RegExp(
+	String.raw`\b${EDIT_VERB}\s+(?:a|na|minha|essa|esta|da)\s+ficha\b`,
+	"iu",
+);
+const QUESTION =
+	/\?\s*$|^\s*(?:o que|como|qual|quais|quando|por que|porque|pode|posso|será)\b/iu;
+
+/** Exportado para teste: prompt longo ou comando de editar ficha → skeleton. */
+export function readingPrompt(text: string): boolean {
+	if (text.length >= 400) return true;
+	if (!/\bficha\b/i.test(text) || QUESTION.test(text.trim())) return false;
+	return EDIT_COMMAND_START.test(text.trim()) || EDIT_THE_SHEET.test(text);
 }
 
 function nowLabel(): string {
@@ -560,9 +574,12 @@ export function VTTAiChat({
 								aria-label="Lendo o prompt"
 								className="block max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2.5"
 							>
-								<Skeleton className="h-3 w-40" />
-								<Skeleton className="h-3 w-56" />
-								<Skeleton className="h-3 w-32" />
+								<span className="block text-xs text-muted-foreground">
+									Lendo o prompt
+								</span>
+								<Skeleton className="h-3 w-40 bg-muted-foreground/20" />
+								<Skeleton className="h-3 w-56 bg-muted-foreground/20" />
+								<Skeleton className="h-3 w-32 bg-muted-foreground/20" />
 							</output>
 						)}
 						{panel.kind === "loading" && !panel.reading && (
