@@ -334,9 +334,20 @@ export const createCharacterSlice: StateCreator<
 						c.id === id && c.updatedAt === updated.updatedAt ? saved : c,
 					),
 				}));
-				return createRemoteActivity(log, campaignId);
+				// A ficha já está gravada. Falha no histórico não desfaz o save:
+				// rejeitar mostraria erro falso e levaria a reenviar.
+				return createRemoteActivity(log, campaignId).then(
+					() => undefined,
+					(error: unknown) => {
+						const name =
+							error instanceof Error && error.name ? error.name : "Error";
+						console.warn(
+							"Não foi possível registrar a atividade da ficha.",
+							name,
+						);
+					},
+				);
 			})
-			.then(() => undefined)
 			.catch((error: unknown) => {
 				const offline = isNetworkError(error);
 				const message = remoteErrorMessage(error);
