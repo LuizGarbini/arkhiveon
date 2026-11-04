@@ -88,6 +88,45 @@ const proposal = parseCharacterPatch(
 	},
 );
 
+/** Bolha arredondada de assistente (`bg-muted`) sem texto visível. */
+function emptyAssistantBubbles(): Element[] {
+	return [...document.querySelectorAll("p, output, div")].filter((el) => {
+		const className = typeof el.className === "string" ? el.className : "";
+		if (!/(?:^|\s)bg-muted(?:\s|$)/.test(className)) return false;
+		if (!className.includes("rounded-2xl")) return false;
+		return (el.textContent ?? "").trim().length === 0;
+	});
+}
+
+function expectCompactLoading(status: HTMLElement) {
+	expect(status.getAttribute("aria-label")).toBe("Carregando resposta");
+	expect(status.classList.contains("flex")).toBe(true);
+	expect(status.classList.contains("items-center")).toBe(true);
+	expect(status.classList.contains("gap-1")).toBe(true);
+	expect(status.classList.contains("h-5")).toBe(true);
+	expect(status.classList.contains("px-3.5")).toBe(true);
+	expect(status.className).not.toContain("bg-muted");
+	expect(status.className).not.toContain("rounded-2xl");
+	expect(status.className).not.toMatch(/animate-pulse/);
+	expect(status.querySelectorAll("[data-slot='skeleton']").length).toBe(0);
+	expect(status.querySelector(":scope > .sr-only")?.textContent).toBe(
+		"Carregando resposta…",
+	);
+	const dots = [...status.querySelectorAll(":scope > [aria-hidden='true']")];
+	expect(dots).toHaveLength(3);
+	const delays = ["0ms", "150ms", "300ms"];
+	for (const [index, dot] of dots.entries()) {
+		expect(dot.tagName).toBe("SPAN");
+		expect(dot.classList.contains("size-1.5")).toBe(true);
+		expect(dot.classList.contains("rounded-full")).toBe(true);
+		expect(dot.classList.contains("bg-muted-foreground")).toBe(true);
+		expect(dot.className).toMatch(/(?:^|\s)motion-safe:animate-pulse(?:\s|$)/);
+		expect(dot.className).not.toMatch(/(?:^|\s)animate-pulse(?:\s|$)/);
+		expect((dot as HTMLElement).style.animationDelay).toBe(delays[index]);
+		expect(dot.textContent).toBe("");
+	}
+}
+
 async function askForPatch(header = /Alterar ficha · 2 mudanças/) {
 	h.ask.mockResolvedValue({ ok: true, reply: "Proposta pronta.", proposal });
 	render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
@@ -129,7 +168,7 @@ describe("VTTAiChat: estados do painel", () => {
 		});
 	}
 
-	it("carregando usa skeleton e a resposta entra no lugar dele", async () => {
+	it("carregando é uma linha compacta e some no sucesso sem bolha vazia", async () => {
 		let resolveAsk: (value: unknown) => void = () => {};
 		h.ask.mockReturnValue(
 			new Promise((resolve) => {
@@ -138,10 +177,10 @@ describe("VTTAiChat: estados do painel", () => {
 		);
 		await openAndType("quem está na cena?");
 		fireEvent.click(screen.getByLabelText("Enviar"));
-		expect(
-			await screen.findByRole("status", { name: "Carregando resposta" }),
-		).toBeTruthy();
-		expect(document.querySelector("[data-slot='skeleton']")).toBeTruthy();
+		const status = await screen.findByRole("status", {
+			name: "Carregando resposta",
+		});
+		expectCompactLoading(status);
 		expect(screen.queryByText("Pensando…")).toBeNull();
 		resolveAsk({
 			ok: true,
@@ -152,6 +191,44 @@ describe("VTTAiChat: estados do painel", () => {
 		expect(
 			screen.queryByRole("status", { name: "Carregando resposta" }),
 		).toBeNull();
+		expect(emptyAssistantBubbles().length).toBe(0);
+	});
+
+	it("resposta em branco não deixa bolha de assistente vazia", async () => {
+		h.ask.mockResolvedValue({ ok: true, reply: "   ", proposal: null });
+		await openAndType("quem está na cena?");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(await screen.findByText("quem está na cena?")).toBeTruthy();
+		expect(
+			screen.queryByRole("status", { name: "Carregando resposta" }),
+		).toBeNull();
+		expect(emptyAssistantBubbles().length).toBe(0);
+	});
+
+	it("erro tira o indicador e não deixa bolha de assistente vazia", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openAndType("qual é a CA do Dante?");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		const status = await screen.findByRole("status", {
+			name: "Carregando resposta",
+		});
+		expectCompactLoading(status);
+		resolveAsk({ ok: false, code: "unavailable" });
+		expect(
+			await screen.findByRole("button", { name: "Tentar de novo" }),
+		).toBeTruthy();
+		expect(
+			screen.queryByRole("status", { name: "Carregando resposta" }),
+		).toBeNull();
+		expect(emptyAssistantBubbles().length).toBe(0);
+		expect(screen.getByRole("alert").textContent).toMatch(
+			/Não consegui responder agora/,
+		);
 	});
 
 	it("erro de rede ou 413 fica no painel e a pergunta continua na conversa", async () => {
@@ -269,6 +346,10 @@ describe("VTTAiChat: estados do painel", () => {
 		expect(
 			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
 		).toBe(true);
+		expect(
+			screen.queryByRole("status", { name: "Carregando resposta" }),
+		).toBeNull();
+		expect(emptyAssistantBubbles().length).toBe(0);
 	});
 
 	it("a pergunta vira bolha na hora e o envio fica travado", async () => {

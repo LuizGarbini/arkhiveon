@@ -236,21 +236,25 @@ export function VTTAiChat({
 				history,
 			});
 			if (result.ok) {
+				const reply = result.reply.trim();
+				const proposal = result.proposal ?? undefined;
 				setPanel({ kind: "idle" });
 				if (keepForBatch && result.proposal?.kind !== "sheet_batch") {
 					setDraft("");
 				}
-				setMessages((prev) => [
-					...prev,
-					{
-						id: newId(),
-						role: "assistant",
-						text: result.reply,
-						time: nowLabel(),
-						proposal: result.proposal ?? undefined,
-						status: result.proposal ? "pending" : undefined,
-					},
-				]);
+				if (reply || proposal) {
+					setMessages((prev) => [
+						...prev,
+						{
+							id: newId(),
+							role: "assistant",
+							text: reply,
+							time: nowLabel(),
+							proposal,
+							status: proposal ? "pending" : undefined,
+						},
+					]);
+				}
 				scrollToEnd();
 				return;
 			}
@@ -551,16 +555,37 @@ export function VTTAiChat({
 								docked={dockMessage?.id === message.id}
 							/>
 						))}
-						{panel.kind === "loading" && (
+						{panel.kind === "loading" && panel.reading && (
 							<output
-								aria-label={
-									panel.reading ? "Lendo o prompt" : "Carregando resposta"
-								}
+								aria-label="Lendo o prompt"
 								className="block max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2.5"
 							>
 								<Skeleton className="h-3 w-40" />
 								<Skeleton className="h-3 w-56" />
 								<Skeleton className="h-3 w-32" />
+							</output>
+						)}
+						{panel.kind === "loading" && !panel.reading && (
+							<output
+								aria-label="Carregando resposta"
+								className="flex h-5 items-center gap-1 px-3.5"
+							>
+								<span className="sr-only">Carregando resposta…</span>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "0ms" }}
+								/>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "150ms" }}
+								/>
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
+									style={{ animationDelay: "300ms" }}
+								/>
 							</output>
 						)}
 						{panel.kind === "error" && (
@@ -784,17 +809,22 @@ function MessageItem({
 			</div>
 		);
 	}
+	const hasText = message.text.trim().length > 0;
+	const hasProposal = Boolean(message.proposal && message.status);
+	if (!hasText && !hasProposal) return null;
 	return (
 		<div className="space-y-3">
-			<p
-				role={message.isError ? "alert" : undefined}
-				className={cn(
-					"max-w-[85%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2.5 text-sm",
-					message.isError && "border border-destructive/40",
-				)}
-			>
-				{message.text}
-			</p>
+			{hasText && (
+				<p
+					role={message.isError ? "alert" : undefined}
+					className={cn(
+						"max-w-[85%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2.5 text-sm",
+						message.isError && "border border-destructive/40",
+					)}
+				>
+					{message.text}
+				</p>
+			)}
 			{message.proposal &&
 				message.status &&
 				(message.proposal.kind === "sheet_batch" ? (
