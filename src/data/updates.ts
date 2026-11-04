@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.63-esperas-da-ia",
+		version: "1.6.63",
+		date: "04/11/2026",
+		title: "Duas esperas no assistente da mesa",
+		description:
+			'Pergunta curta mostra os três pontos. Texto longo ou pedido de edição da ficha mostra "Lendo o prompt" com barras mais visíveis. Perguntas sobre a ficha não ativam mais a espera de edição.',
+		bullets: [],
+	},
+	{
 		id: "v1.6.62-espera-da-ia-compacta",
 		version: "1.6.62",
 		date: "02/11/2026",
