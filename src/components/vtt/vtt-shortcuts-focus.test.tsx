@@ -148,7 +148,7 @@ describe("atalhos do VTT respeitam o foco", () => {
 		expect(useVTTStore.getState().showRosterDrawer).toBe(false);
 	});
 
-	it("painel de grade: digitar no campo Escala não dispara atalho", () => {
+	it("painel de grade: digitar no campo Distância por célula não dispara atalho", () => {
 		useVTTStore.setState({
 			showRosterDrawer: false,
 			showGridSettings: true,
@@ -162,7 +162,7 @@ describe("atalhos do VTT respeitam o foco", () => {
 				<VTTGridSettings onUpdateSceneSettings={vi.fn()} />
 			</>,
 		);
-		const escala = screen.getByLabelText("Escala");
+		const escala = screen.getByLabelText("Distância por célula");
 		escala.focus();
 		for (const k of ["g", "v", "r", "f", "t"]) press(escala, k);
 		expect(tool()).toBe("pan");

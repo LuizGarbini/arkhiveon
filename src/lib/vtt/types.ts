@@ -24,6 +24,19 @@ export interface VTTScene {
 	updatedAt?: string;
 }
 
+/** Campos do grid que o painel de ajuste pode gravar; patch parcial. */
+export type VTTSceneSettingsPatch = Partial<
+	Pick<
+		VTTScene,
+		| "gridType"
+		| "gridSize"
+		| "gridColor"
+		| "gridOpacity"
+		| "gridScaleDistance"
+		| "gridScaleUnit"
+	>
+>;
+
 export interface VTTAura {
 	radius: number;
 	color: string;

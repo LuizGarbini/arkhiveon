@@ -112,6 +112,8 @@ interface VTTState {
 
 	// UI Panels
 	showGridSettings: boolean;
+	/** 390 px: seção "Mais ajustes" da barra do grid aberta. */
+	gridMoreOpen: boolean;
 	showSceneManager: boolean;
 	showRosterDrawer: boolean;
 	/** Ficha em foco (a de cima). */
@@ -185,6 +187,7 @@ interface VTTState {
 	removePing: (timestamp: number) => void;
 
 	setShowGridSettings: (show: boolean) => void;
+	setGridMoreOpen: (open: boolean) => void;
 	setShowSceneManager: (show: boolean) => void;
 	setShowRosterDrawer: (show: boolean) => void;
 	/** Abre (ou traz para frente) a ficha; `null` fecha todas. */
@@ -279,6 +282,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	activePings: [],
 
 	showGridSettings: false,
+	gridMoreOpen: false,
 	showSceneManager: false,
 	showRosterDrawer: false,
 	showCharacterSheetId: null,
@@ -592,6 +596,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 			activePings: state.activePings.filter((p) => p.timestamp !== timestamp),
 		})),
 
+	setGridMoreOpen: (open) => set({ gridMoreOpen: open }),
 	setShowGridSettings: (show) =>
 		set(
 			show

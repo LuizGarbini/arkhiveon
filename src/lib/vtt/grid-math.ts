@@ -329,3 +329,15 @@ export function findFreeCell(
 	}
 	return start;
 }
+
+/** Faixa aceita para o tamanho da célula (px no mapa). Spec escala-mapa F1. */
+export const GRID_SIZE_MIN = 10;
+export const GRID_SIZE_MAX = 400;
+/** Distância por célula padrão (D&D: 1,5 m). */
+export const DEFAULT_GRID_SCALE_DISTANCE = 1.5;
+
+/** Arredonda para inteiro e prende o tamanho da célula em 10–400 px. */
+export function clampGridSize(value: number): number {
+	if (!Number.isFinite(value)) return GRID_SIZE_MIN;
+	return Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, Math.round(value)));
+}

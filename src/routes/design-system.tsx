@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 
 export const Route = createFileRoute("/design-system")({
@@ -265,6 +266,19 @@ function DesignSystem() {
 							<option>Tormenta 20</option>
 							<option>Ordem Paranormal</option>
 						</Select>
+					</div>
+					<div className="mt-5 grid gap-3 sm:grid-cols-2">
+						<Slider
+							defaultValue={70}
+							min={10}
+							max={400}
+							thumbLabel="Slider de exemplo"
+						/>
+						<Slider
+							defaultValue={40}
+							disabled
+							thumbLabel="Slider desabilitado"
+						/>
 					</div>
 				</SpecPanel>
 

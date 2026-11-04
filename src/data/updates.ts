@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.65-celula-do-grid-10-a-400",
+		version: "1.6.65",
+		date: "02/11/2026",
+		title: "Célula do grid de 10 a 400 px, com campo e botões − e +",
+		description:
+			"No ajuste do grid, o mestre digita o tamanho da célula em pixels (de 10 a 400) ou usa os botões − e + e o novo controle deslizante. Enquanto arrasta, só o mestre vê o grid mudar; ao soltar, a mesa recebe o novo tamanho. Se a gravação falhar, o tamanho volta ao anterior com um aviso. “Escala” agora se chama “Distância por célula” (padrão 1,5 m). Com o grid desativado, o painel ainda mostra o tamanho da célula, que vale para a régua e os tokens. No celular, o painel vira uma barra embaixo da tela, sem cobrir o grid.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.64-esperas-da-ia",
 		version: "1.6.64",
 		date: "04/11/2026",
