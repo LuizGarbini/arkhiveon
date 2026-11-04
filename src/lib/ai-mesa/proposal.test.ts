@@ -62,6 +62,7 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 			"propose_npc",
 			"read_character",
 			"propose_character_patch",
+			"propose_sheet_batch",
 		]);
 		expect(proposal?.name).toBe("Irmã Morwen");
 		expect(parseToolCall("run_sql", { name: "x" })).toBeNull();

@@ -7,13 +7,27 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { snapshotFromCharacter } from "@/lib/ai-mesa/sheet-batch";
+import type { Character, CharacterUpdateOptions } from "@/lib/store/types";
 import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
+import { validateSheetBatch } from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 
 const h = vi.hoisted(() => ({
+	/** Save quiet do lote: `updateCharacter(id, changes, { quiet: true })`. */
+	quietSave: vi.fn((_id: string, _changes: Record<string, unknown>) =>
+		Promise.resolve(),
+	),
 	state: {
 		activeCampaignId: "rise",
 		characters: [] as unknown[],
-		updateCharacter: vi.fn(),
+		campaigns: [] as { id: string; myRole?: string }[],
+		updateCharacter: vi.fn(
+			(
+				_id: string,
+				_changes: Partial<Character>,
+				_options?: CharacterUpdateOptions,
+			): Promise<void> => Promise.resolve(),
+		),
 		addNpc: vi.fn(),
 		removeNpc: vi.fn(),
 		syncError: null,
@@ -86,11 +100,25 @@ async function askForPatch(header = /Alterar ficha · 2 mudanças/) {
 }
 
 beforeEach(() => {
+	h.state.activeCampaignId = "rise";
 	h.state.characters = [dante];
+	h.state.campaigns = [];
 	h.state.updateCharacter.mockReset();
+	h.state.updateCharacter.mockImplementation((id, changes, options) =>
+		options?.quiet ? h.quietSave(id, changes) : Promise.resolve(),
+	);
+	h.quietSave.mockReset();
+	h.quietSave.mockImplementation(() => Promise.resolve());
 	h.ask.mockReset();
 });
 afterEach(cleanup);
+
+/** Chamadas de `updateCharacter` fora do save quiet do lote. */
+function loudUpdates() {
+	return h.state.updateCharacter.mock.calls.filter(
+		([, , options]) => !options?.quiet,
+	);
+}
 
 describe("VTTAiChat: estados do painel", () => {
 	async function openAndType(text: string) {
@@ -124,6 +152,29 @@ describe("VTTAiChat: estados do painel", () => {
 		expect(
 			screen.queryByRole("status", { name: "Carregando resposta" }),
 		).toBeNull();
+	});
+
+	it("erro de rede ou 413 fica no painel e a pergunta continua na conversa", async () => {
+		h.ask.mockResolvedValue({ ok: false, code: "input_too_large" });
+		await openAndType("resumo colado que o servidor recusou");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(await screen.findByRole("alert")).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toMatch(/20\.000 caracteres/);
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.value).toBe("");
+		expect(
+			screen.getByText("resumo colado que o servidor recusou"),
+		).toBeTruthy();
+		h.ask.mockResolvedValue({ ok: false, code: "offline" });
+		fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+		expect(await screen.findByText(/Sem conexão com o servidor/)).toBeTruthy();
+		expect(h.ask).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				message: "resumo colado que o servidor recusou",
+			}),
+		);
 	});
 
 	it("chave ausente ou falha do modelo diz que não conseguiu responder", async () => {
@@ -292,14 +343,14 @@ describe("VTTAiChat: editar ficha existente", () => {
 			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
 				.disabled,
 		).toBe(true);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("Ignorar (rejeitar) não grava nada", async () => {
 		await askForPatch();
 		fireEvent.click(screen.getByRole("button", { name: "Ignorar" }));
 		expect(screen.getByText(/Nada foi salvo/)).toBeTruthy();
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 	});
 
 	it("Confirmar → Aplicar grava o patch; Desfazer volta o antes", async () => {
@@ -307,13 +358,13 @@ describe("VTTAiChat: editar ficha existente", () => {
 		fireEvent.click(
 			screen.getByRole("button", { name: "Confirmar alteração" }),
 		);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		expect(h.state.updateCharacter).toHaveBeenCalledTimes(1);
 		const [id, changes] = h.state.updateCharacter.mock.calls[0];
 		expect(id).toBe("dante-1");
 		expect(changes.strength).toBe(18);
-		expect(changes.inventoryList[0].weapon.magicBonus).toBe(1);
+		expect(changes.inventoryList?.[0]?.weapon?.magicBonus).toBe(1);
 		expect(screen.getByText(/ficha de Dante Diavolo atualizada/)).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
@@ -334,6 +385,320 @@ describe("VTTAiChat: editar ficha existente", () => {
 				}) as HTMLButtonElement
 			).disabled,
 		).toBe(true);
-		expect(h.state.updateCharacter).not.toHaveBeenCalled();
+		expect(loudUpdates()).toEqual([]);
+	});
+});
+
+const batchSheet = {
+	id: "dante-1",
+	characterName: "Dante Diavolo",
+	createdBy: "other",
+	strength: 16,
+	dexterity: 12,
+	health: 30,
+	armorClass: 16,
+	inventoryList: dante.inventoryList,
+};
+
+function batchProposal(
+	changes: { field: string; value: string }[],
+	character: typeof batchSheet = batchSheet,
+) {
+	const proposal = validateSheetBatch(
+		{ characterId: character.id, changes },
+		snapshotFromCharacter(character as never),
+	);
+	if (!proposal) throw new Error("lote inválido no teste");
+	return proposal;
+}
+
+describe("VTTAiChat: edição em lote", () => {
+	async function openPanel() {
+		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
+		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
+	}
+
+	it("lendo um prompt longo mostra o skeleton", async () => {
+		let resolveAsk: (value: unknown) => void = () => {};
+		h.ask.mockReturnValue(
+			new Promise((resolve) => {
+				resolveAsk = resolve;
+			}),
+		);
+		await openPanel();
+		const paste = `${"Força 18 Destreza 14 Constituição 16. ".repeat(20)}atualiza a ficha`;
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: paste },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByRole("status", { name: "Lendo o prompt" }),
+		).toBeTruthy();
+		expect(document.querySelector("[data-slot='skeleton']")).toBeTruthy();
+		resolveAsk({ ok: true, reply: "Pronto.", proposal: null });
+		expect(await screen.findByText("Pronto.")).toBeTruthy();
+	});
+
+	it("campo rejeitado desabilita Aplicar e o campo esvazia no envio", async () => {
+		h.state.characters = [batchSheet];
+		const proposal = batchProposal([
+			{ field: "strength", value: "18" },
+			{ field: "armorClass", value: "80" },
+		]);
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Encontrei campos que não dá para aplicar.",
+			proposal,
+		});
+		await openPanel();
+		const pasted = "resumo colado da ficha com CA 80";
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: pasted },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(
+			await screen.findByText("CA tem que ficar entre 0 e 50."),
+		).toBeTruthy();
+		expect(
+			(screen.getByRole("button", { name: "Aplicar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		const stored = document.querySelector("textarea");
+		expect(stored?.closest("form")?.hidden).toBe(true);
+		expect((stored as HTMLTextAreaElement).value).toBe("");
+		expect(loudUpdates()).toEqual([]);
+		expect(h.quietSave).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		expect(
+			(
+				screen.getByLabelText(
+					"Mensagem para o assistente",
+				) as HTMLTextAreaElement
+			).value,
+		).toBe("");
+	});
+
+	it("lote: o texto colado fica no campo na proposta e só limpa após Aplicar", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		const pasted = `FOR 18. ${"x".repeat(1300)}`;
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: pasted },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("heading", { name: "1 alteração" });
+		const input = document.querySelector("textarea") as HTMLTextAreaElement;
+		expect(input.value).toBe(pasted);
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		expect(input.value).toBe("");
+	});
+
+	it("lote: no erro e no 413 o texto colado continua no campo", async () => {
+		await openPanel();
+		const pasted = "y".repeat(1500);
+		for (const code of ["offline", "input_too_large"]) {
+			h.ask.mockResolvedValueOnce({ ok: false, code });
+			const input = screen.getByLabelText(
+				"Mensagem para o assistente",
+			) as HTMLTextAreaElement;
+			fireEvent.change(input, { target: { value: pasted } });
+			fireEvent.click(screen.getByLabelText("Enviar"));
+			expect(await screen.findByRole("alert")).toBeTruthy();
+			expect(input.value).toBe(pasted);
+		}
+	});
+
+	it("Aplicar grava uma vez e destaca a linha", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha: FOR 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("heading", { name: "1 alteração" });
+		expect(document.querySelector("textarea")?.closest("form")?.hidden).toBe(
+			true,
+		);
+		let releaseSave: () => void = () => {};
+		h.quietSave.mockImplementation(
+			(id: string, changes: Record<string, unknown>) => {
+				return new Promise<void>((resolve) => {
+					releaseSave = () => {
+						h.state.characters = h.state.characters.map((character) => {
+							if (!character || typeof character !== "object") return character;
+							const current = character as Record<string, unknown>;
+							return current.id === id ? { ...current, ...changes } : character;
+						});
+						resolve();
+					};
+				});
+			},
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		const applying = await screen.findByRole("button", { name: "Aplicando…" });
+		expect((applying as HTMLButtonElement).disabled).toBe(true);
+		expect(
+			(screen.getByRole("button", { name: "Cancelar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		expect(h.quietSave).toHaveBeenCalledTimes(1);
+		releaseSave();
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		const [id, changes] = h.quietSave.mock.calls[0];
+		expect(id).toBe("dante-1");
+		expect(changes.strength).toBe(18);
+		expect(Object.keys(changes)).toEqual(["strength"]);
+		expect(loudUpdates()).toEqual([]);
+		const dock = document.querySelector("[data-slot='sheet-batch-dock']");
+		expect(dock?.className).toContain("flex-1");
+		const row = dock?.querySelector("[data-field='strength']");
+		expect(row?.getAttribute("data-highlighted")).toBe("true");
+		expect(row?.className).toContain("bg-primary/15");
+		expect(dock?.textContent).toContain("Desfazer");
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		expect(input.closest("form")?.hidden).toBe(false);
+		expect(input.value).toBe("");
+	});
+
+	it("falha do save não mostra Aplicado, mantém o lote e deixa tentar de novo", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.quietSave.mockImplementationOnce(() => {
+			h.state.characters = [{ ...batchSheet, strength: 18 }];
+			return Promise.reject(new Error("blocked")).catch((error: unknown) => {
+				h.state.characters = [batchSheet];
+				throw error;
+			});
+		});
+		h.quietSave.mockImplementationOnce(() => Promise.resolve());
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha: FOR 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Aplicar" });
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		const alert = await screen.findByRole("alert");
+		expect(alert.textContent).toMatch(
+			/Não foi possível salvar\. Nada foi alterado\./,
+		);
+		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
+		expect(
+			(document.querySelector("textarea") as HTMLTextAreaElement).value,
+		).toBe("");
+		const row = document.querySelector("[data-field='strength']");
+		expect(row?.textContent).toContain("16");
+		expect(row?.textContent).toContain("18");
+		const retry = screen.getByRole("button", { name: "Aplicar" });
+		expect((retry as HTMLButtonElement).disabled).toBe(false);
+		fireEvent.click(retry);
+		expect(
+			await screen.findByText("Aplicado. A ficha foi atualizada."),
+		).toBeTruthy();
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(h.quietSave).toHaveBeenCalledTimes(2);
+		expect(loudUpdates()).toEqual([]);
+		expect(
+			(
+				screen.getByLabelText(
+					"Mensagem para o assistente",
+				) as HTMLTextAreaElement
+			).value,
+		).toBe("");
+	});
+
+	it("Cancelar não grava", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Cancelar" });
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		expect(screen.getByText(/Nada foi salvo/)).toBeTruthy();
+		expect(loudUpdates()).toEqual([]);
+	});
+
+	it("permissão negada não grava", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "viewer" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("button", { name: "Aplicar" });
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		expect(await screen.findByRole("alert")).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toMatch(/Nada foi alterado/);
+		expect(loudUpdates()).toEqual([]);
+	});
+
+	it("mostra o contador e trava o envio acima do limite", async () => {
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "abc" },
+		});
+		expect(screen.queryByText(/\/20000/)).toBeNull();
+		expect(screen.queryByText("Modo edição em lote")).toBeNull();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "a".repeat(1201) },
+		});
+		expect(screen.getByText(/1201\/20000/)).toBeTruthy();
+		expect(screen.getByText("Modo edição em lote")).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "a".repeat(20_001) },
+		});
+		expect(screen.getByText(/20001\/20000/).className).toContain(
+			"text-destructive",
+		);
+		expect(
+			(screen.getByLabelText("Enviar") as HTMLButtonElement).disabled,
+		).toBe(true);
+		const input = screen.getByLabelText(
+			"Mensagem para o assistente",
+		) as HTMLTextAreaElement;
+		fireEvent.keyDown(input, { key: "Enter" });
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(h.ask).not.toHaveBeenCalled();
+		expect(screen.queryByRole("alert")).toBeNull();
+		expect(input.value).toHaveLength(20_001);
 	});
 });

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.61-edicao-lote-ficha",
+		version: "1.6.61",
+		date: "02/11/2026",
+		title: "Alterar a ficha em lote pelo assistente",
+		description:
+			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra quantas alterações valem e, à parte, os campos rejeitados — esses não entram na conta. A lista segue agrupada por seção, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez: o painel só diz que aplicou depois que o salvamento termina. Se falhar, a ficha volta ao que era e dá para tentar de novo. Com um lote em revisão, o campo de texto recolhe para a lista caber; a pergunta enviada fica na conversa. Texto acima de 1.200 caracteres liga o modo edição em lote, indicado abaixo do campo com o contador de 20.000: o texto colado fica no campo durante a revisão, no erro ou se for grande demais, e só limpa depois de aplicar. No chat normal o campo limpa no envio.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.60-rascunho-vazio-e-erro-ao-salvar",
 		version: "1.6.60",
 		date: "02/11/2026",
