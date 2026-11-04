@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.65-offset-do-grid",
-		version: "1.6.65",
+		id: "v1.6.66-offset-do-grid",
+		version: "1.6.66",
 		date: "02/11/2026",
 		title: "O grid pode sair do canto e a célula aceita decimal",
 		description:
@@ -20,12 +20,48 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
-		id: "v1.6.64-celula-do-grid-10-a-400",
-		version: "1.6.64",
+		id: "v1.6.65-celula-do-grid-10-a-400",
+		version: "1.6.65",
 		date: "02/11/2026",
 		title: "Célula do grid de 10 a 400 px, com campo e botões − e +",
 		description:
 			"No ajuste do grid, o mestre digita o tamanho da célula em pixels (de 10 a 400) ou usa os botões − e + e o novo controle deslizante. Enquanto arrasta, só o mestre vê o grid mudar; ao soltar, a mesa recebe o novo tamanho. Se a gravação falhar, o tamanho volta ao anterior com um aviso. “Escala” agora se chama “Distância por célula” (padrão 1,5 m). Com o grid desativado, o painel ainda mostra o tamanho da célula, que vale para a régua e os tokens. No celular, o painel vira uma barra embaixo da tela, sem cobrir o grid.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.64-esperas-da-ia",
+		version: "1.6.64",
+		date: "04/11/2026",
+		title: "Duas esperas no assistente da mesa",
+		description:
+			'Pergunta curta mostra os três pontos. Texto longo ou pedido de edição da ficha mostra "Lendo o prompt" com barras mais visíveis. Perguntas sobre a ficha não ativam mais a espera de edição.',
+		bullets: [],
+	},
+	{
+		id: "v1.6.63-convite-select-ds",
+		version: "1.6.63",
+		date: "02/11/2026",
+		title: "O papel no convite usa o seletor do app",
+		description:
+			"Na aba de jogadores, a escolha entre Jogador (Ver) e Co-Mestre (Editar) agora abre o mesmo seletor do resto do app, e não a lista do sistema. Dá para escolher pelo teclado, o foco aparece no campo, e enquanto o convite está sendo enviado o seletor fica travado. O convite continua saindo com o papel escolhido.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.62-espera-da-ia-compacta",
+		version: "1.6.62",
+		date: "02/11/2026",
+		title: "Espera do assistente em uma linha",
+		description:
+			"Enquanto o assistente da mesa responde, a espera aparece numa linha só, com três pontos. Quando a resposta chega, ou se der erro ou acabar o limite do dia, essa espera some e não fica uma mensagem vazia.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.61-edicao-lote-ficha",
+		version: "1.6.61",
+		date: "02/11/2026",
+		title: "Alterar a ficha em lote pelo assistente",
+		description:
+			"Dá para colar um resumo de build e pedir várias mudanças de uma vez. O assistente mostra quantas alterações valem e, à parte, os campos rejeitados — esses não entram na conta. A lista segue agrupada por seção, com o valor antigo riscado e o novo ao lado. Nada é salvo até você aplicar, e a gravação entra toda de uma vez: o painel só diz que aplicou depois que o salvamento termina. Se falhar, a ficha volta ao que era e dá para tentar de novo. Com um lote em revisão, o campo de texto recolhe para a lista caber; a pergunta enviada fica na conversa. Texto acima de 1.200 caracteres liga o modo edição em lote, indicado abaixo do campo com o contador de 20.000: o texto colado fica no campo durante a revisão, no erro ou se for grande demais, e só limpa depois de aplicar. No chat normal o campo limpa no envio.",
 		bullets: [],
 	},
 	{

@@ -143,7 +143,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	return (
 		<ToastContext.Provider value={value}>
 			{children}
-			<div className="fixed right-4 top-4 z-200 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">
+			<div className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-200 sm:bottom-auto sm:top-4 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">
 				{toasts.map((toast) => {
 					const Icon = ICON_BY_VARIANT[toast.variant];
 					return (

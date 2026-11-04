@@ -10,6 +10,12 @@ O Docker deste Mac estava pausado quando a fatia foi escrita, então o teste nã
 psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/0058_vtt_scene_map_scale.test.sql
 ```
 
+Ou, com o Docker aberto, tudo de uma vez (sobe o Supabase local, aplica as migrations só no banco local e roda o teste):
+
+```bash
+bash scripts/test-0058-local.sh
+```
+
 A transação termina em `ROLLBACK`. A saída esperada é `0058: todos os cenários passaram`.
 
 O teste usa duas contas: o owner grava `grid_offset_x/y` e chama `scale_scene_geometry` (tokens e paredes escalam). O viewer não altera o offset (RLS, 0 linhas) e a RPC devolve `42501`. `anon` não tem `EXECUTE`.

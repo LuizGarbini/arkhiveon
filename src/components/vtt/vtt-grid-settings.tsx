@@ -593,7 +593,7 @@ function OffsetField({
 						}
 						if (event.key === "Escape") onCancel();
 					}}
-					className="h-11 text-center text-base tabular-nums"
+					className="h-11 text-center text-base tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 				/>
 				<Button
 					type="button"
