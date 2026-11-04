@@ -509,4 +509,26 @@ describe("Convite usa o Select do design system", () => {
 			),
 		);
 	});
+
+	it("botão Convidar tem a mesma altura (h-10) do input e do Select", async () => {
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={ownCampaign}
+				defaultTab="members"
+			/>,
+		);
+		const trigger = await screen.findByRole("combobox", {
+			name: "Papel do convidado",
+		});
+		const input = screen.getByPlaceholderText("e-mail-do-jogador@gmail.com");
+		const button = screen.getByRole("button", { name: "Convidar" });
+		const height = (el: Element) =>
+			el.className.split(/\s+/).filter((c) => /^h-\d+$/.test(c));
+		expect(height(input)).toEqual(["h-10"]);
+		expect(height(trigger)).toEqual(["h-10"]);
+		expect(height(button)).toEqual(["h-10"]);
+		expect(button.parentElement?.className).toContain("items-center");
+	});
 });

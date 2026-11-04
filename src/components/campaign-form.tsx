@@ -760,7 +760,7 @@ export function CampaignForm({
 											<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
 											Jogador
 										</h3>
-										<div className="flex flex-wrap gap-2 sm:flex-nowrap">
+										<div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
 											<Input
 												type="email"
 												value={inviteEmail}
@@ -799,7 +799,8 @@ export function CampaignForm({
 											</SelectRoot>
 											<Button
 												type="submit"
-												size="sm"
+												size="lg"
+												className="shrink-0"
 												loading={isSendingInvite}
 												loadingText="Enviando..."
 												disabled={!inviteEmail.trim()}
