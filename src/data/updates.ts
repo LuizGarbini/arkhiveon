@@ -11,12 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.63-esperas-da-ia",
-		version: "1.6.63",
+		id: "v1.6.64-esperas-da-ia",
+		version: "1.6.64",
 		date: "04/11/2026",
 		title: "Duas esperas no assistente da mesa",
 		description:
 			'Pergunta curta mostra os três pontos. Texto longo ou pedido de edição da ficha mostra "Lendo o prompt" com barras mais visíveis. Perguntas sobre a ficha não ativam mais a espera de edição.',
+		bullets: [],
+	},
+	{
+		id: "v1.6.63-convite-select-ds",
+		version: "1.6.63",
+		date: "02/11/2026",
+		title: "O papel no convite usa o seletor do app",
+		description:
+			"Na aba de jogadores, a escolha entre Jogador (Ver) e Co-Mestre (Editar) agora abre o mesmo seletor do resto do app, e não a lista do sistema. Dá para escolher pelo teclado, o foco aparece no campo, e enquanto o convite está sendo enviado o seletor fica travado. O convite continua saindo com o papel escolhido.",
 		bullets: [],
 	},
 	{
