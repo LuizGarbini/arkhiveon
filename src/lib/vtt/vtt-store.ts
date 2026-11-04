@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { withSceneGridDefaults } from "./scene-settings";
 import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
 import type {
 	VTTDiagonalRule,
@@ -296,7 +297,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 	wallUndo: [],
 	wallRedo: [],
 
-	setScenes: (scenes) => set({ scenes }),
+	setScenes: (scenes) =>
+		set({ scenes: scenes.map((scene) => withSceneGridDefaults(scene)) }),
 	setActiveSceneId: (sceneId) =>
 		set((state) =>
 			state.activeSceneId === sceneId
@@ -306,8 +308,9 @@ export const useVTTStore = create<VTTState>((set) => ({
 						...emptySceneContents(),
 					},
 		),
-	addScene: (scene) =>
+	addScene: (incoming) =>
 		set((state) => {
+			const scene = withSceneGridDefaults(incoming);
 			if (!state.isGM && !scene.isActive) return state;
 			const scenes = state.scenes.some((s) => s.id === scene.id)
 				? state.scenes.map((s) => (s.id === scene.id ? scene : s))
@@ -325,7 +328,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	updateScene: (sceneId, updates) =>
 		set((state) => ({
 			scenes: state.scenes.map((s) =>
-				s.id === sceneId ? { ...s, ...updates } : s,
+				s.id === sceneId ? withSceneGridDefaults({ ...s, ...updates }) : s,
 			),
 		})),
 	removeScene: (sceneId) =>

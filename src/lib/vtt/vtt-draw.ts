@@ -1,5 +1,5 @@
 import { type Container, type Graphics, Text, TextStyle } from "pixi.js";
-import { type Point, rulerTickPoints } from "./grid-math";
+import { type Point, rulerTickPoints, ZERO_ORIGIN } from "./grid-math";
 import { templatePolygon, type VTTSpellTemplate } from "./template-math";
 import type { VTTDiagonalRule, VTTGridScaleUnit } from "./types";
 
@@ -51,6 +51,7 @@ export function drawRulerMeasurement(
 	unit: VTTGridScaleUnit,
 	color: string,
 	diagonalRule: VTTDiagonalRule = "euclidean",
+	origin: Point = ZERO_ORIGIN,
 	caption?: string,
 ) {
 	const colorHex = parseHexColor(color, 0x38bdf8);
@@ -61,6 +62,7 @@ export function drawRulerMeasurement(
 		scaleDistance,
 		unit,
 		diagonalRule,
+		origin,
 	);
 
 	layer.moveTo(start.x, start.y);

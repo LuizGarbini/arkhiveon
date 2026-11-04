@@ -1,5 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
 	boolean,
+	check,
+	doublePrecision,
 	integer,
 	jsonb,
 	pgTable,
@@ -12,32 +15,52 @@ import { campaigns } from "./core";
 import { characters } from "./sheets";
 
 // 1. VTT Scenes (Cenas e Mapas do Tabuleiro Virtual)
-export const vttScenes = pgTable("vtt_scenes", {
-	id: uuid("id").primaryKey().defaultRandom(),
-	campaignId: uuid("campaign_id")
-		.notNull()
-		.references(() => campaigns.id, { onDelete: "cascade" }),
-	name: text("name").notNull().default("Nova Cena"),
-	mapImageUrl: text("map_image_url"),
-	gridType: text("grid_type").notNull().default("square"),
-	gridSize: integer("grid_size").notNull().default(70),
-	gridColor: text("grid_color").notNull().default("#ffffff"),
-	gridOpacity: real("grid_opacity").notNull().default(0.15),
-	gridScaleDistance: real("grid_scale_distance").notNull().default(1.5),
-	gridScaleUnit: text("grid_scale_unit").notNull().default("m"),
-	width: integer("width").notNull().default(4000),
-	height: integer("height").notNull().default(4000),
-	fogEnabled: boolean("fog_enabled").notNull().default(false),
-	fogExploration: boolean("fog_exploration").notNull().default(true),
-	isActive: boolean("is_active").notNull().default(false),
-	orderIndex: integer("order_index").notNull().default(0),
-	createdAt: timestamp("created_at", { withTimezone: true })
-		.notNull()
-		.defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.notNull()
-		.defaultNow(),
-});
+export const vttScenes = pgTable(
+	"vtt_scenes",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		campaignId: uuid("campaign_id")
+			.notNull()
+			.references(() => campaigns.id, { onDelete: "cascade" }),
+		name: text("name").notNull().default("Nova Cena"),
+		mapImageUrl: text("map_image_url"),
+		gridType: text("grid_type").notNull().default("square"),
+		gridSize: doublePrecision("grid_size").notNull().default(70),
+		gridColor: text("grid_color").notNull().default("#ffffff"),
+		gridOpacity: real("grid_opacity").notNull().default(0.15),
+		gridScaleDistance: real("grid_scale_distance").notNull().default(1.5),
+		gridScaleUnit: text("grid_scale_unit").notNull().default("m"),
+		gridOffsetX: doublePrecision("grid_offset_x").notNull().default(0),
+		gridOffsetY: doublePrecision("grid_offset_y").notNull().default(0),
+		mapScale: doublePrecision("map_scale").notNull().default(1),
+		width: integer("width").notNull().default(4000),
+		height: integer("height").notNull().default(4000),
+		fogEnabled: boolean("fog_enabled").notNull().default(false),
+		fogExploration: boolean("fog_exploration").notNull().default(true),
+		isActive: boolean("is_active").notNull().default(false),
+		orderIndex: integer("order_index").notNull().default(0),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		check(
+			"vtt_scenes_grid_size_range",
+			sql`${table.gridSize} >= 10 and ${table.gridSize} <= 400`,
+		),
+		check(
+			"vtt_scenes_map_scale_range",
+			sql`${table.mapScale} > 0 and ${table.mapScale} <= 8`,
+		),
+		check(
+			"vtt_scenes_grid_offset_range",
+			sql`${table.gridOffsetX} >= 0 and ${table.gridOffsetX} < ${table.gridSize} and ${table.gridOffsetY} >= 0 and ${table.gridOffsetY} < ${table.gridSize}`,
+		),
+	],
+);
 
 // 2. VTT Tokens (Miniaturas e Tokens no Tabuleiro)
 export const vttTokens = pgTable("vtt_tokens", {

@@ -1,5 +1,26 @@
 import type { Database } from "@/lib/database.types";
+import { normalizeGridOffset } from "@/lib/vtt/grid-math";
 import type { VTTScene, VTTSceneSettingsPatch } from "@/lib/vtt/types";
+
+/** Teto da escala do sprite do mapa. Igual ao check da migration 0058. */
+export const MAP_SCALE_MAX = 8;
+
+/** Escala do mapa em (0, 8]. Valor inválido volta para 1. */
+export function clampMapScale(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 1;
+	return Math.min(MAP_SCALE_MAX, value);
+}
+
+/** Garante offset dentro da célula e escala válida, inclusive em cena antiga. */
+export function withSceneGridDefaults(scene: VTTScene): VTTScene {
+	const gridSize = scene.gridSize > 0 ? scene.gridSize : 70;
+	return {
+		...scene,
+		gridOffsetX: normalizeGridOffset(scene.gridOffsetX ?? 0, gridSize),
+		gridOffsetY: normalizeGridOffset(scene.gridOffsetY ?? 0, gridSize),
+		mapScale: clampMapScale(scene.mapScale ?? 1),
+	};
+}
 
 type SceneUpdate = Database["public"]["Tables"]["vtt_scenes"]["Update"];
 
@@ -16,6 +37,8 @@ export function sceneSettingsPatchToDb(
 		db.grid_scale_distance = patch.gridScaleDistance;
 	if (patch.gridScaleUnit !== undefined)
 		db.grid_scale_unit = patch.gridScaleUnit;
+	if (patch.gridOffsetX !== undefined) db.grid_offset_x = patch.gridOffsetX;
+	if (patch.gridOffsetY !== undefined) db.grid_offset_y = patch.gridOffsetY;
 	return db;
 }
 

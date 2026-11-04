@@ -5,6 +5,9 @@ export interface Point {
 	y: number;
 }
 
+/** Origem do grid sem offset. */
+export const ZERO_ORIGIN: Readonly<Point> = Object.freeze({ x: 0, y: 0 });
+
 /**
  * Snap pixel coordinates (world position) to the center of the nearest grid cell or vertex.
  * Correctly accounts for multi-cell tokens (1x1, 2x2, 3x3, 4x4) in Square and Hexagonal grids.
@@ -14,8 +17,19 @@ export function snapToGrid(
 	gridType: VTTGridType,
 	gridSize: number,
 	tokenSizeCells = 1,
+	origin: Point = ZERO_ORIGIN,
 ): Point {
 	if (gridType === "none" || gridSize <= 0) return point;
+	if (origin.x !== 0 || origin.y !== 0) {
+		// Offset do grid: encaixa no grid sem offset e devolve deslocado.
+		const local = snapToGrid(
+			{ x: point.x - origin.x, y: point.y - origin.y },
+			gridType,
+			gridSize,
+			tokenSizeCells,
+		);
+		return { x: local.x + origin.x, y: local.y + origin.y };
+	}
 
 	const isEven = tokenSizeCells % 2 === 0;
 
@@ -161,10 +175,14 @@ export function rulerTickPoints(
 	scaleDistance = 1,
 	scaleUnit: VTTGridScaleUnit = "ft",
 	diagonalRule: VTTDiagonalRule = "euclidean",
+	origin: Point = ZERO_ORIGIN,
 ): RulerTick[] {
 	if (gridSize <= 0) return [];
-	const dx = end.x - start.x;
-	const dy = end.y - start.y;
+	// A distância não muda com o offset: mede no espaço local e devolve no mundo.
+	const localStart = { x: start.x - origin.x, y: start.y - origin.y };
+	const localEnd = { x: end.x - origin.x, y: end.y - origin.y };
+	const dx = localEnd.x - localStart.x;
+	const dy = localEnd.y - localStart.y;
 	const length = Math.hypot(dx, dy);
 	if (length < gridSize) return [];
 
@@ -173,8 +191,8 @@ export function rulerTickPoints(
 	for (let i = 1; i <= cells; i++) {
 		const t = (i * gridSize) / length;
 		const point = {
-			x: start.x + dx * t,
-			y: start.y + dy * t,
+			x: localStart.x + dx * t + origin.x,
+			y: localStart.y + dy * t + origin.y,
 		};
 		ticks.push({
 			...point,
@@ -243,6 +261,8 @@ export interface FindFreeCellOptions {
 	bounds: { width: number; height: number };
 	/** Raio máximo da busca, em casas. */
 	maxRings?: number;
+	/** Offset do grid (origem das linhas). */
+	origin?: Point;
 }
 
 function footprintsOverlap(
@@ -250,15 +270,20 @@ function footprintsOverlap(
 	b: OccupiedFootprint,
 	gridType: VTTGridType,
 	gridSize: number,
+	origin: Point = ZERO_ORIGIN,
 ): boolean {
+	const ax = a.x - origin.x;
+	const ay = a.y - origin.y;
+	const bx = b.x - origin.x;
+	const by = b.y - origin.y;
 	const reach = ((a.sizeCells + b.sizeCells) / 2) * gridSize;
 	const eps = gridSize * 0.01;
 	if (gridType === "hex_pointy" || gridType === "hex_flat") {
 		// Centros de hexágonos vizinhos ficam a r·√3 (= gridSize·√3/2).
 		const neighbor = (reach * Math.sqrt(3)) / 2;
-		return Math.hypot(a.x - b.x, a.y - b.y) < neighbor - eps;
+		return Math.hypot(ax - bx, ay - by) < neighbor - eps;
 	}
-	return Math.abs(a.x - b.x) < reach - eps && Math.abs(a.y - b.y) < reach - eps;
+	return Math.abs(ax - bx) < reach - eps && Math.abs(ay - by) < reach - eps;
 }
 
 function insideBounds(
@@ -290,15 +315,23 @@ export function findFreeCell(
 		sizeCells = 1,
 		bounds,
 		maxRings = 10,
+		origin: gridOrigin = ZERO_ORIGIN,
 	}: FindFreeCellOptions,
 ): Point {
-	const start = snapToGrid(origin, gridType, gridSize, sizeCells);
+	const start = snapToGrid(origin, gridType, gridSize, sizeCells, gridOrigin);
 	if (gridSize <= 0) return start;
 	const half = (sizeCells * gridSize) / 2;
 	const isFree = (p: Point) =>
 		insideBounds(p, half, bounds) &&
 		occupied.every(
-			(o) => !footprintsOverlap({ ...p, sizeCells }, o, gridType, gridSize),
+			(o) =>
+				!footprintsOverlap(
+					{ ...p, sizeCells },
+					o,
+					gridType,
+					gridSize,
+					gridOrigin,
+				),
 		);
 
 	if (isFree(start)) return start;
@@ -314,6 +347,7 @@ export function findFreeCell(
 				gridType,
 				gridSize,
 				sizeCells,
+				gridOrigin,
 			);
 			const key = `${p.x.toFixed(2)}:${p.y.toFixed(2)}`;
 			if (seen.has(key)) continue;
@@ -336,8 +370,159 @@ export const GRID_SIZE_MAX = 400;
 /** Distância por célula padrão (D&D: 1,5 m). */
 export const DEFAULT_GRID_SCALE_DISTANCE = 1.5;
 
-/** Arredonda para inteiro e prende o tamanho da célula em 10–400 px. */
+/** Casas decimais aceitas na célula e no offset (0,01 px). */
+const GRID_DECIMALS = 100;
+
+function roundGrid(value: number): number {
+	return Math.round(value * GRID_DECIMALS) / GRID_DECIMALS;
+}
+
+/** Prende o tamanho da célula em 10–400 px, com até 2 casas decimais. */
 export function clampGridSize(value: number): number {
 	if (!Number.isFinite(value)) return GRID_SIZE_MIN;
-	return Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, Math.round(value)));
+	return Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, roundGrid(value)));
+}
+
+/**
+ * Normaliza o offset para 0 ≤ offset < célula (deslocar uma célula inteira
+ * desenha o mesmo grid). Até 2 casas decimais.
+ */
+export function normalizeGridOffset(value: number, gridSize: number): number {
+	if (!Number.isFinite(value) || !Number.isFinite(gridSize) || gridSize <= 0)
+		return 0;
+	const wrapped = roundGrid(((value % gridSize) + gridSize) % gridSize);
+	// Mesma faixa do CHECK da 0058: 0 <= offset < célula.
+	return wrapped >= gridSize ? 0 : wrapped;
+}
+
+/** Primeira coordenada de linha do grid dentro da cena (≥ 0). */
+export function firstGridLine(offset: number, step: number): number {
+	if (step <= 0) return 0;
+	return ((offset % step) + step) % step;
+}
+
+function axisGridLines(length: number, step: number, offset: number): number[] {
+	if (step <= 0 || length < 0) return [];
+	const start = firstGridLine(offset, step);
+	const count = Math.floor((length - start) / step + 1e-9) + 1;
+	const lines: number[] = [];
+	for (let i = 0; i < count; i++) {
+		const value = start + i * step;
+		if (value > length + 1e-6) break;
+		lines.push(roundGrid(value));
+	}
+	return lines;
+}
+
+/** Linhas do grid quadrado. Offset 0 começa em 0, como a cena antiga. */
+export function squareGridLines(
+	width: number,
+	height: number,
+	gridSize: number,
+	origin: Point = ZERO_ORIGIN,
+): { xs: number[]; ys: number[] } {
+	return {
+		xs: axisGridLines(width, gridSize, origin.x),
+		ys: axisGridLines(height, gridSize, origin.y),
+	};
+}
+
+function hexCenters(
+	width: number,
+	height: number,
+	gridSize: number,
+	origin: Point,
+	orientation: "pointy" | "flat",
+): Point[] {
+	if (gridSize <= 0) return [];
+	const r = gridSize / 2;
+	const across = r * Math.sqrt(3);
+	const stepMajor = 1.5 * r;
+	const points: Point[] = [];
+	const pointy = orientation === "pointy";
+	const spanMajor = pointy ? width : height;
+	const spanMinor = pointy ? height : width;
+	const originMajor = pointy ? origin.x : origin.y;
+	const originMinor = pointy ? origin.y : origin.x;
+	const firstMajor = Math.floor((-r - originMajor) / stepMajor);
+	const lastMajor = Math.ceil((spanMajor - originMajor + r) / stepMajor);
+	for (let major = firstMajor; major <= lastMajor; major++) {
+		const majorPos = originMajor + major * stepMajor;
+		if (majorPos > spanMajor + r + 1e-6) continue;
+		const minorShift = major % 2 !== 0 ? across / 2 : 0;
+		const firstMinor = Math.floor(
+			(-across - originMinor - minorShift) / across,
+		);
+		const lastMinor = Math.ceil((spanMinor - originMinor + across) / across);
+		for (let minor = firstMinor; minor <= lastMinor; minor++) {
+			const minorPos = originMinor + minor * across + minorShift;
+			if (minorPos < -across - 1e-6 || minorPos > spanMinor + across + 1e-6)
+				continue;
+			points.push(
+				pointy ? { x: majorPos, y: minorPos } : { x: minorPos, y: majorPos },
+			);
+		}
+	}
+	return points;
+}
+
+/** Centros do hex pontudo, no mesmo lattice do snap, deslocados pela origem. */
+export function pointyHexCenters(
+	width: number,
+	height: number,
+	gridSize: number,
+	origin: Point = ZERO_ORIGIN,
+): Point[] {
+	return hexCenters(width, height, gridSize, origin, "pointy");
+}
+
+/** Centros do hex plano, no mesmo lattice do snap, deslocados pela origem. */
+export function flatHexCenters(
+	width: number,
+	height: number,
+	gridSize: number,
+	origin: Point = ZERO_ORIGIN,
+): Point[] {
+	return hexCenters(width, height, gridSize, origin, "flat");
+}
+
+/**
+ * "Contar quadrados": quantas casas o mapa tem na largura → tamanho da
+ * célula. Quadrado: largura / colunas. Hex pontudo: as colunas andam 1,5·r
+ * (= 0,75 · célula). Hex plano: as colunas andam r·√3 (= célula · √3/2).
+ * Devolve null se a entrada não dá um tamanho válido.
+ */
+/**
+ * "Contar quadrados": colunas × linhas no mapa viram o tamanho da célula.
+ * Quadrado: largura/colunas e altura/linhas (a média, iguais quando batem).
+ * Hex pontudo: colunas andam 0,75·célula e linhas andam célula·√3/2.
+ * Hex plano: o contrário. Devolve null se a entrada não dá um tamanho válido.
+ */
+export function gridSizeFromCellCount(
+	mapWidth: number,
+	mapHeight: number,
+	columns: number,
+	rows: number,
+	gridType: VTTGridType,
+): number | null {
+	if (!(mapWidth > 0) || !(mapHeight > 0)) return null;
+	if (!(columns >= 1) || !(rows >= 1)) return null;
+	if (!Number.isFinite(columns) || !Number.isFinite(rows)) return null;
+	const widthSize = cellSizeFromSpan(mapWidth / columns, gridType, "x");
+	const heightSize = cellSizeFromSpan(mapHeight / rows, gridType, "y");
+	return clampGridSize((widthSize + heightSize) / 2);
+}
+
+function cellSizeFromSpan(
+	span: number,
+	gridType: VTTGridType,
+	axis: "x" | "y",
+): number {
+	if (gridType === "hex_pointy") {
+		return axis === "x" ? span / 0.75 : span / (Math.sqrt(3) / 2);
+	}
+	if (gridType === "hex_flat") {
+		return axis === "x" ? span / (Math.sqrt(3) / 2) : span / 0.75;
+	}
+	return span;
 }

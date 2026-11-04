@@ -15,6 +15,9 @@ const scene = (id: string, isActive = true): VTTScene => ({
 	gridOpacity: 0.15,
 	gridScaleDistance: 1.5,
 	gridScaleUnit: "m",
+	gridOffsetX: 0,
+	gridOffsetY: 0,
+	mapScale: 1,
 	width: 1600,
 	height: 1200,
 	fogEnabled: true,
@@ -78,6 +81,22 @@ describe("VTT scene lifecycle", () => {
 		});
 		expect(useVTTStore.getState().fogPaths).toEqual([]);
 	});
+	it("prende o offset na célula e rejeita escala inválida", () => {
+		useVTTStore.getState().setScenes([
+			{
+				...scene("a"),
+				gridSize: 70,
+				gridOffsetX: 80,
+				gridOffsetY: -1,
+				mapScale: 0,
+			},
+		]);
+		const stored = useVTTStore.getState().scenes[0];
+		expect(stored?.gridOffsetX).toBe(10);
+		expect(stored?.gridOffsetY).toBe(69);
+		expect(stored?.mapScale).toBe(1);
+	});
+
 	it("clears transient state when the selected scene is deleted", () => {
 		useVTTStore.getState().setIsGM(true);
 		useVTTStore.getState().setScenes([scene("a"), scene("b", false)]);

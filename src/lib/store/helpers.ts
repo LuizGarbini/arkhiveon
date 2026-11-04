@@ -188,7 +188,9 @@ export function getAttributeFullName(keyOrLabel: string): string {
 	const clean = keyOrLabel.trim().toUpperCase().replace(/\s+/g, " ");
 	if (map[clean]) return map[clean];
 
-	if (clean.startsWith("DESLOCAMENTO")) {
+	// Velocidade da ficha: "Deslocamento" e "Deslocamento (m/ft)".
+	// "Deslocamento X/Y" do grid não entra aqui.
+	if (clean === "DESLOCAMENTO" || clean.startsWith("DESLOCAMENTO (")) {
 		if (clean.includes("FT")) return map["DESLOCAMENTO (FT)"];
 		return map["DESLOCAMENTO (M)"];
 	}

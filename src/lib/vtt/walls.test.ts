@@ -23,6 +23,11 @@ describe("snapWallPoint", () => {
 			y: 70,
 		});
 	});
+	it("offset desloca o canto", () => {
+		expect(
+			snapWallPoint({ x: 20, y: 20 }, "square", 50, false, { x: 12, y: 7 }),
+		).toEqual({ x: 12, y: 7 });
+	});
 	it("Shift solta o snap", () => {
 		expect(snapWallPoint({ x: 33, y: 108 }, "square", 70, true)).toEqual({
 			x: 33,
