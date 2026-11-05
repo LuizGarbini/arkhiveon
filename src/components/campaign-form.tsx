@@ -638,7 +638,7 @@ export function CampaignForm({
 												Limite de jogadores
 											</label>
 											<p className="text-[10px] text-muted-foreground">
-												Inclui membros e convites pendentes; o mestre nao ocupa
+												Inclui membros e convites pendentes; o mestre não ocupa
 												vaga.
 											</p>
 											<Input
@@ -664,7 +664,7 @@ export function CampaignForm({
 									</div>
 								)}
 								{/* Link de Convite Direto */}
-								{campaign && (
+								{campaign ? (
 									<div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
 										<div className="flex items-center justify-between">
 											<h4 className="text-[12px] font-bold text-sky-300 flex items-center gap-1.5">
@@ -679,77 +679,50 @@ export function CampaignForm({
 											Envie este link para seus amigos pelo WhatsApp ou Discord.
 											Ao clicar, eles entram instantaneamente na mesa!
 										</p>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											onClick={() => {
-												const link = `${window.location.origin}/join/${campaign.id}`;
-												void navigator.clipboard.writeText(link);
-												toast.success({
-													title: "Link Copiado! 🔗",
-													description:
-														"Envie o link para seus amigos entrarem instantaneamente na mesa.",
-												});
-											}}
-											className="w-full gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
-										></Button>
-									</div>
-								)}
-
-								{/* Ajustar Limite de Participantes (Proprietário/Mestre) */}
-								{campaign?.myRole === "owner" && (
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5">
-										<div>
-											<h4 className="text-[12px] font-bold text-foreground">
-												Limite de Participantes na Mesa
-											</h4>
-											<p className="text-[11px] text-muted-foreground">
-												Altere o limite máximo de jogadores (máx 100).
-											</p>
-										</div>
-										<div className="flex items-center gap-2 shrink-0">
-											<Input
-												type="number"
-												min={1}
-												max={100}
-												value={memberLimit}
-												onChange={(e) => setMemberLimit(Number(e.target.value))}
-												className="w-20 h-8 text-xs font-mono"
-											/>
-											<Button
-												type="button"
-												size="sm"
-												variant="outline"
-												disabled={isSavingMemberLimit}
-												onClick={async () => {
-													setIsSavingMemberLimit(true);
-													try {
-														updateCampaign(campaign.id, { memberLimit });
+										{campaign.id ? (
+											<div className="flex items-center gap-2">
+												<Input
+													readOnly
+													value={`${typeof window !== "undefined" ? window.location.origin : ""}/join/${campaign.id}`}
+													aria-label="Link de convite direto"
+													className="min-w-0 flex-1 font-mono"
+												/>
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													onClick={() => {
+														const link = `${window.location.origin}/join/${campaign.id}`;
+														void navigator.clipboard.writeText(link);
 														toast.success({
-															title: "Limite Atualizado!",
-															description: `Limite alterado para ${memberLimit} participantes.`,
-														});
-													} catch (err: unknown) {
-														toast.error({
-															title: "Erro ao Atualizar Limite",
+															title: "Link Copiado! 🔗",
 															description:
-																err instanceof Error
-																	? err.message
-																	: "Erro ao atualizar limite.",
+																"Envie o link para seus amigos entrarem instantaneamente na mesa.",
 														});
-													} finally {
-														setIsSavingMemberLimit(false);
-													}
-												}}
-												className="h-8 text-xs gap-1"
-											>
-												Salvar Limite
-											</Button>
-										</div>
+													}}
+													className="shrink-0 gap-2"
+												>
+													Copiar link
+												</Button>
+											</div>
+										) : (
+											<div className="flex items-center gap-2">
+												<output className="min-w-0 flex-1 text-sm text-muted-foreground">
+													Salve a campanha para gerar o link
+												</output>
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													disabled
+													className="shrink-0 gap-2"
+												>
+													Copiar link
+												</Button>
+											</div>
+										)}
 									</div>
-								)}
-
+								) : null}
 								{/* Enviar Convite por E-mail */}
 								{invitedCount < effectiveMemberLimit ? (
 									<form
@@ -760,53 +733,56 @@ export function CampaignForm({
 											<UserPlus className="h-3.5 w-3.5 text-primary" /> Convidar
 											Jogador
 										</h3>
-										<div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+										<div className="space-y-2">
 											<Input
 												type="email"
 												value={inviteEmail}
 												onChange={(e) => setInviteEmail(e.target.value)}
 												placeholder="e-mail-do-jogador@gmail.com"
-												className="basis-full min-w-0 sm:basis-0 sm:flex-1"
 												required
 											/>
-											<SelectRoot
-												value={inviteRole}
-												onValueChange={(next) => {
-													if (next === "editor" || next === "viewer") {
-														setInviteRole(next);
-													}
-												}}
-												disabled={isSendingInvite}
-											>
-												<SelectTrigger
-													aria-label="Papel do convidado"
-													className="w-auto shrink-0 text-[11px] font-medium"
-												>
-													<SelectValue>
-														{(value: string | null) =>
-															value === "editor"
-																? "Co-Mestre (Editar)"
-																: "Jogador (Ver)"
+											<div className="flex items-center gap-2">
+												<SelectRoot
+													value={inviteRole}
+													onValueChange={(next) => {
+														if (next === "editor" || next === "viewer") {
+															setInviteRole(next);
 														}
-													</SelectValue>
-												</SelectTrigger>
-												<SelectContent className="w-auto min-w-(--anchor-width)">
-													<SelectItem value="viewer">Jogador (Ver)</SelectItem>
-													<SelectItem value="editor">
-														Co-Mestre (Editar)
-													</SelectItem>
-												</SelectContent>
-											</SelectRoot>
-											<Button
-												type="submit"
-												size="lg"
-												className="shrink-0"
-												loading={isSendingInvite}
-												loadingText="Enviando..."
-												disabled={!inviteEmail.trim()}
-											>
-												Convidar
-											</Button>
+													}}
+													disabled={isSendingInvite}
+												>
+													<SelectTrigger
+														aria-label="Papel do convidado"
+														className="w-auto shrink-0 font-medium"
+													>
+														<SelectValue>
+															{(value: string | null) =>
+																value === "editor"
+																	? "Co-Mestre (Editar)"
+																	: "Jogador (Ver)"
+															}
+														</SelectValue>
+													</SelectTrigger>
+													<SelectContent className="w-auto min-w-(--anchor-width)">
+														<SelectItem value="viewer">
+															Jogador (Ver)
+														</SelectItem>
+														<SelectItem value="editor">
+															Co-Mestre (Editar)
+														</SelectItem>
+													</SelectContent>
+												</SelectRoot>
+												<Button
+													type="submit"
+													size="lg"
+													className="shrink-0"
+													loading={isSendingInvite}
+													loadingText="Enviando..."
+													disabled={!inviteEmail.trim()}
+												>
+													Convidar
+												</Button>
+											</div>
 										</div>
 										{inviteError && (
 											<p className="text-[10px] text-destructive font-medium">
