@@ -510,6 +510,75 @@ describe("Convite usa o Select do design system", () => {
 		);
 	});
 
+	it("e-mail fica sozinho na linha; Select+Convidar abaixo com w-auto/h-10", async () => {
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={ownCampaign}
+				defaultTab="members"
+			/>,
+		);
+		const input = await screen.findByPlaceholderText(
+			"e-mail-do-jogador@gmail.com",
+		);
+		const trigger = screen.getByRole("combobox", {
+			name: "Papel do convidado",
+		});
+		const button = screen.getByRole("button", { name: "Convidar" });
+		const actionsRow = trigger.parentElement;
+		expect(actionsRow?.contains(input)).toBe(false);
+		expect(actionsRow?.contains(trigger)).toBe(true);
+		expect(actionsRow?.contains(button)).toBe(true);
+		expect(actionsRow?.className.split(/\s+/)).toEqual(
+			expect.arrayContaining(["flex", "items-center"]),
+		);
+		expect(trigger.className.split(/\s+/)).toEqual(
+			expect.arrayContaining(["w-auto"]),
+		);
+		expect(screen.getByText("Limite de jogadores")).toBeTruthy();
+		expect(screen.getByText(/o mestre não ocupa/)).toBeTruthy();
+		expect(screen.queryByText("Limite de Participantes na Mesa")).toBeNull();
+		expect(
+			screen.getAllByRole("button", { name: /Salvar limite/i }),
+		).toHaveLength(1);
+		const copyBtn = screen.getByRole("button", { name: "Copiar link" });
+		expect(copyBtn).toBeTruthy();
+		expect(copyBtn.className).not.toMatch(/sky-500\/40|sky-200|text-\[11px\]/);
+		expect(
+			screen.getByRole("textbox", { name: "Link de convite direto" }),
+		).toBeTruthy();
+		expect(trigger.className).not.toMatch(/text-\[11px\]/);
+		expect(input.className).not.toMatch(/text-\[11px\]/);
+	});
+
+	it("sem campaign.id mostra empty state e Copiar desabilitado (não Skeleton)", async () => {
+		const unsaved = campaign({
+			id: "",
+			name: "Mesa rascunho",
+			worldId: ownWorld.id,
+			ownerId: ME,
+			myRole: "owner",
+		});
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={unsaved}
+				defaultTab="members"
+			/>,
+		);
+		expect(
+			await screen.findByText("Salve a campanha para gerar o link"),
+		).toBeTruthy();
+		const copyBtn = screen.getByRole("button", { name: "Copiar link" });
+		expect((copyBtn as HTMLButtonElement).disabled).toBe(true);
+		expect(screen.queryByLabelText("Carregando link de convite")).toBeNull();
+		expect(
+			screen.queryByRole("textbox", { name: "Link de convite direto" }),
+		).toBeNull();
+	});
+
 	it("botão Convidar tem a mesma altura (h-10) do input e do Select", async () => {
 		renderWithToast(
 			<CampaignForm
