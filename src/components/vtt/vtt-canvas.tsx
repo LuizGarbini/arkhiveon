@@ -449,6 +449,10 @@ export function VTTCanvas({
 	const sceneHeight = scene?.height;
 	const sceneMapScale = scene?.mapScale ?? 1;
 	// 3a. Mapa (imagem ou fundo): só quando a imagem, o tamanho ou a escala mudam.
+	// sceneMapScale entra nas deps de propósito: o grafo Pixi (Sprite/Graphics no
+	// mapLayer) é estado imperativo fora do React. Sem este efeito, mudar a escala
+	// na store não redimensiona o sprite nem o fundo — não há "derived state" a
+	// sincronizar entre hooks, e sim um side-effect no scene graph externo.
 	useEffect(() => {
 		if (!rendererReady) return;
 		const mapLayer = mapLayerRef.current;
@@ -491,8 +495,10 @@ export function VTTCanvas({
 		};
 	}, [sceneMapImageUrl, sceneWidth, sceneHeight, sceneMapScale, rendererReady]);
 
-	// 3b. Grid procedural: redesenha só quando célula, offset, tipo, cor ou
-	// opacidade mudam. Arrastar a célula ou o offset não recarrega o mapa.
+	// 3b. Grid procedural: redesenha só quando célula, offset, tipo, cor,
+	// opacidade ou escala mudam. Arrastar a célula/offset não recarrega o mapa.
+	// Mesma justificativa Pixi: Graphics do gridLayer é externo ao React; a escala
+	// altera o retângulo do grid (width/height * mapScale).
 	useEffect(() => {
 		if (!rendererReady) return;
 		const grid = gridLayerRef.current;
