@@ -708,14 +708,15 @@ export function CampaignForm({
 											Jogador
 										</h3>
 										<div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-											<Input
-												type="email"
-												value={inviteEmail}
-												onChange={(e) => setInviteEmail(e.target.value)}
-												placeholder="e-mail-do-jogador@gmail.com"
-												className="flex-1 min-w-0"
-												required
-											/>
+											<div className="flex-1 min-w-0 basis-full sm:basis-0">
+												<Input
+													type="email"
+													value={inviteEmail}
+													onChange={(e) => setInviteEmail(e.target.value)}
+													placeholder="e-mail-do-jogador@gmail.com"
+													required
+												/>
+											</div>
 											<SelectRoot
 												value={inviteRole}
 												onValueChange={(next) => {

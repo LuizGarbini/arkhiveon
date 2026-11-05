@@ -525,7 +525,7 @@ describe("Convite usa o Select do design system", () => {
 		const trigger = screen.getByRole("combobox", {
 			name: "Papel do convidado",
 		});
-		expect(input.className.split(/\s+/)).toEqual(
+		expect(input.parentElement?.className.split(/\s+/)).toEqual(
 			expect.arrayContaining(["flex-1", "min-w-0"]),
 		);
 		expect(trigger.className.split(/\s+/)).toEqual(
