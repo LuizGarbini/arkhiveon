@@ -15,6 +15,15 @@ import {
 	gridSizeFromCellCount,
 	normalizeGridOffset,
 } from "@/lib/vtt/grid-math";
+import {
+	clampMapScaleForScene,
+	MAP_SCALE_PERCENT_STEP,
+	MAP_SCALE_UI_MIN,
+	mapScaleHint,
+	mapScaleToPercent,
+	maxMapScaleForDimensions,
+	percentToMapScale,
+} from "@/lib/vtt/map-scale";
 import type {
 	VTTDiagonalRule,
 	VTTGridScaleUnit,
@@ -43,10 +52,16 @@ interface VTTGridSettingsProps {
 	onUpdateSceneSettings: (
 		patch: VTTSceneSettingsPatch,
 	) => Promise<boolean> | boolean | undefined;
+	/**
+	 * Aplica a escala do mapa via RPC `scale_scene_geometry` (tokens + paredes).
+	 * Resolve `false` se o servidor recusar.
+	 */
+	onScaleMap?: (nextScale: number) => Promise<boolean> | boolean | undefined;
 }
 
 export function VTTGridSettings({
 	onUpdateSceneSettings,
+	onScaleMap,
 }: VTTGridSettingsProps) {
 	const activeScene = useVTTStore((s) =>
 		s.scenes.find((scene) => scene.id === s.activeSceneId),
@@ -68,6 +83,8 @@ export function VTTGridSettings({
 	const offsetYId = useId();
 	const columnsId = useId();
 	const rowsId = useId();
+	const mapScaleId = useId();
+	const mapScaleHintId = useId();
 
 	// Texto do campo numérico enquanto o mestre digita (null = mostra a cena).
 	const [sizeDraft, setSizeDraft] = useState<string | null>(null);
@@ -76,6 +93,11 @@ export function VTTGridSettings({
 	const [columnsDraft, setColumnsDraft] = useState("");
 	const [rowsDraft, setRowsDraft] = useState("");
 	const [savingSize, setSavingSize] = useState(false);
+	const [savingScale, setSavingScale] = useState(false);
+	// Percentual enquanto arrasta o slider da escala (null = mostra a cena).
+	const [scaleDraftPercent, setScaleDraftPercent] = useState<number | null>(
+		null,
+	);
 	// Valor gravado antes do arraste/edição em curso, para reverter no erro.
 	const sizeBeforeEditRef = useRef<number | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,6 +107,39 @@ export function VTTGridSettings({
 
 	const sceneId = activeScene.id;
 	const gridSize = activeScene.gridSize;
+	const mapScale = activeScene.mapScale;
+	const sceneWidth = activeScene.width;
+	const sceneHeight = activeScene.height;
+	const maxScale = maxMapScaleForDimensions(sceneWidth, sceneHeight);
+	const minPercent = mapScaleToPercent(MAP_SCALE_UI_MIN);
+	const maxPercent = mapScaleToPercent(maxScale);
+	const displayPercent = scaleDraftPercent ?? mapScaleToPercent(mapScale);
+
+	const commitMapScale = async (value: number) => {
+		if (!onScaleMap) return;
+		const next = clampMapScaleForScene(value, sceneWidth, sceneHeight);
+		if (next === mapScale) {
+			setScaleDraftPercent(null);
+			return;
+		}
+		setSavingScale(true);
+		try {
+			const ok = await onScaleMap(next);
+			if (ok === false) {
+				setScaleDraftPercent(null);
+				return;
+			}
+			setScaleDraftPercent(null);
+		} finally {
+			setSavingScale(false);
+		}
+	};
+
+	// Só o rótulo enquanto arrasta; tokens/paredes só mudam no commit (RPC).
+	const previewMapScalePercent = (percent: number) => {
+		const clampedPercent = Math.min(maxPercent, Math.max(minPercent, percent));
+		setScaleDraftPercent(clampedPercent);
+	};
 
 	const commitGridSize = async (value: number) => {
 		if (saveTimerRef.current) {
@@ -286,6 +341,87 @@ export function VTTGridSettings({
 						: activeScene.gridType === "none"
 							? `Grid livre: a célula de ${gridSize} px ainda vale para a régua e os tokens.`
 							: `De ${GRID_SIZE_MIN} a ${GRID_SIZE_MAX} px.`}
+				</p>
+			</Field>
+
+			{/* Escala do mapa: 25%–400%, teto 4096 px; −/+ + slider */}
+			<Field
+				label="Escala do mapa"
+				htmlFor={mapScaleId}
+				className="gap-1 sm:gap-1.5"
+			>
+				<div className="flex items-center gap-1.5">
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						aria-label="Diminuir escala do mapa"
+						disabled={
+							!onScaleMap ||
+							savingSize ||
+							savingScale ||
+							displayPercent <= minPercent
+						}
+						onClick={() =>
+							void commitMapScale(
+								percentToMapScale(displayPercent - MAP_SCALE_PERCENT_STEP),
+							)
+						}
+						className="size-10 shrink-0 rounded-xl"
+					>
+						<Minus className="h-4 w-4" />
+					</Button>
+					<Input
+						id={mapScaleId}
+						type="text"
+						inputMode="numeric"
+						readOnly
+						spellCheck={false}
+						autoComplete="off"
+						aria-describedby={mapScaleHintId}
+						disabled={savingSize || savingScale || !onScaleMap}
+						value={`${displayPercent}%`}
+						className="h-10 text-center text-base tabular-nums"
+					/>
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						aria-label="Aumentar escala do mapa"
+						disabled={
+							!onScaleMap ||
+							savingSize ||
+							savingScale ||
+							displayPercent >= maxPercent
+						}
+						onClick={() =>
+							void commitMapScale(
+								percentToMapScale(displayPercent + MAP_SCALE_PERCENT_STEP),
+							)
+						}
+						className="size-10 shrink-0 rounded-xl"
+					>
+						<Plus className="h-4 w-4" />
+					</Button>
+				</div>
+				<Slider
+					min={minPercent}
+					max={maxPercent}
+					step={MAP_SCALE_PERCENT_STEP}
+					value={displayPercent}
+					disabled={savingSize || savingScale || !onScaleMap}
+					thumbLabel="Escala do mapa"
+					onValueChange={(value) => previewMapScalePercent(value)}
+					onValueCommitted={(value) =>
+						void commitMapScale(percentToMapScale(value))
+					}
+				/>
+				<p
+					id={mapScaleHintId}
+					aria-live="polite"
+					className="min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground"
+				>
+					{mapScaleHint(sceneWidth, sceneHeight, savingScale)}
 				</p>
 			</Field>
 

@@ -34,6 +34,11 @@ import {
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
+	clampMapScaleForScene,
+	mapScaleFactor,
+	scaleSceneEntities,
+} from "@/lib/vtt/map-scale";
+import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
@@ -1170,6 +1175,51 @@ function VTTSession() {
 		return true;
 	};
 
+	/** Escala o mapa + tokens/paredes via RPC da 0058; reverte o local se falhar. */
+	const handleScaleMap = async (nextScale: number): Promise<boolean> => {
+		if (!activeSceneId) return false;
+		const state = useVTTStore.getState();
+		const current = state.scenes.find((s) => s.id === activeSceneId);
+		if (!current) return false;
+		const clamped = clampMapScaleForScene(
+			nextScale,
+			current.width,
+			current.height,
+		);
+		const factor = mapScaleFactor(current.mapScale, clamped);
+		if (factor == null) return true;
+
+		const previousScale = current.mapScale;
+		const previousTokens = state.tokens;
+		const previousWalls = state.walls;
+
+		updateScene(activeSceneId, { mapScale: clamped });
+		useVTTStore.setState(
+			scaleSceneEntities(activeSceneId, factor, state.tokens, state.walls),
+		);
+
+		const client = getSupabase();
+		if (!client) return true;
+
+		const { error } = await client.rpc("scale_scene_geometry", {
+			p_scene_id: activeSceneId,
+			p_factor: factor,
+		});
+		if (error) {
+			updateScene(activeSceneId, { mapScale: previousScale });
+			useVTTStore.setState({
+				tokens: previousTokens,
+				walls: previousWalls,
+			});
+			showToast("error", {
+				title: "Não foi possível mudar a escala do mapa",
+				description: "O mapa voltou ao valor anterior. Tente de novo.",
+			});
+			return false;
+		}
+		return true;
+	};
+
 	const handleUpdateScene = async (
 		sceneId: string,
 		updates: Partial<VTTScene>,
@@ -1569,7 +1619,10 @@ function VTTSession() {
 			/>
 
 			{/* Grid Settings Popover */}
-			<VTTGridSettings onUpdateSceneSettings={handleUpdateSceneSettings} />
+			<VTTGridSettings
+				onUpdateSceneSettings={handleUpdateSceneSettings}
+				onScaleMap={handleScaleMap}
+			/>
 
 			{/* Canvas Viewport */}
 			{loadError ? (

@@ -447,7 +447,8 @@ export function VTTCanvas({
 	const sceneGridOffsetY = scene?.gridOffsetY ?? 0;
 	const sceneWidth = scene?.width;
 	const sceneHeight = scene?.height;
-	// 3a. Mapa (imagem ou fundo): só quando a imagem ou o tamanho da cena muda.
+	const sceneMapScale = scene?.mapScale ?? 1;
+	// 3a. Mapa (imagem ou fundo): só quando a imagem, o tamanho ou a escala mudam.
 	useEffect(() => {
 		if (!rendererReady) return;
 		const mapLayer = mapLayerRef.current;
@@ -455,6 +456,8 @@ export function VTTCanvas({
 		let cancelled = false;
 		mapLayer.removeChildren();
 		if (sceneWidth === undefined || sceneHeight === undefined) return;
+		const drawWidth = sceneWidth * sceneMapScale;
+		const drawHeight = sceneHeight * sceneMapScale;
 
 		// Render Map Background Image if present
 		if (sceneMapImageUrl) {
@@ -463,8 +466,8 @@ export function VTTCanvas({
 					if (cancelled || mapLayer.destroyed) return;
 					mapLayer.removeChildren();
 					const sprite = new Sprite(texture);
-					sprite.width = sceneWidth;
-					sprite.height = sceneHeight;
+					sprite.width = drawWidth;
+					sprite.height = drawHeight;
 					mapLayer.addChild(sprite);
 				})
 				.catch((err) => {
@@ -472,7 +475,7 @@ export function VTTCanvas({
 				});
 		} else {
 			const bg = new Graphics();
-			bg.rect(0, 0, sceneWidth, sceneHeight);
+			bg.rect(0, 0, drawWidth, drawHeight);
 			const palette = document.createElement("canvas").getContext("2d");
 			if (palette && containerRef.current) {
 				palette.fillStyle = getComputedStyle(containerRef.current).color;
@@ -486,7 +489,7 @@ export function VTTCanvas({
 		return () => {
 			cancelled = true;
 		};
-	}, [sceneMapImageUrl, sceneWidth, sceneHeight, rendererReady]);
+	}, [sceneMapImageUrl, sceneWidth, sceneHeight, sceneMapScale, rendererReady]);
 
 	// 3b. Grid procedural: redesenha só quando célula, offset, tipo, cor ou
 	// opacidade mudam. Arrastar a célula ou o offset não recarrega o mapa.
@@ -505,6 +508,9 @@ export function VTTCanvas({
 		)
 			return;
 
+		const drawWidth = sceneWidth * sceneMapScale;
+		const drawHeight = sceneHeight * sceneMapScale;
+
 		// Draw Procedural Grid
 		if (sceneGridType === "none" || sceneGridSize <= 0 || sceneGridOpacity <= 0)
 			return;
@@ -515,27 +521,27 @@ export function VTTCanvas({
 		const gridOrigin = { x: sceneGridOffsetX, y: sceneGridOffsetY };
 		if (sceneGridType === "square") {
 			const lines = squareGridLines(
-				sceneWidth,
-				sceneHeight,
+				drawWidth,
+				drawHeight,
 				sceneGridSize,
 				gridOrigin,
 			);
 			grid.beginPath();
 			for (const x of lines.xs) {
 				grid.moveTo(x, 0);
-				grid.lineTo(x, sceneHeight);
+				grid.lineTo(x, drawHeight);
 			}
 			for (const y of lines.ys) {
 				grid.moveTo(0, y);
-				grid.lineTo(sceneWidth, y);
+				grid.lineTo(drawWidth, y);
 			}
 			grid.stroke({ width: 1, color: colorHex, alpha: sceneGridOpacity });
 		} else if (sceneGridType === "hex_pointy") {
 			const r = sceneGridSize / 2;
 			grid.beginPath();
 			for (const center of pointyHexCenters(
-				sceneWidth,
-				sceneHeight,
+				drawWidth,
+				drawHeight,
 				sceneGridSize,
 				gridOrigin,
 			)) {
@@ -551,8 +557,8 @@ export function VTTCanvas({
 			const r = sceneGridSize / 2;
 			grid.beginPath();
 			for (const center of flatHexCenters(
-				sceneWidth,
-				sceneHeight,
+				drawWidth,
+				drawHeight,
 				sceneGridSize,
 				gridOrigin,
 			)) {
@@ -574,6 +580,7 @@ export function VTTCanvas({
 		sceneGridOffsetY,
 		sceneWidth,
 		sceneHeight,
+		sceneMapScale,
 		rendererReady,
 	]);
 
@@ -1048,8 +1055,8 @@ export function VTTCanvas({
 
 		fogLayer.visible = true;
 
-		const width = scene.width || 4000;
-		const height = scene.height || 4000;
+		const width = (scene.width || 4000) * (scene.mapScale || 1);
+		const height = (scene.height || 4000) * (scene.mapScale || 1);
 		const gridSize = scene.gridSize || 70;
 
 		// GM mode: semi-transparent blue-tinted dark fog (~45% opacity)
