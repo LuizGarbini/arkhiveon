@@ -697,59 +697,6 @@ export function CampaignForm({
 									</div>
 								)}
 
-								{/* Ajustar Limite de Participantes (Proprietário/Mestre) */}
-								{campaign?.myRole === "owner" && (
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5">
-										<div>
-											<h4 className="text-[12px] font-bold text-foreground">
-												Limite de Participantes na Mesa
-											</h4>
-											<p className="text-[11px] text-muted-foreground">
-												Altere o limite máximo de jogadores (máx 100).
-											</p>
-										</div>
-										<div className="flex items-center gap-2 shrink-0">
-											<Input
-												type="number"
-												min={1}
-												max={100}
-												value={memberLimit}
-												onChange={(e) => setMemberLimit(Number(e.target.value))}
-												className="w-20 h-8 text-xs font-mono"
-											/>
-											<Button
-												type="button"
-												size="sm"
-												variant="outline"
-												disabled={isSavingMemberLimit}
-												onClick={async () => {
-													setIsSavingMemberLimit(true);
-													try {
-														updateCampaign(campaign.id, { memberLimit });
-														toast.success({
-															title: "Limite Atualizado!",
-															description: `Limite alterado para ${memberLimit} participantes.`,
-														});
-													} catch (err: unknown) {
-														toast.error({
-															title: "Erro ao Atualizar Limite",
-															description:
-																err instanceof Error
-																	? err.message
-																	: "Erro ao atualizar limite.",
-														});
-													} finally {
-														setIsSavingMemberLimit(false);
-													}
-												}}
-												className="h-8 text-xs gap-1"
-											>
-												Salvar Limite
-											</Button>
-										</div>
-									</div>
-								)}
-
 								{/* Enviar Convite por E-mail */}
 								{invitedCount < effectiveMemberLimit ? (
 									<form
@@ -766,7 +713,7 @@ export function CampaignForm({
 												value={inviteEmail}
 												onChange={(e) => setInviteEmail(e.target.value)}
 												placeholder="e-mail-do-jogador@gmail.com"
-												className="basis-full min-w-0 sm:basis-0 sm:flex-1"
+												className="flex-1 min-w-0"
 												required
 											/>
 											<SelectRoot

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.67-convite-email-limite",
+		version: "1.6.67",
+		date: "05/11/2026",
+		title: "Convite: e-mail largo e um só card de limite",
+		description:
+			"Na aba de jogadores, o campo de e-mail passa a ocupar o espaço que sobra ao lado do papel e do botão Convidar. O card de limite de jogadores aparece uma vez só.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.66-offset-do-grid",
 		version: "1.6.66",
 		date: "02/11/2026",

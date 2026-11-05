@@ -510,6 +510,34 @@ describe("Convite usa o Select do design system", () => {
 		);
 	});
 
+	it("campo de e-mail usa flex-1 min-w-0 e Select fica w-auto", async () => {
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={ownCampaign}
+				defaultTab="members"
+			/>,
+		);
+		const input = await screen.findByPlaceholderText(
+			"e-mail-do-jogador@gmail.com",
+		);
+		const trigger = screen.getByRole("combobox", {
+			name: "Papel do convidado",
+		});
+		expect(input.className.split(/\s+/)).toEqual(
+			expect.arrayContaining(["flex-1", "min-w-0"]),
+		);
+		expect(trigger.className.split(/\s+/)).toEqual(
+			expect.arrayContaining(["w-auto"]),
+		);
+		expect(screen.getByText("Limite de jogadores")).toBeTruthy();
+		expect(screen.queryByText("Limite de Participantes na Mesa")).toBeNull();
+		expect(
+			screen.getAllByRole("button", { name: /Salvar limite/i }),
+		).toHaveLength(1);
+	});
+
 	it("botão Convidar tem a mesma altura (h-10) do input e do Select", async () => {
 		renderWithToast(
 			<CampaignForm
