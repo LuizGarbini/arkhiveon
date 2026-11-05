@@ -510,7 +510,7 @@ describe("Convite usa o Select do design system", () => {
 		);
 	});
 
-	it("campo de e-mail usa flex-1 min-w-0 e Select fica w-auto", async () => {
+	it("e-mail fica sozinho na linha; Select+Convidar abaixo com w-auto/h-10", async () => {
 		renderWithToast(
 			<CampaignForm
 				open
@@ -525,17 +525,27 @@ describe("Convite usa o Select do design system", () => {
 		const trigger = screen.getByRole("combobox", {
 			name: "Papel do convidado",
 		});
-		expect(input.parentElement?.className.split(/\s+/)).toEqual(
-			expect.arrayContaining(["flex-1", "min-w-0"]),
+		const button = screen.getByRole("button", { name: "Convidar" });
+		const actionsRow = trigger.parentElement;
+		expect(actionsRow?.contains(input)).toBe(false);
+		expect(actionsRow?.contains(trigger)).toBe(true);
+		expect(actionsRow?.contains(button)).toBe(true);
+		expect(actionsRow?.className.split(/\s+/)).toEqual(
+			expect.arrayContaining(["flex", "items-center"]),
 		);
 		expect(trigger.className.split(/\s+/)).toEqual(
 			expect.arrayContaining(["w-auto"]),
 		);
 		expect(screen.getByText("Limite de jogadores")).toBeTruthy();
+		expect(screen.getByText(/o mestre não ocupa/)).toBeTruthy();
 		expect(screen.queryByText("Limite de Participantes na Mesa")).toBeNull();
 		expect(
 			screen.getAllByRole("button", { name: /Salvar limite/i }),
 		).toHaveLength(1);
+		expect(screen.getByRole("button", { name: "Copiar link" })).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Link de convite direto" }),
+		).toBeTruthy();
 	});
 
 	it("botão Convidar tem a mesma altura (h-10) do input e do Select", async () => {
