@@ -542,10 +542,41 @@ describe("Convite usa o Select do design system", () => {
 		expect(
 			screen.getAllByRole("button", { name: /Salvar limite/i }),
 		).toHaveLength(1);
-		expect(screen.getByRole("button", { name: "Copiar link" })).toBeTruthy();
+		const copyBtn = screen.getByRole("button", { name: "Copiar link" });
+		expect(copyBtn).toBeTruthy();
+		expect(copyBtn.className).not.toMatch(/sky-500\/40|sky-200|text-\[11px\]/);
 		expect(
 			screen.getByRole("textbox", { name: "Link de convite direto" }),
 		).toBeTruthy();
+		expect(trigger.className).not.toMatch(/text-\[11px\]/);
+		expect(input.className).not.toMatch(/text-\[11px\]/);
+	});
+
+	it("sem campaign.id mostra empty state e Copiar desabilitado (não Skeleton)", async () => {
+		const unsaved = campaign({
+			id: "",
+			name: "Mesa rascunho",
+			worldId: ownWorld.id,
+			ownerId: ME,
+			myRole: "owner",
+		});
+		renderWithToast(
+			<CampaignForm
+				open
+				onOpenChange={() => {}}
+				campaign={unsaved}
+				defaultTab="members"
+			/>,
+		);
+		expect(
+			await screen.findByText("Salve a campanha para gerar o link"),
+		).toBeTruthy();
+		const copyBtn = screen.getByRole("button", { name: "Copiar link" });
+		expect((copyBtn as HTMLButtonElement).disabled).toBe(true);
+		expect(screen.queryByLabelText("Carregando link de convite")).toBeNull();
+		expect(
+			screen.queryByRole("textbox", { name: "Link de convite direto" }),
+		).toBeNull();
 	});
 
 	it("botão Convidar tem a mesma altura (h-10) do input e do Select", async () => {

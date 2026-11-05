@@ -42,7 +42,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
-import { Skeleton } from "./ui/skeleton";
 import { Textarea } from "./ui/textarea";
 
 const CREATE_WORLD_VALUE = "__create_world__";
@@ -686,7 +685,7 @@ export function CampaignForm({
 													readOnly
 													value={`${typeof window !== "undefined" ? window.location.origin : ""}/join/${campaign.id}`}
 													aria-label="Link de convite direto"
-													className="min-w-0 flex-1 font-mono text-[11px]"
+													className="min-w-0 flex-1 font-mono"
 												/>
 												<Button
 													type="button"
@@ -701,16 +700,26 @@ export function CampaignForm({
 																"Envie o link para seus amigos entrarem instantaneamente na mesa.",
 														});
 													}}
-													className="shrink-0 gap-2 border-sky-500/40 text-sky-200 hover:bg-sky-500/15 cursor-pointer font-bold text-[11px]"
+													className="shrink-0 gap-2"
 												>
 													Copiar link
 												</Button>
 											</div>
 										) : (
-											<Skeleton
-												className="h-10 w-full"
-												aria-label="Carregando link de convite"
-											/>
+											<div className="flex items-center gap-2">
+												<output className="min-w-0 flex-1 text-sm text-muted-foreground">
+													Salve a campanha para gerar o link
+												</output>
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													disabled
+													className="shrink-0 gap-2"
+												>
+													Copiar link
+												</Button>
+											</div>
 										)}
 									</div>
 								) : null}
@@ -744,7 +753,7 @@ export function CampaignForm({
 												>
 													<SelectTrigger
 														aria-label="Papel do convidado"
-														className="w-auto shrink-0 text-[11px] font-medium"
+														className="w-auto shrink-0 font-medium"
 													>
 														<SelectValue>
 															{(value: string | null) =>
