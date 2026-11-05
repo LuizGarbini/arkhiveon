@@ -109,9 +109,7 @@ function expectCompactLoading(status: HTMLElement) {
 	expect(status.className).not.toContain("rounded-2xl");
 	expect(status.className).not.toMatch(/animate-pulse/);
 	expect(status.querySelectorAll("[data-slot='skeleton']").length).toBe(0);
-	expect(status.querySelector(":scope > .sr-only")?.textContent).toBe(
-		"Carregando resposta…",
-	);
+	expect(status.querySelector(":scope > .sr-only")).toBeNull();
 	const dots = [...status.querySelectorAll(":scope > [aria-hidden='true']")];
 	expect(dots).toHaveLength(3);
 	const delays = ["0ms", "150ms", "300ms"];
@@ -231,12 +229,13 @@ describe("VTTAiChat: estados do painel", () => {
 		);
 	});
 
-	it("erro de rede ou 413 fica no painel e a pergunta continua na conversa", async () => {
+	it("413 fica no painel sem Tentar de novo e a pergunta continua na conversa", async () => {
 		h.ask.mockResolvedValue({ ok: false, code: "input_too_large" });
 		await openAndType("resumo colado que o servidor recusou");
 		fireEvent.click(screen.getByLabelText("Enviar"));
 		expect(await screen.findByRole("alert")).toBeTruthy();
 		expect(screen.getByRole("alert").textContent).toMatch(/20\.000 caracteres/);
+		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
 		const input = screen.getByLabelText(
 			"Mensagem para o assistente",
 		) as HTMLTextAreaElement;
@@ -244,6 +243,14 @@ describe("VTTAiChat: estados do painel", () => {
 		expect(
 			screen.getByText("resumo colado que o servidor recusou"),
 		).toBeTruthy();
+		expect(h.ask).toHaveBeenCalledTimes(1);
+	});
+
+	it("erro de rede mostra Tentar de novo e reenvia a pergunta", async () => {
+		h.ask.mockResolvedValue({ ok: false, code: "offline" });
+		await openAndType("resumo colado que o servidor recusou");
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		expect(await screen.findByRole("alert")).toBeTruthy();
 		h.ask.mockResolvedValue({ ok: false, code: "offline" });
 		fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
 		expect(await screen.findByText(/Sem conexão com o servidor/)).toBeTruthy();
@@ -621,6 +628,29 @@ describe("VTTAiChat: edição em lote", () => {
 		expect(input.value).toBe("");
 	});
 
+	it("lote: no catch de salvar usa a mensagem do erro", async () => {
+		h.state.characters = [batchSheet];
+		h.state.campaigns = [{ id: "rise", myRole: "owner" }];
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Revise e aplique.",
+			proposal: batchProposal([{ field: "strength", value: "18" }]),
+		});
+		await openPanel();
+		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
+			target: { value: "atualiza a ficha: FOR 18" },
+		});
+		fireEvent.click(screen.getByLabelText("Enviar"));
+		await screen.findByRole("heading", { name: "1 alteração" });
+		h.quietSave.mockImplementationOnce(async () => {
+			throw new Error("Disco cheio na ficha.");
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		expect(await screen.findByRole("alert")).toBeTruthy();
+		expect(screen.getByRole("alert").textContent).toBe("Disco cheio na ficha.");
+		expect(screen.getByRole("button", { name: "Aplicar" })).toBeTruthy();
+	});
+
 	it("lote: no erro e no 413 o texto colado continua no campo", async () => {
 		await openPanel();
 		const pasted = "y".repeat(1500);
@@ -723,9 +753,7 @@ describe("VTTAiChat: edição em lote", () => {
 		await screen.findByRole("button", { name: "Aplicar" });
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toMatch(
-			/Não foi possível salvar\. Nada foi alterado\./,
-		);
+		expect(alert.textContent).toBe("blocked");
 		expect(screen.queryByText("Aplicado. A ficha foi atualizada.")).toBeNull();
 		expect(
 			(document.querySelector("textarea") as HTMLTextAreaElement).value,
@@ -796,12 +824,16 @@ describe("VTTAiChat: edição em lote", () => {
 			target: { value: "abc" },
 		});
 		expect(screen.queryByText(/\/20000/)).toBeNull();
-		expect(screen.queryByText("Modo edição em lote")).toBeNull();
+		expect(screen.queryByText(/Modo edição em lote/)).toBeNull();
 		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
 			target: { value: "a".repeat(1201) },
 		});
 		expect(screen.getByText(/1201\/20000/)).toBeTruthy();
-		expect(screen.getByText("Modo edição em lote")).toBeTruthy();
+		expect(
+			screen.getByText(
+				"Modo edição em lote · texto longo vira proposta de alteração",
+			),
+		).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Mensagem para o assistente"), {
 			target: { value: "a".repeat(20_001) },
 		});

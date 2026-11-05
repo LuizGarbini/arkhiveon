@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.68-ficha-lote-p2",
+		version: "1.6.68",
+		date: "05/11/2026",
+		title: "Edição em lote: 413 sem retry e texto mais claro",
+		description:
+			"Se o texto for grande demais (413), o assistente avisa e não mostra Tentar de novo. O modo lote diz que texto longo vira proposta. A espera compacta não repete o aviso de carregando. Se salvar o lote falhar, aparece a mensagem do erro.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.67-convite-email-limite",
 		version: "1.6.67",
 		date: "05/11/2026",

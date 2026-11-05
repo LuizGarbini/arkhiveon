@@ -87,7 +87,7 @@ const tactileControl =
 type PanelState =
 	| { kind: "idle" }
 	| { kind: "loading"; reading?: boolean }
-	| { kind: "error"; text: string }
+	| { kind: "error"; text: string; retryable?: boolean }
 	| { kind: "limit"; resetsAt: string };
 
 const EDIT_VERB = String.raw`(?:atualiz|edit|alter|mud|troc|ajust|coloc)\p{L}*`;
@@ -223,6 +223,7 @@ export function VTTAiChat({
 			setPanel({
 				kind: "error",
 				text: errorMessage("input_too_large"),
+				retryable: false,
 			});
 			return;
 		}
@@ -277,7 +278,11 @@ export function VTTAiChat({
 				scrollToEnd();
 				return;
 			}
-			setPanel({ kind: "error", text: failureCopy(result.code) });
+			setPanel({
+				kind: "error",
+				text: failureCopy(result.code),
+				retryable: result.code !== "input_too_large",
+			});
 			scrollToEnd();
 		} finally {
 			busyRef.current = false;
@@ -423,10 +428,14 @@ export function VTTAiChat({
 						),
 					);
 				}, 1000);
-			} catch {
+			} catch (err: unknown) {
+				const messageText =
+					err instanceof Error && err.message.trim()
+						? err.message.trim()
+						: SAVE_FAILED;
 				patch(message.id, {
 					status: "pending",
-					applyError: SAVE_FAILED,
+					applyError: messageText,
 					highlighted: false,
 				});
 			} finally {
@@ -587,7 +596,6 @@ export function VTTAiChat({
 								aria-label="Carregando resposta"
 								className="flex h-5 items-center gap-1 px-3.5"
 							>
-								<span className="sr-only">Carregando resposta…</span>
 								<span
 									aria-hidden="true"
 									className="size-1.5 rounded-full bg-muted-foreground motion-safe:animate-pulse"
@@ -611,16 +619,18 @@ export function VTTAiChat({
 								className="max-w-[85%] space-y-2 rounded-2xl border border-destructive/40 bg-muted px-3.5 py-2.5"
 							>
 								<p className="text-sm">{panel.text}</p>
-								<Button
-									type="button"
-									className={cn(
-										"min-h-11 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-										tactileControl,
-									)}
-									onClick={retryFromBubble}
-								>
-									Tentar de novo
-								</Button>
+								{panel.retryable !== false ? (
+									<Button
+										type="button"
+										className={cn(
+											"min-h-11 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+											tactileControl,
+										)}
+										onClick={retryFromBubble}
+									>
+										Tentar de novo
+									</Button>
+								) : null}
 							</div>
 						)}
 						{panel.kind === "limit" && (
@@ -714,7 +724,7 @@ export function VTTAiChat({
 						{batchMode && (
 							<div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
 								<span id={batchModeId} className="text-muted-foreground">
-									Modo edição em lote
+									Modo edição em lote · texto longo vira proposta de alteração
 								</span>
 								<span
 									id={counterId}
