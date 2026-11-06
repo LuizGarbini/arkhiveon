@@ -16,7 +16,13 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "06/11/2026",
 		title: "Transferência de mestre: regras no servidor",
 		description:
-			"Preparamos a regra do banco para o mestre atual transferir a campanha a um membro existente: o antigo mestre permanece como co-mestre e o convidado só recebe o cargo pela chamada autorizada. Ninguém vira dono por convite ou edição direta, o dono não sai da própria campanha, e falhas preservam todos os papéis. A versão 1.6.76 reserva espaço depois da publicação atômica 1.6.75 da PR #201, ainda aberta; versão e changelog exigem merge de main se necessário. Esta fatia não abre a interface nem aplica a migration: antes de aplicá-la, campanhas legadas divergentes exigem reparo manual confirmado.",
+			"Preparamos a regra do banco para o mestre atual transferir a campanha a um membro existente: o antigo mestre permanece como co-mestre e o convidado só recebe o cargo pela chamada autorizada. Ninguém vira dono por convite ou edição direta, o dono não sai da própria campanha, e falhas preservam todos os papéis. Esta fatia não abre a interface nem aplica a migration: antes de aplicá-la, campanhas legadas divergentes exigem reparo manual confirmado.",
+		id: "v1.6.75-vtt-publicacao-atomica",
+		version: "1.6.75",
+		date: "06/11/2026",
+		title: "Uma só operação para exibir uma cena aos jogadores",
+		description:
+			"Ao exibir uma cena da preparação, o servidor agora publica a escolhida e desativa a anterior em uma única operação. Uma falha no meio não deixa a mesa sem cena em jogo. Erros de permissão ou conexão aparecem em aviso e não mudam a cena antes da confirmação; somente mestre ou editor pode publicar.",
 		bullets: [],
 	},
 	{
