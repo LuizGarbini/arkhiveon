@@ -43,6 +43,10 @@ import {
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import {
+	type PublishSceneRpc,
+	publishScene,
+} from "@/lib/vtt/persist-publication";
+import {
 	isRepeatedCreate,
 	newSceneId,
 	singleFlight,
@@ -136,6 +140,7 @@ function VTTSession() {
 	);
 	const sceneRequestRef = useRef(0);
 	const sceneCreateFlightRef = useRef(singleFlight<void>());
+	const scenePublishFlightRef = useRef(singleFlight<void>());
 	const tokenRequestRef = useRef(0);
 	const tokenMutationRef = useRef(new Map<string, number>());
 	const [isLoading, setIsLoading] = useState(true);
@@ -1089,36 +1094,17 @@ function VTTSession() {
 		const client = getSupabase();
 		if (!client || !campaignId || !isGM)
 			throw new Error("É necessário estar conectado como mestre.");
-		const previous = scenes.find((scene) => scene.isActive);
-		const { error: clearError } = await client
-			.from("vtt_scenes")
-			.update({ is_active: false })
-			.eq("campaign_id", campaignId);
-		if (clearError)
-			throw new Error(
-				"Não foi possível trocar a cena dos jogadores. Tente novamente.",
-			);
-		const { error } = await client
-			.from("vtt_scenes")
-			.update({ is_active: true })
-			.eq("campaign_id", campaignId)
-			.eq("id", sceneId);
-		if (error) {
-			if (previous)
-				await client
-					.from("vtt_scenes")
-					.update({ is_active: true })
-					.eq("id", previous.id);
-			await fetchScenes();
-			throw new Error(
-				"Não foi possível exibir a cena. Confira a cena em jogo e tente novamente.",
-			);
-		}
-		setScenes(
-			useVTTStore
-				.getState()
-				.scenes.map((scene) => ({ ...scene, isActive: scene.id === sceneId })),
-		);
+
+		// Single-flight no cliente; a exclusão mútua fica na RPC da 0053.
+		await scenePublishFlightRef.current(async () => {
+			const confirmed = await publishScene({
+				sceneId,
+				rpc: client.rpc.bind(client) as PublishSceneRpc,
+				scenes: useVTTStore.getState().scenes,
+				toast: showToast,
+			});
+			setScenes(confirmed);
+		});
 	};
 
 	// Bug 06: the GM deletes a scene after confirming in the scene bar. RLS
@@ -1224,6 +1210,16 @@ function VTTSession() {
 		sceneId: string,
 		updates: Partial<VTTScene>,
 	) => {
+		if (updates.isActive !== undefined) {
+			showToast("error", {
+				title: "Use Exibir aos jogadores para publicar a cena",
+				description:
+					"A publicação atômica ainda não está habilitada nesta mesa. Avise o administrador.",
+			});
+			throw new Error(
+				"Use a publicação atômica: clique em Exibir aos jogadores.",
+			);
+		}
 		updateScene(sceneId, updates);
 
 		const client = getSupabase();
@@ -1253,7 +1249,6 @@ function VTTSession() {
 			dbUpdates.fog_enabled = updates.fogEnabled;
 		if (updates.fogExploration !== undefined)
 			dbUpdates.fog_exploration = updates.fogExploration;
-		if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
 		await client.from("vtt_scenes").update(dbUpdates).eq("id", sceneId);
 	};
