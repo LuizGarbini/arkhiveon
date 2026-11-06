@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.75-vtt-publicacao-atomica",
+		version: "1.6.75",
+		date: "06/11/2026",
+		title: "Uma só operação para exibir uma cena aos jogadores",
+		description:
+			"Ao exibir uma cena da preparação, o servidor agora publica a escolhida e desativa a anterior em uma única operação. Uma falha no meio não deixa a mesa sem cena em jogo. Erros de permissão ou conexão aparecem em aviso e não mudam a cena antes da confirmação; somente mestre ou editor pode publicar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.74-vtt-persistencia-fila-p1",
 		version: "1.6.74",
 		date: "06/11/2026",
