@@ -171,6 +171,67 @@ describe("P2a — contrato puro", () => {
 		expect(scenePersistenceKey(scene.id)).toBe("scene:scene-a");
 	});
 
+	it("bootstrap atrasado não reinicializa base ou intenção com P1 ocupado", async () => {
+		const first = deferred<WriteFailure | undefined>();
+		const writes: PersistenceWrite[] = [];
+		const { adapter, queue } = setup(async (write) => {
+			writes.push(write);
+			return first.promise;
+		});
+		adapter.setRemote(scene);
+		const a = adapter.update(scene.id, {
+			gridSize: 64,
+			gridOffsetX: 4,
+			fogEnabled: false,
+		});
+		await flushed();
+		const b = adapter.update(scene.id, { gridSize: 65 });
+		const before = adapter.getSceneSnapshot(scene.id);
+		expect(before.entity.inFlight).toBeDefined();
+		expect(queue.inspect(scenePersistenceKey(scene.id))?.pendingPatch).toEqual({
+			grid_size: 65,
+			grid_offset_x: 4,
+			fog_enabled: false,
+		});
+		adapter.setRemote({
+			...scene,
+			name: "Remoto atrasado",
+			gridSize: 30,
+			gridOffsetX: 99,
+			fogEnabled: true,
+		});
+		expect(queue.inspect(scenePersistenceKey(scene.id))).toEqual(before.entity);
+		const during = adapter.getSceneSnapshot(scene.id);
+		expect(during.base).toBe(before.base);
+		expect(before.base?.gridSize).toBe(70);
+		expect(queue.inspect(scenePersistenceKey(scene.id))).toEqual(before.entity);
+		expect(before.entity.seq).toBe(2);
+		expect(during.confirmed).toMatchObject({
+			gridSize: 70,
+			gridOffsetX: 0,
+			fogEnabled: true,
+		});
+		expect(during.pendingPatch).toMatchObject({
+			gridSize: 65,
+			gridOffsetX: 4,
+			fogEnabled: false,
+		});
+		expect(queue.inspect(scenePersistenceKey(scene.id))?.queued).toBeDefined();
+		first.resolve(undefined);
+		await expect(Promise.all([a, b])).resolves.toEqual([true, true]);
+		const after = adapter.getSceneSnapshot(scene.id);
+		expect(after.base?.gridSize).toBe(70);
+		expect(after.confirmed).toMatchObject({
+			gridSize: 65,
+			gridOffsetX: 4,
+			fogEnabled: false,
+		});
+		const settled = queue.inspect(scenePersistenceKey(scene.id));
+		expect(settled?.queued).toBeUndefined();
+		expect(settled?.inFlight).toBeUndefined();
+		expect(settled?.lastAcked?.patch).toEqual({ grid_size: 65 });
+	});
+
 	it("bloqueia só a cena, preserva delta e retenta explicitamente", async () => {
 		let fail = true;
 		const writes: PersistenceWrite[] = [];
@@ -225,30 +286,58 @@ describe("P2a — contrato puro", () => {
 
 	it("cache por cena é estável e erro de A enquanto B aguarda não perde B", async () => {
 		const writes: PersistenceWrite[] = [];
+		const first = deferred<WriteFailure | undefined>();
 		const deferredRetry = deferred<WriteFailure | undefined>();
-		const { adapter } = setup(async (write) => {
+		const { adapter, queue } = setup(async (write) => {
 			writes.push(write);
-			if (writes.length === 1) return { kind: "permanent", message: "RLS" };
+			if (writes.length === 1) return first.promise;
 			return deferredRetry.promise;
 		});
 		adapter.setRemote(scene);
 		const a = adapter.update(scene.id, { gridSize: 64, fogEnabled: false });
 		await flushed();
 		const b = adapter.update(scene.id, { gridSize: 65 });
+		expect(queue.inspect(scenePersistenceKey(scene.id))?.pendingPatch).toEqual({
+			grid_size: 65,
+			fog_enabled: false,
+		});
+		expect(queue.inspect(scenePersistenceKey(scene.id))?.queued?.seq).toBe(2);
+		first.resolve({ kind: "permanent", message: "RLS" });
 		await expect(a).resolves.toBe(false);
 		const cache = adapter.getSceneSnapshot(scene.id);
+		const engineEntity = queue.inspect(scenePersistenceKey(scene.id));
 		expect(adapter.getSceneSnapshot(scene.id)).toBe(cache);
 		expect(cache.error?.kind).toBe("permanent");
+		expect(queue.inspect(scenePersistenceKey(scene.id))?.pendingPatch).toEqual({
+			grid_size: 65,
+			fog_enabled: false,
+		});
+		expect(cache.entity).toEqual(engineEntity);
 		expect(cache.pendingPatch).toMatchObject({
-			gridSize: 64,
+			gridSize: 65,
 			fogEnabled: false,
 		});
-		await expect(b).resolves.toBe(false);
+		const retry = adapter.retry(scene.id);
 		deferredRetry.resolve(undefined);
-		await expect(adapter.retry(scene.id)).resolves.toMatchObject({
+		await expect(retry).resolves.toMatchObject({
 			status: "saved",
 		});
+		await expect(b).resolves.toBe(true);
+		expect(writes).toHaveLength(2);
+		expect(writes[0].patch).toEqual({ grid_size: 64, fog_enabled: false });
+		expect(writes[1]).toMatchObject({
+			seq: 2,
+			patch: { grid_size: 65, fog_enabled: false },
+		});
+		expect(adapter.getSceneSnapshot(scene.id).confirmed.gridSize).toBe(65);
 		expect(adapter.getSceneSnapshot(scene.id).pendingPatch).toEqual({});
+		const settled = queue.inspect(scenePersistenceKey(scene.id));
+		expect(settled?.queued).toBeUndefined();
+		expect(settled?.inFlight).toBeUndefined();
+		expect(settled?.lastAcked?.patch).toEqual({
+			grid_size: 65,
+			fog_enabled: false,
+		});
 	});
 
 	it("expiração congela a fila sem descartar a intenção local", async () => {

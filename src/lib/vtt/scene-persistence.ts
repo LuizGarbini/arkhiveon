@@ -169,6 +169,8 @@ export function createScenePersistence(
 			return result;
 		},
 		setRemote(scene) {
+			const entity = queue.inspect(scenePersistenceKey(scene.id));
+			if (entity?.queued || entity?.inFlight) return;
 			const record = records.get(scene.id);
 			if (!record) {
 				const scope = { campaignId: scene.campaignId, sceneId: scene.id };
