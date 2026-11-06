@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.73-visao-s6a-los",
+		version: "1.6.73",
+		date: "06/11/2026",
+		title: "Visão S6a: linha de visão bloqueada por paredes",
+		description:
+			"Lógica pura de raycast ponto a ponto sobre as paredes da mesa (hasLineOfSight), com testes. Ainda sem UI, alcance nem névoa dinâmica.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.72-impeccable-trial",
 		version: "1.6.72",
 		date: "06/11/2026",
