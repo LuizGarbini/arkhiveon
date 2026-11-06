@@ -367,7 +367,7 @@ export function VTTGridSettings({
 								percentToMapScale(displayPercent - MAP_SCALE_PERCENT_STEP),
 							)
 						}
-						className="size-10 shrink-0 rounded-xl"
+						className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
 					>
 						<Minus className="h-4 w-4" />
 					</Button>
@@ -399,7 +399,7 @@ export function VTTGridSettings({
 								percentToMapScale(displayPercent + MAP_SCALE_PERCENT_STEP),
 							)
 						}
-						className="size-10 shrink-0 rounded-xl"
+						className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
 					>
 						<Plus className="h-4 w-4" />
 					</Button>
