@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.74-vtt-persistencia-fila-p1",
+		version: "1.6.74",
+		date: "06/11/2026",
+		title: "Base testável para não perder edições da mesa",
+		description:
+			"Preparamos, sem ligar à interface ou ao banco, o motor que preserva a edição mais recente de cada token, grid e névoa ao salvar em ordem, coalescer gestos e reconectar. Ele mostra erro por entidade e mantém pendências só na memória desta aba, com aviso ao trocar de usuário. Criar token continua exigindo conexão; a regra de duas contas locais será provada em outra fatia.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.72-impeccable-trial",
 		version: "1.6.72",
 		date: "06/11/2026",
