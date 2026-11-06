@@ -4,6 +4,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 
 const phase = process.env.VTT_DICE_PHASE || "after";
+const excessScroll = phase === "scroll";
 const output = path.resolve(process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao");
 const campaignId = "demo-tabletop";
 const scene = {
@@ -19,6 +20,9 @@ const entry = { id: "roll-proof", campaign_id: campaignId, scene_id: scene.id,
  created_at: "2026-11-06T23:01:00.000Z" };
 const result = { roll_id: entry.id, total: 14,
  details: { formula: "1d20", count: 1, faces: 20, modifier: 0, rolls: [14] } };
+
+const history = excessScroll ? Array.from({length:80}, (_,i) => ({...entry, id:`history-${i}`, created_at:new Date(Date.parse(session.started_at)+i*1000).toISOString()})) : [];
+const historyResults = history.map(row => ({...result,roll_id:row.id}));
 
 async function main() {
  fs.mkdirSync(output, { recursive: true });
@@ -44,8 +48,8 @@ async function main() {
      let data = [];
      if (table === "campaigns") data = single ? {current_feed_session_id:session.id} : [];
      if (table === "vtt_feed_sessions") data = [session];
-     if (table === "vtt_rolls") data = rolled ? (single ? entry : [entry]) : (single ? null : []);
-     if (table === "vtt_roll_results") data = rolled ? (single ? result : [result]) : [];
+     if (table === "vtt_rolls") data = single ? (rolled ? entry : null) : [...history,...(rolled ? [entry] : [])];
+     if (table === "vtt_roll_results") data = single ? (rolled ? result : null) : [...historyResults,...(rolled ? [result] : [])];
      if (table === "roll_dice") {
       rpcCalls += 1;
       await pending;
@@ -80,6 +84,11 @@ async function main() {
     await panel.getByLabel("Fórmula",{exact:true}).fill("1d20");
     await page.waitForTimeout(300);
     const button = panel.getByRole("button",{name:"Rolar",exact:true});
+    if (excessScroll) {
+     const proof = await require("./test-vtt-dice-scroll.cjs")({page,panel,button,output,label,release,rpcCalls:()=>rpcCalls});
+     measures.viewports.push({...proof,externalRequestsBlocked:external});
+     continue;
+    }
     const geometry = await button.evaluate(button => {
      const viewport = {width:innerWidth,height:innerHeight};
      const nodes = [];
