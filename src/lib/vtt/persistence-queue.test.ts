@@ -100,6 +100,34 @@ describe("persistence queue ordering", () => {
 		expect(queue.getState().synced).toBe(true);
 	});
 
+	it("a clean ACK has no queued intent and status agrees with global synced", async (): Promise<undefined> => {
+		const queue = setup();
+		const done = queue.enqueue(update({ x: 1 }));
+		expect(await done.completion).toMatchObject({ status: "saved" });
+
+		const entity = queue.inspect("token:a");
+		const state = queue.getState();
+		expect(entity?.queued).toBeUndefined();
+		expect(entity?.status).toBe("synced");
+		expect(state.synced).toBe(true);
+		expect(state.pendingEntities).toBe(0);
+		expect(
+			state.entities.filter(({ status }) => status === "synced"),
+		).toHaveLength(state.pendingEntities === 0 && state.synced ? 1 : 0);
+	});
+
+	it("a last-ACK overlay is not a new write and is cleared on valid refetch", async (): Promise<undefined> => {
+		const calls: PersistenceWrite[] = [];
+		const queue = setup(calls);
+		await queue.enqueue(update({ x: 1 })).completion;
+		expect(queue.inspect("token:a")?.pendingPatch).toEqual({ x: 1 });
+		const generation = queue.beginReconnect(scope);
+		expect(queue.finishRefetch("token:a", generation, "present")).toBe(true);
+		expect(queue.inspect("token:a")?.pendingPatch).toBeUndefined();
+		expect(queue.getState().synced).toBe(true);
+		expect(calls).toHaveLength(1);
+	});
+
 	it("03: a permanent A error blocks only A, retaining the latest patch and allowing B/C", async (): Promise<undefined> => {
 		const calls: PersistenceWrite[] = [];
 		const a = deferred();

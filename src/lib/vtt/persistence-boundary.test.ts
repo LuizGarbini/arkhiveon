@@ -184,7 +184,11 @@ describe("explicit persistence boundaries", () => {
 		expect(await first.completion).toMatchObject({ status: "superseded" });
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 		expect(count).toBe(2);
-		expect(queue.inspect("token:a")?.pendingPatch).toBeUndefined();
+		const acknowledged = queue.inspect("token:a");
+		expect(acknowledged?.queued).toBeUndefined();
+		expect(acknowledged?.status).toBe("synced");
+		expect(acknowledged?.lastAcked?.patch).toEqual({ x: 1 });
+		expect(acknowledged?.pendingPatch).toEqual({ x: 1 });
 		expect(queue.getState().synced).toBe(true);
 	});
 

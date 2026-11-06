@@ -86,6 +86,8 @@ export interface EntitySnapshot extends EntityRevision {
 	pendingPatch?: Readonly<Record<string, unknown>>;
 	pendingSnapshot?: unknown;
 	pendingGeneration?: number;
+	/** Confirmed seq kept solely as visual overlay until a successful refetch. */
+	lastAcked?: QueuedRevision & { patch: Readonly<Record<string, unknown>> };
 	error?: WriteFailure;
 	limitOverflow: boolean;
 }
@@ -156,6 +158,8 @@ interface Entity {
 	generation: number;
 	queued?: Write;
 	inFlight?: Write;
+	/** Last server-confirmed local patch; visual-only, not pending queue work. */
+	lastAcked?: Write;
 	/** An over-limit gesture is retained, not silently dropped or counted as a delta. */
 	overflow?: Write;
 	error?: WriteFailure;
@@ -412,20 +416,12 @@ export function createPersistenceQueue(
 						if (write.kind === "create") entity.basePresent = true;
 						if (
 							write.kind === "update" &&
+							write.generation === generationOf(entity.scope) &&
 							entity.seq === write.seq &&
 							write.patch &&
 							Object.keys(write.patch).length > 0
-						) {
-							entity.queued = {
-								...intentFromWrite(write),
-								inFlight: false,
-								seq: write.seq,
-								generation: write.generation,
-								attempt: 0,
-								patch: {},
-								waiter: waiter(entity.key, write.seq),
-							};
-						}
+						)
+							entity.lastAcked = write;
 					} else {
 						const latest = entity.queued;
 						if (latest && write.kind === "update" && latest.kind === "update") {
@@ -440,6 +436,8 @@ export function createPersistenceQueue(
 							waiter: waiter(entity.key, write.seq),
 						};
 						entity.error = error;
+						if (entity.lastAcked?.generation === write.generation)
+							entity.lastAcked = undefined;
 						write.waiter.resolve({
 							status: "failed",
 							key: entity.key,
@@ -620,6 +618,7 @@ export function createPersistenceQueue(
 				: undefined;
 		const held = entity.overflow ?? entity.queued;
 		const pendingPatch = mergePatch(
+			entity.lastAcked?.kind === "update" ? entity.lastAcked.patch : undefined,
 			entity.inFlight?.kind === "update" ? entity.inFlight.patch : undefined,
 			held?.kind === "update" ? held.patch : undefined,
 		);
@@ -639,11 +638,23 @@ export function createPersistenceQueue(
 							: entity.queued
 								? "queued"
 								: "synced",
-			queued: revision(hasIntent(entity.queued) ? entity.queued : undefined),
+			queued: revision(entity.queued),
 			inFlight: revision(entity.inFlight),
 			pendingPatch: Object.keys(pendingPatch).length ? pendingPatch : undefined,
 			pendingSnapshot: held?.kind === "snapshot" ? held.snapshot : undefined,
 			pendingGeneration: held?.generation ?? entity.inFlight?.generation,
+			lastAcked:
+				entity.lastAcked?.kind === "update"
+					? {
+							key: entity.key,
+							scope: entity.scope,
+							seq: entity.lastAcked.seq,
+							generation: entity.lastAcked.generation,
+							kind: "update",
+							attempt: entity.lastAcked.attempt,
+							patch: entity.lastAcked.patch ?? {},
+						}
+					: undefined,
 			error: entity.error,
 			limitOverflow: entity.overflow !== undefined,
 		};
@@ -715,6 +726,8 @@ export function createPersistenceQueue(
 				return false;
 			}
 			entity.recovering = undefined;
+			if (entity.lastAcked && entity.lastAcked.generation < generation)
+				entity.lastAcked = undefined;
 			entity.basePresent = remote === "present";
 			if (remote === "missing-confirmed") entity.confirmedAbsent = true;
 			recoverScope(entity, generation);
