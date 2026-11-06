@@ -6,6 +6,7 @@ import {
 } from "./persistence-queue";
 import {
 	createScenePersistence,
+	type SceneSnapshot,
 	scenePersistenceKey,
 } from "./scene-persistence";
 import {
@@ -67,6 +68,7 @@ function setup(
 	scaleOptions: {
 		timeoutMs?: number;
 		clock?: import("./scene-scale").ScaleClock;
+		persistence?: (sceneId: string) => SceneSnapshot;
 	} = {},
 ) {
 	const sceneById = new Map<string, VTTScene>();
@@ -98,8 +100,32 @@ function setup(
 			context: { signal: AbortSignal },
 		) => Promise<SceneScaleTransportOutcome>
 	>(async () => ({ kind: "confirmed" }));
+	let snapshotView: ((id: string) => SceneSnapshot) | undefined =
+		scaleOptions.persistence;
+	const persistence = new Proxy(adapter, {
+		get(target, prop, receiver) {
+			if (prop === "getSceneSnapshot")
+				return (id: string) =>
+					snapshotView?.(id) ?? adapter.getSceneSnapshot(id);
+			if (prop === "queue")
+				return new Proxy(adapter.queue, {
+					get(queue, member, queueReceiver) {
+						if (member === "inspect")
+							return (key: string) => {
+								const id = key.slice("scene:".length);
+								return (
+									snapshotView?.(id)?.entity ??
+									Reflect.get(queue, member, queueReceiver)(key)
+								);
+							};
+						return Reflect.get(queue, member, queueReceiver);
+					},
+				});
+			return Reflect.get(target, prop, receiver);
+		},
+	});
 	const coordinator = createSceneScaleCoordinator({
-		persistence: adapter,
+		persistence,
 		capture: (id) => {
 			const current = sceneById.get(id);
 			return current ? { scene: current, tokens, walls } : undefined;
@@ -126,6 +152,9 @@ function setup(
 		restore,
 		scaleScene,
 		coordinator,
+		setPersistenceSnapshot(view: (id: string) => SceneSnapshot) {
+			snapshotView = view;
+		},
 		setRemote,
 		onStore,
 	};
@@ -780,5 +809,232 @@ describe("P2a2 revisão — reconciliação autorizada", () => {
 			}),
 		).resolves.toBe(false);
 		coordinator.dispose();
+	});
+});
+
+describe("P2a2 r3 — fechamento e coerência da sessão", () => {
+	it("listener dispose durante notify e duplo dispose são idempotentes", () => {
+		const state = setup();
+		state.coordinator.prepareScale(scene.id, 2);
+		let calls = 0;
+		state.coordinator.subscribe(() => {
+			calls += 1;
+			if (calls === 1) state.coordinator.dispose();
+		});
+		expect(() => state.coordinator.abort("listener fecha")).not.toThrow();
+		expect(calls).toBe(1);
+		expect(() => state.coordinator.dispose()).not.toThrow();
+		expect(() => state.coordinator.dispose()).not.toThrow();
+	});
+
+	it("finishScale succeeded não libera enquanto RPC pendente", async () => {
+		const state = setup();
+		const answer = deferred<SceneScaleTransportOutcome>();
+		state.scaleScene.mockReturnValueOnce(answer.promise);
+		const execution = state.coordinator.prepareScale(scene.id, 2)?.execute();
+		await settle();
+		expect(state.coordinator.getStatus(scene.id)).toBe("scaling");
+		await expect(
+			state.coordinator.finishScale(scene.id, "succeeded"),
+		).resolves.toBe(false);
+		expect(state.coordinator.isScaleLocked(scene.id)).toBe(true);
+		answer.resolve({ kind: "confirmed" });
+		await expect(execution).resolves.toMatchObject({ status: "succeeded" });
+		state.coordinator.dispose();
+	});
+
+	it("rejected após edição mais nova não restaura snapshot antigo", async () => {
+		const state = setup();
+		const answer = deferred<SceneScaleTransportOutcome>();
+		state.scaleScene.mockReturnValueOnce(answer.promise);
+		const execution = state.coordinator.prepareScale(scene.id, 2)?.execute();
+		await settle();
+		const sealed = state.adapter.getSceneSnapshot(scene.id);
+		const updated: SceneSnapshot = {
+			...sealed,
+			entity: { ...sealed.entity, seq: sealed.entity.seq + 1 },
+		};
+		state.setPersistenceSnapshot(() => updated);
+		answer.resolve({ kind: "rejected", error: "recusa tardia" });
+		await expect(execution).resolves.toMatchObject({ status: "recovering" });
+		expect(state.restore).not.toHaveBeenCalled();
+		expect(state.coordinator.getStatus(scene.id)).toBe("recovering");
+		expect(state.coordinator.prepareScale(scene.id, 2)).toBeNull();
+		state.coordinator.dispose();
+	});
+
+	it.each(["generation", "campaign", "scope"])(
+		"dreno detecta %s alterada antes do apply sem descartar fila",
+		async (kind) => {
+			const pending = deferred<WriteFailure | undefined>();
+			const state = setup(() => pending.promise);
+			const saving = state.adapter.update(scene.id, { fogEnabled: false });
+			await settle();
+			const original = state.adapter.getSceneSnapshot(scene.id);
+			const execution = state.coordinator.prepareScale(scene.id, 2)?.execute();
+			state.setPersistenceSnapshot((id) => {
+				const captured = state.adapter.getSceneSnapshot(id);
+				if (kind === "generation")
+					return {
+						...captured,
+						entity: {
+							...captured.entity,
+							generation: captured.entity.generation + 1,
+						},
+					};
+				if (kind === "campaign")
+					return {
+						...captured,
+						scope: { ...captured.scope, campaignId: "campaign-new" },
+						base: {
+							...(captured.base ?? scene),
+							campaignId: "campaign-new",
+						},
+					};
+				return {
+					...captured,
+					scope: { ...captured.scope, sceneId: "scene-new" },
+				};
+			});
+			pending.resolve(undefined);
+			await expect(execution).resolves.toMatchObject({ status: "recovering" });
+			expect(state.coordinator.prepareScale(scene.id, 2)).toBeNull();
+			await vi.waitFor(() =>
+				expect(state.coordinator.getStatus(scene.id)).toBe("recovering"),
+			);
+			expect(state.apply).not.toHaveBeenCalled();
+			expect(state.scaleScene).not.toHaveBeenCalled();
+			expect(
+				state.adapter.queue.inspect(scenePersistenceKey(scene.id))?.seq,
+			).toBe(original.entity.seq);
+			state.setPersistenceSnapshot(() => original);
+			state.coordinator.dispose();
+			await expect(saving).resolves.toBe(true);
+			expect(
+				state.adapter.queue.inspect(scenePersistenceKey(scene.id))?.status,
+			).toBe("synced");
+			await expect(
+				state.adapter.update(scene.id, { fogExploration: true }),
+			).resolves.toBe(true);
+		},
+	);
+
+	it("cancel duplo e listener reentrante não notificam de novo nem perdem fila", async () => {
+		const pending = deferred<WriteFailure | undefined>();
+		const state = setup(() => pending.promise);
+		const saving = state.adapter.update(scene.id, { fogEnabled: false });
+		await settle();
+		state.coordinator.prepareScale(scene.id, 2);
+		const listener = vi.fn(() =>
+			state.coordinator.abort("listener reentrante"),
+		);
+		state.coordinator.subscribe(listener);
+		expect(() => state.coordinator.abort("primeiro cancel")).not.toThrow();
+		expect(() => state.coordinator.abort("segundo cancel")).not.toThrow();
+		expect(() => state.coordinator.dispose()).not.toThrow();
+		expect(listener).toHaveBeenCalledTimes(1);
+		expect(
+			state.adapter.getSceneSnapshot(scene.id).entity.inFlight,
+		).toMatchObject({ seq: 1 });
+		expect(state.adapter.getSceneSnapshot(scene.id).pendingPatch).toEqual({
+			fogEnabled: false,
+		});
+		pending.resolve(undefined);
+		await expect(saving).resolves.toBe(true);
+	});
+
+	it.each(["generation", "campaign", "scope"])(
+		"ACK confirmado com %s alterada mantém recovering e lock",
+		async (kind) => {
+			const state = setup();
+			const answer = deferred<SceneScaleTransportOutcome>();
+			state.scaleScene.mockReturnValueOnce(answer.promise);
+			const execution = state.coordinator.prepareScale(scene.id, 2)?.execute();
+			await settle();
+			state.setPersistenceSnapshot((id) => {
+				const captured = state.adapter.getSceneSnapshot(id);
+				if (kind === "generation")
+					return {
+						...captured,
+						entity: {
+							...captured.entity,
+							generation: captured.entity.generation + 1,
+						},
+					};
+				if (kind === "campaign")
+					return {
+						...captured,
+						scope: { ...captured.scope, campaignId: "campaign-new" },
+						base: { ...(captured.base ?? scene), campaignId: "campaign-new" },
+					};
+				return {
+					...captured,
+					scope: { ...captured.scope, sceneId: "scene-new" },
+				};
+			});
+			answer.resolve({ kind: "confirmed" });
+			await expect(execution).resolves.toMatchObject({ status: "recovering" });
+			expect(state.coordinator.isScaleLocked(scene.id)).toBe(true);
+			expect(state.restore).not.toHaveBeenCalled();
+			state.coordinator.dispose();
+		},
+	);
+
+	it("rejected após dispose é ignorado e não toca sessão seguinte", async () => {
+		const state = setup();
+		const answer = deferred<SceneScaleTransportOutcome>();
+		state.scaleScene.mockReturnValueOnce(answer.promise);
+		const execution = state.coordinator.prepareScale(scene.id, 2)?.execute();
+		await settle();
+		state.coordinator.dispose();
+		answer.resolve({ kind: "rejected", error: "callback velho" });
+		await expect(execution).resolves.toEqual({ status: "no-op" });
+		const next = setup();
+		next.scaleScene.mockResolvedValueOnce({ kind: "confirmed" });
+		await expect(
+			next.coordinator.prepareScale(scene.id, 2)?.execute(),
+		).resolves.toMatchObject({ status: "succeeded" });
+		await settle();
+		expect(state.restore).not.toHaveBeenCalled();
+		expect(next.coordinator.getStatus(scene.id)).toBe("idle");
+		next.coordinator.dispose();
+	});
+
+	it("recovery após cancel não é reativada por timeout, e callback tardio ignora", async () => {
+		vi.useFakeTimers();
+		try {
+			const state = setup(async () => undefined, { timeoutMs: 1_000 });
+			const answer = deferred<SceneScaleTransportOutcome>();
+			state.scaleScene.mockReturnValueOnce(answer.promise);
+			const operation = state.coordinator.prepareScale(scene.id, 2);
+			const execution = operation?.execute();
+			await vi.advanceTimersByTimeAsync(1_000);
+			await expect(execution).resolves.toMatchObject({ status: "recovering" });
+			const captured = state.coordinator.getReconciliation(scene.id);
+			state.coordinator.abort("cancel usuário");
+			expect(state.coordinator.getStatus(scene.id)).toBe("idle");
+			expect(state.coordinator.isScaleLocked(scene.id)).toBe(false);
+			await expect(operation?.execute()).resolves.toEqual({ status: "no-op" });
+			const expected = state.coordinator.getReconciliation(scene.id);
+			const read = vi.fn(async () => ({
+				status: "confirmed" as const,
+				snapshot: captured,
+			}));
+			await expect(
+				state.coordinator.finishScale(scene.id, {
+					status: "reconcile",
+					read,
+				}),
+			).resolves.toBe(false);
+			expect(read).not.toHaveBeenCalled();
+			expect(expected).toBeNull();
+			answer.resolve({ kind: "confirmed" });
+			await vi.advanceTimersByTimeAsync(0);
+			expect(state.coordinator.getStatus(scene.id)).toBe("idle");
+			expect(state.coordinator.isScaleLocked(scene.id)).toBe(false);
+			expect(state.scaleScene).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
