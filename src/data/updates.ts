@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.71-escala-plus-disabled",
+		version: "1.6.71",
+		date: "06/11/2026",
+		title: "Escala do mapa: + no teto com opacity do DS",
+		description:
+			"No ajuste do grid, o botão + da escala no teto usa o mesmo disabled:opacity-50 (e data-disabled) do design system que o − no piso.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.69-escala-do-mapa",
 		version: "1.6.69",
 		date: "05/11/2026",
