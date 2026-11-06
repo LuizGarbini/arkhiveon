@@ -1,0 +1,8 @@
+
+> arkhiveon@1.6.70 impeccable:detect /Users/luizgarbini/projects/arkhiveon
+> impeccable detect src/components/vtt/vtt-ai-chat.tsx src/components/vtt/sheet-batch-review.tsx src/components/ai-mesa/shell-ai-chat.tsx src/lib/ai-mesa/sheet-batch.ts
+
+
+4 files scanned with regex matching only (.ts, .tsx).
+Rules that need a parsed page (tiny-text, low-contrast and other element rules) did not run on them; findings are an undercount, not a clean bill of health.
+For the full check, scan the running dev server (npx impeccable detect http://localhost:PORT) or a static site's built .html.

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.72-impeccable-trial",
+		version: "1.6.72",
+		date: "06/11/2026",
+		title: "Trial do detector Impeccable",
+		description:
+			"Instalamos o impeccable como devDependency e o script pnpm impeccable:detect cobre o chat de IA da mesa e a edição em lote da ficha. A varredura em fonte nessas áreas não apontou finding primário; o Designer compara com a revisão dele.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.71-escala-plus-disabled",
 		version: "1.6.71",
 		date: "06/11/2026",
