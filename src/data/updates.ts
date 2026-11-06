@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.77-vtt-persistencia-grid-p2a",
+		version: "1.6.77",
+		date: "06/11/2026",
+		title: "Base para não perder ajustes do grid e do modo de névoa",
+		description:
+			"Ainda sem ligar à interface, preparamos a base para salvar ajustes de grid e do modo de névoa sem perder a edição mais recente por cena. Uma falha permanente mantém a intenção local até a tentativa explícita de salvar novamente. A barreira de escala não entra nesta fatia.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.76-transferir-mestre-f1",
 		version: "1.6.76",
 		date: "06/11/2026",
