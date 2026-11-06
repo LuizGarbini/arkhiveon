@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.76-transferir-mestre-f1",
+		version: "1.6.76",
+		date: "06/11/2026",
+		title: "Transferência de mestre: regras no servidor",
+		description:
+			"Preparamos a regra do banco para o mestre atual transferir a campanha a um membro existente: o antigo mestre permanece como co-mestre e o convidado só recebe o cargo pela chamada autorizada. Ninguém vira dono por convite ou edição direta, o dono não sai da própria campanha, e falhas preservam todos os papéis. A versão 1.6.76 reserva espaço depois da publicação atômica 1.6.75 da PR #201, ainda aberta; versão e changelog exigem merge de main se necessário. Esta fatia não abre a interface nem aplica a migration: antes de aplicá-la, campanhas legadas divergentes exigem reparo manual confirmado.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.74-vtt-persistencia-fila-p1",
 		version: "1.6.74",
 		date: "06/11/2026",
