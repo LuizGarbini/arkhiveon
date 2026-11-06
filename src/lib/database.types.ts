@@ -1615,6 +1615,14 @@ export type Database = {
 				Args: { p_character_id: string; p_current: number; p_max?: number };
 				Returns: Json;
 			};
+			transfer_campaign_ownership: {
+				Args: { p_campaign_id: string; p_new_owner_id: string };
+				Returns: {
+					campaign_id: string;
+					new_owner_id: string;
+					previous_owner_id: string;
+				}[];
+			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 			user_scene_campaign_role: {
 				Args: { p_scene_id: string };

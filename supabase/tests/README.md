@@ -19,3 +19,18 @@ bash scripts/test-0058-local.sh
 A transação termina em `ROLLBACK`. A saída esperada é `0058: todos os cenários passaram`.
 
 O teste usa duas contas: o owner grava `grid_offset_x/y` e chama `scale_scene_geometry` (tokens e paredes escalam). O viewer não altera o offset (RLS, 0 linhas) e a RPC devolve `42501`. `anon` não tem `EXECUTE`.
+
+
+## 0059 — transferir mestre (server-side)
+
+Somente stack `arkhiveon` descartável local, porta 54322. O reset é **local** e aplica primeiramente as migrations até 0058, nunca DB remoto. Não reiniciar `arkhiveon-b2b`.
+
+```bash
+pnpx supabase@latest db reset --local --no-seed --last 1
+psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/0059_transfer_campaign_ownership.legacy.test.sql
+docker exec -i supabase_db_arkhiveon psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < supabase/migrations/0059_transfer_campaign_ownership.sql
+docker exec -i supabase_db_arkhiveon psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < supabase/tests/0059_transfer_campaign_ownership.test.sql
+docker exec -i supabase_db_arkhiveon psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < supabase/tests/0059_transfer_campaign_ownership.atomic.test.sql
+```
+
+Os testes terminam em `ROLLBACK`, usam contas sintéticas UUID `00000000…` e conferem 30 comportamentos, 21 invariantes, 4 auditorias e reversão de uma falha intencional. Requerem banco descartável sem campanhas/dados reais. O auditor pré-0059 retorna `23514` para campanha sem owner, com dois owners ou mismatch; não conserta legado e não cria objetos quando recusa.
