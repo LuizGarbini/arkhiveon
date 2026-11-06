@@ -237,11 +237,30 @@ begin
 		raise exception 'transferência de mestre não permitida' using errcode = '42501';
 	end if;
 
+	-- O no-op só é válido com o owner canônico inteiro. Não considere
+	-- o papel do campaign nem outra membership owner como prova do caller.
 	if p_new_owner_id = v_previous_owner then
 		select count(*)::integer into v_count
 		from public.memberships m
-		where m.campaign_id = p_campaign_id and m.role = 'owner';
-		if v_count <> 1 then
+		where m.campaign_id = p_campaign_id
+			and m.id = v_target_ids[1]
+			and m.user_id = v_previous_owner
+			and m.role = 'owner'
+			and exists (
+				select 1 from public.campaigns c
+				where c.id = p_campaign_id and c.owner_id = m.user_id
+			);
+		if v_count <> 1 or exists (
+			select 1
+			from public.campaigns c
+			left join public.memberships m on m.campaign_id = c.id
+			where c.id = p_campaign_id
+			group by c.id, c.owner_id
+			having count(*) filter (where m.role = 'owner') <> 1
+				or count(*) filter (
+					where m.role = 'owner' and m.user_id = c.owner_id
+				) <> 1
+		) then
 			raise exception 'ownership invariant violated' using errcode = '23514';
 		end if;
 		return query select p_campaign_id, v_previous_owner, p_new_owner_id;
