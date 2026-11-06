@@ -17,6 +17,9 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		title: "Transferência de mestre: regras no servidor",
 		description:
 			"Preparamos a regra do banco para o mestre atual transferir a campanha a um membro existente: o antigo mestre permanece como co-mestre e o convidado só recebe o cargo pela chamada autorizada. Ninguém vira dono por convite ou edição direta, o dono não sai da própria campanha, e falhas preservam todos os papéis. Esta fatia não abre a interface nem aplica a migration: antes de aplicá-la, campanhas legadas divergentes exigem reparo manual confirmado.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.75-vtt-publicacao-atomica",
 		version: "1.6.75",
 		date: "06/11/2026",
