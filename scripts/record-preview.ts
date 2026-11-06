@@ -7,10 +7,10 @@ async function main() {
 		preview: { host: "127.0.0.1", port: 4173, strictPort: true },
 	});
 	try {
-		for (const script of [
-			"scripts/test-vtt.cjs",
-			"scripts/test-vtt-review.cjs",
-		]) {
+		const scripts = process.env.VTT_PREVIEW_SCENARIO === "dice-button"
+			? ["scripts/test-vtt-dice-button.cjs"]
+			: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
+		for (const script of scripts) {
 			await new Promise<void>((resolve, reject) => {
 				const child = spawn(process.execPath, [script], {
 					stdio: "inherit",
@@ -30,7 +30,9 @@ async function main() {
 			});
 		}
 		console.log(
-			"Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
+			process.env.VTT_PREVIEW_SCENARIO === "dice-button"
+				? `Preview de dados validado: ${process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao"}`
+				: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
 		);
 	} finally {
 		await new Promise<void>((resolve, reject) =>
