@@ -1214,7 +1214,7 @@ function VTTSession() {
 			showToast("error", {
 				title: "Use Exibir aos jogadores para publicar a cena",
 				description:
-					"A publicação atômica ainda não está habilitada nesta mesa. Avise o administrador.",
+					"A edição genérica não altera a cena em jogo. A publicação acontece em uma única operação no servidor.",
 			});
 			throw new Error(
 				"Use a publicação atômica: clique em Exibir aos jogadores.",

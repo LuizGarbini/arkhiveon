@@ -31,7 +31,6 @@ const mock = vi.hoisted(() => ({
 		onUpdateToken: (id: string, updates: Partial<VTTToken>) => Promise<void>;
 		characterOwners: unknown[];
 		controlError: string | null;
-		onUpdateScene: unknown;
 	},
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -142,14 +141,20 @@ vi.mock("@/lib/supabase", () => ({
 		rpc: mock.rpc,
 		from: (table: string) => {
 			let writing = false;
-			let writingPatch: unknown;
 			const query = {
 				select: () => query,
 				eq: () => query,
 				order: () => query,
 				update: (patch: unknown) => {
+					if (
+						table === "vtt_scenes" &&
+						typeof patch === "object" &&
+						patch !== null &&
+						"is_active" in patch
+					) {
+						throw new Error("publicação passou pelo UPDATE direto");
+					}
 					writing = true;
-					writingPatch = patch;
 					return query;
 				},
 				single: () =>
@@ -157,16 +162,9 @@ vi.mock("@/lib/supabase", () => ({
 						? new Promise((resolve) => mock.writes.push(resolve))
 						: Promise.resolve({ data: null, error: null }),
 				maybeSingle: () => Promise.resolve({ data: null, error: null }),
-				// biome-ignore lint/suspicious/noThenProperty: Supabase query builders are intentionally thenable.
-				then: (resolve: (value: unknown) => unknown) => {
-					if (
-						writingPatch &&
-						typeof writingPatch === "object" &&
-						"is_active" in writingPatch
-					) {
-						throw new Error("publicação passou pelo patch genérico");
-					}
-					return Promise.resolve(
+				// biome-ignore lint/suspicious/noThenProperty: Supabase queries are intentionally thenable.
+				then: (resolve: (value: unknown) => unknown) =>
+					Promise.resolve(
 						table === "characters"
 							? {
 									data: mock.ownersFail
@@ -186,8 +184,7 @@ vi.mock("@/lib/supabase", () => ({
 											: [],
 									error: null,
 								},
-					).then(resolve);
-				},
+					).then(resolve),
 			};
 			return query;
 		},
@@ -339,7 +336,10 @@ it("publishes one scene through exactly one RPC, without the old UPDATE pair", a
 it("keeps every game scene activation on the same RPC for A then B", async () => {
 	mock.role = "owner";
 	await open();
+	act(() => useVTTStore.getState().setActiveSceneId("scene-b"));
+	expect(useVTTStore.getState().activeSceneId).toBe("scene-b");
 	await act(async () => mock.sceneBar?.onActivateScene("scene-a"));
+	expect(useVTTStore.getState().activeSceneId).toBe("scene-b");
 	expect(useVTTStore.getState().scenes.map((scene) => scene.isActive)).toEqual([
 		true,
 		false,
