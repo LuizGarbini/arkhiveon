@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.69-escala-do-mapa",
+		version: "1.6.69",
+		date: "05/11/2026",
+		title: "Escala do mapa de 25% a 400%",
+		description:
+			"No ajuste do grid, o mestre muda a escala do desenho do mapa (25% a 400%) com botões −/+ e o controle deslizante. Tokens e paredes acompanham pela função do servidor. A escala não passa do limite de 4096 px da imagem: em mapa já no teto, o máximo é 100%.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.68-ficha-lote-p2",
 		version: "1.6.68",
 		date: "05/11/2026",

@@ -286,3 +286,61 @@ describe("VTTGridSettings — offset", () => {
 		expect(save).toHaveBeenCalledWith({ gridSize: 50 });
 	});
 });
+
+describe("VTTGridSettings — escala do mapa", () => {
+	it("em 4096×4096 o + trava em 100% e o hint cita o limite", () => {
+		render(
+			<VTTGridSettings
+				onUpdateSceneSettings={vi.fn()}
+				onScaleMap={vi.fn().mockResolvedValue(true)}
+			/>,
+		);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Aumentar escala do mapa",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(screen.getByText(/100%/)).toBeTruthy();
+		expect(screen.getByText(/4096/)).toBeTruthy();
+		expect(screen.getByDisplayValue("100%")).toBeTruthy();
+	});
+
+	it("em mapa 2048 chama onScaleMap com 1.05 ao aumentar 5%", async () => {
+		const scale = vi.fn().mockResolvedValue(true);
+		useVTTStore.setState({
+			scenes: [{ ...scene, width: 2048, height: 2048, mapScale: 1 }],
+		});
+		render(
+			<VTTGridSettings onUpdateSceneSettings={vi.fn()} onScaleMap={scale} />,
+		);
+		await act(async () => {
+			fireEvent.click(
+				screen.getByRole("button", { name: "Aumentar escala do mapa" }),
+			);
+		});
+		expect(scale).toHaveBeenCalledWith(1.05);
+	});
+
+	it("sem onScaleMap os controles de escala ficam desabilitados", () => {
+		render(<VTTGridSettings onUpdateSceneSettings={vi.fn()} />);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Aumentar escala do mapa",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Diminuir escala do mapa",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(
+			(screen.getByDisplayValue("100%") as HTMLInputElement).disabled,
+		).toBe(true);
+	});
+});
