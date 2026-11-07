@@ -496,8 +496,13 @@ export function CampaignForm({
 	return (
 		<>
 			<Dialog open={open} onOpenChange={onOpenChange}>
-				<DialogContent className={cn("sm:max-w-md", campaign && "sm:max-w-lg")}>
-					<DialogHeader>
+				<DialogContent
+					className={cn(
+						"flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden sm:max-w-md",
+						campaign && "sm:max-w-lg",
+					)}
+				>
+					<DialogHeader className="shrink-0 pr-8">
 						<DialogTitle className="font-display">
 							{campaign ? "Configurações da Campanha" : "Nova Campanha"}
 						</DialogTitle>
@@ -509,7 +514,7 @@ export function CampaignForm({
 					</DialogHeader>
 
 					{campaign && (
-						<div className="flex border-b border-border/40 mb-4">
+						<div className="mb-0 flex shrink-0 border-b border-border/40">
 							<button
 								type="button"
 								onClick={() => handleTabChange("general")}
@@ -541,7 +546,7 @@ export function CampaignForm({
 						<div
 							key={activeTab}
 							className={cn(
-								"flex-1 min-h-0 overflow-y-auto",
+								"min-h-0 flex-1 overflow-y-auto overscroll-contain",
 								slideDirection === "left"
 									? "t-tab-slide-left"
 									: "t-tab-slide-right",
@@ -1032,7 +1037,7 @@ export function CampaignForm({
 							)}
 						</div>
 					) : (
-						<div className="flex-1 min-h-0 overflow-y-auto">
+						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
 							<form onSubmit={handleSubmit} className="space-y-4">
 								<div className="space-y-2">
 									<label
