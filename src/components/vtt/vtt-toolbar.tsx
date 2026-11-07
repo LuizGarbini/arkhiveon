@@ -130,11 +130,16 @@ export function VTTToolbar() {
 	}[] = [
 		{
 			id: "select",
-			label: "Selecionar & Mover",
+			label: "Selecionar e mover vários",
 			icon: MousePointer2,
 			shortcut: "V",
 		},
-		{ id: "pan", label: "Mão / Mover Câmera", icon: Hand, shortcut: "H" },
+		{
+			id: "pan",
+			label: "Mover a câmera com o botão direito",
+			icon: Hand,
+			shortcut: "H",
+		},
 		{ id: "ruler", label: "Régua de Medição", icon: Ruler, shortcut: "R" },
 		{ id: "ping", label: "Ponteiro Laser (Ping)", icon: Radio, shortcut: "G" },
 		{

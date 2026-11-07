@@ -333,7 +333,7 @@ describe("Ficha no celular (390): Sheet de baixo", () => {
 			document.querySelector("[data-slot='dialog-overlay']")?.className,
 		).not.toContain("left-[4.75rem]");
 		expect(
-			screen.queryByRole("button", { name: "Selecionar & Mover" }),
+			screen.queryByRole("button", { name: "Selecionar e mover vários" }),
 		).toBeNull();
 		const handle = screen.getByTestId("bottom-sheet-handle");
 		fireEvent.pointerDown(handle, { clientY: 100, pointerId: 1 });

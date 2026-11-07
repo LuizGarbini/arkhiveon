@@ -43,6 +43,15 @@ describe("token press vs. empty-area press on the canvas", () => {
 		);
 	});
 
+	it("keeps the selection when the empty press adds to it", () => {
+		expect(
+			canvasPressAction(null, new Event("pointerdown"), {
+				...select,
+				additive: true,
+			}),
+		).toBe("ignore");
+	});
+
 	it("only deselects for a left press with the select tool", () => {
 		const domEvent = new Event("pointerdown");
 		expect(

@@ -85,8 +85,11 @@ export type TokenPose =
 export function tokenPose(
 	token: VTTToken,
 	draggedTokenId: string | null,
+	draggedTokenIds: readonly string[] = [],
 ): TokenPose {
-	if (draggedTokenId === token.id) return { mode: "drag" };
+	if (draggedTokenId === token.id || draggedTokenIds.includes(token.id)) {
+		return { mode: "drag" };
+	}
 	if (token.targetX !== undefined && token.targetY !== undefined) {
 		return { mode: "lerp", x: token.targetX, y: token.targetY };
 	}

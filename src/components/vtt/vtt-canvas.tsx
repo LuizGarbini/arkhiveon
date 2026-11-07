@@ -60,10 +60,23 @@ import {
 	beginTokenPress,
 	canvasPressAction,
 	isDoublePress,
+	isTokenTap,
+	TOKEN_TAP_SLOP_PX,
 	type TokenPress,
 	tokenPressEndAction,
 	trackTokenPressMove,
 } from "@/lib/vtt/token-press";
+import {
+	beginRightPress,
+	canSelectTokenLayer,
+	dragMembers,
+	isAdditiveSelect,
+	type RightPress,
+	selectionFromMarquee,
+	tokensInsideRect,
+	trackRightPress,
+	translateMembers,
+} from "@/lib/vtt/token-selection";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -101,6 +114,33 @@ function paintTokenAuras(
 			layer.stroke({ width: 1.5, color: colorHex, alpha: 0.6 });
 		}
 	}
+}
+
+function placeMarquee(
+	el: HTMLDivElement | null,
+	x0: number,
+	y0: number,
+	x1: number,
+	y1: number,
+) {
+	if (!el) return;
+	const left = Math.min(x0, x1);
+	const top = Math.min(y0, y1);
+	const width = Math.abs(x1 - x0);
+	const height = Math.abs(y1 - y0);
+	if (width < 2 && height < 2) {
+		el.style.display = "none";
+		return;
+	}
+	el.style.display = "block";
+	el.style.left = `${left}px`;
+	el.style.top = `${top}px`;
+	el.style.width = `${width}px`;
+	el.style.height = `${height}px`;
+}
+
+function hideMarquee(el: HTMLDivElement | null) {
+	if (el) el.style.display = "none";
 }
 
 function auraPoseSignature(
@@ -295,9 +335,28 @@ export function VTTCanvas({
 	// that open the token menu never nudge the token.
 	const pendingTokenDragRef = useRef<{
 		id: string;
-		offset: { x: number; y: number };
+		grabX: number;
+		grabY: number;
+		additive: boolean;
+		members: { id: string; x: number; y: number }[];
 	} | null>(null);
-	const tokenDragOffsetRef = useRef({ x: 0, y: 0 });
+	const dragGroupRef = useRef<{
+		grabX: number;
+		grabY: number;
+		members: { id: string; x: number; y: number }[];
+	} | null>(null);
+	const marqueeRef = useRef<{
+		startX: number;
+		startY: number;
+		additive: boolean;
+		moved: boolean;
+	} | null>(null);
+	const marqueeElRef = useRef<HTMLDivElement | null>(null);
+	const rightPressRef = useRef<RightPress | null>(null);
+	const characterOwnersRef = useRef(characterOwners);
+	characterOwnersRef.current = characterOwners;
+	const userIdRef = useRef(user?.id);
+	userIdRef.current = user?.id;
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
 
@@ -320,7 +379,8 @@ export function VTTCanvas({
 	const activePings = useVTTStore((s) => s.activePings);
 	const addPing = useVTTStore((s) => s.addPing);
 	const removePing = useVTTStore((s) => s.removePing);
-	const setDraggedTokenId = useVTTStore((s) => s.setDraggedTokenId);
+	const setDraggedTokenIds = useVTTStore((s) => s.setDraggedTokenIds);
+	const toggleSelectTokenId = useVTTStore((s) => s.toggleSelectTokenId);
 	const fogPaths = useVTTStore((s) => s.fogPaths);
 	const addFogPath = useVTTStore((s) => s.addFogPath);
 	const activeFogTool = useVTTStore((s) => s.activeFogTool);
@@ -467,7 +527,11 @@ export function VTTCanvas({
 				for (const t of state.tokens) {
 					const displayObj = tokenDisplayObjectsRef.current.get(t.id);
 					if (!displayObj) continue;
-					const pose = tokenPose(t, state.draggedTokenId);
+					const pose = tokenPose(
+						t,
+						state.draggedTokenId,
+						state.draggedTokenIds,
+					);
 					if (pose.mode === "drag") continue;
 					if (pose.mode === "place") {
 						if (displayObj.x !== pose.x || displayObj.y !== pose.y) {
@@ -992,8 +1056,11 @@ export function VTTCanvas({
 				if (!canControl) return;
 				if (e.button === 2) {
 					e.stopPropagation();
-					setSelectedTokenIds([token.id]);
-					setActiveTokenIdForMenu(token.id);
+					rightPressRef.current = beginRightPress(
+						e.clientX,
+						e.clientY,
+						token.id,
+					);
 					return;
 				}
 
@@ -1013,25 +1080,28 @@ export function VTTCanvas({
 					if (live.activeLayer === "token" && isGMLayer) return;
 
 					e.stopPropagation();
+					const additive = isAdditiveSelect(e);
 					tokenPressRef.current = beginTokenPress(
 						token.id,
 						e,
 						e.nativeEvent instanceof Event ? e.nativeEvent : null,
 					);
 					const current = useVTTStore.getState();
-					if (
-						current.selectedTokenIds.length !== 1 ||
-						current.selectedTokenIds[0] !== token.id
-					) {
+					// A token already in the selection keeps the rest, so the
+					// group can move together. Shift/Ctrl/Command adds on release.
+					if (!additive && !current.selectedTokenIds.includes(token.id)) {
 						setSelectedTokenIds([token.id]);
 					}
 					const openMenuId = current.activeTokenIdForMenu;
-					if (openMenuId && openMenuId !== token.id) {
+					if (!additive && openMenuId && openMenuId !== token.id) {
 						setActiveTokenIdForMenu(null);
 					}
 
 					const now = Date.now();
-					if (isDoublePress(lastTokenTapRef.current, token.id, now)) {
+					if (
+						!additive &&
+						isDoublePress(lastTokenTapRef.current, token.id, now)
+					) {
 						// Mouse: duplo clique abre a Ficha na mesa. Toque: segue
 						// abrindo o menu do token (que tem o botão da ficha), já que
 						// no celular não há clique direito.
@@ -1045,23 +1115,50 @@ export function VTTCanvas({
 						pendingTokenDragRef.current = null;
 						return;
 					}
-					lastTokenTapRef.current = { id: token.id, time: now };
+					if (!additive) lastTokenTapRef.current = { id: token.id, time: now };
 
 					if (!token.isLocked) {
 						const rect = containerRef.current?.getBoundingClientRect();
-						const offset = { x: 0, y: 0 };
 						if (rect) {
 							const vp = useVTTStore.getState().viewport;
 							const clientX = e.clientX - rect.left;
 							const clientY = e.clientY - rect.top;
 							const worldX = (clientX - vp.x) / vp.scale;
 							const worldY = (clientY - vp.y) / vp.scale;
-							// Grab wherever the sprite is on screen, not a stale
-							// store position from the last time it was rebuilt.
-							offset.x = worldX - tokenContainer.position.x;
-							offset.y = worldY - tokenContainer.position.y;
+							const selectedIds = useVTTStore.getState().selectedTokenIds;
+							const members = dragMembers({
+								grabbedId: token.id,
+								selectedIds: additive
+									? selectedIds
+									: selectedIds.includes(token.id)
+										? selectedIds
+										: [token.id],
+								additive,
+								tokens: useVTTStore.getState().tokens.map((item) => {
+									const shown = tokenDisplayObjectsRef.current.get(item.id);
+									return {
+										id: item.id,
+										x: shown?.position.x ?? item.x,
+										y: shown?.position.y ?? item.y,
+										isLocked: item.isLocked,
+										canMove:
+											canControlVTTToken(
+												item,
+												userIdRef.current,
+												live.isGM,
+												characterOwnersRef.current,
+											) && canSelectTokenLayer(live.activeLayer, item.layer),
+									};
+								}),
+							});
+							pendingTokenDragRef.current = {
+								id: token.id,
+								grabX: worldX,
+								grabY: worldY,
+								additive,
+								members,
+							};
 						}
-						pendingTokenDragRef.current = { id: token.id, offset };
 					}
 				}
 			});
@@ -1440,6 +1537,15 @@ export function VTTCanvas({
 			}
 			const isMiddleClick = e.button === 1;
 			const isLeftClick = e.button === 0;
+			const isRightClick = e.button === 2;
+
+			// Right press pans once it moves. A tap on a token still opens its menu.
+			if (isRightClick) {
+				if (!rightPressRef.current) {
+					rightPressRef.current = beginRightPress(e.clientX, e.clientY, null);
+				}
+				return;
+			}
 
 			// Pan start
 			if (
@@ -1536,15 +1642,34 @@ export function VTTCanvas({
 			// Deselect if clicking on empty canvas. A press on a token reaches this
 			// listener right after the token handler (same DOM event), so it must
 			// not undo the selection/panel that handler just set.
+			const additive = isAdditiveSelect(e);
 			if (
 				canvasPressAction(tokenPressRef.current, e, {
 					isLeftClick,
 					activeTool,
+					additive,
 				}) === "deselect"
 			) {
 				tokenPressRef.current = null;
 				setSelectedTokenIds([]);
 				setActiveTokenIdForMenu(null);
+			}
+
+			// Drag on empty ground draws a selection box. Shift adds to it.
+			if (
+				isLeftClick &&
+				activeTool === "select" &&
+				!isSpaceHeldRef.current &&
+				!isAltHeldRef.current &&
+				!tokenPressRef.current
+			) {
+				const rect = container.getBoundingClientRect();
+				marqueeRef.current = {
+					startX: e.clientX - rect.left,
+					startY: e.clientY - rect.top,
+					additive,
+					moved: false,
+				};
 			}
 
 			// Ruler Start
@@ -1573,6 +1698,54 @@ export function VTTCanvas({
 
 		const handlePointerMove = (e: PointerEvent) => {
 			statusLongPressRef.current.move(e.clientX, e.clientY);
+			const right = rightPressRef.current;
+			if (right && !isDraggingViewportRef.current) {
+				const next = trackRightPress(right, e.clientX, e.clientY);
+				rightPressRef.current = next;
+				if (next.moved) {
+					const vp = useVTTStore.getState().viewport;
+					isDraggingViewportRef.current = true;
+					viewportDragStartRef.current = {
+						x: e.clientX - vp.x,
+						y: e.clientY - vp.y,
+					};
+					container.style.cursor = "grabbing";
+					pendingTokenDragRef.current = null;
+					dragGroupRef.current = null;
+					draggingTokenIdRef.current = null;
+					marqueeRef.current = null;
+					hideMarquee(marqueeElRef.current);
+					setDraggedTokenIds([]);
+				}
+			}
+			if (isDraggingViewportRef.current) {
+				const nextX = e.clientX - viewportDragStartRef.current.x;
+				const nextY = e.clientY - viewportDragStartRef.current.y;
+				setViewport({ x: nextX, y: nextY });
+				return;
+			}
+
+			const marquee = marqueeRef.current;
+			if (marquee) {
+				const rect = container.getBoundingClientRect();
+				const x = e.clientX - rect.left;
+				const y = e.clientY - rect.top;
+				if (
+					Math.hypot(x - marquee.startX, y - marquee.startY) > TOKEN_TAP_SLOP_PX
+				) {
+					marquee.moved = true;
+				}
+				if (marquee.moved) {
+					placeMarquee(
+						marqueeElRef.current,
+						marquee.startX,
+						marquee.startY,
+						x,
+						y,
+					);
+				}
+			}
+
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 
 			// Prévia do segmento até o cursor (só redesenha a camada da prévia).
@@ -1609,10 +1782,28 @@ export function VTTCanvas({
 				const pending = pendingTokenDragRef.current;
 				if (next.moved) {
 					lastTokenTapRef.current = null;
-					if (pending && !draggingTokenIdRef.current) {
+					if (
+						pending &&
+						pending.members.length > 0 &&
+						!draggingTokenIdRef.current
+					) {
 						draggingTokenIdRef.current = pending.id;
-						tokenDragOffsetRef.current = pending.offset;
-						setDraggedTokenId(pending.id);
+						dragGroupRef.current = {
+							grabX: pending.grabX,
+							grabY: pending.grabY,
+							members: pending.members,
+						};
+						setDraggedTokenIds(pending.members.map((member) => member.id));
+						if (pending.additive) {
+							const selected = useVTTStore.getState().selectedTokenIds;
+							setSelectedTokenIds(
+								selectionFromMarquee(
+									selected,
+									pending.members.map((member) => member.id),
+									true,
+								),
+							);
+						}
 						pendingTokenDragRef.current = null;
 					}
 				}
@@ -1686,30 +1877,24 @@ export function VTTCanvas({
 			// Handle Token Dragging with Realtime Broadcast.
 			// The sprite moves here. The store follows so the menu stays put,
 			// but the canvas must not rebuild the token for that write.
-			if (draggingTokenIdRef.current && scene) {
-				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
-				const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
-				const display = tokenDisplayObjectsRef.current.get(
-					draggingTokenIdRef.current,
+			const group = dragGroupRef.current;
+			if (group && draggingTokenIdRef.current && scene) {
+				const moved = translateMembers(
+					group.members,
+					worldPoint.x - group.grabX,
+					worldPoint.y - group.grabY,
 				);
-				if (display) display.position.set(rawX, rawY);
-
-				updateToken(draggingTokenIdRef.current, { x: rawX, y: rawY });
-				paintAurasRef.current();
-
-				// Realtime drag broadcast
-				if (onBroadcastDrag && now - lastBroadcastTimeRef.current > 30) {
-					lastBroadcastTimeRef.current = now;
-					onBroadcastDrag(draggingTokenIdRef.current, rawX, rawY);
+				const broadcast = now - lastBroadcastTimeRef.current > 30;
+				if (broadcast) lastBroadcastTimeRef.current = now;
+				for (const member of moved) {
+					const display = tokenDisplayObjectsRef.current.get(member.id);
+					if (display) display.position.set(member.x, member.y);
+					updateToken(member.id, { x: member.x, y: member.y });
+					if (broadcast && onBroadcastDrag) {
+						onBroadcastDrag(member.id, member.x, member.y);
+					}
 				}
-				return;
-			}
-
-			// Handle Viewport Pan
-			if (isDraggingViewportRef.current) {
-				const nextX = e.clientX - viewportDragStartRef.current.x;
-				const nextY = e.clientY - viewportDragStartRef.current.y;
-				setViewport({ x: nextX, y: nextY });
+				paintAurasRef.current();
 				return;
 			}
 
@@ -1795,8 +1980,15 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			const right = rightPressRef.current;
+			rightPressRef.current = null;
+			const marquee = marqueeRef.current;
+			marqueeRef.current = null;
+			hideMarquee(marqueeElRef.current);
+
 			// A touch/pen tap on a token (no drag) selects it and opens its panel.
 			const press = tokenPressRef.current;
+			const pending = pendingTokenDragRef.current;
 			tokenPressRef.current = null;
 			// Depois do toque longo (lista de status) o mesmo toque não abre o menu.
 			const longPressed = statusLongPressRef.current.end();
@@ -1807,6 +1999,58 @@ export function VTTCanvas({
 			) {
 				swallowTapClickRef.current = press.pointerType === "touch";
 				setActiveTokenIdForMenu(press.tokenId);
+			}
+			if (
+				press &&
+				pending?.additive &&
+				!longPressed &&
+				isTokenTap(press, e.clientX, e.clientY)
+			) {
+				toggleSelectTokenId(press.tokenId, true);
+			} else if (
+				press &&
+				!pending?.additive &&
+				!longPressed &&
+				isTokenTap(press, e.clientX, e.clientY)
+			) {
+				const selected = useVTTStore.getState().selectedTokenIds;
+				if (selected.length > 1 && selected.includes(press.tokenId)) {
+					setSelectedTokenIds([press.tokenId]);
+				}
+			}
+			if (right && !right.moved && right.tokenId && !longPressed) {
+				setSelectedTokenIds([right.tokenId]);
+				setActiveTokenIdForMenu(right.tokenId);
+			}
+			if (marquee?.moved && scene) {
+				const rect = container.getBoundingClientRect();
+				const start = screenToWorld(
+					rect.left + marquee.startX,
+					rect.top + marquee.startY,
+				);
+				const end = screenToWorld(e.clientX, e.clientY);
+				const live = useVTTStore.getState();
+				const hits = tokensInsideRect(
+					live.tokens
+						.filter(
+							(item) =>
+								(live.isGM || (!item.isHidden && item.layer !== "gm")) &&
+								canSelectTokenLayer(live.activeLayer, item.layer) &&
+								canControlVTTToken(
+									item,
+									userIdRef.current,
+									live.isGM,
+									characterOwnersRef.current,
+								) &&
+								!item.isLocked,
+						)
+						.map((item) => ({ id: item.id, x: item.x, y: item.y })),
+					{ x0: start.x, y0: start.y, x1: end.x, y1: end.y },
+				);
+				setSelectedTokenIds(
+					selectionFromMarquee(live.selectedTokenIds, hits, marquee.additive),
+				);
+				setActiveTokenIdForMenu(null);
 			}
 
 			// Finish Fog of War Drawing and Commit
@@ -1885,38 +2129,39 @@ export function VTTCanvas({
 			// Finish Token Dragging with Magnetic Grid Snapping & Persistence.
 			// Clear the drag flag only after the snapped position is stored, so
 			// a broadcast that arrives in between cannot start interpolating.
-			if (draggingTokenIdRef.current && scene) {
-				const tokenId = draggingTokenIdRef.current;
-				const token = useVTTStore
-					.getState()
-					.tokens.find((t) => t.id === tokenId);
-
-				if (token) {
-					const worldPoint = screenToWorld(e.clientX, e.clientY);
-					const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
-					const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
-
+			const group = dragGroupRef.current;
+			if (group && draggingTokenIdRef.current && scene) {
+				const worldPoint = screenToWorld(e.clientX, e.clientY);
+				const moved = translateMembers(
+					group.members,
+					worldPoint.x - group.grabX,
+					worldPoint.y - group.grabY,
+				);
+				const liveTokens = useVTTStore.getState().tokens;
+				for (const member of moved) {
+					const token = liveTokens.find((item) => item.id === member.id);
+					if (!token) continue;
 					const snapped = snapToGrid(
-						{ x: rawX, y: rawY },
+						{ x: member.x, y: member.y },
 						scene.gridType,
 						scene.gridSize,
 						token.sizeCells,
 						gridOrigin,
 					);
-
-					const display = tokenDisplayObjectsRef.current.get(tokenId);
+					const display = tokenDisplayObjectsRef.current.get(member.id);
 					if (display) display.position.set(snapped.x, snapped.y);
-					updateToken(tokenId, { x: snapped.x, y: snapped.y });
-					paintAurasRef.current();
+					updateToken(member.id, { x: snapped.x, y: snapped.y });
 					if (onUpdateToken) {
-						void onUpdateToken(tokenId, { x: snapped.x, y: snapped.y });
+						void onUpdateToken(member.id, { x: snapped.x, y: snapped.y });
 					}
 					if (onBroadcastDrag) {
-						onBroadcastDrag(tokenId, snapped.x, snapped.y);
+						onBroadcastDrag(member.id, snapped.x, snapped.y);
 					}
 				}
+				paintAurasRef.current();
 				draggingTokenIdRef.current = null;
-				setDraggedTokenId(null);
+				dragGroupRef.current = null;
+				setDraggedTokenIds([]);
 			}
 
 			if (isDraggingViewportRef.current) {
@@ -1980,6 +2225,7 @@ export function VTTCanvas({
 		container.addEventListener("touchend", handleTouchEnd, { passive: false });
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
+		window.addEventListener("pointercancel", handlePointerUp);
 
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
@@ -1990,6 +2236,7 @@ export function VTTCanvas({
 			container.removeEventListener("contextmenu", handleContextMenu);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);
+			window.removeEventListener("pointercancel", handlePointerUp);
 		};
 	}, [
 		viewport,
@@ -2018,15 +2265,22 @@ export function VTTCanvas({
 		setActiveMeasurement,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
-		setDraggedTokenId,
+		setDraggedTokenIds,
+		toggleSelectTokenId,
 		setPreviewTemplate,
 		addPlacedTemplate,
 	]);
 
 	return (
-		<div
-			ref={containerRef}
-			className="absolute inset-0 h-full w-full touch-none select-none overflow-hidden bg-background"
-		/>
+		<div className="absolute inset-0 h-full w-full">
+			<div
+				ref={containerRef}
+				className="absolute inset-0 h-full w-full touch-none select-none overflow-hidden bg-background"
+			/>
+			<div
+				ref={marqueeElRef}
+				className="pointer-events-none absolute z-10 hidden border border-primary bg-primary/20"
+			/>
+		</div>
 	);
 }

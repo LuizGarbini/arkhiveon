@@ -49,6 +49,9 @@ describe("token pose", () => {
 		expect(
 			tokenPose(token({ targetX: 0, targetY: 0, x: 50, y: 50 }), "hero"),
 		).toEqual({ mode: "drag" });
+		expect(tokenPose(token({ id: "wolf" }), null, ["wolf"])).toEqual({
+			mode: "drag",
+		});
 	});
 
 	it("eases toward a remote target and otherwise sits on x/y", () => {

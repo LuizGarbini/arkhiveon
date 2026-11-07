@@ -94,6 +94,8 @@ interface VTTState {
 	/** Token com status sob o ponteiro (Tooltip do DS sobre o canvas). */
 	hoveredStatusTokenId: string | null;
 	draggedTokenId: string | null;
+	/** Every token currently following the pointer, including the grabbed one. */
+	draggedTokenIds: string[];
 	fogState: VTTFogState | null;
 	fogPaths: VTTFogPath[];
 	activeFogTool: VTTFogShapeType;
@@ -162,6 +164,7 @@ interface VTTState {
 	setActiveTokenIdForMenu: (id: string | null) => void;
 	setHoveredStatusTokenId: (id: string | null) => void;
 	setDraggedTokenId: (id: string | null) => void;
+	setDraggedTokenIds: (ids: string[]) => void;
 
 	// Fog Actions
 	setFogState: (fogState: VTTFogState | null) => void;
@@ -213,6 +216,15 @@ interface VTTState {
 	setWallHistory: (undo: WallOp[], redo: WallOp[]) => void;
 }
 
+function tokenIsBeingDragged(
+	state: { draggedTokenId: string | null; draggedTokenIds: readonly string[] },
+	tokenId: string,
+) {
+	return (
+		state.draggedTokenId === tokenId || state.draggedTokenIds.includes(tokenId)
+	);
+}
+
 const emptySceneContents = () => ({
 	selectedTokenIds: [],
 	activeTokenIdForMenu: null,
@@ -223,6 +235,7 @@ const emptySceneContents = () => ({
 	remoteCursors: {},
 	remoteMeasurements: {},
 	draggedTokenId: null,
+	draggedTokenIds: [] as string[],
 	activeMeasurement: null,
 	activePings: [],
 	placedTemplates: [],
@@ -266,6 +279,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	activeTokenIdForMenu: null,
 	hoveredStatusTokenId: null,
 	draggedTokenId: null,
+	draggedTokenIds: [],
 	fogState: null,
 	fogPaths: [],
 	activeFogTool: "brush",
@@ -444,7 +458,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 				// A local drag's x/y is where the token is. An old interpolation
 				// target would pull the sprite back the other way on the next frame.
 				if (
-					state.draggedTokenId === tokenId &&
+					tokenIsBeingDragged(state, tokenId) &&
 					(updates.x !== undefined || updates.y !== undefined) &&
 					updates.targetX === undefined &&
 					updates.targetY === undefined
@@ -459,7 +473,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 		set((state) => {
 			// The pointer owns this token until pointerup. A drag broadcast
 			// (including an echo) must not start a second position.
-			if (state.draggedTokenId === tokenId) return state;
+			if (tokenIsBeingDragged(state, tokenId)) return state;
 			const current = state.tokens.find((t) => t.id === tokenId);
 			if (
 				!current ||
@@ -509,7 +523,16 @@ export const useVTTStore = create<VTTState>((set) => ({
 				: { activeTokenIdForMenu: null },
 		),
 	setHoveredStatusTokenId: (id) => set({ hoveredStatusTokenId: id }),
-	setDraggedTokenId: (id) => set({ draggedTokenId: id }),
+	setDraggedTokenId: (id) =>
+		set({
+			draggedTokenId: id,
+			draggedTokenIds: id ? [id] : [],
+		}),
+	setDraggedTokenIds: (ids) =>
+		set({
+			draggedTokenIds: ids,
+			draggedTokenId: ids[0] ?? null,
+		}),
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
 	setRemoteCursor: (cursor) =>

@@ -133,6 +133,16 @@ describe("VTT scene lifecycle", () => {
 		expect(moved?.targetY).toBeUndefined();
 	});
 
+	it("ignores a remote drag target for every token in the group", () => {
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore
+			.getState()
+			.setTokens([token, { ...token, id: "token-b", name: "B" }]);
+		useVTTStore.getState().setDraggedTokenIds(["token-a", "token-b"]);
+		useVTTStore.getState().setTokenTargetPosition("token-b", 12, 12);
+		expect(useVTTStore.getState().tokens[1]?.targetX).toBeUndefined();
+	});
+
 	it("ignores a remote drag target for the token under the pointer", () => {
 		useVTTStore.getState().setActiveSceneId("a");
 		useVTTStore.getState().setTokens([token]);

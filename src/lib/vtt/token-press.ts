@@ -43,9 +43,11 @@ export function beginTokenPress(
 export function canvasPressAction(
 	press: TokenPress | null,
 	event: Event,
-	opts: { isLeftClick: boolean; activeTool: string },
+	opts: { isLeftClick: boolean; activeTool: string; additive?: boolean },
 ): "deselect" | "ignore" {
-	if (!opts.isLeftClick || opts.activeTool !== "select") return "ignore";
+	if (!opts.isLeftClick || opts.activeTool !== "select" || opts.additive) {
+		return "ignore";
+	}
 	if (press?.source && press.source === event) return "ignore";
 	return "deselect";
 }
