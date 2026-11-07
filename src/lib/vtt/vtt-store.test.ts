@@ -121,6 +121,29 @@ describe("VTT scene lifecycle", () => {
 		expect(useVTTStore.getState().showRosterDrawer).toBe(true);
 	});
 
+	it("drops a stale interpolation target while that token is dragged", () => {
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore.getState().setTokens([{ ...token, targetX: 0, targetY: 0 }]);
+		useVTTStore.getState().setDraggedTokenId(token.id);
+		useVTTStore.getState().updateToken(token.id, { x: 80, y: 90 });
+		const moved = useVTTStore.getState().tokens[0];
+		expect(moved?.x).toBe(80);
+		expect(moved?.y).toBe(90);
+		expect(moved?.targetX).toBeUndefined();
+		expect(moved?.targetY).toBeUndefined();
+	});
+
+	it("ignores a remote drag target for the token under the pointer", () => {
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore.getState().setTokens([token]);
+		useVTTStore.getState().setDraggedTokenId(token.id);
+		useVTTStore.getState().setTokenTargetPosition(token.id, 500, 500);
+		expect(useVTTStore.getState().tokens[0]?.targetX).toBeUndefined();
+		useVTTStore.getState().setDraggedTokenId(null);
+		useVTTStore.getState().setTokenTargetPosition(token.id, 500, 500);
+		expect(useVTTStore.getState().tokens[0]?.targetX).toBe(500);
+	});
+
 	it("opening a sheet closes the token menu", () => {
 		useVTTStore.getState().setActiveTokenIdForMenu("token-a");
 		useVTTStore.getState().setShowCharacterSheetId("token-a");

@@ -7,7 +7,7 @@ import {
 	Text,
 	TextStyle,
 } from "pixi.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { playPingAudio } from "@/lib/vtt/audio";
@@ -52,6 +52,11 @@ import {
 import { createStatusLongPress } from "@/lib/vtt/status-long-press";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import {
+	tokenPose,
+	tokensAppearanceKey,
+	visibleTokenIds,
+} from "@/lib/vtt/token-motion";
+import {
 	beginTokenPress,
 	canvasPressAction,
 	isDoublePress,
@@ -71,10 +76,49 @@ import {
 	drawSpellTemplate,
 	drawWallPreview,
 	drawWalls,
+	parseHexColor,
 } from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { finishWallDraft } from "@/lib/vtt/wall-sync";
 import { hitTestWall, snapWallPoint } from "@/lib/vtt/walls";
+
+function paintTokenAuras(
+	layer: Graphics,
+	tokens: readonly VTTToken[],
+	displays: ReadonlyMap<string, Container>,
+	gridSize: number,
+) {
+	layer.clear();
+	for (const token of tokens) {
+		const display = displays.get(token.id);
+		if (!display || token.auras.length === 0) continue;
+		for (const aura of token.auras) {
+			const auraRadius = aura.radius * gridSize;
+			const colorHex = parseHexColor(aura.color, 0x38bdf8);
+			layer.circle(display.position.x, display.position.y, auraRadius);
+			layer.fill({ color: colorHex, alpha: aura.opacity ?? 0.25 });
+			layer.circle(display.position.x, display.position.y, auraRadius);
+			layer.stroke({ width: 1.5, color: colorHex, alpha: 0.6 });
+		}
+	}
+}
+
+function auraPoseSignature(
+	tokens: readonly VTTToken[],
+	displays: ReadonlyMap<string, Container>,
+	gridSize: number,
+) {
+	let sig = String(gridSize);
+	for (const token of tokens) {
+		const display = displays.get(token.id);
+		if (!display || token.auras.length === 0) continue;
+		const auras = token.auras
+			.map((aura) => `${aura.radius}:${aura.color}:${aura.opacity ?? ""}`)
+			.join(",");
+		sig += `|${token.id}:${display.position.x.toFixed(1)}:${display.position.y.toFixed(1)}:${auras}`;
+	}
+	return sig;
+}
 
 interface VTTCanvasProps {
 	scene: VTTScene | null;
@@ -139,12 +183,33 @@ export function VTTCanvas({
 
 	// Display containers map for direct 60fps WebGL interpolation without React state thrashing
 	const tokenDisplayObjectsRef = useRef<Map<string, Container>>(new Map());
+	const paintAurasRef = useRef<() => void>(() => {});
+	const auraPoseRef = useRef("");
 	// Anel da vez: um Graphics no token ativo. Não entra no ticker.
 	const turnRingRef = useRef<Graphics | null>(null);
 	const turnRingTokenRef = useRef<string | null>(null);
 	const turnRingSigRef = useRef("");
 	const sceneRef = useRef(scene);
 	sceneRef.current = scene;
+	paintAurasRef.current = () => {
+		const layer = aurasLayerRef.current;
+		if (!layer) return;
+		const liveTokens = useVTTStore.getState().tokens;
+		const gridSize = sceneRef.current?.gridSize || 70;
+		const sig = auraPoseSignature(
+			liveTokens,
+			tokenDisplayObjectsRef.current,
+			gridSize,
+		);
+		if (sig === auraPoseRef.current) return;
+		auraPoseRef.current = sig;
+		paintTokenAuras(
+			layer,
+			liveTokens,
+			tokenDisplayObjectsRef.current,
+			gridSize,
+		);
+	};
 	const paintTurnRingRef = useRef<() => void>(() => {});
 	paintTurnRingRef.current = () => {
 		const combat = useCombatStore.getState();
@@ -239,7 +304,6 @@ export function VTTCanvas({
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const activeTool = useVTTStore((s) => s.activeTool);
-	const activeLayer = useVTTStore((s) => s.activeLayer);
 	const tokens = useVTTStore((s) => s.tokens);
 	const linkedCharacterIds = tokens
 		.map((token) => token.characterId)
@@ -266,6 +330,13 @@ export function VTTCanvas({
 	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
 	const userColor = useVTTStore((s) => s.userColor);
 	const isGM = useVTTStore((s) => s.isGM);
+	// Position and the remote target stay out of this key so a drag does not
+	// destroy and recreate the sprite on every pointer move.
+	const tokenAppearance = useMemo(() => tokensAppearanceKey(tokens), [tokens]);
+	const tokenVisibility = useMemo(
+		() => visibleTokenIds(tokens, isGM, scene),
+		[tokens, isGM, scene],
+	);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
 	const previewTemplate = useVTTStore((s) => s.previewTemplate);
@@ -386,27 +457,37 @@ export function VTTCanvas({
 			world.position.set(initVp.x, initVp.y);
 			world.scale.set(initVp.scale);
 
-			// 60FPS Direct PixiJS Display Object Interpolation (NO React re-renders)
+			// 60FPS pose. The pointer owns a dragged token. A remote target eases.
+			// Anything else sits on x/y. Rebuilding the sprite here is what made
+			// the token jump back and forth.
 			tickerCallback = () => {
-				const currentTokens = useVTTStore.getState().tokens;
+				const state = useVTTStore.getState();
+				let moved = false;
 
-				for (const t of currentTokens) {
-					if (t.targetX !== undefined && t.targetY !== undefined) {
-						const displayObj = tokenDisplayObjectsRef.current.get(t.id);
-						if (displayObj) {
-							const dx = t.targetX - displayObj.x;
-							const dy = t.targetY - displayObj.y;
-
-							if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
-								displayObj.x += dx * 0.35;
-								displayObj.y += dy * 0.35;
-							} else {
-								displayObj.x = t.targetX;
-								displayObj.y = t.targetY;
-							}
+				for (const t of state.tokens) {
+					const displayObj = tokenDisplayObjectsRef.current.get(t.id);
+					if (!displayObj) continue;
+					const pose = tokenPose(t, state.draggedTokenId);
+					if (pose.mode === "drag") continue;
+					if (pose.mode === "place") {
+						if (displayObj.x !== pose.x || displayObj.y !== pose.y) {
+							displayObj.position.set(pose.x, pose.y);
+							moved = true;
 						}
+						continue;
+					}
+					const dx = pose.x - displayObj.x;
+					const dy = pose.y - displayObj.y;
+					if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
+						displayObj.x += dx * 0.35;
+						displayObj.y += dy * 0.35;
+						moved = true;
+					} else if (displayObj.x !== pose.x || displayObj.y !== pose.y) {
+						displayObj.position.set(pose.x, pose.y);
+						moved = true;
 					}
 				}
+				if (moved) paintAurasRef.current();
 			};
 
 			app.ticker.add(tickerCallback);
@@ -591,6 +672,10 @@ export function VTTCanvas({
 	]);
 
 	// 4. Render Tokens and Auras on the Stage (with exploration visibility & layer isolation)
+	// tokenAppearance e tokenVisibility são a chave de redesenho. x/y e o alvo
+	// remoto ficam de fora: incluí-los destruía o sprite a cada movimento e o
+	// ticker puxava o token de volta para o outro lado.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a chave acima é a dependência; o efeito lê os tokens na hora pelo store.
 	useEffect(() => {
 		if (!rendererReady) return;
 		if (
@@ -603,11 +688,12 @@ export function VTTCanvas({
 
 		const tokensLayer = tokensLayerRef.current;
 		const gmTokensLayer = gmTokensLayerRef.current;
-		const aurasLayer = aurasLayerRef.current;
+		// Latest list. x/y updates do not rerun this effect, so the tokens
+		// closed over from render would be from the last time the drawing changed.
+		const liveTokens = useVTTStore.getState().tokens;
 
 		tokensLayer.removeChildren();
 		gmTokensLayer.removeChildren();
-		aurasLayer.clear();
 		tokenDisplayObjectsRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
@@ -621,14 +707,14 @@ export function VTTCanvas({
 				true;
 
 		// Calculate player tokens vision circles for Exploration Mode (Penumbra LOS check)
-		const playerTokens = tokens.filter(
+		const playerTokens = liveTokens.filter(
 			(t) =>
 				t.layer === "token" &&
 				!t.isHidden &&
 				(t.characterId || t.controlledBy?.length > 0),
 		);
 
-		for (const token of tokens) {
+		for (const token of liveTokens) {
 			// Security filter: GM layer tokens are NEVER added to player view
 			if (token.layer === "gm" && !isGM) continue;
 			if (token.isHidden && !isGM) continue;
@@ -656,19 +742,6 @@ export function VTTCanvas({
 			const isGMLayer = token.layer === "gm";
 			const tokenRadius = (token.sizeCells * gridSize) / 2;
 			const isSelected = selectedTokenIds.includes(token.id);
-
-			// 4.1 Render Auras
-			if (token.auras && token.auras.length > 0) {
-				for (const aura of token.auras) {
-					const auraRadius = aura.radius * gridSize;
-					const colorHex =
-						Number.parseInt(aura.color.replace("#", "0x"), 16) || 0x38bdf8;
-					aurasLayer.circle(token.x, token.y, auraRadius);
-					aurasLayer.fill({ color: colorHex, alpha: aura.opacity ?? 0.25 });
-					aurasLayer.circle(token.x, token.y, auraRadius);
-					aurasLayer.stroke({ width: 1.5, color: colorHex, alpha: 0.6 });
-				}
-			}
 
 			// 4.2 Token Container
 			const tokenContainer = new Container();
@@ -924,19 +997,20 @@ export function VTTCanvas({
 					return;
 				}
 
+				const live = useVTTStore.getState();
 				if (
 					e.button === 0 &&
 					!isSpaceHeldRef.current &&
 					!isAltHeldRef.current &&
-					activeTool === "select"
+					live.activeTool === "select"
 				) {
 					// Strict Layer Isolation:
 					// 1. Map Layer: Tokens cannot be selected/dragged
-					if (activeLayer === "map") return;
+					if (live.activeLayer === "map") return;
 					// 2. GM Layer: Only GM tokens can be selected
-					if (activeLayer === "gm" && !isGMLayer) return;
+					if (live.activeLayer === "gm" && !isGMLayer) return;
 					// 3. Token Layer: GM tokens cannot be selected
-					if (activeLayer === "token" && isGMLayer) return;
+					if (live.activeLayer === "token" && isGMLayer) return;
 
 					e.stopPropagation();
 					tokenPressRef.current = beginTokenPress(
@@ -977,12 +1051,15 @@ export function VTTCanvas({
 						const rect = containerRef.current?.getBoundingClientRect();
 						const offset = { x: 0, y: 0 };
 						if (rect) {
+							const vp = useVTTStore.getState().viewport;
 							const clientX = e.clientX - rect.left;
 							const clientY = e.clientY - rect.top;
-							const worldX = (clientX - viewport.x) / viewport.scale;
-							const worldY = (clientY - viewport.y) / viewport.scale;
-							offset.x = worldX - token.x;
-							offset.y = worldY - token.y;
+							const worldX = (clientX - vp.x) / vp.scale;
+							const worldY = (clientY - vp.y) / vp.scale;
+							// Grab wherever the sprite is on screen, not a stale
+							// store position from the last time it was rebuilt.
+							offset.x = worldX - tokenContainer.position.x;
+							offset.y = worldY - tokenContainer.position.y;
 						}
 						pendingTokenDragRef.current = { id: token.id, offset };
 					}
@@ -996,20 +1073,18 @@ export function VTTCanvas({
 			}
 		}
 		// Containers novos: o anel antigo ficou no container descartado.
+		auraPoseRef.current = "";
+		paintAurasRef.current();
 		paintTurnRingRef.current();
 	}, [
 		rendererReady,
-		tokens,
+		tokenAppearance,
+		tokenVisibility,
 		characterOwners,
 		user?.id,
 		scene,
 		selectedTokenIds,
 		isGM,
-		viewport.x,
-		viewport.y,
-		viewport.scale,
-		activeTool,
-		activeLayer,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		linkedSheetHp,
@@ -1608,13 +1683,19 @@ export function VTTCanvas({
 				return;
 			}
 
-			// Handle Token Dragging with Realtime Broadcast
+			// Handle Token Dragging with Realtime Broadcast.
+			// The sprite moves here. The store follows so the menu stays put,
+			// but the canvas must not rebuild the token for that write.
 			if (draggingTokenIdRef.current && scene) {
 				const rawX = worldPoint.x - tokenDragOffsetRef.current.x;
 				const rawY = worldPoint.y - tokenDragOffsetRef.current.y;
+				const display = tokenDisplayObjectsRef.current.get(
+					draggingTokenIdRef.current,
+				);
+				if (display) display.position.set(rawX, rawY);
 
-				// Local optimistic update
 				updateToken(draggingTokenIdRef.current, { x: rawX, y: rawY });
+				paintAurasRef.current();
 
 				// Realtime drag broadcast
 				if (onBroadcastDrag && now - lastBroadcastTimeRef.current > 30) {
@@ -1801,12 +1882,14 @@ export function VTTCanvas({
 				pendingTokenDragRef.current = null;
 			}
 
-			// Finish Token Dragging with Magnetic Grid Snapping & Persistence
+			// Finish Token Dragging with Magnetic Grid Snapping & Persistence.
+			// Clear the drag flag only after the snapped position is stored, so
+			// a broadcast that arrives in between cannot start interpolating.
 			if (draggingTokenIdRef.current && scene) {
 				const tokenId = draggingTokenIdRef.current;
-				const token = tokens.find((t) => t.id === tokenId);
-				draggingTokenIdRef.current = null;
-				setDraggedTokenId(null);
+				const token = useVTTStore
+					.getState()
+					.tokens.find((t) => t.id === tokenId);
 
 				if (token) {
 					const worldPoint = screenToWorld(e.clientX, e.clientY);
@@ -1821,8 +1904,10 @@ export function VTTCanvas({
 						gridOrigin,
 					);
 
-					// Apply snapped position locally and persist to Supabase
+					const display = tokenDisplayObjectsRef.current.get(tokenId);
+					if (display) display.position.set(snapped.x, snapped.y);
 					updateToken(tokenId, { x: snapped.x, y: snapped.y });
+					paintAurasRef.current();
 					if (onUpdateToken) {
 						void onUpdateToken(tokenId, { x: snapped.x, y: snapped.y });
 					}
@@ -1830,6 +1915,8 @@ export function VTTCanvas({
 						onBroadcastDrag(tokenId, snapped.x, snapped.y);
 					}
 				}
+				draggingTokenIdRef.current = null;
+				setDraggedTokenId(null);
 			}
 
 			if (isDraggingViewportRef.current) {
@@ -1909,7 +1996,6 @@ export function VTTCanvas({
 		setViewport,
 		activeTool,
 		scene,
-		tokens,
 		updateToken,
 		onUpdateToken,
 		onBroadcastDrag,

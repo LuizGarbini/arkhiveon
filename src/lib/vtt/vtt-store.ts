@@ -438,16 +438,40 @@ export const useVTTStore = create<VTTState>((set) => ({
 		),
 	updateToken: (tokenId, updates) =>
 		set((state) => ({
-			tokens: state.tokens.map((t) =>
-				t.id === tokenId ? { ...t, ...updates } : t,
-			),
+			tokens: state.tokens.map((t) => {
+				if (t.id !== tokenId) return t;
+				const next: VTTToken = { ...t, ...updates };
+				// A local drag's x/y is where the token is. An old interpolation
+				// target would pull the sprite back the other way on the next frame.
+				if (
+					state.draggedTokenId === tokenId &&
+					(updates.x !== undefined || updates.y !== undefined) &&
+					updates.targetX === undefined &&
+					updates.targetY === undefined
+				) {
+					delete next.targetX;
+					delete next.targetY;
+				}
+				return next;
+			}),
 		})),
 	setTokenTargetPosition: (tokenId, targetX, targetY) =>
-		set((state) => ({
-			tokens: state.tokens.map((t) =>
-				t.id === tokenId ? { ...t, targetX, targetY } : t,
-			),
-		})),
+		set((state) => {
+			// The pointer owns this token until pointerup. A drag broadcast
+			// (including an echo) must not start a second position.
+			if (state.draggedTokenId === tokenId) return state;
+			const current = state.tokens.find((t) => t.id === tokenId);
+			if (
+				!current ||
+				(current.targetX === targetX && current.targetY === targetY)
+			)
+				return state;
+			return {
+				tokens: state.tokens.map((t) =>
+					t.id === tokenId ? { ...t, targetX, targetY } : t,
+				),
+			};
+		}),
 	removeToken: (tokenId) =>
 		set((state) => ({
 			tokens: state.tokens.filter((t) => t.id !== tokenId),
