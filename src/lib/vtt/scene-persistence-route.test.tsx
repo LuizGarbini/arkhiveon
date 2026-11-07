@@ -22,6 +22,8 @@ const mock = vi.hoisted(() => ({
 	}[],
 	rpc: [] as { args: unknown; resolve: (v: unknown) => void }[],
 	remoteScale: 1,
+	fogBroadcast: vi.fn(),
+	fogPersistence: vi.fn(),
 	holdTokenRead: false,
 	tokenAnswers: [] as ((v: unknown) => void)[],
 }));
@@ -97,6 +99,10 @@ vi.mock("@/lib/supabase", () => ({
 			const filters: Record<string, string> = {};
 			const query = {
 				select: () => query,
+				upsert: (value: unknown) => {
+					if (table === "vtt_fog_states") mock.fogPersistence(value);
+					return Promise.resolve({ data: null, error: null });
+				},
 				order: () => query,
 				eq: (k: string, v: string) => {
 					filters[k] = v;
@@ -134,7 +140,9 @@ vi.mock("@/lib/supabase", () => ({
 				subscribe: () => channel,
 				track: vi.fn(),
 				untrack: vi.fn(),
-				send: vi.fn(),
+				send: (value: { event?: string }) => {
+					if (value.event === "fog_update") mock.fogBroadcast(value);
+				},
 				presenceState: () => ({}),
 			};
 			return channel;
@@ -150,6 +158,8 @@ beforeEach(() => {
 	mock.writes = [];
 	mock.rpc = [];
 	mock.remoteScale = 1;
+	mock.fogBroadcast.mockClear();
+	mock.fogPersistence.mockClear();
 	mock.holdTokenRead = false;
 	mock.tokenAnswers = [];
 	useVTTStore.setState({
@@ -314,4 +324,54 @@ it("GET inicial atrasado não apaga geometria relida após ACK da escala", async
 	);
 	expect(useVTTStore.getState().tokens[0]?.x).toBe(105);
 	expect(mock.rpc).toHaveLength(1);
+});
+
+it("online enable pendente seguido de Revelar Tudo e 42501 produz ZERO clear/broadcast/persistence", async () => {
+	const originalClear = useVTTStore.getState().clearFog;
+	const clear = vi.fn(originalClear);
+	useVTTStore.setState({ clearFog: clear });
+	try {
+		await open();
+		act(() => useVTTStore.getState().setShowFogControls(true));
+		fireEvent.click(screen.getByRole("button", { name: "Névoa Inativa" }));
+		await waitFor(() => expect(mock.writes).toHaveLength(1));
+		expect(useVTTStore.getState().scenes[0].fogEnabled).toBe(true);
+		fireEvent.click(screen.getByRole("button", { name: "Revelar Tudo" }));
+		await ack(0, { code: "42501", message: "negado" });
+		expect({
+			clear: clear.mock.calls.length,
+			broadcast: mock.fogBroadcast.mock.calls.length,
+			persistence: mock.fogPersistence.mock.calls.length,
+		}).toEqual({ clear: 0, broadcast: 0, persistence: 0 });
+	} finally {
+		useVTTStore.setState({ clearFog: originalClear });
+	}
+});
+
+it("online ACK do enable libera Revelar Tudo e cada efeito ocorre uma vez", async () => {
+	const originalClear = useVTTStore.getState().clearFog;
+	const clear = vi.fn(originalClear);
+	useVTTStore.setState({ clearFog: clear });
+	try {
+		await open();
+		act(() => useVTTStore.getState().setShowFogControls(true));
+		fireEvent.click(screen.getByRole("button", { name: "Névoa Inativa" }));
+		await waitFor(() => expect(mock.writes).toHaveLength(1));
+		expect(
+			screen
+				.getByRole("button", { name: "Revelar Tudo" })
+				.hasAttribute("disabled"),
+		).toBe(true);
+		await ack(0);
+		const reveal = screen.getByRole("button", { name: "Revelar Tudo" });
+		expect(reveal.hasAttribute("disabled")).toBe(false);
+		fireEvent.click(reveal);
+		expect({
+			clear: clear.mock.calls.length,
+			broadcast: mock.fogBroadcast.mock.calls.length,
+			persistence: mock.fogPersistence.mock.calls.length,
+		}).toEqual({ clear: 1, broadcast: 1, persistence: 1 });
+	} finally {
+		useVTTStore.setState({ clearFog: originalClear });
+	}
 });

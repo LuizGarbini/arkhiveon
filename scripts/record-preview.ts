@@ -7,7 +7,7 @@ async function main() {
 		preview: { host: "127.0.0.1", port: 4173, strictPort: true },
 	});
 	try {
-  const scripts=process.env.VTT_PREVIEW_SCENARIO==="p2b"?["scripts/test-vtt-p2b.cjs"]:["scripts/test-vtt.cjs","scripts/test-vtt-review.cjs"];
+  const scripts=["p2b","p2b-retry"].includes(process.env.VTT_PREVIEW_SCENARIO??"")?["scripts/test-vtt-p2b.cjs"]:["scripts/test-vtt.cjs","scripts/test-vtt-review.cjs"];
   for (const script of scripts) {
 			await new Promise<void>((resolve, reject) => {
 				const child = spawn(process.execPath, [script], {
@@ -28,7 +28,7 @@ async function main() {
 			});
 		}
 		console.log(
-   process.env.VTT_PREVIEW_SCENARIO==="p2b"?"Preview P2b validado: docs/previews/vtt-82-p2b":"Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
+   ["p2b","p2b-retry"].includes(process.env.VTT_PREVIEW_SCENARIO??"")?"Preview P2b validado: docs/previews/vtt-82-p2b":"Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
 		);
 	} finally {
 		await new Promise<void>((resolve, reject) =>

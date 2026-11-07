@@ -1,19 +1,20 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path");
 const {chromium}=require("playwright");
-const output=path.resolve("docs/previews/vtt-82-p2b"),campaignId="demo-tabletop";
+const round2=process.env.VTT_PREVIEW_SCENARIO==="p2b-retry";
+const output=path.resolve("docs/previews/vtt-82-p2b"+(round2?"/rodada2":"")),campaignId="demo-tabletop";
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
 function scene(id){return {id,campaign_id:campaignId,name:id==="scene-a"?"Cena A":"Cena B",map_image_url:null,grid_type:"square",grid_size:70,grid_color:"#ffffff",grid_opacity:.2,grid_scale_distance:1.5,grid_scale_unit:"m",grid_offset_x:0,grid_offset_y:0,map_scale:1,width:1000,height:1000,fog_enabled:false,fog_exploration:false,is_active:id==="scene-a",order_index:id==="scene-a"?0:1,created_at:"2026-11-06T23:00:00Z",updated_at:"2026-11-06T23:00:00Z"};}
 async function geometry(button){return button.evaluate(button=>{
  const rect=button.getBoundingClientRect(),nodes=[];
  for(let node=button;node;node=node.parentElement){const r=node.getBoundingClientRect(),s=getComputedStyle(node);nodes.push({tag:node.tagName,rect:r.toJSON(),clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,clientHeight:node.clientHeight,scrollHeight:node.scrollHeight,scrollTop:node.scrollTop,overflowX:s.overflowX,overflowY:s.overflowY});}
  const clickable=[[.15,.15],[.85,.15],[.5,.5],[.15,.85],[.85,.85]].every(([x,y])=>button.contains(document.elementFromPoint(rect.left+rect.width*x,rect.top+rect.height*y)));
- return {rect:rect.toJSON(),nodes,clickable,documentOverflow:document.documentElement.scrollWidth>innerWidth};
+ return {rect:rect.toJSON(),nodes,clickable,disabled:button.matches(":disabled"),ariaBusy:button.getAttribute("aria-busy"),spinnerCount:button.querySelectorAll(".animate-spin").length,documentOverflow:document.documentElement.scrollWidth>innerWidth};
 });}
 async function main(){
  fs.mkdirSync(output,{recursive:true});const browser=await chromium.launch({headless:true});const proof=[];
  try{for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
-  const label=`${viewport.width}x${viewport.height}`,first=deferred(),retry=deferred(),retryReceived=deferred(),patches=[],rpcs=[],blocked=[];
+  const label=`${viewport.width}x${viewport.height}`,first=deferred(),retry=deferred(),retryReceived=deferred(),fogRetryReceived=deferred(),fogAck=deferred(),patches=[],rpcs=[],blocked=[];
   const rows=[scene("scene-a"),scene("scene-b")];
   const context=await browser.newContext({viewport,recordVideo:{dir:path.join(output,`raw-${label}`),size:viewport}});
   await context.routeWebSocket("**/realtime/v1/**",r=>r.close());
@@ -26,6 +27,7 @@ async function main(){
       const patch=req.postDataJSON();patches.push({patch,id:url.searchParams.get("id"),campaign:url.searchParams.get("campaign_id")});
       if(patches.length===1){await first.promise;status=403;data={code:"42501",message:"Preview: ajuste recusado"};}
       else if(patches.length===2){retryReceived.resolve();await retry.promise;Object.assign(rows[0],patch);data={id:"scene-a",updated_at:"2026-11-06T23:02:00Z"};}
+      else if(round2&&patches.length===4){fogRetryReceived.resolve();await fogAck.promise;Object.assign(rows[0],patch);data={id:"scene-a",updated_at:"2026-11-06T23:03:00Z"};}
       else{status=403;data={code:"42501",message:"Preview: névoa recusada"};}
      }else{
       const single=(req.headers().accept||"").includes("object"),id=url.searchParams.get("id");
@@ -61,7 +63,7 @@ async function main(){
    const retryButton=panel.getByRole("button",{name:"Tentar novamente",exact:true});await retryButton.waitFor();
    await retryButton.scrollIntoViewIfNeeded();await page.waitForTimeout(150);
    const gridError=await geometry(retryButton);assert.ok(gridError.clickable&&gridError.rect.height>=44,"grid retry is fully hit-testable and 44px");assert.equal(gridError.documentOverflow,false);
-   await page.screenshot({path:path.join(output,`grid-error-${label}.png`)});
+   await page.screenshot({path:path.join(output,`grid-error-${label}.png`),animations:"disabled"});
    assert.equal(await size.inputValue(),"72");
    await page.evaluate(()=>window.__vtt_store__.getState().setActiveSceneId("scene-b"));
    await page.waitForFunction(()=>document.querySelector('input[type="number"]')?.value==="70");
@@ -69,13 +71,26 @@ async function main(){
    // Let the existing 150ms keyed-editor entry animation finish before recording B.
    await page.waitForTimeout(200);
    const gridOtherScene=await geometry(size);assert.ok(gridOtherScene.clickable,"B's 70px editor must actually be visible, not just mounted");
-   await page.screenshot({path:path.join(output,`grid-other-scene-${label}.png`),animations:"disabled"});
+   if(!round2)await page.screenshot({path:path.join(output,`grid-other-scene-${label}.png`),animations:"disabled"});
    await page.evaluate(()=>window.__vtt_store__.getState().setActiveSceneId("scene-a"));
    await retryButton.waitFor();assert.equal(await size.inputValue(),"72");
    const retryReq=page.waitForRequest(r=>r.method()==="PATCH"&&new URL(r.url()).pathname.endsWith("/vtt_scenes"));
    await retryButton.click();await retryReq;await retryReceived.promise;assert.equal(patches.length,2);
    assert.deepEqual(patches[1].patch,{grid_size:72,grid_color:"#000000"});
+   let gridLoading=null,gridRecovered=null,fogLoading=null,fogRecovered=null;
+   if(round2){
+    gridLoading=await geometry(retryButton);assert.equal(gridLoading.disabled,true);assert.equal(gridLoading.ariaBusy,"true");assert.equal(gridLoading.spinnerCount,1);
+    await page.mouse.dblclick(gridLoading.rect.x+gridLoading.rect.width/2,gridLoading.rect.y+gridLoading.rect.height/2);
+    assert.equal(patches.length,2,"disabled double click must not dispatch another grid retry");
+    await page.waitForTimeout(700); // Controlled ACK stays held so the busy state is visible in video.
+    await page.screenshot({path:path.join(output,`grid-loading-${label}.png`),animations:"disabled"});
+   }
    retry.resolve();await retryButton.waitFor({state:"hidden"});
+   if(round2){
+    const enabled=panel.getByRole("button",{name:"Aumentar célula",exact:true});assert.equal(await enabled.isEnabled(),true);assert.equal(await size.inputValue(),"72");
+    gridRecovered=await geometry(enabled);assert.equal(await panel.getByRole("alert").count(),0);
+    await page.screenshot({path:path.join(output,`grid-recovered-${label}.png`),animations:"disabled"});
+   }
    await panel.getByRole("button",{name:"Aumentar escala do mapa",exact:true}).click();
    const reconcile=panel.getByRole("button",{name:"Reconciliar",exact:true});await reconcile.waitFor();
    assert.equal(rpcs.length,1);assert.deepEqual(rpcs[0],{p_scene_id:"scene-a",p_factor:1.05});
@@ -86,10 +101,21 @@ async function main(){
    await page.getByRole("button",{name:"Névoa Inativa",exact:true}).click();
    const fogRetry=page.getByRole("button",{name:"Tentar novamente",exact:true});await fogRetry.waitFor();await fogRetry.scrollIntoViewIfNeeded();
    const fogError=await geometry(fogRetry);assert.ok(fogError.clickable&&fogError.rect.height>=44,"fog retry is fully hit-testable and 44px");assert.equal(fogError.documentOverflow,false);
-   await page.screenshot({path:path.join(output,`fog-error-${label}.png`)});
-   proof.push({viewport,patches,rpcs,gridError,gridOtherScene,fogError,blockedExternalRequests:blocked,assertions:{latestIntent72:true,sceneIsolation:true,retryLatestDelta:true,reconcileReadNoRepeat:true,fogRefusal:true}});
+   await page.screenshot({path:path.join(output,`fog-error-${label}.png`),animations:"disabled"});
+   if(round2){
+    await fogRetry.click();await fogRetryReceived.promise;
+    fogLoading=await geometry(fogRetry);assert.equal(fogLoading.disabled,true);assert.equal(fogLoading.ariaBusy,"true");assert.equal(fogLoading.spinnerCount,1);
+    await page.mouse.dblclick(fogLoading.rect.x+fogLoading.rect.width/2,fogLoading.rect.y+fogLoading.rect.height/2);assert.equal(patches.length,4,"disabled double click must not dispatch another fog retry");
+    assert.deepEqual(patches[3].patch,{fog_enabled:true});
+    await page.waitForTimeout(700);
+    await page.screenshot({path:path.join(output,`fog-loading-${label}.png`),animations:"disabled"});
+    fogAck.resolve();await fogRetry.waitFor({state:"hidden"});await page.getByText("Ajustes salvos.",{exact:true}).waitFor();
+    const toggle=page.getByRole("button",{name:"Névoa Ativa",exact:true});assert.equal(await toggle.isEnabled(),true);fogRecovered=await geometry(toggle);assert.equal(await page.getByRole("alert").count(),0);
+    await page.screenshot({path:path.join(output,`fog-recovered-${label}.png`),animations:"disabled"});await page.waitForTimeout(600);
+   }
+   proof.push({viewport,patches,rpcs,gridError,gridOtherScene,gridLoading,gridRecovered,fogError,fogLoading,fogRecovered,blockedExternalRequests:blocked,assertions:{latestIntent72:true,sceneIsolation:true,retryLatestDelta:true,reconcileReadNoRepeat:true,fogRefusal:true,gridRetrySingleFlight:round2,fogRetrySingleFlight:round2,fogRecovered:round2}});
    console.log(label,JSON.stringify({patches,rpcs,gridRetry:gridError.rect,fogRetry:fogError.rect,allAssertions:true}));
-  }finally{first.resolve();retry.resolve();const video=page.video();await context.close();await video.saveAs(path.join(output,`p2b-${label}.webm`));}
+  }finally{first.resolve();retry.resolve();fogAck.resolve();const video=page.video();await context.close();await video.saveAs(path.join(output,`p2b-${label}.webm`));}
  }}finally{fs.writeFileSync(path.join(output,"measures.json"),JSON.stringify(proof,null,2));await browser.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
