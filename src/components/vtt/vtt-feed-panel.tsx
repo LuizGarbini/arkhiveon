@@ -146,7 +146,7 @@ function FeedComposer({
 	};
 
 	return (
-		<div className="flex flex-col gap-3 border-t border-border/70 pt-3">
+		<div className="flex shrink-0 flex-col gap-3 border-t border-border/70 pt-3">
 			{rollPending && (
 				<p
 					aria-live="polite"
@@ -440,7 +440,6 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 	const sessionId = useRollStore((state) => state.sessionId);
 	const sessionStartedAt = useRollStore((state) => state.sessionStartedAt);
 	const sessionNumber = useRollStore((state) => state.sessionNumber);
-	const [expanded, setExpanded] = useState<string | null>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const names = useMemo(() => {
 		const map = new Map<string, string>();
@@ -523,7 +522,7 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
 			{sessionId && sessionNumber !== null && (
-				<div className="text-sm">
+				<div className="shrink-0 text-sm">
 					<p className="text-foreground">{sessionStartedText(sessionNumber)}</p>
 					{sessionStartedAt && (
 						<p className="text-muted-foreground tabular-nums">
@@ -532,100 +531,100 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 					)}
 				</div>
 			)}
-			{rows.length === 0 && !sessionId && (
-				<p className="py-6 text-center text-sm text-muted-foreground">
-					{FEED_EMPTY_TEXT}
-				</p>
-			)}
-			{rows.length > 0 && (
-				<ul
-					aria-label="Rolagens e mensagens"
-					className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
-				>
-					{rows.map((entry) => {
-						const view = feedLineView(entry, results[entry.id], isGM);
-						const author =
-							(entry.characterId && names.get(entry.characterId)) ||
-							(userId && entry.authorId === userId ? "Você" : "Jogador");
-						const time = formatFeedTime(entry.createdAt);
-						if (view.kind === "secret") {
-							return (
-								<li
-									key={entry.id}
-									className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-2 py-1"
-								>
-									<span className="text-sm text-muted-foreground">
-										{SECRET_ROLL_TEXT}
-									</span>
-									<span className="text-sm text-muted-foreground tabular-nums">
-										{time}
-									</span>
-								</li>
-							);
-						}
-						if (view.kind === "chat") {
+			<div
+				role="log"
+				aria-label="Rolagens e mensagens"
+				className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+			>
+				{rows.length === 0 && !sessionId && (
+					<p className="py-6 text-center text-sm text-muted-foreground">
+						{FEED_EMPTY_TEXT}
+					</p>
+				)}
+				{rows.length > 0 && (
+					<ul className="flex flex-col gap-1">
+						{rows.map((entry) => {
+							const view = feedLineView(entry, results[entry.id], isGM);
+							const author =
+								(entry.characterId && names.get(entry.characterId)) ||
+								(userId && entry.authorId === userId ? "Você" : "Jogador");
+							const time = formatFeedTime(entry.createdAt);
+							if (view.kind === "secret") {
+								return (
+									<li
+										key={entry.id}
+										className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-2 py-1"
+									>
+										<span className="text-sm text-muted-foreground">
+											{SECRET_ROLL_TEXT}
+										</span>
+										<span className="text-sm text-muted-foreground tabular-nums">
+											{time}
+										</span>
+									</li>
+								);
+							}
+							if (view.kind === "chat") {
+								return (
+									<li key={entry.id} className="rounded-lg px-2 py-1">
+										<div className="flex items-baseline justify-between gap-2">
+											<span className="truncate text-sm font-semibold text-foreground">
+												{author}
+											</span>
+											<span className="text-sm text-muted-foreground tabular-nums">
+												{time}
+											</span>
+										</div>
+										<p className="text-sm text-foreground">{view.message}</p>
+									</li>
+								);
+							}
+							const dice =
+								view.rolls && view.rolls.length > 0
+									? `${view.rolls.join(" + ")}${
+											view.modifier
+												? ` ${view.modifier > 0 ? "+" : ""}${view.modifier}`
+												: ""
+										}`
+									: null;
 							return (
 								<li key={entry.id} className="rounded-lg px-2 py-1">
 									<div className="flex items-baseline justify-between gap-2">
-										<span className="truncate text-sm font-semibold text-foreground">
-											{author}
+										<span className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-foreground">
+											{view.secret && (
+												<Lock
+													className="size-3.5 shrink-0"
+													aria-hidden="true"
+												/>
+											)}
+											{view.secret ? "Secreta" : author}
 										</span>
 										<span className="text-sm text-muted-foreground tabular-nums">
 											{time}
 										</span>
 									</div>
-									<p className="text-sm text-foreground">{view.message}</p>
+									<div className="flex items-baseline justify-between gap-2">
+										<span className="truncate text-sm text-muted-foreground">
+											{view.formula}
+										</span>
+										{view.total !== null && (
+											<span className="text-lg font-semibold text-foreground tabular-nums">
+												{view.total}
+											</span>
+										)}
+									</div>
+									{dice && (
+										<p className="text-sm text-muted-foreground tabular-nums">
+											{dice}
+										</p>
+									)}
 								</li>
 							);
-						}
-						const open = expanded === entry.id;
-						return (
-							<li key={entry.id} className="rounded-lg px-2 py-1">
-								<div className="flex items-baseline justify-between gap-2">
-									<span className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-foreground">
-										{view.secret && (
-											<Lock className="size-3.5 shrink-0" aria-hidden="true" />
-										)}
-										{view.secret ? "Secreta" : author}
-									</span>
-									<span className="text-sm text-muted-foreground tabular-nums">
-										{time}
-									</span>
-								</div>
-								<div className="flex items-baseline justify-between gap-2">
-									<span className="truncate text-sm text-muted-foreground">
-										{view.formula}
-									</span>
-									{view.total !== null && (
-										<span className="text-lg font-semibold text-foreground tabular-nums">
-											{view.total}
-										</span>
-									)}
-								</div>
-								{view.rolls && view.rolls.length > 0 && (
-									<button
-										type="button"
-										className="h-11 min-h-11 text-sm text-muted-foreground select-none focus-visible:ring-2 focus-visible:ring-primary"
-										aria-expanded={open}
-										onClick={() => setExpanded(open ? null : entry.id)}
-									>
-										{open ? "Ocultar dados" : "Mostrar dados"}
-									</button>
-								)}
-								{open && view.rolls && (
-									<p className="text-sm text-muted-foreground tabular-nums">
-										{view.rolls.join(" + ")}
-										{view.modifier
-											? ` ${view.modifier > 0 ? "+" : ""}${view.modifier}`
-											: ""}
-									</p>
-								)}
-							</li>
-						);
-					})}
-				</ul>
-			)}
-			<div ref={bottomRef} />
+						})}
+					</ul>
+				)}
+				<div ref={bottomRef} />
+			</div>
 			<FeedComposer isGM={isGM} campaignId={campaignId} sceneId={sceneId} />
 		</div>
 	);
@@ -690,7 +689,10 @@ export function VTTFeedPanel() {
 				title="Rolagens e chat"
 				aria-label="Rolagens e chat"
 			>
-				<div data-testid="feed-panel" className="flex min-h-0 flex-col gap-3">
+				<div
+					data-testid="feed-panel"
+					className="flex min-h-0 flex-1 flex-col gap-3"
+				>
 					{isGM && status === "ready" && campaignId && (
 						<div className="flex justify-end">
 							<SessionControl
@@ -710,7 +712,7 @@ export function VTTFeedPanel() {
 		<aside
 			aria-label="Rolagens e chat"
 			data-testid="feed-panel"
-			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[calc(100dvh-14rem)] w-80 flex-col gap-3 overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
+			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[calc(100dvh-14rem)] min-h-0 w-80 flex-col gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
 		>
 			{header}
 			{body}

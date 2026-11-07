@@ -184,15 +184,16 @@ afterEach(() => {
 });
 
 describe("feed da mesa", () => {
-	it("o painel usa a altura disponível e permite scroll sem recortar o botão Rolar", async () => {
+	it("o chat rola o histórico e o botão Rolar continua visível", async () => {
 		render(<VTTFeedPanel />);
 		const roll = await screen.findByRole("button", {
 			name: /^Rolar$/,
 		});
 		const panel = screen.getByTestId("feed-panel");
-		expect(panel.classList.contains("overflow-y-auto")).toBe(true);
+		const history = screen.getByRole("log", { name: "Rolagens e mensagens" });
+		expect(panel.classList.contains("overflow-hidden")).toBe(true);
 		expect(panel.classList.contains("max-h-[calc(100dvh-14rem)]")).toBe(true);
-		expect(panel.classList.contains("overflow-hidden")).toBe(false);
+		expect(history.classList.contains("overflow-y-auto")).toBe(true);
 		expect(roll.classList.contains("min-h-[44px]")).toBe(true);
 	});
 
