@@ -354,4 +354,18 @@ describe("P2a — contrato puro", () => {
 		});
 		expect(queue.getState().sessionWarning).toBe("signed-out");
 	});
+	it("trava grid/fog na cena da escala sem alterar outras cenas", async () => {
+		const { adapter } = setup();
+		const gate = { isScaleLocked: (id: string) => id === scene.id };
+		adapter.setRemote(scene);
+		adapter.setRemote({ ...scene, id: "scene-b" });
+		adapter.setScaleGate(gate);
+		expect(adapter.getSceneSnapshot(scene.id).scaleLocked).toBe(true);
+		await expect(adapter.update(scene.id, { fogEnabled: false })).resolves.toBe(
+			false,
+		);
+		await expect(adapter.update("scene-b", { gridSize: 32 })).resolves.toBe(
+			true,
+		);
+	});
 });

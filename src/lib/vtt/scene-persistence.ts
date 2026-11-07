@@ -9,6 +9,9 @@ import type { VTTScene, VTTSceneSettingsPatch } from "./types";
 
 export type ScenePatch = VTTSceneSettingsPatch &
 	Partial<Pick<VTTScene, "fogEnabled" | "fogExploration">>;
+export interface SceneScaleGate {
+	isScaleLocked(sceneId: string): boolean;
+}
 export interface SceneSnapshot {
 	scope: EntityScope;
 	base: VTTScene | null;
@@ -16,6 +19,8 @@ export interface SceneSnapshot {
 	pendingPatch: Readonly<ScenePatch>;
 	entity: EntitySnapshot;
 	error?: EntitySnapshot["error"];
+	/** Blocked grid/fog writes; the scene's other fields remain independent. */
+	scaleLocked: boolean;
 }
 export interface ScenePersistence {
 	/** Failed receipt returns false; superseded follows P1 semantics, not a saved badge. */
@@ -27,6 +32,7 @@ export interface ScenePersistence {
 	subscribe(listener: () => void): () => void;
 	/** P2b and P4 share this P1 instance; no second queue is created. */
 	queue: PersistenceQueue;
+	setScaleGate(gate: SceneScaleGate): void;
 }
 export interface ScenePersistenceOptions {
 	/** Session id is created and owned by the injected P1 instance. */
@@ -90,6 +96,7 @@ export function createScenePersistence(
 	const records = new Map<string, SceneRecord>();
 	const listeners = new Set<() => void>();
 	const emptySnapshots = new Map<string, SceneSnapshot>();
+	let scaleGate: SceneScaleGate | undefined;
 	function publish(sceneId: string): void {
 		const record = records.get(sceneId);
 		const entity = queue.inspect(scenePersistenceKey(sceneId));
@@ -109,6 +116,7 @@ export function createScenePersistence(
 			pendingPatch,
 			entity,
 			error: entity.error,
+			scaleLocked: scaleGate?.isScaleLocked(sceneId) ?? false,
 		};
 		for (const listener of listeners) listener();
 	}
@@ -130,6 +138,11 @@ export function createScenePersistence(
 	const queue = options.queueFactory(writer);
 	return {
 		queue,
+		setScaleGate(gate) {
+			scaleGate = gate;
+			emptySnapshots.clear();
+			for (const sceneId of records.keys()) publish(sceneId);
+		},
 		update(sceneId, patch) {
 			const record = records.get(sceneId);
 			const key = scenePersistenceKey(sceneId);
@@ -139,6 +152,7 @@ export function createScenePersistence(
 				Object.keys(patch).length === 0 ||
 				!entity ||
 				entity.error ||
+				scaleGate?.isScaleLocked(sceneId) ||
 				queue.getState().sessionWarning ||
 				entity.status === "recovering" ||
 				entity.status === "conflict"
@@ -225,6 +239,7 @@ export function createScenePersistence(
 						status: "synced",
 						limitOverflow: false,
 					},
+					scaleLocked: scaleGate?.isScaleLocked(sceneId) ?? false,
 				};
 				emptySnapshots.set(sceneId, snapshot);
 				return snapshot;
