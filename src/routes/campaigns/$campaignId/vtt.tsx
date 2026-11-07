@@ -33,11 +33,7 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
-import {
-	clampMapScaleForScene,
-	mapScaleFactor,
-	scaleSceneEntities,
-} from "@/lib/vtt/map-scale";
+
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
@@ -51,11 +47,13 @@ import {
 	newSceneId,
 	singleFlight,
 } from "@/lib/vtt/scene-create";
+import { scenePatchFromDb, scenePatchToDb } from "@/lib/vtt/scene-persistence";
 import {
-	previousSceneSettings,
-	sceneSaveSucceeded,
-	sceneSettingsPatchToDb,
-} from "@/lib/vtt/scene-settings";
+	createSceneWriter,
+	type SceneSaveClient,
+} from "@/lib/vtt/scene-persistence-writer";
+import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
+import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import type {
 	VTTAura,
@@ -86,7 +84,8 @@ export const Route = createFileRoute("/campaigns/$campaignId/vtt")({
 
 function VTTPage() {
 	const { campaignId } = useParams({ from: "/campaigns/$campaignId/vtt" });
-	return <VTTSession key={campaignId} />;
+	const { user } = useAuth();
+	return <VTTSession key={`${campaignId}:${user?.id ?? "signed-out"}`} />;
 }
 function VTTSession() {
 	const { campaignId } = useParams({ from: "/campaigns/$campaignId/vtt" });
@@ -123,6 +122,68 @@ function VTTSession() {
 	const isGM = useVTTStore((s) => s.isGM);
 	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
+	const [sceneSession] = useState(() =>
+		createSceneSession({
+			campaignId,
+			userId: user?.id ?? "signed-out",
+			sessionId: crypto.randomUUID(),
+			onReadError: () =>
+				setSceneDataError(
+					"Não foi possível reler a geometria após a escala. Recarregue a cena para conferir.",
+				),
+			writeScene: (write) =>
+				createSceneWriter(getSupabase() as unknown as SceneSaveClient | null)(
+					write,
+				),
+			scaleScene: async (id, factor, { signal }) => {
+				const client = getSupabase();
+				if (!client)
+					return { kind: "unknown", error: new Error("Sem conexão") };
+				const { error } = await client
+					.rpc("scale_scene_geometry", { p_scene_id: id, p_factor: factor })
+					.abortSignal(signal);
+				if (!error) return { kind: "confirmed" };
+				return {
+					kind: ["42501", "P0001", "23514", "22023"].includes(error.code)
+						? "rejected"
+						: "unknown",
+					error,
+				};
+			},
+			readGeometry: async (id) => {
+				const client = getSupabase();
+				if (!client) return null;
+				const scene = await client
+					.from("vtt_scenes")
+					.select("*")
+					.eq("campaign_id", campaignId)
+					.eq("id", id)
+					.maybeSingle();
+				if (scene.error || !scene.data) return null;
+				const [tokens, walls] = await Promise.all([
+					client.from("vtt_tokens").select("*").eq("scene_id", id),
+					client
+						.from("vtt_walls")
+						.select("id, scene_id, x1, y1, x2, y2")
+						.eq("scene_id", id),
+				]);
+				if (tokens.error || walls.error || !tokens.data || !walls.data)
+					return null;
+				return {
+					scene: mapSceneRow(scene.data),
+					tokens: tokens.data.map(mapTokenRow),
+					walls: walls.data.map((r) => ({
+						id: r.id,
+						sceneId: r.scene_id,
+						x1: Number(r.x1),
+						y1: Number(r.y1),
+						x2: Number(r.x2),
+						y2: Number(r.y2),
+					})),
+				};
+			},
+		}),
+	);
 	const [mutationError, setMutationError] = useState<string | null>(null);
 	const [sceneDataError, setSceneDataError] = useState<string | null>(null);
 	const [characterOwners, setCharacterOwners] = useState<VTTCharacterOwner[]>(
@@ -132,12 +193,13 @@ function VTTSession() {
 	const [ownershipLoading, setOwnershipLoading] = useState(false);
 	const ownershipRequestRef = useRef(0);
 	const sessionGenerationRef = useRef(0);
-	useEffect(
-		() => () => {
+	useEffect(() => {
+		const detach = sceneSession.mount();
+		return () => {
 			sessionGenerationRef.current += 1;
-		},
-		[],
-	);
+			detach();
+		};
+	}, [sceneSession]);
 	const sceneRequestRef = useRef(0);
 	const sceneCreateFlightRef = useRef(singleFlight<void>());
 	const scenePublishFlightRef = useRef(singleFlight<void>());
@@ -236,6 +298,7 @@ function VTTSession() {
 	// 2. Fetch scenes for this campaign from Supabase
 	const fetchScenes = useCallback(async () => {
 		const requestId = ++sceneRequestRef.current;
+		const readGeneration = sceneSession.getReadGeneration();
 		const client = getSupabase();
 		setIsLoading(true);
 		setLoadError(null);
@@ -255,32 +318,14 @@ function VTTSession() {
 
 			if (error) throw error;
 
-			const mapped: VTTScene[] = (data || []).map((row) => ({
-				id: row.id,
-				campaignId: row.campaign_id,
-				name: row.name,
-				mapImageUrl: row.map_image_url,
-				gridType: row.grid_type as VTTGridType,
-				gridSize: row.grid_size,
-				gridColor: row.grid_color,
-				gridOpacity: row.grid_opacity,
-				gridScaleDistance: row.grid_scale_distance,
-				gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
-				gridOffsetX: row.grid_offset_x ?? 0,
-				gridOffsetY: row.grid_offset_y ?? 0,
-				mapScale: row.map_scale ?? 1,
-				width: row.width,
-				height: row.height,
-				fogEnabled: row.fog_enabled,
-				fogExploration: row.fog_exploration,
-				isActive: row.is_active,
-				orderIndex: row.order_index,
-				createdAt: row.created_at,
-				updatedAt: row.updated_at,
-			}));
+			const mapped = (data || []).map(mapSceneRow);
 
-			if (requestId !== sceneRequestRef.current) return;
-			setScenes(mapped);
+			if (
+				requestId !== sceneRequestRef.current ||
+				!sceneSession.isReadCurrent(readGeneration)
+			)
+				return;
+			setScenes(mapped.map(sceneSession.acceptRemote));
 
 			// Automatically select active scene or first scene
 			const active = mapped.find((s) => s.isActive);
@@ -309,6 +354,7 @@ function VTTSession() {
 		user?.id,
 		setScenes,
 		setActiveSceneId,
+		sceneSession,
 	]);
 
 	useEffect(() => {
@@ -324,6 +370,7 @@ function VTTSession() {
 	const fetchTokens = useCallback(
 		async (sceneId: string) => {
 			const requestId = ++tokenRequestRef.current;
+			const readGeneration = sceneSession.getReadGeneration(sceneId);
 			setSceneDataError(null);
 			const client = getSupabase();
 			if (!client || !sceneId) return;
@@ -337,39 +384,18 @@ function VTTSession() {
 
 				if (error) throw error;
 
-				const mappedTokens: VTTToken[] = (data || []).map((row) => ({
-					id: row.id,
-					sceneId: row.scene_id,
-					characterId: row.character_id,
-					npcId: row.npc_id,
-					name: row.name,
-					avatarUrl: row.avatar_url,
-					layer: row.layer as VTTLayer,
-					x: Number(row.x),
-					y: Number(row.y),
-					sizeCells: Number(row.size_cells),
-					rotation: Number(row.rotation || 0),
-					hpCurrent: row.hp_current,
-					hpMax: row.hp_max,
-					elevation: Number(row.elevation || 0),
-					conditions: (row.conditions as unknown as string[]) || [],
-					auras: (row.auras as unknown as VTTAura[]) || [],
-					visionRange: Number(row.vision_range || 0),
-					isLocked: row.is_locked,
-					isHidden: row.is_hidden,
-					controlledBy: (row.controlled_by as unknown as string[]) || [],
-					createdAt: row.created_at,
-					updatedAt: row.updated_at,
-				}));
+				const mappedTokens = (data || []).map(mapTokenRow);
 
 				if (
 					requestId === tokenRequestRef.current &&
+					sceneSession.isReadCurrent(readGeneration, sceneId) &&
 					useVTTStore.getState().activeSceneId === sceneId
 				)
 					setTokens(mappedTokens);
 			} catch (err) {
 				if (
 					requestId === tokenRequestRef.current &&
+					sceneSession.isReadCurrent(readGeneration, sceneId) &&
 					useVTTStore.getState().activeSceneId === sceneId
 				)
 					setSceneDataError(
@@ -378,7 +404,7 @@ function VTTSession() {
 				console.error("Erro ao carregar tokens da cena:", err);
 			}
 		},
-		[setTokens],
+		[setTokens, sceneSession],
 	);
 
 	useEffect(() => {
@@ -393,8 +419,13 @@ function VTTSession() {
 	// 3b. Paredes da cena (Fatia 1): só o mestre carrega; o jogador não recebe
 	// nada (RLS da 0046 também nega). Efeito externo: busca no Supabase.
 	useEffect(() => {
-		if (activeSceneId && isGM) void loadWalls(activeSceneId);
-	}, [activeSceneId, isGM]);
+		if (activeSceneId && isGM) {
+			const revision = sceneSession.getReadGeneration(activeSceneId);
+			void loadWalls(activeSceneId, () =>
+				sceneSession.isReadCurrent(revision, activeSceneId),
+			);
+		}
+	}, [activeSceneId, isGM, sceneSession]);
 
 	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
@@ -417,51 +448,55 @@ function VTTSession() {
 					if (payload.eventType === "INSERT") {
 						const row =
 							payload.new as Database["public"]["Tables"]["vtt_scenes"]["Row"];
-						addScene({
-							id: row.id,
-							campaignId: row.campaign_id,
-							name: row.name,
-							mapImageUrl: row.map_image_url,
-							gridType: row.grid_type as VTTGridType,
-							gridSize: row.grid_size,
-							gridColor: row.grid_color,
-							gridOpacity: row.grid_opacity,
-							gridScaleDistance: row.grid_scale_distance,
-							gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
-							gridOffsetX: row.grid_offset_x ?? 0,
-							gridOffsetY: row.grid_offset_y ?? 0,
-							mapScale: row.map_scale ?? 1,
-							width: row.width,
-							height: row.height,
-							fogEnabled: row.fog_enabled,
-							fogExploration: row.fog_exploration,
-							isActive: row.is_active,
-							orderIndex: row.order_index,
-						});
+						addScene(
+							sceneSession.acceptRemote({
+								id: row.id,
+								campaignId: row.campaign_id,
+								name: row.name,
+								mapImageUrl: row.map_image_url,
+								gridType: row.grid_type as VTTGridType,
+								gridSize: row.grid_size,
+								gridColor: row.grid_color,
+								gridOpacity: row.grid_opacity,
+								gridScaleDistance: row.grid_scale_distance,
+								gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
+								gridOffsetX: row.grid_offset_x ?? 0,
+								gridOffsetY: row.grid_offset_y ?? 0,
+								mapScale: row.map_scale ?? 1,
+								width: row.width,
+								height: row.height,
+								fogEnabled: row.fog_enabled,
+								fogExploration: row.fog_exploration,
+								isActive: row.is_active,
+								orderIndex: row.order_index,
+							}),
+						);
 					} else if (payload.eventType === "UPDATE") {
 						const row =
 							payload.new as Database["public"]["Tables"]["vtt_scenes"]["Row"];
-						addScene({
-							id: row.id,
-							campaignId: row.campaign_id,
-							orderIndex: row.order_index,
-							name: row.name,
-							mapImageUrl: row.map_image_url,
-							gridType: row.grid_type as VTTGridType,
-							gridSize: row.grid_size,
-							gridColor: row.grid_color,
-							gridOpacity: row.grid_opacity,
-							gridScaleDistance: row.grid_scale_distance,
-							gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
-							gridOffsetX: row.grid_offset_x ?? 0,
-							gridOffsetY: row.grid_offset_y ?? 0,
-							mapScale: row.map_scale ?? 1,
-							width: row.width,
-							height: row.height,
-							fogEnabled: row.fog_enabled,
-							fogExploration: row.fog_exploration,
-							isActive: row.is_active,
-						});
+						addScene(
+							sceneSession.acceptRemote({
+								id: row.id,
+								campaignId: row.campaign_id,
+								orderIndex: row.order_index,
+								name: row.name,
+								mapImageUrl: row.map_image_url,
+								gridType: row.grid_type as VTTGridType,
+								gridSize: row.grid_size,
+								gridColor: row.grid_color,
+								gridOpacity: row.grid_opacity,
+								gridScaleDistance: row.grid_scale_distance,
+								gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
+								gridOffsetX: row.grid_offset_x ?? 0,
+								gridOffsetY: row.grid_offset_y ?? 0,
+								mapScale: row.map_scale ?? 1,
+								width: row.width,
+								height: row.height,
+								fogEnabled: row.fog_enabled,
+								fogExploration: row.fog_exploration,
+								isActive: row.is_active,
+							}),
+						);
 
 						if (!row.is_active && !isGM)
 							useVTTStore.getState().removeScene(row.id);
@@ -476,7 +511,7 @@ function VTTSession() {
 			cancelled = true;
 			client.removeChannel(channel);
 		};
-	}, [campaignId, addScene, isGM]);
+	}, [campaignId, addScene, isGM, sceneSession]);
 
 	// 5. Realtime subscription on vtt_tokens for live token positions & status
 	useEffect(() => {
@@ -1111,6 +1146,10 @@ function VTTSession() {
 	// ("GM can delete scenes") allows it; tokens and fog go with it (on delete
 	// cascade). A delete that matched no row (e.g. refused by RLS) is an error.
 	const handleDeleteScene = async (sceneId: string) => {
+		if (!sceneSession.canDelete(sceneId))
+			throw new Error(
+				"Salve ou reconcilie os ajustes antes de excluir a cena.",
+			);
 		const client = getSupabase();
 		if (!client || !campaignId || !isGM)
 			throw new Error("É necessário estar conectado como mestre.");
@@ -1127,84 +1166,17 @@ function VTTSession() {
 		useVTTStore.getState().removeScene(sceneId);
 	};
 
-	// Patch parcial: o painel manda só o que mudou. Grava otimista e, se o
-	// servidor recusar, volta os campos do patch ao valor anterior com aviso.
-	const handleUpdateSceneSettings = async (
+	const handleUpdateSceneSettings = (
 		patch: VTTSceneSettingsPatch,
 	): Promise<boolean> => {
-		if (!activeSceneId) return false;
-		const current = useVTTStore
-			.getState()
-			.scenes.find((s) => s.id === activeSceneId);
-		if (!current) return false;
-		const previous = previousSceneSettings(current, patch);
-
-		updateScene(activeSceneId, patch);
-
-		const client = getSupabase();
-		if (!client) return true;
-
-		const result = await client
-			.from("vtt_scenes")
-			.update(sceneSettingsPatchToDb(patch))
-			.eq("id", activeSceneId)
-			.select("id");
-		const saved = sceneSaveSucceeded(result);
-		if (!saved) {
-			updateScene(activeSceneId, previous);
-			showToast("error", {
-				title: "Não foi possível salvar o grid",
-				description: "O ajuste voltou ao valor anterior. Tente de novo.",
-			});
-			return false;
-		}
-		return true;
+		return activeSceneId
+			? sceneSession.update(activeSceneId, patch)
+			: Promise.resolve(false);
 	};
-
-	/** Escala o mapa + tokens/paredes via RPC da 0058; reverte o local se falhar. */
-	const handleScaleMap = async (nextScale: number): Promise<boolean> => {
-		if (!activeSceneId) return false;
-		const state = useVTTStore.getState();
-		const current = state.scenes.find((s) => s.id === activeSceneId);
-		if (!current) return false;
-		const clamped = clampMapScaleForScene(
-			nextScale,
-			current.width,
-			current.height,
-		);
-		const factor = mapScaleFactor(current.mapScale, clamped);
-		if (factor == null) return true;
-
-		const previousScale = current.mapScale;
-		const previousTokens = state.tokens;
-		const previousWalls = state.walls;
-
-		updateScene(activeSceneId, { mapScale: clamped });
-		useVTTStore.setState(
-			scaleSceneEntities(activeSceneId, factor, state.tokens, state.walls),
-		);
-
-		const client = getSupabase();
-		if (!client) return true;
-
-		const { error } = await client.rpc("scale_scene_geometry", {
-			p_scene_id: activeSceneId,
-			p_factor: factor,
-		});
-		if (error) {
-			updateScene(activeSceneId, { mapScale: previousScale });
-			useVTTStore.setState({
-				tokens: previousTokens,
-				walls: previousWalls,
-			});
-			showToast("error", {
-				title: "Não foi possível mudar a escala do mapa",
-				description: "O mapa voltou ao valor anterior. Tente de novo.",
-			});
-			return false;
-		}
-		return true;
-	};
+	const handleScaleMap = (nextScale: number): Promise<boolean> =>
+		activeSceneId
+			? sceneSession.resize(activeSceneId, nextScale)
+			: Promise.resolve(false);
 
 	const handleUpdateScene = async (
 		sceneId: string,
@@ -1220,37 +1192,33 @@ function VTTSession() {
 				"Use a publicação atômica: clique em Exibir aos jogadores.",
 			);
 		}
-		updateScene(sceneId, updates);
-
-		const client = getSupabase();
-		if (!client) return;
-
-		const dbUpdates: Database["public"]["Tables"]["vtt_scenes"]["Update"] = {};
-		if (updates.name !== undefined) dbUpdates.name = updates.name;
+		if (!isGM || !campaignId) return false;
+		const supervised = scenePatchFromDb(scenePatchToDb(updates));
+		const metadata: Database["public"]["Tables"]["vtt_scenes"]["Update"] = {};
+		if (updates.name !== undefined) metadata.name = updates.name;
 		if (updates.mapImageUrl !== undefined)
-			dbUpdates.map_image_url = updates.mapImageUrl;
-		if (updates.gridType !== undefined) dbUpdates.grid_type = updates.gridType;
-		if (updates.gridSize !== undefined) dbUpdates.grid_size = updates.gridSize;
-		if (updates.gridColor !== undefined)
-			dbUpdates.grid_color = updates.gridColor;
-		if (updates.gridOpacity !== undefined)
-			dbUpdates.grid_opacity = updates.gridOpacity;
-		if (updates.gridScaleDistance !== undefined)
-			dbUpdates.grid_scale_distance = updates.gridScaleDistance;
-		if (updates.gridScaleUnit !== undefined)
-			dbUpdates.grid_scale_unit = updates.gridScaleUnit;
-		if (updates.gridOffsetX !== undefined)
-			dbUpdates.grid_offset_x = updates.gridOffsetX;
-		if (updates.gridOffsetY !== undefined)
-			dbUpdates.grid_offset_y = updates.gridOffsetY;
-		if (updates.width !== undefined) dbUpdates.width = updates.width;
-		if (updates.height !== undefined) dbUpdates.height = updates.height;
-		if (updates.fogEnabled !== undefined)
-			dbUpdates.fog_enabled = updates.fogEnabled;
-		if (updates.fogExploration !== undefined)
-			dbUpdates.fog_exploration = updates.fogExploration;
-
-		await client.from("vtt_scenes").update(dbUpdates).eq("id", sceneId);
+			metadata.map_image_url = updates.mapImageUrl;
+		if (updates.width !== undefined) metadata.width = updates.width;
+		if (updates.height !== undefined) metadata.height = updates.height;
+		if (
+			Object.keys(supervised).length &&
+			!(await sceneSession.update(sceneId, supervised))
+		)
+			return false;
+		if (!Object.keys(metadata).length) return true;
+		const client = getSupabase();
+		if (!client) return false;
+		const { data, error } = await client
+			.from("vtt_scenes")
+			.update(metadata)
+			.eq("id", sceneId)
+			.eq("campaign_id", campaignId)
+			.select("id");
+		if (error || !data?.length)
+			throw new Error("Não foi possível salvar a cena.");
+		if (!sceneSession.isLive()) return false;
+		updateScene(sceneId, updates);
+		return true;
 	};
 
 	// Fatia 1: map dropped in the table library. The scene keeps its old map
@@ -1597,6 +1565,7 @@ function VTTSession() {
 
 			{/* Fog of War Contextual Controls */}
 			<VTTFogControls
+				session={sceneSession}
 				scene={currentActiveScene}
 				onUpdateScene={handleUpdateScene}
 				onClearFog={handleClearFog}
@@ -1615,6 +1584,7 @@ function VTTSession() {
 
 			{/* Grid Settings Popover */}
 			<VTTGridSettings
+				session={sceneSession}
 				onUpdateSceneSettings={handleUpdateSceneSettings}
 				onScaleMap={handleScaleMap}
 			/>

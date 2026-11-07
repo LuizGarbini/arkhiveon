@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import type { SceneSession } from "@/lib/vtt/scene-session";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { SceneSaveStatus, useSceneSaveState } from "./scene-save-status";
 
 export const FOG_BRUSH_SIZES = [
 	{ label: "P", radius: 20 },
@@ -32,11 +34,12 @@ const CLEAR_ALL_TOAST = {
 } as const;
 
 interface VTTFogControlsProps {
+	session?: SceneSession;
 	scene: VTTScene | null;
 	onUpdateScene?: (
 		sceneId: string,
 		updates: Partial<VTTScene>,
-	) => Promise<void>;
+	) => Promise<boolean> | Promise<void>;
 	onClearFog?: (mode: "all_hidden" | "all_revealed") => void;
 }
 
@@ -44,6 +47,7 @@ export function VTTFogControls({
 	scene,
 	onUpdateScene,
 	onClearFog,
+	session,
 }: VTTFogControlsProps) {
 	const isGM = useVTTStore((s) => s.isGM);
 	const activeTool = useVTTStore((s) => s.activeTool);
@@ -57,6 +61,13 @@ export function VTTFogControls({
 	const showFogControls = useVTTStore((s) => s.showFogControls);
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
 	const toast = useToast();
+	const saveState = useSceneSaveState(session, scene?.id ?? "");
+	const blocked = saveState.blocked;
+	// Online, an optimistic true is not yet permission to clear/broadcast paths.
+	const clearBlocked =
+		blocked ||
+		(navigator.onLine !== false &&
+			saveState.snapshot?.pendingPatch.fogEnabled !== undefined);
 
 	if (!isGM || !showFogControls) return null;
 
@@ -68,21 +79,28 @@ export function VTTFogControls({
 	};
 
 	const handleToggleFog = () => {
-		if (!scene || !onUpdateScene) return;
+		if (!scene || !onUpdateScene || blocked) return;
 		void onUpdateScene(scene.id, { fogEnabled: !scene.fogEnabled });
 	};
 
 	const handleToggleExploration = () => {
-		if (!scene || !onUpdateScene) return;
+		if (!scene || !onUpdateScene || blocked) return;
 		void onUpdateScene(scene.id, { fogExploration: !scene.fogExploration });
 	};
 
 	const handleClearAll = async (mode: "all_hidden" | "all_revealed") => {
-		if (!onClearFog) return;
+		if (!onClearFog || clearBlocked || !scene) return;
 		// Com a névoa desligada, cobrir/revelar não teria efeito visível:
 		// liga a névoa primeiro e avisa.
 		if (scene && !scene.fogEnabled && onUpdateScene) {
-			await onUpdateScene(scene.id, { fogEnabled: true });
+			const saving = onUpdateScene(scene.id, { fogEnabled: true });
+			const local = session?.persistence.getSceneSnapshot(scene.id);
+			const acceptedOffline =
+				navigator.onLine === false &&
+				local?.pendingPatch.fogEnabled === true &&
+				!local.error;
+			if (!acceptedOffline && (await saving) === false) return;
+			if (useVTTStore.getState().activeSceneId !== scene.id) return;
 			onClearFog(mode);
 			toast.info({ title: CLEAR_ALL_TOAST[mode] });
 			return;
@@ -108,10 +126,14 @@ export function VTTFogControls({
 				</button>
 			</div>
 
+			{session && scene && (
+				<SceneSaveStatus session={session} sceneId={scene.id} />
+			)}
 			{/* Status & Master Toggles */}
 			<div className="flex items-center justify-between gap-2 p-1 rounded-xl bg-card-elevated border border-border/70 text-[11px]">
 				<button
 					type="button"
+					disabled={blocked}
 					onClick={handleToggleFog}
 					className={cn(
 						"flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg font-semibold transition-all cursor-pointer touch-manipulation",
@@ -130,6 +152,7 @@ export function VTTFogControls({
 
 				<button
 					type="button"
+					disabled={blocked}
 					onClick={handleToggleExploration}
 					title="Modo Exploração: Áreas visitadas ficam em penumbra com mapa visível"
 					className={cn(
@@ -269,6 +292,7 @@ export function VTTFogControls({
 			<div className="flex items-center gap-1.5 pt-1.5 border-t border-border/70">
 				<button
 					type="button"
+					disabled={clearBlocked}
 					onClick={() => void handleClearAll("all_revealed")}
 					title="Revelar todo o mapa instantaneamente"
 					className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-card-elevated hover:bg-white/15 text-foreground hover:text-foreground text-[11px] font-semibold transition-all border border-border/70 cursor-pointer touch-manipulation"
@@ -279,6 +303,7 @@ export function VTTFogControls({
 
 				<button
 					type="button"
+					disabled={clearBlocked}
 					onClick={() => void handleClearAll("all_hidden")}
 					title="Cobrir todo o mapa (Resetar névoa)"
 					className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-card-elevated hover:bg-white/15 text-foreground hover:text-foreground text-[11px] font-semibold transition-all border border-border/70 cursor-pointer touch-manipulation"

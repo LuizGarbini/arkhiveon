@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.80-vtt-persistencia-grid-p2b",
+		version: "1.6.80",
+		date: "06/11/2026",
+		title: "Ajustes do grid e névoa sem perder a intenção mais recente",
+		description:
+			"Os controles da mesa passam a guardar os ajustes mais recentes por cena enquanto o servidor responde. Uma falha mantém o valor local e oferece tentativa explícita de salvar. A escala espera os ajustes pendentes e, se o resultado ficar incerto, lê a cena antes de permitir continuar sem repetir a multiplicação.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.79-vtt-dados-botao",
 		version: "1.6.79",
 		date: "06/11/2026",

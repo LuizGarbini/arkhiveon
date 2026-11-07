@@ -18,7 +18,10 @@ import {
 
 let loadRequest = 0;
 
-export async function loadWalls(sceneId: string): Promise<void> {
+export async function loadWalls(
+	sceneId: string,
+	isCurrent: () => boolean = () => true,
+): Promise<void> {
 	const requestId = ++loadRequest;
 	const store = useVTTStore.getState();
 	const client = getSupabase();
@@ -33,7 +36,12 @@ export async function loadWalls(sceneId: string): Promise<void> {
 		.eq("scene_id", sceneId)
 		.order("created_at", { ascending: true });
 	const now = useVTTStore.getState();
-	if (requestId !== loadRequest || now.activeSceneId !== sceneId) return;
+	if (
+		requestId !== loadRequest ||
+		now.activeSceneId !== sceneId ||
+		!isCurrent()
+	)
+		return;
 	if (error) {
 		now.setWalls([]);
 		now.setWallsStatus(isMissingWallsTable(error) ? "missing" : "error");
