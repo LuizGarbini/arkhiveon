@@ -262,6 +262,30 @@ export function createSceneScaleCoordinator(
 			);
 		return { sealedRevision: entity.seq };
 	}
+	/** Synchronous hooks may invalidate the seal or close this session reentrantly. */
+	function validateContext(record: ScaleRecord): SceneScaleResult | undefined {
+		if (
+			!isCurrent(record) ||
+			record.canceled ||
+			record.controller.signal.aborted
+		)
+			return disposedResult;
+		try {
+			readSeal(record);
+		} catch (error) {
+			status(record, "recovering", error);
+			return isCurrent(record)
+				? { status: "recovering", error }
+				: disposedResult;
+		}
+		if (
+			!isCurrent(record) ||
+			record.canceled ||
+			record.controller.signal.aborted
+		)
+			return disposedResult;
+		return undefined;
+	}
 	async function drain(record: ScaleRecord): Promise<boolean> {
 		const { queue } = options.persistence;
 		const sceneId = record.view.sceneId;
@@ -426,10 +450,13 @@ export function createSceneScaleCoordinator(
 						)
 							return disposedResult;
 						status(record, "scaling");
-						if (!isCurrent(record)) return disposedResult;
+						const afterNotify = validateContext(record);
+						if (afterNotify) return afterNotify;
 						options.apply({ snapshot, factor });
 						let answer: SceneScaleTransportOutcome;
 						try {
+							const beforeSend = validateContext(record);
+							if (beforeSend) return beforeSend;
 							const work = options.scaleScene(sceneId, factor, {
 								signal: record.controller.signal,
 							});

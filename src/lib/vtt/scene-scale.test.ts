@@ -1038,3 +1038,84 @@ describe("P2a2 r3 — fechamento e coerência da sessão", () => {
 		}
 	});
 });
+
+describe("P2a2 r4 — revalidação após callbacks síncronos", () => {
+	const changes = [
+		"generation",
+		"campaign",
+		"scope",
+		"dispose",
+		"abort",
+	] as const;
+	function invalidate(
+		state: ReturnType<typeof setup>,
+		kind: (typeof changes)[number],
+	) {
+		if (kind === "dispose") return state.coordinator.dispose();
+		if (kind === "abort")
+			return state.coordinator.abort("callback fecha sessão");
+		if (kind === "generation")
+			return state.adapter.queue.invalidate(scenePersistenceKey(scene.id));
+		const original = state.adapter.getSceneSnapshot(scene.id);
+		state.setPersistenceSnapshot(() =>
+			kind === "campaign"
+				? {
+						...original,
+						scope: { ...original.scope, campaignId: "campaign-new" },
+						base: { ...scene, campaignId: "campaign-new" },
+					}
+				: { ...original, scope: { ...original.scope, sceneId: "scene-new" } },
+		);
+	}
+	it.each(changes)(
+		"notify scaling altera %s: transport spy fica em zero antes de apply",
+		async (kind) => {
+			vi.useFakeTimers();
+			const state = setup();
+			try {
+				let notified = false;
+				state.coordinator.subscribe(() => {
+					if (state.coordinator.getStatus(scene.id) !== "scaling" || notified)
+						return;
+					notified = true;
+					invalidate(state, kind);
+				});
+				const outcome = await state.coordinator
+					.prepareScale(scene.id, 2)
+					?.execute();
+				expect(notified).toBe(true);
+				expect(state.scaleScene).toHaveBeenCalledTimes(0);
+				expect(state.apply).toHaveBeenCalledTimes(0);
+				expect(state.restore).toHaveBeenCalledTimes(0);
+				expect(outcome?.status).toBe(
+					kind === "dispose" || kind === "abort" ? "no-op" : "recovering",
+				);
+			} finally {
+				state.coordinator.dispose();
+				vi.useRealTimers();
+			}
+		},
+	);
+	it.each(changes)(
+		"apply altera %s sincronicamente: transport spy fica em zero",
+		async (kind) => {
+			vi.useFakeTimers();
+			const state = setup();
+			try {
+				state.apply.mockImplementationOnce(() => invalidate(state, kind));
+				const outcome = await state.coordinator
+					.prepareScale(scene.id, 2)
+					?.execute();
+				expect(state.apply).toHaveBeenCalledTimes(1);
+				expect(state.scaleScene).toHaveBeenCalledTimes(0);
+				expect(state.restore).toHaveBeenCalledTimes(0);
+				expect(outcome?.status).toBe(
+					kind === "dispose" || kind === "abort" ? "no-op" : "recovering",
+				);
+			} finally {
+				state.coordinator.dispose();
+				vi.useRealTimers();
+			}
+		},
+	);
+});
