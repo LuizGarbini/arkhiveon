@@ -1,4 +1,5 @@
 import type { StateCreator } from "zustand";
+import { isTransferCampaignOwnershipEnabled } from "../feature-flags";
 import { getSupabase, SUPABASE_TABLES } from "../supabase";
 import {
 	campaignPerWorldLimitError,
@@ -27,6 +28,7 @@ import type {
 	MembershipRole,
 	RPGState,
 	RpgSystem,
+	TransferCampaignOwnershipResult,
 	UserPlan,
 	World,
 } from "./types";
@@ -34,6 +36,196 @@ import { RPG_SYSTEMS } from "./types";
 
 /** Uma troca mais nova invalida o prazo e o resultado da anterior. */
 let campaignSwitchToken = 0;
+/** Troca de conta, saída ou troca de campanha descarta transferência em curso. */
+let ownershipContextGeneration = 0;
+const ownershipTransfersInFlight = new Map<
+	string,
+	Promise<TransferCampaignOwnershipResult>
+>();
+
+const TRANSFER_UNAVAILABLE = "transferência indisponível no momento";
+const TRANSFER_GENERIC = "Não foi possível transferir o mestre.";
+const TRANSFER_OWNER_CHANGED = "O mestre da campanha mudou.";
+const TRANSFER_AMBIGUOUS = "Não foi possível confirmar a transferência.";
+const TRANSFER_OFFLINE = "A transferência de mestre só funciona com conexão.";
+
+function invalidateCampaignOwnershipContext(): void {
+	ownershipContextGeneration += 1;
+}
+
+function transferErrorCode(error: unknown): string | null {
+	if (!error || typeof error !== "object" || !("code" in error)) return null;
+	const code = error.code;
+	return typeof code === "string" && code.length > 0 ? code : null;
+}
+
+function confirmedOwnershipTransfer(
+	data: unknown,
+	campaignId: string,
+	newOwnerId: string,
+): boolean {
+	const rows = Array.isArray(data) ? data : data == null ? [] : [data];
+	return rows.some((row) => {
+		if (!row || typeof row !== "object") return false;
+		const record = row as Record<string, unknown>;
+		return (
+			record.campaign_id === campaignId &&
+			record.new_owner_id === newOwnerId &&
+			typeof record.previous_owner_id === "string"
+		);
+	});
+}
+
+function memberListOf(
+	listed: Awaited<ReturnType<RPGState["loadCampaignMembersAndInvites"]>>,
+): Pick<TransferCampaignOwnershipResult, "members" | "invites"> {
+	return { members: listed.members, invites: listed.invites };
+}
+
+const transferAborted = {
+	status: "aborted",
+	message: "",
+} as const satisfies TransferCampaignOwnershipResult;
+
+async function refetchCampaignAndMembers(
+	get: () => RPGState,
+	campaignId: string,
+) {
+	await get().loadCampaigns();
+	return get().loadCampaignMembersAndInvites(campaignId);
+}
+
+function runCampaignOwnershipTransfer(
+	set: (partial: (state: RPGState) => Partial<RPGState>) => void,
+	get: () => RPGState,
+	campaignId: string,
+	newOwnerId: string,
+): Promise<TransferCampaignOwnershipResult> {
+	const generation = ownershipContextGeneration;
+	const activeCampaignId = get().activeCampaignId;
+	const supabase = getSupabase();
+	if (!supabase) {
+		return Promise.resolve({ status: "offline", message: TRANSFER_OFFLINE });
+	}
+
+	return (async () => {
+		let invalidated = false;
+		let capturedUserId: string | null = null;
+		const {
+			data: { subscription },
+		} = supabase.auth.onAuthStateChange((event, session) => {
+			if (event === "SIGNED_OUT") invalidated = true;
+			const nextId = session?.user?.id ?? null;
+			if (capturedUserId && nextId !== capturedUserId) invalidated = true;
+		});
+
+		const contextHolds = async () => {
+			if (invalidated || ownershipContextGeneration !== generation)
+				return false;
+			if (get().activeCampaignId !== activeCampaignId) return false;
+			const { data } = await supabase.auth.getSession();
+			return (data.session?.user?.id ?? null) === capturedUserId;
+		};
+
+		try {
+			const first = await supabase.auth.getSession();
+			const userId = first.data.session?.user?.id ?? null;
+			if (
+				!userId ||
+				invalidated ||
+				ownershipContextGeneration !== generation ||
+				get().activeCampaignId !== activeCampaignId
+			) {
+				return transferAborted;
+			}
+			capturedUserId = userId;
+			const second = await supabase.auth.getSession();
+			if ((second.data.session?.user?.id ?? null) !== userId) {
+				return transferAborted;
+			}
+			if (
+				invalidated ||
+				ownershipContextGeneration !== generation ||
+				get().activeCampaignId !== activeCampaignId
+			) {
+				return transferAborted;
+			}
+
+			let data: unknown;
+			let error: unknown;
+			try {
+				const response = await supabase.rpc("transfer_campaign_ownership", {
+					p_campaign_id: campaignId,
+					p_new_owner_id: newOwnerId,
+				});
+				data = response.data;
+				error = response.error;
+			} catch {
+				if (!(await contextHolds())) return transferAborted;
+				const listed = await refetchCampaignAndMembers(get, campaignId);
+				return {
+					status: "ambiguous",
+					message: TRANSFER_AMBIGUOUS,
+					...memberListOf(listed),
+				};
+			}
+
+			if (!(await contextHolds())) return transferAborted;
+
+			const code = transferErrorCode(error);
+			if (code === "42883" || code === "PGRST202") {
+				return { status: "unavailable", message: TRANSFER_UNAVAILABLE };
+			}
+			if (code === "42501") {
+				const listed = await get().loadCampaignMembersAndInvites(campaignId);
+				return {
+					status: "forbidden",
+					message: TRANSFER_GENERIC,
+					...memberListOf(listed),
+				};
+			}
+			if (code === "40001") {
+				const listed = await refetchCampaignAndMembers(get, campaignId);
+				return {
+					status: "owner-changed",
+					message: TRANSFER_OWNER_CHANGED,
+					...memberListOf(listed),
+				};
+			}
+			if (code === "23514") {
+				return { status: "invalid", message: TRANSFER_GENERIC };
+			}
+			if (code) {
+				return { status: "generic", message: TRANSFER_GENERIC };
+			}
+			if (error || !confirmedOwnershipTransfer(data, campaignId, newOwnerId)) {
+				const listed = await refetchCampaignAndMembers(get, campaignId);
+				return {
+					status: "ambiguous",
+					message: TRANSFER_AMBIGUOUS,
+					...memberListOf(listed),
+				};
+			}
+
+			set((state) => ({
+				campaigns: state.campaigns.map((campaign) =>
+					campaign.id === campaignId
+						? {
+								...campaign,
+								ownerId: newOwnerId,
+								myRole:
+									campaign.myRole === "owner" ? "editor" : campaign.myRole,
+							}
+						: campaign,
+				),
+			}));
+			const listed = await refetchCampaignAndMembers(get, campaignId);
+			return { status: "success", message: "", ...memberListOf(listed) };
+		} finally {
+			subscription.unsubscribe();
+		}
+	})();
+}
 
 function readOwnerPlan(planData: unknown): UserPlan {
 	if (!planData || typeof planData !== "object" || !("plan" in planData)) {
@@ -134,6 +326,10 @@ export interface CampaignSlice {
 	acceptInvite: (inviteId: string) => Promise<void>;
 	declineInvite: (inviteId: string) => Promise<void>;
 	removeMember: (campaignId: string, userId: string) => Promise<void>;
+	transferCampaignOwnership: (
+		campaignId: string,
+		newOwnerId: string,
+	) => Promise<TransferCampaignOwnershipResult>;
 	loadCampaignMembersAndInvites: (campaignId: string) => Promise<{
 		members: Array<{
 			id: string;
@@ -162,7 +358,8 @@ export const createCampaignSlice: StateCreator<
 
 	worlds: [],
 
-	resetCampaigns: () =>
+	resetCampaigns: () => {
+		invalidateCampaignOwnershipContext();
 		set({
 			campaigns: [],
 			activeCampaignId: null,
@@ -172,7 +369,8 @@ export const createCampaignSlice: StateCreator<
 			campaignLoadStatus: "idle",
 			pendingInvites: [],
 			worlds: [],
-		}),
+		});
+	},
 
 	loadWorlds: async () => {
 		const supabase = getSupabase();
@@ -784,6 +982,7 @@ export const createCampaignSlice: StateCreator<
 		}
 
 		if (state.activeCampaignId !== id) {
+			invalidateCampaignOwnershipContext();
 			// Limpar entidades da mesa anterior sem derrubar bootstrap/campanhas
 			state.clearActiveCampaignEntities();
 			set({
@@ -842,6 +1041,7 @@ export const createCampaignSlice: StateCreator<
 			return;
 		}
 		if (state.activeCampaignId) {
+			invalidateCampaignOwnershipContext();
 			state.clearActiveCampaignEntities();
 		}
 		set({ activeCampaignId: null, activeWorldId: worldId });
@@ -1014,6 +1214,34 @@ export const createCampaignSlice: StateCreator<
 			set({ syncError: `Erro ao revogar convite: ${error.message}` });
 			throw error;
 		}
+	},
+
+	transferCampaignOwnership: (campaignId, newOwnerId) => {
+		if (!isTransferCampaignOwnershipEnabled()) {
+			return Promise.resolve({ status: "disabled", message: "" });
+		}
+		const supabaseAvailable = getSupabase();
+		if (
+			(typeof navigator !== "undefined" && navigator.onLine === false) ||
+			!supabaseAvailable
+		) {
+			return Promise.resolve({
+				status: "offline",
+				message: TRANSFER_OFFLINE,
+			});
+		}
+		if (ownershipTransfersInFlight.has(campaignId)) {
+			return Promise.resolve({ status: "duplicate", message: "" });
+		}
+
+		const run = runCampaignOwnershipTransfer(set, get, campaignId, newOwnerId);
+		ownershipTransfersInFlight.set(campaignId, run);
+		void run.finally(() => {
+			if (ownershipTransfersInFlight.get(campaignId) === run) {
+				ownershipTransfersInFlight.delete(campaignId);
+			}
+		});
+		return run;
 	},
 
 	removeMember: async (campaignId, userId) => {

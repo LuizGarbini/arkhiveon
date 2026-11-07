@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.81-transferir-mestre-f2",
+		version: "1.6.81",
+		date: "07/11/2026",
+		title: "Transferir a mesa para outro mestre",
+		description:
+			"O mestre pode passar a campanha a um jogador ou co-mestre que já está na mesa. A confirmação diz quem recebe a mesa e que você vira co-mestre sem poder desfazer sozinho. As imagens privadas e os segredos de mestre desta mesa passam para essa pessoa. A ação fica desligada até a migration ser aplicada e o recurso ser ligado de propósito; se o servidor ainda não tiver a chamada, a tela avisa que a transferência está indisponível e não muda os papéis.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.80-vtt-persistencia-grid-p2b",
 		version: "1.6.80",
 		date: "06/11/2026",

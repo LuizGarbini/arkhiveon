@@ -704,6 +704,31 @@ export interface World {
 	updatedAt?: number;
 }
 
+export type TransferCampaignOwnershipStatus =
+	| "success"
+	| "disabled"
+	| "offline"
+	| "aborted"
+	| "unavailable"
+	| "forbidden"
+	| "owner-changed"
+	| "invalid"
+	| "ambiguous"
+	| "generic"
+	| "duplicate";
+
+export interface TransferCampaignOwnershipResult {
+	status: TransferCampaignOwnershipStatus;
+	message: string;
+	members?: Array<{
+		id: string;
+		userId: string;
+		email: string;
+		role: MembershipRole;
+	}>;
+	invites?: Invite[];
+}
+
 export interface Campaign {
 	id: string;
 	name: string;
@@ -876,6 +901,10 @@ export interface RPGState {
 	acceptInvite: (inviteId: string) => Promise<void>;
 	declineInvite: (inviteId: string) => Promise<void>;
 	removeMember: (campaignId: string, userId: string) => Promise<void>;
+	transferCampaignOwnership: (
+		campaignId: string,
+		newOwnerId: string,
+	) => Promise<TransferCampaignOwnershipResult>;
 	loadCampaignMembersAndInvites: (campaignId: string) => Promise<{
 		members: Array<{
 			id: string;
