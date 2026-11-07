@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.78-vtt-escala-p2a2",
+		version: "1.6.78",
+		date: "06/11/2026",
+		title: "Base segura para escalar a cena sem perder ajustes",
+		description:
+			"Ainda sem ligar à interface ou chamar o banco, preparamos a coordenação que espera os ajustes do grid e da névoa terminarem antes de escalar uma cena. Durante a escala, novos ajustes dessa cena são recusados, sem bloquear as outras. Uma falha conhecida restaura escala, tokens e paredes; se o resultado ficar incerto, a recuperação lê o estado atual em vez de repetir a multiplicação.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.77-vtt-persistencia-grid-p2a",
 		version: "1.6.77",
 		date: "06/11/2026",

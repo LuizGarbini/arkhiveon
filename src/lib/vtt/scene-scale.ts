@@ -1,0 +1,614 @@
+import { clampMapScaleForScene, mapScaleFactor } from "./map-scale";
+import type { ScenePersistence, SceneScaleGate } from "./scene-persistence";
+import { scenePersistenceKey } from "./scene-persistence";
+import type { VTTScene } from "./types";
+
+/** Capture only: P2a2 does not persist token, wall or fog-path changes. */
+export interface SceneScaleSnapshot {
+	scene: VTTScene;
+	tokens: readonly unknown[];
+	walls: readonly unknown[];
+}
+export type SceneScaleStatus =
+	| "idle"
+	| "draining"
+	| "scaling"
+	| "recovering"
+	| "failed";
+export interface OptimisticScale {
+	snapshot: SceneScaleSnapshot;
+	factor: number;
+}
+export type SceneScaleResult =
+	| { status: "no-op" }
+	| { status: "succeeded" }
+	| { status: "failed"; error: unknown }
+	| { status: "recovering"; error: unknown };
+export interface SceneScaleOperation {
+	execute: () => Promise<SceneScaleResult>;
+	subscribeAbort: (listener: (signal: AbortSignal) => void) => () => void;
+}
+export interface ScaleClock {
+	now: () => number;
+	setTimeout: (callback: () => void, delayMs: number) => unknown;
+	clearTimeout: (id: unknown) => void;
+}
+export interface SceneScaleView {
+	sceneId: string;
+	status: SceneScaleStatus;
+	snapshot: SceneScaleSnapshot;
+	mapScale: number;
+	factor: number | null;
+	error?: unknown;
+}
+export type SceneScaleTransportOutcome =
+	| { kind: "confirmed" }
+	| { kind: "rejected"; error?: unknown }
+	| { kind: "unknown"; error?: unknown };
+export type SceneScaleTransport = (
+	sceneId: string,
+	factor: number,
+	context: { signal: AbortSignal },
+) => Promise<SceneScaleTransportOutcome>;
+export interface SceneScaleReconciliation {
+	sceneId: string;
+	campaignId: string;
+	scope: "grid-scene";
+	generation: number;
+}
+export type SceneScaleRead =
+	| {
+			status: "confirmed";
+			snapshot: SceneScaleReconciliation | null | undefined;
+	  }
+	| { status: "unknown" | "rejected" };
+export interface SceneScaleOptions {
+	persistence: ScenePersistence;
+	capture: (sceneId: string) => SceneScaleSnapshot | undefined;
+	apply: (scale: OptimisticScale) => void;
+	restore: (snapshot: SceneScaleSnapshot) => void;
+	scaleScene: SceneScaleTransport;
+	clock?: ScaleClock;
+	timeoutMs?: number;
+}
+export type SceneScaleFinish =
+	| "succeeded"
+	| "failed"
+	| "recovering"
+	| {
+			status: "reconcile";
+			read: (
+				context: Readonly<SceneScaleReconciliation>,
+			) => Promise<SceneScaleRead>;
+	  };
+export interface SceneScaleCoordinator extends SceneScaleGate {
+	prepareScale(sceneId: string, nextScale: number): SceneScaleOperation | null;
+	finishScale(sceneId: string, outcome: SceneScaleFinish): Promise<boolean>;
+	getStatus(sceneId: string): SceneScaleStatus;
+	getReconciliation(sceneId: string): SceneScaleReconciliation | null;
+	/** Abort retained recovering/draining records; permanently end this gate. */
+	abort: (reason?: unknown) => void;
+	dispose: () => void;
+	/** Diagnostics: active clocks/waits only, not retained recovery locks. */
+	getActiveOperationCount: () => number;
+	getScaleSnapshot(sceneId: string): SceneScaleView | null;
+	subscribe(listener: () => void): () => void;
+}
+/** A throw is always delivered as unknown, never as definitive rejection. */
+export class SceneScaleAmbiguousError extends Error {
+	constructor(
+		message = "Resultado da escala desconhecido; reconcilie antes de repetir",
+	) {
+		super(message);
+		this.name = "SceneScaleAmbiguousError";
+	}
+}
+interface ScaleRecord {
+	view: SceneScaleView;
+	reconciliation: SceneScaleReconciliation;
+	epoch: number;
+	baseIdentity: { campaignId: string; sceneId: string };
+	sealedRevision?: number;
+	closed?: boolean;
+	controller: AbortController;
+	execution?: Promise<SceneScaleResult>;
+	canceled?: boolean;
+	transportAbandoned?: boolean;
+	cancelWait?: () => void;
+	unsubscribe?: () => void;
+	abortUnsubscribers: Set<() => void>;
+}
+const systemClock: ScaleClock = {
+	now: Date.now,
+	setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+	clearTimeout: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+};
+const disposedResult: SceneScaleResult = { status: "no-op" };
+function isConfirmed(
+	snapshot: SceneScaleReconciliation | null | undefined,
+	expected: SceneScaleReconciliation,
+): boolean {
+	return (
+		snapshot !== null &&
+		snapshot !== undefined &&
+		typeof snapshot.sceneId === "string" &&
+		typeof snapshot.campaignId === "string" &&
+		snapshot.scope === "grid-scene" &&
+		Number.isSafeInteger(snapshot.generation) &&
+		snapshot.sceneId === expected.sceneId &&
+		snapshot.campaignId === expected.campaignId &&
+		snapshot.scope === expected.scope &&
+		snapshot.generation === expected.generation
+	);
+}
+
+/** Injected gate only: never changes or cancels P1's physical writer or retained deltas. */
+export function createSceneScaleCoordinator(
+	options: SceneScaleOptions,
+): SceneScaleCoordinator {
+	const clock = options.clock ?? systemClock;
+	const timeoutMs = options.timeoutMs ?? 15_000;
+	const records = new Map<string, ScaleRecord>();
+	const listeners = new Set<() => void>();
+	const timers = new Set<unknown>();
+	const pendingWaits = new Set<ScaleRecord>();
+	let disposed = false;
+	let epoch = 0;
+	function isCurrent(record: ScaleRecord): boolean {
+		return (
+			!disposed &&
+			!record.closed &&
+			record.epoch === epoch &&
+			records.get(record.view.sceneId) === record
+		);
+	}
+	function close(record: ScaleRecord): void {
+		if (record.closed) return;
+		record.closed = true;
+		record.epoch = epoch;
+		record.cancelWait?.();
+		record.unsubscribe?.();
+		record.unsubscribe = undefined;
+		records.delete(record.view.sceneId);
+		for (const listener of [...new Set(listeners)]) listener();
+	}
+	function status(
+		record: ScaleRecord,
+		next: SceneScaleStatus,
+		error?: unknown,
+	): void {
+		if (!isCurrent(record)) return;
+		record.view = { ...record.view, status: next, error };
+		for (const listener of [...new Set(listeners)]) listener();
+	}
+	function cancel(record: ScaleRecord, reason: unknown): void {
+		if (record.closed) return;
+		record.canceled = true;
+		record.controller.abort(reason);
+		for (const unsubscribe of record.abortUnsubscribers) unsubscribe();
+		record.abortUnsubscribers.clear();
+		record.cancelWait?.();
+		record.unsubscribe?.();
+		record.unsubscribe = undefined;
+	}
+	function cancelAll(reason: unknown): void {
+		epoch += 1;
+		for (const record of [...records.values()]) {
+			cancel(record, reason);
+			close(record);
+		}
+		timers.clear();
+	}
+	/** Abort/dispose settles only this coordinator's local Promise, not the P1 write. */
+	function wait<T>(
+		record: ScaleRecord,
+		work: Promise<T>,
+		delay: number,
+	): Promise<{ value?: T; timedOut?: boolean }> {
+		pendingWaits.add(record);
+		return new Promise((resolve) => {
+			let ended = false;
+			let tick: unknown;
+			const finish = (value: { value?: T; timedOut?: boolean }) => {
+				if (ended) return;
+				ended = true;
+				if (tick !== undefined) {
+					clock.clearTimeout(tick);
+					timers.delete(tick);
+				}
+				record.cancelWait = undefined;
+				pendingWaits.delete(record);
+				record.controller.signal.removeEventListener("abort", abort);
+				resolve(value);
+			};
+			const abort = () => finish({});
+			tick = clock.setTimeout(
+				() => finish({ timedOut: true }),
+				Math.max(0, delay),
+			);
+			timers.add(tick);
+			record.cancelWait = () => finish({});
+			if (record.controller.signal.aborted) abort();
+			else
+				record.controller.signal.addEventListener("abort", abort, {
+					once: true,
+				});
+			void Promise.resolve(work).then(
+				(value) => finish({ value }),
+				() => finish({}),
+			);
+		});
+	}
+	function readSeal(record: ScaleRecord): { sealedRevision: number } {
+		const sceneId = record.view.sceneId;
+		const entity = options.persistence.queue.inspect(
+			scenePersistenceKey(sceneId),
+		);
+		const { scope, base } = options.persistence.getSceneSnapshot(sceneId);
+		const expected = record.reconciliation;
+		if (
+			!entity ||
+			!base ||
+			entity.generation !== expected.generation ||
+			scope.sceneId !== sceneId ||
+			scope.campaignId !== expected.campaignId ||
+			base.id !== sceneId ||
+			base.campaignId !== expected.campaignId ||
+			scope.sceneId !== record.baseIdentity.sceneId ||
+			scope.campaignId !== record.baseIdentity.campaignId
+		)
+			throw new SceneScaleAmbiguousError(
+				"Identidade da sessão de escala alterada; reconcilie antes de continuar",
+			);
+		return { sealedRevision: entity.seq };
+	}
+	/** Synchronous hooks may invalidate the seal or close this session reentrantly. */
+	function validateContext(record: ScaleRecord): SceneScaleResult | undefined {
+		if (
+			!isCurrent(record) ||
+			record.canceled ||
+			record.controller.signal.aborted
+		)
+			return disposedResult;
+		try {
+			readSeal(record);
+		} catch (error) {
+			status(record, "recovering", error);
+			return isCurrent(record)
+				? { status: "recovering", error }
+				: disposedResult;
+		}
+		if (
+			!isCurrent(record) ||
+			record.canceled ||
+			record.controller.signal.aborted
+		)
+			return disposedResult;
+		return undefined;
+	}
+	async function drain(record: ScaleRecord): Promise<boolean> {
+		const { queue } = options.persistence;
+		const sceneId = record.view.sceneId;
+		const deadline = clock.now() + timeoutMs;
+		while (isCurrent(record)) {
+			readSeal(record);
+			if (record.controller.signal.aborted) return false;
+			const entity = queue.inspect(scenePersistenceKey(sceneId));
+			if (
+				!entity ||
+				entity.error ||
+				entity.limitOverflow ||
+				entity.status === "recovering" ||
+				entity.status === "conflict" ||
+				queue.getState().sessionWarning
+			) {
+				throw new Error("Dreno exige leitura; escala não será chamada");
+			}
+			if (!entity.queued && !entity.inFlight) {
+				await Promise.resolve();
+				const stable = queue.inspect(scenePersistenceKey(sceneId));
+				if (
+					stable &&
+					!stable.queued &&
+					!stable.inFlight &&
+					!stable.error &&
+					stable.status === "synced" &&
+					!queue.getState().sessionWarning
+				)
+					return true;
+			}
+			const remaining = deadline - clock.now();
+			if (remaining <= 0) throw new Error("Tempo do dreno esgotado");
+			let resolveTick: (() => void) | undefined;
+			const tick = new Promise<void>((resolve) => {
+				resolveTick = resolve;
+			});
+			const unsubscribe = options.persistence.subscribe(() => resolveTick?.());
+			const abort = () => resolveTick?.();
+			record.controller.signal.addEventListener("abort", abort, { once: true });
+			record.unsubscribe = () => {
+				record.controller.signal.removeEventListener("abort", abort);
+				unsubscribe();
+			};
+			try {
+				await wait(record, tick, Math.min(250, remaining));
+				if (clock.now() >= deadline) throw new Error("Tempo do dreno esgotado");
+			} finally {
+				record.controller.signal.removeEventListener("abort", abort);
+				unsubscribe();
+				record.unsubscribe = undefined;
+			}
+		}
+		return false;
+	}
+	return {
+		prepareScale(sceneId, nextScale) {
+			if (disposed || records.has(sceneId)) return null;
+			const captured = options.capture(sceneId);
+			const sceneSnapshot = options.persistence.getSceneSnapshot(sceneId);
+			const base = sceneSnapshot.base;
+			if (captured?.scene.id !== sceneId || !base) return null;
+			const snapshot: SceneScaleSnapshot = {
+				scene: { ...captured.scene },
+				tokens: captured.tokens,
+				walls: captured.walls,
+			};
+			const mapScale = clampMapScaleForScene(
+				nextScale,
+				snapshot.scene.width,
+				snapshot.scene.height,
+			);
+			const factor = mapScaleFactor(snapshot.scene.mapScale, mapScale);
+			if (snapshot.scene.mapScale > 0 && snapshot.scene.mapScale === mapScale)
+				return null;
+			const entity = options.persistence.queue.inspect(
+				scenePersistenceKey(sceneId),
+			);
+			if (!entity) return null;
+			const record: ScaleRecord = {
+				view: { sceneId, status: "draining", snapshot, mapScale, factor },
+				reconciliation: {
+					sceneId,
+					campaignId: base.campaignId,
+					scope: "grid-scene",
+					generation: entity.generation,
+				},
+				epoch,
+				baseIdentity: {
+					campaignId: sceneSnapshot.scope.campaignId,
+					sceneId: sceneSnapshot.scope.sceneId,
+				},
+				controller: new AbortController(),
+				abortUnsubscribers: new Set(),
+			};
+			records.set(sceneId, record);
+			for (const listener of listeners) listener();
+			return {
+				subscribeAbort(listener) {
+					const receive = () => {
+						unsubscribe();
+						listener(record.controller.signal);
+					};
+					const unsubscribe = () => {
+						record.controller.signal.removeEventListener("abort", receive);
+						record.abortUnsubscribers.delete(unsubscribe);
+					};
+					if (record.controller.signal.aborted) receive();
+					else {
+						record.controller.signal.addEventListener("abort", receive, {
+							once: true,
+						});
+						record.abortUnsubscribers.add(unsubscribe);
+					}
+					return unsubscribe;
+				},
+				execute() {
+					if (record.closed && record.canceled)
+						return Promise.resolve(disposedResult);
+					if (record.execution) return record.execution;
+					if (!isCurrent(record) || record.controller.signal.aborted) {
+						if (!record.closed) close(record);
+						return Promise.resolve(disposedResult);
+					}
+					record.execution = (async (): Promise<SceneScaleResult> => {
+						if (factor == null) {
+							const error = new SceneScaleAmbiguousError(
+								"Escala atual inválida; leia a cena antes de salvar",
+							);
+							status(record, "recovering", error);
+							return { status: "recovering", error };
+						}
+						try {
+							readSeal(record);
+							if (!(await drain(record))) {
+								close(record);
+								return disposedResult;
+							}
+						} catch (error) {
+							status(record, "recovering", error);
+							return { status: "recovering", error };
+						}
+						if (
+							!isCurrent(record) ||
+							record.canceled ||
+							record.controller.signal.aborted ||
+							records.get(sceneId) !== record
+						) {
+							close(record);
+							return disposedResult;
+						}
+						try {
+							record.sealedRevision = readSeal(record).sealedRevision;
+						} catch (error) {
+							status(record, "recovering", error);
+							return { status: "recovering", error };
+						}
+						if (
+							!isCurrent(record) ||
+							record.canceled ||
+							record.controller.signal.aborted
+						)
+							return disposedResult;
+						status(record, "scaling");
+						const afterNotify = validateContext(record);
+						if (afterNotify) return afterNotify;
+						options.apply({ snapshot, factor });
+						let answer: SceneScaleTransportOutcome;
+						try {
+							const beforeSend = validateContext(record);
+							if (beforeSend) return beforeSend;
+							const work = options.scaleScene(sceneId, factor, {
+								signal: record.controller.signal,
+							});
+							const result = await wait(
+								record,
+								work.then(
+									(outcome) => ({ outcome }),
+									(error: unknown) => ({
+										outcome: { kind: "unknown" as const, error },
+									}),
+								),
+								timeoutMs,
+							);
+							if (result.timedOut && isCurrent(record)) {
+								record.transportAbandoned = true;
+								answer = {
+									kind: "unknown",
+									error: new SceneScaleAmbiguousError("Timeout do transporte"),
+								};
+								cancel(record, answer.error);
+							} else
+								answer = result.value?.outcome ?? {
+									kind: "unknown",
+									error: new SceneScaleAmbiguousError(
+										"Resposta ausente do transporte",
+									),
+								};
+						} catch (error) {
+							answer = { kind: "unknown", error };
+						}
+						if (
+							!isCurrent(record) ||
+							(record.canceled && !record.transportAbandoned) ||
+							(record.controller.signal.aborted &&
+								!record.transportAbandoned) ||
+							records.get(sceneId) !== record
+						)
+							return disposedResult;
+						try {
+							readSeal(record);
+						} catch (error) {
+							status(record, "recovering", error);
+							return { status: "recovering", error };
+						}
+						if (
+							!isCurrent(record) ||
+							(record.canceled && !record.transportAbandoned)
+						)
+							return disposedResult;
+						if (answer.kind === "confirmed") {
+							close(record);
+							for (const unsubscribe of record.abortUnsubscribers)
+								unsubscribe();
+							record.abortUnsubscribers.clear();
+							return { status: "succeeded" };
+						}
+						if (answer.kind === "rejected") {
+							if (
+								options.persistence.queue.inspect(scenePersistenceKey(sceneId))
+									?.seq !== record.sealedRevision
+							) {
+								const error = new SceneScaleAmbiguousError(
+									"Edição mais nova após a captura; rollback antigo bloqueado",
+								);
+								status(record, "recovering", error);
+								return { status: "recovering", error };
+							}
+							options.restore(snapshot);
+							status(record, "failed", answer.error);
+							return { status: "failed", error: answer.error };
+						}
+						status(record, "recovering", answer.error);
+						return { status: "recovering", error: answer.error };
+					})();
+					return record.execution;
+				},
+			};
+		},
+		async finishScale(sceneId, outcome) {
+			const record = records.get(sceneId);
+			if (
+				!record ||
+				!isCurrent(record) ||
+				(record.canceled && !record.transportAbandoned)
+			)
+				return false;
+			if (outcome === "succeeded") return false;
+			if (outcome === "failed" && record.view.status === "failed") {
+				close(record);
+				return true;
+			}
+			if (
+				typeof outcome !== "object" ||
+				outcome.status !== "reconcile" ||
+				record.view.status !== "recovering"
+			)
+				return false;
+			const expected = { ...record.reconciliation };
+			let seal: { sealedRevision: number };
+			let latest: { sealedRevision: number };
+			let read: SceneScaleRead;
+			try {
+				seal = readSeal(record);
+				read = await outcome.read(expected);
+				latest = readSeal(record);
+			} catch {
+				return false;
+			}
+			if (
+				!isCurrent(record) ||
+				(record.canceled && !record.transportAbandoned) ||
+				records.get(sceneId) !== record ||
+				record.view.status !== "recovering" ||
+				latest.sealedRevision !== seal.sealedRevision ||
+				read.status !== "confirmed" ||
+				!isConfirmed(read.snapshot, expected)
+			)
+				return false;
+			close(record);
+			return true;
+		},
+		abort(reason = "cancelled") {
+			cancelAll(reason);
+		},
+		dispose() {
+			disposed = true;
+			cancelAll("disposed");
+			listeners.clear();
+		},
+		getActiveOperationCount() {
+			if (pendingWaits.size !== timers.size)
+				throw new Error("Inconsistência de espera do gate");
+			return timers.size;
+		},
+		getStatus(sceneId) {
+			return records.get(sceneId)?.view.status ?? "idle";
+		},
+		getReconciliation(sceneId) {
+			const context = records.get(sceneId)?.reconciliation;
+			return context ? { ...context } : null;
+		},
+		getScaleSnapshot(sceneId) {
+			return records.get(sceneId)?.view ?? null;
+		},
+		isScaleLocked(sceneId) {
+			return records.has(sceneId);
+		},
+		subscribe(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+	};
+}
