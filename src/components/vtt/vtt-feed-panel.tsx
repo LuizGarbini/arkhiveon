@@ -236,7 +236,7 @@ function FeedComposer({
 				)}
 				<Button
 					type="submit"
-					className="h-11 min-h-11"
+					className="h-11 min-h-[44px]"
 					disabled={!parsed || rolling}
 				>
 					{rolling ? "Rolando…" : "Rolar"}
@@ -710,7 +710,7 @@ export function VTTFeedPanel() {
 		<aside
 			aria-label="Rolagens e chat"
 			data-testid="feed-panel"
-			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[min(32rem,calc(100dvh-14rem))] w-80 flex-col gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
+			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[calc(100dvh-14rem)] w-80 flex-col gap-3 overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
 		>
 			{header}
 			{body}

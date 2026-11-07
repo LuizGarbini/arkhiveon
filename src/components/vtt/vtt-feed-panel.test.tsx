@@ -184,6 +184,18 @@ afterEach(() => {
 });
 
 describe("feed da mesa", () => {
+	it("o painel usa a altura disponível e permite scroll sem recortar o botão Rolar", async () => {
+		render(<VTTFeedPanel />);
+		const roll = await screen.findByRole("button", {
+			name: /^Rolar$/,
+		});
+		const panel = screen.getByTestId("feed-panel");
+		expect(panel.classList.contains("overflow-y-auto")).toBe(true);
+		expect(panel.classList.contains("max-h-[calc(100dvh-14rem)]")).toBe(true);
+		expect(panel.classList.contains("overflow-hidden")).toBe(false);
+		expect(roll.classList.contains("min-h-[44px]")).toBe(true);
+	});
+
 	it("carrega com esqueleto e não mostra o vazio nem o botão de rolar", async () => {
 		let release: (() => void) | undefined;
 		db.gate = new Promise<void>((resolve) => {

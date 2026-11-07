@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.79-vtt-dados-botao",
+		version: "1.6.79",
+		date: "06/11/2026",
+		title: "Botão de rolar dados inteiro na mesa",
+		description:
+			"O painel de rolagens e chat agora aproveita a altura disponível da tela e permite rolar o conteúdo quando necessário, sem cortar o botão Rolar. O botão mantém a área mínima de toque também no celular, sem mudar a rolagem dos dados ou os resultados.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.78-vtt-escala-p2a2",
 		version: "1.6.78",
 		date: "06/11/2026",
