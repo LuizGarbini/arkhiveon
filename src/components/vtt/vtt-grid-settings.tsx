@@ -1,5 +1,5 @@
 import { ChevronDown, Minus, Plus, Sliders, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 	maxMapScaleForDimensions,
 	percentToMapScale,
 } from "@/lib/vtt/map-scale";
+import type { SceneSession } from "@/lib/vtt/scene-session";
 import type {
 	VTTDiagonalRule,
 	VTTGridScaleUnit,
@@ -31,6 +32,7 @@ import type {
 	VTTSceneSettingsPatch,
 } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { SceneSaveStatus, useSceneSaveState } from "./scene-save-status";
 
 /** Espera depois do último passo do slider antes de gravar. */
 const GRID_SIZE_SAVE_DEBOUNCE_MS = 300;
@@ -48,6 +50,7 @@ const PRESET_COLORS = [
 ];
 
 interface VTTGridSettingsProps {
+	session?: SceneSession;
 	/** Grava só os campos do patch; resolve `false` se o servidor recusar. */
 	onUpdateSceneSettings: (
 		patch: VTTSceneSettingsPatch,
@@ -59,9 +62,14 @@ interface VTTGridSettingsProps {
 	onScaleMap?: (nextScale: number) => Promise<boolean> | boolean | undefined;
 }
 
-export function VTTGridSettings({
+export function VTTGridSettings(props: VTTGridSettingsProps) {
+	const sceneId = useVTTStore((s) => s.activeSceneId);
+	return <GridEditor key={sceneId} {...props} />;
+}
+function GridEditor({
 	onUpdateSceneSettings,
 	onScaleMap,
+	session,
 }: VTTGridSettingsProps) {
 	const activeScene = useVTTStore((s) =>
 		s.scenes.find((scene) => scene.id === s.activeSceneId),
@@ -92,7 +100,8 @@ export function VTTGridSettings({
 	const [offsetYDraft, setOffsetYDraft] = useState<string | null>(null);
 	const [columnsDraft, setColumnsDraft] = useState("");
 	const [rowsDraft, setRowsDraft] = useState("");
-	const [savingSize, setSavingSize] = useState(false);
+	const saveState = useSceneSaveState(session, activeScene?.id ?? "");
+	const savingSize = saveState.blocked;
 	const [savingScale, setSavingScale] = useState(false);
 	// Percentual enquanto arrasta o slider da escala (null = mostra a cena).
 	const [scaleDraftPercent, setScaleDraftPercent] = useState<number | null>(
@@ -101,6 +110,20 @@ export function VTTGridSettings({
 	// Valor gravado antes do arraste/edição em curso, para reverter no erro.
 	const sizeBeforeEditRef = useRef<number | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const editorSceneId = activeScene?.id;
+	useEffect(
+		() => () => {
+			if (!saveTimerRef.current) return;
+			clearTimeout(saveTimerRef.current);
+			// Cancel only an uncommitted slider preview. Never undo an accepted P1 patch.
+			if (editorSceneId && sizeBeforeEditRef.current !== null)
+				updateSceneLocal(editorSceneId, {
+					gridSize: sizeBeforeEditRef.current,
+				});
+		},
+		[editorSceneId, updateSceneLocal],
+	);
 
 	// Ajuste do grid é só do mestre, mesmo se a flag do painel vazar.
 	if (!isGM || !showGridSettings || !activeScene) return null;
@@ -117,6 +140,11 @@ export function VTTGridSettings({
 
 	const commitMapScale = async (value: number) => {
 		if (!onScaleMap) return;
+		if (saveTimerRef.current) {
+			clearTimeout(saveTimerRef.current);
+			saveTimerRef.current = null;
+			await onUpdateSceneSettings({ gridSize });
+		}
 		const next = clampMapScaleForScene(value, sceneWidth, sceneHeight);
 		if (next === mapScale) {
 			setScaleDraftPercent(null);
@@ -153,13 +181,7 @@ export function VTTGridSettings({
 			updateSceneLocal(sceneId, { gridSize: before });
 			return;
 		}
-		setSavingSize(true);
-		try {
-			const ok = await onUpdateSceneSettings({ gridSize: next });
-			if (ok === false) updateSceneLocal(sceneId, { gridSize: before });
-		} finally {
-			setSavingSize(false);
-		}
+		await onUpdateSceneSettings({ gridSize: next });
 	};
 
 	// Arraste: pré-visualização só local (store → canvas); grava com debounce.
@@ -202,13 +224,7 @@ export function VTTGridSettings({
 		const next = normalizeGridOffset(value, gridSize);
 		const before = axis === "gridOffsetX" ? gridOffsetX : gridOffsetY;
 		if (next === before) return;
-		setSavingSize(true);
-		try {
-			const ok = await onUpdateSceneSettings({ [axis]: next });
-			if (ok === false) updateSceneLocal(sceneId, { [axis]: before });
-		} finally {
-			setSavingSize(false);
-		}
+		await onUpdateSceneSettings({ [axis]: next });
 	};
 
 	const commitOffsetDraft = (axis: "gridOffsetX" | "gridOffsetY") => {
@@ -317,357 +333,367 @@ export function VTTGridSettings({
 						<CloseButton onClose={() => setShowGridSettings(false)} />
 					</div>
 				</div>
-				<Slider
-					min={GRID_SIZE_MIN}
-					max={GRID_SIZE_MAX}
-					step={1}
-					value={gridSize}
-					disabled={savingSize}
-					thumbLabel="Tamanho da célula"
-					onValueChange={(value) => previewGridSize(value)}
-					onValueCommitted={(value) => void commitGridSize(value)}
-				/>
-				<p
-					id={gridSizeHintId}
-					aria-live="polite"
-					className={cn(
-						// Linha reservada (2 linhas) e quebra de texto: "Salvando…" não
-						// muda a altura da barra e o aviso de grid livre nunca é cortado.
-						"min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground",
-					)}
-				>
-					{savingSize
-						? "Salvando…"
-						: activeScene.gridType === "none"
-							? `Grid livre: a célula de ${gridSize} px ainda vale para a régua e os tokens.`
-							: `De ${GRID_SIZE_MIN} a ${GRID_SIZE_MAX} px.`}
-				</p>
-			</Field>
-
-			{/* Escala do mapa: 25%–400%, teto 4096 px; −/+ + slider */}
-			<Field
-				label="Escala do mapa"
-				htmlFor={mapScaleId}
-				className="gap-1 sm:gap-1.5"
-			>
-				<div className="flex items-center gap-1.5">
-					<Button
-						type="button"
-						variant="outline"
-						size="icon"
-						aria-label="Diminuir escala do mapa"
-						disabled={
-							!onScaleMap ||
-							savingSize ||
-							savingScale ||
-							displayPercent <= minPercent
-						}
-						onClick={() =>
-							void commitMapScale(
-								percentToMapScale(displayPercent - MAP_SCALE_PERCENT_STEP),
-							)
-						}
-						className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
-					>
-						<Minus className="h-4 w-4" />
-					</Button>
-					<Input
-						id={mapScaleId}
-						type="text"
-						inputMode="numeric"
-						readOnly
-						spellCheck={false}
-						autoComplete="off"
-						aria-describedby={mapScaleHintId}
-						disabled={savingSize || savingScale || !onScaleMap}
-						value={`${displayPercent}%`}
-						className="h-10 text-center text-base tabular-nums"
-					/>
-					<Button
-						type="button"
-						variant="outline"
-						size="icon"
-						aria-label="Aumentar escala do mapa"
-						disabled={
-							!onScaleMap ||
-							savingSize ||
-							savingScale ||
-							displayPercent >= maxPercent
-						}
-						onClick={() =>
-							void commitMapScale(
-								percentToMapScale(displayPercent + MAP_SCALE_PERCENT_STEP),
-							)
-						}
-						className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
-					>
-						<Plus className="h-4 w-4" />
-					</Button>
-				</div>
-				<Slider
-					min={minPercent}
-					max={maxPercent}
-					step={MAP_SCALE_PERCENT_STEP}
-					value={displayPercent}
-					disabled={savingSize || savingScale || !onScaleMap}
-					thumbLabel="Escala do mapa"
-					onValueChange={(value) => previewMapScalePercent(value)}
-					onValueCommitted={(value) =>
-						void commitMapScale(percentToMapScale(value))
-					}
-				/>
-				<p
-					id={mapScaleHintId}
-					aria-live="polite"
-					className="min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground"
-				>
-					{mapScaleHint(sceneWidth, sceneHeight, savingScale)}
-				</p>
-			</Field>
-
-			<div
-				id={moreId}
-				className={cn(
-					"space-y-3.5",
-					gridMoreOpen
-						? "mt-2.5 min-h-0 flex-1 overflow-y-auto border-t border-border/70 pt-2.5"
-						: "hidden",
-					"sm:mt-0 sm:block sm:h-auto sm:overflow-visible sm:border-0 sm:pt-0",
+				{session && (saveState.snapshot?.error || saveState.scale) ? (
+					<SceneSaveStatus session={session} sceneId={sceneId} />
+				) : (
+					<>
+						<Slider
+							min={GRID_SIZE_MIN}
+							max={GRID_SIZE_MAX}
+							step={1}
+							value={gridSize}
+							disabled={savingSize}
+							thumbLabel="Tamanho da célula"
+							onValueChange={(value) => previewGridSize(value)}
+							onValueCommitted={(value) => void commitGridSize(value)}
+						/>
+						<p
+							id={gridSizeHintId}
+							aria-live="polite"
+							className={cn(
+								// Linha reservada (2 linhas) e quebra de texto: "Salvando…" não
+								// muda a altura da barra e o aviso de grid livre nunca é cortado.
+								"min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground",
+							)}
+						>
+							{saveState.pending
+								? "Ajuste pendente nesta máquina."
+								: activeScene.gridType === "none"
+									? `Grid livre: a célula de ${gridSize} px ainda vale para a régua e os tokens.`
+									: `De ${GRID_SIZE_MIN} a ${GRID_SIZE_MAX} px.`}
+						</p>
+					</>
 				)}
-			>
-				<form
-					className="space-y-2"
-					onSubmit={(event) => {
-						event.preventDefault();
-						commitOffsetDraft("gridOffsetX");
-						commitOffsetDraft("gridOffsetY");
-					}}
-				>
-					<OffsetField
-						id={offsetXId}
-						label="Deslocamento X"
-						hint={OFFSET_HINT}
-						decreaseLabel="Diminuir deslocamento X"
-						increaseLabel="Aumentar deslocamento X"
-						disabled={savingSize}
-						value={offsetXDraft ?? String(gridOffsetX)}
-						onChange={setOffsetXDraft}
-						onCommit={() => commitOffsetDraft("gridOffsetX")}
-						onCancel={() => setOffsetXDraft(null)}
-						onNudge={(delta) =>
-							void commitOffset("gridOffsetX", gridOffsetX + delta)
-						}
-					/>
-					<OffsetField
-						id={offsetYId}
-						label="Deslocamento Y"
-						hint={OFFSET_HINT}
-						decreaseLabel="Diminuir deslocamento Y"
-						increaseLabel="Aumentar deslocamento Y"
-						disabled={savingSize}
-						value={offsetYDraft ?? String(gridOffsetY)}
-						onChange={setOffsetYDraft}
-						onCommit={() => commitOffsetDraft("gridOffsetY")}
-						onCancel={() => setOffsetYDraft(null)}
-						onNudge={(delta) =>
-							void commitOffset("gridOffsetY", gridOffsetY + delta)
-						}
-					/>
-				</form>
+			</Field>
 
-				<form
-					className="space-y-2"
-					onSubmit={(event) => {
-						event.preventDefault();
-						if (countedSize != null) void commitGridSize(countedSize);
-					}}
+			<fieldset disabled={savingSize} className="contents">
+				{/* Escala do mapa: 25%–400%, teto 4096 px; −/+ + slider */}
+				<Field
+					label="Escala do mapa"
+					htmlFor={mapScaleId}
+					className="gap-1 sm:gap-1.5"
 				>
-					<p className="text-[10px] font-bold text-muted-foreground">
-						Contar quadrados
-					</p>
-					<div className="grid grid-cols-2 gap-2">
-						<Field label="Colunas" htmlFor={columnsId}>
-							<Input
-								id={columnsId}
-								type="number"
-								inputMode="numeric"
-								min={1}
-								step={1}
-								spellCheck={false}
-								autoComplete="off"
-								value={columnsDraft}
-								onChange={(event) => setColumnsDraft(event.target.value)}
-								className="h-11 text-base tabular-nums"
-							/>
-						</Field>
-						<Field label="Linhas" htmlFor={rowsId}>
-							<Input
-								id={rowsId}
-								type="number"
-								inputMode="numeric"
-								min={1}
-								step={1}
-								spellCheck={false}
-								autoComplete="off"
-								value={rowsDraft}
-								onChange={(event) => setRowsDraft(event.target.value)}
-								className="h-11 text-base tabular-nums"
-							/>
-						</Field>
+					<div className="flex items-center gap-1.5">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							aria-label="Diminuir escala do mapa"
+							disabled={
+								!onScaleMap ||
+								savingSize ||
+								savingScale ||
+								displayPercent <= minPercent
+							}
+							onClick={() =>
+								void commitMapScale(
+									percentToMapScale(displayPercent - MAP_SCALE_PERCENT_STEP),
+								)
+							}
+							className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
+						>
+							<Minus className="h-4 w-4" />
+						</Button>
+						<Input
+							id={mapScaleId}
+							type="text"
+							inputMode="numeric"
+							readOnly
+							spellCheck={false}
+							autoComplete="off"
+							aria-describedby={mapScaleHintId}
+							disabled={savingSize || savingScale || !onScaleMap}
+							value={`${displayPercent}%`}
+							className="h-10 text-center text-base tabular-nums"
+						/>
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							aria-label="Aumentar escala do mapa"
+							disabled={
+								!onScaleMap ||
+								savingSize ||
+								savingScale ||
+								displayPercent >= maxPercent
+							}
+							onClick={() =>
+								void commitMapScale(
+									percentToMapScale(displayPercent + MAP_SCALE_PERCENT_STEP),
+								)
+							}
+							className="size-10 shrink-0 rounded-xl disabled:opacity-50 data-disabled:opacity-50"
+						>
+							<Plus className="h-4 w-4" />
+						</Button>
 					</div>
-					<p className="min-h-[1lh] text-[11px] tabular-nums text-muted-foreground">
-						{countedSize != null
-							? `${columnsDraft} × ${rowsDraft} → ${countedSize} px`
-							: "Informe colunas e linhas do mapa."}
-					</p>
-					<Button
-						type="submit"
-						variant="outline"
-						disabled={savingSize || countedSize == null}
-						className="h-11 w-full rounded-xl"
-					>
-						Usar este tamanho
-					</Button>
-				</form>
-
-				{/* Grid Type */}
-				<Field label="Tipo de Grid">
-					<Select
-						aria-label="Tipo de Grid"
-						value={activeScene.gridType}
-						onChange={(e) =>
-							onUpdateSceneSettings({
-								gridType: e.target.value as VTTGridType,
-							})
+					<Slider
+						min={minPercent}
+						max={maxPercent}
+						step={MAP_SCALE_PERCENT_STEP}
+						value={displayPercent}
+						disabled={savingSize || savingScale || !onScaleMap}
+						thumbLabel="Escala do mapa"
+						onValueChange={(value) => previewMapScalePercent(value)}
+						onValueCommitted={(value) =>
+							void commitMapScale(percentToMapScale(value))
 						}
-						className="h-11 text-base"
+					/>
+					<p
+						id={mapScaleHintId}
+						aria-live="polite"
+						className="min-h-[2lh] text-pretty break-words text-[11px] leading-snug text-muted-foreground"
 					>
-						<option value="square">Quadrado (Padrão)</option>
-						<option value="hex_pointy">Hexagonal (Pontudo)</option>
-						<option value="hex_flat">Hexagonal (Plano)</option>
-						<option value="none">Desativado (Livre)</option>
-					</Select>
+						{mapScaleHint(sceneWidth, sceneHeight, savingScale)}
+					</p>
 				</Field>
 
-				{/* Distância por célula & unidade usadas pela régua e templates */}
-				<div className="grid grid-cols-2 gap-2">
-					<Field label="Distância por célula" htmlFor={gridScaleId}>
-						<Input
-							id={gridScaleId}
-							type="number"
-							step="0.5"
-							min="0.5"
-							inputMode="decimal"
-							value={activeScene.gridScaleDistance}
-							onChange={(e) => {
-								const value = Number(e.target.value);
-								onUpdateSceneSettings({
-									gridScaleDistance:
-										value > 0 ? value : DEFAULT_GRID_SCALE_DISTANCE,
-								});
-							}}
-							className="h-11 text-base tabular-nums"
+				<div
+					id={moreId}
+					className={cn(
+						"space-y-3.5",
+						gridMoreOpen
+							? "mt-2.5 min-h-0 flex-1 overflow-y-auto border-t border-border/70 pt-2.5"
+							: "hidden",
+						"sm:mt-0 sm:block sm:h-auto sm:overflow-visible sm:border-0 sm:pt-0",
+					)}
+				>
+					<form
+						className="space-y-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							commitOffsetDraft("gridOffsetX");
+							commitOffsetDraft("gridOffsetY");
+						}}
+					>
+						<OffsetField
+							id={offsetXId}
+							label="Deslocamento X"
+							hint={OFFSET_HINT}
+							decreaseLabel="Diminuir deslocamento X"
+							increaseLabel="Aumentar deslocamento X"
+							disabled={savingSize}
+							value={offsetXDraft ?? String(gridOffsetX)}
+							onChange={setOffsetXDraft}
+							onCommit={() => commitOffsetDraft("gridOffsetX")}
+							onCancel={() => setOffsetXDraft(null)}
+							onNudge={(delta) =>
+								void commitOffset("gridOffsetX", gridOffsetX + delta)
+							}
 						/>
-					</Field>
-					<Field label="Unidade" htmlFor={gridUnitId}>
+						<OffsetField
+							id={offsetYId}
+							label="Deslocamento Y"
+							hint={OFFSET_HINT}
+							decreaseLabel="Diminuir deslocamento Y"
+							increaseLabel="Aumentar deslocamento Y"
+							disabled={savingSize}
+							value={offsetYDraft ?? String(gridOffsetY)}
+							onChange={setOffsetYDraft}
+							onCommit={() => commitOffsetDraft("gridOffsetY")}
+							onCancel={() => setOffsetYDraft(null)}
+							onNudge={(delta) =>
+								void commitOffset("gridOffsetY", gridOffsetY + delta)
+							}
+						/>
+					</form>
+
+					<form
+						className="space-y-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							if (countedSize != null) void commitGridSize(countedSize);
+						}}
+					>
+						<p className="text-[10px] font-bold text-muted-foreground">
+							Contar quadrados
+						</p>
+						<div className="grid grid-cols-2 gap-2">
+							<Field label="Colunas" htmlFor={columnsId}>
+								<Input
+									id={columnsId}
+									type="number"
+									inputMode="numeric"
+									min={1}
+									step={1}
+									spellCheck={false}
+									autoComplete="off"
+									value={columnsDraft}
+									onChange={(event) => setColumnsDraft(event.target.value)}
+									className="h-11 text-base tabular-nums"
+								/>
+							</Field>
+							<Field label="Linhas" htmlFor={rowsId}>
+								<Input
+									id={rowsId}
+									type="number"
+									inputMode="numeric"
+									min={1}
+									step={1}
+									spellCheck={false}
+									autoComplete="off"
+									value={rowsDraft}
+									onChange={(event) => setRowsDraft(event.target.value)}
+									className="h-11 text-base tabular-nums"
+								/>
+							</Field>
+						</div>
+						<p className="min-h-[1lh] text-[11px] tabular-nums text-muted-foreground">
+							{countedSize != null
+								? `${columnsDraft} × ${rowsDraft} → ${countedSize} px`
+								: "Informe colunas e linhas do mapa."}
+						</p>
+						<Button
+							type="submit"
+							variant="outline"
+							disabled={savingSize || countedSize == null}
+							className="h-11 w-full rounded-xl"
+						>
+							Usar este tamanho
+						</Button>
+					</form>
+
+					{/* Grid Type */}
+					<Field label="Tipo de Grid">
 						<Select
-							id={gridUnitId}
-							value={activeScene.gridScaleUnit}
+							aria-label="Tipo de Grid"
+							value={activeScene.gridType}
 							onChange={(e) =>
 								onUpdateSceneSettings({
-									gridScaleUnit: e.target.value as VTTGridScaleUnit,
+									gridType: e.target.value as VTTGridType,
 								})
 							}
 							className="h-11 text-base"
 						>
-							<option value="m">Metros</option>
-							<option value="ft">Pés</option>
-							<option value="sq">Quadrados</option>
+							<option value="square">Quadrado (Padrão)</option>
+							<option value="hex_pointy">Hexagonal (Pontudo)</option>
+							<option value="hex_flat">Hexagonal (Plano)</option>
+							<option value="none">Desativado (Livre)</option>
 						</Select>
 					</Field>
-				</div>
 
-				{/* Diagonal rule used by the ruler distance */}
-				<fieldset className="space-y-1.5">
-					<legend className="text-[10px] font-bold text-muted-foreground">
-						Diagonal
-					</legend>
-					<div className="grid grid-cols-2 gap-1.5">
-						{(
-							[
-								{ id: "5105", label: "5-10-5" },
-								{ id: "euclidean", label: "Euclidiano" },
-							] satisfies { id: VTTDiagonalRule; label: string }[]
-						).map((rule) => (
-							<button
-								type="button"
-								key={rule.id}
-								aria-pressed={diagonalRule === rule.id}
-								onClick={() => setDiagonalRule(rule.id)}
-								className={cn(
-									"min-h-11 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
-									diagonalRule === rule.id
-										? "border-primary/40 bg-primary/15 text-foreground"
-										: "border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground",
-								)}
-							>
-								{rule.label}
-							</button>
-						))}
-					</div>
-				</fieldset>
-
-				{activeScene.gridType !== "none" && (
-					<>
-						{/* Grid Opacity Slider */}
-						<div className="space-y-1">
-							<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-								<span>Opacidade do Grid</span>
-								<span className="font-mono text-foreground">
-									{Math.round(activeScene.gridOpacity * 100)}%
-								</span>
-							</div>
-							<Slider
-								min={0}
-								max={1}
-								step={0.05}
-								value={activeScene.gridOpacity}
-								thumbLabel="Opacidade do grid"
-								onValueCommitted={(value) =>
-									onUpdateSceneSettings({ gridOpacity: value })
-								}
-								onValueChange={(value) =>
-									updateSceneLocal(sceneId, { gridOpacity: value })
-								}
+					{/* Distância por célula & unidade usadas pela régua e templates */}
+					<div className="grid grid-cols-2 gap-2">
+						<Field label="Distância por célula" htmlFor={gridScaleId}>
+							<Input
+								id={gridScaleId}
+								type="number"
+								step="0.5"
+								min="0.5"
+								inputMode="decimal"
+								value={activeScene.gridScaleDistance}
+								onChange={(e) => {
+									const value = Number(e.target.value);
+									onUpdateSceneSettings({
+										gridScaleDistance:
+											value > 0 ? value : DEFAULT_GRID_SCALE_DISTANCE,
+									});
+								}}
+								className="h-11 text-base tabular-nums"
 							/>
-						</div>
+						</Field>
+						<Field label="Unidade" htmlFor={gridUnitId}>
+							<Select
+								id={gridUnitId}
+								value={activeScene.gridScaleUnit}
+								onChange={(e) =>
+									onUpdateSceneSettings({
+										gridScaleUnit: e.target.value as VTTGridScaleUnit,
+									})
+								}
+								className="h-11 text-base"
+							>
+								<option value="m">Metros</option>
+								<option value="ft">Pés</option>
+								<option value="sq">Quadrados</option>
+							</Select>
+						</Field>
+					</div>
 
-						{/* Grid Color Palette */}
-						<div className="space-y-1.5">
-							<span className="text-[10px] font-bold text-muted-foreground">
-								Cor do Grid
-							</span>
-							<div className="flex flex-wrap items-center gap-2">
-								{PRESET_COLORS.map((color) => (
-									<button
-										type="button"
-										key={color}
-										aria-label={`Cor do grid ${color}`}
-										aria-pressed={activeScene.gridColor === color}
-										onClick={() => onUpdateSceneSettings({ gridColor: color })}
-										style={{ backgroundColor: color }}
-										className={`h-11 w-11 rounded-full border transition-all cursor-pointer ${
-											activeScene.gridColor === color
-												? "border-primary scale-110 shadow-xs"
-												: "border-border opacity-70 hover:opacity-100"
-										}`}
-									/>
-								))}
-							</div>
+					{/* Diagonal rule used by the ruler distance */}
+					<fieldset className="space-y-1.5">
+						<legend className="text-[10px] font-bold text-muted-foreground">
+							Diagonal
+						</legend>
+						<div className="grid grid-cols-2 gap-1.5">
+							{(
+								[
+									{ id: "5105", label: "5-10-5" },
+									{ id: "euclidean", label: "Euclidiano" },
+								] satisfies { id: VTTDiagonalRule; label: string }[]
+							).map((rule) => (
+								<button
+									type="button"
+									key={rule.id}
+									aria-pressed={diagonalRule === rule.id}
+									onClick={() => setDiagonalRule(rule.id)}
+									className={cn(
+										"min-h-11 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
+										diagonalRule === rule.id
+											? "border-primary/40 bg-primary/15 text-foreground"
+											: "border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground",
+									)}
+								>
+									{rule.label}
+								</button>
+							))}
 						</div>
-					</>
-				)}
-			</div>
+					</fieldset>
+
+					{activeScene.gridType !== "none" && (
+						<>
+							{/* Grid Opacity Slider */}
+							<div className="space-y-1">
+								<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+									<span>Opacidade do Grid</span>
+									<span className="font-mono text-foreground">
+										{Math.round(activeScene.gridOpacity * 100)}%
+									</span>
+								</div>
+								<Slider
+									min={0}
+									max={1}
+									step={0.05}
+									value={activeScene.gridOpacity}
+									thumbLabel="Opacidade do grid"
+									onValueCommitted={(value) =>
+										onUpdateSceneSettings({ gridOpacity: value })
+									}
+									onValueChange={(value) =>
+										updateSceneLocal(sceneId, { gridOpacity: value })
+									}
+								/>
+							</div>
+
+							{/* Grid Color Palette */}
+							<div className="space-y-1.5">
+								<span className="text-[10px] font-bold text-muted-foreground">
+									Cor do Grid
+								</span>
+								<div className="flex flex-wrap items-center gap-2">
+									{PRESET_COLORS.map((color) => (
+										<button
+											type="button"
+											key={color}
+											aria-label={`Cor do grid ${color}`}
+											aria-pressed={activeScene.gridColor === color}
+											onClick={() =>
+												onUpdateSceneSettings({ gridColor: color })
+											}
+											style={{ backgroundColor: color }}
+											className={`h-11 w-11 rounded-full border transition-all cursor-pointer ${
+												activeScene.gridColor === color
+													? "border-primary scale-110 shadow-xs"
+													: "border-border opacity-70 hover:opacity-100"
+											}`}
+										/>
+									))}
+								</div>
+							</div>
+						</>
+					)}
+				</div>
+			</fieldset>
 		</section>
 	);
 }

@@ -122,7 +122,7 @@ describe("VTTGridSettings — tamanho da célula", () => {
 		expect(save).toHaveBeenCalledWith({ gridSize: 11 });
 	});
 
-	it("desabilita os controles enquanto salva", async () => {
+	it("mantém controles editáveis durante writer pendente", async () => {
 		let resolve: (ok: boolean) => void = () => {};
 		const save = vi.fn(
 			() =>
@@ -137,8 +137,8 @@ describe("VTTGridSettings — tamanho da célula", () => {
 		expect(
 			(screen.getByLabelText("Tamanho da célula (px)") as HTMLInputElement)
 				.disabled,
-		).toBe(true);
-		expect(screen.getByText("Salvando…")).toBeTruthy();
+		).toBe(false);
+		expect(screen.queryByText("Salvando…")).toBeNull();
 		await act(async () => resolve(true));
 		expect(
 			(screen.getByLabelText("Tamanho da célula (px)") as HTMLInputElement)
@@ -167,7 +167,7 @@ describe("VTTGridSettings — tamanho da célula", () => {
 		);
 	});
 
-	it("erro ao gravar volta ao tamanho de antes", async () => {
+	it("recusa antes do overlay não inventa atualização local", async () => {
 		const save = vi.fn().mockResolvedValue(false);
 		render(<VTTGridSettings onUpdateSceneSettings={save} />);
 		const input = screen.getByLabelText("Tamanho da célula (px)");
@@ -343,4 +343,60 @@ describe("VTTGridSettings — escala do mapa", () => {
 			(screen.getByDisplayValue("100%") as HTMLInputElement).disabled,
 		).toBe(true);
 	});
+});
+
+describe("P2b intenção mais nova", () => {
+	it("falha não faz rollback duplicado do overlay do adapter", async () => {
+		const save = vi.fn(async (patch) => {
+			useVTTStore.getState().updateScene(scene.id, patch);
+			return false;
+		});
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		const input = screen.getByLabelText("Tamanho da célula (px)");
+		fireEvent.change(input, { target: { value: "120" } });
+		await act(async () => {
+			fireEvent.keyDown(input, { key: "Enter" });
+		});
+		expect(size()).toBe(120);
+	});
+	it("writer pendente não bloqueia a próxima intenção de tamanho", async () => {
+		let done!: (saved: boolean) => void;
+		const pending = new Promise<boolean>((resolve) => {
+			done = resolve;
+		});
+		const save = vi.fn((patch) => {
+			useVTTStore.getState().updateScene(scene.id, patch);
+			return pending;
+		});
+		render(<VTTGridSettings onUpdateSceneSettings={save} />);
+		fireEvent.click(screen.getByRole("button", { name: "Aumentar célula" }));
+		expect(
+			screen
+				.getByRole("button", { name: "Aumentar célula" })
+				.hasAttribute("disabled"),
+		).toBe(false);
+		fireEvent.click(screen.getByRole("button", { name: "Aumentar célula" }));
+		expect(size()).toBe(72);
+		await act(async () => done(true));
+	});
+});
+
+it("trocar cena não repete commit do teclado nem desfaz intenção aceita", async () => {
+	vi.useFakeTimers();
+	const save = vi.fn(async (patch) => {
+		useVTTStore.getState().updateScene(scene.id, patch);
+		return true;
+	});
+	useVTTStore.setState({ scenes: [scene, { ...scene, id: "b" }] });
+	render(<VTTGridSettings onUpdateSceneSettings={save} />);
+	fireEvent.keyDown(screen.getByRole("slider", { name: "Tamanho da célula" }), {
+		key: "ArrowRight",
+	});
+	await act(async () => vi.advanceTimersByTimeAsync(0));
+	expect(save).toHaveBeenCalledTimes(1);
+	expect(size()).toBe(71);
+	act(() => useVTTStore.getState().setActiveSceneId("b"));
+	await act(async () => vi.advanceTimersByTimeAsync(300));
+	expect(save).toHaveBeenCalledTimes(1);
+	expect(size()).toBe(71);
 });

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -8,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
+import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import {
@@ -46,6 +48,8 @@ function setup(fogEnabled: boolean) {
 beforeEach(() => {
 	useVTTStore.setState({
 		isGM: true,
+		activeSceneId: scene.id,
+		scenes: [scene],
 		showFogControls: true,
 		activeFogTool: "brush",
 		fogBrushRadius: 40,
@@ -101,4 +105,101 @@ describe("VTTFogControls — pincel em diâmetro", () => {
 		expect(screen.getByText("80px")).toBeTruthy();
 		expect(screen.queryByText("(20px)")).toBeNull();
 	});
+});
+
+it("recusa de autorização não executa Revelar Tudo", async () => {
+	const save = vi.fn(async () => false),
+		clear = vi.fn();
+	render(
+		<ToastProvider>
+			<VTTFogControls scene={scene} onUpdateScene={save} onClearFog={clear} />
+		</ToastProvider>,
+	);
+	fireEvent.click(screen.getByRole("button", { name: "Revelar Tudo" }));
+	await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+	expect(clear).toHaveBeenCalledTimes(0);
+});
+it("troca de cena durante enable não limpa a cena nova", async () => {
+	let resolve!: (v: boolean) => void;
+	const save = vi.fn(
+			() =>
+				new Promise<boolean>((r) => {
+					resolve = r;
+				}),
+		),
+		clear = vi.fn();
+	render(
+		<ToastProvider>
+			<VTTFogControls scene={scene} onUpdateScene={save} onClearFog={clear} />
+		</ToastProvider>,
+	);
+	fireEvent.click(screen.getByRole("button", { name: "Revelar Tudo" }));
+	useVTTStore.getState().setActiveSceneId("other");
+	resolve(true);
+	await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+	expect(clear).toHaveBeenCalledTimes(0);
+});
+
+it("offline Revelar Tudo só aceita overlay P1 pendente e não finge ACK", async () => {
+	const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+	let resolve!: (v: undefined) => void;
+	const writer = vi.fn(
+		() =>
+			new Promise<undefined>((r) => {
+				resolve = r;
+			}),
+	);
+	const session = createSceneSession({
+		userId: "gm",
+		campaignId: "qa",
+		sessionId: "offline",
+		writeScene: writer,
+		scaleScene: async () => ({ kind: "confirmed" }),
+		readGeometry: async () => null,
+	});
+	session.acceptRemote(scene);
+	const clear = vi.fn();
+	try {
+		render(
+			<ToastProvider>
+				<VTTFogControls
+					session={session}
+					scene={scene}
+					onUpdateScene={(id, patch) => session.update(id, patch)}
+					onClearFog={clear}
+				/>
+			</ToastProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Revelar Tudo" }));
+		expect(clear).toHaveBeenCalledWith("all_revealed");
+		expect(session.persistence.getSceneSnapshot(scene.id).pendingPatch).toEqual(
+			{ fogEnabled: true },
+		);
+		expect(screen.getByText(/Ajuste pendente nesta máquina/)).toBeTruthy();
+		await waitFor(() => expect(writer).toHaveBeenCalledTimes(1));
+		await act(async () => resolve(undefined));
+	} finally {
+		session.dispose();
+		online.mockRestore();
+	}
+});
+it("offline recusa sem overlay aceito não executa Revelar Tudo", async () => {
+	const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+	const clear = vi.fn();
+	try {
+		render(
+			<ToastProvider>
+				<VTTFogControls
+					scene={scene}
+					onUpdateScene={async () => false}
+					onClearFog={clear}
+				/>
+			</ToastProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Revelar Tudo" }));
+		await act(async () => {});
+		expect(clear).toHaveBeenCalledTimes(0);
+	} finally {
+		online.mockRestore();
+	}
 });
