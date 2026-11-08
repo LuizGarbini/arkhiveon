@@ -6,6 +6,7 @@ import {
 	Sprite,
 	Text,
 	TextStyle,
+	Texture,
 } from "pixi.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
@@ -18,8 +19,7 @@ import {
 } from "@/lib/vtt/character-hp";
 import { currentTurnRingTokenId, useCombatStore } from "@/lib/vtt/combat-store";
 import {
-	STATUS_CHIP,
-	statusDiscPositions,
+	scaledStatusDiscMetrics,
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
@@ -45,8 +45,8 @@ import {
 import {
 	clearStatusIconTextures,
 	cssVarColor,
-	placeStatusIcon,
-	statusIconTexture,
+	STATUS_RING_SPRITE_FACTOR,
+	statusRingTexture,
 } from "@/lib/vtt/status-icon-texture";
 import { createStatusLongPress } from "@/lib/vtt/status-long-press";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
@@ -285,14 +285,16 @@ export function VTTCanvas({
 		const token = vtt.tokens.find((item) => item.id === id);
 		const grid = sceneRef.current?.gridSize || 70;
 		if (!host || !token) return;
-		const radius = (token.sizeCells * grid) / 2 + 6;
+		const baseRadius = (token.sizeCells * grid) / 2;
+		const tScale = Math.min(1, baseRadius / 35);
+		const radius = baseRadius + 6 * tScale;
 		const ring = new Graphics();
 		ring.label = "turn-ring";
 		ring.eventMode = "none";
 		ring.circle(0, 0, radius);
 		// Cor lida de --primary. O número só entra se a variável não existir.
 		ring.stroke({
-			width: 3,
+			width: 3 * tScale,
 			color: cssVarColor("--primary", 0x6d28d9),
 			alpha: 1,
 		});
@@ -804,7 +806,11 @@ export function VTTCanvas({
 
 			const isGMLayer = token.layer === "gm";
 			const tokenRadius = (token.sizeCells * gridSize) / 2;
+			const tokenScale = Math.max(0.15, Math.min(1, tokenRadius / 38));
 			const isSelected = selectedTokenIds.includes(token.id);
+			const status = summarizeConditions(token.conditions);
+			const hasStatusRow = status.visible.length > 0;
+			const disc = scaledStatusDiscMetrics(tokenRadius, compactStatus);
 
 			// 4.2 Token Container
 			const tokenContainer = new Container();
@@ -839,7 +845,7 @@ export function VTTCanvas({
 						sprite.height = tokenRadius * 2;
 
 						const mask = new Graphics();
-						mask.circle(0, 0, tokenRadius - 2);
+						mask.circle(0, 0, Math.max(1, tokenRadius - 1 * tokenScale));
 						mask.fill({ color: 0xffffff });
 						sprite.mask = mask;
 
@@ -850,9 +856,10 @@ export function VTTCanvas({
 						const initials = token.name.slice(0, 2).toUpperCase();
 						const text = new Text({
 							text: initials,
+							resolution: 4,
 							style: new TextStyle({
 								fontFamily: "system-ui, sans-serif",
-								fontSize: Math.max(12, tokenRadius * 0.7),
+								fontSize: Math.max(4, tokenRadius * 0.7),
 								fontWeight: "bold",
 								fill: "#ffffff",
 							}),
@@ -864,9 +871,10 @@ export function VTTCanvas({
 				const initials = token.name.slice(0, 2).toUpperCase();
 				const text = new Text({
 					text: initials,
+					resolution: 4,
 					style: new TextStyle({
 						fontFamily: "system-ui, sans-serif",
-						fontSize: Math.max(12, tokenRadius * 0.7),
+						fontSize: Math.max(4, tokenRadius * 0.7),
 						fontWeight: "bold",
 						fill: isGMLayer ? "#c084fc" : "#a855f7",
 					}),
@@ -880,68 +888,54 @@ export function VTTCanvas({
 			const ring = new Graphics();
 			const ringStyle = tokenRingStyle(token.conditions, isSelected, isGMLayer);
 			ring.circle(0, 0, tokenRadius);
-			ring.stroke({ width: ringStyle.width, color: ringStyle.color });
+			ring.stroke({
+				width: ringStyle.width * tokenScale,
+				color: ringStyle.color,
+			});
 			tokenContainer.addChild(ring);
 
-			// Selection outer pulse ring (drawn behind the status discs)
-			if (isSelected) {
-				const outerGlow = new Graphics();
-				outerGlow.circle(0, 0, tokenRadius + 4);
-				outerGlow.stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.6 });
-				tokenContainer.addChild(outerGlow);
+			// Disco/anel de efeitos ao redor do token (vazado no centro para nunca
+			// cobrir o retrato do personagem, escalando proporcionalmente ao tokenRadius).
+			if (hasStatusRow) {
+				const ringTex = statusRingTexture(status.visible);
+				if (ringTex !== Texture.EMPTY) {
+					const ringSprite = new Sprite(ringTex);
+					ringSprite.anchor.set(0.5);
+					const spriteDiameter = tokenRadius * STATUS_RING_SPRITE_FACTOR * 2;
+					ringSprite.width = spriteDiameter;
+					ringSprite.height = spriteDiameter;
+					tokenContainer.addChild(ringSprite);
+				}
 			}
 
-			// Status: discos curvados ao redor da borda circular do token (todos os
-			// status ativos visíveis no anel, sem esconder atrás de "+N").
-			const status = summarizeConditions(token.conditions);
-			const hasStatusRow = status.visible.length > 0;
-			const chipSize = compactStatus
-				? STATUS_CHIP.compact
-				: STATUS_CHIP.desktop;
-			const chipR = chipSize.chip / 2;
-			const renderer = appRef.current?.renderer;
-			if (hasStatusRow && renderer) {
-				const placements = statusDiscPositions(
-					status.visible.length,
-					tokenRadius,
-					chipSize.chip,
-				);
-				const drawChipBg = (x: number, y: number, color: number) => {
-					const chip = new Graphics();
-					chip.circle(x, y, chipR);
-					chip.fill({ color: 0x18181b, alpha: 0.92 });
-					chip.stroke({ width: STATUS_CHIP.stroke, color });
-					tokenContainer.addChild(chip);
-				};
-				// Ícone lucide monocromático (--foreground); textura cacheada por
-				// ícone/tamanho, então redesenhar o token não gera textura nova.
-				status.visible.forEach((cond, i) => {
-					const { x, y } = placements[i];
-					drawChipBg(x, y, cond.hex);
-					const art = statusIconTexture(renderer, cond.icon);
-					const box = placeStatusIcon(art, chipSize.icon, x, y);
-					const icon = new Sprite(art.texture);
-					icon.position.set(box.x, box.y);
-					icon.width = box.width;
-					icon.height = box.height;
-					icon.tint = foreground;
-					tokenContainer.addChild(icon);
+			// Selection outer pulse ring (drawn outside the status ring when present)
+			if (isSelected) {
+				const outerGlow = new Graphics();
+				const glowRadius =
+					(hasStatusRow ? disc.ringOuterRadius : tokenRadius) + 3 * tokenScale;
+				outerGlow.circle(0, 0, glowRadius);
+				outerGlow.stroke({
+					width: 1.5 * tokenScale,
+					color: 0x38bdf8,
+					alpha: 0.65,
 				});
+				tokenContainer.addChild(outerGlow);
 			}
 
 			// GM Shield Badge
 			if (isGMLayer) {
 				const gmBadge = new Graphics();
-				gmBadge.circle(tokenRadius * 0.65, -tokenRadius * 0.65, 8);
+				gmBadge.circle(tokenRadius * 0.65, -tokenRadius * 0.65, 8 * tokenScale);
 				gmBadge.fill({ color: 0x581c87 });
-				gmBadge.stroke({ width: 1.5, color: 0xc084fc });
+				gmBadge.stroke({ width: 1.5 * tokenScale, color: 0xc084fc });
 				tokenContainer.addChild(gmBadge);
 
 				const gmText = new Text({
 					text: "GM",
+					resolution: 4,
 					style: new TextStyle({
 						fontFamily: "system-ui, sans-serif",
-						fontSize: 8,
+						fontSize: 8 * tokenScale,
 						fontWeight: "bold",
 						fill: "#ffffff",
 					}),
@@ -951,7 +945,7 @@ export function VTTCanvas({
 				tokenContainer.addChild(gmText);
 			}
 
-			// HP Bar (Above token). Ficha ligada: PV vem do carimbo da ficha, não de hp_*.
+			// HP Bar (Above token / status ring). Ficha ligada: PV vem do carimbo da ficha, não de hp_*.
 			const linkedHp = readLinkedSheetHp(linkedSheetHp, token.characterId);
 			const hp = resolveTokenHp({
 				tokenHpCurrent: token.hpCurrent,
@@ -964,27 +958,29 @@ export function VTTCanvas({
 				const maxHp = Math.max(1, hp.max);
 				const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
 
-				const barWidth = tokenRadius * 1.8;
-				const barHeight = Math.max(4, tokenRadius * 0.16);
-				const barY = -tokenRadius - barHeight - 4;
+				const barWidth = tokenRadius * 1.65;
+				const barHeight = Math.max(1.2, 5.5 * tokenScale);
+				const topEdge = hasStatusRow ? disc.ringOuterRadius : tokenRadius;
+				const barY = -topEdge - barHeight - 4 * tokenScale;
+				const barCorner = 2.5 * tokenScale;
 
 				const hpBar = new Graphics();
-				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, 3);
+				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, barCorner);
 				hpBar.fill({ color: 0x000000, alpha: 0.8 });
 
 				if (hpRatio > 0) {
 					hpBar.roundRect(
 						-barWidth / 2,
 						barY,
-						Math.max(2, barWidth * hpRatio),
+						Math.max(2 * tokenScale, barWidth * hpRatio),
 						barHeight,
-						3,
+						barCorner,
 					);
 					hpBar.fill({ color: hpFill });
 				}
 
-				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, 3);
-				hpBar.stroke({ width: 1, color: 0xffffff, alpha: 0.3 });
+				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, barCorner);
+				hpBar.stroke({ width: 1 * tokenScale, color: 0xffffff, alpha: 0.3 });
 
 				tokenContainer.addChild(hpBar);
 			}
@@ -993,22 +989,24 @@ export function VTTCanvas({
 			if (token.elevation && token.elevation !== 0) {
 				const elevText = new Text({
 					text: `↑ ${token.elevation}m`,
+					resolution: 4,
 					style: new TextStyle({
 						fontFamily: "system-ui, sans-serif",
-						fontSize: Math.max(9, tokenRadius * 0.35),
+						fontSize: Math.max(3, 9 * tokenScale),
 						fontWeight: "bold",
 						fill: "#38bdf8",
 						dropShadow: {
 							alpha: 0.8,
 							angle: Math.PI / 6,
-							blur: 2,
+							blur: 2 * tokenScale,
 							color: "#000000",
-							distance: 1,
+							distance: 1 * tokenScale,
 						},
 					}),
 				});
 				elevText.anchor.set(0.5);
-				elevText.position.set(0, tokenRadius + (hasStatusRow ? chipR + 10 : 8));
+				const bottomEdge = hasStatusRow ? disc.ringOuterRadius : tokenRadius;
+				elevText.position.set(0, bottomEdge + 8 * tokenScale);
 				tokenContainer.addChild(elevText);
 			}
 

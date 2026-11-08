@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	conditionDef,
 	STATUS_CHIP,
+	scaledStatusDiscMetrics,
 	statusDiscPositions,
 	summarizeConditions,
 	tokenRingStyle,
@@ -75,6 +76,25 @@ describe("status do token", () => {
 				allSeven[i].y - allSeven[i - 1].y,
 			);
 			expect(dist).toBeGreaterThan(STATUS_CHIP.desktop.chip);
+		}
+	});
+
+	it("escala os discos e o anel proporcionalmente quando o token/grid é pequeno para não cobrir o token", () => {
+		const smallRadius = 10; // gridSize = 20
+		const disc = scaledStatusDiscMetrics(smallRadius, false);
+		expect(disc.chip).toBeLessThan(smallRadius * 0.6);
+		expect(disc.orbitRadius).toBeGreaterThan(smallRadius);
+		expect(disc.ringInnerRadius).toBeGreaterThan(smallRadius);
+		expect(disc.ringOuterRadius).toBeGreaterThan(disc.ringInnerRadius);
+
+		const placements = statusDiscPositions(4, disc.orbitRadius, disc.chip);
+		expect(placements).toHaveLength(4);
+		for (let i = 1; i < placements.length; i++) {
+			const dist = Math.hypot(
+				placements[i].x - placements[i - 1].x,
+				placements[i].y - placements[i - 1].y,
+			);
+			expect(dist).toBeGreaterThan(disc.chip);
 		}
 	});
 
