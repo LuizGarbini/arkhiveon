@@ -75,6 +75,15 @@ export function VTTRosterDrawer({
 	const [name, setName] = useState("");
 	const [hp, setHp] = useState(25);
 	const [size, setSize] = useState(1);
+	const [customImage, setCustomImage] = useState<VTTMapImage | null>(null);
+	const tokenImageUpload = useMapUpload(
+		scene?.campaignId ?? "",
+		(image) => {
+			setCustomImage(image);
+			setName((current) => current || image.name);
+		},
+		{ kind: "token", defaultName: name },
+	);
 	const visibleCharacters = useMemo(
 		() =>
 			campaignId === scene?.campaignId
@@ -162,7 +171,10 @@ export function VTTRosterDrawer({
 				sceneId: scene.id,
 				layer: "token",
 			});
-			if (id === "custom") setName("");
+			if (id === "custom") {
+				setName("");
+				setCustomImage(null);
+			}
 			setTab("scene");
 		} catch (error) {
 			setError(
@@ -190,8 +202,14 @@ export function VTTRosterDrawer({
 			aria-label="Biblioteca da mesa"
 			data-vtt-overlay="open"
 			onDragEnter={(event) => {
-				// A file dragged over the library opens the map tab, where it lands.
-				if (isGM && tab !== "map" && dragHasFiles(event.dataTransfer.types)) {
+				// A file dragged over the library opens the map tab, unless the GM is
+				// already on the custom token tab where the token dropzone receives it.
+				if (
+					isGM &&
+					tab !== "map" &&
+					tab !== "custom" &&
+					dragHasFiles(event.dataTransfer.types)
+				) {
 					setTab("map");
 					setError(null);
 				}
@@ -211,7 +229,10 @@ export function VTTRosterDrawer({
 					variant="ghost"
 					aria-label="Fechar biblioteca"
 					className="size-11 shrink-0 px-0"
-					onClick={() => close(false)}
+					onClick={() => {
+						tokenImageUpload.cancel();
+						close(false);
+					}}
 				>
 					<X className="size-4" />
 				</Button>
@@ -284,8 +305,17 @@ export function VTTRosterDrawer({
 									aria-label={`Localizar ${token.name}`}
 									className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:ring-2 focus-visible:ring-primary"
 								>
-									<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-primary">
-										{token.name.slice(0, 2).toUpperCase()}
+									<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-display text-primary">
+										{token.avatarUrl ? (
+											<img
+												src={token.avatarUrl}
+												alt=""
+												decoding="async"
+												className="size-full object-cover"
+											/>
+										) : (
+											token.name.slice(0, 2).toUpperCase()
+										)}
 									</span>
 									<span className="min-w-0">
 										<span className="block truncate text-sm font-semibold">
@@ -444,9 +474,10 @@ export function VTTRosterDrawer({
 						className="space-y-4 pt-4"
 						onSubmit={(e) => {
 							e.preventDefault();
-							if (name.trim())
+							if (name.trim() && !tokenImageUpload.isUploading)
 								void spawn("custom", {
 									name: name.trim(),
+									avatarUrl: customImage?.url ?? null,
 									hpCurrent: hp,
 									hpMax: hp,
 									sizeCells: size,
@@ -501,9 +532,22 @@ export function VTTRosterDrawer({
 								/>
 							</div>
 						</div>
+						<div className="space-y-2">
+							<span className="block text-sm font-medium">
+								Imagem (opcional)
+							</span>
+							<VTTMapDropzone
+								kind="token"
+								campaignId={scene.campaignId}
+								upload={tokenImageUpload}
+								value={customImage}
+								onRemove={() => setCustomImage(null)}
+								label="Enviar imagem do token"
+							/>
+						</div>
 						<Button
 							type="submit"
-							disabled={pending !== null}
+							disabled={pending !== null || tokenImageUpload.isUploading}
 							className="h-11 w-full"
 						>
 							<Plus className="size-4" />

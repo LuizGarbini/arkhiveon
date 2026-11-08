@@ -27,6 +27,20 @@ export const MAP_STORAGE_FOLDER = "vtt-maps";
 /** Scene size used when the map size cannot be read. */
 export const MAP_FALLBACK_SIZE = { width: 4000, height: 4000 };
 
+/** Longest side of an optimized token avatar, in px. */
+export const TOKEN_MAX_DIMENSION = 1024;
+
+/** WebP quality of the optimized token avatar. */
+export const TOKEN_QUALITY = 0.82;
+
+/** Storage folder for token avatars inside the campaign storage. */
+export const TOKEN_STORAGE_FOLDER = "vtt-tokens";
+
+/** Token image size used when dimensions are not stored on a library asset. */
+export const TOKEN_FALLBACK_SIZE = { width: 512, height: 512 };
+
+export type VTTUploadKind = "map" | "token";
+
 const EXTENSION_TYPES: Record<string, string> = {
 	png: "image/png",
 	jpg: "image/jpeg",
@@ -51,6 +65,7 @@ function fileType(file: MapFileLike): string {
 /** Validates a dropped or picked file before any upload starts. */
 export function validateMapFile(
 	file: MapFileLike | null | undefined,
+	kind: VTTUploadKind = "map",
 ): MapFileCheck {
 	if (!file) {
 		return { ok: false, message: "Nenhum arquivo recebido. Tente de novo." };
@@ -58,7 +73,10 @@ export function validateMapFile(
 	if (!MAP_ACCEPTED_TYPES.includes(fileType(file))) {
 		return {
 			ok: false,
-			message: `“${file.name}” não é um mapa válido. Use PNG, JPG ou WebP.`,
+			message:
+				kind === "token"
+					? `“${file.name}” não é uma imagem válida. Use PNG, JPG ou WebP.`
+					: `“${file.name}” não é um mapa válido. Use PNG, JPG ou WebP.`,
 		};
 	}
 	if (file.size > MAP_MAX_FILE_BYTES) {

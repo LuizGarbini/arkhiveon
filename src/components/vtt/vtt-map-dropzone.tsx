@@ -1,4 +1,5 @@
 import {
+	ImagePlus,
 	Images,
 	Loader2,
 	Map as MapIcon,
@@ -33,15 +34,25 @@ import {
 	MAP_STORAGE_FOLDER,
 	mapSceneSize,
 	sceneNameFromFile,
+	TOKEN_FALLBACK_SIZE,
+	TOKEN_MAX_DIMENSION,
+	TOKEN_QUALITY,
+	TOKEN_STORAGE_FOLDER,
+	type VTTUploadKind,
 	validateMapFile,
 } from "@/lib/vtt/map-upload";
 
-/** A map ready to be used by a scene: stored URL plus its drawn size. */
+/** A map or token image ready to be used by a scene: stored URL plus its drawn size. */
 export interface VTTMapImage {
 	url: string;
 	width: number;
 	height: number;
 	name: string;
+}
+
+export interface VTTUploadOptions {
+	kind?: VTTUploadKind;
+	defaultName?: string;
 }
 
 type UploadState =
@@ -62,14 +73,18 @@ function readUrlDimensions(
 }
 
 /**
- * Upload of one map file to the campaign storage (the same Edge Function and
- * image library as the rest of Arkhiveon). `cancel()` aborts the request and
- * nothing reaches the library or the scene.
+ * Upload of one map or token image file to the campaign storage (the same Edge
+ * Function and image library as the rest of Arkhiveon). `cancel()` aborts the
+ * request and nothing reaches the library or the scene.
  */
 export function useMapUpload(
 	campaignId: string,
 	onReady: (map: VTTMapImage) => void | Promise<void>,
+	options?: VTTUploadOptions,
 ) {
+	const kind = options?.kind ?? "map";
+	const defaultNameRef = useRef(options?.defaultName);
+	defaultNameRef.current = options?.defaultName;
 	const { session } = useAuth();
 	const toast = useToast();
 	const addImageAsset = useRPGStore((s) => s.addImageAsset);
@@ -87,7 +102,7 @@ export function useMapUpload(
 
 	async function upload(file: File | null) {
 		if (controllerRef.current) return;
-		const check = validateMapFile(file);
+		const check = validateMapFile(file, kind);
 		if (!check.ok || !file) {
 			setState({
 				status: "error",
@@ -106,18 +121,29 @@ export function useMapUpload(
 				);
 			}
 			if (controller.signal.aborted) return;
+			const maxDimension =
+				kind === "token" ? TOKEN_MAX_DIMENSION : MAP_MAX_DIMENSION;
 			const url = await imageStorage.upload(file, {
-				folder: MAP_STORAGE_FOLDER,
+				folder: kind === "token" ? TOKEN_STORAGE_FOLDER : MAP_STORAGE_FOLDER,
 				campaignId,
-				maxDimension: MAP_MAX_DIMENSION,
-				quality: MAP_QUALITY,
+				maxDimension,
+				quality: kind === "token" ? TOKEN_QUALITY : MAP_QUALITY,
 				signal: controller.signal,
 			});
 			if (controller.signal.aborted) return;
-			const size = mapSceneSize(dimensions.width, dimensions.height);
-			const name = sceneNameFromFile(file.name) || "Mapa";
+			const size = mapSceneSize(
+				dimensions.width,
+				dimensions.height,
+				maxDimension,
+			);
+			const fallbackName = kind === "token" ? "Token" : "Mapa";
+			const name =
+				defaultNameRef.current?.trim() ||
+				sceneNameFromFile(file.name) ||
+				fallbackName;
 			addImageAsset(
 				{
+					campaignId,
 					createdBy: session?.user.id ?? "",
 					name,
 					url,
@@ -138,7 +164,9 @@ export function useMapUpload(
 				message:
 					error instanceof Error
 						? error.message
-						: "Não foi possível enviar o mapa. Tente de novo.",
+						: kind === "token"
+							? "Não foi possível enviar a imagem. Tente de novo."
+							: "Não foi possível enviar o mapa. Tente de novo.",
 			});
 		} finally {
 			if (controllerRef.current === controller) controllerRef.current = null;
@@ -151,10 +179,14 @@ export function useMapUpload(
 			const dimensions =
 				asset.width && asset.height
 					? { width: asset.width, height: asset.height }
-					: await readUrlDimensions(asset.url);
+					: kind === "token"
+						? TOKEN_FALLBACK_SIZE
+						: await readUrlDimensions(asset.url);
+			const maxDimension =
+				kind === "token" ? TOKEN_MAX_DIMENSION : MAP_MAX_DIMENSION;
 			await onReady({
 				url: asset.url,
-				...mapSceneSize(dimensions.width, dimensions.height),
+				...mapSceneSize(dimensions.width, dimensions.height, maxDimension),
 				name: asset.name,
 			});
 			setState({ status: "idle" });
@@ -184,11 +216,13 @@ type MapUpload = ReturnType<typeof useMapUpload>;
 interface VTTMapDropzoneProps {
 	campaignId: string;
 	upload: MapUpload;
-	/** Map already chosen (shown as preview with Trocar/Remover). */
+	/** Image already chosen (shown as preview with Trocar/Remover). */
 	value?: VTTMapImage | null;
 	onRemove?: () => void;
 	/** Accessible name of the drop area. */
 	label?: string;
+	/** Variant of the dropzone: scene map (default) or token avatar. */
+	kind?: VTTUploadKind;
 	/**
 	 * Abre o mapa atual em tela cheia (só o mestre, na aba Mapa). Sem esta
 	 * prop a miniatura continua só imagem.
@@ -203,10 +237,14 @@ export function VTTMapDropzone({
 	upload,
 	value,
 	onRemove,
-	label = "Enviar mapa",
+	label,
+	kind = "map",
 	onViewFullscreen,
 	viewName,
 }: VTTMapDropzoneProps) {
+	const isToken = kind === "token";
+	const resolvedLabel =
+		label ?? (isToken ? "Enviar imagem do token" : "Enviar mapa");
 	const inputId = useId();
 	const hintId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -274,9 +312,12 @@ export function VTTMapDropzone({
 					) : (
 						<img
 							src={value.url}
-							alt={`Mapa ${value.name}`}
+							alt={isToken ? `Token ${value.name}` : `Mapa ${value.name}`}
 							decoding="async"
-							className="size-14 shrink-0 rounded-lg border border-border/70 object-cover"
+							className={cn(
+								"size-14 shrink-0 border border-border/70 object-cover",
+								isToken ? "rounded-full" : "rounded-lg",
+							)}
 						/>
 					)}
 					<div className="min-w-0 flex-1">
@@ -289,7 +330,7 @@ export function VTTMapDropzone({
 						<Button
 							type="button"
 							variant="ghost"
-							aria-label="Remover mapa"
+							aria-label={isToken ? "Remover imagem" : "Remover mapa"}
 							className="size-11 shrink-0 px-0"
 							onClick={onRemove}
 						>
@@ -300,7 +341,7 @@ export function VTTMapDropzone({
 			) : null}
 
 			<section
-				aria-label={label}
+				aria-label={resolvedLabel}
 				aria-describedby={hintId}
 				aria-busy={isUploading}
 				data-dragging={isDragging || undefined}
@@ -317,7 +358,11 @@ export function VTTMapDropzone({
 					{isUploading ? (
 						<Loader2 className="size-5 animate-spin" />
 					) : isDragging ? (
-						<MapIcon className="size-5" />
+						isToken ? (
+							<ImagePlus className="size-5" />
+						) : (
+							<MapIcon className="size-5" />
+						)
 					) : (
 						<UploadCloud className="size-5" />
 					)}
@@ -325,11 +370,28 @@ export function VTTMapDropzone({
 				<span className="space-y-1">
 					<span className="block font-display text-sm font-bold text-foreground">
 						{isUploading ? (
-							"Enviando mapa…"
+							isToken ? (
+								"Enviando imagem…"
+							) : (
+								"Enviando mapa…"
+							)
 						) : isDragging ? (
-							"Solte para usar como mapa"
+							isToken ? (
+								"Solte para usar no token"
+							) : (
+								"Solte para usar como mapa"
+							)
 						) : value ? (
-							"Trocar o mapa"
+							isToken ? (
+								"Trocar a imagem"
+							) : (
+								"Trocar o mapa"
+							)
+						) : isToken ? (
+							<>
+								<span className="hidden sm:inline">Arraste a imagem aqui</span>
+								<span className="sm:hidden">Escolha a imagem</span>
+							</>
 						) : (
 							<>
 								<span className="hidden sm:inline">Arraste o mapa aqui</span>
@@ -373,7 +435,7 @@ export function VTTMapDropzone({
 								variant="outline"
 								className="h-11 min-w-36 flex-1 px-4"
 								onClick={() => {
-									void loadImageAssets();
+									void loadImageAssets(campaignId);
 									setLibraryOpen(true);
 								}}
 							>
@@ -389,7 +451,9 @@ export function VTTMapDropzone({
 					type="file"
 					accept={MAP_ACCEPT_ATTRIBUTE}
 					className="hidden"
-					aria-label="Arquivo do mapa"
+					aria-label={
+						isToken ? "Arquivo da imagem do token" : "Arquivo do mapa"
+					}
 					onChange={(event) => {
 						const file = firstFile(event.currentTarget.files);
 						event.currentTarget.value = "";
