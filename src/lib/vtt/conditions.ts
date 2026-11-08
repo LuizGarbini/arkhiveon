@@ -107,8 +107,48 @@ export const COMPACT_VISIBLE_CONDITIONS = VTT_CONDITIONS.length;
 
 /** Arco máximo ao redor do token (~297°), preservando o topo livre para a barra de PV. */
 export const MAX_STATUS_RING_ARC = Math.PI * 1.65;
-/** Folga mínima (em px do mundo) entre as bordas de discos vizinhos no anel. */
+/** Folga de referência (em px para STATUS_CHIP.desktop) entre discos vizinhos no anel. */
 export const STATUS_DISC_GAP_PX = 3;
+/** Raio de referência onde STATUS_CHIP mantém proporção 1:1 (~45px). */
+export const STATUS_DISC_REF_RADIUS = 45;
+/** Fator do raio interno do anel/disco de efeitos em relação ao `tokenRadius`. */
+export const STATUS_RING_INNER_FACTOR = 1.02;
+/** Fator do raio externo do anel/disco de efeitos em relação ao `tokenRadius`. */
+export const STATUS_RING_OUTER_FACTOR = 1.32;
+
+export interface ScaledStatusDiscMetrics {
+	chip: number;
+	chipRadius: number;
+	icon: number;
+	stroke: number;
+	orbitRadius: number;
+	ringInnerRadius: number;
+	ringOuterRadius: number;
+}
+
+/**
+ * Dimensiona os discos e o anel de efeito proporcionalmente ao `tokenRadius`,
+ * garantindo que o anel fique sempre por fora da borda do token sem cobri-lo
+ * mesmo em cenas com grid pequeno.
+ */
+export function scaledStatusDiscMetrics(
+	tokenRadius: number,
+	compact = false,
+): ScaledStatusDiscMetrics {
+	const base = compact ? STATUS_CHIP.compact : STATUS_CHIP.desktop;
+	const scale = Math.max(0.05, tokenRadius / STATUS_DISC_REF_RADIUS);
+	const chip = base.chip * scale;
+	const chipRadius = chip / 2;
+	return {
+		chip,
+		chipRadius,
+		icon: base.icon * scale,
+		stroke: STATUS_CHIP.stroke * scale,
+		orbitRadius: tokenRadius + chipRadius * 0.25,
+		ringInnerRadius: tokenRadius * STATUS_RING_INNER_FACTOR,
+		ringOuterRadius: tokenRadius * STATUS_RING_OUTER_FACTOR,
+	};
+}
 
 export interface StatusDiscPlacement {
 	x: number;
@@ -124,13 +164,14 @@ export interface StatusDiscPlacement {
 export function statusDiscPositions(
 	count: number,
 	tokenRadius: number,
-	chipDiameter: number = STATUS_CHIP.desktop.chip,
+	chipDiameter: number = scaledStatusDiscMetrics(tokenRadius).chip,
 ): StatusDiscPlacement[] {
 	if (count <= 0 || tokenRadius <= 0) return [];
 	const baseAngle = Math.PI / 2;
+	const gap = (STATUS_DISC_GAP_PX / STATUS_CHIP.desktop.chip) * chipDiameter;
 	const chordRatio = Math.min(
 		0.95,
-		Math.max(0, (chipDiameter + STATUS_DISC_GAP_PX) / (2 * tokenRadius)),
+		Math.max(0, (chipDiameter + gap) / (2 * tokenRadius)),
 	);
 	const idealStep = 2 * Math.asin(chordRatio);
 	const step =

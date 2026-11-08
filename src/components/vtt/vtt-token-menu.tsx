@@ -38,7 +38,7 @@ import {
 	selectSheetHealthMax,
 } from "@/lib/vtt/character-hp";
 import {
-	STATUS_CHIP,
+	scaledStatusDiscMetrics,
 	toggleCondition,
 	VTT_CONDITIONS,
 } from "@/lib/vtt/conditions";
@@ -160,11 +160,11 @@ export function VTTTokenMenu({
 	const gridSize =
 		useVTTStore.getState().scenes.find((sc) => sc.id === token.sceneId)
 			?.gridSize ?? 70;
+	const tokenRadius = (token.sizeCells * gridSize) / 2;
+	const disc = scaledStatusDiscMetrics(tokenRadius);
 	const screenX = token.x * viewport.scale + viewport.x;
 	const screenY = token.y * viewport.scale + viewport.y;
-	const tokenScreenRadius =
-		((token.sizeCells * gridSize) / 2 + STATUS_CHIP.desktop.chip / 2 + 12) *
-		viewport.scale;
+	const tokenScreenRadius = disc.ringOuterRadius * viewport.scale + 16;
 	const menuOffsetX = Math.max(56, Math.round(tokenScreenRadius));
 
 	// Clamp to keep inside screen boundaries. The bottom reserve keeps the
