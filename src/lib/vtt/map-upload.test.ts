@@ -33,6 +33,10 @@ describe("validateMapFile", () => {
 			ok: false,
 			message: "“mapa.gif” não é um mapa válido. Use PNG, JPG ou WebP.",
 		});
+		expect(validateMapFile(file("token.gif", "image/gif"), "token")).toEqual({
+			ok: false,
+			message: "“token.gif” não é uma imagem válida. Use PNG, JPG ou WebP.",
+		});
 		expect(validateMapFile(file("ficha.pdf", "application/pdf")).ok).toBe(
 			false,
 		);

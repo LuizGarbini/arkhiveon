@@ -9,10 +9,28 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useRPGStore } from "@/lib/store";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ session: null }) }));
+const mockUpload = vi.fn(
+	async () => "https://cdn.test/vtt-tokens/guardiao.webp",
+);
+const mockReadDimensions = vi.fn(async () => ({ width: 512, height: 512 }));
+
+vi.mock("@/lib/auth", () => ({
+	useAuth: () => ({ session: { user: { id: "gm-1" } } }),
+}));
+vi.mock("@/lib/image-storage", () => ({
+	imageStorage: {
+		upload: (...args: unknown[]) => mockUpload(...(args as [])),
+		delete: vi.fn(async () => {}),
+	},
+}));
+vi.mock("@/lib/image-metadata", () => ({
+	readImageDimensions: (...args: unknown[]) =>
+		mockReadDimensions(...(args as [])),
+}));
 vi.mock("@/components/ui/toast", () => ({
 	useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }));
@@ -54,6 +72,8 @@ function renderTab(isGM: boolean, s: VTTScene = scene) {
 beforeEach(() => {
 	useVTTStore.setState({ isGM: false, showRosterDrawer: false });
 	onSetSceneMap.mockClear();
+	mockUpload.mockClear();
+	mockReadDimensions.mockClear();
 });
 afterEach(cleanup);
 
@@ -195,5 +215,144 @@ describe("Biblioteca: busca sem resultado", () => {
 		renderDrawer([]);
 		expect(screen.getByText("A cena está pronta para seu grupo")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Limpar busca" })).toBeNull();
+	});
+});
+
+describe("Biblioteca: criar token com imagem (R2 + Biblioteca de imagens)", () => {
+	it("envia imagem pro R2, salva na Biblioteca de imagens e passa avatarUrl ao colocar na cena", async () => {
+		const addImageAssetSpy = vi.fn();
+		const loadImageAssetsSpy = vi.fn(async () => {});
+		useRPGStore.setState({
+			activeCampaignId: "camp-1",
+			addImageAsset: addImageAssetSpy,
+			loadImageAssets: loadImageAssetsSpy,
+			imageAssets: [],
+		});
+		const onSpawnToken = vi.fn(async () => {});
+		useVTTStore.setState({ isGM: true, showRosterDrawer: true, tokens: [] });
+		render(
+			<VTTRosterDrawer
+				scene={scene}
+				onSpawnToken={onSpawnToken}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+		// Arrastar arquivo sobre a aba Criar não troca para a aba Mapa
+		const aside = screen.getByRole("complementary", {
+			name: "Biblioteca da mesa",
+		});
+		fireEvent.dragEnter(aside, { dataTransfer: { types: ["Files"] } });
+		expect(
+			screen
+				.getByRole("button", { name: "Criar" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+
+		const fileInput = screen.getByLabelText(
+			"Arquivo da imagem do token",
+		) as HTMLInputElement;
+		const file = new File(["bytes"], "guardiao_das_ruinas.png", {
+			type: "image/png",
+		});
+		fireEvent.change(fileInput, { target: { files: [file] } });
+
+		await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(1));
+		expect(mockUpload).toHaveBeenCalledWith(
+			file,
+			expect.objectContaining({
+				folder: "vtt-tokens",
+				campaignId: "camp-1",
+				maxDimension: 1024,
+			}),
+		);
+		expect(addImageAssetSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				campaignId: "camp-1",
+				name: "guardiao das ruinas",
+				url: "https://cdn.test/vtt-tokens/guardiao.webp",
+				width: 512,
+				height: 512,
+			}),
+			expect.any(Object),
+		);
+
+		// Preview da imagem aparece e preenche o nome se estava vazio
+		expect(
+			await screen.findByRole("img", { name: "Token guardiao das ruinas" }),
+		).toBeTruthy();
+		const nameInput = screen.getByLabelText("Nome") as HTMLInputElement;
+		expect(nameInput.value).toBe("guardiao das ruinas");
+
+		fireEvent.click(screen.getByRole("button", { name: /Colocar na cena/ }));
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: "guardiao das ruinas",
+				avatarUrl: "https://cdn.test/vtt-tokens/guardiao.webp",
+				hpCurrent: 25,
+				hpMax: 25,
+				sizeCells: 1,
+			}),
+		);
+	});
+
+	it("permite selecionar uma imagem existente da Biblioteca de imagens para o token", async () => {
+		const loadImageAssetsSpy = vi.fn(async () => {});
+		useRPGStore.setState({
+			activeCampaignId: "camp-1",
+			loadImageAssets: loadImageAssetsSpy,
+			imageAssets: [
+				{
+					id: "asset-1",
+					campaignId: "camp-1",
+					createdBy: "gm-1",
+					name: "Lobo Atroz",
+					url: "https://cdn.test/library/lobo-atroz.webp",
+					mimeType: "image/webp",
+					sizeBytes: 4096,
+					width: 640,
+					height: 640,
+					isPrivate: false,
+					createdAt: 1,
+				},
+			],
+		});
+		const onSpawnToken = vi.fn(async () => {});
+		useVTTStore.setState({ isGM: true, showRosterDrawer: true, tokens: [] });
+		render(
+			<VTTRosterDrawer
+				scene={scene}
+				onSpawnToken={onSpawnToken}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+		fireEvent.click(screen.getByRole("button", { name: "Da biblioteca" }));
+		expect(loadImageAssetsSpy).toHaveBeenCalledWith("camp-1");
+
+		const assetButton = await screen.findByRole("button", {
+			name: /Lobo Atroz/i,
+		});
+		fireEvent.click(assetButton);
+
+		expect(
+			await screen.findByRole("img", { name: "Token Lobo Atroz" }),
+		).toBeTruthy();
+		expect(mockUpload).not.toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole("button", { name: /Colocar na cena/ }));
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: "Lobo Atroz",
+				avatarUrl: "https://cdn.test/library/lobo-atroz.webp",
+			}),
+		);
 	});
 });

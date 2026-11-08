@@ -17,9 +17,9 @@ import type { ImageAsset, ImageAssetSyncOptions, RPGState } from "./types";
 
 export interface ImageLibrarySlice {
 	imageAssets: ImageAsset[];
-	loadImageAssets: () => Promise<void>;
+	loadImageAssets: (campaignId?: string) => Promise<void>;
 	addImageAsset: (
-		asset: Partial<Omit<ImageAsset, "id" | "createdAt" | "campaignId">>,
+		asset: Partial<Omit<ImageAsset, "id" | "createdAt">>,
 		options?: ImageAssetSyncOptions,
 	) => ImageAsset | null;
 	updateImageAsset: (
@@ -38,8 +38,8 @@ export const createImageLibrarySlice: StateCreator<
 > = (set, get) => ({
 	imageAssets: [],
 
-	loadImageAssets: async () => {
-		const campaignId = get().activeCampaignId;
+	loadImageAssets: async (explicitCampaignId) => {
+		const campaignId = explicitCampaignId || get().activeCampaignId;
 		if (!campaignId) return;
 		const worldId = get().campaigns.find((c) => c.id === campaignId)?.worldId;
 
@@ -53,7 +53,7 @@ export const createImageLibrarySlice: StateCreator<
 	},
 
 	addImageAsset: (asset, options) => {
-		const campaignId = get().activeCampaignId;
+		const campaignId = asset.campaignId || get().activeCampaignId;
 		if (!campaignId || !asset.url) return null;
 		const campaign = get().campaigns.find((c) => c.id === campaignId);
 		const role = campaign?.myRole;

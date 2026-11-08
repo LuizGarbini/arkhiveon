@@ -930,9 +930,9 @@ export interface RPGState {
 	resetCampaigns: () => void;
 
 	imageAssets: ImageAsset[];
-	loadImageAssets: () => Promise<void>;
+	loadImageAssets: (campaignId?: string) => Promise<void>;
 	addImageAsset: (
-		asset: Partial<Omit<ImageAsset, "id" | "createdAt" | "campaignId">>,
+		asset: Partial<Omit<ImageAsset, "id" | "createdAt">>,
 		options?: ImageAssetSyncOptions,
 	) => ImageAsset | null;
 	updateImageAsset: (
