@@ -9,14 +9,21 @@ export function DetailSection({
 	title,
 	children,
 	onEdit,
+	className,
 }: {
 	eyebrow: string;
 	title: string;
 	children: ReactNode;
 	onEdit?: () => void;
+	className?: string;
 }) {
 	return (
-		<section className="relative rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
+		<section
+			className={cn(
+				"relative rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5",
+				className,
+			)}
+		>
 			<div className="flex items-start justify-between gap-3">
 				<div>
 					<p className="text-[9px] font-bold uppercase tracking-[0.22em] text-primary">

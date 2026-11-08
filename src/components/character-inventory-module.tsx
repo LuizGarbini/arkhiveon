@@ -764,6 +764,7 @@ export function CharacterInventoryModule({
 										key={item.id}
 										entry={item}
 										item={campaignItems.byId.get(item.campaignItemId) ?? null}
+										character={character}
 										canEditLink={canLink}
 										onChange={(patch) => patchEntry(item.id, patch)}
 										onQuantity={(delta) => handleUpdateQuantity(item.id, delta)}
@@ -777,7 +778,7 @@ export function CharacterInventoryModule({
 							return (
 								<div
 									key={item.id}
-									className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 p-3 hover:border-border transition-colors"
+									className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background/40 p-3 transition-colors hover:border-border"
 								>
 									<div className="space-y-1 flex-1">
 										<div className="flex flex-wrap items-center gap-2">
@@ -806,13 +807,13 @@ export function CharacterInventoryModule({
 										</div>
 
 										{item.description && (
-											<p className="text-[11px] text-muted-foreground leading-relaxed">
+											<p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
 												{item.description}
 											</p>
 										)}
 									</div>
 
-									<div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
+									<div className="flex flex-wrap items-center gap-2">
 										<span className="text-xs font-mono text-muted-foreground">
 											{itemTotalWeight.toFixed(1)} lbs
 										</span>
