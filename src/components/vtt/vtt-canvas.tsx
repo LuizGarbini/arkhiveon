@@ -3,6 +3,7 @@ import {
 	Assets,
 	Container,
 	Graphics,
+	RenderTexture,
 	Sprite,
 	Text,
 	TextStyle,
@@ -24,6 +25,7 @@ import {
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
 import {
+	buildFogComposite,
 	drawFogGeometry,
 	GM_FOG_ALPHA,
 	GM_FOG_COLOR,
@@ -208,7 +210,9 @@ export function VTTCanvas({
 	const tokensLayerRef = useRef<Container | null>(null);
 	const gmTokensLayerRef = useRef<Container | null>(null);
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
-	const fogOfWarLayerRef = useRef<Graphics | null>(null);
+	const fogOfWarLayerRef = useRef<Container | null>(null);
+	const fogSpriteRef = useRef<Sprite | null>(null);
+	const fogTextureRef = useRef<RenderTexture | null>(null);
 	const fogBrushPreviewLayerRef = useRef<Graphics | null>(null);
 	// Paredes (só mestre): um Graphics para todas + um para a prévia do desenho.
 	const wallsLayerRef = useRef<Graphics | null>(null);
@@ -472,8 +476,11 @@ export function VTTCanvas({
 			fogExplorationLayerRef.current = fogExplorationLayer;
 			world.addChild(fogExplorationLayer);
 
-			// Solid Fog of War mask layer
-			const fogOfWarLayer = new Graphics();
+			// Véu da névoa: a textura é pintada à parte, para o revelar não furar o mapa.
+			const fogOfWarLayer = new Container();
+			const fogSprite = new Sprite(Texture.EMPTY);
+			fogSpriteRef.current = fogSprite;
+			fogOfWarLayer.addChild(fogSprite);
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
 
@@ -573,6 +580,8 @@ export function VTTCanvas({
 					appRef.current.ticker.remove(tickerCallback);
 				}
 				appRef.current.destroy(true, { children: true });
+				fogTextureRef.current?.destroy(true);
+				fogTextureRef.current = null;
 				clearStatusIconTextures();
 				appRef.current = null;
 			}
@@ -1206,7 +1215,6 @@ export function VTTCanvas({
 		const fogLayer = fogOfWarLayerRef.current;
 		const explorationLayer = fogExplorationLayerRef.current;
 
-		fogLayer.clear();
 		explorationLayer.clear();
 
 		if (!scene.fogEnabled) {
@@ -1222,18 +1230,39 @@ export function VTTCanvas({
 		const gridSize = scene.gridSize || 70;
 
 		// Véu do mestre: quase preto, ainda dá para ver o mapa por baixo.
-		// Jogador: névoa opaca.
+		// Jogador: névoa opaca. A textura é só a cobertura (branco = névoa).
 		const fogColor = isGM ? GM_FOG_COLOR : PLAYER_FOG_COLOR;
 		const fogAlpha = isGM ? GM_FOG_ALPHA : 1;
-
-		// 5.1 Base Solid Fog Covering Scene
-		fogLayer.rect(0, 0, width, height);
-		fogLayer.fill({ color: fogColor, alpha: fogAlpha });
-
-		// 5.2 Chronological Fog Mask Shaping (Cutouts & Hidden Re-fills)
-		for (const path of fogPaths) {
-			const isReveal = path.mode === "reveal";
-			drawFogGeometry(fogLayer, path, isReveal, fogColor, fogAlpha);
+		const sprite = fogSpriteRef.current;
+		const app = appRef.current;
+		if (sprite && app && width > 0 && height > 0) {
+			const fit = Math.min(1, 4096 / Math.max(width, height));
+			const texW = Math.max(1, Math.ceil(width * fit));
+			const texH = Math.max(1, Math.ceil(height * fit));
+			let texture = fogTextureRef.current;
+			if (!texture || texture.width !== texW || texture.height !== texH) {
+				sprite.texture = Texture.EMPTY;
+				texture?.destroy(true);
+				texture = RenderTexture.create({ width: texW, height: texH });
+				fogTextureRef.current = texture;
+			}
+			const composite = buildFogComposite({
+				width,
+				height,
+				paths: fogPaths,
+			});
+			composite.scale.set(fit);
+			app.renderer.render({
+				container: composite,
+				target: texture,
+				clear: true,
+			});
+			composite.destroy({ children: true });
+			sprite.texture = texture;
+			sprite.width = width;
+			sprite.height = height;
+			sprite.tint = fogColor;
+			sprite.alpha = fogAlpha;
 		}
 
 		// 5.3 Exploration Mode (Penumbra):
@@ -1255,6 +1284,7 @@ export function VTTCanvas({
 
 			for (const pt of playerTokens) {
 				const vRange = (pt.visionRange || 6) * gridSize;
+				explorationLayer.beginPath();
 				explorationLayer.circle(pt.x, pt.y, vRange);
 				explorationLayer.cut();
 			}

@@ -1,3 +1,6 @@
+import { Container, Graphics } from "pixi.js";
+import type { VTTFogPath } from "./types";
+
 /**
  * Névoa da mesa: véu escuro e pincel com ponta redonda.
  * O véu do mestre é quase preto, para o mapa continuar legível por baixo.
@@ -193,14 +196,12 @@ export function getThickLinePolygon(
 }
 
 /**
- * Desenha ou recorta névoa (pincel, retângulo, círculo).
- * Cada forma começa um caminho novo: depois de um fill, o Pixi deixa o
- * próximo caminho em (0, 0). Sem isso, o recorte vira um triângulo
- * desde o canto do mapa.
+ * Desenha uma forma de névoa preenchida. Não usa `cut`: o buraco do Pixi
+ * herda o ponto (0, 0) e o revelar vira um triângulo no canto do mapa.
  */
 export function drawFogGeometry(
-	graphics: import("pixi.js").Graphics,
-	path: import("./types").VTTFogPath,
+	graphics: Graphics,
+	path: VTTFogPath,
 	isCut: boolean,
 	color: number,
 	alpha: number,
@@ -243,4 +244,26 @@ export function drawFogGeometry(
 			graphics.poly(outline, true);
 		});
 	}
+}
+
+/**
+ * Véu branco e, por cima, cada gesto na ordem: revelar apaga, esconder pinta.
+ * O apagar usa o blend `erase`, então pincel, quadrado e círculo furam só a névoa.
+ */
+export function buildFogComposite(input: {
+	width: number;
+	height: number;
+	paths: VTTFogPath[];
+}): Container {
+	const root = new Container();
+	const veil = new Graphics();
+	veil.rect(0, 0, input.width, input.height).fill({ color: 0xffffff });
+	root.addChild(veil);
+	for (const path of input.paths) {
+		const shape = new Graphics();
+		if (path.mode === "reveal") shape.blendMode = "erase";
+		drawFogGeometry(shape, path, false, 0xffffff, 1);
+		root.addChild(shape);
+	}
+	return root;
 }
