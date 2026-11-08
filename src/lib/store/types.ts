@@ -255,6 +255,13 @@ export interface Character {
 	/** Recursos da mesa (Inspiração, Destino, Dados bônus). Vive em `data`. */
 	tableResources?: TableResources;
 	/**
+	 * Quem vê a ficha. Ausente = toda a mesa. Vive em `data`.
+	 * O mestre e quem criou sempre veem.
+	 */
+	share?: ContentShare;
+	/** Usuários marcados quando `share` é `chosen`. */
+	sharedWith?: string[];
+	/**
 	 * Quem criou a ficha (`characters.created_by`). Só leitura: vem da coluna,
 	 * nunca é gravado em `data`. Define quem pode vincular itens da campanha.
 	 */
@@ -430,6 +437,8 @@ export interface SheetLayoutConfig {
 
 export type PublicationScope = "global" | "restricted";
 export type EntityVisibility = "public" | "master_secret";
+/** Quem mais vê uma ficha ou um NPC, além do mestre e de quem criou. */
+export type ContentShare = "table" | "staff" | "players" | "chosen";
 export type FactionReputationStatus =
 	| "ally"
 	| "neutral"
@@ -448,6 +457,10 @@ export interface Npc extends WorldEntityFields {
 	createdAt: number;
 	updatedAt?: number;
 	kind: "npc" | "monster";
+	/** Quem vê, além da coluna `visibility`. Ausente = regra antiga. */
+	share?: ContentShare;
+	sharedWith?: string[];
+	createdBy?: string;
 	name: string;
 	race: string;
 	role: string;

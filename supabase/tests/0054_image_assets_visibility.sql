@@ -1,5 +1,6 @@
 -- Teste da 0054 (matriz quem vê o quê + escrita). RODAR SÓ EM POSTGRES DESCARTÁVEL.
--- Pré-requisito: migrations até a 0054 aplicadas. Tudo com ROLLBACK.
+-- Pré-requisito: migrations até a 0061. A 0061 corrige o papel: editor é
+-- co-mestre e viewer é jogador. Tudo com ROLLBACK.
 -- Uso: psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/0054_image_assets_visibility.sql
 begin;
 
@@ -9,7 +10,8 @@ do $$ begin
 	end if;
 end $$;
 
--- M mestre (campaigns.owner_id), G co-mestre (role owner), P1 (viewer) e P2 (editor) jogadores de A,
+-- M mestre (campaigns.owner_id), G co-mestre (role owner), P1 jogador (viewer)
+-- e P2 co-mestre (editor) de A,
 -- W jogador da campanha B no mesmo mundo, E jogador de outro mundo.
 insert into auth.users (id, email) values
 	('00000000-0000-0000-0000-00000000000a', 'm@t.local'),
@@ -50,8 +52,8 @@ select vw, u || '_' || st, case
 	when vw = 'M' then true                                   -- regra de ouro
 	when u = vw then true                                     -- quem subiu
 	when st = 'pub' then vw in ('G', 'P1', 'P2', 'W')         -- pública: mesa + mundo
-	when vw = 'G' then st in ('co', 'copl')                   -- co-mestre
-	when vw in ('P1', 'P2') then st in ('pl', 'copl')         -- jogadores (viewer e editor)
+	when vw in ('G', 'P2') then st in ('co', 'copl')          -- co-mestres (owner e editor)
+	when vw = 'P1' then st in ('pl', 'copl')                  -- jogador (viewer)
 	else false                                                -- outra campanha / outro mundo
 end
 from unnest(array['M', 'G', 'P1', 'P2', 'W', 'E']) vw,

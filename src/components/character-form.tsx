@@ -2,6 +2,10 @@ import { ArrowLeft, Dices, Pencil, Plus, Sparkles, Wand2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
+import {
+	useCampaignPeople,
+	WhoCanSeeFields,
+} from "@/components/who-can-see-fields";
 import { generateThematicName } from "@/lib/name-generator";
 import {
 	cloneSheetLayout,
@@ -13,6 +17,7 @@ import {
 	characterDefaults,
 	formatModifier,
 	type RpgSystem,
+	useActiveCampaignRole,
 	useRPGStore,
 } from "@/lib/store";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
@@ -524,6 +529,11 @@ function IdentitySection({
 }) {
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const characterName = useWatch({ control, name: "characterName" });
+	const role = useActiveCampaignRole();
+	const canChooseAudience = role === "owner" || role === "editor";
+	const share = useWatch({ control, name: "share" }) ?? "table";
+	const sharedWith = useWatch({ control, name: "sharedWith" }) ?? [];
+	const { people, status: peopleStatus } = useCampaignPeople(canChooseAudience);
 
 	const system = useWatch({ control, name: "system" }) || "dnd5e";
 	const race = useWatch({ control, name: "race" });
@@ -636,6 +646,18 @@ function IdentitySection({
 						/>
 					</Field>
 				</div>
+				{canChooseAudience && (
+					<WhoCanSeeFields
+						share={share}
+						sharedWith={sharedWith}
+						people={people}
+						peopleStatus={peopleStatus}
+						onChange={(next) => {
+							setValue("share", next.share, { shouldDirty: true });
+							setValue("sharedWith", next.sharedWith, { shouldDirty: true });
+						}}
+					/>
+				)}
 			</FormSection>
 
 			<FormSection title="Aparência">

@@ -21,6 +21,7 @@ import { Input } from "./ui/input";
 import { Select } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/toast";
+import { useCampaignPeople, WhoCanSeeFields } from "./who-can-see-fields";
 import { WorldEntityPublicationFields } from "./world-entity-publication-fields";
 
 const TABS = [
@@ -157,10 +158,16 @@ function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
 				? npc.campaignIds
 				: initialCampaignIds,
 			...(npc ?? {}),
+			share:
+				npc?.share ?? (npc?.visibility === "master_secret" ? "staff" : "table"),
+			sharedWith: npc?.sharedWith ?? [],
 		},
 	});
 
 	const imageUrl = useWatch({ control, name: "imageUrl" });
+	const share = useWatch({ control, name: "share" }) ?? "table";
+	const sharedWith = useWatch({ control, name: "sharedWith" }) ?? [];
+	const { people, status: peopleStatus } = useCampaignPeople(true);
 	const watchedValues = useWatch({ control });
 	const watchedKind = useWatch({ control, name: "kind" }) ?? "npc";
 	const isMonster = watchedKind === "monster";
@@ -175,8 +182,15 @@ function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
 	}
 
 	function onSubmit(data: NpcFormValues) {
+		const share =
+			data.share ?? (data.visibility === "master_secret" ? "staff" : "table");
+		const visibility: Npc["visibility"] =
+			share === "staff" || share === "chosen" ? "master_secret" : "public";
 		const normalized = {
 			...data,
+			share,
+			sharedWith: data.sharedWith ?? [],
+			visibility,
 			kind: data.kind ?? "npc",
 			name: data.name.trim(),
 			race: data.race.trim(),
@@ -397,8 +411,29 @@ function NpcFormContent({ npc, setOpen, defaultTab }: NpcFormContentProps) {
 								</Field>
 							</FormSection>
 							<WorldEntityPublicationFields
+								hideVisibility
 								control={control}
 								setValue={setValue}
+							/>
+							<WhoCanSeeFields
+								share={share}
+								sharedWith={sharedWith}
+								people={people}
+								peopleStatus={peopleStatus}
+								disabled={isSubmitting}
+								onChange={(next) => {
+									setValue("share", next.share, { shouldDirty: true });
+									setValue("sharedWith", next.sharedWith, {
+										shouldDirty: true,
+									});
+									setValue(
+										"visibility",
+										next.share === "staff" || next.share === "chosen"
+											? "master_secret"
+											: "public",
+										{ shouldDirty: true },
+									);
+								}}
 							/>
 						</>
 					)}

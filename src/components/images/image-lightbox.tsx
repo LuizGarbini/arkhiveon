@@ -17,6 +17,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import type { SharePerson } from "@/lib/content-audience";
 import { audienceFromRow, imageVisibilityLabel } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -43,6 +44,7 @@ export function ImageLightbox({
 	permissionsFor,
 	handlersFor,
 	originLabelFor,
+	people,
 }: {
 	assets: ImageAsset[];
 	index: number | null;
@@ -50,6 +52,7 @@ export function ImageLightbox({
 	onClose: () => void;
 	permissionsFor: (asset: ImageAsset) => ImageAssetPermissions;
 	handlersFor: (asset: ImageAsset) => ImageAssetHandlers;
+	people?: SharePerson[];
 	/** Nome da campanha de origem quando a imagem é de outra campanha do mundo. */
 	originLabelFor: (asset: ImageAsset) => string | null;
 }) {
@@ -243,13 +246,15 @@ export function ImageLightbox({
 												),
 											)}
 										</DropdownMenuTrigger>
-										<DropdownMenuContent align="start" className="w-56">
+										<DropdownMenuContent align="start" className="w-72">
 											<ImageVisibilityMenuItems
 												isPrivate={asset.isPrivate}
 												audience={audienceFromRow(
 													asset.audience?.coGms,
 													asset.audience?.players,
+													asset.audience?.userIds,
 												)}
+												people={people}
 												onChange={handlers.onSetVisibility}
 											/>
 										</DropdownMenuContent>

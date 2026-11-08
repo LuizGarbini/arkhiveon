@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import { normalizeItemWeapon } from "@/core/rules/item-mechanics";
+import { audienceFromRow } from "../image-visibility";
 import {
 	fetchGlobalTotalCount,
 	loadRemoteActivity,
@@ -860,6 +861,11 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 									width: newRow.width ?? undefined,
 									height: newRow.height ?? undefined,
 									isPrivate: newRow.is_private ?? false,
+									audience: audienceFromRow(
+										newRow.visible_to_co_gms,
+										newRow.visible_to_players,
+										newRow.visible_user_ids,
+									),
 									createdAt: new Date(newRow.created_at).getTime(),
 									updatedAt: newRow.updated_at
 										? new Date(newRow.updated_at).getTime()
@@ -880,18 +886,38 @@ export const createSyncSlice: StateCreator<RPGState, [], [], SyncSlice> = (
 						if (eventType === "UPDATE") {
 							if (table === "image_assets") {
 								return {
-									[storeKey]: currentArray.map((item) =>
-										item.id === newRow.id
+									[storeKey]: currentArray.map((item) => {
+										const previous = item.audience;
+										const previousAudience =
+											previous && typeof previous === "object"
+												? (previous as {
+														coGms?: boolean;
+														players?: boolean;
+														userIds?: string[];
+													})
+												: undefined;
+										return item.id === newRow.id
 											? {
 													...item,
 													name: newRow.name,
 													isPrivate: newRow.is_private,
+													audience: audienceFromRow(
+														typeof newRow.visible_to_co_gms === "boolean"
+															? newRow.visible_to_co_gms
+															: previousAudience?.coGms,
+														typeof newRow.visible_to_players === "boolean"
+															? newRow.visible_to_players
+															: previousAudience?.players,
+														Array.isArray(newRow.visible_user_ids)
+															? newRow.visible_user_ids
+															: previousAudience?.userIds,
+													),
 													updatedAt: newRow.updated_at
 														? new Date(newRow.updated_at).getTime()
 														: Date.now(),
 												}
-											: item,
-									),
+											: item;
+									}),
 								};
 							}
 

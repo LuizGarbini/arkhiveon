@@ -20,6 +20,7 @@ import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { NpcEditButton } from "@/components/npc-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/lib/auth";
 import {
 	useActiveCampaignId,
 	useActiveCampaignRole,
@@ -76,6 +77,7 @@ function NpcDetailPage() {
 	const { edit } = Route.useSearch();
 	const navigate = useNavigate();
 	const myRole = useActiveCampaignRole();
+	const { session } = useAuth();
 	const isPlayer = myRole === "viewer";
 	const isStaff = useIsWorldStaff();
 	const activeCampaign = useActiveCampaignContext();
@@ -100,7 +102,14 @@ function NpcDetailPage() {
 	const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
 	const canView =
-		!!npc && canViewScopedContent(npc, activeCampaign, myRole, campaigns);
+		!!npc &&
+		canViewScopedContent(
+			npc,
+			activeCampaign,
+			myRole,
+			campaigns,
+			session?.user.id,
+		);
 
 	if (isLoading) return <NpcDetailSkeleton />;
 

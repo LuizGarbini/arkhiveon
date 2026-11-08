@@ -15,6 +15,7 @@ interface PublicationScopeFieldsProps {
 	onCampaignIdsChange: (ids: string[]) => void;
 	disabled?: boolean;
 	scopeLabel?: string;
+	hideVisibility?: boolean;
 }
 
 export function PublicationScopeFields({
@@ -26,6 +27,7 @@ export function PublicationScopeFields({
 	onCampaignIdsChange,
 	disabled = false,
 	scopeLabel = "Escopo de publicação",
+	hideVisibility = false,
 }: PublicationScopeFieldsProps) {
 	const worldCampaigns = useWorldCampaigns();
 
@@ -39,7 +41,9 @@ export function PublicationScopeFields({
 
 	return (
 		<div className="space-y-4 rounded-xl border border-border/70 bg-card-elevated/30 p-4">
-			<div className="grid gap-4 sm:grid-cols-2">
+			<div
+				className={hideVisibility ? "grid gap-4" : "grid gap-4 sm:grid-cols-2"}
+			>
 				<div className="space-y-2">
 					<Label>{scopeLabel}</Label>
 					<Select
@@ -55,19 +59,21 @@ export function PublicationScopeFields({
 						</option>
 					</Select>
 				</div>
-				<div className="space-y-2">
-					<Label>Visibilidade</Label>
-					<Select
-						value={visibility}
-						disabled={disabled}
-						onChange={(e) =>
-							onVisibilityChange(e.target.value as EntityVisibility)
-						}
-					>
-						<option value="public">Pública</option>
-						<option value="master_secret">Segredo do Mestre</option>
-					</Select>
-				</div>
+				{!hideVisibility && (
+					<div className="space-y-2">
+						<Label>Visibilidade</Label>
+						<Select
+							value={visibility}
+							disabled={disabled}
+							onChange={(e) =>
+								onVisibilityChange(e.target.value as EntityVisibility)
+							}
+						>
+							<option value="public">Pública</option>
+							<option value="master_secret">Segredo do Mestre</option>
+						</Select>
+					</div>
+				)}
 			</div>
 
 			{publicationScope === "restricted" && (

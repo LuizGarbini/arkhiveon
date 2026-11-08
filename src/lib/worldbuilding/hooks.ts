@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAuth } from "@/lib/auth";
 import {
 	useActiveCampaign,
 	useActiveCampaignRole,
@@ -42,9 +43,11 @@ export function useVisibleWorldEntities<T extends ScopedContent>(
 	const activeCampaign = useActiveCampaignContext();
 	const role = useActiveCampaignRole();
 	const campaigns = useRPGStore((s) => s.campaigns);
+	const { session } = useAuth();
+	const userId = session?.user.id;
 	return useMemo(
-		() => filterVisibleContent(items, activeCampaign, role, campaigns),
-		[items, activeCampaign, role, campaigns],
+		() => filterVisibleContent(items, activeCampaign, role, campaigns, userId),
+		[items, activeCampaign, role, campaigns, userId],
 	);
 }
 
@@ -61,8 +64,7 @@ export function useWorldCampaigns() {
 export function useFactionReputationForActiveCampaign(factionId: string) {
 	return useRPGStore((s) =>
 		s.factionReputations.find(
-			(r) =>
-				r.factionId === factionId && r.campaignId === s.activeCampaignId,
+			(r) => r.factionId === factionId && r.campaignId === s.activeCampaignId,
 		),
 	);
 }

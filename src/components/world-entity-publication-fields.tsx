@@ -21,11 +21,13 @@ type PublicationFieldValues = FieldValues & {
 interface WorldEntityPublicationFieldsProps<T extends PublicationFieldValues> {
 	control: Control<T>;
 	setValue: UseFormSetValue<T>;
+	hideVisibility?: boolean;
 }
 
 export function WorldEntityPublicationFields<T extends PublicationFieldValues>({
 	control,
 	setValue,
+	hideVisibility = false,
 }: WorldEntityPublicationFieldsProps<T>) {
 	const isStaff = useIsWorldStaff();
 	const publicationScope = useWatch({
@@ -48,6 +50,7 @@ export function WorldEntityPublicationFields<T extends PublicationFieldValues>({
 			publicationScope={publicationScope ?? "restricted"}
 			visibility={visibility ?? "public"}
 			campaignIds={campaignIds}
+			hideVisibility={hideVisibility}
 			onPublicationScopeChange={(value) => {
 				setValue("publicationScope" as Path<T>, value as T[Path<T>], {
 					shouldDirty: true,

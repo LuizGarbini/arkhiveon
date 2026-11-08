@@ -17,6 +17,8 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { useAuth } from "@/lib/auth";
+import { canViewCharacter } from "@/lib/content-audience";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useActiveCampaignContext } from "@/lib/worldbuilding/hooks";
@@ -56,6 +58,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const activeCampaign = useActiveCampaignContext();
 	const role = useActiveCampaignRole();
+	const { session } = useAuth();
+	const userId = session?.user.id;
 
 	const results = useMemo(() => {
 		if (!open) return [];
@@ -68,6 +72,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 			activeCampaign,
 			role,
 			campaigns,
+			userId,
+		);
+		const visibleCharacters = characters.filter((character) =>
+			canViewCharacter(character, { userId, role }),
 		);
 		const visibleItems = filterVisibleContent(
 			items,
@@ -89,7 +97,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 		);
 
 		const allResults: SearchResult[] = [
-			...characters.map((c) => ({
+			...visibleCharacters.map((c) => ({
 				id: c.id,
 				title: c.characterName || "Sem nome",
 				subtitle: c.class || c.race || "Personagem",
@@ -147,6 +155,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 		campaigns,
 		activeCampaign,
 		role,
+		userId,
 	]);
 
 	const handleSelect = useCallback(

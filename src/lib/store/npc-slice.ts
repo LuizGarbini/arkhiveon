@@ -25,6 +25,8 @@ export const npcDefaults: Omit<Npc, "id" | "createdAt"> = {
 	publicationScope: "restricted",
 	campaignIds: [],
 	visibility: "public",
+	share: "table",
+	sharedWith: [],
 	kind: "npc",
 	name: "",
 	race: "",

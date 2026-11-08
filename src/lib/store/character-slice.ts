@@ -93,6 +93,8 @@ export const characterDefaults: Omit<Character, "id" | "createdAt"> = {
 	flaws: "",
 	notes: "",
 	imageUrl: "",
+	share: "table",
+	sharedWith: [],
 	sheetLayout: createDefaultSheetLayout("dnd5e"),
 	familyRelations: [],
 	entityLinks: [],

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.82-quem-pode-ver",
+		version: "1.6.82",
+		date: "07/11/2026",
+		title: "O mestre escolhe quem vê ficha, NPC e imagem",
+		description:
+			"Na ficha e no NPC, o mestre escolhe toda a mesa, só co-mestres, só jogadores ou pessoas marcadas. Na imagem, além de co-mestres e jogadores, dá para marcar uma pessoa. O mestre e quem criou sempre veem. Esconder de verdade no servidor começa quando a migration 0061 estiver aplicada; até lá a tela já respeita a escolha e avisa se marcar uma pessoa na imagem ainda não for possível.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.81-transferir-mestre-f2",
 		version: "1.6.81",
 		date: "07/11/2026",

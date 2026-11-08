@@ -17,10 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculateEffectiveHealthMax } from "@/core/rules";
 import { useDocumentMetadata } from "@/hooks/use-document-metadata";
+import { useAuth } from "@/lib/auth";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
 } from "@/lib/character-images";
+import { canViewCharacter } from "@/lib/content-audience";
 import {
 	createCustomSheetModule,
 	normalizeModuleOrders,
@@ -76,6 +78,13 @@ function CharacterSheetPage() {
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
 	const activeCampaignId = useActiveCampaignId();
 	const activeCampaignRole = useActiveCampaignRole();
+	const { session } = useAuth();
+	const canView =
+		!character ||
+		canViewCharacter(character, {
+			userId: session?.user.id,
+			role: activeCampaignRole,
+		});
 	const imageAssetLookup = useImageAssetLookup();
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -127,7 +136,7 @@ function CharacterSheetPage() {
 		);
 	}
 
-	if (!character) {
+	if (!character || !canView) {
 		return (
 			<div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
 				<User className="h-16 w-16 text-muted-foreground/30" />
@@ -161,11 +170,13 @@ function CharacterSheetPage() {
 		currentCharacter,
 		imageAssetLookup,
 		activeCampaignRole,
+		session?.user.id,
 	);
 	const isImageHidden = isCharacterImageHidden(
 		currentCharacter,
 		imageAssetLookup,
 		activeCampaignRole,
+		session?.user.id,
 	);
 	const config =
 		SYSTEM_CONFIG[currentCharacter.system] ?? SYSTEM_CONFIG.generic;

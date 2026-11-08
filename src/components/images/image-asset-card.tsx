@@ -9,6 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import type { SharePerson } from "@/lib/content-audience";
 import { audienceFromRow } from "@/lib/image-visibility";
 import type { ImageAsset } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -38,11 +39,13 @@ export function ImageAssetCard({
 	asset,
 	permissions,
 	handlers,
+	people,
 	onOpen,
 }: {
 	asset: ImageAsset;
 	permissions: ImageAssetPermissions;
 	handlers: ImageAssetHandlers;
+	people?: SharePerson[];
 	onOpen: () => void;
 }) {
 	const [isRenaming, setIsRenaming] = useState(false);
@@ -150,7 +153,7 @@ export function ImageAssetCard({
 							>
 								<MoreHorizontal className="h-4 w-4" />
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-52">
+							<DropdownMenuContent align="end" className="w-72">
 								{permissions.canRename && (
 									<DropdownMenuItem onClick={startRename}>
 										<Pencil />
@@ -165,7 +168,9 @@ export function ImageAssetCard({
 											audience={audienceFromRow(
 												asset.audience?.coGms,
 												asset.audience?.players,
+												asset.audience?.userIds,
 											)}
+											people={people}
 											onChange={handlers.onSetVisibility}
 										/>
 										<DropdownMenuSeparator />

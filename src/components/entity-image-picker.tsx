@@ -27,11 +27,11 @@ import { resolveEntityImageUrl } from "@/lib/entity-images";
 import type { ImageFraming } from "@/lib/image-framing";
 import { readableFileName, readImageDimensions } from "@/lib/image-metadata";
 import { imageStorage } from "@/lib/image-storage";
+import { canViewImageAsset } from "@/lib/image-visibility";
 import {
 	useActiveCampaignId,
 	useActiveCampaignRole,
 	useImageAssetLookup,
-	useIsCampaignMaster,
 	useRPGStore,
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,6 @@ export function EntityImagePicker({
 	const loadImageAssets = useRPGStore((s) => s.loadImageAssets);
 	const addImageAsset = useRPGStore((s) => s.addImageAsset);
 	const activeCampaignRole = useActiveCampaignRole();
-	const isMaster = useIsCampaignMaster();
 	const resolvedCampaignId = campaignId ?? activeCampaignId ?? undefined;
 
 	const [cropOpen, setCropOpen] = useState(false);
@@ -103,15 +102,24 @@ export function EntityImagePicker({
 			Array.from(imageAssetLookup.values()).filter(
 				(asset) =>
 					asset.campaignId === resolvedCampaignId &&
-					(isMaster || !asset.isPrivate),
+					canViewImageAsset(asset, {
+						role: activeCampaignRole,
+						userId: session?.user.id,
+					}),
 			),
-		[imageAssetLookup, isMaster, resolvedCampaignId],
+		[
+			imageAssetLookup,
+			activeCampaignRole,
+			resolvedCampaignId,
+			session?.user.id,
+		],
 	);
 
 	const previewUrl = resolveEntityImageUrl(
 		value,
 		imageAssetLookup,
 		activeCampaignRole,
+		session?.user.id,
 	);
 	const hasPreview = Boolean(previewUrl);
 	const shapeClass = previewShape === "circle" ? "rounded-full" : "rounded-2xl";

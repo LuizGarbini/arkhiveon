@@ -61,4 +61,32 @@ describe("ImageVisibilityMenuItems", () => {
 			audience: { coGms: false, players: false },
 		});
 	});
+
+	it("marca uma pessoa mesmo com os grupos desligados", () => {
+		const onChange = vi.fn();
+		render(
+			<DropdownMenu defaultOpen>
+				<DropdownMenuTrigger>Quem vê</DropdownMenuTrigger>
+				<DropdownMenuContent>
+					<ImageVisibilityMenuItems
+						isPrivate
+						audience={{ coGms: false, players: false, userIds: [] }}
+						people={[
+							{
+								userId: "p1",
+								email: "ada@mesa.test",
+								role: "viewer",
+							},
+						]}
+						onChange={onChange}
+					/>
+				</DropdownMenuContent>
+			</DropdownMenu>,
+		);
+		fireEvent.click(item("ada@mesa.test · Jogador"));
+		expect(onChange).toHaveBeenCalledWith({
+			isPrivate: true,
+			audience: { coGms: false, players: false, userIds: ["p1"] },
+		});
+	});
 });

@@ -94,6 +94,70 @@ describe("visibleWorldAssets", () => {
 		expect(ids).toContain("mesa-b");
 	});
 
+	it("co-mestre vê a privada marcada para co-mestres", () => {
+		const editorScope: GalleryScope = {
+			...scope,
+			userId: "co",
+			campaigns: scope.campaigns.map((campaign) =>
+				campaign.id === "camp-a"
+					? { ...campaign, myRole: "editor" as const }
+					: campaign,
+			),
+		};
+		const ids = visibleWorldAssets(
+			[
+				asset({
+					id: "co",
+					isPrivate: true,
+					createdBy: "gm",
+					audience: { coGms: true, players: false },
+				}),
+			],
+			editorScope,
+		).map((item) => item.id);
+		expect(ids).toEqual(["co"]);
+	});
+
+	it("jogador vê a privada marcada para jogadores ou para ele", () => {
+		const playerScope: GalleryScope = {
+			...scope,
+			userId: "p1",
+			campaigns: [{ id: "camp-a", worldId: "world-1", myRole: "viewer" }],
+		};
+		const marked = asset({
+			id: "pl",
+			isPrivate: true,
+			createdBy: "gm",
+			audience: { coGms: false, players: true },
+		});
+		const chosen = asset({
+			id: "one",
+			isPrivate: true,
+			createdBy: "gm",
+			audience: { coGms: false, players: false, userIds: ["p1"] },
+		});
+		expect(
+			visibleWorldAssets([marked, chosen], playerScope).map((a) => a.id),
+		).toEqual(["pl", "one"]);
+		expect(
+			visibleWorldAssets([chosen], { ...playerScope, userId: "p2" }),
+		).toEqual([]);
+	});
+
+	it("quem subiu vê a própria imagem privada", () => {
+		const playerScope: GalleryScope = {
+			...scope,
+			userId: "p1",
+			campaigns: [{ id: "camp-a", worldId: "world-1", myRole: "viewer" }],
+		};
+		expect(
+			visibleWorldAssets(
+				[asset({ id: "own", isPrivate: true, createdBy: "p1" })],
+				playerScope,
+			).map((item) => item.id),
+		).toEqual(["own"]);
+	});
+
 	it("filtra pela busca sem diferenciar maiúsculas", () => {
 		const ids = visibleWorldAssets(assets, scope, "  JAVALI ").map((a) => a.id);
 		expect(ids).toEqual(["mesa-a"]);

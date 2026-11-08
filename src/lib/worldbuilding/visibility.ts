@@ -1,4 +1,4 @@
-import type { MembershipRole } from "../store/types";
+import type { ContentShare, MembershipRole } from "../store/types";
 
 export type PublicationScope = "global" | "restricted";
 export type EntityVisibility = "public" | "master_secret";
@@ -9,6 +9,10 @@ export interface ScopedContent {
 	audience?: PublicationScope;
 	campaignIds: string[];
 	visibility: EntityVisibility;
+	/** Quando presente, substitui `visibility` na hora de decidir quem vê. */
+	share?: ContentShare;
+	sharedWith?: string[];
+	createdBy?: string;
 }
 
 export function resolvePublicationScope(
@@ -64,15 +68,46 @@ export function passesScope(
  * Matriz §4 — filtra biblioteca/mural pela campanha ativa.
  * Segredo restrito fora do escopo: staff do Mundo ainda vê (grimório do mestre).
  */
+function shareAllows(
+	content: ScopedContent,
+	role: MembershipRole | undefined,
+	userId: string | null | undefined,
+	worldCampaigns: Array<WorldCampaignRole> | undefined,
+): boolean | "legacy" {
+	if (!content.share) return "legacy";
+	if (role === "owner") return true;
+	if (userId && content.createdBy && content.createdBy === userId) return true;
+	if (content.share === "table") return role != null;
+	if (content.share === "staff") {
+		if (isWorldStaff(role)) return true;
+		if (worldCampaigns)
+			return isWorldStaffInWorld(worldCampaigns, content.worldId);
+		return false;
+	}
+	if (content.share === "players") return role === "viewer";
+	if (content.share === "chosen") {
+		return !!userId && (content.sharedWith ?? []).includes(userId);
+	}
+	return "legacy";
+}
+
 export function canViewScopedContent(
 	content: ScopedContent,
 	activeCampaign: ActiveCampaignContext | null | undefined,
 	role: MembershipRole | undefined,
 	worldCampaigns?: Array<WorldCampaignRole>,
+	userId?: string | null,
 ): boolean {
 	if (!activeCampaign || !role) return false;
 	const normalized = toScopedContent(content);
 	if (normalized.worldId !== activeCampaign.worldId) return false;
+
+	const allowed = shareAllows(content, role, userId, worldCampaigns);
+	if (allowed !== "legacy") {
+		if (!allowed) return false;
+		if (content.share === "staff") return true;
+		return passesScope(normalized, activeCampaign);
+	}
 
 	if (normalized.visibility === "master_secret") {
 		if (worldCampaigns) {
@@ -106,9 +141,10 @@ export function filterVisibleContent<T extends ScopedContent>(
 	activeCampaign: ActiveCampaignContext | null | undefined,
 	role: MembershipRole | undefined,
 	worldCampaigns?: Array<WorldCampaignRole>,
+	userId?: string | null,
 ): T[] {
 	return items.filter((item) =>
-		canViewScopedContent(item, activeCampaign, role, worldCampaigns),
+		canViewScopedContent(item, activeCampaign, role, worldCampaigns, userId),
 	);
 }
 

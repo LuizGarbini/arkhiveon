@@ -214,7 +214,11 @@ function fromImageAssetRow(row: Record<string, unknown>): RemoteImageAsset {
 		width: typeof row.width === "number" ? row.width : undefined,
 		height: typeof row.height === "number" ? row.height : undefined,
 		isPrivate: booleanValue(row.is_private, false),
-		audience: audienceFromRow(row.visible_to_co_gms, row.visible_to_players),
+		audience: audienceFromRow(
+			row.visible_to_co_gms,
+			row.visible_to_players,
+			row.visible_user_ids,
+		),
 		createdAt: toTimestamp(row.created_at as string | null) ?? Date.now(),
 		updatedAt: toTimestamp(row.updated_at as string | null),
 	};
@@ -513,6 +517,14 @@ async function selectWorldEntities(
 const IMAGE_ASSET_COLUMNS =
 	"id,campaign_id,created_by,name,url,storage_key,mime_type,size_bytes,width,height,is_private,visible_to_co_gms,visible_to_players,created_at,updated_at";
 
+const IMAGE_ASSET_COLUMNS_WITH_VIEWERS = `${IMAGE_ASSET_COLUMNS},visible_user_ids`;
+
+function isMissingImageViewerColumn(error: unknown): boolean {
+	if (typeof error !== "object" || error === null) return false;
+	const message = (error as { message?: unknown }).message;
+	return typeof message === "string" && message.includes("visible_user_ids");
+}
+
 /** `image_assets.world_id` ainda não existe (migração 0036 não aplicada). */
 function isMissingImageAssetWorldColumn(error: unknown): boolean {
 	if (typeof error !== "object" || error === null) return false;
@@ -527,37 +539,61 @@ function isMissingImageAssetWorldColumn(error: unknown): boolean {
  * mundo (a RLS decide o que cada um vê). Sem a coluna `world_id` no banco,
  * cai para as imagens da campanha ativa.
  */
+async function selectImageAssets(
+	columns: string,
+	column: "world_id" | "campaign_id",
+	value: string,
+) {
+	return requireSupabase()
+		.from(SUPABASE_TABLES.imageAssets)
+		.select(columns)
+		.eq(column, value)
+		.order("updated_at", { ascending: false });
+}
+
+function imageAssetsFromRows(data: unknown): RemoteImageAsset[] {
+	return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
+}
+
 export async function loadRemoteImageAssets(
 	campaignId: string,
 	worldId?: string | null,
 ): Promise<RemoteImageAsset[]> {
-	const supabase = requireSupabase();
-
 	if (worldId) {
-		const { data, error } = await supabase
-			.from(SUPABASE_TABLES.imageAssets)
-			.select(`${IMAGE_ASSET_COLUMNS},world_id`)
-			.eq("world_id", worldId)
-			.order("updated_at", { ascending: false });
-
-		if (!error) {
-			return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
+		let result = await selectImageAssets(
+			`${IMAGE_ASSET_COLUMNS_WITH_VIEWERS},world_id`,
+			"world_id",
+			worldId,
+		);
+		if (result.error && isMissingImageViewerColumn(result.error)) {
+			result = await selectImageAssets(
+				`${IMAGE_ASSET_COLUMNS},world_id`,
+				"world_id",
+				worldId,
+			);
 		}
-		if (isMissingImageAssetsTableError(error)) return [];
-		if (!isMissingImageAssetWorldColumn(error)) throw error;
+		if (!result.error) return imageAssetsFromRows(result.data);
+		if (isMissingImageAssetsTableError(result.error)) return [];
+		if (!isMissingImageAssetWorldColumn(result.error)) throw result.error;
 	}
 
-	const { data, error } = await supabase
-		.from(SUPABASE_TABLES.imageAssets)
-		.select(IMAGE_ASSET_COLUMNS)
-		.eq("campaign_id", campaignId)
-		.order("updated_at", { ascending: false });
-
-	if (error) {
-		if (isMissingImageAssetsTableError(error)) return [];
-		throw error;
+	let result = await selectImageAssets(
+		IMAGE_ASSET_COLUMNS_WITH_VIEWERS,
+		"campaign_id",
+		campaignId,
+	);
+	if (result.error && isMissingImageViewerColumn(result.error)) {
+		result = await selectImageAssets(
+			IMAGE_ASSET_COLUMNS,
+			"campaign_id",
+			campaignId,
+		);
 	}
-	return ((data ?? []) as Record<string, unknown>[]).map(fromImageAssetRow);
+	if (result.error) {
+		if (isMissingImageAssetsTableError(result.error)) return [];
+		throw result.error;
+	}
+	return imageAssetsFromRows(result.data);
 }
 
 function activityLogQuery(campaignId: string) {
@@ -680,6 +716,24 @@ export async function updateRemoteImageAsset(
 	if (patch.audience) {
 		row.visible_to_co_gms = patch.audience.coGms;
 		row.visible_to_players = patch.audience.players;
+	}
+	const userIds = patch.audience?.userIds;
+	if (Array.isArray(userIds)) {
+		const withViewers: ImageAssetUpdate = {
+			...row,
+			visible_user_ids: userIds,
+		};
+		const { error } = await supabase
+			.from(SUPABASE_TABLES.imageAssets)
+			.update(withViewers)
+			.eq("id", id);
+		if (!error) return;
+		if (!isMissingImageViewerColumn(error)) throw error;
+		if (userIds.length > 0) {
+			throw new Error(
+				"Escolher uma pessoa específica ainda não está disponível neste servidor. Aplique a atualização do banco e tente de novo.",
+			);
+		}
 	}
 
 	const { error } = await supabase

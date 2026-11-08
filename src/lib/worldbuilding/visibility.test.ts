@@ -207,6 +207,61 @@ describe("canCommentOnNews", () => {
 	});
 });
 
+describe("canViewScopedContent share", () => {
+	const base = {
+		worldId: worldA,
+		publicationScope: "restricted" as const,
+		campaignIds: ["camp-a"],
+		visibility: "public" as const,
+		createdBy: "gm",
+	};
+
+	it("só co-mestres esconde o jogador", () => {
+		const npc = {
+			...base,
+			share: "staff" as const,
+			visibility: "master_secret" as const,
+		};
+		expect(canViewScopedContent(npc, campA, "editor", undefined, "co")).toBe(
+			true,
+		);
+		expect(canViewScopedContent(npc, campA, "viewer", undefined, "p")).toBe(
+			false,
+		);
+	});
+
+	it("só jogadores esconde o co-mestre", () => {
+		const npc = { ...base, share: "players" as const };
+		expect(canViewScopedContent(npc, campA, "viewer", undefined, "p")).toBe(
+			true,
+		);
+		expect(canViewScopedContent(npc, campA, "editor", undefined, "co")).toBe(
+			false,
+		);
+	});
+
+	it("pessoa marcada vê o segredo; o co-mestre não", () => {
+		const npc = {
+			...base,
+			share: "chosen" as const,
+			visibility: "master_secret" as const,
+			sharedWith: ["p1"],
+		};
+		expect(canViewScopedContent(npc, campA, "viewer", undefined, "p1")).toBe(
+			true,
+		);
+		expect(canViewScopedContent(npc, campA, "viewer", undefined, "p2")).toBe(
+			false,
+		);
+		expect(canViewScopedContent(npc, campA, "editor", undefined, "co")).toBe(
+			false,
+		);
+		expect(canViewScopedContent(npc, campA, "owner", undefined, "gm")).toBe(
+			true,
+		);
+	});
+});
+
 describe("validateRestrictedScope", () => {
 	it("global não exige campanhas", () => {
 		expect(validateRestrictedScope("global", [], ["camp-a"])).toBeNull();

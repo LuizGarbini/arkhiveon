@@ -39,7 +39,9 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useAuth } from "@/lib/auth";
 import { getCharacterPresetUrl } from "@/lib/character-presets";
+import { canViewCharacter } from "@/lib/content-audience";
 import type {
 	Character,
 	FamilyRelation,
@@ -130,10 +132,21 @@ interface GraphModel {
 }
 
 function FamilyTreePage() {
-	const characters = useRPGStore((state) => state.characters);
+	const allCharacters = useRPGStore((state) => state.characters);
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
-	const [isEditMode, setIsEditMode] = useState(false);
+	const { session } = useAuth();
 	const myRole = useActiveCampaignRole();
+	const characters = useMemo(
+		() =>
+			allCharacters.filter((character) =>
+				canViewCharacter(character, {
+					userId: session?.user.id,
+					role: myRole,
+				}),
+			),
+		[allCharacters, session?.user.id, myRole],
+	);
+	const [isEditMode, setIsEditMode] = useState(false);
 	const isPlayer = myRole === "viewer";
 
 	const relationCount = characters.reduce(

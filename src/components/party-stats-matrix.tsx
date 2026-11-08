@@ -1,12 +1,23 @@
 import { Heart, Shield, Sparkles, UserCheck, Zap } from "lucide-react";
+import { useMemo } from "react";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
-import { useRPGStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { canViewCharacter } from "@/lib/content-audience";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 import { formatModifier } from "@/lib/store/helpers";
 import { cn } from "@/lib/utils";
 
 export function PartyStatsMatrix() {
 	const characters = useRPGStore((state) => state.characters);
-	const party = characters;
+	const role = useActiveCampaignRole();
+	const { session } = useAuth();
+	const party = useMemo(
+		() =>
+			characters.filter((character) =>
+				canViewCharacter(character, { userId: session?.user.id, role }),
+			),
+		[characters, session?.user.id, role],
+	);
 
 	if (party.length === 0) {
 		return null;

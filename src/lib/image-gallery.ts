@@ -1,3 +1,4 @@
+import { canViewImageAsset } from "./image-visibility";
 import type { Campaign, ImageAsset, MembershipRole } from "./store/types";
 import { MAP_STORAGE_FOLDER } from "./vtt/map-upload";
 
@@ -29,6 +30,7 @@ export interface GalleryScope {
 	/** Mundo da campanha ativa. Sem mundo, a galeria cai para a campanha. */
 	worldId: string | null | undefined;
 	campaigns: readonly Pick<Campaign, "id" | "worldId" | "myRole">[];
+	userId?: string | null;
 }
 
 /** Ids das campanhas (que o usuário conhece) no mesmo mundo da ativa. */
@@ -79,7 +81,7 @@ function matchesFilter(asset: ImageAsset, filter: GalleryFilter): boolean {
 
 /**
  * Imagens do mundo que este usuário pode ver, já filtradas pela busca.
- * Privada só aparece para o mestre da campanha dona da imagem (a RLS também barra).
+ * Privada segue co-mestres, jogadores e pessoas marcadas. A RLS também barra.
  */
 export function visibleWorldAssets(
 	assets: readonly ImageAsset[],
@@ -90,7 +92,12 @@ export function visibleWorldAssets(
 	const normalizedQuery = query.trim().toLowerCase();
 	return assets.filter((asset) => {
 		if (!isInGalleryWorld(asset, scope, campaignIds)) return false;
-		if (asset.isPrivate && roleForAsset(asset, scope.campaigns) !== "owner") {
+		if (
+			!canViewImageAsset(asset, {
+				role: roleForAsset(asset, scope.campaigns),
+				userId: scope.userId,
+			})
+		) {
 			return false;
 		}
 		if (!normalizedQuery) return true;

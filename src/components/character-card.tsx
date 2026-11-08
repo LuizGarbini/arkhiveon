@@ -5,6 +5,7 @@ import { CharacterImageDialog } from "@/components/character-image-dialog";
 import { FramedImage } from "@/components/framed-image";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/lib/auth";
 import { resolveCharacterImageUrl } from "@/lib/character-images";
 import { getCharacterPresetUrl } from "@/lib/character-presets";
 import {
@@ -30,6 +31,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 	const imageAssetLookup = useImageAssetLookup();
 	const activeCampaignRole = useActiveCampaignRole();
+	const { session } = useAuth();
 	const navigate = useNavigate();
 	const toast = useToast();
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -66,6 +68,7 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 		character,
 		imageAssetLookup,
 		activeCampaignRole,
+		session?.user.id,
 	);
 	const hasCustomImage = Boolean(characterImageUrl);
 	const characterName = character.characterName || "Sem nome";

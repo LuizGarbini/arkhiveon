@@ -18,6 +18,8 @@ import {
 	VTTMapDropzone,
 	type VTTMapImage,
 } from "@/components/vtt/vtt-map-dropzone";
+import { useAuth } from "@/lib/auth";
+import { canViewCharacter } from "@/lib/content-audience";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -50,6 +52,7 @@ export function VTTRosterDrawer({
 	const isGM = useVTTStore((s) => s.isGM);
 	const tokens = useVTTStore((s) => s.tokens);
 	const characters = useRPGStore((s) => s.characters);
+	const { session } = useAuth();
 	const npcs = useRPGStore((s) => s.npcs);
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const campaignId = useRPGStore((s) => s.activeCampaignId);
@@ -75,20 +78,36 @@ export function VTTRosterDrawer({
 	const visibleCharacters = useMemo(
 		() =>
 			campaignId === scene?.campaignId
-				? characters.filter((c) =>
-						c.characterName.toLocaleLowerCase().includes(search),
+				? characters.filter(
+						(c) =>
+							canViewCharacter(c, {
+								userId: session?.user.id,
+								role: campaign?.myRole,
+							}) && c.characterName.toLocaleLowerCase().includes(search),
 					)
 				: [],
-		[characters, campaignId, scene?.campaignId, search],
+		[
+			characters,
+			campaignId,
+			scene?.campaignId,
+			search,
+			session?.user.id,
+			campaign?.myRole,
+		],
 	);
 	const visibleNpcs = useMemo(
 		() =>
 			npcs.filter(
 				(n) =>
-					canViewScopedContent(n, campaign, campaign?.myRole, campaigns) &&
-					n.name.toLocaleLowerCase().includes(search),
+					canViewScopedContent(
+						n,
+						campaign,
+						campaign?.myRole,
+						campaigns,
+						session?.user.id,
+					) && n.name.toLocaleLowerCase().includes(search),
 			),
-		[npcs, campaign, campaigns, search],
+		[npcs, campaign, campaigns, search, session?.user.id],
 	);
 	const visibleTokens = useMemo(
 		() =>

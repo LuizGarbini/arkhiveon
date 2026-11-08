@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useCampaignPeople } from "@/components/who-can-see-fields";
 import { useAuth } from "@/lib/auth";
 import {
 	countGalleryFilters,
@@ -79,12 +80,13 @@ function ImagesRoute() {
 		[worlds, worldId],
 	);
 	const isMaster = activeCampaign?.myRole === "owner";
+	const { people } = useCampaignPeople(Boolean(activeCampaignId));
 	const canUpload =
 		activeCampaign?.myRole === "owner" || activeCampaign?.myRole === "editor";
 
 	const scope = useMemo<GalleryScope>(
-		() => ({ activeCampaignId, worldId, campaigns }),
-		[activeCampaignId, worldId, campaigns],
+		() => ({ activeCampaignId, worldId, campaigns, userId }),
+		[activeCampaignId, worldId, campaigns, userId],
 	);
 
 	useEffect(() => {
@@ -379,6 +381,7 @@ function ImagesRoute() {
 								asset={asset}
 								permissions={permissionsFor(asset)}
 								handlers={handlersFor(asset)}
+								people={people}
 								onOpen={() => setLightboxId(asset.id)}
 							/>
 						))}
@@ -436,6 +439,7 @@ function ImagesRoute() {
 				permissionsFor={permissionsFor}
 				handlersFor={handlersFor}
 				originLabelFor={originLabelFor}
+				people={people}
 			/>
 		</div>
 	);

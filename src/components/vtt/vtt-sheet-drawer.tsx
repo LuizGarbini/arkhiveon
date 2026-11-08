@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import { characterAttributeScore } from "@/core/rules";
+import { useAuth } from "@/lib/auth";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
@@ -379,6 +380,7 @@ function SheetContent({
 	const loadStatus = useRPGStore((s) => s.campaignLoadStatus);
 	const isGM = useVTTStore((s) => s.isGM);
 	const role = useActiveCampaignRole();
+	const { session } = useAuth();
 	const imageAssets = useImageAssetLookup();
 	const linkedId = token?.characterId ?? null;
 	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, linkedId));
@@ -453,8 +455,14 @@ function SheetContent({
 							character,
 							imageAssets,
 							role,
+							session?.user.id,
 						)}
-						isImageHidden={isCharacterImageHidden(character, imageAssets, role)}
+						isImageHidden={isCharacterImageHidden(
+							character,
+							imageAssets,
+							role,
+							session?.user.id,
+						)}
 					/>
 					<SheetQuickStats
 						compact

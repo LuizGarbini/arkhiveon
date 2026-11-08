@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/empty-state";
 import { ListLayout } from "@/components/list-layout";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { canViewCharacter } from "@/lib/content-audience";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
 
 export const Route = createFileRoute("/characters/")({
@@ -22,7 +24,16 @@ const loadingCardKeys = [
 function RouteComponent() {
 	const characters = useRPGStore((state) => state.characters);
 	const activeCampaignRole = useActiveCampaignRole();
+	const { session } = useAuth();
+	const userId = session?.user.id;
 	const isViewer = activeCampaignRole === "viewer";
+	const visibleCharacters = useMemo(
+		() =>
+			characters.filter((character) =>
+				canViewCharacter(character, { userId, role: activeCampaignRole }),
+			),
+		[characters, userId, activeCampaignRole],
+	);
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
@@ -70,7 +81,7 @@ function RouteComponent() {
 
 	const filteredCharacters = useMemo(() => {
 		const query = deferredSearchQuery.trim().toLowerCase();
-		return characters.filter((character) => {
+		return visibleCharacters.filter((character) => {
 			const matchesQuery =
 				!query ||
 				[
@@ -103,7 +114,7 @@ function RouteComponent() {
 
 			return matchesQuery && matchesSystem && matchesLevel;
 		});
-	}, [characters, deferredSearchQuery, activeFilters]);
+	}, [visibleCharacters, deferredSearchQuery, activeFilters]);
 
 	const isLoading = useRPGStore((state) => state.isLoadingRemote);
 
@@ -115,7 +126,7 @@ function RouteComponent() {
 				Icon={User}
 				iconColor="text-violet-300"
 				eyebrow="Personagens da campanha"
-				count={characters.length}
+				count={visibleCharacters.length}
 				action={
 					isViewer ? (
 						<div className="group/tooltip relative inline-block">

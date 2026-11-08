@@ -474,6 +474,7 @@ export type Database = {
 					is_private: boolean;
 					visible_to_co_gms: boolean;
 					visible_to_players: boolean;
+					visible_user_ids?: string[];
 					mime_type: string;
 					name: string;
 					size_bytes: number;
@@ -493,6 +494,7 @@ export type Database = {
 					is_private?: boolean;
 					visible_to_co_gms?: boolean;
 					visible_to_players?: boolean;
+					visible_user_ids?: string[];
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;
@@ -512,6 +514,7 @@ export type Database = {
 					is_private?: boolean;
 					visible_to_co_gms?: boolean;
 					visible_to_players?: boolean;
+					visible_user_ids?: string[];
 					mime_type?: string;
 					name?: string;
 					size_bytes?: number;

@@ -8,7 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import {
+	useCampaignPeople,
+	WhoCanSeeFields,
+} from "@/components/who-can-see-fields";
 import { generateThematicName } from "@/lib/name-generator";
+import { useActiveCampaignRole } from "@/lib/store";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import {
@@ -78,6 +83,11 @@ export function IdentityFields({
 	const charisma = useWatch({ control, name: "charisma" }) || 10;
 
 	const toast = useToast();
+	const role = useActiveCampaignRole();
+	const canChooseAudience = role === "owner" || role === "editor";
+	const share = useWatch({ control, name: "share" }) ?? "table";
+	const sharedWith = useWatch({ control, name: "sharedWith" }) ?? [];
+	const { people, status: peopleStatus } = useCampaignPeople(canChooseAudience);
 
 	const handleGenerateName = () => {
 		const generated = generateThematicName({
@@ -468,6 +478,18 @@ export function IdentityFields({
 					/>
 				</Field>
 			</FormSection>
+			{canChooseAudience && (
+				<WhoCanSeeFields
+					share={share}
+					sharedWith={sharedWith}
+					people={people}
+					peopleStatus={peopleStatus}
+					onChange={(next) => {
+						setValue("share", next.share, { shouldDirty: true });
+						setValue("sharedWith", next.sharedWith, { shouldDirty: true });
+					}}
+				/>
+			)}
 		</>
 	);
 }

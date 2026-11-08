@@ -12,16 +12,18 @@ export function resolveCharacterImageUrl(
 	character: Character,
 	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
+	userId?: string | null,
 ): string {
-	return resolveEntityImageUrl(character, imageAssets, role);
+	return resolveEntityImageUrl(character, imageAssets, role, userId);
 }
 
 export function isCharacterImageHidden(
 	character: Character,
 	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
+	userId?: string | null,
 ): boolean {
-	return isEntityImageHidden(character, imageAssets, role);
+	return isEntityImageHidden(character, imageAssets, role, userId);
 }
 
 export function resolveItemImageUrl(

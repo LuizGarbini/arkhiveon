@@ -10,6 +10,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth";
+import { canViewImageAsset } from "@/lib/image-visibility";
 import { type Character, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -34,15 +36,18 @@ export function CharacterImageDialog({
 			s.campaigns.find((campaign) => campaign.id === s.activeCampaignId)
 				?.myRole,
 	);
-	const isMaster = activeCampaignRole === "owner";
+	const { session } = useAuth();
 	const visibleAssets = useMemo(
 		() =>
 			imageAssets.filter(
 				(asset) =>
 					asset.campaignId === activeCampaignId &&
-					(isMaster || !asset.isPrivate),
+					canViewImageAsset(asset, {
+						role: activeCampaignRole,
+						userId: session?.user.id,
+					}),
 			),
-		[activeCampaignId, imageAssets, isMaster],
+		[activeCampaignId, imageAssets, activeCampaignRole, session?.user.id],
 	);
 
 	useEffect(() => {
