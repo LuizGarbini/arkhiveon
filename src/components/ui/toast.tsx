@@ -43,7 +43,7 @@ interface ToastContextValue {
 	dismiss: (id: string) => void;
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null);
+export const ToastContext = createContext<ToastContextValue | null>(null);
 
 type ToastListener = (variant: ToastVariant, toast: ToastInput) => void;
 const toastListeners = new Set<ToastListener>();
@@ -208,10 +208,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	);
 }
 
-export function useToast() {
+export function useToast(): ToastContextValue {
 	const value = useContext(ToastContext);
 	if (!value) {
-		throw new Error("useToast deve ser usado dentro de ToastProvider.");
+		return {
+			info: (toast: ToastInput) => showToast("info", toast),
+			error: (toast: ToastInput) => showToast("error", toast),
+			success: (toast: ToastInput) => showToast("success", toast),
+			dismiss: (_id: string) => {},
+		};
 	}
 	return value;
 }

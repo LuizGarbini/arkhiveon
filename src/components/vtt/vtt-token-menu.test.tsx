@@ -273,3 +273,142 @@ describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
 		}
 	});
 });
+
+describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos da Mesa", () => {
+	const previous = useRPGStore.getState().characters;
+	const prevCampaign = useRPGStore.getState().activeCampaignId;
+	afterEach(() => {
+		useRPGStore.setState({
+			characters: previous,
+			activeCampaignId: prevCampaign,
+		});
+	});
+
+	function setupCharacter(custom: Partial<Character> = {}) {
+		const char: Character = {
+			id: "char-sync-1",
+			name: "Teemo",
+			characterName: "Teemo",
+			system: "dnd5e",
+			health: 20,
+			healthMax: 25,
+			tempHealth: 5,
+			speed: 9,
+			wisdom: 14,
+			proficiencyBonus: 2,
+			skillProficiencies: { perception: "proficient" },
+			tableResources: {
+				inspiration: 1,
+				fate: 0,
+				fateTotal: 10,
+				divine: 0,
+				divineTotal: 10,
+				bonusDice: [{ id: "bd-1", sides: 6, quantity: 2, origin: "Descanso" }],
+			},
+			...custom,
+		} as Character;
+		useRPGStore.setState({
+			activeCampaignId: "camp-test-1",
+			characters: [char],
+		});
+		return char;
+	}
+
+	it("mostra os Quick Stats da ficha (CA, INIC, MOV, PASSIVA) no menu do token", () => {
+		setupCharacter();
+		setup({ characterId: "char-sync-1" });
+		expect(screen.getByTestId("token-character-stats")).toBeTruthy();
+		expect(screen.getByText("CA")).toBeTruthy();
+		expect(screen.getByText("INIC")).toBeTruthy();
+		expect(screen.getByText("MOV")).toBeTruthy();
+		expect(screen.getByText("PASSIVA")).toBeTruthy();
+		expect(screen.getByText("14")).toBeTruthy();
+		expect(screen.getByText("9m")).toBeTruthy();
+	});
+
+	it("mostra vida temporária (+5 temp) e absorve dano da vida temporária antes da vida atual", async () => {
+		setupCharacter({ health: 20, healthMax: 25, tempHealth: 5 });
+		const { onUpdateToken } = setup({ characterId: "char-sync-1" });
+		expect(screen.getByText("+5 temp")).toBeTruthy();
+
+		const minus1 = screen.getByRole("button", { name: "-1" });
+		fireEvent.click(minus1);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.tempHealth).toBe(4);
+		});
+		expect(onUpdateToken).not.toHaveBeenCalled();
+	});
+
+	it("permite definir vida temporária pelo formulário e sincroniza na ficha", async () => {
+		setupCharacter({ tempHealth: 0 });
+		setup({ characterId: "char-sync-1" });
+		const input = screen.getByRole("spinbutton", { name: "Vida temporária" });
+		fireEvent.change(input, { target: { value: "10" } });
+		const submit = screen.getByRole("button", { name: "Definir" });
+		fireEvent.click(submit);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.tempHealth).toBe(10);
+		});
+	});
+
+	it("permite zerar vida temporária com botão Zerar", async () => {
+		setupCharacter({ tempHealth: 8 });
+		setup({ characterId: "char-sync-1" });
+		const zerar = screen.getByRole("button", { name: "Zerar" });
+		fireEvent.click(zerar);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.tempHealth).toBe(0);
+		});
+	});
+
+	it("sincroniza a alteração de vida máxima na ficha do personagem", async () => {
+		setupCharacter({ health: 20, healthMax: 25 });
+		setup({ characterId: "char-sync-1" });
+		const maxInput = screen.getByRole("spinbutton", { name: "PV máximo" });
+		fireEvent.change(maxInput, { target: { value: "30" } });
+		const aplicar = screen.getByRole("button", { name: "Aplicar" });
+		fireEvent.click(aplicar);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.healthMax).toBe(30);
+		});
+	});
+
+	it("permite usar inspiração e gastar dado bônus diretamente no menu do token", async () => {
+		setupCharacter();
+		setup({ characterId: "char-sync-1" });
+		expect(screen.getByTestId("token-character-resources")).toBeTruthy();
+		expect(screen.getByText("Inspiração")).toBeTruthy();
+
+		const usarInsp = screen.getByRole("button", { name: "Usar (1)" });
+		fireEvent.click(usarInsp);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.tableResources?.inspiration).toBe(0);
+		});
+
+		const dieChip = screen.getByRole("button", {
+			name: /Rolar d6 \(Descanso\) e gastar 1/i,
+		});
+		fireEvent.click(dieChip);
+		await waitFor(() => {
+			const updated = useRPGStore
+				.getState()
+				.characters.find((c) => c.id === "char-sync-1");
+			expect(updated?.tableResources?.bonusDice[0].quantity).toBe(1);
+		});
+	});
+});

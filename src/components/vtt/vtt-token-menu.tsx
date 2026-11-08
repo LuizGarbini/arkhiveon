@@ -1,19 +1,26 @@
 import {
+	Dices,
 	Eye,
 	EyeOff,
+	Footprints,
 	Lock,
 	Maximize2,
 	Minus,
 	Plus,
 	RotateCw,
 	ScrollText,
+	Shield,
 	ShieldAlert,
+	Star,
 	Trash2,
 	Unlock,
 	X,
+	Zap,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useCombatStats } from "@/components/character-sheet/use-linked-items";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
+import { AddBonusDieForm } from "@/components/character-sheet/view/table-resources-strip";
 import { ImageViewer } from "@/components/images/image-viewer";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +37,19 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
-import { useRPGStore } from "@/lib/store";
+import { calculateAbilityModifier, formatModifier } from "@/core/rules";
+import { useAuth } from "@/lib/auth";
+import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import type { Character } from "@/lib/store/types";
+import {
+	addBonusDie,
+	mergeTableResources,
+	normalizeTableResources,
+	setInspiration,
+	spendBonusDie,
+	spendInspiration,
+	type TableResources,
+} from "@/lib/table-resources";
 import { cn } from "@/lib/utils";
 import {
 	resolveTokenHp,
@@ -71,6 +90,13 @@ export function VTTTokenMenu({
 	const isMobile = useIsMobile();
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const characterId = token?.characterId ?? null;
+	const { user } = useAuth();
+	const role = useActiveCampaignRole();
+	const character = useRPGStore((s) =>
+		characterId
+			? (s.characters.find((c) => c.id === characterId) ?? null)
+			: null,
+	);
 	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, characterId));
 	const sheetHealthMax = useRPGStore((s) =>
 		selectSheetHealthMax(s, characterId),
@@ -113,7 +139,43 @@ export function VTTTokenMenu({
 		sheetHealth,
 		sheetHealthMax,
 	});
-	const showMax = !hp.fromSheet || isGM;
+
+	const isOwnerOrEditor = role === "owner" || role === "editor";
+	const isCharacterCreator = Boolean(
+		character && user?.id && character.createdBy === user.id,
+	);
+	const isTokenController = Boolean(
+		user?.id && token.controlledBy?.includes(user.id),
+	);
+	const canEdit =
+		isGM || isOwnerOrEditor || isCharacterCreator || isTokenController;
+	const showMax =
+		!hp.fromSheet || isGM || isCharacterCreator || isTokenController;
+
+	const handleUpdateHp = (next: number) => {
+		void onUpdateToken(token.id, { hpCurrent: next });
+	};
+
+	const handleUpdateMax = async (nextMax: number) => {
+		if (character) {
+			await useRPGStore.getState().updateCharacter(character.id, {
+				healthMax: nextMax,
+			});
+		}
+		if (isGM || !character) {
+			await onUpdateToken(token.id, {
+				hpCurrent: hp.current,
+				hpMax: nextMax,
+			});
+		}
+	};
+
+	const handleUpdateTempHp = async (nextTemp: number) => {
+		if (!character) return;
+		await useRPGStore.getState().updateCharacter(character.id, {
+			tempHealth: Math.max(0, nextTemp),
+		});
+	};
 
 	// Status: otimista. Aplica na mesa na hora e grava; se o servidor recusar,
 	// volta ao que estava (se ninguém mexeu de novo) e avisa com toast.
@@ -317,21 +379,23 @@ export function VTTTokenMenu({
 				className="min-w-0 space-y-3 disabled:opacity-60"
 			>
 				<div className="space-y-3">
+					{character && <TokenCharacterStats character={character} />}
+
 					<VttHpAdjust
 						hpCurrent={hp.current}
 						hpMax={hp.max}
 						showMax={showMax}
-						onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
-						onChangeMax={
-							hp.fromSheet && isGM
-								? (nextMax) =>
-										onUpdateToken(token.id, {
-											hpCurrent: hp.current,
-											hpMax: nextMax,
-										})
-								: undefined
+						tempHp={character?.tempHealth ?? 0}
+						onChange={handleUpdateHp}
+						onChangeMax={canEdit ? handleUpdateMax : undefined}
+						onChangeTempHp={
+							character && canEdit ? handleUpdateTempHp : undefined
 						}
 					/>
+
+					{character && (
+						<TokenCharacterResources character={character} canEdit={canEdit} />
+					)}
 
 					{/* Status Conditions */}
 					<div className="space-y-1.5">
@@ -591,6 +655,235 @@ export function VTTTokenMenu({
 					</Button>
 				</div>
 			</fieldset>
+		</div>
+	);
+}
+
+function TokenCharacterStats({ character }: { character: Character }) {
+	const combat = useCombatStats(character);
+	const wisMod = calculateAbilityModifier(character.wisdom || 10);
+	const pb = character.proficiencyBonus || 2;
+	const perceptionProf = character.skillProficiencies?.perception;
+	const profBonus =
+		perceptionProf === "expertise"
+			? pb * 2
+			: perceptionProf === "proficient"
+				? pb
+				: 0;
+	const passivePerception = 10 + wisMod + profBonus;
+
+	return (
+		<div
+			data-testid="token-character-stats"
+			className="grid grid-cols-4 gap-1.5 py-0.5"
+		>
+			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+					<Shield className="h-3 w-3 text-blue-400" /> CA
+				</span>
+				<span className="font-display font-bold text-base text-foreground tabular-nums">
+					{combat.ac.total}
+				</span>
+			</div>
+			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+					<Zap className="h-3 w-3 text-amber-400" /> INIC
+				</span>
+				<span className="font-display font-bold text-base text-foreground tabular-nums">
+					{formatModifier(combat.initiative.total)}
+				</span>
+			</div>
+			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+					<Footprints className="h-3 w-3 text-emerald-400" /> MOV
+				</span>
+				<span className="font-display font-bold text-base text-foreground tabular-nums">
+					{character.speed ?? 9}m
+				</span>
+			</div>
+			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+					<Eye className="h-3 w-3 text-purple-400" /> PASSIVA
+				</span>
+				<span className="font-display font-bold text-base text-foreground tabular-nums">
+					{passivePerception}
+				</span>
+			</div>
+		</div>
+	);
+}
+
+function TokenCharacterResources({
+	character,
+	canEdit,
+}: {
+	character: Character;
+	canEdit: boolean;
+}) {
+	const res = normalizeTableResources(character.tableResources);
+	const [addOpen, setAddOpen] = useState(false);
+	const [lastRoll, setLastRoll] = useState<string | null>(null);
+
+	const emit = (next: TableResources) => {
+		void useRPGStore.getState().updateCharacter(character.id, {
+			tableResources: mergeTableResources(character.tableResources, next),
+		});
+	};
+
+	const handleSpendDie = (dieId: string) => {
+		if (!canEdit) return;
+		const result = spendBonusDie(res, dieId);
+		if (!result) return;
+		emit(result.next);
+		const label = `d${result.die.sides}${result.die.origin ? ` · ${result.die.origin}` : ""}`;
+		setLastRoll(`${label} → ${result.value}`);
+		showToast("info", {
+			title: `Dado bônus: ${result.value}`,
+			description: `${label} · restam ${result.die.quantity - 1}`,
+		});
+	};
+
+	const handleSpendInspiration = () => {
+		if (!canEdit || res.inspiration <= 0) return;
+		emit(spendInspiration(res));
+		showToast("info", {
+			title: "Inspiração usada",
+			description: `Vantagem no teste · restam ${res.inspiration - 1}`,
+		});
+	};
+
+	const handleAddInspiration = () => {
+		if (!canEdit) return;
+		emit(setInspiration(res, res.inspiration + 1));
+	};
+
+	return (
+		<div
+			data-testid="token-character-resources"
+			className="space-y-2 pt-1 border-t border-border/70"
+		>
+			<div className="flex items-center justify-between">
+				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+					<Dices className="h-3.5 w-3.5 text-primary" />
+					Recursos & Dados Bônus
+				</span>
+				{canEdit && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => setAddOpen(!addOpen)}
+						className="h-8 min-h-8 px-2 text-[11px] font-bold text-primary hover:bg-primary/10 gap-1 cursor-pointer"
+					>
+						<Plus className="h-3.5 w-3.5" />
+						Dado
+					</Button>
+				)}
+			</div>
+
+			{/* Inspiração */}
+			<div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-border/70 bg-card-elevated">
+				<div className="flex items-center gap-2">
+					<Star
+						className={cn(
+							"h-4 w-4",
+							res.inspiration > 0
+								? "fill-amber-400 text-amber-400"
+								: "text-muted-foreground",
+						)}
+					/>
+					<div className="flex flex-col">
+						<span className="text-xs font-semibold text-foreground">
+							Inspiração
+						</span>
+						<span className="text-[10px] text-muted-foreground">
+							{res.inspiration > 0
+								? "Disponível para teste com vantagem"
+								: "Sem inspiração"}
+						</span>
+					</div>
+				</div>
+				<div className="flex items-center gap-1">
+					{canEdit && res.inspiration > 0 && (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={handleSpendInspiration}
+							className="h-11 min-h-11 px-3 text-xs font-semibold text-amber-300 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
+						>
+							Usar (1)
+						</Button>
+					)}
+					{canEdit && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={handleAddInspiration}
+							className="h-11 min-h-11 w-11 text-muted-foreground hover:text-foreground cursor-pointer"
+							aria-label="Adicionar inspiração"
+						>
+							<Plus className="h-4 w-4" />
+						</Button>
+					)}
+					<span className="font-display font-bold text-base text-foreground tabular-nums px-1.5">
+						{res.inspiration}
+					</span>
+				</div>
+			</div>
+
+			{/* Formulário para adicionar dado bônus */}
+			{addOpen && canEdit && (
+				<div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
+					<AddBonusDieForm
+						onCancel={() => setAddOpen(false)}
+						onSubmit={(input) => {
+							emit(addBonusDie(res, input));
+							setAddOpen(false);
+						}}
+					/>
+				</div>
+			)}
+
+			{/* Lista de dados bônus */}
+			{res.bonusDice.length > 0 ? (
+				<div className="flex flex-wrap gap-1.5">
+					{res.bonusDice.map((die) => (
+						<button
+							key={die.id}
+							type="button"
+							disabled={!canEdit}
+							onClick={() => handleSpendDie(die.id)}
+							aria-label={`Rolar d${die.sides}${die.origin ? ` (${die.origin})` : ""} e gastar 1 — restam ${die.quantity}`}
+							className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/70 bg-card-elevated text-foreground hover:border-primary/40 active:scale-[0.98] transition-all cursor-pointer"
+						>
+							<span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-display text-[10px] font-bold uppercase text-primary">
+								d{die.sides}
+							</span>
+							<span className="font-display font-bold text-xs tabular-nums">
+								×{die.quantity}
+							</span>
+							{die.origin && (
+								<span className="max-w-[80px] truncate text-[11px] text-muted-foreground">
+									{die.origin}
+								</span>
+							)}
+						</button>
+					))}
+				</div>
+			) : (
+				<p className="text-[11px] text-muted-foreground">
+					Nenhum dado bônus no momento.
+				</p>
+			)}
+
+			{lastRoll && (
+				<p className="text-xs font-semibold tabular-nums text-primary flex items-center gap-1.5">
+					<Dices className="h-3.5 w-3.5" />
+					{lastRoll}
+				</p>
+			)}
 		</div>
 	);
 }

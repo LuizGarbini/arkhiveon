@@ -485,7 +485,16 @@ function SheetContent({
 					hpCurrent={hp.current}
 					hpMax={hp.max}
 					showMax={showMax}
+					tempHp={character?.tempHealth ?? 0}
 					onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
+					onChangeTempHp={
+						character
+							? (nextTemp) =>
+									useRPGStore.getState().updateCharacter(character.id, {
+										tempHealth: nextTemp,
+									})
+							: undefined
+					}
 					onChangeMax={
 						hp.fromSheet && isGM
 							? (nextMax) =>
