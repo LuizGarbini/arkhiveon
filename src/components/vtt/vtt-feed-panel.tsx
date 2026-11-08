@@ -736,7 +736,7 @@ export function VTTFeedPanel() {
 		<aside
 			aria-label="Rolagens e chat"
 			data-testid="feed-panel"
-			className="pointer-events-auto absolute top-24 bottom-4 left-20 z-30 flex w-[min(28rem,calc(100vw-6.5rem))] min-h-0 flex-col gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-md"
+			className="pointer-events-auto absolute top-24 right-3 bottom-4 z-30 flex w-[min(28rem,calc(100vw-6.5rem))] min-h-0 flex-col gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-md"
 		>
 			{header}
 			{body}

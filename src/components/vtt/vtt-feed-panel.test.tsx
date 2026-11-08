@@ -193,6 +193,7 @@ describe("feed da mesa", () => {
 		const history = screen.getByRole("log", { name: "Rolagens e mensagens" });
 		expect(panel.classList.contains("overflow-hidden")).toBe(true);
 		expect(panel.classList.contains("bottom-4")).toBe(true);
+		expect(panel.classList.contains("right-3")).toBe(true);
 		expect(panel.classList.contains("w-[min(28rem,calc(100vw-6.5rem))]")).toBe(
 			true,
 		);
