@@ -1,6 +1,6 @@
 import { Graphics } from "pixi.js";
 import { describe, expect, it } from "vitest";
-import { brushOutline, drawFogGeometry } from "./fog-math";
+import { brushOutline, buildFogComposite, drawFogGeometry } from "./fog-math";
 
 function holeActions(path: {
 	instructions: { action: string; data?: unknown[] }[];
@@ -70,5 +70,48 @@ describe("drawFogGeometry", () => {
 		expect(actions).not.toContain("moveTo");
 		expect(actions.filter((action) => action === "poly")).toHaveLength(1);
 		expect(actions.filter((action) => action === "circle")).toHaveLength(0);
+	});
+
+	it("revelar apaga o véu e esconder pinta por cima, na ordem", () => {
+		const root = buildFogComposite({
+			width: 1000,
+			height: 800,
+			paths: [
+				{
+					id: "rect",
+					type: "rect",
+					mode: "reveal",
+					x: 10,
+					y: 20,
+					width: 100,
+					height: 80,
+				},
+				{
+					id: "circle",
+					type: "circle",
+					mode: "hide",
+					x: 40,
+					y: 40,
+					radius: 15,
+				},
+				{
+					id: "brush",
+					type: "brush",
+					mode: "reveal",
+					brushRadius: 12,
+					points: [
+						{ x: 200, y: 200 },
+						{ x: 280, y: 200 },
+					],
+				},
+			],
+		});
+		const shapes = root.children.slice(1);
+		expect(shapes.map((shape) => shape.blendMode)).toEqual([
+			"erase",
+			"inherit",
+			"erase",
+		]);
+		root.destroy({ children: true });
 	});
 });
