@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	conditionDef,
+	STATUS_CHIP,
+	statusDiscPositions,
 	summarizeConditions,
 	tokenRingStyle,
 	VTT_CONDITIONS,
@@ -20,7 +22,7 @@ describe("status do token", () => {
 		});
 	});
 
-	it("até 3 visíveis; acima disso +N; repetidos e vazios caem", () => {
+	it("mantém todos os status ativos visíveis ao redor do anel (sem esconder atrás de +N); repetidos e vazios caem", () => {
 		const ids = [
 			"envenenado",
 			"caido",
@@ -31,8 +33,49 @@ describe("status do token", () => {
 			"",
 		];
 		const s = summarizeConditions(ids);
-		expect(s.visible.map((c) => c.id)).toEqual(["envenenado", "caido", "cego"]);
-		expect(s.overflow).toBe(2);
+		expect(s.visible.map((c) => c.id)).toEqual([
+			"envenenado",
+			"caido",
+			"cego",
+			"atordoado",
+			"chamas",
+		]);
+		expect(s.overflow).toBe(0);
+	});
+
+	it("posiciona discos de efeito curvados ao redor da borda circular do token sem sobreposição", () => {
+		expect(statusDiscPositions(0, 35)).toEqual([]);
+		const single = statusDiscPositions(1, 35);
+		expect(single).toHaveLength(1);
+		expect(single[0].x).toBeCloseTo(0);
+		expect(single[0].y).toBeCloseTo(35);
+
+		const three = statusDiscPositions(3, 35, STATUS_CHIP.desktop.chip);
+		expect(three).toHaveLength(3);
+		// Da esquerda para a direita, curvando para cima nas laterais do anel.
+		expect(three[0].x).toBeLessThan(0);
+		expect(three[1].x).toBeCloseTo(0);
+		expect(three[2].x).toBeGreaterThan(0);
+		expect(three[0].y).toBeLessThan(three[1].y);
+		expect(three[2].y).toBeCloseTo(three[0].y);
+		for (const p of three) {
+			expect(Math.hypot(p.x, p.y)).toBeCloseTo(35);
+		}
+
+		// Todos os 7 status ativos num token 1x1 (raio 35): nenhum disco sobrepõe o vizinho e o topo fica livre.
+		const allSeven = statusDiscPositions(
+			VTT_CONDITIONS.length,
+			35,
+			STATUS_CHIP.desktop.chip,
+		);
+		expect(allSeven).toHaveLength(VTT_CONDITIONS.length);
+		for (let i = 1; i < allSeven.length; i++) {
+			const dist = Math.hypot(
+				allSeven[i].x - allSeven[i - 1].x,
+				allSeven[i].y - allSeven[i - 1].y,
+			);
+			expect(dist).toBeGreaterThan(STATUS_CHIP.desktop.chip);
+		}
 	});
 
 	it("borda de 2px na cor do 1º status; seleção tem prioridade", () => {

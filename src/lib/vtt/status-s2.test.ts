@@ -12,13 +12,13 @@ import {
 import { initialSceneViewport, VTT_TOOLBAR_INSET_PX } from "./viewport";
 
 describe("status compacto (celular)", () => {
-	it("1 ícone + '+N'", () => {
+	it("mantém todos os discos ativos visíveis ao redor do anel sem '+N'", () => {
 		const s = summarizeConditions(
 			["envenenado", "caido", "cego"],
 			COMPACT_VISIBLE_CONDITIONS,
 		);
-		expect(s.visible.map((c) => c.id)).toEqual(["envenenado"]);
-		expect(s.overflow).toBe(2);
+		expect(s.visible.map((c) => c.id)).toEqual(["envenenado", "caido", "cego"]);
+		expect(s.overflow).toBe(0);
 	});
 	it("um status só: sem '+N'", () => {
 		expect(summarizeConditions(["cego"], 1).overflow).toBe(0);

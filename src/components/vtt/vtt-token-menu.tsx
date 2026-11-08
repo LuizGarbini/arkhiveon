@@ -37,7 +37,11 @@ import {
 	selectSheetHealth,
 	selectSheetHealthMax,
 } from "@/lib/vtt/character-hp";
-import { toggleCondition, VTT_CONDITIONS } from "@/lib/vtt/conditions";
+import {
+	STATUS_CHIP,
+	toggleCondition,
+	VTT_CONDITIONS,
+} from "@/lib/vtt/conditions";
 import { tokenImageForViewer } from "@/lib/vtt/permissions";
 import { StatusIcon } from "@/lib/vtt/status-icons";
 import type { VTTToken } from "@/lib/vtt/types";
@@ -153,8 +157,15 @@ export function VTTTokenMenu({
 	};
 
 	// Position the floating menu relative to token's screen coordinates
+	const gridSize =
+		useVTTStore.getState().scenes.find((sc) => sc.id === token.sceneId)
+			?.gridSize ?? 70;
 	const screenX = token.x * viewport.scale + viewport.x;
 	const screenY = token.y * viewport.scale + viewport.y;
+	const tokenScreenRadius =
+		((token.sizeCells * gridSize) / 2 + STATUS_CHIP.desktop.chip / 2 + 12) *
+		viewport.scale;
+	const menuOffsetX = Math.max(56, Math.round(tokenScreenRadius));
 
 	// Clamp to keep inside screen boundaries. The bottom reserve keeps the
 	// zoom dock (bottom-3, 44px buttons) visible below the panel.
@@ -163,7 +174,10 @@ export function VTTTokenMenu({
 	// pinned action row) so nothing sits behind the sticky footer on common
 	// phone and desktop heights; shorter screens scroll the body instead.
 	const PANEL_HEIGHT_BUDGET = 640;
-	const leftPos = Math.max(12, Math.min(screenX + 50, window.innerWidth - 332));
+	const leftPos = Math.max(
+		12,
+		Math.min(screenX + menuOffsetX, window.innerWidth - 332),
+	);
 	const topPos = Math.min(
 		Math.max(screenY - 100, 128),
 		Math.max(128, window.innerHeight - BOTTOM_RESERVE - PANEL_HEIGHT_BUDGET),

@@ -91,21 +91,23 @@ describe("mapa status → ícone lucide", () => {
 	});
 });
 
-describe("excesso (+N)", () => {
+describe("discos ao redor do anel (sem +N)", () => {
 	const ids = ["envenenado", "caido", "cego", "chamas", "zap-velho"];
-	it("desktop: até 3 + '+N'", () => {
+	it("desktop: mantém todos os status ativos visíveis ao redor do anel", () => {
 		const s = summarizeConditions(ids);
 		expect(s.visible.map((c) => c.icon)).toEqual([
 			"biohazard",
 			"arrow-down-to-line",
 			"eye-off",
+			"flame",
+			"circle-dot",
 		]);
-		expect(s.overflow).toBe(2);
+		expect(s.overflow).toBe(0);
 	});
-	it("390: 1 + '+N'", () => {
+	it("390: mantém todos os status ativos visíveis ao redor do anel", () => {
 		const s = summarizeConditions(ids, COMPACT_VISIBLE_CONDITIONS);
-		expect(s.visible).toHaveLength(1);
-		expect(s.overflow).toBe(4);
+		expect(s.visible).toHaveLength(5);
+		expect(s.overflow).toBe(0);
 	});
 	it("sem excesso não há +N", () => {
 		expect(summarizeConditions(["cego"]).overflow).toBe(0);

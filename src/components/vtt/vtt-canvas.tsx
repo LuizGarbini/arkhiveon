@@ -18,9 +18,8 @@ import {
 } from "@/lib/vtt/character-hp";
 import { currentTurnRingTokenId, useCombatStore } from "@/lib/vtt/combat-store";
 import {
-	COMPACT_VISIBLE_CONDITIONS,
-	MAX_VISIBLE_CONDITIONS,
 	STATUS_CHIP,
+	statusDiscPositions,
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
@@ -884,12 +883,17 @@ export function VTTCanvas({
 			ring.stroke({ width: ringStyle.width, color: ringStyle.color });
 			tokenContainer.addChild(ring);
 
-			// Status: até 3 ícones na base do token + "+N" (sem fundo colorido
-			// nem brilho; só a borda do chip na cor do status).
-			const status = summarizeConditions(
-				token.conditions,
-				compactStatus ? COMPACT_VISIBLE_CONDITIONS : MAX_VISIBLE_CONDITIONS,
-			);
+			// Selection outer pulse ring (drawn behind the status discs)
+			if (isSelected) {
+				const outerGlow = new Graphics();
+				outerGlow.circle(0, 0, tokenRadius + 4);
+				outerGlow.stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.6 });
+				tokenContainer.addChild(outerGlow);
+			}
+
+			// Status: discos curvados ao redor da borda circular do token (todos os
+			// status ativos visíveis no anel, sem esconder atrás de "+N").
+			const status = summarizeConditions(token.conditions);
 			const hasStatusRow = status.visible.length > 0;
 			const chipSize = compactStatus
 				? STATUS_CHIP.compact
@@ -897,13 +901,14 @@ export function VTTCanvas({
 			const chipR = chipSize.chip / 2;
 			const renderer = appRef.current?.renderer;
 			if (hasStatusRow && renderer) {
-				const slots = status.visible.length + (status.overflow > 0 ? 1 : 0);
-				const gap = chipR * 2 + 2;
-				const startX = -((slots - 1) * gap) / 2;
-				const chipY = tokenRadius - chipR * 0.4;
-				const drawChipBg = (x: number, color: number) => {
+				const placements = statusDiscPositions(
+					status.visible.length,
+					tokenRadius,
+					chipSize.chip,
+				);
+				const drawChipBg = (x: number, y: number, color: number) => {
 					const chip = new Graphics();
-					chip.circle(x, chipY, chipR);
+					chip.circle(x, y, chipR);
 					chip.fill({ color: 0x18181b, alpha: 0.92 });
 					chip.stroke({ width: STATUS_CHIP.stroke, color });
 					tokenContainer.addChild(chip);
@@ -911,10 +916,10 @@ export function VTTCanvas({
 				// Ícone lucide monocromático (--foreground); textura cacheada por
 				// ícone/tamanho, então redesenhar o token não gera textura nova.
 				status.visible.forEach((cond, i) => {
-					const x = startX + i * gap;
-					drawChipBg(x, cond.hex);
+					const { x, y } = placements[i];
+					drawChipBg(x, y, cond.hex);
 					const art = statusIconTexture(renderer, cond.icon);
-					const box = placeStatusIcon(art, chipSize.icon, x, chipY);
+					const box = placeStatusIcon(art, chipSize.icon, x, y);
 					const icon = new Sprite(art.texture);
 					icon.position.set(box.x, box.y);
 					icon.width = box.width;
@@ -922,22 +927,6 @@ export function VTTCanvas({
 					icon.tint = foreground;
 					tokenContainer.addChild(icon);
 				});
-				if (status.overflow > 0) {
-					const x = startX + status.visible.length * gap;
-					drawChipBg(x, 0xd4d4d8);
-					const text = new Text({
-						text: `+${status.overflow}`,
-						style: new TextStyle({
-							fontFamily: "system-ui, sans-serif",
-							fontSize: Math.round(chipR * 0.95),
-							fontWeight: "bold",
-							fill: foreground,
-						}),
-					});
-					text.anchor.set(0.5);
-					text.position.set(x, chipY);
-					tokenContainer.addChild(text);
-				}
 			}
 
 			// GM Shield Badge
@@ -960,14 +949,6 @@ export function VTTCanvas({
 				gmText.anchor.set(0.5);
 				gmText.position.set(tokenRadius * 0.65, -tokenRadius * 0.65);
 				tokenContainer.addChild(gmText);
-			}
-
-			// Selection outer pulse ring
-			if (isSelected) {
-				const outerGlow = new Graphics();
-				outerGlow.circle(0, 0, tokenRadius + 4);
-				outerGlow.stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.6 });
-				tokenContainer.addChild(outerGlow);
 			}
 
 			// HP Bar (Above token). Ficha ligada: PV vem do carimbo da ficha, não de hp_*.

@@ -94,29 +94,71 @@ export function conditionDef(id: string): VTTConditionDef {
 	);
 }
 
-export const MAX_VISIBLE_CONDITIONS = 3;
+export const MAX_VISIBLE_CONDITIONS = VTT_CONDITIONS.length;
 
-/** Tamanhos do chip de status (px de tela no zoom 1; mesmos no canvas). */
+/** Tamanhos do disco de status (px de tela no zoom 1; mesmos no canvas). */
 export const STATUS_CHIP = {
 	desktop: { chip: 22, icon: 16 },
 	compact: { chip: 26, icon: 18 },
 	stroke: 1.5,
 } as const;
-/** No celular/toque: 1 ícone maior + "+N" (14px por ícone ficava ilegível). */
-export const COMPACT_VISIBLE_CONDITIONS = 1;
+/** No celular/toque: todos os discos ativos também ficam visíveis no anel. */
+export const COMPACT_VISIBLE_CONDITIONS = VTT_CONDITIONS.length;
+
+/** Arco máximo ao redor do token (~297°), preservando o topo livre para a barra de PV. */
+export const MAX_STATUS_RING_ARC = Math.PI * 1.65;
+/** Folga mínima (em px do mundo) entre as bordas de discos vizinhos no anel. */
+export const STATUS_DISC_GAP_PX = 3;
+
+export interface StatusDiscPlacement {
+	x: number;
+	y: number;
+	angle: number;
+}
 
 /**
- * Até 3 status visíveis no token (1 no modo compacto); o resto vira "+N".
- * Ids repetidos/vazios caem.
+ * Posiciona os discos de efeito curvados ao redor da borda circular do token.
+ * O arco é centralizado na base do token (90° / π/2) e sobe pelas laterais
+ * esquerda e direita seguindo o raio `tokenRadius`, da esquerda para a direita.
+ */
+export function statusDiscPositions(
+	count: number,
+	tokenRadius: number,
+	chipDiameter: number = STATUS_CHIP.desktop.chip,
+): StatusDiscPlacement[] {
+	if (count <= 0 || tokenRadius <= 0) return [];
+	const baseAngle = Math.PI / 2;
+	const chordRatio = Math.min(
+		0.95,
+		Math.max(0, (chipDiameter + STATUS_DISC_GAP_PX) / (2 * tokenRadius)),
+	);
+	const idealStep = 2 * Math.asin(chordRatio);
+	const step =
+		count > 1 ? Math.min(idealStep, MAX_STATUS_RING_ARC / (count - 1)) : 0;
+
+	return Array.from({ length: count }, (_, i) => {
+		const offset = i - (count - 1) / 2;
+		const angle = baseAngle - offset * step;
+		return {
+			x: Math.cos(angle) * tokenRadius,
+			y: Math.sin(angle) * tokenRadius,
+			angle,
+		};
+	});
+}
+
+/**
+ * Todos os status ativos ficam visíveis ao redor do anel do token por padrão
+ * (sem esconder atrás de "+N"). Ids repetidos/vazios caem.
  */
 export function summarizeConditions(
 	ids: readonly string[] | null | undefined,
-	max: number = MAX_VISIBLE_CONDITIONS,
+	max: number = Number.POSITIVE_INFINITY,
 ): {
 	visible: VTTConditionDef[];
 	overflow: number;
 } {
-	const unique = [...new Set((ids ?? []).filter((id) => id && id.trim()))];
+	const unique = [...new Set((ids ?? []).filter((id) => id?.trim()))];
 	return {
 		visible: unique.slice(0, max).map(conditionDef),
 		overflow: Math.max(0, unique.length - max),
