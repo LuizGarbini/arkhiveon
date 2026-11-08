@@ -49,7 +49,7 @@ function LiveMenu({
 		<VTTTokenMenu
 			token={token}
 			onUpdateToken={save}
-			onDeleteToken={vi.fn(async () => {})}
+			onDeleteToken={vi.fn(async () => undefined)}
 		/>
 	);
 }

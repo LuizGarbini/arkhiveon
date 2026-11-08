@@ -38,7 +38,7 @@ const baseToken: VTTToken = {
 function setup(token: Partial<VTTToken> = {}, isGM = true) {
 	useVTTStore.setState({ isGM, activeTokenIdForMenu: "tok-1" });
 	const onUpdateToken = vi.fn(async () => {});
-	const onDeleteToken = vi.fn(async () => {});
+	const onDeleteToken = vi.fn(async () => undefined);
 	render(
 		<VTTTokenMenu
 			token={{ ...baseToken, ...token }}
@@ -259,6 +259,24 @@ describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
 		}
 		const rotate = screen.getByRole("button", { name: "Girar Token (45º)" });
 		expect(rotate.getAttribute("data-slot")).toBe("tooltip-trigger");
+	});
+
+	it("Remover da mesa pede confirmação e só então apaga o token", async () => {
+		const { onDeleteToken } = setup({ characterId: "char-1" });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Elbereth da mesa" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("A ficha continua na campanha.");
+		expect(onDeleteToken).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(onDeleteToken).not.toHaveBeenCalled();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Elbereth da mesa" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Remover da mesa" }));
+		await waitFor(() => expect(onDeleteToken).toHaveBeenCalledWith("tok-1"));
 	});
 
 	it("o texto do Tooltip acompanha o estado (oculto/travado/camada do mestre)", () => {

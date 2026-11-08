@@ -152,6 +152,7 @@ describe("Mapa da cena em tela cheia (aba Mapa)", () => {
 				onSpawnToken={vi.fn(async () => {})}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 		expect(screen.queryByRole("button", { name: "Mapa" })).toBeNull();
@@ -166,6 +167,7 @@ describe("Mapa da cena em tela cheia (aba Mapa)", () => {
 				onSpawnToken={vi.fn(async () => {})}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 		fireEvent.click(screen.getByRole("button", { name: "Mapa" }));
@@ -197,6 +199,7 @@ describe("Biblioteca: busca sem resultado", () => {
 				onSpawnToken={vi.fn(async () => {})}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 	}
@@ -243,6 +246,7 @@ describe("Biblioteca: criar token com imagem (R2 + Biblioteca de imagens)", () =
 				onSpawnToken={onSpawnToken}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 
@@ -336,6 +340,7 @@ describe("Biblioteca: criar token com imagem (R2 + Biblioteca de imagens)", () =
 				onSpawnToken={onSpawnToken}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 
@@ -437,6 +442,7 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 				onSpawnToken={onSpawnToken}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
 			/>,
 		);
 		return onSpawnToken;
@@ -509,5 +515,139 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 		expect(screen.queryByRole("button", { name: "NPCs" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Colocar" })).toBeNull();
 		expect(screen.queryByText(TOKEN_PLACE_NEEDS_GM)).toBeNull();
+	});
+});
+
+describe("Biblioteca: remover token da mesa", () => {
+	const storeSnapshot = {
+		characters: useRPGStore.getState().characters,
+		activeCampaignId: useRPGStore.getState().activeCampaignId,
+	};
+	afterEach(() => {
+		useRPGStore.setState(storeSnapshot);
+	});
+
+	const lyra = {
+		id: "t1",
+		sceneId: "scene-1",
+		name: "Lyra",
+		layer: "token",
+		x: 100,
+		y: 100,
+		sizeCells: 1,
+		hpCurrent: 7,
+		hpMax: 10,
+		conditions: [],
+		controlledBy: [],
+	} as unknown as VTTToken;
+
+	function renderDrawer(
+		tokens: VTTToken[],
+		isGM = true,
+		onRemoveToken = vi.fn(async () => true as boolean | undefined),
+	) {
+		useVTTStore.setState({ isGM, showRosterDrawer: true, tokens });
+		render(
+			<VTTRosterDrawer
+				scene={scene}
+				onSpawnToken={vi.fn(async () => {})}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={onRemoveToken}
+			/>,
+		);
+		return { onRemoveToken };
+	}
+
+	it("jogador não vê Remover; o mestre confirma e tira o token da cena", async () => {
+		renderDrawer([{ ...lyra, characterId: "char-1" }], false);
+		expect(
+			screen.queryByRole("button", { name: "Remover Lyra da mesa" }),
+		).toBeNull();
+		expect(
+			screen.getByText(/Encontre um token no mapa ou abra sua ficha/),
+		).toBeTruthy();
+		cleanup();
+		const { onRemoveToken } = renderDrawer([
+			{ ...lyra, characterId: "char-1" },
+		]);
+		expect(screen.getByText(/remova da mesa/)).toBeTruthy();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Lyra da mesa" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("A ficha continua na campanha.");
+		expect(onRemoveToken).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(onRemoveToken).not.toHaveBeenCalled();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Lyra da mesa" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Remover da mesa" }));
+		await waitFor(() => expect(onRemoveToken).toHaveBeenCalledWith("t1"));
+	});
+
+	it("token sem ficha avisa que não dá para desfazer", async () => {
+		renderDrawer([lyra]);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Lyra da mesa" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("Não dá para desfazer.");
+	});
+
+	it("falha do servidor mantém a confirmação aberta", async () => {
+		const { onRemoveToken } = renderDrawer(
+			[lyra],
+			true,
+			vi.fn(async () => false),
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Lyra da mesa" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Remover da mesa" }));
+		expect(
+			await screen.findByText(
+				"Não foi possível remover o token. Ele foi mantido na mesa.",
+			),
+		).toBeTruthy();
+		expect(onRemoveToken).toHaveBeenCalledWith("t1");
+		expect(screen.getByRole("dialog")).toBeTruthy();
+	});
+
+	it("na ficha, Remover tira todos os tokens daquele personagem", async () => {
+		useRPGStore.setState({
+			activeCampaignId: "camp-1",
+			characters: [
+				{
+					...characterDefaults,
+					id: "char-1",
+					createdAt: 1,
+					characterName: "Lyra",
+					class: "Ladina",
+					health: 7,
+					healthMax: 10,
+				},
+			],
+		});
+		const { onRemoveToken } = renderDrawer([
+			{ ...lyra, id: "t1", characterId: "char-1" },
+			{ ...lyra, id: "t2", characterId: "char-1" },
+		]);
+		fireEvent.click(screen.getByRole("button", { name: "Fichas" }));
+		expect(screen.getByText("2 na mesa")).toBeTruthy();
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: "Remover os 2 tokens de Lyra da mesa",
+			}),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("Os 2 tokens saem desta cena.");
+		expect(dialog.textContent).toContain("A ficha continua na campanha.");
+		fireEvent.click(screen.getByRole("button", { name: "Remover da mesa" }));
+		await waitFor(() => expect(onRemoveToken).toHaveBeenCalledTimes(2));
+		expect(onRemoveToken).toHaveBeenNthCalledWith(1, "t1");
+		expect(onRemoveToken).toHaveBeenNthCalledWith(2, "t2");
 	});
 });
