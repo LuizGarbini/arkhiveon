@@ -23,7 +23,12 @@ import {
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
-import { drawFogGeometry } from "@/lib/vtt/fog-math";
+import {
+	drawFogGeometry,
+	GM_FOG_ALPHA,
+	GM_FOG_COLOR,
+	PLAYER_FOG_COLOR,
+} from "@/lib/vtt/fog-math";
 import {
 	calculateGridDistance,
 	flatHexCenters,
@@ -1216,10 +1221,10 @@ export function VTTCanvas({
 		const height = (scene.height || 4000) * (scene.mapScale || 1);
 		const gridSize = scene.gridSize || 70;
 
-		// GM mode: semi-transparent blue-tinted dark fog (~45% opacity)
-		// Player mode: solid pitch black fog (100% opacity)
-		const fogColor = isGM ? 0x0f172a : 0x090a0f;
-		const fogAlpha = isGM ? 0.45 : 1.0;
+		// Véu do mestre: quase preto, ainda dá para ver o mapa por baixo.
+		// Jogador: névoa opaca.
+		const fogColor = isGM ? GM_FOG_COLOR : PLAYER_FOG_COLOR;
+		const fogAlpha = isGM ? GM_FOG_ALPHA : 1;
 
 		// 5.1 Base Solid Fog Covering Scene
 		fogLayer.rect(0, 0, width, height);
