@@ -86,6 +86,7 @@ serve(async (req) => {
 				user: authError || !user ? null : { id: user.id },
 				campaignId: body?.campaignId,
 				message: body?.message,
+				images: body?.images,
 				history: body?.history,
 				clientModel: body?.model,
 				now: new Date(),

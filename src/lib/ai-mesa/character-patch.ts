@@ -7,9 +7,14 @@ import { normalizeWeaponAbility } from "@/core/rules/weapon-damage";
 import {
 	CHARACTER_NUMERIC_FIELD_KEYS,
 	CHARACTER_NUMERIC_FIELDS,
+	type IaMesaCharacterCreateProposal,
 	type IaMesaCharacterPatchProposal,
 	type PatchWeaponStats,
 } from "../../../supabase/functions/_shared/ia-mesa-character";
+import {
+	SHEET_SAVES,
+	SHEET_SKILLS,
+} from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 import type {
 	Character,
 	InventoryItem,
@@ -226,4 +231,96 @@ export function applyCharacterPatch(
 		before.inventoryList = current;
 	}
 	return { ok: true, changes, before };
+}
+
+export interface CharacterCreateRow {
+	label: string;
+	value: string;
+	tag?: string;
+}
+
+/** Linhas de resumo da proposta de criação de ficha nova. */
+export function buildCharacterCreateRows(
+	proposal: IaMesaCharacterCreateProposal,
+): CharacterCreateRow[] {
+	const rows: CharacterCreateRow[] = [];
+	const identity = [
+		proposal.race,
+		proposal.class,
+		proposal.subclass,
+		proposal.background,
+		proposal.alignment,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	if (identity) {
+		rows.push({ label: "Identidade", value: identity });
+	}
+	for (const key of CHARACTER_NUMERIC_FIELD_KEYS) {
+		const val = proposal.fields[key];
+		if (val === undefined) continue;
+		rows.push({
+			label: CHARACTER_NUMERIC_FIELDS[key].label,
+			value: String(val),
+		});
+	}
+	const saveLabels = SHEET_SAVES.filter(
+		(s) => proposal.savingThrowProficiencies[s.id],
+	).map((s) => s.label);
+	if (saveLabels.length > 0) {
+		rows.push({ label: "Resistências", value: saveLabels.join(", ") });
+	}
+	const skillLabels = SHEET_SKILLS.filter(
+		(s) => proposal.skillProficiencies[s.id],
+	).map((s) =>
+		proposal.skillProficiencies[s.id] === "expertise"
+			? `${s.label} (esp.)`
+			: s.label,
+	);
+	if (skillLabels.length > 0) {
+		rows.push({ label: "Perícias", value: skillLabels.join(", ") });
+	}
+	for (const item of proposal.addItems) {
+		rows.push({
+			label: item.name,
+			value: itemLabel(item),
+			tag: "Novo item",
+		});
+	}
+	return rows;
+}
+
+/** Converte a proposta de criação no input de `addCharacter`. */
+export function proposalToCharacterInput(
+	proposal: IaMesaCharacterCreateProposal,
+	newId: () => string = () => crypto.randomUUID(),
+): Partial<Omit<Character, "id" | "createdAt">> {
+	const fields = { ...proposal.fields };
+	if (fields.health !== undefined && fields.healthMax === undefined) {
+		fields.healthMax = fields.health;
+	} else if (fields.healthMax !== undefined && fields.health === undefined) {
+		fields.health = fields.healthMax;
+	}
+	const inventoryList: InventoryItem[] = proposal.addItems.map((add) => {
+		const { weapon, ...rest } = add;
+		return {
+			id: newId(),
+			weightLbs: 0,
+			...rest,
+			...(weapon ? { weapon: toWeapon(weapon, newId) } : {}),
+		};
+	});
+	return {
+		system: "dnd5e",
+		characterName: proposal.characterName,
+		race: proposal.race,
+		class: proposal.class,
+		subclass: proposal.subclass,
+		background: proposal.background,
+		alignment: proposal.alignment,
+		...fields,
+		savingThrowProficiencies: { ...proposal.savingThrowProficiencies },
+		skillProficiencies: { ...proposal.skillProficiencies },
+		...(inventoryList.length > 0 ? { inventoryList } : {}),
+	};
 }

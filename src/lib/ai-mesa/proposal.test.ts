@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
 	buildSystemPrompt,
 	cleanHistory,
+	cleanImages,
 	IA_MESA_ALLOWED_TOOLS,
 	IA_MESA_PILOT_TABLE,
+	type IaMesaCharacterCreateProposal,
 	type IaMesaNpcProposal,
 	type IaMesaPilotLookupClient,
 	isCampaignId,
 	isIaMesaPilotCampaign,
+	isImagesPayloadTooLarge,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import {
 	canApply,
@@ -63,6 +66,7 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 			"read_character",
 			"propose_character_patch",
 			"propose_sheet_batch",
+			"propose_character_create",
 		]);
 		expect(proposal?.name).toBe("Irmã Morwen");
 		expect(parseToolCall("run_sql", { name: "x" })).toBeNull();
@@ -84,6 +88,51 @@ describe("ia-mesa: allowlist de ferramentas", () => {
 		expect(long?.name.length).toBeLessThanOrEqual(80);
 		expect(long?.description).toBe("");
 		expect(long && "extra" in long).toBe(false);
+	});
+
+	it("valida proposta de nova ficha (propose_character_create) e imagens anexadas", () => {
+		const sheetCreate = parseToolCall("propose_character_create", {
+			characterName: "Lyra Ventoclaro",
+			race: "Elfa",
+			class: "Barda",
+			summary: "Elfa barda extraída da imagem da ficha.",
+			fields: {
+				level: 4,
+				healthMax: 28,
+				armorClass: 15,
+				strength: 10,
+				dexterity: 16,
+				charisma: 18,
+			},
+			skills: ["performance", "persuasion", "invalid_skill"],
+			addItems: [{ name: "Alaúde Élfico", quantity: 1 }],
+		}) as IaMesaCharacterCreateProposal | null;
+		expect(sheetCreate?.kind).toBe("character_create");
+		expect(sheetCreate?.characterName).toBe("Lyra Ventoclaro");
+		expect(sheetCreate?.class).toBe("Barda");
+		expect(sheetCreate?.fields.level).toBe(4);
+		expect(sheetCreate?.skillProficiencies).toEqual({
+			performance: "proficient",
+			persuasion: "proficient",
+		});
+		expect(sheetCreate?.addItems).toHaveLength(1);
+
+		const images = cleanImages([
+			{ mediaType: "image/png", data: "iVBORw0KGgoAAAANSUhEUg==" },
+			{ mediaType: "application/pdf", data: "JVBERi0=" },
+		]);
+		expect(images).toEqual([
+			{ mediaType: "image/png", data: "iVBORw0KGgoAAAANSUhEUg==" },
+		]);
+		expect(isImagesPayloadTooLarge(images)).toBe(false);
+		expect(
+			isImagesPayloadTooLarge(
+				Array.from({ length: 5 }, () => ({
+					mediaType: "image/png",
+					data: "aGVsbG8=",
+				})),
+			),
+		).toBe(true);
 	});
 });
 

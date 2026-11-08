@@ -14,11 +14,14 @@
  */
 
 import {
+	CHARACTER_CREATE_TOOL,
 	CHARACTER_PATCH_TOOL,
 	CHARACTER_TOOL_DECLARATIONS,
 	type CharacterPatchScope,
 	type CharacterRosterEntry,
+	type IaMesaCharacterCreateProposal,
 	type IaMesaCharacterPatchProposal,
+	parseCharacterCreate,
 	parseCharacterPatch,
 	READ_CHARACTER_TOOL,
 } from "./ia-mesa-character.ts";
@@ -27,7 +30,10 @@ import {
 	type SheetBatchProposal,
 } from "./ia-mesa-sheet-batch.ts";
 
-export type { IaMesaCharacterPatchProposal } from "./ia-mesa-character.ts";
+export type {
+	IaMesaCharacterCreateProposal,
+	IaMesaCharacterPatchProposal,
+} from "./ia-mesa-character.ts";
 
 /** Tabela do Supabase com as campanhas liberadas no piloto. */
 export const IA_MESA_PILOT_TABLE = "ia_mesa_pilot_campaigns";
@@ -79,6 +85,7 @@ export const IA_MESA_ALLOWED_TOOLS = [
 	READ_CHARACTER_TOOL,
 	CHARACTER_PATCH_TOOL,
 	SHEET_BATCH_TOOL,
+	CHARACTER_CREATE_TOOL,
 ] as const;
 export type IaMesaToolName = (typeof IA_MESA_ALLOWED_TOOLS)[number];
 
@@ -93,6 +100,83 @@ export const IA_MESA_LIMITS = {
 
 /** Teto do texto colado neste turno. Acima disso a função responde 413 e não chama o modelo. */
 export const IA_MESA_INPUT_MAX_CHARS = 20_000;
+
+/** Formatos e limites de imagens anexadas pelo usuário no turno. */
+export const IA_MESA_IMAGE_MEDIA_TYPES = [
+	"image/webp",
+	"image/jpeg",
+	"image/png",
+	"image/gif",
+] as const;
+export type IaMesaImageMediaType = (typeof IA_MESA_IMAGE_MEDIA_TYPES)[number];
+
+export const IA_MESA_MAX_IMAGES = 4;
+export const IA_MESA_MAX_IMAGE_BASE64_CHARS = 5_000_000;
+
+export interface IaMesaImageAttachment {
+	mediaType: IaMesaImageMediaType;
+	data: string;
+	name?: string;
+}
+
+const BASE64_RE = /^[A-Za-z0-9+/=]+$/;
+
+function stripDataUrlPrefix(raw: string): string {
+	const trimmed = raw.trim();
+	const commaIdx = trimmed.indexOf(",");
+	if (trimmed.startsWith("data:") && commaIdx !== -1) {
+		return trimmed.slice(commaIdx + 1).trim();
+	}
+	return trimmed;
+}
+
+export function isImagesPayloadTooLarge(value: unknown): boolean {
+	if (!Array.isArray(value)) return false;
+	if (value.length > IA_MESA_MAX_IMAGES) return true;
+	for (const item of value) {
+		if (!item || typeof item !== "object") continue;
+		const data = (item as { data?: unknown }).data;
+		if (
+			typeof data === "string" &&
+			stripDataUrlPrefix(data).length > IA_MESA_MAX_IMAGE_BASE64_CHARS
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+export function cleanImages(value: unknown): IaMesaImageAttachment[] {
+	if (!Array.isArray(value)) return [];
+	const out: IaMesaImageAttachment[] = [];
+	for (const item of value.slice(0, IA_MESA_MAX_IMAGES)) {
+		if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+		const raw = item as Record<string, unknown>;
+		const mediaType = raw.mediaType;
+		if (
+			typeof mediaType !== "string" ||
+			!(IA_MESA_IMAGE_MEDIA_TYPES as readonly string[]).includes(mediaType)
+		) {
+			continue;
+		}
+		if (typeof raw.data !== "string") continue;
+		const data = stripDataUrlPrefix(raw.data).replace(/\s+/g, "");
+		if (
+			!data ||
+			data.length > IA_MESA_MAX_IMAGE_BASE64_CHARS ||
+			!BASE64_RE.test(data)
+		) {
+			continue;
+		}
+		const name = cleanText(raw.name, IA_MESA_LIMITS.name);
+		out.push({
+			mediaType: mediaType as IaMesaImageMediaType,
+			data,
+			...(name ? { name } : {}),
+		});
+	}
+	return out;
+}
 
 export function isInputTooLarge(value: unknown): boolean {
 	return typeof value === "string" && value.length > IA_MESA_INPUT_MAX_CHARS;
@@ -130,6 +214,7 @@ export interface IaMesaNpcProposal {
 export type IaMesaProposal =
 	| IaMesaNpcProposal
 	| IaMesaCharacterPatchProposal
+	| IaMesaCharacterCreateProposal
 	| SheetBatchProposal;
 
 const UUID_RE =
@@ -172,6 +257,7 @@ export function parseToolCall(
 	if (toolName === SHEET_BATCH_TOOL) return null;
 	if (toolName === CHARACTER_PATCH_TOOL)
 		return parseCharacterPatch(args, scope);
+	if (toolName === CHARACTER_CREATE_TOOL) return parseCharacterCreate(args);
 	if (!args || typeof args !== "object" || Array.isArray(args)) return null;
 	const raw = args as Record<string, unknown>;
 	const name = cleanText(raw.name, IA_MESA_LIMITS.name);
@@ -235,7 +321,8 @@ export function buildSystemPrompt(
 		"Você é o Assistente da mesa do Arkhiveon, um app de campanhas de RPG.",
 		`Campanha atual: "${campaign.name}" (sistema: ${campaign.system || "não informado"}).`,
 		"Responda sempre em português do Brasil, curto e direto.",
-		"Você pode: (1) propor um NPC novo com propose_npc; (2) editar uma ficha EXISTENTE desta campanha: primeiro chame read_character com o id da lista abaixo, depois propose_character_patch só com o que muda (atributos numéricos, PV, CA, nível, itens do inventário e dados de dano de arma).",
+		"Você pode: (1) propor um NPC novo com propose_npc; (2) criar uma ficha de personagem NOVA com propose_character_create (ex.: a partir de uma imagem de ficha enviada ou descrição); (3) editar uma ficha EXISTENTE desta campanha: primeiro chame read_character com o id da lista abaixo, depois propose_character_patch só com o que muda (atributos numéricos, PV, CA, nível, itens do inventário e dados de dano de arma).",
+		"Imagens anexadas: quando o usuário enviar imagem(ns) de ficha, bloco de estatísticas, item ou anotação, leia todos os campos legíveis e use propose_character_create (para criar ficha nova), propose_sheet_batch / propose_character_patch (para atualizar ficha existente) ou propose_npc (para NPC/criatura), conforme o pedido.",
 		"REGRA OBRIGATÓRIA: se o usuário pedir para atualizar/editar/mudar um personagem ou ficha que já existe na lista abaixo, chame read_character e em seguida propose_character_patch. Nunca use propose_npc para isso e nunca responda que só pode usar propose_npc.",
 		"Atualizações acumuladas: a cada mensagem sobre a mesma ficha, chame read_character + propose_character_patch com TUDO o que o usuário pediu até agora na conversa. Não espere um \"aplica tudo\" no final.",
 		"Use só o que o usuário escreveu: não invente valores, itens nem regras que ele não pediu.",

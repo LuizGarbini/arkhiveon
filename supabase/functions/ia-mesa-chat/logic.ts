@@ -21,14 +21,18 @@
 
 import {
 	cleanHistory,
+	cleanImages,
 	cleanUserMessage,
 	IA_MESA_INPUT_MAX_CHARS,
 	IA_MESA_REFUSAL,
 	IA_MESA_TOOL_DECLARATIONS,
 	type IaMesaHistoryItem,
+	type IaMesaImageAttachment,
+	type IaMesaImageMediaType,
 	type IaMesaProposal,
 	isBlockedRequest,
 	isCampaignId,
+	isImagesPayloadTooLarge,
 	isInputTooLarge,
 	parseToolCall,
 } from "../_shared/ia-mesa-guard.ts";
@@ -125,6 +129,15 @@ export interface ClaudeTextBlock {
 	cache_control?: { type: "ephemeral" };
 }
 
+export interface ClaudeImageBlock {
+	type: "image";
+	source: {
+		type: "base64";
+		media_type: IaMesaImageMediaType;
+		data: string;
+	};
+}
+
 export interface ClaudeRequestBody {
 	model: string;
 	max_tokens: number;
@@ -148,6 +161,7 @@ export interface IaMesaTurnInput {
 	user: { id: string } | null;
 	campaignId: unknown;
 	message: unknown;
+	images?: unknown;
 	history: unknown;
 	clientModel?: unknown;
 	now: Date;
@@ -286,10 +300,20 @@ function looksLikeSheetPaste(message: string): boolean {
 function requestsCharacterPatch(
 	message: string,
 	history: { text: string }[],
+	hasImages = false,
 ): boolean {
+	if (hasImages) return true;
 	if (/\bpropose_character_patch\b/i.test(message)) return true;
+	if (/\bpropose_character_create\b/i.test(message)) return true;
 	if (/\bpropose_sheet_batch\b/i.test(message)) return true;
 	if (looksLikeSheetPaste(message)) return true;
+	if (
+		/\bcri\p{L}*\s+(?:uma?\s+|essa\s+|esta\s+|a\s+|nova\s+)*ficha\b/iu.test(
+			message,
+		)
+	) {
+		return true;
+	}
 	const currentHasVerb = EDIT_VERB.test(message);
 	const currentHasNoun = SHEET_NOUN.test(message);
 	if (currentHasVerb && currentHasNoun) return true;
@@ -309,10 +333,12 @@ function requestsCharacterPatch(
 export function selectIaMesaModel(input: {
 	message: string;
 	history?: { text: string }[];
+	images?: IaMesaImageAttachment[];
 	clientModel?: unknown;
 }): { model: string; maxTokens: number; timeoutMs: number } {
 	void input.clientModel;
-	if (requestsCharacterPatch(input.message, input.history ?? [])) {
+	const hasImages = (input.images?.length ?? 0) > 0;
+	if (requestsCharacterPatch(input.message, input.history ?? [], hasImages)) {
 		return {
 			model: IA_MESA_MODEL_SONNET,
 			maxTokens: IA_MESA_MAX_TOKENS_SONNET,
@@ -331,7 +357,8 @@ function stableSystemText(): string {
 		"Você é o Assistente da mesa do Arkhiveon, um app de campanhas de RPG.",
 		"Responda sempre em português do Brasil, curto e direto.",
 		"A ficha de quem pergunta e a cena atual chegam na mensagem do usuário, depois destas regras.",
-		"Você pode: (1) propor um NPC novo com propose_npc; (2) editar a ficha de quem pergunta: primeiro chame read_character com o id dessa ficha, depois propose_character_patch só com o que muda (atributos numéricos, PV, CA, nível, itens do inventário e dados de dano de arma).",
+		"Você pode: (1) propor um NPC novo com propose_npc; (2) criar uma ficha de personagem NOVA com propose_character_create (ex.: a partir de uma imagem de ficha enviada ou descrição); (3) editar a ficha de quem pergunta: primeiro chame read_character com o id dessa ficha, depois propose_character_patch só com o que muda (atributos numéricos, PV, CA, nível, itens do inventário e dados de dano de arma).",
+		"Imagens anexadas: quando o usuário enviar imagem(ns) de ficha, bloco de estatísticas, item ou anotação, leia todos os campos legíveis e use propose_character_create (para criar ficha nova), propose_sheet_batch / propose_character_patch (para atualizar ficha existente) ou propose_npc (para NPC/criatura), conforme o pedido.",
 		"REGRA OBRIGATÓRIA: se o usuário pedir para atualizar/editar/mudar um personagem ou ficha, chame read_character e em seguida propose_character_patch. Nunca use propose_npc para isso e nunca responda que só pode usar propose_npc.",
 		"Atualizações acumuladas: a cada mensagem sobre a mesma ficha, chame read_character + propose_character_patch com TUDO o que o usuário pediu até agora na conversa. Não espere um \"aplica tudo\" no final.",
 		"Use só o que o usuário escreveu: não invente valores, itens nem regras que ele não pediu.",
@@ -387,10 +414,19 @@ export function buildClaudeRequest(input: {
 	contextText: string;
 	history: IaMesaHistoryItem[];
 	message: string;
+	images?: IaMesaImageAttachment[];
 }): ClaudeRequestBody {
 	const historyMessages = input.history.map((item) => ({
 		role: item.role,
 		content: item.text,
+	}));
+	const imageBlocks: ClaudeImageBlock[] = (input.images ?? []).map((img) => ({
+		type: "image",
+		source: {
+			type: "base64",
+			media_type: img.mediaType,
+			data: img.data,
+		},
 	}));
 	return {
 		model: input.model,
@@ -410,6 +446,7 @@ export function buildClaudeRequest(input: {
 				role: "user",
 				content: [
 					{ type: "text", text: input.contextText },
+					...imageBlocks,
 					{ type: "text", text: input.message },
 				],
 			},
@@ -659,6 +696,9 @@ function refusal(): IaMesaTurnResult {
 	};
 }
 
+export const DEFAULT_IMAGE_PROMPT =
+	"Analise a imagem enviada. Se for uma ficha de personagem, proponha criar uma ficha nova com propose_character_create (ou atualizar se já existir). Se for um NPC ou criatura, proponha com propose_npc.";
+
 export async function handleIaMesaTurn(
 	input: IaMesaTurnInput,
 	deps: IaMesaTurnDeps,
@@ -666,11 +706,21 @@ export async function handleIaMesaTurn(
 	if (!input.user) {
 		return { status: 401, body: { ok: false, code: "unauthorized" } };
 	}
-	if (isInputTooLarge(input.message)) {
+	if (
+		isInputTooLarge(input.message) ||
+		isImagesPayloadTooLarge(input.images)
+	) {
 		return { status: 413, body: { ok: false, code: "input_too_large" } };
 	}
-	const message = cleanUserMessage(input.message, IA_MESA_INPUT_MAX_CHARS);
-	if (!isCampaignId(input.campaignId) || !message) {
+	const images = cleanImages(input.images);
+	const hadInvalidImages =
+		Array.isArray(input.images) &&
+		input.images.length > 0 &&
+		images.length === 0;
+	const rawMessage = cleanUserMessage(input.message, IA_MESA_INPUT_MAX_CHARS);
+	const message =
+		rawMessage || (images.length > 0 ? DEFAULT_IMAGE_PROMPT : "");
+	if (!isCampaignId(input.campaignId) || !message || hadInvalidImages) {
 		return { status: 400, body: { ok: false, code: "bad_request" } };
 	}
 	if (!(await deps.isAllowed(input.campaignId))) {
@@ -704,6 +754,7 @@ export async function handleIaMesaTurn(
 	const choice = selectIaMesaModel({
 		message,
 		history,
+		images,
 		clientModel: input.clientModel,
 	});
 	let request = buildClaudeRequest({
@@ -712,6 +763,7 @@ export async function handleIaMesaTurn(
 		contextText: `${built.sheet}\n${built.scene}`,
 		history,
 		message,
+		images,
 	});
 	const scope = deps.scope ?? { characters: [] };
 	let usage = emptyUsage();

@@ -5,12 +5,16 @@ import {
 	Compass,
 	FileText,
 	IdCard,
+	ImagePlus,
 	SendHorizontal,
 	Sparkles,
 	Undo2,
 	X,
 } from "lucide-react";
 import {
+	type ChangeEvent,
+	type ClipboardEvent,
+	type DragEvent,
 	type FormEvent,
 	type KeyboardEvent,
 	useId,
@@ -23,16 +27,26 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	applyCharacterPatch,
+	buildCharacterCreateRows,
 	buildCharacterPatchDiff,
+	type CharacterCreateRow,
 	type CharacterDiffRow,
 	missingPatchItems,
+	proposalToCharacterInput,
 } from "@/lib/ai-mesa/character-patch";
 import { askMesaAssistant } from "@/lib/ai-mesa/client";
+import {
+	IA_MESA_MAX_IMAGES,
+	type IaMesaPreparedImage,
+	prepareMesaImage,
+	toImageAttachments,
+} from "@/lib/ai-mesa/image-input";
 import {
 	describeProposal,
 	errorMessage,
 	formatDailyLimitNotice,
 	IA_MESA_INPUT_MAX_CHARS,
+	type IaMesaCharacterCreateProposal,
 	type IaMesaCharacterPatchProposal,
 	type IaMesaNpcProposal,
 	type IaMesaProposal,
@@ -60,11 +74,13 @@ interface ChatMessage {
 	id: string;
 	role: "user" | "assistant";
 	text: string;
+	images?: IaMesaPreparedImage[];
 	time: string;
 	isError?: boolean;
 	proposal?: IaMesaProposal;
 	status?: ProposalStatus;
 	npcId?: string;
+	createdCharacterId?: string;
 	/** Valores da ficha antes do Aplicar (para Desfazer um patch). */
 	undoPatch?: Partial<Character>;
 	applyError?: string;
@@ -79,6 +95,8 @@ const TRANSIENT_FAILURE = "Não consegui responder agora. Nada foi enviado.";
 const NOT_ALLOWED = "O assistente não está disponível nesta campanha.";
 const CHAT_INPUT_MAX_CHARS = 1200;
 const EMPTY_THREAD = "Pergunte sobre regras, a cena ou a ficha.";
+const DEFAULT_IMAGE_USER_MESSAGE =
+	"Analise a imagem enviada e proponha criar ou atualizar a ficha correspondente.";
 
 /** Hover e foco visíveis, com tokens que já existem. O anel não fica cortado. */
 const tactileControl =
@@ -90,7 +108,7 @@ type PanelState =
 	| { kind: "error"; text: string; retryable?: boolean }
 	| { kind: "limit"; resetsAt: string };
 
-const EDIT_VERB = String.raw`(?:atualiz|edit|alter|mud|troc|ajust|coloc)\p{L}*`;
+const EDIT_VERB = String.raw`(?:atualiz|edit|alter|mud|troc|ajust|coloc|cri)\p{L}*`;
 /** Verbo de edição no início de uma frase/linha (comando). */
 const EDIT_COMMAND_START = new RegExp(
 	String.raw`(?:^|[.!\n]\s*)${EDIT_VERB}\b`,
@@ -98,14 +116,15 @@ const EDIT_COMMAND_START = new RegExp(
 );
 /** "atualiza a ficha", "muda na ficha do mago" como comando. */
 const EDIT_THE_SHEET = new RegExp(
-	String.raw`\b${EDIT_VERB}\s+(?:a|na|minha|essa|esta|da)\s+ficha\b`,
+	String.raw`\b${EDIT_VERB}\s+(?:a|na|minha|essa|esta|uma|da)\s+ficha\b`,
 	"iu",
 );
 const QUESTION =
 	/\?\s*$|^\s*(?:o que|como|qual|quais|quando|por que|porque|pode|posso|será)\b/iu;
 
-/** Exportado para teste: prompt longo ou comando de editar ficha → skeleton. */
-export function readingPrompt(text: string): boolean {
+/** Exportado para teste: prompt longo, imagem ou comando de editar/criar ficha → skeleton. */
+export function readingPrompt(text: string, hasImages = false): boolean {
+	if (hasImages) return true;
 	if (text.length >= 400) return true;
 	if (!/\bficha\b/i.test(text) || QUESTION.test(text.trim())) return false;
 	return EDIT_COMMAND_START.test(text.trim()) || EDIT_THE_SHEET.test(text);
@@ -169,10 +188,14 @@ export function VTTAiChat({
 	const { user } = useAuth();
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState("");
+	const [attachments, setAttachments] = useState<IaMesaPreparedImage[]>([]);
+	const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+	const [dragOver, setDragOver] = useState(false);
 	const [panel, setPanel] = useState<PanelState>({ kind: "idle" });
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const listRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const applyingRef = useRef(false);
 	const busyRef = useRef(false);
 
@@ -209,11 +232,100 @@ export function VTTAiChat({
 		});
 	};
 
-	const send = async (bubbleText?: string) => {
+	const addAttachmentFiles = async (files: FileList | File[]) => {
+		const list = Array.from(files);
+		if (list.length === 0 || inputLocked) return;
+		setAttachmentNotice(null);
+		const remaining = IA_MESA_MAX_IMAGES - attachments.length;
+		if (remaining <= 0) {
+			setAttachmentNotice(
+				`Você pode anexar até ${IA_MESA_MAX_IMAGES} imagens por mensagem.`,
+			);
+			return;
+		}
+		if (list.length > remaining) {
+			setAttachmentNotice(
+				`Limite de ${IA_MESA_MAX_IMAGES} imagens por mensagem.`,
+			);
+		}
+		const prepared: IaMesaPreparedImage[] = [];
+		for (const file of list.slice(0, remaining)) {
+			const res = await prepareMesaImage(file);
+			if (!res.ok) {
+				setAttachmentNotice(res.error);
+				continue;
+			}
+			prepared.push(res.image);
+		}
+		if (prepared.length > 0) {
+			setAttachments((prev) =>
+				[...prev, ...prepared].slice(0, IA_MESA_MAX_IMAGES),
+			);
+		}
+	};
+
+	const removeAttachment = (id: string) => {
+		setAttachments((prev) => prev.filter((item) => item.id !== id));
+		setAttachmentNotice(null);
+	};
+
+	const onFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+		if (event.target.files && event.target.files.length > 0) {
+			void addAttachmentFiles(event.target.files);
+		}
+		event.target.value = "";
+	};
+
+	const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+		const items = event.clipboardData?.items;
+		if (!items) return;
+		const imageFiles: File[] = [];
+		for (const item of Array.from(items)) {
+			if (item.kind === "file" && item.type.startsWith("image/")) {
+				const file = item.getAsFile();
+				if (file) imageFiles.push(file);
+			}
+		}
+		if (imageFiles.length > 0) {
+			event.preventDefault();
+			void addAttachmentFiles(imageFiles);
+		}
+	};
+
+	const onComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+		if (inputLocked) return;
+		if (event.dataTransfer?.types?.includes("Files")) {
+			event.preventDefault();
+			setDragOver(true);
+		}
+	};
+
+	const onComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+		if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+			return;
+		}
+		setDragOver(false);
+	};
+
+	const onComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+		setDragOver(false);
+		if (inputLocked) return;
+		if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+			event.preventDefault();
+			void addAttachmentFiles(event.dataTransfer.files);
+		}
+	};
+
+	const send = async (
+		bubbleText?: string,
+		bubbleImages?: IaMesaPreparedImage[],
+	) => {
 		const fromBubble = typeof bubbleText === "string";
 		const text = (fromBubble ? bubbleText : draft).trim();
+		const attached = fromBubble ? (bubbleImages ?? []) : attachments;
+		const hasImages = attached.length > 0;
 		if (
-			!text ||
+			(!text && !hasImages) ||
 			busyRef.current ||
 			panel.kind === "loading" ||
 			panel.kind === "limit"
@@ -230,25 +342,44 @@ export function VTTAiChat({
 		busyRef.current = true;
 		const prior = messages.filter((m) => m.id !== "welcome" && !m.isError);
 		const last = prior[prior.length - 1];
-		const alreadyShown = last?.role === "user" && last.text === text;
+		const alreadyShown =
+			last?.role === "user" &&
+			last.text === text &&
+			(last.images?.length ?? 0) === attached.length;
 		const history = toHistory(alreadyShown ? prior.slice(0, -1) : prior);
 		if (!alreadyShown) {
 			setMessages((prev) => [
 				...prev,
-				{ id: newId(), role: "user", text, time: nowLabel() },
+				{
+					id: newId(),
+					role: "user",
+					text,
+					...(hasImages ? { images: attached } : {}),
+					time: nowLabel(),
+				},
 			]);
 		}
 		// Chat normal: a bolha já leva a pergunta e o campo esvazia no envio.
 		// Lote: o texto colado fica no campo até um Aplicar bem-sucedido.
 		const keepForBatch = !fromBubble && batchMode;
 		if (!fromBubble && !keepForBatch) setDraft("");
-		setPanel({ kind: "loading", reading: readingPrompt(text) });
+		if (!fromBubble && hasImages) {
+			setAttachments([]);
+			setAttachmentNotice(null);
+		}
+		const promptText = text || DEFAULT_IMAGE_USER_MESSAGE;
+		const imagePayload = toImageAttachments(attached);
+		setPanel({
+			kind: "loading",
+			reading: readingPrompt(text, hasImages),
+		});
 		scrollToEnd();
 		try {
 			const result = await askMesaAssistant({
 				campaignId,
-				message: text,
+				message: promptText,
 				history,
+				...(imagePayload.length > 0 ? { images: imagePayload } : {}),
 			});
 			if (result.ok) {
 				const reply = result.reply.trim();
@@ -293,7 +424,7 @@ export function VTTAiChat({
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const message = messages[i];
 			if (message.role === "user" && message.id !== "welcome") {
-				void send(message.text);
+				void send(message.text, message.images);
 				return;
 			}
 		}
@@ -487,6 +618,25 @@ export function VTTAiChat({
 				});
 				return;
 			}
+			if (message.proposal.kind === "character_create") {
+				const created = store.addCharacter(
+					proposalToCharacterInput(message.proposal),
+				);
+				if (!created || !created.id) {
+					patch(message.id, {
+						applyError:
+							useRPGStore.getState().syncError ||
+							"Não foi possível criar a ficha. Nada foi alterado.",
+					});
+					return;
+				}
+				patch(message.id, {
+					status: next,
+					createdCharacterId: created.id,
+					applyError: undefined,
+				});
+				return;
+			}
 			const created = store.addNpc(
 				proposalToNpcInput(message.proposal, campaignId),
 			);
@@ -508,6 +658,13 @@ export function VTTAiChat({
 
 		if (action === "undo" && message.npcId) {
 			useRPGStore.getState().removeNpc(message.npcId);
+		}
+		if (
+			action === "undo" &&
+			message.createdCharacterId &&
+			message.proposal.kind === "character_create"
+		) {
+			useRPGStore.getState().removeCharacter(message.createdCharacterId);
 		}
 		if (
 			action === "undo" &&
@@ -661,7 +818,58 @@ export function VTTAiChat({
 						onSubmit={onSubmit}
 						className="border-t border-border/70 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
 					>
-						<div className="rounded-xl border border-border/70 bg-background/60 focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15">
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/png,image/jpeg,image/webp,image/gif"
+							multiple
+							aria-label="Selecionar imagem da ficha"
+							onChange={onFileInputChange}
+							className="hidden"
+						/>
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: dropzone around composer inputs */}
+						<div
+							onDragOver={onComposerDragOver}
+							onDragLeave={onComposerDragLeave}
+							onDrop={onComposerDrop}
+							className={cn(
+								"rounded-xl border border-border/70 bg-background/60 transition-colors duration-150 focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15",
+								dragOver && "border-primary/60 bg-primary/10",
+							)}
+						>
+							{attachments.length > 0 && (
+								<ul
+									aria-label="Imagens anexadas"
+									className="flex flex-wrap gap-2 border-b border-border/70 px-3 pt-2.5 pb-2"
+								>
+									{attachments.map((item) => (
+										<li
+											key={item.id}
+											className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/60 p-1 pl-1.5"
+										>
+											<img
+												src={item.dataUrl}
+												alt={item.name}
+												className="size-10 shrink-0 rounded-md object-cover"
+											/>
+											<span className="max-w-28 truncate text-xs text-foreground">
+												{item.name}
+											</span>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												aria-label={`Remover imagem ${item.name}`}
+												disabled={inputLocked}
+												onClick={() => removeAttachment(item.id)}
+												className="size-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+											>
+												<X className="size-3.5" />
+											</Button>
+										</li>
+									))}
+								</ul>
+							)}
 							<label htmlFor={inputId} className="sr-only">
 								Mensagem para o assistente
 							</label>
@@ -674,9 +882,14 @@ export function VTTAiChat({
 									setDraft(next.length > 50_000 ? next.slice(0, 50_000) : next);
 								}}
 								onKeyDown={onKeyDown}
+								onPaste={onPaste}
 								rows={2}
 								placeholder={
-									panel.kind === "limit" ? "" : "Peça algo para a IA..."
+									panel.kind === "limit"
+										? ""
+										: attachments.length > 0
+											? "Explique o que fazer com a imagem (ex: criar ficha)..."
+											: "Peça algo para a IA ou anexe uma ficha..."
 								}
 								disabled={inputLocked}
 								spellCheck={false}
@@ -693,6 +906,11 @@ export function VTTAiChat({
 								}
 								className="block box-border w-full min-w-0 max-h-52 resize-none overflow-y-auto overscroll-contain break-words bg-transparent px-3 py-2.5 text-[16px] outline-none placeholder:text-muted-foreground/60 disabled:opacity-60 sm:text-sm"
 							/>
+							{attachmentNotice && (
+								<p role="alert" className="px-3 pb-1 text-xs text-destructive">
+									{attachmentNotice}
+								</p>
+							)}
 							{panel.kind === "limit" && (
 								<p
 									id={limitHintId}
@@ -702,20 +920,44 @@ export function VTTAiChat({
 								</p>
 							)}
 							<div className="flex items-center justify-between gap-2 px-2 pb-2">
-								{sceneName ? (
-									<span className="inline-flex max-w-[70%] items-center gap-1.5 truncate rounded-full border border-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground">
-										<Compass className="size-3.5 shrink-0" aria-hidden />
-										<span className="truncate">{sceneName}</span>
-									</span>
-								) : (
-									<span />
-								)}
+								<div className="flex min-w-0 items-center gap-1.5">
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										aria-label="Anexar imagem"
+										title="Anexar imagem (PNG, JPG, WebP ou GIF)"
+										disabled={
+											inputLocked || attachments.length >= IA_MESA_MAX_IMAGES
+										}
+										onClick={() => fileInputRef.current?.click()}
+										className={cn(
+											"size-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground",
+											tactileControl,
+										)}
+									>
+										<ImagePlus className="size-4" />
+									</Button>
+									{sceneName ? (
+										<span className="inline-flex max-w-[200px] items-center gap-1.5 truncate rounded-full border border-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground">
+											<Compass className="size-3.5 shrink-0" aria-hidden />
+											<span className="truncate">{sceneName}</span>
+										</span>
+									) : null}
+								</div>
 								<Button
 									type="submit"
 									size="icon"
-									className={cn("size-11 rounded-full", tactileControl)}
+									className={cn(
+										"size-11 shrink-0 rounded-full",
+										tactileControl,
+									)}
 									aria-label="Enviar"
-									disabled={!draft.trim() || inputLocked || overLimit}
+									disabled={
+										(!draft.trim() && attachments.length === 0) ||
+										inputLocked ||
+										overLimit
+									}
 								>
 									<SendHorizontal />
 								</Button>
@@ -824,10 +1066,24 @@ function MessageItem({
 }) {
 	if (message.role === "user") {
 		return (
-			<div className="flex flex-col items-end gap-1">
-				<p className="max-w-[85%] whitespace-pre-wrap rounded-2xl border border-primary/25 bg-primary/15 px-3.5 py-2.5 text-sm">
-					{message.text}
-				</p>
+			<div className="flex flex-col items-end gap-1.5">
+				{message.images && message.images.length > 0 && (
+					<div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+						{message.images.map((image) => (
+							<img
+								key={image.id}
+								src={image.dataUrl}
+								alt={image.name}
+								className="max-h-36 max-w-44 rounded-xl border border-primary/25 object-cover"
+							/>
+						))}
+					</div>
+				)}
+				{message.text && (
+					<p className="max-w-[85%] whitespace-pre-wrap rounded-2xl border border-primary/25 bg-primary/15 px-3.5 py-2.5 text-sm">
+						{message.text}
+					</p>
+				)}
 				{message.time && (
 					<span className="text-[11px] tabular-nums text-muted-foreground">
 						{message.time}
@@ -944,6 +1200,7 @@ function ProposalCard({
 	const proposal = message.proposal as IaMesaProposal;
 	const status = message.status as ProposalStatus;
 	const isPatch = proposal.kind === "character_patch";
+	const isCreate = proposal.kind === "character_create";
 	const character = useRPGStore((s) =>
 		proposal.kind === "character_patch"
 			? s.characters.find((c) => c.id === proposal.characterId)
@@ -956,6 +1213,13 @@ function ProposalCard({
 			missing: missingPatchItems(character, proposal).length,
 		};
 	}, [proposal, character]);
+	const createRows = useMemo(
+		() =>
+			proposal.kind === "character_create"
+				? buildCharacterCreateRows(proposal)
+				: [],
+		[proposal],
+	);
 	const statusChip =
 		status === "applied"
 			? { dot: "bg-emerald-400", label: "Salvo" }
@@ -973,9 +1237,11 @@ function ProposalCard({
 		(!patchState || patchState.missing > 0 || patchState.rows.length === 0);
 	const count = isPatch
 		? (patchState?.rows.length ?? 0)
-		: proposal.kind === "npc"
-			? describeProposal(proposal).length
-			: 0;
+		: isCreate
+			? createRows.length
+			: proposal.kind === "npc"
+				? describeProposal(proposal).length
+				: 0;
 
 	return (
 		<div
@@ -985,12 +1251,14 @@ function ProposalCard({
 			)}
 		>
 			<div className="flex items-center justify-between gap-2 border-b border-border/70 px-3.5 py-2.5">
-				<p className="text-sm font-semibold">
+				<p className="truncate text-sm font-semibold">
 					{isPatch
 						? `Alterar ficha · ${count} ${count === 1 ? "mudança" : "mudanças"}`
-						: `Proposta · ${count} itens`}
+						: isCreate
+							? `Nova ficha · ${proposal.characterName}`
+							: `Proposta · ${count} itens`}
 				</p>
-				<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+				<span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
 					<span
 						className={cn("size-1.5 rounded-full", statusChip.dot)}
 						aria-hidden
@@ -1005,6 +1273,8 @@ function ProposalCard({
 					rows={patchState?.rows ?? []}
 					missing={patchState?.missing ?? 0}
 				/>
+			) : proposal.kind === "character_create" ? (
+				<CharacterCreateBody proposal={proposal} rows={createRows} />
 			) : proposal.kind === "npc" ? (
 				<NpcProposalBody proposal={proposal} />
 			) : null}
@@ -1073,7 +1343,9 @@ function ProposalCard({
 							<Check className="size-3.5 text-emerald-400" aria-hidden />
 							{isPatch
 								? `Aplicado por você · agora — ficha de ${(proposal as IaMesaCharacterPatchProposal).characterName} atualizada`
-								: "Aplicado por você · agora — NPC salvo no Diário"}
+								: isCreate
+									? `Aplicado por você · agora — ficha de ${(proposal as IaMesaCharacterCreateProposal).characterName} criada`
+									: "Aplicado por você · agora — NPC salvo no Diário"}
 						</p>
 						<Button
 							type="button"
@@ -1095,10 +1367,58 @@ function ProposalCard({
 					<p className="text-xs text-muted-foreground">
 						{isPatch
 							? "Desfeito. A ficha voltou ao que era."
-							: "Desfeito. O NPC foi removido."}
+							: isCreate
+								? "Desfeito. A ficha criada foi removida."
+								: "Desfeito. O NPC foi removido."}
 					</p>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function CharacterCreateBody({
+	proposal,
+	rows,
+}: {
+	proposal: IaMesaCharacterCreateProposal;
+	rows: CharacterCreateRow[];
+}) {
+	return (
+		<div className="space-y-2 px-3.5 py-2.5">
+			<div className="flex items-start gap-3">
+				<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+					<IdCard className="size-3.5" aria-hidden />
+				</span>
+				<div className="min-w-0 flex-1">
+					<p className="truncate text-sm font-semibold">
+						{proposal.characterName}
+					</p>
+					<p className="truncate text-xs text-muted-foreground">
+						Nova ficha de personagem · confirme antes de criar
+					</p>
+					{proposal.summary && (
+						<p className="mt-1.5 whitespace-pre-wrap text-xs text-muted-foreground">
+							{proposal.summary}
+						</p>
+					)}
+				</div>
+			</div>
+			{rows.length > 0 && (
+				<ul className="divide-y divide-border/70 rounded-lg border border-border/70">
+					{rows.map((row) => (
+						<li
+							key={`${row.label}-${row.value}`}
+							className="grid gap-0.5 px-3 py-1.5 text-xs"
+						>
+							<span className="font-semibold text-foreground">{row.label}</span>
+							<span className="whitespace-pre-wrap tabular-nums text-muted-foreground">
+								{row.value}
+							</span>
+						</li>
+					))}
+				</ul>
+			)}
 		</div>
 	);
 }

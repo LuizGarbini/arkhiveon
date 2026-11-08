@@ -273,3 +273,90 @@ describe("ia-mesa-chat: contexto do jogador", () => {
 		expect(blob).toContain("portal secreto");
 	});
 });
+
+describe("ia-mesa-chat: imagens e criação de ficha", () => {
+	it("envio com imagem usa Sonnet, inclui bloco image no Claude e aceita propose_character_create", async () => {
+		const callModel = vi.fn(async () => ({
+			content: [
+				{
+					type: "text",
+					text: "Li a imagem da ficha e preparei a proposta.",
+				},
+				{
+					type: "tool_use",
+					id: "toolu_create_1",
+					name: "propose_character_create",
+					input: {
+						characterName: "Kaelen Forjaférrea",
+						race: "Anão",
+						class: "Guerreiro",
+						summary: "Anão Guerreiro nível 5 extraído da imagem.",
+						fields: {
+							level: 5,
+							healthMax: 49,
+							health: 49,
+							armorClass: 18,
+							strength: 18,
+							constitution: 16,
+						},
+						skills: ["athletics", "intimidation"],
+					},
+				},
+			],
+			usage: { cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+		}));
+		const d = deps({ callModel });
+		d.input.message = "";
+		const result = await handleIaMesaTurn(
+			{
+				...d.input,
+				images: [
+					{
+						mediaType: "image/png",
+						data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+					},
+				],
+			},
+			d,
+		);
+		expect(result.status).toBe(200);
+		expect(callModel).toHaveBeenCalledTimes(1);
+		const request = firstRequest(callModel);
+		expect(request.model).toBe(IA_MESA_MODEL_SONNET);
+		expect(request.max_tokens).toBe(8192);
+		const lastMsg = request.messages.at(-1);
+		expect(Array.isArray(lastMsg?.content)).toBe(true);
+		const blocks = lastMsg?.content as Array<{ type: string }>;
+		expect(blocks.some((b) => b.type === "image")).toBe(true);
+		expect(result.body.proposal).toMatchObject({
+			kind: "character_create",
+			characterName: "Kaelen Forjaférrea",
+			race: "Anão",
+			class: "Guerreiro",
+			fields: {
+				level: 5,
+				healthMax: 49,
+				armorClass: 18,
+			},
+		});
+	});
+
+	it("rejeita mais de 4 imagens com 413 input_too_large sem chamar o modelo", async () => {
+		const d = deps({});
+		const result = await handleIaMesaTurn(
+			{
+				...d.input,
+				images: Array.from({ length: 5 }, () => ({
+					mediaType: "image/png",
+					data: "iVBORw0KGgoAAAANSUhEUg==",
+				})),
+			},
+			d,
+		);
+		expect(result).toEqual({
+			status: 413,
+			body: { ok: false, code: "input_too_large" },
+		});
+		expect(d.callModel).not.toHaveBeenCalled();
+	});
+});

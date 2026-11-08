@@ -7,6 +7,7 @@ import {
 	classifyHttpFailure,
 	IA_MESA_REFUSAL,
 	type IaMesaHistoryItem,
+	type IaMesaImageAttachment,
 	type IaMesaResult,
 	isBlockedRequest,
 	normalizeResponse,
@@ -32,6 +33,7 @@ export async function askMesaAssistant(input: {
 	campaignId: string;
 	message: string;
 	history: IaMesaHistoryItem[];
+	images?: IaMesaImageAttachment[];
 }): Promise<IaMesaResult> {
 	if (isBlockedRequest(input.message)) {
 		return { ok: true, reply: IA_MESA_REFUSAL, proposal: null };

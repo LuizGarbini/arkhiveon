@@ -9,7 +9,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { snapshotFromCharacter } from "@/lib/ai-mesa/sheet-batch";
 import type { Character, CharacterUpdateOptions } from "@/lib/store/types";
-import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
+import {
+	parseCharacterCreate,
+	parseCharacterPatch,
+} from "../../../supabase/functions/_shared/ia-mesa-character";
 import { validateSheetBatch } from "../../../supabase/functions/_shared/ia-mesa-sheet-batch";
 
 const h = vi.hoisted(() => ({
@@ -28,6 +31,8 @@ const h = vi.hoisted(() => ({
 				_options?: CharacterUpdateOptions,
 			): Promise<void> => Promise.resolve(),
 		),
+		addCharacter: vi.fn((char: Character) => char),
+		removeCharacter: vi.fn(),
 		addNpc: vi.fn(),
 		removeNpc: vi.fn(),
 		syncError: null,
@@ -144,6 +149,9 @@ beforeEach(() => {
 	h.state.updateCharacter.mockImplementation((id, changes, options) =>
 		options?.quiet ? h.quietSave(id, changes) : Promise.resolve(),
 	);
+	h.state.addCharacter.mockReset();
+	h.state.addCharacter.mockImplementation((char: Character) => char);
+	h.state.removeCharacter.mockReset();
 	h.quietSave.mockReset();
 	h.quietSave.mockImplementation(() => Promise.resolve());
 	h.ask.mockReset();
@@ -875,7 +883,98 @@ describe("readingPrompt", () => {
 		expect(readingPrompt(text)).toBe(false);
 	});
 
-	it("texto de 400+ caracteres liga o skeleton", () => {
+	it("texto de 400+ caracteres ou imagem anexada liga o skeleton", () => {
 		expect(readingPrompt("a".repeat(400))).toBe(true);
+		expect(readingPrompt("", true)).toBe(true);
+	});
+});
+
+describe("VTTAiChat · envio de imagem e criação de ficha (character_create)", () => {
+	const createProposal = parseCharacterCreate({
+		characterName: "Lyra Ventoclaro",
+		race: "Elfa",
+		class: "Barda",
+		summary: "Elfa barda nível 4 lida da imagem.",
+		fields: {
+			level: 4,
+			healthMax: 28,
+			health: 28,
+			armorClass: 15,
+			strength: 10,
+			dexterity: 16,
+			charisma: 18,
+		},
+		skills: ["performance", "persuasion"],
+		addItems: [{ name: "Alaúde Élfico", quantity: 1 }],
+	});
+
+	it("anexa imagem, envia ao assistente e permite Confirmar → Aplicar → Desfazer nova ficha", async () => {
+		h.state.addCharacter.mockImplementation(
+			(char: Partial<Character>) =>
+				({
+					...char,
+					id: "created-lyra-1",
+				}) as Character,
+		);
+		h.ask.mockResolvedValue({
+			ok: true,
+			reply: "Extraí os dados da imagem para uma nova ficha.",
+			proposal: createProposal,
+		});
+		render(<VTTAiChat campaignId="rise" campaignName="Rise of Tiamat" />);
+		fireEvent.click(screen.getByLabelText("Abrir assistente da mesa"));
+
+		const fileInput = screen.getByLabelText(
+			"Selecionar imagem da ficha",
+		) as HTMLInputElement;
+		const file = new File(["png-bytes"], "ficha-lyra.png", {
+			type: "image/png",
+		});
+		fireEvent.change(fileInput, { target: { files: [file] } });
+
+		await waitFor(() =>
+			expect(screen.getByText("ficha-lyra.png")).toBeTruthy(),
+		);
+		const sendBtn = screen.getByLabelText("Enviar") as HTMLButtonElement;
+		expect(sendBtn.disabled).toBe(false);
+
+		fireEvent.click(sendBtn);
+
+		await waitFor(() =>
+			expect(screen.getByText(/Nova ficha · Lyra Ventoclaro/)).toBeTruthy(),
+		);
+		expect(h.ask).toHaveBeenCalledTimes(1);
+		expect(h.ask.mock.calls[0]?.[0]?.images).toEqual([
+			{
+				mediaType: "image/png",
+				data: expect.any(String),
+				name: "ficha-lyra.png",
+			},
+		]);
+
+		const applyBtn = screen.getByRole("button", {
+			name: "Aplicar",
+		}) as HTMLButtonElement;
+		expect(applyBtn.disabled).toBe(true);
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Confirmar alteração" }),
+		);
+		expect(applyBtn.disabled).toBe(false);
+
+		fireEvent.click(applyBtn);
+		expect(h.state.addCharacter).toHaveBeenCalledTimes(1);
+		const createdArg = h.state.addCharacter.mock.calls[0]?.[0] as Character;
+		expect(createdArg.characterName).toBe("Lyra Ventoclaro");
+		expect(createdArg.class).toBe("Barda");
+		expect(createdArg.level).toBe(4);
+		expect(createdArg.healthMax).toBe(28);
+		expect(screen.getByText(/ficha de Lyra Ventoclaro criada/)).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+		expect(h.state.removeCharacter).toHaveBeenCalledWith("created-lyra-1");
+		expect(
+			screen.getByText("Desfeito. A ficha criada foi removida."),
+		).toBeTruthy();
 	});
 });

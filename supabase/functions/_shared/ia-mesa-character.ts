@@ -13,7 +13,30 @@
  */
 
 export const CHARACTER_PATCH_TOOL = "propose_character_patch" as const;
+export const CHARACTER_CREATE_TOOL = "propose_character_create" as const;
 export const READ_CHARACTER_TOOL = "read_character" as const;
+
+export const CHARACTER_SKILL_KEYS = [
+	"acrobatics",
+	"animalHandling",
+	"arcana",
+	"athletics",
+	"performance",
+	"deception",
+	"history",
+	"intimidation",
+	"insight",
+	"investigation",
+	"medicine",
+	"nature",
+	"perception",
+	"persuasion",
+	"sleightOfHand",
+	"religion",
+	"stealth",
+	"survival",
+] as const;
+export type CharacterSkillKey = (typeof CHARACTER_SKILL_KEYS)[number];
 
 /** Campos numéricos editáveis, com faixa permitida. */
 export const CHARACTER_NUMERIC_FIELDS = {
@@ -133,6 +156,21 @@ export interface IaMesaCharacterPatchProposal {
 	addItems: PatchNewItem[];
 	updateItems: PatchItemUpdate[];
 	removeItemIds: string[];
+}
+
+export interface IaMesaCharacterCreateProposal {
+	kind: "character_create";
+	characterName: string;
+	race: string;
+	class: string;
+	subclass: string;
+	background: string;
+	alignment: string;
+	summary: string;
+	fields: Partial<Record<CharacterNumericField, number>>;
+	savingThrowProficiencies: Record<string, boolean>;
+	skillProficiencies: Record<string, "proficient" | "expertise">;
+	addItems: PatchNewItem[];
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +398,93 @@ export function parseCharacterPatch(
 	};
 }
 
+/**
+ * Valida a chamada `propose_character_create` (criar ficha nova, ex.: a partir
+ * de uma imagem enviada). Saneia campos, faixas e itens.
+ */
+export function parseCharacterCreate(
+	args: unknown,
+): IaMesaCharacterCreateProposal | null {
+	if (!args || typeof args !== "object" || Array.isArray(args)) return null;
+	const raw = args as Record<string, unknown>;
+	const characterName = cleanText(
+		raw.characterName ?? raw.name,
+		PATCH_LIMITS.name,
+	);
+	if (!characterName) return null;
+
+	const fields: Partial<Record<CharacterNumericField, number>> = {};
+	const rawFields =
+		raw.fields && typeof raw.fields === "object" && !Array.isArray(raw.fields)
+			? (raw.fields as Record<string, unknown>)
+			: {};
+	for (const key of CHARACTER_NUMERIC_FIELD_KEYS) {
+		const candidate = key in rawFields ? rawFields[key] : raw[key];
+		if (candidate === undefined) continue;
+		const spec = CHARACTER_NUMERIC_FIELDS[key];
+		const v = clampInt(candidate, spec.min, spec.max);
+		if (v !== null) fields[key] = v;
+	}
+
+	const savingThrowProficiencies: Record<string, boolean> = {};
+	const rawSaves = raw.savingThrowProficiencies ?? raw.savingThrows;
+	if (Array.isArray(rawSaves)) {
+		for (const entry of rawSaves) {
+			const ability = oneOf(WEAPON_ABILITIES, entry);
+			if (ability) savingThrowProficiencies[ability] = true;
+		}
+	} else if (rawSaves && typeof rawSaves === "object") {
+		const record = rawSaves as Record<string, unknown>;
+		for (const ability of WEAPON_ABILITIES) {
+			if (record[ability] === true) savingThrowProficiencies[ability] = true;
+		}
+	}
+
+	const skillProficiencies: Record<string, "proficient" | "expertise"> = {};
+	const rawSkills = raw.skillProficiencies ?? raw.skills;
+	if (Array.isArray(rawSkills)) {
+		for (const entry of rawSkills) {
+			const skill = oneOf(CHARACTER_SKILL_KEYS, entry);
+			if (skill) skillProficiencies[skill] = "proficient";
+		}
+	} else if (rawSkills && typeof rawSkills === "object") {
+		const record = rawSkills as Record<string, unknown>;
+		for (const skill of CHARACTER_SKILL_KEYS) {
+			const val = record[skill];
+			if (val === "proficient" || val === true) {
+				skillProficiencies[skill] = "proficient";
+			} else if (val === "expertise") {
+				skillProficiencies[skill] = "expertise";
+			}
+		}
+	}
+
+	const rawItems = Array.isArray(raw.addItems)
+		? raw.addItems
+		: Array.isArray(raw.items)
+			? raw.items
+			: [];
+	const addItems = rawItems
+		.slice(0, PATCH_LIMITS.itemsPerList)
+		.map(parseNewItem)
+		.filter((i): i is PatchNewItem => !!i);
+
+	return {
+		kind: "character_create",
+		characterName,
+		race: cleanText(raw.race, PATCH_LIMITS.label),
+		class: cleanText(raw.class, PATCH_LIMITS.label),
+		subclass: cleanText(raw.subclass, PATCH_LIMITS.label),
+		background: cleanText(raw.background, PATCH_LIMITS.label),
+		alignment: cleanText(raw.alignment, PATCH_LIMITS.label),
+		summary: cleanText(raw.summary, PATCH_LIMITS.summary),
+		fields,
+		savingThrowProficiencies,
+		skillProficiencies,
+		addItems,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Leitura (o que a IA enxerga da ficha)
 // ---------------------------------------------------------------------------
@@ -549,6 +674,65 @@ export const CHARACTER_TOOL_DECLARATIONS = [
 				removeItemIds: { type: "ARRAY", items: { type: "STRING" } },
 			},
 			required: ["characterId"],
+		},
+	},
+	{
+		name: CHARACTER_CREATE_TOOL,
+		description:
+			"Propõe criar uma ficha de personagem NOVA nesta campanha (ex.: lendo uma imagem de ficha enviada ou a partir da descrição do usuário). Não salva nada: o usuário vê a proposta, confirma e aplica.",
+		parameters: {
+			type: "OBJECT",
+			properties: {
+				characterName: {
+					type: "STRING",
+					description: "Nome do personagem",
+				},
+				race: { type: "STRING", description: "Raça/ancestralidade" },
+				class: { type: "STRING", description: "Classe (ex.: Guerreiro, Mago)" },
+				subclass: { type: "STRING", description: "Subclasse, se houver" },
+				background: { type: "STRING", description: "Antecedente" },
+				alignment: { type: "STRING", description: "Tendência/alinhamento" },
+				summary: {
+					type: "STRING",
+					description: "Resumo curto da ficha lida ou criada",
+				},
+				fields: {
+					type: "OBJECT",
+					description:
+						"Atributos e valores numéricos lidos ou definidos (FOR, DES, CON, INT, SAB, CAR, nível, PV, CA, iniciativa, deslocamento, proficiência)",
+					properties: Object.fromEntries(
+						CHARACTER_NUMERIC_FIELD_KEYS.map((k) => [
+							k,
+							{ type: "INTEGER", description: CHARACTER_NUMERIC_FIELDS[k].label },
+						]),
+					),
+				},
+				savingThrowProficiencies: {
+					type: "ARRAY",
+					description: "Salvaguardas com proficiência",
+					items: { type: "STRING", enum: [...WEAPON_ABILITIES] },
+				},
+				skillProficiencies: {
+					type: "OBJECT",
+					description: "Perícias com proficiência (proficient ou expertise)",
+					properties: Object.fromEntries(
+						CHARACTER_SKILL_KEYS.map((k) => [
+							k,
+							{ type: "STRING", enum: ["proficient", "expertise"] },
+						]),
+					),
+				},
+				addItems: {
+					type: "ARRAY",
+					description: "Itens e armas da ficha",
+					items: {
+						type: "OBJECT",
+						properties: ITEM_BASE_PROPS,
+						required: ["name"],
+					},
+				},
+			},
+			required: ["characterName"],
 		},
 	},
 ];

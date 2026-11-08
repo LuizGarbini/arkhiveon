@@ -1,4 +1,7 @@
-import { parseCharacterPatch } from "../../../supabase/functions/_shared/ia-mesa-character";
+import {
+	parseCharacterCreate,
+	parseCharacterPatch,
+} from "../../../supabase/functions/_shared/ia-mesa-character";
 import type {
 	IaMesaHistoryItem,
 	IaMesaNpcProposal,
@@ -8,15 +11,23 @@ import { sanitizeSheetBatchProposal } from "../../../supabase/functions/_shared/
 import type { Npc } from "../store/types";
 
 export type {
+	IaMesaCharacterCreateProposal,
 	IaMesaCharacterPatchProposal,
 	IaMesaHistoryItem,
+	IaMesaImageAttachment,
+	IaMesaImageMediaType,
 	IaMesaNpcProposal,
 	IaMesaProposal,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 export {
+	cleanImages,
+	IA_MESA_IMAGE_MEDIA_TYPES,
 	IA_MESA_INPUT_MAX_CHARS,
+	IA_MESA_MAX_IMAGE_BASE64_CHARS,
+	IA_MESA_MAX_IMAGES,
 	IA_MESA_REFUSAL,
 	isBlockedRequest,
+	isImagesPayloadTooLarge,
 	parseToolCall,
 } from "../../../supabase/functions/_shared/ia-mesa-guard";
 
@@ -226,6 +237,9 @@ export function normalizeResponse(data: unknown): IaMesaResult {
 	if (p && typeof p === "object" && p.kind === "character_patch") {
 		// Re-saneia no cliente: nunca confia no formato vindo da rede.
 		return { ok: true, reply, proposal: parseCharacterPatch(p) };
+	}
+	if (p && typeof p === "object" && p.kind === "character_create") {
+		return { ok: true, reply, proposal: parseCharacterCreate(p) };
 	}
 	const proposal =
 		p && typeof p === "object" && p.kind === "npc" && typeof p.name === "string"
