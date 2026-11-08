@@ -192,7 +192,10 @@ describe("feed da mesa", () => {
 		const panel = screen.getByTestId("feed-panel");
 		const history = screen.getByRole("log", { name: "Rolagens e mensagens" });
 		expect(panel.classList.contains("overflow-hidden")).toBe(true);
-		expect(panel.classList.contains("max-h-[calc(100dvh-14rem)]")).toBe(true);
+		expect(panel.classList.contains("bottom-4")).toBe(true);
+		expect(panel.classList.contains("w-[min(28rem,calc(100vw-6.5rem))]")).toBe(
+			true,
+		);
 		expect(history.classList.contains("overflow-y-auto")).toBe(true);
 		expect(roll.classList.contains("min-h-[44px]")).toBe(true);
 	});

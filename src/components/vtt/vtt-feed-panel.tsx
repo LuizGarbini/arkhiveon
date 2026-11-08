@@ -146,7 +146,7 @@ function FeedComposer({
 	};
 
 	return (
-		<div className="flex shrink-0 flex-col gap-3 border-t border-border/70 pt-3">
+		<div className="flex shrink-0 flex-col gap-2 border-t border-border/70 pt-3">
 			{rollPending && (
 				<p
 					aria-live="polite"
@@ -186,34 +186,13 @@ function FeedComposer({
 					sendRoll(parsed.formula, isGM && mode === "secret");
 				}}
 			>
-				<label
-					htmlFor={formulaId}
-					className="text-sm font-semibold text-foreground"
-				>
-					Fórmula
-				</label>
-				<Input
-					id={formulaId}
-					value={formula}
-					onChange={(event) => setFormula(event.target.value)}
-					placeholder="2d6+3"
-					spellCheck={false}
-					autoComplete="off"
-					aria-invalid={formulaInvalid || undefined}
-					className="h-11 min-h-11"
-				/>
-				{formulaInvalid && (
-					<p role="alert" className="text-sm text-destructive">
-						{FORMULA_HINT}
-					</p>
-				)}
-				<div className="flex flex-wrap gap-1">
+				<div className="grid grid-cols-7 gap-1">
 					{QUICK_DICE_FACES.map((faces) => (
 						<Button
 							key={faces}
 							type="button"
 							variant="outline"
-							className="h-11 min-h-11 min-w-11 px-2 tabular-nums"
+							className="h-11 min-h-11 px-0 tabular-nums"
 							disabled={rolling}
 							aria-label={`Rolar 1d${faces}`}
 							onClick={() => sendRoll(`1d${faces}`, isGM && mode === "secret")}
@@ -222,6 +201,33 @@ function FeedComposer({
 						</Button>
 					))}
 				</div>
+				<div className="flex items-center gap-2">
+					<label htmlFor={formulaId} className="sr-only">
+						Fórmula
+					</label>
+					<Input
+						id={formulaId}
+						value={formula}
+						onChange={(event) => setFormula(event.target.value)}
+						placeholder="2d6+3"
+						spellCheck={false}
+						autoComplete="off"
+						aria-invalid={formulaInvalid || undefined}
+						className="h-11 min-h-11 min-w-0 flex-1"
+					/>
+					<Button
+						type="submit"
+						className="h-11 min-h-[44px] shrink-0 px-4"
+						disabled={!parsed || rolling}
+					>
+						{rolling ? "Rolando…" : "Rolar"}
+					</Button>
+				</div>
+				{formulaInvalid && (
+					<p role="alert" className="text-sm text-destructive">
+						{FORMULA_HINT}
+					</p>
+				)}
 				{isGM && (
 					<Select
 						aria-label="Modo da rolagem"
@@ -234,13 +240,6 @@ function FeedComposer({
 						<option value="secret">Secreta do mestre</option>
 					</Select>
 				)}
-				<Button
-					type="submit"
-					className="h-11 min-h-[44px]"
-					disabled={!parsed || rolling}
-				>
-					{rolling ? "Rolando…" : "Rolar"}
-				</Button>
 			</form>
 			{chatPending && (
 				<p
@@ -275,35 +274,34 @@ function FeedComposer({
 					sendChat(message);
 				}}
 			>
-				<label
-					htmlFor={messageId}
-					className="text-sm font-semibold text-foreground"
-				>
-					Mensagem
-				</label>
-				<Input
-					id={messageId}
-					value={message}
-					onChange={(event) => setMessage(event.target.value)}
-					placeholder="Escreva para a mesa"
-					spellCheck={false}
-					autoComplete="off"
-					aria-invalid={chatTooLong || undefined}
-					className="h-11 min-h-11"
-				/>
+				<div className="flex items-center gap-2">
+					<label htmlFor={messageId} className="sr-only">
+						Mensagem
+					</label>
+					<Input
+						id={messageId}
+						value={message}
+						onChange={(event) => setMessage(event.target.value)}
+						placeholder="Escreva para a mesa"
+						spellCheck={false}
+						autoComplete="off"
+						aria-invalid={chatTooLong || undefined}
+						className="h-11 min-h-11 min-w-0 flex-1"
+					/>
+					<Button
+						type="submit"
+						variant="outline"
+						className="h-11 min-h-11 shrink-0 px-4"
+						disabled={!canSendChat(message) || chatting}
+					>
+						{chatting ? "Enviando…" : "Enviar"}
+					</Button>
+				</div>
 				{chatTooLong && (
 					<p role="alert" className="text-sm text-destructive">
 						{CHAT_LIMIT_HINT}
 					</p>
 				)}
-				<Button
-					type="submit"
-					variant="outline"
-					className="h-11 min-h-11"
-					disabled={!canSendChat(message) || chatting}
-				>
-					{chatting ? "Enviando…" : "Enviar"}
-				</Button>
 			</form>
 		</div>
 	);
@@ -366,10 +364,11 @@ function SessionControl({
 		<Button
 			type="button"
 			variant="outline"
-			className="h-11 min-h-11 px-3"
+			aria-label="Iniciar nova sessão"
+			className="h-11 min-h-11 shrink-0 px-3"
 			onClick={() => setOpen(true)}
 		>
-			Iniciar nova sessão
+			Nova sessão
 		</Button>
 	);
 
@@ -522,10 +521,12 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
 			{sessionId && sessionNumber !== null && (
-				<div className="shrink-0 text-sm">
-					<p className="text-foreground">{sessionStartedText(sessionNumber)}</p>
+				<div className="shrink-0 rounded-full bg-muted/40 px-3 py-1.5 text-center">
+					<p className="text-xs text-muted-foreground">
+						{sessionStartedText(sessionNumber)}
+					</p>
 					{sessionStartedAt && (
-						<p className="text-muted-foreground tabular-nums">
+						<p className="text-xs text-muted-foreground tabular-nums">
 							{formatFeedTime(sessionStartedAt)}
 						</p>
 					)}
@@ -534,7 +535,7 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 			<div
 				role="log"
 				aria-label="Rolagens e mensagens"
-				className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+				className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1"
 			>
 				{rows.length === 0 && !sessionId && (
 					<p className="py-6 text-center text-sm text-muted-foreground">
@@ -542,7 +543,7 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 					</p>
 				)}
 				{rows.length > 0 && (
-					<ul className="flex flex-col gap-1">
+					<ul className="flex flex-col gap-2">
 						{rows.map((entry) => {
 							const view = feedLineView(entry, results[entry.id], isGM);
 							const author =
@@ -565,17 +566,35 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 								);
 							}
 							if (view.kind === "chat") {
+								const mine = Boolean(userId && entry.authorId === userId);
 								return (
-									<li key={entry.id} className="rounded-lg px-2 py-1">
-										<div className="flex items-baseline justify-between gap-2">
-											<span className="truncate text-sm font-semibold text-foreground">
-												{author}
-											</span>
-											<span className="text-sm text-muted-foreground tabular-nums">
-												{time}
-											</span>
+									<li
+										key={entry.id}
+										className={cn(
+											"flex",
+											mine ? "justify-end" : "justify-start",
+										)}
+									>
+										<div
+											className={cn(
+												"max-w-[85%] rounded-2xl px-3 py-2",
+												mine
+													? "bg-primary/15"
+													: "border border-border/70 bg-card-elevated",
+											)}
+										>
+											<div className="flex items-baseline justify-between gap-3">
+												<span className="truncate text-xs font-semibold text-primary">
+													{author}
+												</span>
+												<span className="text-xs text-muted-foreground tabular-nums">
+													{time}
+												</span>
+											</div>
+											<p className="mt-0.5 text-sm text-foreground">
+												{view.message}
+											</p>
 										</div>
-										<p className="text-sm text-foreground">{view.message}</p>
 									</li>
 								);
 							}
@@ -588,8 +607,11 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 										}`
 									: null;
 							return (
-								<li key={entry.id} className="rounded-lg px-2 py-1">
-									<div className="flex items-baseline justify-between gap-2">
+								<li
+									key={entry.id}
+									className="rounded-2xl border border-border/60 bg-card-elevated/80 px-3 py-2.5"
+								>
+									<div className="flex items-center justify-between gap-2">
 										<span className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-foreground">
 											{view.secret && (
 												<Lock
@@ -599,25 +621,27 @@ function FeedBody({ isGM, userId }: { isGM: boolean; userId: string | null }) {
 											)}
 											{view.secret ? "Secreta" : author}
 										</span>
-										<span className="text-sm text-muted-foreground tabular-nums">
+										<span className="text-xs text-muted-foreground tabular-nums">
 											{time}
 										</span>
 									</div>
-									<div className="flex items-baseline justify-between gap-2">
-										<span className="truncate text-sm text-muted-foreground">
-											{view.formula}
-										</span>
+									<div className="mt-1 flex items-end justify-between gap-3">
+										<div className="min-w-0">
+											<p className="truncate text-sm text-muted-foreground">
+												{view.formula}
+											</p>
+											{dice && (
+												<p className="text-xs text-muted-foreground tabular-nums">
+													{dice}
+												</p>
+											)}
+										</div>
 										{view.total !== null && (
-											<span className="text-lg font-semibold text-foreground tabular-nums">
+											<p className="text-2xl font-semibold leading-none text-primary tabular-nums">
 												{view.total}
-											</span>
+											</p>
 										)}
 									</div>
-									{dice && (
-										<p className="text-sm text-muted-foreground tabular-nums">
-											{dice}
-										</p>
-									)}
 								</li>
 							);
 						})}
@@ -661,7 +685,7 @@ export function VTTFeedPanel() {
 	if (!panelOpen || !sceneId) return null;
 
 	const header = (
-		<div className="flex flex-wrap items-center justify-between gap-2">
+		<div className="flex shrink-0 items-center justify-between gap-2">
 			<h2 className="flex items-center gap-2 font-display text-base font-semibold text-foreground">
 				<Dices className="size-4" aria-hidden="true" />
 				Rolagens e chat
@@ -712,7 +736,7 @@ export function VTTFeedPanel() {
 		<aside
 			aria-label="Rolagens e chat"
 			data-testid="feed-panel"
-			className="pointer-events-auto absolute top-32 left-20 z-30 flex max-h-[calc(100dvh-14rem)] min-h-0 w-80 flex-col gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-md"
+			className="pointer-events-auto absolute top-24 bottom-4 left-20 z-30 flex w-[min(28rem,calc(100vw-6.5rem))] min-h-0 flex-col gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-2xl backdrop-blur-md"
 		>
 			{header}
 			{body}
