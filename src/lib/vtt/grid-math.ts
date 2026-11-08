@@ -401,10 +401,33 @@ export function firstGridLine(offset: number, step: number): number {
 	return ((offset % step) + step) % step;
 }
 
-function axisGridLines(length: number, step: number, offset: number): number[] {
-	if (step <= 0 || length < 0) return [];
+/** Acima disto o traço do grid trava a aba (milhões de linhas no mapa ampliado). */
+const MAX_AXIS_LINES = 4_000;
+const MAX_HEX_CELLS = 40_000;
+
+function axisGridLines(
+	length: number,
+	step: number,
+	offset: number,
+	coarsened = false,
+): number[] {
+	if (
+		!(step > 0) ||
+		!(length >= 0) ||
+		!Number.isFinite(step) ||
+		!Number.isFinite(length)
+	)
+		return [];
 	const start = firstGridLine(offset, step);
+	if (!Number.isFinite(start)) return [];
 	const count = Math.floor((length - start) / step + 1e-9) + 1;
+	if (!Number.isFinite(count) || count < 0) return [];
+	if (count > MAX_AXIS_LINES) {
+		if (coarsened) return [];
+		const coarse = step * Math.ceil(count / MAX_AXIS_LINES);
+		if (!(coarse > step) || !Number.isFinite(coarse)) return [];
+		return axisGridLines(length, coarse, offset, true);
+	}
 	const lines: number[] = [];
 	for (let i = 0; i < count; i++) {
 		const value = start + i * step;
@@ -434,10 +457,17 @@ function hexCenters(
 	origin: Point,
 	orientation: "pointy" | "flat",
 ): Point[] {
-	if (gridSize <= 0) return [];
+	if (
+		!(gridSize > 0) ||
+		!Number.isFinite(gridSize) ||
+		!Number.isFinite(width) ||
+		!Number.isFinite(height)
+	)
+		return [];
 	const r = gridSize / 2;
 	const across = r * Math.sqrt(3);
 	const stepMajor = 1.5 * r;
+	if (!(across > 0) || !(stepMajor > 0)) return [];
 	const points: Point[] = [];
 	const pointy = orientation === "pointy";
 	const spanMajor = pointy ? width : height;
@@ -446,7 +476,33 @@ function hexCenters(
 	const originMinor = pointy ? origin.y : origin.x;
 	const firstMajor = Math.floor((-r - originMajor) / stepMajor);
 	const lastMajor = Math.ceil((spanMajor - originMajor + r) / stepMajor);
-	for (let major = firstMajor; major <= lastMajor; major++) {
+	const firstSpan = Math.floor((-across - originMinor) / across);
+	const lastSpan = Math.ceil((spanMinor - originMinor + across) / across);
+	if (
+		!Number.isFinite(firstMajor) ||
+		!Number.isFinite(lastMajor) ||
+		!Number.isFinite(firstSpan) ||
+		!Number.isFinite(lastSpan)
+	)
+		return [];
+	const majorCount = lastMajor - firstMajor + 1;
+	const minorCount = lastSpan - firstSpan + 1;
+	// Mapa grande + célula mínima + escala alta gera milhões de hexágonos e
+	// trava a aba. O passo pula células até caber no limite; o snap continua
+	// na célula real.
+	const estimated = majorCount * minorCount;
+	if (
+		!Number.isFinite(estimated) ||
+		majorCount <= 0 ||
+		minorCount <= 0 ||
+		estimated <= 0
+	)
+		return [];
+	const stride =
+		estimated > MAX_HEX_CELLS
+			? Math.ceil(Math.sqrt(estimated / MAX_HEX_CELLS))
+			: 1;
+	for (let major = firstMajor; major <= lastMajor; major += stride) {
 		const majorPos = originMajor + major * stepMajor;
 		if (majorPos > spanMajor + r + 1e-6) continue;
 		const minorShift = major % 2 !== 0 ? across / 2 : 0;
@@ -454,10 +510,11 @@ function hexCenters(
 			(-across - originMinor - minorShift) / across,
 		);
 		const lastMinor = Math.ceil((spanMinor - originMinor + across) / across);
-		for (let minor = firstMinor; minor <= lastMinor; minor++) {
+		for (let minor = firstMinor; minor <= lastMinor; minor += stride) {
 			const minorPos = originMinor + minor * across + minorShift;
 			if (minorPos < -across - 1e-6 || minorPos > spanMinor + across + 1e-6)
 				continue;
+			if (points.length >= MAX_HEX_CELLS) return points;
 			points.push(
 				pointy ? { x: majorPos, y: minorPos } : { x: minorPos, y: majorPos },
 			);

@@ -233,6 +233,15 @@ describe("squareGridLines", () => {
 			ys: [7, 57, 107],
 		});
 	});
+
+	it("célula minúscula num mapa enorme não trava a aba", () => {
+		const started = Date.now();
+		const lines = squareGridLines(4096 * 8, 4096 * 8, 0.001);
+		expect(Date.now() - started).toBeLessThan(50);
+		expect(lines.xs.length).toBeLessThanOrEqual(4_000);
+		expect(lines.ys.length).toBeLessThanOrEqual(4_000);
+		expect(lines.xs.length).toBeGreaterThan(0);
+	});
 });
 
 describe("centros de hex com origem", () => {
@@ -252,6 +261,14 @@ describe("centros de hex com origem", () => {
 			x: 0,
 			y: 0,
 		});
+	});
+
+	it("mapa de 4096 px ampliado 8 vezes com célula de 10 px não trava", () => {
+		const started = Date.now();
+		const centers = pointyHexCenters(4096 * 8, 4096 * 8, 10);
+		expect(Date.now() - started).toBeLessThan(50);
+		expect(centers.length).toBeGreaterThan(0);
+		expect(centers.length).toBeLessThanOrEqual(40_000);
 	});
 
 	it.each([
