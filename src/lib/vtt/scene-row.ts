@@ -51,6 +51,7 @@ export function mapTokenRow(
 		rotation: Number(row.rotation || 0),
 		hpCurrent: row.hp_current,
 		hpMax: row.hp_max,
+		tempHp: row.temp_hp ?? 0,
 		elevation: Number(row.elevation || 0),
 		conditions: (row.conditions as unknown as string[]) || [],
 		auras: (row.auras as unknown as VTTAura[]) || [],

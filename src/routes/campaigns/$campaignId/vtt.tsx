@@ -552,6 +552,7 @@ function VTTSession() {
 							rotation: Number(row.rotation || 0),
 							hpCurrent: row.hp_current,
 							hpMax: row.hp_max,
+							tempHp: row.temp_hp ?? 0,
 							elevation: Number(row.elevation || 0),
 							conditions: (row.conditions as unknown as string[]) || [],
 							auras: (row.auras as unknown as VTTAura[]) || [],
@@ -573,6 +574,7 @@ function VTTSession() {
 								rotation: Number(row.rotation || 0),
 								hpCurrent: row.hp_current,
 								hpMax: row.hp_max,
+								tempHp: row.temp_hp ?? 0,
 								elevation: Number(row.elevation || 0),
 								conditions: (row.conditions as unknown as string[]) || [],
 								auras: (row.auras as unknown as VTTAura[]) || [],
@@ -589,6 +591,7 @@ function VTTSession() {
 								rotation: Number(row.rotation || 0),
 								hpCurrent: row.hp_current,
 								hpMax: row.hp_max,
+								tempHp: row.temp_hp ?? 0,
 								elevation: Number(row.elevation || 0),
 								conditions: (row.conditions as unknown as string[]) || [],
 								auras: (row.auras as unknown as VTTAura[]) || [],
@@ -1293,6 +1296,7 @@ function VTTSession() {
 				rotation: tokenData.rotation || 0,
 				hp_current: hpColumns.hp_current,
 				hp_max: hpColumns.hp_max,
+				temp_hp: tokenData.tempHp ?? 0,
 				elevation: tokenData.elevation || 0,
 				conditions: (tokenData.conditions || []) as unknown as Json,
 				auras: (tokenData.auras || []) as unknown as Json,
@@ -1328,6 +1332,7 @@ function VTTSession() {
 				rotation: Number(data.rotation || 0),
 				hpCurrent: data.hp_current,
 				hpMax: data.hp_max,
+				tempHp: data.temp_hp ?? tokenData.tempHp ?? 0,
 				elevation: Number(data.elevation || 0),
 				conditions: (data.conditions as unknown as string[]) || [],
 				auras: (data.auras as unknown as VTTAura[]) || [],
@@ -1394,6 +1399,8 @@ function VTTSession() {
 			dbUpdates.hp_current = pendingUpdates.hpCurrent;
 		if (pendingUpdates.hpMax !== undefined)
 			dbUpdates.hp_max = pendingUpdates.hpMax;
+		if (pendingUpdates.tempHp !== undefined)
+			dbUpdates.temp_hp = pendingUpdates.tempHp;
 		if (pendingUpdates.elevation !== undefined)
 			dbUpdates.elevation = pendingUpdates.elevation;
 		if (pendingUpdates.conditions !== undefined)
@@ -1408,12 +1415,32 @@ function VTTSession() {
 			dbUpdates.layer = pendingUpdates.layer;
 
 		try {
-			const { data, error } = await client
+			let { data, error } = await client
 				.from("vtt_tokens")
 				.update(dbUpdates)
 				.eq("id", tokenId)
 				.select("id")
 				.single();
+			if (
+				error &&
+				(error.code === "42703" || error.message?.includes("temp_hp"))
+			) {
+				const fallbackUpdates = { ...dbUpdates };
+				delete fallbackUpdates.temp_hp;
+				if (Object.keys(fallbackUpdates).length > 0) {
+					const retry = await client
+						.from("vtt_tokens")
+						.update(fallbackUpdates)
+						.eq("id", tokenId)
+						.select("id")
+						.single();
+					data = retry.data;
+					error = retry.error;
+				} else {
+					error = null;
+					data = { id: tokenId } as { id: string };
+				}
+			}
 			if (error || !data) throw error || new Error("Token não atualizado");
 			if (
 				sessionGenerationRef.current === sessionGeneration &&

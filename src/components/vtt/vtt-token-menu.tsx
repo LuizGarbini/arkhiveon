@@ -152,6 +152,11 @@ export function VTTTokenMenu({
 	const showMax =
 		!hp.fromSheet || isGM || isCharacterCreator || isTokenController;
 
+	const tokenTempHp =
+		character?.tempHealth !== undefined
+			? character.tempHealth
+			: (token.tempHp ?? 0);
+
 	const handleUpdateHp = (next: number) => {
 		void onUpdateToken(token.id, { hpCurrent: next });
 	};
@@ -162,18 +167,43 @@ export function VTTTokenMenu({
 				healthMax: nextMax,
 			});
 		}
-		if (isGM || !character) {
-			await onUpdateToken(token.id, {
-				hpCurrent: hp.current,
-				hpMax: nextMax,
-			});
+		await onUpdateToken(token.id, {
+			hpMax: nextMax,
+		});
+	};
+
+	const handleUpdateHpValues = async ({
+		current,
+		max,
+	}: {
+		current?: number;
+		max?: number;
+	}) => {
+		if (character) {
+			const charPatch: Partial<Character> = {};
+			if (current !== undefined) charPatch.health = current;
+			if (max !== undefined) charPatch.healthMax = max;
+			if (Object.keys(charPatch).length > 0) {
+				await useRPGStore.getState().updateCharacter(character.id, charPatch);
+			}
+		}
+		const tokenPatch: Partial<VTTToken> = {};
+		if (current !== undefined) tokenPatch.hpCurrent = current;
+		if (max !== undefined) tokenPatch.hpMax = max;
+		if (Object.keys(tokenPatch).length > 0) {
+			await onUpdateToken(token.id, tokenPatch);
 		}
 	};
 
 	const handleUpdateTempHp = async (nextTemp: number) => {
-		if (!character) return;
-		await useRPGStore.getState().updateCharacter(character.id, {
-			tempHealth: Math.max(0, nextTemp),
+		const sanitized = Math.max(0, nextTemp);
+		if (character) {
+			await useRPGStore.getState().updateCharacter(character.id, {
+				tempHealth: sanitized,
+			});
+		}
+		await onUpdateToken(token.id, {
+			tempHp: sanitized,
 		});
 	};
 
@@ -385,12 +415,11 @@ export function VTTTokenMenu({
 						hpCurrent={hp.current}
 						hpMax={hp.max}
 						showMax={showMax}
-						tempHp={character?.tempHealth ?? 0}
+						tempHp={tokenTempHp}
 						onChange={handleUpdateHp}
 						onChangeMax={canEdit ? handleUpdateMax : undefined}
-						onChangeTempHp={
-							character && canEdit ? handleUpdateTempHp : undefined
-						}
+						onChangeHp={canEdit ? handleUpdateHpValues : undefined}
+						onChangeTempHp={canEdit ? handleUpdateTempHp : undefined}
 					/>
 
 					{character && (
