@@ -118,7 +118,8 @@ export type EntityKind =
 	| "lore"
 	| "quest"
 	| "partyLoot"
-	| "customTemplate";
+	| "customTemplate"
+	| "faction";
 
 export const ENTITY_LABELS: Record<
 	EntityKind,
@@ -133,6 +134,7 @@ export const ENTITY_LABELS: Record<
 	quest: { singular: "Missão", plural: "Missões" },
 	partyLoot: { singular: "Saque do Grupo", plural: "Saques do Grupo" },
 	customTemplate: { singular: "Layout salvo", plural: "Layouts salvos" },
+	faction: { singular: "Patrono / Facção", plural: "Patronos & Facções" },
 };
 
 // =====================================================
@@ -413,6 +415,7 @@ export type SheetModuleKind =
 	| "feats"
 	| "inventory"
 	| "personality"
+	| "connections"
 	| "notes"
 	| "customText"
 	| "customStats"

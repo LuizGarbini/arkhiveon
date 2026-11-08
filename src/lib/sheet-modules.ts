@@ -17,6 +17,7 @@ export const SHEET_MODULE_LABELS: Record<SheetModuleKind, string> = {
 	feats: "Talentos",
 	inventory: "Inventário",
 	personality: "Personalidade",
+	connections: "Conexões",
 	notes: "Notas",
 	customText: "Texto livre",
 	customStats: "Bloco de stats",
@@ -131,6 +132,9 @@ export function createDefaultSheetLayout(
 		}),
 		moduleConfig("personality", 50, "side", {
 			fields: ["personalityTraits", "ideals", "bonds", "flaws"],
+		}),
+		moduleConfig("connections", 55, "side", {
+			fields: ["entityLinks"],
 		}),
 		moduleConfig("notes", 60, "main", {
 			fields: ["notes"],

@@ -3,6 +3,7 @@ import type {
 	CustomTemplate,
 	EntityKind,
 	EntityLink,
+	Faction,
 	GameLocation,
 	Item,
 	Lore,
@@ -20,6 +21,7 @@ type EntityCollections = Pick<
 	| "locations"
 	| "lores"
 	| "customTemplates"
+	| "factions"
 >;
 
 export interface LinkableEntity {
@@ -47,6 +49,7 @@ export const ENTITY_KIND_LABELS: Record<EntityKind, string> = {
 	quest: "Missão",
 	partyLoot: "Saque do Grupo",
 	customTemplate: "Template",
+	faction: "Patrono / Facção",
 };
 
 function fallbackPathFor(kind: EntityKind) {
@@ -60,6 +63,7 @@ function fallbackPathFor(kind: EntityKind) {
 		quest: "/quests",
 		partyLoot: "/dashboard",
 		customTemplate: "/sheets/new",
+		faction: "/factions",
 	};
 	return paths[kind];
 }
@@ -94,6 +98,17 @@ export function listLinkableEntities(
 		),
 		...state.customTemplates.map((entity) =>
 			toLinkableEntity("customTemplate", entity, entity.name, "/sheets/new"),
+		),
+		...(state.factions ?? []).map((entity) =>
+			toLinkableEntity(
+				"faction",
+				entity,
+				entity.name,
+				`/factions/${entity.id}`,
+				entity.kind === "patron"
+					? `Patrono${entity.patronType ? ` (${entity.patronType})` : ""}`
+					: "Facção",
+			),
 		),
 	].filter(
 		(entity) =>
@@ -192,15 +207,17 @@ function toLinkableEntity(
 		| Item
 		| GameLocation
 		| Lore
-		| CustomTemplate,
+		| CustomTemplate
+		| Faction,
 	name: string,
 	path: string,
+	customLabel?: string,
 ): LinkableEntity {
 	return {
 		entityKind,
 		entityId: entity.id,
 		name: name || "Sem nome",
-		label: ENTITY_KIND_LABELS[entityKind],
+		label: customLabel || ENTITY_KIND_LABELS[entityKind],
 		path: entityKindPath(entityKind, entity.id, path),
 	};
 }
@@ -217,10 +234,9 @@ function entityKindPath(
 	if (entityKind === "location") return `/locations/${entityId}`;
 	if (entityKind === "lore") return `/lore/${entityId}`;
 	if (entityKind === "customTemplate") return "/sheets/new";
+	if (entityKind === "faction") return `/factions/${entityId}`;
 	return `${path}?selected=${entityId}`;
 }
-
-
 
 function linkKey(entityKind: EntityKind, entityId: string) {
 	return `${entityKind}:${entityId}`;

@@ -80,7 +80,7 @@ export function EntityLinkManager({
 	return (
 		<FormSection
 			title="Conexões"
-			description="Conecte este registro a fichas, NPCs, sessões, itens, locais e lore."
+			description="Conecte este registro a patronos, facções, fichas, NPCs, sessões, itens, locais e lore."
 		>
 			<div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
 				<Field label="Entidade">
@@ -215,6 +215,7 @@ function useEntityCollections() {
 	const locations = useRPGStore((state) => state.locations);
 	const lores = useRPGStore((state) => state.lores);
 	const customTemplates = useRPGStore((state) => state.customTemplates);
+	const factions = useRPGStore((state) => state.factions);
 
 	return useMemo(
 		() => ({
@@ -225,8 +226,18 @@ function useEntityCollections() {
 			locations,
 			lores,
 			customTemplates,
+			factions,
 		}),
-		[characters, npcs, sessions, items, locations, lores, customTemplates],
+		[
+			characters,
+			npcs,
+			sessions,
+			items,
+			locations,
+			lores,
+			customTemplates,
+			factions,
+		],
 	);
 }
 

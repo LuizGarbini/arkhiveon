@@ -43,6 +43,7 @@ const MODULE_HINTS: Partial<Record<SheetModuleKind, string>> = {
 	magic: "Magias, slots e conjuração",
 	inventory: "Equipamento e moedas",
 	personality: "Traços, ideais, vínculos e defeitos",
+	connections: "Patronos, facções, NPCs e vínculos",
 	notes: "Anotações livres do jogador",
 	customText: "Texto livre personalizado",
 	customStats: "Bloco numérico personalizado",

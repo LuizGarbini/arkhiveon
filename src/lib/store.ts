@@ -105,6 +105,11 @@ export const useRPGStore = create<RPGState>()(
 	),
 );
 
+if (typeof window !== "undefined") {
+	(window as unknown as { __rpg_store__?: typeof useRPGStore }).__rpg_store__ =
+		useRPGStore;
+}
+
 export function useActiveCampaignId() {
 	return useRPGStore((s) => s.activeCampaignId);
 }

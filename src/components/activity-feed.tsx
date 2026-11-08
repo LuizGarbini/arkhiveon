@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
+	Flag,
 	History,
 	LayoutTemplate,
 	MapIcon,
@@ -38,6 +39,7 @@ const ENTITY_ICONS: Record<EntityKind, LucideIcon> = {
 	quest: Scroll,
 	partyLoot: Package,
 	customTemplate: LayoutTemplate,
+	faction: Flag,
 };
 
 const ENTITY_COLORS: Record<EntityKind, string> = {
@@ -50,6 +52,7 @@ const ENTITY_COLORS: Record<EntityKind, string> = {
 	quest: "text-amber-400",
 	partyLoot: "text-amber-300",
 	customTemplate: "text-violet-300",
+	faction: "text-amber-400",
 };
 
 const ACTION_META: Record<

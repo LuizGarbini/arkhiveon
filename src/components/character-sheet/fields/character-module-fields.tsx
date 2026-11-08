@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import { AbilitiesFields } from "./abilities-fields";
 import { CombatFields } from "./combat-fields";
+import { ConnectionsFields } from "./connections-fields";
 import { FeatsFields } from "./feats-fields";
 import { IdentityFields } from "./identity-fields";
 import { InventoryFields } from "./inventory-fields";
@@ -91,7 +92,15 @@ const MODULE_REGISTRY: Record<
 		<InventoryFields register={props.register} config={props.config} />
 	),
 	personality: (props) => (
-		<PersonalityFields register={props.register} config={props.config} />
+		<PersonalityFields
+			register={props.register}
+			config={props.config}
+			setValue={props.setValue}
+			control={props.control}
+		/>
+	),
+	connections: (props) => (
+		<ConnectionsFields control={props.control} setValue={props.setValue} />
 	),
 	notes: (props) => (
 		<NotesFields register={props.register} config={props.config} />

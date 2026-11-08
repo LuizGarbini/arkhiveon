@@ -1,4 +1,5 @@
 export * from "./module-editor-dialog";
+export * from "./sheet-connections-module";
 export * from "./sheet-header";
 export * from "./sheet-module-card";
 export * from "./sheet-module-renderer";

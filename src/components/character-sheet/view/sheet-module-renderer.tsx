@@ -19,11 +19,13 @@ import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
 import {
 	getAttributeExtraInfo,
 	getAttributeFullName,
+	useActiveCampaignRole,
 	useRPGStore,
 } from "@/lib/store";
 import { getFeatsLabel, type SYSTEM_CONFIG } from "@/lib/systems";
 import { useCombatStats } from "../use-linked-items";
 import { CombatMetricCard } from "./combat-metric-detail";
+import { SheetConnectionsModule } from "./sheet-connections-module";
 import { FeatRow, InfoRow, SpellRow, TextBlock } from "./ui-primitives";
 import { WeaponAttacksSection } from "./weapon-attacks";
 
@@ -37,6 +39,7 @@ export function SheetModuleContent({
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 }) {
 	const updateCharacter = useRPGStore((state) => state.updateCharacter);
+	const activeCampaignRole = useActiveCampaignRole();
 	const combat = useCombatStats(character);
 	const customFields =
 		config.customFields?.filter((f) => f.section === module.kind) || [];
@@ -414,6 +417,16 @@ export function SheetModuleContent({
 					value={character.flaws || "Não informados"}
 				/>
 			</div>
+		);
+	}
+
+	if (module.kind === "connections") {
+		return (
+			<SheetConnectionsModule
+				character={character}
+				onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
+				canEdit={activeCampaignRole !== "viewer"}
+			/>
 		);
 	}
 

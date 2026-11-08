@@ -4,6 +4,7 @@ export * from "./abilities-fields";
 export * from "./adjustable-number-field";
 export * from "./character-module-fields";
 export * from "./combat-fields";
+export * from "./connections-fields";
 export * from "./custom-fields-renderer";
 export * from "./feats-fields";
 export * from "./identity-fields";

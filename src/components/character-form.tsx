@@ -1,11 +1,20 @@
-import { ArrowLeft, Dices, Pencil, Plus, Sparkles, Wand2 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+	ArrowLeft,
+	Crown,
+	Dices,
+	Pencil,
+	Plus,
+	Sparkles,
+	Wand2,
+} from "lucide-react";
+import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
 import {
 	useCampaignPeople,
 	WhoCanSeeFields,
 } from "@/components/who-can-see-fields";
+import { addEntityLink } from "@/lib/entity-links";
 import { generateThematicName } from "@/lib/name-generator";
 import {
 	cloneSheetLayout,
@@ -15,6 +24,7 @@ import {
 	abilityModifier,
 	type Character,
 	characterDefaults,
+	type Faction,
 	formatModifier,
 	type RpgSystem,
 	useActiveCampaignRole,
@@ -22,6 +32,7 @@ import {
 } from "@/lib/store";
 import { type CharacterSection, SYSTEM_CONFIG } from "@/lib/systems";
 import { cn } from "@/lib/utils";
+import { PullFactionDialog } from "./character-sheet/pull-faction-dialog";
 import {
 	type CharacterControl,
 	type CharacterRegister,
@@ -411,7 +422,12 @@ function CharacterFormDialog({
 									<CombatSection register={register} config={config} />
 								)}
 								{activeSection === "personality" && (
-									<PersonalitySection register={register} config={config} />
+									<PersonalitySection
+										register={register}
+										config={config}
+										setValue={setValue}
+										control={control}
+									/>
 								)}
 								{activeSection === "magic" && (
 									<MagicSection
@@ -987,13 +1003,92 @@ function CombatSection({
 	);
 }
 
+function PersonalityBondsPuller({
+	control,
+	setValue,
+}: {
+	control: CharacterControl;
+	setValue: CharacterSetValue;
+}) {
+	const [isPullDialogOpen, setIsPullDialogOpen] = useState(false);
+	const bondsValue = useWatch({ control, name: "bonds" }) || "";
+	const entityLinks = useWatch({ control, name: "entityLinks" }) || [];
+	const characterName =
+		useWatch({ control, name: "characterName" }) || "Personagem";
+
+	function handleSelectFaction(faction: Faction, note?: string) {
+		const label =
+			note ||
+			(faction.kind === "patron"
+				? `Patrono (${faction.patronType || "Grupo"})`
+				: "Facção");
+		const perkText = faction.perks ? ` — Benefício: ${faction.perks}` : "";
+		const addition = `👑 ${faction.name} (${label})${perkText}`;
+
+		const current = (bondsValue || "").trim();
+		const updatedBonds = current ? `${current}\n${addition}` : addition;
+		setValue("bonds", updatedBonds, {
+			shouldDirty: true,
+			shouldValidate: true,
+		});
+
+		const nextLinks = addEntityLink(entityLinks, {
+			entityKind: "faction",
+			entityId: faction.id,
+			label: faction.name,
+			note: label,
+		});
+		setValue("entityLinks", nextLinks, {
+			shouldDirty: true,
+			shouldValidate: true,
+		});
+	}
+
+	return (
+		<>
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				onClick={() => setIsPullDialogOpen(true)}
+				className="h-7 text-xs gap-1.5 text-primary hover:text-primary hover:bg-primary/10 px-2 cursor-pointer font-semibold"
+			>
+				<Crown className="h-3.5 w-3.5 text-amber-400" />
+				Puxar Patrono / Facção
+			</Button>
+
+			{isPullDialogOpen && (
+				<PullFactionDialog
+					open={isPullDialogOpen}
+					onOpenChange={setIsPullDialogOpen}
+					characterName={characterName}
+					connectedFactionIds={
+						new Set(
+							entityLinks
+								.filter((l) => l.entityKind === "faction")
+								.map((l) => l.entityId),
+						)
+					}
+					onSelectFaction={handleSelectFaction}
+				/>
+			)}
+		</>
+	);
+}
+
 function PersonalitySection({
 	register,
 	config,
+	setValue,
+	control,
 }: {
 	register: RegisterFn;
 	config: SystemConf;
+	setValue?: CharacterSetValue;
+	control?: CharacterControl;
 }) {
+	const bondsId = useId();
+
 	return (
 		<FormSection title="Personalidade & História">
 			<CustomFieldsRenderer
@@ -1015,13 +1110,27 @@ function PersonalitySection({
 					{...register("ideals")}
 				/>
 			</Field>
-			<Field label="Vínculos">
+
+			<div className="space-y-1.5">
+				<div className="flex items-center justify-between">
+					<label
+						htmlFor={bondsId}
+						className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					>
+						Vínculos & Conexões
+					</label>
+					{setValue && control && (
+						<PersonalityBondsPuller control={control} setValue={setValue} />
+					)}
+				</div>
 				<Textarea
+					id={bondsId}
 					rows={2}
-					placeholder="Pessoas, lugares ou coisas importantes."
+					placeholder="Pessoas, patronos, facções, lugares ou coisas importantes."
 					{...register("bonds")}
 				/>
-			</Field>
+			</div>
+
 			<Field label="Defeitos / Fraquezas">
 				<Textarea
 					rows={2}
