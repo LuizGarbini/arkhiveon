@@ -266,9 +266,12 @@ export function SheetIdentity({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
-					{systemLabel(character.system)}
-				</p>
+				{/* Na mesa o sistema é o da campanha: o painel não repete. */}
+				{!compact && (
+					<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+						{systemLabel(character.system)}
+					</p>
+				)}
 				<div className="flex min-w-0 items-center gap-1">
 					<Title
 						className={cn(

@@ -1,4 +1,9 @@
-import type { TableFeedEntry, TableRollResult } from "./roll-store";
+import { tryParseDiceFormula } from "./dice";
+import type {
+	TableFeedEntry,
+	TableRollDetails,
+	TableRollResult,
+} from "./roll-store";
 
 export const SECRET_ROLL_TEXT = "Mestre rolou em segredo";
 export const FEED_EMPTY_TEXT = "Nenhuma rolagem ou mensagem nesta cena ainda.";
@@ -112,4 +117,72 @@ export function feedLineView(
 		rolls: visible ? (result?.details.rolls ?? null) : null,
 		modifier: visible ? (result?.details.modifier ?? null) : null,
 	};
+}
+
+export interface RolledDie {
+	value: number;
+	faces: number;
+	/** `max`: a face mais alta do dado; `min`: tirou 1. */
+	tone: "max" | "min" | "plain";
+}
+
+/** Cada dado com as faces dele (1d12+2d6 → d12, d6, d6), na ordem rolada. */
+export function rolledDice(
+	details: Pick<TableRollDetails, "formula" | "faces" | "rolls">,
+): RolledDie[] {
+	const pools = tryParseDiceFormula(details.formula)?.pools ?? [];
+	const faces = pools.flatMap((pool) =>
+		Array.from({ length: pool.count }, () => pool.faces),
+	);
+	return details.rolls.map((value, index) => {
+		const dieFaces = faces[index] ?? details.faces;
+		const tone =
+			dieFaces > 1 && value === dieFaces
+				? "max"
+				: value === 1
+					? "min"
+					: "plain";
+		return { value, faces: dieFaces, tone };
+	});
+}
+
+/** Crítico ou falha crítica: só numa rolagem de um único d20. */
+export function rollHighlight(
+	details: Pick<TableRollDetails, "formula" | "faces" | "rolls">,
+): "critical" | "fumble" | null {
+	const parsed = tryParseDiceFormula(details.formula);
+	if (!parsed || parsed.count !== 1 || parsed.pools[0]?.faces !== 20)
+		return null;
+	if (details.rolls[0] === 20) return "critical";
+	if (details.rolls[0] === 1) return "fumble";
+	return null;
+}
+
+/** Mensagens do mesmo autor em até 5 min viram um bloco só (sem repetir nome). */
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+export function continuesPrevious(
+	previous: Pick<TableFeedEntry, "kind" | "authorId" | "createdAt"> | undefined,
+	entry: Pick<TableFeedEntry, "kind" | "authorId" | "createdAt">,
+): boolean {
+	if (!previous || previous.kind !== "chat" || entry.kind !== "chat")
+		return false;
+	if (previous.authorId !== entry.authorId) return false;
+	const gap = Date.parse(entry.createdAt) - Date.parse(previous.createdAt);
+	return Number.isFinite(gap) && gap >= 0 && gap <= GROUP_WINDOW_MS;
+}
+
+export type ChatCommand =
+	| { kind: "chat"; text: string }
+	| { kind: "roll"; formula: string }
+	| { kind: "invalid-roll" };
+
+/** `/r 2d6+3` (ou `/roll`) rola pela caixa de mensagem, como no Roll20. */
+export function parseChatCommand(text: string): ChatCommand {
+	const match = /^\/r(?:oll)?(?:\s+(.*))?$/i.exec(text.trim());
+	if (!match) return { kind: "chat", text };
+	const parsed = tryParseDiceFormula(match[1] ?? "");
+	return parsed
+		? { kind: "roll", formula: parsed.formula }
+		: { kind: "invalid-roll" };
 }

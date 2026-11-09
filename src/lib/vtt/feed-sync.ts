@@ -359,7 +359,9 @@ export async function rollOnTable(input: {
 	formula: string;
 	secret: boolean;
 	characterId: string | null;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
+	/** Rótulo do cartão no chat ("Força", "Ataque"); até 80 caracteres. */
+	label?: string | null;
+}): Promise<{ ok: true; total: number } | { ok: false; message: string }> {
 	const parsed = tryParseDiceFormula(input.formula);
 	if (!parsed) {
 		return {
@@ -377,7 +379,7 @@ export async function rollOnTable(input: {
 		p_scene_id: input.sceneId,
 		p_formula: parsed.formula,
 		p_secret: input.secret,
-		p_label: null,
+		p_label: input.label?.trim().slice(0, 80) || null,
 		p_character_id: input.characterId,
 	});
 	if (error) {
@@ -409,7 +411,7 @@ export async function rollOnTable(input: {
 	if (!useRollStore.getState().sessionId) {
 		await loadFeed(input.campaignId, { quiet: true });
 	}
-	return { ok: true };
+	return { ok: true, total: rolled.total };
 }
 
 export async function postChat(input: {

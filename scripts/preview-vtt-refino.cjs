@@ -535,7 +535,11 @@ async function main() {
 	console.log(`Prints em ${output}`);
 }
 
-main().catch((error) => {
-	console.error(error);
-	process.exit(1);
-});
+module.exports = { setupContext, loadScene, frame, GRID };
+
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(error);
+		process.exit(1);
+	});
+}

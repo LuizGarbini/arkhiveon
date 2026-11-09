@@ -43,6 +43,7 @@ import {
 	type PublishSceneRpc,
 	publishScene,
 } from "@/lib/vtt/persist-publication";
+import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	isRepeatedCreate,
 	newSceneId,
@@ -230,10 +231,12 @@ function VTTSession() {
 				__vtt_store__?: typeof useVTTStore;
 				__rpg_store__?: typeof useRPGStore;
 				__combat_store__?: typeof useCombatStore;
+				__roll_store__?: typeof useRollStore;
 			};
 			win.__vtt_store__ = useVTTStore;
 			win.__rpg_store__ = useRPGStore;
 			win.__combat_store__ = useCombatStore;
+			win.__roll_store__ = useRollStore;
 		}
 	}, []);
 
