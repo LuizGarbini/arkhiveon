@@ -394,6 +394,7 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 					name: "Dargan",
 					kind: "npc",
 					role: "",
+					imageUrl: "https://cdn.test/dargan.webp",
 				},
 				{
 					...npcDefaults,
@@ -415,6 +416,7 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 					class: "Maga",
 					health: 12,
 					healthMax: 20,
+					imageUrl: "https://cdn.test/lyra.webp",
 				},
 			],
 		});
@@ -515,6 +517,48 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 		expect(screen.queryByRole("button", { name: "NPCs" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Colocar" })).toBeNull();
 		expect(screen.queryByText(TOKEN_PLACE_NEEDS_GM)).toBeNull();
+	});
+
+	it("exibe fotos de personagens e NPCs cadastrados na busca da biblioteca", async () => {
+		seedLibrary();
+		const onSpawnToken = renderDrawer();
+
+		// Aba NPCs: mestre visualiza Dargan com foto e Andariel com iniciais
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		const darganImg = document.querySelector(
+			'img[src="https://cdn.test/dargan.webp"]',
+		);
+		expect(darganImg).toBeTruthy();
+		expect(screen.getByText("AN")).toBeTruthy();
+
+		// Coloca Dargan: avatarUrl deve ser transmitido ao token
+		fireEvent.click(screen.getAllByRole("button", { name: "Colocar" })[0]);
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				npcId: "npc-dargan",
+				name: "Dargan",
+				avatarUrl: "https://cdn.test/dargan.webp",
+			}),
+		);
+
+		// Aba Fichas: mestre visualiza Lyra com foto
+		fireEvent.click(screen.getByRole("button", { name: "Fichas" }));
+		const lyraImg = document.querySelector(
+			'img[src="https://cdn.test/lyra.webp"]',
+		);
+		expect(lyraImg).toBeTruthy();
+
+		// Coloca Lyra: avatarUrl deve ser transmitido ao token
+		fireEvent.click(screen.getByRole("button", { name: "Colocar" }));
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(2));
+		expect(onSpawnToken).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				characterId: "char-lyra",
+				name: "Lyra",
+				avatarUrl: "https://cdn.test/lyra.webp",
+			}),
+		);
 	});
 });
 

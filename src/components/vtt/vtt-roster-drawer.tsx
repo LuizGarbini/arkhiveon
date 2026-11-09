@@ -25,8 +25,10 @@ import {
 	VTTRemoveTokenDialog,
 } from "@/components/vtt/vtt-remove-token-dialog";
 import { useAuth } from "@/lib/auth";
+import { resolveCharacterImageUrl } from "@/lib/character-images";
 import { canViewCharacter } from "@/lib/content-audience";
-import { useRPGStore } from "@/lib/store";
+import { resolveEntityImageUrl } from "@/lib/entity-images";
+import { useImageAssetLookup, useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
 	characterSheetOwnsHp,
@@ -66,6 +68,7 @@ export function VTTRosterDrawer({
 	const campaigns = useRPGStore((s) => s.campaigns);
 	const campaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaign = campaigns.find((c) => c.id === scene?.campaignId);
+	const imageAssetLookup = useImageAssetLookup();
 	const [tab, setTab] = useState<
 		"scene" | "characters" | "npcs" | "custom" | "map"
 	>("scene");
@@ -334,72 +337,103 @@ export function VTTRosterDrawer({
 								Clique duas vezes ou use o botão direito no token para editar.
 							</span>
 						</p>
-						{visibleTokens.map((token) => (
-							<div
-								key={token.id}
-								className="flex items-center gap-2 rounded-xl border border-border/70 bg-card-elevated p-2"
-							>
-								<button
-									type="button"
-									onClick={() => {
-										onFocusPoint(token.x, token.y);
-										close(false);
-									}}
-									aria-label={`Localizar ${token.name}`}
-									className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:ring-2 focus-visible:ring-primary"
+						{visibleTokens.map((token) => {
+							const tokenAvatarUrl =
+								token.avatarUrl ||
+								(token.characterId
+									? (() => {
+											const c = characters.find(
+												(char) => char.id === token.characterId,
+											);
+											return c
+												? resolveCharacterImageUrl(
+														c,
+														imageAssetLookup,
+														campaign?.myRole,
+														session?.user.id,
+													) || c.imageUrl
+												: null;
+										})()
+									: token.npcId
+										? (() => {
+												const n = npcs.find((item) => item.id === token.npcId);
+												return n
+													? resolveEntityImageUrl(
+															n,
+															imageAssetLookup,
+															campaign?.myRole,
+															session?.user.id,
+														) || n.imageUrl
+													: null;
+											})()
+										: null);
+							return (
+								<div
+									key={token.id}
+									className="flex items-center gap-2 rounded-xl border border-border/70 bg-card-elevated p-2"
 								>
-									<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-display text-primary">
-										{token.avatarUrl ? (
-											<img
-												src={token.avatarUrl}
-												alt=""
-												decoding="async"
-												className="size-full object-cover"
-											/>
-										) : (
-											token.name.slice(0, 2).toUpperCase()
-										)}
-									</span>
-									<span className="min-w-0">
-										<span className="block truncate text-sm font-semibold">
-											{token.name}
-										</span>
-										<span className="text-xs tabular-nums text-muted-foreground">
-											{rosterHpText(token, characters, isGM)}
-											{token.layer === "gm" || token.isHidden
-												? " · Oculto"
-												: ""}
-										</span>
-									</span>
-									<Crosshair className="ml-auto size-4 shrink-0 text-muted-foreground" />
-								</button>
-								{token.characterId && (
-									<Link
-										to="/sheets/$characterId"
-										params={{ characterId: token.characterId }}
-										target="_blank"
-										rel="noopener noreferrer"
-										aria-label={`Abrir ficha de ${token.name} em outra aba`}
-										className="flex size-11 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-accent focus-visible:ring-2"
+									<button
+										type="button"
+										onClick={() => {
+											onFocusPoint(token.x, token.y);
+											close(false);
+										}}
+										aria-label={`Localizar ${token.name}`}
+										className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:ring-2 focus-visible:ring-primary"
 									>
-										<FileText className="size-4" />
-									</Link>
-								)}
-								{isGM && (
-									<RemoveFromTableButton
-										label={removeLabel(token.name, 1)}
-										disabled={busy}
-										onClick={() =>
-											askRemove({
-												name: token.name,
-												tokenIds: [token.id],
-												kind: tokenRemovalKind(token),
-											})
-										}
-									/>
-								)}
-							</div>
-						))}
+										<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-primary/10 font-display text-xs font-bold text-primary select-none">
+											{tokenAvatarUrl ? (
+												<img
+													src={tokenAvatarUrl}
+													alt=""
+													decoding="async"
+													className="size-full object-cover"
+												/>
+											) : (
+												token.name.slice(0, 2).toUpperCase()
+											)}
+										</span>
+										<span className="min-w-0">
+											<span className="block truncate text-sm font-semibold">
+												{token.name}
+											</span>
+											<span className="text-xs tabular-nums text-muted-foreground">
+												{rosterHpText(token, characters, isGM)}
+												{token.layer === "gm" || token.isHidden
+													? " · Oculto"
+													: ""}
+											</span>
+										</span>
+										<Crosshair className="ml-auto size-4 shrink-0 text-muted-foreground" />
+									</button>
+									{token.characterId && (
+										<Link
+											to="/sheets/$characterId"
+											params={{ characterId: token.characterId }}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={`Abrir ficha de ${token.name} em outra aba`}
+											className="flex size-11 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-accent focus-visible:ring-2"
+										>
+											<FileText className="size-4" />
+										</Link>
+									)}
+									{isGM && (
+										<RemoveFromTableButton
+											label={removeLabel(token.name, 1)}
+											disabled={busy}
+											onClick={() =>
+												askRemove({
+													name: token.name,
+													tokenIds: [token.id],
+													kind: tokenRemovalKind(token),
+												})
+											}
+										/>
+									)}
+								</div>
+							);
+						})}
 						{visibleTokens.length === 0 && term ? searchEmpty : null}
 						{visibleTokens.length === 0 && !term && (
 							<div className="rounded-xl border border-dashed border-border/70 p-5 text-center">
@@ -431,13 +465,33 @@ export function VTTRosterDrawer({
 							const placed = tokens.filter(
 								(token) => token.characterId === char.id,
 							);
+							const charImageUrl =
+								resolveCharacterImageUrl(
+									char,
+									imageAssetLookup,
+									campaign?.myRole,
+									session?.user.id,
+								) || char.imageUrl;
 							return (
 								<div
 									key={char.id}
 									className="rounded-xl border border-border/70 bg-card-elevated p-3"
 								>
 									<div className="flex items-center gap-3">
-										<Users className="size-5 shrink-0 text-primary" />
+										<span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-primary/10 font-display text-xs font-bold text-primary select-none">
+											{charImageUrl ? (
+												<img
+													src={charImageUrl}
+													alt=""
+													decoding="async"
+													className="size-full object-cover"
+												/>
+											) : char.characterName ? (
+												char.characterName.slice(0, 2).toUpperCase()
+											) : (
+												<Users className="size-5 text-primary" />
+											)}
+										</span>
 										<div className="min-w-0">
 											<h3 className="truncate text-sm font-semibold">
 												{char.characterName}
@@ -489,7 +543,7 @@ export function VTTRosterDrawer({
 													void spawn(char.id, {
 														characterId: char.id,
 														name: char.characterName,
-														avatarUrl: char.imageUrl,
+														avatarUrl: charImageUrl || char.imageUrl || null,
 														hpCurrent: ownsSheet ? null : char.health,
 														hpMax: ownsSheet ? null : char.healthMax,
 													});
@@ -515,12 +569,34 @@ export function VTTRosterDrawer({
 					<>
 						{visibleNpcs.map((npc) => {
 							const placed = tokens.filter((token) => token.npcId === npc.id);
+							const npcImageUrl =
+								resolveEntityImageUrl(
+									npc,
+									imageAssetLookup,
+									campaign?.myRole,
+									session?.user.id,
+								) || npc.imageUrl;
+							const isMonster = npc.kind === "monster";
+							const FallbackIcon = isMonster ? Skull : Users;
 							return (
 								<div
 									key={npc.id}
 									className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-3"
 								>
-									<Skull className="size-5 shrink-0 text-primary" />
+									<span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-primary/10 font-display text-xs font-bold text-primary select-none">
+										{npcImageUrl ? (
+											<img
+												src={npcImageUrl}
+												alt=""
+												decoding="async"
+												className="size-full object-cover"
+											/>
+										) : npc.name ? (
+											npc.name.slice(0, 2).toUpperCase()
+										) : (
+											<FallbackIcon className="size-5 text-primary" />
+										)}
+									</span>
 									<div className="min-w-0 flex-1">
 										<h3 className="truncate text-sm font-semibold">
 											{npc.name}
@@ -557,7 +633,7 @@ export function VTTRosterDrawer({
 											void spawn(npc.id, {
 												npcId: npc.id,
 												name: npc.name,
-												avatarUrl: npc.imageUrl,
+												avatarUrl: npcImageUrl || npc.imageUrl || null,
 											})
 										}
 									>
