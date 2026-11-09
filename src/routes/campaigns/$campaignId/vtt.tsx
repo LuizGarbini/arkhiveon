@@ -21,6 +21,7 @@ import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
+import { canUseMesaAssistant } from "@/lib/ai-mesa/gate";
 import { useAuth } from "@/lib/auth";
 import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
@@ -237,26 +238,26 @@ function VTTSession() {
 			activeCampaign &&
 				user &&
 				(activeCampaign.ownerId === user.id ||
-					activeCampaign.myRole === "owner" ||
-					activeCampaign.myRole === "editor"),
+					activeCampaign.myRole === "owner"),
 		);
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
 
 	// Assistente da mesa (piloto): só aparece se a campanha estiver na allowlist
 	// `ia_mesa_pilot_campaigns` do Supabase. Fora dela: nenhuma UI.
+	const canUsePilot = canUseMesaAssistant(activeCampaign, user?.id);
 	const [iaMesaEnabled, setIaMesaEnabled] = useState(false);
 	useEffect(() => {
 		let cancelled = false;
 		setIaMesaEnabled(false);
-		if (!isGM || !campaignId || !user) return;
+		if (!canUsePilot || !campaignId || !user) return;
 		void fetchMesaPilotEnabled(campaignId).then((enabled) => {
 			if (!cancelled) setIaMesaEnabled(enabled);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [campaignId, isGM, user]);
+	}, [campaignId, canUsePilot, user]);
 
 	const fetchCharacterOwners = useCallback(async () => {
 		const requestId = ++ownershipRequestRef.current;
@@ -331,7 +332,7 @@ function VTTSession() {
 			const active = mapped.find((s) => s.isActive);
 			const owner =
 				activeCampaign?.ownerId === user?.id ||
-				activeCampaign?.myRole === "editor";
+				activeCampaign?.myRole === "owner";
 			setActiveSceneId(active?.id ?? (owner ? mapped[0]?.id : null) ?? null);
 			const framed = initialSceneViewport(
 				window.innerWidth,
@@ -416,16 +417,15 @@ function VTTSession() {
 		};
 	}, [activeSceneId, fetchTokens]);
 
-	// 3b. Paredes da cena (Fatia 1): só o mestre carrega; o jogador não recebe
-	// nada (RLS da 0046 também nega). Efeito externo: busca no Supabase.
+	// 3b. Paredes da cena: carrega para todos os participantes para colisão e visão
 	useEffect(() => {
-		if (activeSceneId && isGM) {
+		if (activeSceneId) {
 			const revision = sceneSession.getReadGeneration(activeSceneId);
 			void loadWalls(activeSceneId, () =>
 				sceneSession.isReadCurrent(revision, activeSceneId),
 			);
 		}
-	}, [activeSceneId, isGM, sceneSession]);
+	}, [activeSceneId, sceneSession]);
 
 	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
@@ -646,6 +646,39 @@ function VTTSession() {
 			client.removeChannel(channel);
 		};
 	}, [activeSceneId, addToken, updateToken, removeToken, setFogState]);
+
+	// 5b. Realtime subscription on vtt_walls for live wall changes
+	useEffect(() => {
+		const client = getSupabase();
+		if (!client || !activeSceneId) return;
+		let cancelled = false;
+
+		const channel = client
+			.channel(`vtt-walls-live:${activeSceneId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "vtt_walls",
+					filter: `scene_id=eq.${activeSceneId}`,
+				},
+				() => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					void loadWalls(activeSceneId);
+				},
+			)
+			.subscribe();
+
+		return () => {
+			cancelled = true;
+			void client.removeChannel(channel);
+		};
+	}, [activeSceneId]);
 
 	const userColorRef = useRef(userColor);
 	useEffect(() => {
@@ -1700,7 +1733,7 @@ function VTTSession() {
 			<VTTZoomControls />
 
 			{/* Bottom-Right AI assistant (piloto: campanha em ia_mesa_pilot_campaigns + mestre/editor) */}
-			{isGM && iaMesaEnabled && (
+			{canUsePilot && iaMesaEnabled && (
 				<VTTAiChat
 					campaignId={campaignId}
 					campaignName={activeCampaign?.name || "Campanha"}

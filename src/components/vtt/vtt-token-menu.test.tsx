@@ -466,4 +466,20 @@ describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos
 			});
 		});
 	});
+
+	it("não-mestre sem controle sobre token sem ficha não pode editar o PV", () => {
+		setup(
+			{
+				characterId: null,
+				hpCurrent: 10,
+				hpMax: 20,
+				controlledBy: [],
+			},
+			false,
+		);
+
+		expect(screen.queryByRole("spinbutton", { name: "PV atual" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Aplicar" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Definir" })).toBeNull();
+	});
 });

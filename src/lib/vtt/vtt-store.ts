@@ -379,7 +379,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 			// Sair da ferramenta Parede descarta o desenho e a seleção de paredes.
 			...(tool === "wall" ? {} : { wallDraft: [], selectedWallIds: [] }),
 		})),
-	setActiveLayer: (layer) => set({ activeLayer: layer }),
+	setActiveLayer: (layer) =>
+		set((state) => ({
+			activeLayer: layer === "gm" && !state.isGM ? "token" : layer,
+		})),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
 	setActiveTemplateKind: (kind) => set({ activeTemplateKind: kind }),
 	setPreviewTemplate: (template) => set({ previewTemplate: template }),
@@ -697,7 +700,12 @@ export const useVTTStore = create<VTTState>((set) => ({
 						: state.showCharacterSheetId,
 			};
 		}),
-	setIsGM: (isGM) => set({ isGM }),
+	setIsGM: (isGM) =>
+		set((state) => ({
+			isGM,
+			activeLayer:
+				!isGM && state.activeLayer === "gm" ? "token" : state.activeLayer,
+		})),
 
 	setWalls: (walls) => set({ walls }),
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),

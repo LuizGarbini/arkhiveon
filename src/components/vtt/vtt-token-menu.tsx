@@ -39,7 +39,7 @@ import {
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import { calculateAbilityModifier, formatModifier } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
-import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import {
 	addBonusDie,
@@ -91,7 +91,6 @@ export function VTTTokenMenu({
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const characterId = token?.characterId ?? null;
 	const { user } = useAuth();
-	const role = useActiveCampaignRole();
 	const character = useRPGStore((s) =>
 		characterId
 			? (s.characters.find((c) => c.id === characterId) ?? null)
@@ -140,17 +139,18 @@ export function VTTTokenMenu({
 		sheetHealthMax,
 	});
 
-	const isOwnerOrEditor = role === "owner" || role === "editor";
 	const isCharacterCreator = Boolean(
 		character && user?.id && character.createdBy === user.id,
 	);
 	const isTokenController = Boolean(
 		user?.id && token.controlledBy?.includes(user.id),
 	);
-	const canEdit =
-		isGM || isOwnerOrEditor || isCharacterCreator || isTokenController;
-	const showMax =
-		!hp.fromSheet || isGM || isCharacterCreator || isTokenController;
+	const canEdit = character
+		? isGM || isCharacterCreator || isTokenController
+		: isGM;
+	const showMax = character
+		? isGM || isCharacterCreator || isTokenController
+		: isGM;
 
 	const tokenTempHp =
 		character?.tempHealth !== undefined
@@ -416,7 +416,7 @@ export function VTTTokenMenu({
 						hpMax={hp.max}
 						showMax={showMax}
 						tempHp={tokenTempHp}
-						onChange={handleUpdateHp}
+						onChange={character || canEdit ? handleUpdateHp : undefined}
 						onChangeMax={canEdit ? handleUpdateMax : undefined}
 						onChangeHp={canEdit ? handleUpdateHpValues : undefined}
 						onChangeTempHp={canEdit ? handleUpdateTempHp : undefined}

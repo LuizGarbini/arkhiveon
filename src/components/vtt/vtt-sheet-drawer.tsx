@@ -497,7 +497,7 @@ function SheetContent({
 						void onUpdateToken(token.id, { tempHp: sanitized });
 					}}
 					onChangeMax={
-						isGM || !hp.fromSheet
+						isGM || (character && !hp.fromSheet)
 							? (nextMax) => {
 									if (character && isGM) {
 										void useRPGStore.getState().updateCharacter(character.id, {
@@ -511,7 +511,7 @@ function SheetContent({
 							: undefined
 					}
 					onChangeHp={
-						isGM || !hp.fromSheet
+						isGM || (character && !hp.fromSheet)
 							? ({ current, max }) => {
 									if (character && isGM) {
 										const patch: Partial<Character> = {};
