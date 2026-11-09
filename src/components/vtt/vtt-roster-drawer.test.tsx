@@ -10,6 +10,13 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
+import { characterDefaults } from "@/lib/store/character-slice";
+import { npcDefaults } from "@/lib/store/npc-slice";
+import type { Campaign } from "@/lib/store/types";
+import {
+	TOKEN_PLACE_FAILED,
+	TOKEN_PLACE_NEEDS_GM,
+} from "@/lib/vtt/token-spawn";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -354,5 +361,153 @@ describe("Biblioteca: criar token com imagem (R2 + Biblioteca de imagens)", () =
 				avatarUrl: "https://cdn.test/library/lobo-atroz.webp",
 			}),
 		);
+	});
+});
+
+describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
+	const campaign: Campaign = {
+		id: "camp-1",
+		name: "Rise of Tiamat",
+		description: "",
+		ownerId: "gm-1",
+		worldId: "world-1",
+		myRole: "owner",
+		createdAt: 1,
+	};
+
+	function seedLibrary() {
+		useRPGStore.setState({
+			activeCampaignId: "camp-1",
+			campaigns: [campaign],
+			npcs: [
+				{
+					...npcDefaults,
+					id: "npc-dargan",
+					createdAt: 1,
+					worldId: "world-1",
+					campaignIds: ["camp-1"],
+					name: "Dargan",
+					kind: "npc",
+					role: "",
+				},
+				{
+					...npcDefaults,
+					id: "npc-andariel",
+					createdAt: 1,
+					worldId: "world-1",
+					campaignIds: ["camp-1"],
+					name: "Andariel",
+					kind: "npc",
+					role: "Deusa do Sol",
+				},
+			],
+			characters: [
+				{
+					...characterDefaults,
+					id: "char-lyra",
+					createdAt: 1,
+					characterName: "Lyra",
+					class: "Maga",
+					health: 12,
+					healthMax: 20,
+				},
+			],
+		});
+	}
+
+	afterEach(() => {
+		useRPGStore.setState({
+			activeCampaignId: null,
+			campaigns: [],
+			npcs: [],
+			characters: [],
+		});
+	});
+
+	function renderDrawer(
+		onSpawnToken: (data: Partial<VTTToken>) => Promise<void> = vi.fn(
+			async () => {},
+		),
+		isGM = true,
+	) {
+		useVTTStore.setState({ isGM, showRosterDrawer: true, tokens: [] });
+		render(
+			<VTTRosterDrawer
+				scene={scene}
+				onSpawnToken={onSpawnToken}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+			/>,
+		);
+		return onSpawnToken;
+	}
+
+	it('busca "Dar" lista Dargan e Andariel porque o nome contém dar', async () => {
+		seedLibrary();
+		renderDrawer();
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		fireEvent.change(screen.getByLabelText("Buscar na biblioteca"), {
+			target: { value: "Dar" },
+		});
+		expect(await screen.findByText("Dargan")).toBeTruthy();
+		expect(screen.getByText("Andariel")).toBeTruthy();
+		expect(screen.getByText("Deusa do Sol")).toBeTruthy();
+	});
+
+	it("mestre coloca Dargan com npcId e sem characterId", async () => {
+		seedLibrary();
+		const onSpawnToken = renderDrawer();
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		fireEvent.click(screen.getAllByRole("button", { name: "Colocar" })[0]);
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				npcId: "npc-dargan",
+				name: "Dargan",
+			}),
+		);
+		expect(
+			vi.mocked(onSpawnToken).mock.calls[0][0].characterId,
+		).toBeUndefined();
+	});
+
+	it("mostra o erro da biblioteca quando o spawn recusa o NPC", async () => {
+		seedLibrary();
+		const onSpawnToken = vi.fn(async () => {
+			throw new Error(TOKEN_PLACE_FAILED);
+		});
+		renderDrawer(onSpawnToken);
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		fireEvent.click(screen.getAllByRole("button", { name: "Colocar" })[0]);
+		expect((await screen.findByRole("alert")).textContent).toBe(
+			TOKEN_PLACE_FAILED,
+		);
+	});
+
+	it("mestre coloca a ficha com characterId e sem npcId", async () => {
+		seedLibrary();
+		const onSpawnToken = renderDrawer();
+		fireEvent.click(screen.getByRole("button", { name: "Fichas" }));
+		fireEvent.click(screen.getByRole("button", { name: "Colocar" }));
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({
+				characterId: "char-lyra",
+				name: "Lyra",
+			}),
+		);
+		const spawned = vi.mocked(onSpawnToken).mock.calls[0][0];
+		expect(spawned.npcId).toBeUndefined();
+	});
+
+	it("jogador não vê a aba NPCs nem o botão Colocar", () => {
+		seedLibrary();
+		renderDrawer(
+			vi.fn(async () => {}),
+			false,
+		);
+		expect(screen.queryByRole("button", { name: "NPCs" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Colocar" })).toBeNull();
+		expect(screen.queryByText(TOKEN_PLACE_NEEDS_GM)).toBeNull();
 	});
 });
