@@ -5,11 +5,14 @@
  */
 import type {
 	DamageType,
+	InventoryItem,
 	InventoryWeaponExtraDamage,
+	Item,
 	ItemAmmoCondition,
 	ItemAmmoStats,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
+import { itemCategoryKind } from "./item-mechanics";
 import {
 	averageDamage,
 	DAMAGE_TYPES,
@@ -189,6 +192,46 @@ export function canSpendAmmo(quantity: number): boolean {
 /** Fail-closed: sem RPC de consumo, a UI não deve gravar quantity de munição. */
 export function canMutateAmmoQuantity(rpcReady: boolean): boolean {
 	return rpcReady;
+}
+
+export function canRestockAmmo(input: {
+	rpcReady: boolean;
+	role: string | undefined;
+}): boolean {
+	return (
+		canMutateAmmoQuantity(input.rpcReady) &&
+		(input.role === "owner" || input.role === "editor")
+	);
+}
+
+export function canFireAmmo(input: {
+	rpcReady: boolean;
+	role: string | undefined;
+	userId: string | undefined;
+	createdBy: string | undefined;
+}): boolean {
+	if (!canMutateAmmoQuantity(input.rpcReady) || !input.userId) return false;
+	if (input.role === "owner" || input.role === "editor") return true;
+	return Boolean(input.createdBy && input.createdBy === input.userId);
+}
+
+export function isCatalogAmmoItem(
+	item: Pick<Item, "type"> | null | undefined,
+): boolean {
+	return itemCategoryKind(item?.type) === "ammo";
+}
+
+/** Identidade de munição: vínculo vivo com item de tipo Munição. Não usa category da ficha. */
+export function isCatalogAmmoEntry(
+	entry: Pick<InventoryItem, "campaignItemId">,
+	itemsById: ReadonlyMap<string, Item>,
+): boolean {
+	if (!entry.campaignItemId) return false;
+	return isCatalogAmmoItem(itemsById.get(entry.campaignItemId));
+}
+
+export function nextAmmoQuantity(current: number, delta: number): number {
+	return Math.min(AMMO_QUANTITY_MAX, Math.max(0, current + delta));
 }
 
 export function weaponUsesAmmunition(

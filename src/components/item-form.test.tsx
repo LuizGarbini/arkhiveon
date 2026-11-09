@@ -248,4 +248,39 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(patch.entityLinks).toHaveLength(1);
 		expect(patch.weapon).toBeUndefined();
 	});
+
+	it("categoria Munição abre a aba Efeitos e salva o bloco ammo", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Flecha flamejante" },
+		});
+		const category = screen.getByRole("combobox", { name: "Categoria" });
+		await act(async () => {
+			fireEvent.click(category);
+		});
+		const municao = await screen.findByRole("option", { name: "Munição" });
+		await act(async () => {
+			fireEvent.mouseMove(municao);
+		});
+		await act(async () => {
+			fireEvent.click(municao);
+		});
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Efeitos/ }));
+		expect(screen.getByTestId("item-tab-mechanics")).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Rótulo"), {
+			target: { value: "flecha" },
+		});
+		fireEvent.change(screen.getByLabelText("Dados"), {
+			target: { value: "1d8" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.type).toBe("Munição");
+		expect(payload.ammo?.unitLabel).toBe("flecha");
+		expect(payload.ammo?.damage).toEqual({ amount: "1d8", type: "piercing" });
+		expect(payload.weapon).toBeUndefined();
+	});
 });

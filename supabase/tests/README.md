@@ -14,6 +14,16 @@ A transação de `0063_consume_ammo.sql` termina em `ROLLBACK`. A concorrência 
 
 Saída esperada: `0063: N cenários registrados, todos os asserts passaram` e `0063 concurrency: 1 sucesso / 1 estoque 0`.
 
+## 0064 — fórmula mesclada no parse/roll_dice
+
+Somente Postgres **local** (127.0.0.1). Não aplica no projeto remoto. Reusa o bootstrap da 0063 e aplica `0064_ammo_roll_formula.sql` em banco descartável `arkhiveon_0064`.
+
+```bash
+bash scripts/test-0064-local.sh
+```
+
+Prova o parse de `2d6+3` (compat) e `1d8+1d6+3` (dois pools, sem achatar). A transação termina em `ROLLBACK`.
+
 
 ## 0058 — offset do grid e `scale_scene_geometry`
 

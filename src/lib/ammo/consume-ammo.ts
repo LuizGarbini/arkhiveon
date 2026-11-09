@@ -134,6 +134,18 @@ export function isNavigatorOffline(): boolean {
 	return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
+let ammoRpcAvailable: boolean | null = null;
+
+export function markAmmoRpcAvailable(ok: boolean): void {
+	ammoRpcAvailable = ok;
+}
+
+/** Fail-closed: sem cliente ou depois de PGRST202/42883, a UI não grava quantity. */
+export function isAmmoRpcReady(): boolean {
+	if (ammoRpcAvailable === false) return false;
+	return getSupabase() !== null;
+}
+
 function isMissingAmmoRpc(error: RpcErrorLike | null | undefined): boolean {
 	if (!error) return false;
 	if (
@@ -164,7 +176,10 @@ export function toAmmoConsumeError(
 				: fallback;
 		const code =
 			typeof record.code === "string" && record.code ? record.code : null;
-		if (isMissingAmmoRpc(record)) return new AmmoConsumeUnavailableError();
+		if (isMissingAmmoRpc(record)) {
+			markAmmoRpcAvailable(false);
+			return new AmmoConsumeUnavailableError();
+		}
 		return new AmmoConsumeError(message, code);
 	}
 	if (error instanceof Error && error.message) {
@@ -276,10 +291,12 @@ export async function consumeAmmo(input: {
 					p_inventory_entry_id: input.bindings.inventoryEntryId,
 				});
 				if (replay.error) throw toAmmoConsumeError(replay.error);
+				markAmmoRpcAvailable(true);
 				return asResult(replay.data);
 			}
 			throw toAmmoConsumeError(error);
 		}
+		markAmmoRpcAvailable(true);
 		return asResult(data);
 	} catch (error) {
 		if (error instanceof AmmoConsumeOfflineError) throw error;
@@ -325,6 +342,7 @@ export async function getAmmoConsumption(input: {
 		p_inventory_entry_id: input.bindings.inventoryEntryId,
 	});
 	if (error) throw toAmmoConsumeError(error, "Não foi possível ler o consumo.");
+	markAmmoRpcAvailable(true);
 	return asResult(data);
 }
 
@@ -389,6 +407,7 @@ export async function setAmmoQuantity(input: {
 	});
 	if (error)
 		throw toAmmoConsumeError(error, "Não foi possível alterar a munição.");
+	markAmmoRpcAvailable(true);
 	if (!data || typeof data !== "object") {
 		throw new AmmoConsumeError("Resposta de quantidade inválida.");
 	}

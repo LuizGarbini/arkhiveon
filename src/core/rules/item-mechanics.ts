@@ -5,6 +5,7 @@
 import type {
 	DamageType,
 	Item,
+	ItemAmmoCondition,
 	ItemAmmoStats,
 	ItemArmorStats,
 	ItemBonus,
@@ -385,6 +386,19 @@ export function tabStatus(
 		mechanics = draft.armor
 			? { kind: "summary", text: `CA ${draft.armor.baseAc}` }
 			: { kind: "required" };
+	} else if (kind === "ammo") {
+		const a = draft.ammo;
+		const amount = a?.damage?.amount.trim() ?? "";
+		if (amount) {
+			mechanics = { kind: "summary", text: amount.replace(/\s+/g, "") };
+		} else if (
+			(a?.extraDamage.length ?? 0) > 0 ||
+			(a?.conditions.length ?? 0) > 0
+		) {
+			mechanics = { kind: "summary", text: "efeitos" };
+		} else {
+			mechanics = idle;
+		}
 	}
 
 	const bonusCount = draft.bonuses?.length ?? 0;
@@ -398,7 +412,9 @@ export function tabStatus(
 
 /** Linha curta do item: "Marcial · corpo a corpo". */
 export function describeItemLine(
-	draft: Pick<ItemDraft, "type" | "weapon" | "armor"> & { subtype?: string },
+	draft: Pick<ItemDraft, "type" | "weapon" | "armor" | "ammo"> & {
+		subtype?: string;
+	},
 ): string {
 	const kind = itemCategoryKind(draft.type);
 	if (kind === "weapon" && draft.weapon) {
@@ -409,6 +425,10 @@ export function describeItemLine(
 	}
 	if (kind === "armor" && draft.armor)
 		return `${ARMOR_CATEGORY_LABELS[draft.armor.armorCategory]} · CA ${draft.armor.baseAc}`;
+	if (kind === "ammo") {
+		const unit = draft.ammo?.unitLabel?.trim();
+		return unit ? `Munição · ${unit}` : "Munição";
+	}
 	return draft.subtype?.trim() || draft.type?.trim() || "Item";
 }
 
@@ -422,6 +442,10 @@ export function makeItemBonus(): ItemBonus {
 
 export function makeExtraDamage(): ItemWeaponStats["extraDamage"][number] {
 	return { id: newId(), label: "", amount: "", type: "radiant" };
+}
+
+export function makeAmmoCondition(): ItemAmmoCondition {
+	return { id: newId(), name: "", notes: "" };
 }
 
 export const BLANK_ORIGIN: ItemOrigin = { kind: "blank" };

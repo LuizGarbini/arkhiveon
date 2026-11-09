@@ -155,6 +155,7 @@ export function ItemIdentityTab({
 					<Field label="Categoria" htmlFor={categoryId}>
 						<Select
 							id={categoryId}
+							aria-label="Categoria"
 							value={type}
 							onChange={(e) => onCategoryChange(e.target.value)}
 						>

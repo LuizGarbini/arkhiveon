@@ -7,10 +7,14 @@ import type {
 import {
 	AMMO_QUANTITY_MAX,
 	applyAmmoToAttack,
+	canFireAmmo,
 	canMutateAmmoQuantity,
+	canRestockAmmo,
 	canSpendAmmo,
 	emptyAmmoStats,
+	isCatalogAmmoEntry,
 	isValidAmmoQuantity,
+	nextAmmoQuantity,
 	readItemAmmo,
 	weaponUsesAmmunition,
 } from "./ammo";
@@ -146,6 +150,37 @@ describe("estoque não-negativo (regra pura, sem débito)", () => {
 	it("quantity é somente leitura enquanto o RPC não existir", () => {
 		expect(canMutateAmmoQuantity(false)).toBe(false);
 		expect(canMutateAmmoQuantity(true)).toBe(true);
+		expect(canRestockAmmo({ rpcReady: true, role: "owner" })).toBe(true);
+		expect(canRestockAmmo({ rpcReady: true, role: "editor" })).toBe(true);
+		expect(canRestockAmmo({ rpcReady: true, role: "viewer" })).toBe(false);
+		expect(canRestockAmmo({ rpcReady: false, role: "owner" })).toBe(false);
+		expect(
+			canFireAmmo({
+				rpcReady: true,
+				role: "viewer",
+				userId: "p1",
+				createdBy: "p1",
+			}),
+		).toBe(true);
+		expect(
+			canFireAmmo({
+				rpcReady: true,
+				role: "viewer",
+				userId: "p1",
+				createdBy: "other",
+			}),
+		).toBe(false);
+		expect(
+			canFireAmmo({
+				rpcReady: false,
+				role: "owner",
+				userId: "p1",
+				createdBy: "p1",
+			}),
+		).toBe(false);
+		expect(nextAmmoQuantity(1, -1)).toBe(0);
+		expect(nextAmmoQuantity(0, -1)).toBe(0);
+		expect(nextAmmoQuantity(AMMO_QUANTITY_MAX, 1)).toBe(AMMO_QUANTITY_MAX);
 	});
 });
 
@@ -228,5 +263,22 @@ describe("Item.ammo no catálogo", () => {
 		expect(copy.ammo?.conditions[0].id).not.toBe("c1");
 		source.ammo.extraDamage[0].amount = "9d9";
 		expect(copy.ammo?.extraDamage[0].amount).toBe("1d8");
+	});
+
+	it("entrada vinculada a item Munição é catálogo; texto solto na ficha não é", () => {
+		const ammoItem = {
+			id: "it-ammo",
+			type: "Munição",
+			name: "Flecha",
+		} as Item;
+		expect(
+			isCatalogAmmoEntry(
+				{ campaignItemId: ammoItem.id },
+				new Map([[ammoItem.id, ammoItem]]),
+			),
+		).toBe(true);
+		expect(isCatalogAmmoEntry({ campaignItemId: undefined }, new Map())).toBe(
+			false,
+		);
 	});
 });
