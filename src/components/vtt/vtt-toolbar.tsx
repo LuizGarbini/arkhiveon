@@ -13,13 +13,13 @@ import {
 	Swords,
 	Users,
 } from "lucide-react";
-import { useEffect } from "react";
+import { type ComponentType, Fragment, useEffect } from "react";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+	ToolbarButton,
+	ToolbarDivider,
+	ToolbarGroup,
+} from "@/components/vtt/vtt-toolbar-parts";
 import { cn } from "@/lib/utils";
 import {
 	COMBAT_UNAVAILABLE_LABEL,
@@ -124,43 +124,54 @@ export function VTTToolbar() {
 	const tools: {
 		id: VTTTool;
 		label: string;
-		icon: React.ComponentType<{ className?: string }>;
+		tooltip?: string;
+		icon: ComponentType<{ className?: string }>;
 		shortcut: string;
-		gmOnly?: boolean;
-	}[] = [
-		{
-			id: "select",
-			label: "Selecionar e mover vários",
-			icon: MousePointer2,
-			shortcut: "V",
-		},
-		{
-			id: "pan",
-			label: "Mover a câmera com o botão direito",
-			icon: Hand,
-			shortcut: "H",
-		},
-		{ id: "ruler", label: "Régua de Medição", icon: Ruler, shortcut: "R" },
-		{ id: "ping", label: "Ponteiro Laser (Ping)", icon: Radio, shortcut: "G" },
-		{
-			id: "template",
-			label: "Moldes de magia",
-			icon: Hexagon,
-			shortcut: "T",
-		},
-		{
-			id: "fog",
-			label: "Névoa de Guerra",
-			icon: Eye,
-			shortcut: "F",
-			gmOnly: true,
-		},
+	}[][] = [
+		[
+			{
+				id: "select",
+				label: "Selecionar e mover vários",
+				tooltip: "Selecionar e mover",
+				icon: MousePointer2,
+				shortcut: "V",
+			},
+			{
+				id: "pan",
+				label: "Mover a câmera com o botão direito",
+				tooltip: "Mover a câmera",
+				icon: Hand,
+				shortcut: "H",
+			},
+		],
+		[
+			{
+				id: "ruler",
+				label: "Régua de Medição",
+				tooltip: "Régua (clique marca pontos)",
+				icon: Ruler,
+				shortcut: "R",
+			},
+			{
+				id: "template",
+				label: "Moldes de magia",
+				icon: Hexagon,
+				shortcut: "T",
+			},
+			{
+				id: "ping",
+				label: "Ponteiro Laser (Ping)",
+				tooltip: "Ping (ou Alt + clique)",
+				icon: Radio,
+				shortcut: "G",
+			},
+		],
 	];
 
 	const layers: {
 		id: VTTLayer;
 		label: string;
-		icon: React.ComponentType<{ className?: string }>;
+		icon: ComponentType<{ className?: string }>;
 	}[] = [
 		{ id: "map", label: "Camada do Mapa", icon: MapIcon },
 		{ id: "token", label: "Camada de Tokens", icon: Users },
@@ -170,211 +181,121 @@ export function VTTToolbar() {
 	if (isMobile && sheetOpen) return null;
 
 	return (
-		<div
+		<nav
+			aria-label="Ferramentas da mesa"
 			data-slot="vtt-toolbar"
 			className={cn(
-				"absolute left-3 top-32 overflow-y-auto max-h-[calc(100dvh-14rem)] z-30 flex flex-col items-center w-14 p-1 rounded-2xl border border-border/70 bg-card shadow-2xl pointer-events-auto select-none gap-1 animate-in fade-in slide-in-from-left-2 duration-200",
+				"absolute left-3 top-32 z-30 flex max-h-[calc(100dvh-14rem)] w-14 flex-col items-center gap-1 overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-xl backdrop-blur-md pointer-events-auto select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden animate-in fade-in slide-in-from-left-2 duration-200",
 				// 390 px: com a barra do grid aberta, a toolbar termina acima dela
 				// e rola por dentro; com "Mais ajustes" aberto recolhe junto.
 				gridBarOpen &&
 					TOOLBAR_WITH_GRID_BAR_CLASS[gridMoreOpen ? "open" : "closed"],
 			)}
 		>
-			{/* Main Toolset */}
-			<div className="flex flex-col items-center gap-1 w-full">
-				{tools
-					.filter((t) => !t.gmOnly || isGM)
-					.map((tool) => {
-						const Icon = tool.icon;
-						const isActive = activeTool === tool.id;
-						return (
-							<button
-								type="button"
+			{tools.map((group, index) => (
+				<Fragment key={group[0].id}>
+					{index > 0 && <ToolbarDivider />}
+					<ToolbarGroup>
+						{group.map((tool) => (
+							<ToolbarButton
 								key={tool.id}
+								label={tool.label}
+								tooltip={tool.tooltip}
+								shortcut={tool.shortcut}
+								icon={tool.icon}
+								active={activeTool === tool.id}
 								onClick={() => {
 									setActiveTool(tool.id);
-									setShowFogControls(tool.id === "fog");
-									if (tool.id === "fog") {
-										setShowFogControls(true);
-									}
+									setShowFogControls(false);
 								}}
-								aria-label={tool.label}
-								aria-pressed={isActive}
-								title={`${tool.label} (${tool.shortcut})`}
-								className={cn(
-									"group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
-									isActive
-										? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-										: "text-muted-foreground hover:bg-accent hover:text-foreground",
-								)}
-							>
-								<Icon className="h-4.5 w-4.5" />
-								{/* Shortcut hint badge */}
-								<span
-									className={cn(
-										"absolute bottom-1 right-1 text-[8px] font-extrabold font-mono leading-none opacity-60",
-										isActive
-											? "text-primary-foreground"
-											: "text-muted-foreground",
-									)}
-								>
-									{tool.shortcut}
-								</span>
-							</button>
-						);
-					})}
-				{/* Celular: só visualização (o mestre vê as paredes no mapa; o
-				    Tooltip não abre no toque, então o botão nem aparece). */}
-				{isGM && !isMobile && (
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<button
-									type="button"
-									onClick={() => {
-										if (!wallDisabledReason) setActiveTool("wall");
-									}}
-									aria-label="Parede"
-									aria-pressed={activeTool === "wall"}
-									aria-disabled={wallDisabledReason ? true : undefined}
-									className={cn(
-										"group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary",
-										wallDisabledReason
-											? "cursor-not-allowed text-muted-foreground opacity-50"
-											: activeTool === "wall"
-												? "cursor-pointer bg-primary text-primary-foreground shadow-md shadow-primary/30 active:scale-[0.98]"
-												: "cursor-pointer text-muted-foreground hover:bg-accent hover:text-foreground active:scale-[0.98]",
-									)}
-								/>
-							}
-						>
-							<BrickWall className="h-4.5 w-4.5" />
-							<span
-								className={cn(
-									"absolute bottom-1 right-1 text-[8px] font-extrabold font-mono leading-none opacity-60",
-									activeTool === "wall"
-										? "text-primary-foreground"
-										: "text-muted-foreground",
-								)}
-							>
-								W
-							</span>
-						</TooltipTrigger>
-						<TooltipContent side="right" sideOffset={8}>
-							{wallDisabledReason ?? "Parede (W)"}
-						</TooltipContent>
-					</Tooltip>
-				)}
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<button
-								type="button"
-								onClick={() => useCombatStore.getState().togglePanel()}
-								aria-label="Combate"
-								aria-pressed={combatOpen}
-								aria-keyshortcuts="C"
-								className={cn(
-									"group relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
-									combatOpen
-										? "bg-primary/15 text-primary ring-1 ring-primary/40"
-										: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
-								)}
 							/>
-						}
-					>
-						<Swords className="h-4.5 w-4.5" />
-						<span
-							className={cn(
-								"absolute bottom-1 right-1 font-mono text-[8px] leading-none font-extrabold opacity-60",
-								combatOpen ? "text-primary" : "text-muted-foreground",
-							)}
-						>
-							C
-						</span>
-					</TooltipTrigger>
-					<TooltipContent side="right" sideOffset={8}>
-						{combatStatus === "unavailable"
-							? COMBAT_UNAVAILABLE_LABEL
-							: "Combate (C)"}
-					</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<button
-								type="button"
-								onClick={() => useRollStore.getState().togglePanel()}
-								aria-label="Rolagens e chat"
-								aria-pressed={feedOpen}
-								className={cn(
-									"group relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
-									feedOpen
-										? "bg-primary/15 text-primary ring-1 ring-primary/40"
-										: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
-								)}
-							/>
-						}
-					>
-						<Dices className="h-4.5 w-4.5" />
-					</TooltipTrigger>
-					<TooltipContent side="right" sideOffset={8}>
-						Rolagens e chat
-					</TooltipContent>
-				</Tooltip>
-			</div>
+						))}
+					</ToolbarGroup>
+				</Fragment>
+			))}
 
-			{/* Divider for Layers (GM Only) */}
 			{isGM && (
 				<>
-					<div className="w-6 h-px bg-border/70 my-0.5" />
-
-					{/* Layer Switcher */}
-					<div className="flex flex-col items-center gap-1 w-full">
-						{layers.map((layer) => {
-							const Icon = layer.icon;
-							const isActive = activeLayer === layer.id;
-							return (
-								<button
-									type="button"
-									key={layer.id}
-									onClick={() => setActiveLayer(layer.id)}
-									aria-label={layer.label}
-									aria-pressed={isActive}
-									title={layer.label}
-									className={cn(
-										"flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
-										isActive
-											? "bg-primary/15 text-primary ring-1 ring-primary/40"
-											: "text-muted-foreground hover:bg-accent hover:text-foreground",
-									)}
-								>
-									<Icon className="h-4 w-4" />
-								</button>
-							);
-						})}
-					</div>
-
-					<div className="w-6 h-px bg-border/70 my-0.5" />
-
-					{/* Grid Settings Toggle */}
-					<button
-						type="button"
-						onClick={() => setShowGridSettings(!showGridSettings)}
-						aria-label="Configurações do Grid"
-						aria-expanded={showGridSettings}
-						title="Configurações do Grid"
-						className={cn(
-							"flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary cursor-pointer",
-							showGridSettings
-								? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-								: "text-muted-foreground hover:bg-accent hover:text-foreground",
+					<ToolbarDivider />
+					<ToolbarGroup>
+						<ToolbarButton
+							label="Névoa de Guerra"
+							shortcut="F"
+							icon={Eye}
+							active={activeTool === "fog"}
+							onClick={() => {
+								setActiveTool("fog");
+								setShowFogControls(true);
+							}}
+						/>
+						{/* Celular: só visualização (o mestre vê as paredes no mapa; o
+						    Tooltip não abre no toque, então o botão nem aparece). */}
+						{!isMobile && (
+							<ToolbarButton
+								label="Parede"
+								tooltip={wallDisabledReason ?? "Parede"}
+								shortcut={wallDisabledReason ? undefined : "W"}
+								icon={BrickWall}
+								active={activeTool === "wall"}
+								disabled={Boolean(wallDisabledReason)}
+								onClick={() => setActiveTool("wall")}
+							/>
 						)}
-					>
-						<Grid className="h-4.5 w-4.5" />
-					</button>
+					</ToolbarGroup>
 				</>
 			)}
-		</div>
+
+			<ToolbarDivider />
+			<ToolbarGroup>
+				<ToolbarButton
+					label="Combate"
+					tooltip={
+						combatStatus === "unavailable"
+							? COMBAT_UNAVAILABLE_LABEL
+							: "Combate"
+					}
+					shortcut="C"
+					icon={Swords}
+					kind="toggle"
+					active={combatOpen}
+					onClick={() => useCombatStore.getState().togglePanel()}
+				/>
+				<ToolbarButton
+					label="Rolagens e chat"
+					icon={Dices}
+					kind="toggle"
+					active={feedOpen}
+					onClick={() => useRollStore.getState().togglePanel()}
+				/>
+			</ToolbarGroup>
+
+			{isGM && (
+				<>
+					<ToolbarDivider />
+					<ToolbarGroup inset>
+						{layers.map((layer) => (
+							<ToolbarButton
+								key={layer.id}
+								label={layer.label}
+								icon={layer.icon}
+								kind="layer"
+								active={activeLayer === layer.id}
+								onClick={() => setActiveLayer(layer.id)}
+							/>
+						))}
+					</ToolbarGroup>
+					<ToolbarDivider />
+					<ToolbarButton
+						label="Configurações do Grid"
+						tooltip="Ajuste do grid"
+						icon={Grid}
+						kind="toggle"
+						active={showGridSettings}
+						expanded={showGridSettings}
+						onClick={() => setShowGridSettings(!showGridSettings)}
+					/>
+				</>
+			)}
+		</nav>
 	);
 }

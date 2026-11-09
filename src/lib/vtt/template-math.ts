@@ -12,6 +12,8 @@ export interface VTTSpellTemplate {
 	color: string;
 	userId?: string;
 	userName?: string;
+	/** Alcance fixo em casas; sem ele, o arrasto define o alcance. */
+	sizeCells?: number;
 }
 
 const CONE_HALF_DEGREES: Record<"cone15" | "cone60", number> = {
@@ -29,13 +31,33 @@ export function templateReachCells(
 	return Math.max(1, Math.round(dist / gridSize));
 }
 
+/** Alcance do molde em casas: o fixo, se houver, ou o do arrasto. */
+export function templateReach(
+	template: Pick<
+		VTTSpellTemplate,
+		"originX" | "originY" | "targetX" | "targetY" | "sizeCells"
+	>,
+	gridSize: number,
+): number {
+	if (template.sizeCells && template.sizeCells > 0) return template.sizeCells;
+	return templateReachCells(
+		{ x: template.originX, y: template.originY },
+		{ x: template.targetX, y: template.targetY },
+		gridSize,
+	);
+}
+
 export function templatePolygon(
 	kind: VTTTemplateKind,
 	origin: Point,
 	target: Point,
 	gridSize: number,
+	reachCells?: number,
 ): Point[] {
-	const reach = templateReachCells(origin, target, gridSize);
+	const reach =
+		reachCells && reachCells > 0
+			? reachCells
+			: templateReachCells(origin, target, gridSize);
 	const length = reach * gridSize;
 	const aim = Math.atan2(target.y - origin.y, target.x - origin.x);
 
@@ -119,6 +141,62 @@ function cubePolygon(origin: Point, target: Point, size: number): Point[] {
 		{ x: x1, y: y1 },
 		{ x: origin.x, y: y1 },
 	];
+}
+
+const TEMPLATE_NAMES: Record<VTTTemplateKind, string> = {
+	cone15: "Cone 15°",
+	cone60: "Cone 60°",
+	sphere: "Raio",
+	line: "Linha",
+	cube: "Cubo",
+};
+
+/** Texto da medida: "Cone 60° · 9 m", "Raio 6 m", "Cubo 4,5 m". */
+export function templateMeasureText(
+	kind: VTTTemplateKind,
+	reachCells: number,
+	scaleDistance: number,
+	unit: string,
+): string {
+	const size = Number((reachCells * scaleDistance).toFixed(1)).toLocaleString(
+		"pt-BR",
+		{ maximumFractionDigits: 1 },
+	);
+	const name = TEMPLATE_NAMES[kind];
+	return kind === "cone15" || kind === "cone60"
+		? `${name} · ${size} ${unit}`
+		: `${name} ${size} ${unit}`;
+}
+
+/**
+ * Onde o alcance termina: ponta do cone/linha, borda da esfera na direção do
+ * arrasto, centro do cubo. `dir` aponta para fora (o rótulo vai além da ponta).
+ */
+export function templateReachPoint(
+	kind: VTTTemplateKind,
+	origin: Point,
+	target: Point,
+	gridSize: number,
+	reachCells: number,
+): { point: Point; dir: Point } {
+	const length = reachCells * gridSize;
+	if (kind === "cube") {
+		const dx = Math.sign(target.x - origin.x) || 1;
+		const dy = Math.sign(target.y - origin.y) || 1;
+		return {
+			point: {
+				x: origin.x + (dx * length) / 2,
+				y: origin.y + (dy * length) / 2,
+			},
+			dir: { x: 0, y: 0 },
+		};
+	}
+	const aim = Math.atan2(target.y - origin.y, target.x - origin.x);
+	const dir = { x: Math.cos(aim), y: Math.sin(aim) };
+	return {
+		point: { x: origin.x + dir.x * length, y: origin.y + dir.y * length },
+		dir,
+	};
 }
 
 function isOnSegment(point: Point, a: Point, b: Point): boolean {

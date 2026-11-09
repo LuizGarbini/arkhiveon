@@ -13,6 +13,7 @@ import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
+import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
 import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
@@ -940,16 +941,24 @@ function VTTSession() {
 	const handleBroadcastRuler = useCallback(
 		(measurement: VTTRulerMeasurement | null) => {
 			if (!roomChannelRef.current || !user) return;
+			const userName =
+				user.user_metadata?.full_name ||
+				user.email?.split("@")[0] ||
+				"Aventureiro";
 			roomChannelRef.current.send({
 				type: "broadcast",
 				event: "ruler_move",
 				payload: {
 					userId: user.id,
-					measurement,
+					measurement: measurement && {
+						...measurement,
+						userName,
+						color: userColor,
+					},
 				},
 			});
 		},
-		[user],
+		[user, userColor],
 	);
 
 	const handleBroadcastPing = useCallback(
@@ -1571,6 +1580,8 @@ function VTTSession() {
 				onClearFog={handleClearFog}
 			/>
 
+			<VTTRulerControls />
+
 			<VTTTemplateControls
 				onClearTemplates={(removedIds) => {
 					if (user)
@@ -1617,8 +1628,8 @@ function VTTSession() {
 				/>
 			) : !isLoading ? (
 				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-					<div className="p-4 rounded-3xl border border-border/70 bg-card-elevated backdrop-blur-md mb-4 shadow-2xl">
-						<Compass className="h-10 w-10 text-primary animate-pulse" />
+					<div className="mb-4 rounded-2xl border border-border/70 bg-card-elevated p-4">
+						<Compass className="h-8 w-8 text-primary" />
 					</div>
 					<h3 className="font-display text-xl font-bold text-foreground">
 						{isGM ? "Nenhuma cena criada ainda" : "Aguardando a cena do mestre"}
@@ -1636,10 +1647,10 @@ function VTTSession() {
 									(error) => setLoadError(error.message),
 								);
 							}}
-							className="gap-2 font-bold text-sm h-11 px-5 rounded-2xl shadow-lg shadow-primary/20"
+							className="h-11 gap-2 rounded-xl px-5 text-sm font-semibold"
 						>
 							<Sparkles className="h-4 w-4" />
-							Criar Primeira Cena
+							Criar primeira cena
 						</Button>
 					)}
 				</div>

@@ -76,6 +76,8 @@ interface VTTState {
 	activeLayer: VTTLayer;
 	diagonalRule: VTTDiagonalRule;
 	activeTemplateKind: VTTTemplateKind;
+	/** Alcance fixo dos próximos moldes, em casas; `null` = o arrasto define. */
+	templateSizeCells: number | null;
 	previewTemplate: VTTSpellTemplate | null;
 	placedTemplates: VTTSpellTemplate[];
 	remoteTemplates: Record<string, VTTSpellTemplate>;
@@ -141,6 +143,7 @@ interface VTTState {
 	setActiveLayer: (layer: VTTLayer) => void;
 	setDiagonalRule: (rule: VTTDiagonalRule) => void;
 	setActiveTemplateKind: (kind: VTTTemplateKind) => void;
+	setTemplateSizeCells: (cells: number | null) => void;
 	setPreviewTemplate: (template: VTTSpellTemplate | null) => void;
 	addPlacedTemplate: (template: VTTSpellTemplate) => void;
 	clearPlacedTemplates: () => void;
@@ -268,6 +271,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	activeLayer: "token",
 	diagonalRule: "5105",
 	activeTemplateKind: "cone60",
+	templateSizeCells: null,
 	previewTemplate: null,
 	placedTemplates: [],
 	remoteTemplates: {},
@@ -378,10 +382,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 				tool === "fog" || tool === "template" ? false : state.showRosterDrawer,
 			// Sair da ferramenta Parede descarta o desenho e a seleção de paredes.
 			...(tool === "wall" ? {} : { wallDraft: [], selectedWallIds: [] }),
+			// Sair da Régua apaga a medição (inclusive a fixada).
+			...(tool === "ruler" ? {} : { activeMeasurement: null }),
 		})),
 	setActiveLayer: (layer) => set({ activeLayer: layer }),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
 	setActiveTemplateKind: (kind) => set({ activeTemplateKind: kind }),
+	setTemplateSizeCells: (cells) => set({ templateSizeCells: cells }),
 	setPreviewTemplate: (template) => set({ previewTemplate: template }),
 	addPlacedTemplate: (template) =>
 		set((state) => ({
