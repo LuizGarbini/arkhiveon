@@ -5,6 +5,7 @@
 import type {
 	DamageType,
 	Item,
+	ItemAmmoStats,
 	ItemArmorStats,
 	ItemBonus,
 	ItemBonusTarget,
@@ -22,13 +23,14 @@ import {
 
 export { normalizeWeaponAbility, WEAPON_ABILITIES };
 
-export type ItemCategoryKind = "weapon" | "armor" | "other";
+export type ItemCategoryKind = "weapon" | "armor" | "ammo" | "other";
 
 export const ITEM_CATEGORIES = [
 	"Arma",
 	"Armadura",
 	"Escudo",
 	"Poção",
+	"Munição",
 	"Anel",
 	"Amuleto",
 	"Pergaminho",
@@ -161,6 +163,8 @@ export function itemCategoryKind(type: string | undefined): ItemCategoryKind {
 		t.startsWith("armadura ")
 	)
 		return "armor";
+	if (t === "municao" || t === "ammo" || t.startsWith("municao "))
+		return "ammo";
 	return "other";
 }
 
@@ -198,6 +202,7 @@ export interface ItemDraft {
 	type?: string;
 	description?: string;
 	weapon?: ItemWeaponStats;
+	ammo?: ItemAmmoStats;
 	armor?: ItemArmorStats;
 	bonuses?: ItemBonus[];
 }
@@ -206,6 +211,7 @@ export interface ItemDraftErrors {
 	name?: string;
 	damageDice?: string;
 	versatileDice?: string;
+	ammoDamage?: string;
 	extraDamage?: Record<string, string>;
 }
 
@@ -215,8 +221,8 @@ export function validateItemDraft(draft: ItemDraft): {
 } {
 	const errors: ItemDraftErrors = {};
 	if (!draft.name?.trim()) errors.name = "Dê um nome para o item.";
-	const weapon =
-		itemCategoryKind(draft.type) === "weapon" ? draft.weapon : undefined;
+	const kind = itemCategoryKind(draft.type);
+	const weapon = kind === "weapon" ? draft.weapon : undefined;
 	if (weapon) {
 		if (weapon.damageDice.trim() && !isValidDamageDice(weapon.damageDice))
 			errors.damageDice = "Use dados no formato 1d8 ou 2d6.";
@@ -227,6 +233,17 @@ export function validateItemDraft(draft: ItemDraft): {
 		)
 			errors.versatileDice = "Use dados no formato 1d10.";
 		for (const extra of weapon.extraDamage) {
+			if (extra.amount.trim() && !isValidDamageAmount(extra.amount)) {
+				errors.extraDamage ??= {};
+				errors.extraDamage[extra.id] = "Use 1d6, 2 ou 1d6+2.";
+			}
+		}
+	}
+	const ammo = kind === "ammo" ? draft.ammo : undefined;
+	if (ammo) {
+		if (ammo.damage?.amount.trim() && !isValidDamageAmount(ammo.damage.amount))
+			errors.ammoDamage = "Use 1d6, 2 ou 1d6+2.";
+		for (const extra of ammo.extraDamage) {
 			if (extra.amount.trim() && !isValidDamageAmount(extra.amount)) {
 				errors.extraDamage ??= {};
 				errors.extraDamage[extra.id] = "Use 1d6, 2 ou 1d6+2.";
@@ -285,12 +302,20 @@ export function copyItemMechanics(
 		| "subtype"
 		| "rarity"
 		| "weapon"
+		| "ammo"
 		| "armor"
 		| "bonuses"
 	>,
 ): Pick<
 	Item,
-	"type" | "subtype" | "rarity" | "weapon" | "armor" | "bonuses" | "origin"
+	| "type"
+	| "subtype"
+	| "rarity"
+	| "weapon"
+	| "ammo"
+	| "armor"
+	| "bonuses"
+	| "origin"
 > {
 	const weapon = from.weapon
 		? normalizeItemWeapon(structuredClone(from.weapon))
@@ -303,11 +328,23 @@ export function copyItemMechanics(
 			id: newId(),
 		}));
 	}
+	const ammo = from.ammo ? structuredClone(from.ammo) : undefined;
+	if (ammo) {
+		ammo.extraDamage = (ammo.extraDamage ?? []).map((e) => ({
+			...e,
+			id: newId(),
+		}));
+		ammo.conditions = (ammo.conditions ?? []).map((c) => ({
+			...c,
+			id: newId(),
+		}));
+	}
 	return {
 		type: from.type,
 		subtype: from.subtype,
 		rarity: from.rarity,
 		weapon,
+		ammo,
 		armor: from.armor ? structuredClone(from.armor) : undefined,
 		bonuses: from.bonuses?.map((b) => ({ ...b, id: newId() })),
 		origin: { kind: "copy", fromItemId: from.id, fromName: from.name },

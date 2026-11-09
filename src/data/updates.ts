@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.83-municao-regras",
+		version: "1.6.83",
+		date: "09/11/2026",
+		title: "Munição consumível: regras, ainda sem gasto na mesa",
+		description:
+			"A lista de categorias inclui Munição. Dano próprio, adicionais e condições em texto já existem nas regras, mas a aba de efeitos e o disparo que gasta 1 unidade ainda não estão na tela. Estoque de munição só muda por chamada de servidor; sem ela, a quantidade permanece só leitura.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.82-quem-pode-ver",
 		version: "1.6.82",
 		date: "07/11/2026",
