@@ -1360,6 +1360,75 @@ export type Database = {
 					},
 				];
 			};
+			vtt_token_moves: {
+				Row: {
+					author_id: string;
+					author_name: string | null;
+					created_at: string;
+					distance: number;
+					from_x: number;
+					from_y: number;
+					id: string;
+					kind: string;
+					round: number | null;
+					scene_id: string;
+					to_x: number;
+					to_y: number;
+					token_id: string;
+					token_name: string;
+					unit: string;
+				};
+				Insert: {
+					author_id?: string;
+					author_name?: string | null;
+					created_at?: string;
+					distance?: number;
+					from_x: number;
+					from_y: number;
+					id?: string;
+					kind?: string;
+					round?: number | null;
+					scene_id: string;
+					to_x: number;
+					to_y: number;
+					token_id: string;
+					token_name: string;
+					unit?: string;
+				};
+				Update: {
+					author_id?: string;
+					author_name?: string | null;
+					created_at?: string;
+					distance?: number;
+					from_x?: number;
+					from_y?: number;
+					id?: string;
+					kind?: string;
+					round?: number | null;
+					scene_id?: string;
+					to_x?: number;
+					to_y?: number;
+					token_id?: string;
+					token_name?: string;
+					unit?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_token_moves_author_id_fkey";
+						columns: ["author_id"];
+						isOneToOne: false;
+						referencedRelation: "users";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_token_moves_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			vtt_walls: {
 				Row: {
 					created_at: string;

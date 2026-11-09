@@ -42,11 +42,14 @@ import {
 	ZERO_ORIGIN,
 } from "@/lib/vtt/grid-math";
 import { hasLineOfSight } from "@/lib/vtt/line-of-sight";
+import { useMoveStore } from "@/lib/vtt/move-store";
+import { recordMove } from "@/lib/vtt/move-sync";
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import {
+	formatDistance,
 	type RulerContext,
 	rulerAddPoint,
 	rulerMoveLive,
@@ -100,10 +103,12 @@ import type {
 } from "@/lib/vtt/types";
 import {
 	clearLabels,
+	drawMoveArrow,
 	drawRulerPath,
 	drawSpellTemplate,
 	drawWallPreview,
 	drawWalls,
+	dsColor,
 	parseHexColor,
 } from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -236,6 +241,8 @@ export function VTTCanvas({
 	const measurementLabelsRef = useRef<Container | null>(null);
 	const templatesLayerRef = useRef<Graphics | null>(null);
 	const templateLabelsRef = useRef<Container | null>(null);
+	const moveTrailLayerRef = useRef<Graphics | null>(null);
+	const moveTrailLabelsRef = useRef<Container | null>(null);
 	const pingsLayerRef = useRef<Graphics | null>(null);
 	const remoteCursorsLayerRef = useRef<Container | null>(null);
 
@@ -388,6 +395,9 @@ export function VTTCanvas({
 	);
 	const userIdRef = useRef(user?.id);
 	userIdRef.current = user?.id;
+	const authorNameRef = useRef<string | null>(null);
+	authorNameRef.current =
+		user?.user_metadata?.full_name || user?.email?.split("@")[0] || null;
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
 
@@ -527,6 +537,14 @@ export function VTTCanvas({
 			const templateLabels = new Container();
 			templateLabelsRef.current = templateLabels;
 			world.addChild(templateLabels);
+
+			const moveTrailLayer = new Graphics();
+			moveTrailLayerRef.current = moveTrailLayer;
+			world.addChild(moveTrailLayer);
+
+			const moveTrailLabels = new Container();
+			moveTrailLabelsRef.current = moveTrailLabels;
+			world.addChild(moveTrailLabels);
 
 			const remoteRulersLayer = new Graphics();
 			remoteRulersLayerRef.current = remoteRulersLayer;
@@ -1522,6 +1540,55 @@ export function VTTCanvas({
 		rendererReady,
 	]);
 
+	// 7b2. Histórico de movimentos: o movimento escolhido na lista (forte) e a
+	// trilha do token filtrado (fraca). Só mestre e co-mestre têm a lista.
+	const moveLog = useMoveStore((s) => s.moves);
+	const focusedMoveId = useMoveStore((s) => s.focusedMoveId);
+	const moveFilterTokenId = useMoveStore((s) => s.filterTokenId);
+	const movePanelOpen = useMoveStore((s) => s.panelOpen);
+	useEffect(() => {
+		if (!rendererReady || !sceneGridSize) return;
+		const layer = moveTrailLayerRef.current;
+		const labels = moveTrailLabelsRef.current;
+		if (!layer || !labels) return;
+		layer.clear();
+		clearLabels(labels);
+		if (!movePanelOpen || !scene) return;
+		const accent = dsColor("--primary", 0xa855f7);
+		const inScene = moveLog.filter((move) => move.sceneId === scene.id);
+		const trail = moveFilterTokenId
+			? inScene.filter((move) => move.tokenId === moveFilterTokenId)
+			: [];
+		for (const move of trail) {
+			if (move.id === focusedMoveId) continue;
+			drawMoveArrow(layer, labels, move.from, move.to, {
+				viewScale,
+				gridSize: sceneGridSize,
+				color: accent,
+				emphasis: false,
+			});
+		}
+		const focused = inScene.find((move) => move.id === focusedMoveId);
+		if (focused) {
+			drawMoveArrow(layer, labels, focused.from, focused.to, {
+				viewScale,
+				gridSize: sceneGridSize,
+				color: accent,
+				emphasis: true,
+				caption: formatDistance(focused.distance, focused.unit),
+			});
+		}
+	}, [
+		moveLog,
+		focusedMoveId,
+		moveFilterTokenId,
+		movePanelOpen,
+		scene,
+		sceneGridSize,
+		viewScale,
+		rendererReady,
+	]);
+
 	// 7c. Paredes: redesenha só na camada do mestre ou quando usando a ferramenta de parede.
 	// Na camada normal (token ou mapa), as linhas das paredes não aparecem no mapa.
 	const showWalls = isGM && (activeLayer === "gm" || activeTool === "wall");
@@ -2300,7 +2367,27 @@ export function VTTCanvas({
 					if (display) display.position.set(finalPos.x, finalPos.y);
 					updateToken(member.id, { x: finalPos.x, y: finalPos.y });
 					if (onUpdateToken) {
-						void onUpdateToken(member.id, { x: finalPos.x, y: finalPos.y });
+						const saved = onUpdateToken(member.id, {
+							x: finalPos.x,
+							y: finalPos.y,
+						});
+						// Histórico: aparece na hora; se o servidor recusar a posição
+						// (o token volta), a linha é retirada.
+						const authorId = userIdRef.current;
+						if (authorId) {
+							recordMove(
+								{
+									sceneId: scene.id,
+									tokenId: member.id,
+									tokenName: token.name,
+									from: { x: orig.x, y: orig.y },
+									to: { x: finalPos.x, y: finalPos.y },
+									authorId,
+									authorName: authorNameRef.current,
+								},
+								Promise.resolve(saved),
+							);
+						}
 					}
 					if (onBroadcastDrag) {
 						onBroadcastDrag(member.id, finalPos.x, finalPos.y);

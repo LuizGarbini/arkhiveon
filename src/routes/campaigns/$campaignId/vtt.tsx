@@ -12,6 +12,7 @@ import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
+import { VTTMoveHistoryPanel } from "@/components/vtt/vtt-move-history-panel";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
@@ -35,6 +36,8 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
+import { useMoveStore } from "@/lib/vtt/move-store";
+import { subscribeMoves } from "@/lib/vtt/move-sync";
 import {
 	canControlVTTToken,
 	tableRole,
@@ -129,6 +132,7 @@ function VTTSession() {
 	const setIsGM = useVTTStore((s) => s.setIsGM);
 	const setIsCoGM = useVTTStore((s) => s.setIsCoGM);
 	const isGM = useVTTStore((s) => s.isGM);
+	const isCoGM = useVTTStore((s) => s.isCoGM);
 	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
@@ -235,11 +239,13 @@ function VTTSession() {
 				__rpg_store__?: typeof useRPGStore;
 				__combat_store__?: typeof useCombatStore;
 				__roll_store__?: typeof useRollStore;
+				__move_store__?: typeof useMoveStore;
 			};
 			win.__vtt_store__ = useVTTStore;
 			win.__rpg_store__ = useRPGStore;
 			win.__combat_store__ = useCombatStore;
 			win.__roll_store__ = useRollStore;
+			win.__move_store__ = useMoveStore;
 		}
 	}, []);
 
@@ -434,6 +440,17 @@ function VTTSession() {
 			);
 		}
 	}, [activeSceneId, sceneSession]);
+
+	// 3c. Histórico de movimentos: só mestre e co-mestre carregam e assinam.
+	const canSeeMoves = isGM || isCoGM;
+	useEffect(() => {
+		if (!activeSceneId || !canSeeMoves) return;
+		const stop = subscribeMoves(activeSceneId);
+		return () => {
+			stop();
+			useMoveStore.getState().focusMove(null);
+		};
+	}, [activeSceneId, canSeeMoves]);
 
 	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
@@ -1612,6 +1629,7 @@ function VTTSession() {
 					<VTTToolbar />
 					<VTTCombatPanel />
 					<VTTFeedPanel />
+					<VTTMoveHistoryPanel onUpdateToken={handleUpdateToken} />
 				</>
 			)}
 
