@@ -2209,10 +2209,10 @@ export function VTTCanvas({
 					}
 				}
 				if (wasBlocked) {
-					showToast(
-						"Movimento bloqueado: você não pode atravessar paredes.",
-						"warning",
-					);
+					showToast("info", {
+						title: "Movimento bloqueado",
+						description: "Você não pode atravessar paredes.",
+					});
 				}
 				paintAurasRef.current();
 				draggingTokenIdRef.current = null;

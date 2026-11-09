@@ -258,7 +258,7 @@ export function VttHpAdjust({
 										max: hasMaxChange ? nextMax : undefined,
 									});
 								} else {
-									if (hasCurrentChange) {
+									if (hasCurrentChange && onChange) {
 										await onChange(nextCurrent);
 									}
 									if (hasMaxChange && onChangeMax) {
