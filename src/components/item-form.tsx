@@ -3,6 +3,7 @@ import { Info, Pencil, Plus, XIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
+import { emptyAmmoStats } from "@/core/rules/ammo";
 import {
 	describeItemLine,
 	emptyArmorStats,
@@ -27,6 +28,7 @@ import {
 	canCreateCampaignItem,
 	canManageOwnItem,
 } from "@/lib/worldbuilding/item-ownership";
+import { ItemAmmoTab } from "./item-form/item-ammo-tab";
 import { ItemAttackTab, ItemDefenseTab } from "./item-form/item-attack-tab";
 import { ItemBonusTab } from "./item-form/item-bonus-tab";
 import { ItemDescriptionTab } from "./item-form/item-description-tab";
@@ -209,7 +211,12 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const kind = itemCategoryKind(watched.type);
 	const tabs = buildItemTabs(kind);
 	const currentTab: ItemFormTabId =
-		activeTab === "mechanics" && kind === "other" ? "identity" : activeTab;
+		activeTab === "mechanics" &&
+		kind !== "weapon" &&
+		kind !== "armor" &&
+		kind !== "ammo"
+			? "identity"
+			: activeTab;
 	const statuses = tabStatus(watched, mode);
 	const { errors } = validateItemDraft(watched);
 	const canSubmit = Boolean(name.trim());
@@ -235,7 +242,9 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 			? "Comece pelo nome e pela imagem. Dano e propriedades ficam na aba Ataque."
 			: currentTab === "mechanics" && kind === "armor"
 				? "Quanto a armadura protege."
-				: TAB_SUBTITLES[currentTab];
+				: currentTab === "mechanics" && kind === "ammo"
+					? "Dano, adicionais e condições que esta munição aplica no disparo."
+					: TAB_SUBTITLES[currentTab];
 
 	function handleCategoryChange(type: string) {
 		setValue("type", type, { shouldDirty: true });
@@ -247,6 +256,8 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 			setValue("armor", emptyArmorStats(type === "Escudo"), {
 				shouldDirty: true,
 			});
+		if (nextKind === "ammo" && !values.ammo)
+			setValue("ammo", emptyAmmoStats(), { shouldDirty: true });
 	}
 
 	function onSubmit(data: ItemFormValues) {
@@ -266,6 +277,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 						}
 					: undefined,
 			armor: dataKind === "armor" ? data.armor : undefined,
+			ammo: dataKind === "ammo" ? data.ammo : undefined,
 			bonuses: data.bonuses?.length ? data.bonuses : undefined,
 		};
 		let createdId: string | null = null;
@@ -338,6 +350,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 					kind={kind}
 					weapon={watched.weapon}
 					armor={watched.armor}
+					ammo={watched.ammo}
 				/>
 				<div className="flex min-w-0 flex-1 flex-col">
 					<DialogHeader className="relative shrink-0 gap-1 border-b border-border/60 max-sm:sr-only sm:px-6 sm:pt-5 sm:pb-4">
@@ -376,6 +389,9 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 						) : null}
 						{currentTab === "mechanics" && kind === "armor" ? (
 							<ItemDefenseTab form={form} />
+						) : null}
+						{currentTab === "mechanics" && kind === "ammo" ? (
+							<ItemAmmoTab form={form} errors={errors} />
 						) : null}
 						{currentTab === "bonus" ? <ItemBonusTab form={form} /> : null}
 						{currentTab === "description" ? (

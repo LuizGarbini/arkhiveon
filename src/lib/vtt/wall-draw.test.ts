@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	drawWallPreview,
 	drawWalls,
+	parseHexColor,
 	selectedWallVertices,
 	WALL_HANDLE_SIZE,
 	WALL_PREVIEW_TOKEN,
@@ -28,6 +29,15 @@ function fakeLayer() {
 	};
 	return { g: g as unknown as Graphics, raw: g, calls };
 }
+
+describe("parseHexColor", () => {
+	it("does not throw when color is missing (Safari K.color.replace)", () => {
+		expect(parseHexColor(undefined)).toBe(0xa855f7);
+		expect(parseHexColor(null)).toBe(0xa855f7);
+		expect(parseHexColor("", 0x38bdf8)).toBe(0x38bdf8);
+		expect(parseHexColor("#38bdf8", 0x38bdf8)).toBe(0x38bdf8);
+	});
+});
 
 describe("handles das paredes selecionadas", () => {
 	it("vértices sem repetir o ponto compartilhado", () => {

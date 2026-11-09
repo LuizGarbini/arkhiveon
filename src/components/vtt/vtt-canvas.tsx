@@ -10,6 +10,7 @@ import {
 	Texture,
 } from "pixi.js";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { showToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { playPingAudio } from "@/lib/vtt/audio";
@@ -40,6 +41,7 @@ import {
 	squareGridLines,
 	ZERO_ORIGIN,
 } from "@/lib/vtt/grid-math";
+import { hasLineOfSight } from "@/lib/vtt/line-of-sight";
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
@@ -392,6 +394,7 @@ export function VTTCanvas({
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const activeTool = useVTTStore((s) => s.activeTool);
+	const activeLayer = useVTTStore((s) => s.activeLayer);
 	const tokens = useVTTStore((s) => s.tokens);
 	const linkedCharacterIds = tokens
 		.map((token) => token.characterId)
@@ -704,8 +707,7 @@ export function VTTCanvas({
 		if (sceneGridType === "none" || sceneGridSize <= 0 || sceneGridOpacity <= 0)
 			return;
 
-		const colorHex =
-			Number.parseInt(sceneGridColor.replace("#", "0x"), 16) || 0xffffff;
+		const colorHex = parseHexColor(sceneGridColor, 0xffffff);
 
 		const gridOrigin = { x: sceneGridOffsetX, y: sceneGridOffsetY };
 		if (sceneGridType === "square") {
@@ -1014,6 +1016,23 @@ export function VTTCanvas({
 						barCorner,
 					);
 					hpBar.fill({ color: hpFill });
+				}
+
+				const tokenTempHp = token.tempHp ?? 0;
+				if (tokenTempHp > 0) {
+					const tempRatio = Math.min(1, tokenTempHp / maxHp);
+					const currentWidth = Math.max(0, barWidth * hpRatio);
+					hpBar.roundRect(
+						-barWidth / 2 + currentWidth,
+						barY,
+						Math.max(
+							2 * tokenScale,
+							Math.min(barWidth - currentWidth, barWidth * tempRatio),
+						),
+						barHeight,
+						barCorner,
+					);
+					hpBar.fill({ color: 0x22d3ee });
 				}
 
 				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, barCorner);
@@ -1327,8 +1346,7 @@ export function VTTCanvas({
 			const cursorContainer = new Container();
 			cursorContainer.position.set(cursor.x, cursor.y);
 
-			const colorHex =
-				Number.parseInt(cursor.color.replace("#", "0x"), 16) || 0x38bdf8;
+			const colorHex = parseHexColor(cursor.color, 0x38bdf8);
 
 			// Pointer Arrow
 			const arrow = new Graphics();
@@ -1502,12 +1520,13 @@ export function VTTCanvas({
 		rendererReady,
 	]);
 
-	// 7c. Paredes: redesenha só quando a lista ou a seleção mudam (zoom e pan
-	// só mexem no container do mundo; nada no ticker). O jogador não recebe paredes e nada é desenhado.
+	// 7c. Paredes: redesenha só na camada do mestre ou quando usando a ferramenta de parede.
+	// Na camada normal (token ou mapa), as linhas das paredes não aparecem no mapa.
+	const showWalls = isGM && (activeLayer === "gm" || activeTool === "wall");
 	useEffect(() => {
 		if (!rendererReady || !wallsLayerRef.current) return;
-		drawWalls(wallsLayerRef.current, isGM ? walls : [], selectedWallIds);
-	}, [walls, selectedWallIds, isGM, rendererReady]);
+		drawWalls(wallsLayerRef.current, showWalls ? walls : [], selectedWallIds);
+	}, [walls, selectedWallIds, showWalls, rendererReady]);
 
 	// 7d. Prévia da polilinha (os pontos fixos; o trecho até o cursor é
 	// atualizado direto no pointermove, sem passar pelo React).
@@ -1539,8 +1558,7 @@ export function VTTCanvas({
 			const progress = elapsed / 3000;
 			const radius = 20 + progress * 60;
 			const alpha = Math.max(0, 1 - progress);
-			const colorHex =
-				Number.parseInt(ping.color.replace("#", "0x"), 16) || 0xa855f7;
+			const colorHex = parseHexColor(ping.color, 0xa855f7);
 
 			layer.circle(ping.x, ping.y, radius);
 			layer.stroke({ width: 3, color: colorHex, alpha });
@@ -2251,9 +2269,12 @@ export function VTTCanvas({
 					worldPoint.y - group.grabY,
 				);
 				const liveTokens = useVTTStore.getState().tokens;
+				const currentWalls = useVTTStore.getState().walls;
+				let wasBlocked = false;
 				for (const member of moved) {
+					const orig = group.members.find((m) => m.id === member.id);
 					const token = liveTokens.find((item) => item.id === member.id);
-					if (!token) continue;
+					if (!token || !orig) continue;
 					const snapped = snapToGrid(
 						{ x: member.x, y: member.y },
 						scene.gridType,
@@ -2261,15 +2282,33 @@ export function VTTCanvas({
 						token.sizeCells,
 						gridOrigin,
 					);
+					const isBlocked =
+						!isGM &&
+						currentWalls.length > 0 &&
+						!hasLineOfSight(
+							{ x: orig.x, y: orig.y },
+							{ x: snapped.x, y: snapped.y },
+							currentWalls,
+						);
+					const finalPos = isBlocked ? { x: orig.x, y: orig.y } : snapped;
+					if (isBlocked) {
+						wasBlocked = true;
+					}
 					const display = tokenDisplayObjectsRef.current.get(member.id);
-					if (display) display.position.set(snapped.x, snapped.y);
-					updateToken(member.id, { x: snapped.x, y: snapped.y });
+					if (display) display.position.set(finalPos.x, finalPos.y);
+					updateToken(member.id, { x: finalPos.x, y: finalPos.y });
 					if (onUpdateToken) {
-						void onUpdateToken(member.id, { x: snapped.x, y: snapped.y });
+						void onUpdateToken(member.id, { x: finalPos.x, y: finalPos.y });
 					}
 					if (onBroadcastDrag) {
-						onBroadcastDrag(member.id, snapped.x, snapped.y);
+						onBroadcastDrag(member.id, finalPos.x, finalPos.y);
 					}
+				}
+				if (wasBlocked) {
+					showToast("info", {
+						title: "Movimento bloqueado",
+						description: "Você não pode atravessar paredes.",
+					});
 				}
 				paintAurasRef.current();
 				draggingTokenIdRef.current = null;

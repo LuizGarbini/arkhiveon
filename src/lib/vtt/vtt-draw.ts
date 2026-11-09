@@ -20,7 +20,7 @@ export function parseHexColor(
 	color: string | null | undefined,
 	fallback = 0xa855f7,
 ): number {
-	if (!color) return fallback;
+	if (typeof color !== "string" || color.length === 0) return fallback;
 	const parsed = Number.parseInt(color.replace("#", "0x"), 16);
 	return Number.isFinite(parsed) ? parsed : fallback;
 }

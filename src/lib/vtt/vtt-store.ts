@@ -385,7 +385,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 			// Sair da Régua apaga a medição (inclusive a fixada).
 			...(tool === "ruler" ? {} : { activeMeasurement: null }),
 		})),
-	setActiveLayer: (layer) => set({ activeLayer: layer }),
+	setActiveLayer: (layer) =>
+		set((state) => ({
+			activeLayer: layer === "gm" && !state.isGM ? "token" : layer,
+		})),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
 	setActiveTemplateKind: (kind) => set({ activeTemplateKind: kind }),
 	setTemplateSizeCells: (cells) => set({ templateSizeCells: cells }),
@@ -704,7 +707,12 @@ export const useVTTStore = create<VTTState>((set) => ({
 						: state.showCharacterSheetId,
 			};
 		}),
-	setIsGM: (isGM) => set({ isGM }),
+	setIsGM: (isGM) =>
+		set((state) => ({
+			isGM,
+			activeLayer:
+				!isGM && state.activeLayer === "gm" ? "token" : state.activeLayer,
+		})),
 
 	setWalls: (walls) => set({ walls }),
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),

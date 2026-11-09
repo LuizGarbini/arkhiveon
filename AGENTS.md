@@ -38,18 +38,16 @@ This document establishes development standards and workflow rules for ALL AI ag
 - **Branch Naming**:
   - `garbini/*` for Luiz Garbini (`garbasneto@gmail.com`)
   - `arroyo/*` for Gabriel Arroyo (`gabrielarroyoc18@gmail.com`)
-- **Review Before Push**: Always test with `pnpm run build` and ask for confirmation before pushing to `origin/main`.
+- **Review Before Push**: During intermediate iterations, run only the targeted unit test for the modified component (`pnpm vitest run <path/to/test>`) and Biome. Reserve `pnpm run build` and full suite checks strictly for the final step before merging to `origin/main`.
+- **No Repository Clutter**: Stage explicit files only (`git add <file>`); never run blanket `git add .`. Never commit temporary scratch scripts.
 
 ---
 
-## 5. Automated E2E Video / Screenshot Preview Testing
-- Whenever completing any frontend feature, UI/UX task, or visual component, execute:
-  ```bash
-  pnpm preview:record
-  ```
-- This runs Playwright to record `docs/previews/latest-preview.webm` and `latest-preview.png`.
+## 5. UI/UX Review & Lean Visual Workflow
+- **Live Local Review (Default)**: Push feature commits directly to the user's branch (`garbini/*` or `arroyo/*`) so the developer can review live on their local dev server (`localhost:5173` with instant Vite HMR) without waiting minutes for headless browser boots or bloating context with image tokens.
+- **Automated E2E Previews (On-Demand Only)**: Only run Playwright / `pnpm preview:record` when explicitly requested by the user. Do not generate heavy screenshots or screen recordings by default during iterative coding.
 - **Git Protection**: `docs/previews/` is strictly ignored in `.gitignore` to avoid bloating repository history.
-- **PR Attachment**: Drag & drop `docs/previews/latest-preview.webm` directly into the GitHub PR description box (GitHub automatically hosts and renders it in the PR).
+- **PR Attachment**: When requested, drag & drop previews directly into the GitHub PR description box.
 
 ---
 

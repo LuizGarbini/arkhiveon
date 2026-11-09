@@ -112,4 +112,16 @@ describe("wallBlocksRay / hasLineOfSight", () => {
 			true,
 		);
 	});
+
+	it("bloqueia movimento de token que tenta atravessar uma parede", () => {
+		const dividingWall = wall("wall-1", 70, 0, 70, 200);
+		// Tentativa de mover do lado esquerdo (x=35) para o direito (x=105)
+		const startPos = { x: 35, y: 70 };
+		const destPos = { x: 105, y: 70 };
+		expect(hasLineOfSight(startPos, destPos, [dividingWall])).toBe(false);
+
+		// Movimento no mesmo lado da parede (não atravessa)
+		const validPos = { x: 35, y: 140 };
+		expect(hasLineOfSight(startPos, validPos, [dividingWall])).toBe(true);
+	});
 });

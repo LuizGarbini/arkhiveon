@@ -67,6 +67,7 @@ export function linkKindOf(item: Pick<Item, "type">): LinkKind {
 	const kind = itemCategoryKind(item.type);
 	if (kind === "weapon") return "weapon";
 	if (kind === "armor") return "armor";
+	if (kind === "ammo") return "consumable";
 	const t = normalize(item.type);
 	if (t === "anel" || t === "aneis" || t === "ring") return "ring";
 	if (CONSUMABLE_TYPES.some((c) => t === c || t.startsWith(`${c} `)))

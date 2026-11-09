@@ -2,6 +2,29 @@
 
 Estes arquivos rodam só em Postgres descartável. Não use `supabase db push`, `supabase link` nem o projeto remoto.
 
+## 0063 — consumo de munição (RPC + ledger + trigger)
+
+Somente Postgres **local** (127.0.0.1). Não aplica no projeto remoto. O bootstrap `0063_local_bootstrap.sql` replica auth/papéis/ficha/item/roll_dice o suficiente para a migration; **não** substitui o schema de produção.
+
+```bash
+bash scripts/test-0063-local.sh
+```
+
+A transação de `0063_consume_ammo.sql` termina em `ROLLBACK`. A concorrência usa duas conexões `pg`. Prova = SQL ROLE + `request.jwt.claims`, **não** HTTP / dois browsers.
+
+Saída esperada: `0063: N cenários registrados, todos os asserts passaram` e `0063 concurrency: 1 sucesso / 1 estoque 0`.
+
+## 0064 — fórmula mesclada no parse/roll_dice
+
+Somente Postgres **local** (127.0.0.1). Não aplica no projeto remoto. Reusa o bootstrap da 0063 e aplica `0064_ammo_roll_formula.sql` em banco descartável `arkhiveon_0064`.
+
+```bash
+bash scripts/test-0064-local.sh
+```
+
+Prova o parse de `2d6+3` (compat) e `1d8+1d6+3` (dois pools, sem achatar). A transação termina em `ROLLBACK`.
+
+
 ## 0058 — offset do grid e `scale_scene_geometry`
 
 O Docker deste Mac estava pausado quando a fatia foi escrita, então o teste não foi executado aqui. Com o Supabase local no ar (migrations até a `0058` já aplicadas nesse banco, nunca no remoto):

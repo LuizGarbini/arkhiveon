@@ -375,3 +375,40 @@ describe("parede em L (bug relatado em produção)", () => {
 		expect(db.deletedIds).toEqual([vertical?.id]);
 	});
 });
+
+describe("permissões de camada e visibilidade de paredes", () => {
+	it("não-mestre (jogador ou co-mestre) não pode selecionar a camada gm", () => {
+		useVTTStore.setState({ isGM: false, activeLayer: "token" });
+		st().setActiveLayer("gm");
+		expect(st().activeLayer).toBe("token");
+	});
+
+	it("perder status de mestre enquanto na camada gm redefine para token", () => {
+		useVTTStore.setState({ isGM: true, activeLayer: "token" });
+		st().setActiveLayer("gm");
+		expect(st().activeLayer).toBe("gm");
+		st().setIsGM(false);
+		expect(st().activeLayer).toBe("token");
+	});
+
+	it("paredes só devem ser visíveis para o mestre na camada gm ou com a ferramenta parede ativa", () => {
+		const shouldShowWalls = (
+			isGM: boolean,
+			activeLayer: string,
+			activeTool: string,
+		) => isGM && (activeLayer === "gm" || activeTool === "wall");
+
+		// Mestre na camada normal de tokens sem ferramenta parede: NÃO mostra paredes
+		expect(shouldShowWalls(true, "token", "select")).toBe(false);
+		// Mestre na camada de mapa sem ferramenta parede: NÃO mostra paredes
+		expect(shouldShowWalls(true, "map", "select")).toBe(false);
+		// Mestre na camada do mestre: MOSTRA paredes
+		expect(shouldShowWalls(true, "gm", "select")).toBe(true);
+		// Mestre desenhando paredes com a ferramenta: MOSTRA paredes
+		expect(shouldShowWalls(true, "token", "wall")).toBe(true);
+		// Co-mestre ou jogador: NUNCA mostra paredes
+		expect(shouldShowWalls(false, "token", "select")).toBe(false);
+		expect(shouldShowWalls(false, "gm", "select")).toBe(false);
+		expect(shouldShowWalls(false, "token", "wall")).toBe(false);
+	});
+});

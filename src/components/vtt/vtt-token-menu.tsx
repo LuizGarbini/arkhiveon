@@ -37,9 +37,13 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
+import {
+	tokenRemovalKind,
+	VTTRemoveTokenDialog,
+} from "@/components/vtt/vtt-remove-token-dialog";
 import { calculateAbilityModifier, formatModifier } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
-import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
+import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import {
 	addBonusDie,
@@ -73,7 +77,8 @@ interface VTTTokenMenuProps {
 		tokenId: string,
 		updates: Partial<VTTToken>,
 	) => Promise<unknown>;
-	onDeleteToken: (tokenId: string) => Promise<void>;
+	/** `false` quando o servidor recusou a remoção. */
+	onDeleteToken: (tokenId: string) => Promise<boolean | undefined>;
 }
 
 export function VTTTokenMenu({
@@ -91,7 +96,6 @@ export function VTTTokenMenu({
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const characterId = token?.characterId ?? null;
 	const { user } = useAuth();
-	const role = useActiveCampaignRole();
 	const character = useRPGStore((s) =>
 		characterId
 			? (s.characters.find((c) => c.id === characterId) ?? null)
@@ -102,6 +106,8 @@ export function VTTTokenMenu({
 		selectSheetHealthMax(s, characterId),
 	);
 	const [viewerOpen, setViewerOpen] = useState(false);
+	const [removeOpen, setRemoveOpen] = useState(false);
+	const [removeError, setRemoveError] = useState<string | null>(null);
 	// Quem abriu o visualizador (retrato ou item do menu) recebe o foco de volta.
 	const viewerOpenerRef = useRef<HTMLElement | null>(null);
 	const [saving, setSaving] = useState(false);
@@ -121,7 +127,24 @@ export function VTTTokenMenu({
 		runMutation(async () => {
 			await saveToken(id, updates);
 		});
-	const onDeleteToken = (id: string) => runMutation(() => deleteToken(id));
+	const confirmRemove = () => {
+		if (!token) return;
+		setRemoveError(null);
+		void runMutation(async () => {
+			const failed =
+				"Não foi possível remover o token. Ele foi mantido na mesa.";
+			try {
+				const ok = await deleteToken(token.id);
+				if (ok === false) {
+					setRemoveError(failed);
+					return;
+				}
+				setRemoveOpen(false);
+			} catch (cause) {
+				setRemoveError(cause instanceof Error ? cause.message : failed);
+			}
+		});
+	};
 
 	if (!token || activeTokenIdForMenu !== token.id) return null;
 	if (isMobile && sheetOpen) return null;
@@ -140,17 +163,23 @@ export function VTTTokenMenu({
 		sheetHealthMax,
 	});
 
-	const isOwnerOrEditor = role === "owner" || role === "editor";
 	const isCharacterCreator = Boolean(
 		character && user?.id && character.createdBy === user.id,
 	);
 	const isTokenController = Boolean(
 		user?.id && token.controlledBy?.includes(user.id),
 	);
-	const canEdit =
-		isGM || isOwnerOrEditor || isCharacterCreator || isTokenController;
-	const showMax =
-		!hp.fromSheet || isGM || isCharacterCreator || isTokenController;
+	const canEdit = character
+		? isGM || isCharacterCreator || isTokenController
+		: isGM;
+	const showMax = character
+		? isGM || isCharacterCreator || isTokenController
+		: isGM;
+
+	const tokenTempHp =
+		character?.tempHealth !== undefined
+			? character.tempHealth
+			: (token.tempHp ?? 0);
 
 	const handleUpdateHp = (next: number) => {
 		void onUpdateToken(token.id, { hpCurrent: next });
@@ -162,18 +191,43 @@ export function VTTTokenMenu({
 				healthMax: nextMax,
 			});
 		}
-		if (isGM || !character) {
-			await onUpdateToken(token.id, {
-				hpCurrent: hp.current,
-				hpMax: nextMax,
-			});
+		await onUpdateToken(token.id, {
+			hpMax: nextMax,
+		});
+	};
+
+	const handleUpdateHpValues = async ({
+		current,
+		max,
+	}: {
+		current?: number;
+		max?: number;
+	}) => {
+		if (character) {
+			const charPatch: Partial<Character> = {};
+			if (current !== undefined) charPatch.health = current;
+			if (max !== undefined) charPatch.healthMax = max;
+			if (Object.keys(charPatch).length > 0) {
+				await useRPGStore.getState().updateCharacter(character.id, charPatch);
+			}
+		}
+		const tokenPatch: Partial<VTTToken> = {};
+		if (current !== undefined) tokenPatch.hpCurrent = current;
+		if (max !== undefined) tokenPatch.hpMax = max;
+		if (Object.keys(tokenPatch).length > 0) {
+			await onUpdateToken(token.id, tokenPatch);
 		}
 	};
 
 	const handleUpdateTempHp = async (nextTemp: number) => {
-		if (!character) return;
-		await useRPGStore.getState().updateCharacter(character.id, {
-			tempHealth: Math.max(0, nextTemp),
+		const sanitized = Math.max(0, nextTemp);
+		if (character) {
+			await useRPGStore.getState().updateCharacter(character.id, {
+				tempHealth: sanitized,
+			});
+		}
+		await onUpdateToken(token.id, {
+			tempHp: sanitized,
 		});
 	};
 
@@ -235,7 +289,7 @@ export function VTTTokenMenu({
 	// Room for the whole panel (header, HP, conditions, size, elevation and the
 	// pinned action row) so nothing sits behind the sticky footer on common
 	// phone and desktop heights; shorter screens scroll the body instead.
-	const PANEL_HEIGHT_BUDGET = 640;
+	const PANEL_HEIGHT_BUDGET = 700;
 	const leftPos = Math.max(
 		12,
 		Math.min(screenX + menuOffsetX, window.innerWidth - 332),
@@ -385,12 +439,11 @@ export function VTTTokenMenu({
 						hpCurrent={hp.current}
 						hpMax={hp.max}
 						showMax={showMax}
-						tempHp={character?.tempHealth ?? 0}
-						onChange={handleUpdateHp}
+						tempHp={tokenTempHp}
+						onChange={character || canEdit ? handleUpdateHp : undefined}
 						onChangeMax={canEdit ? handleUpdateMax : undefined}
-						onChangeTempHp={
-							character && canEdit ? handleUpdateTempHp : undefined
-						}
+						onChangeHp={canEdit ? handleUpdateHpValues : undefined}
+						onChangeTempHp={canEdit ? handleUpdateTempHp : undefined}
 					/>
 
 					{character && (
@@ -518,8 +571,8 @@ export function VTTTokenMenu({
 					</div>
 				</div>
 
-				{/* Quick Actions (Rotate, Hide, Lock, Delete) — sticky footer so they stay reachable */}
-				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex items-center justify-between border-t border-border/70 bg-card px-4 pt-2 pb-3">
+				{/* Quick Actions (Rotate, Hide, Lock) — sticky footer so they stay reachable */}
+				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col gap-2 border-t border-border/70 bg-card px-4 pt-2 pb-3">
 					<div className="flex items-center gap-1">
 						<Tooltip>
 							<TooltipTrigger
@@ -645,16 +698,36 @@ export function VTTTokenMenu({
 
 					<Button
 						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() => onDeleteToken(token.id)}
-						className="h-11 px-3 text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-1 rounded-xl"
+						variant="destructive"
+						onClick={() => {
+							setRemoveError(null);
+							setRemoveOpen(true);
+						}}
+						aria-label={`Remover ${token.name} da mesa`}
+						className="h-11 w-full gap-1.5 rounded-xl"
 					>
-						<Trash2 className="h-3 w-3" />
-						<span>Excluir</span>
+						<Trash2 className="size-4" />
+						Remover da mesa
 					</Button>
 				</div>
 			</fieldset>
+			<VTTRemoveTokenDialog
+				request={
+					removeOpen
+						? {
+								name: token.name,
+								tokenIds: [token.id],
+								kind: tokenRemovalKind(token),
+							}
+						: null
+				}
+				pending={saving}
+				error={removeError}
+				onOpenChange={(open) => {
+					if (!open) setRemoveOpen(false);
+				}}
+				onConfirm={confirmRemove}
+			/>
 		</div>
 	);
 }

@@ -38,7 +38,7 @@ const baseToken: VTTToken = {
 function setup(token: Partial<VTTToken> = {}, isGM = true) {
 	useVTTStore.setState({ isGM, activeTokenIdForMenu: "tok-1" });
 	const onUpdateToken = vi.fn(async () => {});
-	const onDeleteToken = vi.fn(async () => {});
+	const onDeleteToken = vi.fn(async () => undefined);
 	render(
 		<VTTTokenMenu
 			token={{ ...baseToken, ...token }}
@@ -261,6 +261,24 @@ describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
 		expect(rotate.getAttribute("data-slot")).toBe("tooltip-trigger");
 	});
 
+	it("Remover da mesa pede confirmação e só então apaga o token", async () => {
+		const { onDeleteToken } = setup({ characterId: "char-1" });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Elbereth da mesa" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("A ficha continua na campanha.");
+		expect(onDeleteToken).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(onDeleteToken).not.toHaveBeenCalled();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Remover Elbereth da mesa" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Remover da mesa" }));
+		await waitFor(() => expect(onDeleteToken).toHaveBeenCalledWith("tok-1"));
+	});
+
 	it("o texto do Tooltip acompanha o estado (oculto/travado/camada do mestre)", () => {
 		setup({ isHidden: true, isLocked: true, layer: "gm" });
 		for (const name of [
@@ -410,5 +428,76 @@ describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos
 				.characters.find((c) => c.id === "char-sync-1");
 			expect(updated?.tableResources?.bonusDice[0].quantity).toBe(1);
 		});
+	});
+
+	it("permite adicionar, visualizar e zerar vida temporária em token sem ficha vinculada", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 15,
+			hpMax: 20,
+			tempHp: 0,
+		});
+
+		const input = screen.getByRole("spinbutton", { name: "Vida temporária" });
+		fireEvent.change(input, { target: { value: "7" } });
+		const submit = screen.getByRole("button", { name: "Definir" });
+		fireEvent.click(submit);
+
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { tempHp: 7 });
+	});
+
+	it("absorve dano da vida temporária antes do PV atual em token sem ficha vinculada", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 20,
+			hpMax: 20,
+			tempHp: 5,
+		});
+		expect(screen.getByText("+5 temp")).toBeTruthy();
+
+		const minus1 = screen.getByRole("button", { name: "-1" });
+		fireEvent.click(minus1);
+
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { tempHp: 4 });
+	});
+
+	it("permite editar PV atual e PV máximo diretamente pelo formulário em token sem ficha", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 10,
+			hpMax: 15,
+			tempHp: 0,
+		});
+
+		const currentInput = screen.getByRole("spinbutton", { name: "PV atual" });
+		const maxInput = screen.getByRole("spinbutton", { name: "PV máximo" });
+		fireEvent.change(currentInput, { target: { value: "14" } });
+		fireEvent.change(maxInput, { target: { value: "25" } });
+
+		const aplicar = screen.getByRole("button", { name: "Aplicar" });
+		fireEvent.click(aplicar);
+
+		await waitFor(() => {
+			expect(onUpdateToken).toHaveBeenCalledWith("tok-1", {
+				hpCurrent: 14,
+				hpMax: 25,
+			});
+		});
+	});
+
+	it("não-mestre sem controle sobre token sem ficha não pode editar o PV", () => {
+		setup(
+			{
+				characterId: null,
+				hpCurrent: 10,
+				hpMax: 20,
+				controlledBy: [],
+			},
+			false,
+		);
+
+		expect(screen.queryByRole("spinbutton", { name: "PV atual" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Aplicar" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Definir" })).toBeNull();
 	});
 });

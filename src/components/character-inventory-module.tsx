@@ -25,6 +25,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import {
 	ABILITY_LABELS,
 	DAMAGE_TYPE_LABELS,
@@ -34,6 +35,20 @@ import {
 	resolveLinkedEntries,
 	WEAPON_ABILITIES,
 } from "@/core/rules";
+import {
+	canRestockAmmo,
+	isCatalogAmmoEntry,
+	nextAmmoQuantity,
+} from "@/core/rules/ammo";
+import { applyLocalInventoryQuantity } from "@/lib/ammo/apply-local-qty";
+import {
+	AmmoConsumeError,
+	AmmoConsumeOfflineError,
+	AmmoConsumeUnavailableError,
+	isAmmoRpcReady,
+	setAmmoQuantity,
+} from "@/lib/ammo/consume-ammo";
+import { useActiveCampaignId, useActiveCampaignRole } from "@/lib/store";
 import type {
 	Character,
 	DamageType,
@@ -78,6 +93,14 @@ export function CharacterInventoryModule({
 	const campaignItems = useCampaignItems();
 	const canLinkRule = useCanLinkOnSheet(character);
 	const canLink = isDnd5e && canLinkRule;
+	const toast = useToast();
+	const role = useActiveCampaignRole();
+	const campaignId = useActiveCampaignId();
+	const restockAmmo = canRestockAmmo({
+		rpcReady: isAmmoRpcReady(),
+		role,
+	});
+	const [qtyBusyId, setQtyBusyId] = useState<string | null>(null);
 	const [isLinking, setIsLinking] = useState(false);
 	const linkedEntries = useMemo(
 		() => resolveLinkedEntries(inventoryList, campaignItems.byId),
@@ -262,6 +285,12 @@ export function CharacterInventoryModule({
 	};
 
 	const handleUpdateQuantity = (id: string, delta: number) => {
+		const entry = inventoryList.find((i) => i.id === id);
+		if (!entry) return;
+		if (isCatalogAmmoEntry(entry, campaignItems.byId)) {
+			void updateAmmoQuantity(entry, delta);
+			return;
+		}
 		onUpdateCharacter({
 			inventoryList: inventoryList
 				.map((i) =>
@@ -270,6 +299,75 @@ export function CharacterInventoryModule({
 				.filter((i) => i.quantity > 0),
 		});
 	};
+
+	async function updateAmmoQuantity(entry: InventoryItem, delta: number) {
+		if (qtyBusyId === entry.id) return;
+		if (!restockAmmo) {
+			toast.error({
+				title: isAmmoRpcReady()
+					? "Só o mestre pode reestocar munição."
+					: "A quantidade de munição ainda não está disponível no servidor.",
+			});
+			return;
+		}
+		if (!campaignId) {
+			toast.error({ title: "Nenhuma campanha ativa para alterar a munição." });
+			return;
+		}
+		const next = nextAmmoQuantity(entry.quantity ?? 0, delta);
+		if (next === (entry.quantity ?? 0)) return;
+		setQtyBusyId(entry.id);
+		try {
+			const result = await setAmmoQuantity({
+				campaignId,
+				characterId: character.id,
+				inventoryEntryId: entry.id,
+				expected: entry.quantity ?? 0,
+				next,
+			});
+			applyLocalInventoryQuantity(character.id, entry.id, result.quantity);
+		} catch (error) {
+			if (error instanceof AmmoConsumeOfflineError) {
+				toast.error({ title: error.message });
+			} else if (error instanceof AmmoConsumeUnavailableError) {
+				toast.error({ title: error.message });
+			} else if (error instanceof AmmoConsumeError && error.code === "40001") {
+				toast.error({
+					title:
+						"A quantidade desta munição mudou. Recarregue e tente de novo.",
+				});
+			} else {
+				toast.error({
+					title:
+						error instanceof Error
+							? error.message
+							: "Não foi possível alterar a munição.",
+				});
+			}
+		} finally {
+			setQtyBusyId(null);
+		}
+	}
+
+	function ammoQuantityLock(entry: InventoryItem): {
+		disabled: boolean;
+		title?: string;
+	} {
+		if (!isCatalogAmmoEntry(entry, campaignItems.byId))
+			return { disabled: false };
+		if (qtyBusyId === entry.id)
+			return { disabled: true, title: "Atualizando munição…" };
+		if (!isAmmoRpcReady()) {
+			return {
+				disabled: true,
+				title: "A quantidade de munição ainda não está disponível no servidor.",
+			};
+		}
+		if (!restockAmmo) {
+			return { disabled: true, title: "Só o mestre pode reestocar munição." };
+		}
+		return { disabled: false };
+	}
 
 	const handleSwitchLocation = (
 		id: string,
@@ -769,6 +867,8 @@ export function CharacterInventoryModule({
 										onChange={(patch) => patchEntry(item.id, patch)}
 										onQuantity={(delta) => handleUpdateQuantity(item.id, delta)}
 										onUnlink={() => handleRemoveItem(item.id)}
+										quantityDisabled={ammoQuantityLock(item).disabled}
+										quantityTitle={ammoQuantityLock(item).title}
 									/>
 								);
 							}

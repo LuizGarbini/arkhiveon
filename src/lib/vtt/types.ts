@@ -67,6 +67,7 @@ export interface VTTToken {
 	rotation: number;
 	hpCurrent?: number | null;
 	hpMax?: number | null;
+	tempHp?: number | null;
 	elevation: number;
 	conditions: string[];
 	auras: VTTAura[];

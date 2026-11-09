@@ -22,6 +22,7 @@ import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
+import { canUseMesaAssistant } from "@/lib/ai-mesa/gate";
 import { useAuth } from "@/lib/auth";
 import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
@@ -34,7 +35,6 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
-
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
@@ -56,6 +56,11 @@ import {
 import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import {
+	buildTokenInsertPayload,
+	insertVttToken,
+	requirePlaceContext,
+} from "@/lib/vtt/token-spawn";
 import type {
 	VTTAura,
 	VTTFogPath,
@@ -238,26 +243,26 @@ function VTTSession() {
 			activeCampaign &&
 				user &&
 				(activeCampaign.ownerId === user.id ||
-					activeCampaign.myRole === "owner" ||
-					activeCampaign.myRole === "editor"),
+					activeCampaign.myRole === "owner"),
 		);
 		setIsGM(isOwner);
 	}, [activeCampaign, user, setIsGM]);
 
 	// Assistente da mesa (piloto): só aparece se a campanha estiver na allowlist
 	// `ia_mesa_pilot_campaigns` do Supabase. Fora dela: nenhuma UI.
+	const canUsePilot = canUseMesaAssistant(activeCampaign, user?.id);
 	const [iaMesaEnabled, setIaMesaEnabled] = useState(false);
 	useEffect(() => {
 		let cancelled = false;
 		setIaMesaEnabled(false);
-		if (!isGM || !campaignId || !user) return;
+		if (!canUsePilot || !campaignId || !user) return;
 		void fetchMesaPilotEnabled(campaignId).then((enabled) => {
 			if (!cancelled) setIaMesaEnabled(enabled);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [campaignId, isGM, user]);
+	}, [campaignId, canUsePilot, user]);
 
 	const fetchCharacterOwners = useCallback(async () => {
 		const requestId = ++ownershipRequestRef.current;
@@ -332,7 +337,7 @@ function VTTSession() {
 			const active = mapped.find((s) => s.isActive);
 			const owner =
 				activeCampaign?.ownerId === user?.id ||
-				activeCampaign?.myRole === "editor";
+				activeCampaign?.myRole === "owner";
 			setActiveSceneId(active?.id ?? (owner ? mapped[0]?.id : null) ?? null);
 			const framed = initialSceneViewport(
 				window.innerWidth,
@@ -417,16 +422,15 @@ function VTTSession() {
 		};
 	}, [activeSceneId, fetchTokens]);
 
-	// 3b. Paredes da cena (Fatia 1): só o mestre carrega; o jogador não recebe
-	// nada (RLS da 0046 também nega). Efeito externo: busca no Supabase.
+	// 3b. Paredes da cena: carrega para todos os participantes para colisão e visão
 	useEffect(() => {
-		if (activeSceneId && isGM) {
+		if (activeSceneId) {
 			const revision = sceneSession.getReadGeneration(activeSceneId);
 			void loadWalls(activeSceneId, () =>
 				sceneSession.isReadCurrent(revision, activeSceneId),
 			);
 		}
-	}, [activeSceneId, isGM, sceneSession]);
+	}, [activeSceneId, sceneSession]);
 
 	// 4. Realtime subscription on vtt_scenes for scene activation & live edits
 	useEffect(() => {
@@ -553,6 +557,7 @@ function VTTSession() {
 							rotation: Number(row.rotation || 0),
 							hpCurrent: row.hp_current,
 							hpMax: row.hp_max,
+							tempHp: row.temp_hp ?? 0,
 							elevation: Number(row.elevation || 0),
 							conditions: (row.conditions as unknown as string[]) || [],
 							auras: (row.auras as unknown as VTTAura[]) || [],
@@ -574,6 +579,7 @@ function VTTSession() {
 								rotation: Number(row.rotation || 0),
 								hpCurrent: row.hp_current,
 								hpMax: row.hp_max,
+								tempHp: row.temp_hp ?? 0,
 								elevation: Number(row.elevation || 0),
 								conditions: (row.conditions as unknown as string[]) || [],
 								auras: (row.auras as unknown as VTTAura[]) || [],
@@ -590,6 +596,7 @@ function VTTSession() {
 								rotation: Number(row.rotation || 0),
 								hpCurrent: row.hp_current,
 								hpMax: row.hp_max,
+								tempHp: row.temp_hp ?? 0,
 								elevation: Number(row.elevation || 0),
 								conditions: (row.conditions as unknown as string[]) || [],
 								auras: (row.auras as unknown as VTTAura[]) || [],
@@ -644,6 +651,39 @@ function VTTSession() {
 			client.removeChannel(channel);
 		};
 	}, [activeSceneId, addToken, updateToken, removeToken, setFogState]);
+
+	// 5b. Realtime subscription on vtt_walls for live wall changes
+	useEffect(() => {
+		const client = getSupabase();
+		if (!client || !activeSceneId) return;
+		let cancelled = false;
+
+		const channel = client
+			.channel(`vtt-walls-live:${activeSceneId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "vtt_walls",
+					filter: `scene_id=eq.${activeSceneId}`,
+				},
+				() => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					void loadWalls(activeSceneId);
+				},
+			)
+			.subscribe();
+
+		return () => {
+			cancelled = true;
+			void client.removeChannel(channel);
+		};
+	}, [activeSceneId]);
 
 	const userColorRef = useRef(userColor);
 	useEffect(() => {
@@ -777,7 +817,18 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data?.userId) {
-						setRemoteMeasurement(data.userId, data.measurement || null);
+						const measurement = data.measurement;
+						setRemoteMeasurement(
+							data.userId,
+							measurement
+								? {
+										...measurement,
+										userId: data.userId,
+										userName: measurement.userName || "Jogador",
+										color: measurement.color || "#38bdf8",
+									}
+								: null,
+						);
 					}
 				},
 			)
@@ -792,7 +843,11 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data) {
-						addPing(data);
+						addPing({
+							...data,
+							color: data.color || "#a855f7",
+							userName: data.userName || "Aventureiro",
+						});
 						playPingAudio();
 					}
 				},
@@ -950,11 +1005,14 @@ function VTTSession() {
 				event: "ruler_move",
 				payload: {
 					userId: user.id,
-					measurement: measurement && {
-						...measurement,
-						userName,
-						color: userColor,
-					},
+					measurement: measurement
+						? {
+								...measurement,
+								userId: user.id,
+								userName,
+								color: userColor,
+							}
+						: null,
 				},
 			});
 		},
@@ -1271,11 +1329,11 @@ function VTTSession() {
 	// Token Management Handlers
 	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
 		const sessionGeneration = sessionGenerationRef.current;
-		const client = getSupabase();
-		if (!client || !activeSceneId || !isGM)
-			throw new Error(
-				"É necessário estar conectado como mestre para colocar tokens.",
-			);
+		const { client, sceneId } = requirePlaceContext({
+			client: getSupabase(),
+			sceneId: activeSceneId,
+			isGM,
+		});
 
 		const sheetCharacter = tokenData.characterId
 			? readCampaignCharacters().find(
@@ -1288,64 +1346,19 @@ function VTTSession() {
 			hpCurrent: tokenData.hpCurrent,
 			hpMax: tokenData.hpMax,
 		});
-		const insertPayload: Database["public"]["Tables"]["vtt_tokens"]["Insert"] =
-			{
-				scene_id: activeSceneId,
-				character_id: tokenData.characterId || null,
-				npc_id: tokenData.npcId || null,
-				name: tokenData.name || "Token",
-				avatar_url: tokenData.avatarUrl || null,
-				layer: tokenData.layer || "token",
-				x: tokenData.x || 0,
-				y: tokenData.y || 0,
-				size_cells: tokenData.sizeCells || 1.0,
-				rotation: tokenData.rotation || 0,
-				hp_current: hpColumns.hp_current,
-				hp_max: hpColumns.hp_max,
-				elevation: tokenData.elevation || 0,
-				conditions: (tokenData.conditions || []) as unknown as Json,
-				auras: (tokenData.auras || []) as unknown as Json,
-				vision_range: tokenData.visionRange || 6,
-				is_locked: tokenData.isLocked || false,
-				is_hidden: tokenData.isHidden || false,
-				controlled_by: (tokenData.controlledBy || []) as unknown as Json,
-			};
+		const insertPayload = buildTokenInsertPayload(
+			sceneId,
+			tokenData,
+			hpColumns,
+		);
 
-		const { data, error } = await client
-			.from("vtt_tokens")
-			.insert(insertPayload)
-			.select()
-			.single();
+		const data = await insertVttToken(
+			(payload) => client.from("vtt_tokens").insert(payload).select().single(),
+			insertPayload,
+		);
 
-		if (error) {
-			console.error("Erro ao criar token:", error);
-			throw new Error("Não foi possível colocar o token. Tente novamente.");
-		}
-
-		if (data && sessionGenerationRef.current === sessionGeneration) {
-			const spawned: VTTToken = {
-				id: data.id,
-				sceneId: data.scene_id,
-				characterId: data.character_id,
-				npcId: data.npc_id,
-				name: data.name,
-				avatarUrl: data.avatar_url,
-				layer: data.layer as VTTLayer,
-				x: Number(data.x),
-				y: Number(data.y),
-				sizeCells: Number(data.size_cells),
-				rotation: Number(data.rotation || 0),
-				hpCurrent: data.hp_current,
-				hpMax: data.hp_max,
-				elevation: Number(data.elevation || 0),
-				conditions: (data.conditions as unknown as string[]) || [],
-				auras: (data.auras as unknown as VTTAura[]) || [],
-				visionRange: Number(data.vision_range || 0),
-				isLocked: data.is_locked,
-				isHidden: data.is_hidden,
-				controlledBy: (data.controlled_by as unknown as string[]) || [],
-			};
-			addToken(spawned);
+		if (sessionGenerationRef.current === sessionGeneration) {
+			addToken(mapTokenRow(data));
 		}
 	};
 
@@ -1403,6 +1416,8 @@ function VTTSession() {
 			dbUpdates.hp_current = pendingUpdates.hpCurrent;
 		if (pendingUpdates.hpMax !== undefined)
 			dbUpdates.hp_max = pendingUpdates.hpMax;
+		if (pendingUpdates.tempHp !== undefined)
+			dbUpdates.temp_hp = pendingUpdates.tempHp;
 		if (pendingUpdates.elevation !== undefined)
 			dbUpdates.elevation = pendingUpdates.elevation;
 		if (pendingUpdates.conditions !== undefined)
@@ -1417,12 +1432,32 @@ function VTTSession() {
 			dbUpdates.layer = pendingUpdates.layer;
 
 		try {
-			const { data, error } = await client
+			let { data, error } = await client
 				.from("vtt_tokens")
 				.update(dbUpdates)
 				.eq("id", tokenId)
 				.select("id")
 				.single();
+			if (
+				error &&
+				(error.code === "42703" || error.message?.includes("temp_hp"))
+			) {
+				const fallbackUpdates = { ...dbUpdates };
+				delete fallbackUpdates.temp_hp;
+				if (Object.keys(fallbackUpdates).length > 0) {
+					const retry = await client
+						.from("vtt_tokens")
+						.update(fallbackUpdates)
+						.eq("id", tokenId)
+						.select("id")
+						.single();
+					data = retry.data;
+					error = retry.error;
+				} else {
+					error = null;
+					data = { id: tokenId } as { id: string };
+				}
+			}
 			if (error || !data) throw error || new Error("Token não atualizado");
 			if (
 				sessionGenerationRef.current === sessionGeneration &&
@@ -1460,16 +1495,16 @@ function VTTSession() {
 		}
 	};
 
-	const handleDeleteToken = async (tokenId: string) => {
+	const handleDeleteToken = async (tokenId: string): Promise<boolean> => {
 		const sessionGeneration = sessionGenerationRef.current;
 		if (!canEditToken(tokenId)) {
 			setMutationError("Você não controla este token.");
-			return;
+			return false;
 		}
 		const client = getSupabase();
 		if (!client) {
 			setMutationError("Sem conexão para remover o token.");
-			return;
+			return false;
 		}
 		setMutationError(null);
 		try {
@@ -1477,19 +1512,21 @@ function VTTSession() {
 				.from("vtt_tokens")
 				.delete()
 				.eq("id", tokenId)
-				.select("id")
-				.single();
-			if (error || !data) throw error || new Error("Token não removido");
+				.select("id");
+			if (error || !data?.length)
+				throw error || new Error("Token não removido");
 			if (
 				sessionGenerationRef.current === sessionGeneration &&
 				useVTTStore.getState().activeSceneId === activeSceneId
 			)
 				removeToken(tokenId);
+			return true;
 		} catch {
-			if (sessionGenerationRef.current !== sessionGeneration) return;
+			if (sessionGenerationRef.current !== sessionGeneration) return true;
 			setMutationError(
 				"Não foi possível remover o token. Ele foi mantido na mesa.",
 			);
+			return false;
 		}
 	};
 
@@ -1666,6 +1703,7 @@ function VTTSession() {
 				onSpawnToken={handleSpawnToken}
 				onFocusPoint={handleFocusPoint}
 				onSetSceneMap={handleSetSceneMap}
+				onRemoveToken={handleDeleteToken}
 			/>
 
 			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
@@ -1684,7 +1722,7 @@ function VTTSession() {
 			<VTTZoomControls />
 
 			{/* Bottom-Right AI assistant (piloto: campanha em ia_mesa_pilot_campaigns + mestre/editor) */}
-			{isGM && iaMesaEnabled && (
+			{canUsePilot && iaMesaEnabled && (
 				<VTTAiChat
 					campaignId={campaignId}
 					campaignName={activeCampaign?.name || "Campanha"}

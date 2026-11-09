@@ -6,6 +6,7 @@ import {
 	Plus,
 	Search,
 	Skull,
+	Trash2,
 	Users,
 	X,
 } from "lucide-react";
@@ -18,6 +19,11 @@ import {
 	VTTMapDropzone,
 	type VTTMapImage,
 } from "@/components/vtt/vtt-map-dropzone";
+import {
+	type TokenRemovalRequest,
+	tokenRemovalKind,
+	VTTRemoveTokenDialog,
+} from "@/components/vtt/vtt-remove-token-dialog";
 import { useAuth } from "@/lib/auth";
 import { canViewCharacter } from "@/lib/content-audience";
 import { useRPGStore } from "@/lib/store";
@@ -40,12 +46,15 @@ interface Props {
 	onSpawnToken: (data: Partial<VTTToken>) => Promise<void>;
 	onFocusPoint: (x: number, y: number) => void;
 	onSetSceneMap: (sceneId: string, map: VTTMapImage) => Promise<void>;
+	/** `false` quando o servidor recusou a remoção. */
+	onRemoveToken: (tokenId: string) => Promise<boolean | undefined>;
 }
 export function VTTRosterDrawer({
 	scene,
 	onSpawnToken,
 	onFocusPoint,
 	onSetSceneMap,
+	onRemoveToken,
 }: Props) {
 	const open = useVTTStore((s) => s.showRosterDrawer);
 	const close = useVTTStore((s) => s.setShowRosterDrawer);
@@ -71,6 +80,9 @@ export function VTTRosterDrawer({
 	const search = useDeferredValue(query.trim().toLocaleLowerCase());
 	const [pending, setPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [removal, setRemoval] = useState<TokenRemovalRequest | null>(null);
+	const [removing, setRemoving] = useState(false);
+	const [removeError, setRemoveError] = useState<string | null>(null);
 	const formId = useId();
 	const [name, setName] = useState("");
 	const [hp, setHp] = useState(25);
@@ -186,6 +198,35 @@ export function VTTRosterDrawer({
 			setPending(null);
 		}
 	}
+
+	function askRemove(request: TokenRemovalRequest) {
+		if (removing || request.tokenIds.length === 0) return;
+		setRemoveError(null);
+		setRemoval(request);
+	}
+
+	async function confirmRemoval() {
+		if (!removal || removing) return;
+		setRemoving(true);
+		setRemoveError(null);
+		const failed = "Não foi possível remover o token. Ele foi mantido na mesa.";
+		try {
+			for (const id of removal.tokenIds) {
+				const ok = await onRemoveToken(id);
+				if (ok === false) {
+					setRemoveError(failed);
+					return;
+				}
+			}
+			setRemoval(null);
+		} catch (cause) {
+			setRemoveError(cause instanceof Error ? cause.message : failed);
+		} finally {
+			setRemoving(false);
+		}
+	}
+
+	const busy = pending !== null || removing || tokenImageUpload.isUploading;
 	const tabs: { id: typeof tab; label: string }[] = [
 		{ id: "scene", label: "Na cena" },
 		{ id: "characters", label: "Fichas" },
@@ -283,7 +324,9 @@ export function VTTRosterDrawer({
 				{tab === "scene" && (
 					<>
 						<p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-							Encontre um token no mapa ou abra sua ficha.{" "}
+							{isGM
+								? "Encontre um token no mapa, abra a ficha ou remova da mesa. "
+								: "Encontre um token no mapa ou abra sua ficha. "}
 							<span className="sm:hidden">
 								Toque no token para selecionar e editar.
 							</span>
@@ -342,6 +385,19 @@ export function VTTRosterDrawer({
 										<FileText className="size-4" />
 									</Link>
 								)}
+								{isGM && (
+									<RemoveFromTableButton
+										label={removeLabel(token.name, 1)}
+										disabled={busy}
+										onClick={() =>
+											askRemove({
+												name: token.name,
+												tokenIds: [token.id],
+												kind: tokenRemovalKind(token),
+											})
+										}
+									/>
+								)}
 							</div>
 						))}
 						{visibleTokens.length === 0 && term ? searchEmpty : null}
@@ -371,56 +427,82 @@ export function VTTRosterDrawer({
 				)}
 				{tab === "characters" && (
 					<>
-						{visibleCharacters.map((char) => (
-							<div
-								key={char.id}
-								className="rounded-xl border border-border/70 bg-card-elevated p-3"
-							>
-								<div className="flex items-center gap-3">
-									<Users className="size-5 shrink-0 text-primary" />
-									<div className="min-w-0">
-										<h3 className="truncate text-sm font-semibold">
-											{char.characterName}
-										</h3>
-										<p className="text-xs text-muted-foreground">
-											{char.class} · {char.health ?? "—"}/
-											{char.healthMax ?? "—"} PV
-										</p>
+						{visibleCharacters.map((char) => {
+							const placed = tokens.filter(
+								(token) => token.characterId === char.id,
+							);
+							return (
+								<div
+									key={char.id}
+									className="rounded-xl border border-border/70 bg-card-elevated p-3"
+								>
+									<div className="flex items-center gap-3">
+										<Users className="size-5 shrink-0 text-primary" />
+										<div className="min-w-0">
+											<h3 className="truncate text-sm font-semibold">
+												{char.characterName}
+											</h3>
+											<p className="text-xs text-muted-foreground">
+												{char.class} · {char.health ?? "—"}/
+												{char.healthMax ?? "—"} PV
+											</p>
+											{placed.length > 0 && (
+												<p className="text-xs tabular-nums text-primary">
+													{placed.length === 1
+														? "Na mesa"
+														: `${placed.length} na mesa`}
+												</p>
+											)}
+										</div>
+									</div>
+									<div className="mt-3 flex flex-wrap gap-2">
+										<Link
+											to="/sheets/$characterId"
+											params={{ characterId: char.id }}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="inline-flex min-h-11 min-w-32 flex-1 items-center justify-center gap-2 rounded-lg border border-border/70 text-xs font-medium focus-visible:ring-2"
+										>
+											<FileText className="size-4" />
+											Abrir ficha ↗
+										</Link>
+										{isGM && placed.length > 0 && (
+											<RemoveFromTableButton
+												label={removeLabel(char.characterName, placed.length)}
+												disabled={busy}
+												onClick={() =>
+													askRemove({
+														name: char.characterName,
+														tokenIds: placed.map((token) => token.id),
+														kind: "character",
+													})
+												}
+											/>
+										)}
+										{isGM && (
+											<Button
+												type="button"
+												disabled={busy}
+												className="h-11"
+												onClick={() => {
+													const ownsSheet = characterSheetOwnsHp(char);
+													void spawn(char.id, {
+														characterId: char.id,
+														name: char.characterName,
+														avatarUrl: char.imageUrl,
+														hpCurrent: ownsSheet ? null : char.health,
+														hpMax: ownsSheet ? null : char.healthMax,
+													});
+												}}
+											>
+												<Plus className="size-4" />
+												Colocar
+											</Button>
+										)}
 									</div>
 								</div>
-								<div className="mt-3 flex gap-2">
-									<Link
-										to="/sheets/$characterId"
-										params={{ characterId: char.id }}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border/70 text-xs font-medium focus-visible:ring-2"
-									>
-										<FileText className="size-4" />
-										Abrir ficha ↗
-									</Link>
-									{isGM && (
-										<Button
-											disabled={pending !== null}
-											className="h-11"
-											onClick={() => {
-												const ownsSheet = characterSheetOwnsHp(char);
-												void spawn(char.id, {
-													characterId: char.id,
-													name: char.characterName,
-													avatarUrl: char.imageUrl,
-													hpCurrent: ownsSheet ? null : char.health,
-													hpMax: ownsSheet ? null : char.healthMax,
-												});
-											}}
-										>
-											<Plus className="size-4" />
-											Colocar
-										</Button>
-									)}
-								</div>
-							</div>
-						))}
+							);
+						})}
 						{visibleCharacters.length === 0 && term ? searchEmpty : null}
 						{visibleCharacters.length === 0 && !term && (
 							<p className="py-8 text-center text-sm text-muted-foreground">
@@ -431,33 +513,59 @@ export function VTTRosterDrawer({
 				)}
 				{tab === "npcs" && isGM && (
 					<>
-						{visibleNpcs.map((npc) => (
-							<div
-								key={npc.id}
-								className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-3"
-							>
-								<Skull className="size-5 shrink-0 text-primary" />
-								<div className="min-w-0 flex-1">
-									<h3 className="truncate text-sm font-semibold">{npc.name}</h3>
-									<p className="truncate text-xs text-muted-foreground">
-										{npc.role || npc.kind}
-									</p>
-								</div>
-								<Button
-									disabled={pending !== null}
-									className="h-11"
-									onClick={() =>
-										void spawn(npc.id, {
-											npcId: npc.id,
-											name: npc.name,
-											avatarUrl: npc.imageUrl,
-										})
-									}
+						{visibleNpcs.map((npc) => {
+							const placed = tokens.filter((token) => token.npcId === npc.id);
+							return (
+								<div
+									key={npc.id}
+									className="flex items-center gap-3 rounded-xl border border-border/70 bg-card-elevated p-3"
 								>
-									Colocar
-								</Button>
-							</div>
-						))}
+									<Skull className="size-5 shrink-0 text-primary" />
+									<div className="min-w-0 flex-1">
+										<h3 className="truncate text-sm font-semibold">
+											{npc.name}
+										</h3>
+										<p className="truncate text-xs text-muted-foreground">
+											{npc.role || npc.kind}
+										</p>
+										{placed.length > 0 && (
+											<p className="text-xs tabular-nums text-primary">
+												{placed.length === 1
+													? "Na mesa"
+													: `${placed.length} na mesa`}
+											</p>
+										)}
+									</div>
+									{placed.length > 0 && (
+										<RemoveFromTableButton
+											label={removeLabel(npc.name, placed.length)}
+											disabled={busy}
+											onClick={() =>
+												askRemove({
+													name: npc.name,
+													tokenIds: placed.map((token) => token.id),
+													kind: "npc",
+												})
+											}
+										/>
+									)}
+									<Button
+										type="button"
+										disabled={busy}
+										className="h-11 shrink-0"
+										onClick={() =>
+											void spawn(npc.id, {
+												npcId: npc.id,
+												name: npc.name,
+												avatarUrl: npc.imageUrl,
+											})
+										}
+									>
+										Colocar
+									</Button>
+								</div>
+							);
+						})}
 						{visibleNpcs.length === 0 && term ? searchEmpty : null}
 						{visibleNpcs.length === 0 && !term && (
 							<p className="py-8 text-center text-sm text-muted-foreground">
@@ -545,11 +653,7 @@ export function VTTRosterDrawer({
 								label="Enviar imagem do token"
 							/>
 						</div>
-						<Button
-							type="submit"
-							disabled={pending !== null || tokenImageUpload.isUploading}
-							className="h-11 w-full"
-						>
+						<Button type="submit" disabled={busy} className="h-11 w-full">
 							<Plus className="size-4" />
 							{pending ? "Colocando…" : "Colocar na cena"}
 						</Button>
@@ -559,6 +663,17 @@ export function VTTRosterDrawer({
 			<p className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
 				{scene.name} · {isGM ? "Visão do mestre" : "Visão do jogador"}
 			</p>
+			<VTTRemoveTokenDialog
+				request={removal}
+				pending={removing}
+				error={removeError}
+				onOpenChange={(open) => {
+					if (!open) setRemoval(null);
+				}}
+				onConfirm={() => {
+					void confirmRemoval();
+				}}
+			/>
 		</aside>
 	);
 }
@@ -635,6 +750,35 @@ export function SceneMapTab({
 				</output>
 			)}
 		</div>
+	);
+}
+
+function removeLabel(name: string, count: number): string {
+	if (count <= 1) return `Remover ${name} da mesa`;
+	return `Remover os ${count} tokens de ${name} da mesa`;
+}
+
+function RemoveFromTableButton({
+	label,
+	disabled,
+	onClick,
+}: {
+	label: string;
+	disabled: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<Button
+			type="button"
+			variant="destructive"
+			aria-label={label}
+			disabled={disabled}
+			className="h-11 shrink-0 px-3"
+			onClick={onClick}
+		>
+			<Trash2 className="size-4" />
+			Remover
+		</Button>
 	);
 }
 

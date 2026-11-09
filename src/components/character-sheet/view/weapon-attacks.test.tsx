@@ -2,8 +2,15 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { byId, longsword, thalia } from "@/core/rules/thalia.fixture";
+import {
+	byId,
+	flamingArrow,
+	longsword,
+	shortbow,
+	thalia,
+} from "@/core/rules/thalia.fixture";
 import type { Character } from "@/lib/store";
+import { useRPGStore } from "@/lib/store";
 import { WeaponAttacksSection } from "./weapon-attacks";
 
 function mockViewport(mobile: boolean) {
@@ -54,6 +61,10 @@ const character = {
 afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
+	useRPGStore.setState({
+		campaigns: [],
+		activeCampaignId: null,
+	} as never);
 });
 
 describe("WeaponAttacksSection", () => {
@@ -137,5 +148,75 @@ describe("WeaponAttacksSection", () => {
 		} as Character;
 		render(<WeaponAttacksSection character={broken} itemsById={byId()} />);
 		expect(screen.getByText(/Nenhuma arma equipada/)).toBeTruthy();
+	});
+
+	it("corpo a corpo sem ammunition não mostra Disparar", () => {
+		mockViewport(false);
+		const melee = {
+			...thalia,
+			inventoryList: [
+				{
+					id: "inv-1",
+					name: "Espada longa +1",
+					quantity: 1,
+					weightLbs: 3,
+					location: "equipped",
+					campaignItemId: longsword.id,
+					proficient: true,
+				},
+			],
+		} as Character;
+		render(
+			<WeaponAttacksSection character={melee} itemsById={byId(longsword)} />,
+		);
+		expect(screen.getByText("Corpo a corpo · 1,5 m · Versátil")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: /Disparar/ })).toBeNull();
+	});
+
+	it("arco com munição mostra Disparar e a fórmula mesclada", () => {
+		mockViewport(false);
+		useRPGStore.setState({
+			campaigns: [
+				{
+					id: "camp-1",
+					name: "Mesa",
+					ownerId: "player-1",
+					myRole: "owner",
+					system: "dnd5e",
+				},
+			] as never,
+			activeCampaignId: "camp-1",
+		} as never);
+		const archer = {
+			...thalia,
+			createdBy: "player-1",
+			inventoryList: [
+				{
+					id: "inv-bow",
+					name: "Arco curto",
+					quantity: 1,
+					weightLbs: 2,
+					location: "equipped",
+					campaignItemId: shortbow.id,
+					proficient: true,
+				},
+				{
+					id: "inv-ammo",
+					name: "Flecha flamejante",
+					quantity: 12,
+					weightLbs: 0.05,
+					location: "backpack",
+					campaignItemId: flamingArrow.id,
+				},
+			],
+		} as Character;
+		render(
+			<WeaponAttacksSection
+				character={archer}
+				itemsById={byId(shortbow, flamingArrow)}
+			/>,
+		);
+		expect(screen.getByRole("button", { name: /Disparar/ })).toBeTruthy();
+		expect(screen.getByLabelText("Dano 1d8+1d6+3: ver a conta")).toBeTruthy();
 	});
 });
