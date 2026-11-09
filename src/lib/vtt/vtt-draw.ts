@@ -3,7 +3,11 @@ import { type Point, rulerTickPoints, ZERO_ORIGIN } from "./grid-math";
 import { templatePolygon, type VTTSpellTemplate } from "./template-math";
 import type { VTTDiagonalRule, VTTGridScaleUnit } from "./types";
 
-export function parseHexColor(color: string, fallback = 0xa855f7): number {
+export function parseHexColor(
+	color: string | null | undefined,
+	fallback = 0xa855f7,
+): number {
+	if (typeof color !== "string" || color.length === 0) return fallback;
 	const parsed = Number.parseInt(color.replace("#", "0x"), 16);
 	return Number.isFinite(parsed) ? parsed : fallback;
 }

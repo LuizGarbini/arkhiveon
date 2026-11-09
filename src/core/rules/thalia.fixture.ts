@@ -85,6 +85,19 @@ export const ringOfAlertness = item("it-ring", {
 	bonuses: [{ id: "b1", target: "initiative", value: 1 }],
 });
 
+export const flamingArrow = item("it-flaming-arrow", {
+	name: "Flecha flamejante",
+	type: "Munição",
+	ammo: {
+		unitLabel: "flecha",
+		damage: { amount: "1d8", type: "fire" },
+		extraDamage: [],
+		conditions: [
+			{ id: "c1", name: "Em chamas", notes: "O mestre aplica na mesa." },
+		],
+	},
+});
+
 export const healingPotion = item("it-potion", {
 	name: "Poção de cura",
 	type: "Poção",

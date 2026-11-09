@@ -1,5 +1,6 @@
 import {
 	Check,
+	Crosshair,
 	ImagePlus,
 	type LucideIcon,
 	Package,
@@ -17,7 +18,11 @@ import {
 	summarizeItemForSheet,
 	type TabStatus,
 } from "@/core/rules/item-mechanics";
-import type { ItemArmorStats, ItemWeaponStats } from "@/lib/store";
+import type {
+	ItemAmmoStats,
+	ItemArmorStats,
+	ItemWeaponStats,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { normalizeRarityKey, rarityStyleFor } from "../item-rarity";
 import { Segmented } from "./item-form-controls";
@@ -36,6 +41,8 @@ export function buildItemTabs(kind: ItemCategoryKind): ItemTabDef[] {
 		tabs.push({ id: "mechanics", label: "Ataque", icon: Sword });
 	if (kind === "armor")
 		tabs.push({ id: "mechanics", label: "Defesa", icon: Shield });
+	if (kind === "ammo")
+		tabs.push({ id: "mechanics", label: "Efeitos", icon: Crosshair });
 	tabs.push(
 		{ id: "bonus", label: "Bônus", icon: Sparkles },
 		{ id: "description", label: "Descrição", icon: ScrollText },
@@ -141,13 +148,26 @@ interface SheetPreviewProps {
 	kind: ItemCategoryKind;
 	weapon?: ItemWeaponStats;
 	armor?: ItemArmorStats;
+	ammo?: ItemAmmoStats;
 }
 
-function SheetPreview({ kind, weapon, armor }: SheetPreviewProps) {
+function SheetPreview({ kind, weapon, armor, ammo }: SheetPreviewProps) {
 	if (kind === "other") return null;
 	const rows: [string, string][] = [];
 	let empty = "";
-	if (kind === "weapon") {
+	if (kind === "ammo") {
+		if (ammo?.unitLabel.trim()) rows.push(["Unidade", ammo.unitLabel.trim()]);
+		if (ammo?.damage?.amount.trim())
+			rows.push(["Dano", ammo.damage.amount.replace(/\s+/g, "")]);
+		const extras = ammo?.extraDamage.filter((e) => e.amount.trim()).length ?? 0;
+		if (extras) rows.push(["Extra", String(extras)]);
+		const condNames = (ammo?.conditions ?? [])
+			.map((c) => c.name.trim())
+			.filter(Boolean);
+		if (condNames.length) rows.push(["Condição", condNames.join(" · ")]);
+		if (!rows.length)
+			empty = "Preencha os Efeitos para ver como a munição entra no disparo.";
+	} else if (kind === "weapon") {
 		const summary = summarizeItemForSheet(weapon);
 		if (summary) {
 			rows.push(["Acerto", summary.attack], ["Dano", summary.damage]);
@@ -203,6 +223,7 @@ interface ItemFormSidebarProps {
 	kind: ItemCategoryKind;
 	weapon?: ItemWeaponStats;
 	armor?: ItemArmorStats;
+	ammo?: ItemAmmoStats;
 }
 
 /** Coluna lateral (desktop): miniatura, nome ao vivo, abas com status e prévia "Na ficha". */
@@ -220,6 +241,7 @@ export function ItemFormSidebar({
 	kind,
 	weapon,
 	armor,
+	ammo,
 }: ItemFormSidebarProps) {
 	const displayName = name.trim() || placeholderName;
 	return (
@@ -273,7 +295,7 @@ export function ItemFormSidebar({
 			</nav>
 
 			<div className="mt-auto pt-4">
-				<SheetPreview kind={kind} weapon={weapon} armor={armor} />
+				<SheetPreview kind={kind} weapon={weapon} armor={armor} ammo={ammo} />
 			</div>
 		</aside>
 	);

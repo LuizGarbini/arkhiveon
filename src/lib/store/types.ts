@@ -539,6 +539,8 @@ export interface Item extends WorldEntityFields {
 	entityLinks: EntityLink[];
 	/** Dados de arma (cadastro rico). Opcional: itens antigos só têm texto livre. */
 	weapon?: ItemWeaponStats;
+	/** Munição consumível (cadastro). Quantidade vive no inventário da ficha, não aqui. */
+	ammo?: ItemAmmoStats;
 	/** Dados de armadura/escudo (cadastro rico). */
 	armor?: ItemArmorStats;
 	/** Bônus que o item soma em quem o usa (só cadastro; o cálculo entra depois). */
@@ -558,6 +560,26 @@ export type WeaponPropertyKey =
 	| "finesse"
 	| "ammunition"
 	| "loading";
+
+/**
+ * Condição da munição. `key` é a oficial do D&D 5e; `name` é o rótulo
+ * (ou texto legado). O mestre aplica na mesa; sem duração automática.
+ */
+export interface ItemAmmoCondition {
+	id: string;
+	key?: string;
+	name: string;
+	notes: string;
+}
+
+export interface ItemAmmoStats {
+	/** Rótulo de unidade (flecha, tiro). Estoque não mora no catálogo. */
+	unitLabel: string;
+	/** Dano próprio opcional (fórmula + tipo). */
+	damage?: { amount: string; type: DamageType };
+	extraDamage: InventoryWeaponExtraDamage[];
+	conditions: ItemAmmoCondition[];
+}
 
 export interface ItemWeaponStats {
 	/** Dado base, ex.: "1d8" ou "2d6". */

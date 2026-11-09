@@ -90,6 +90,7 @@ export function ItemIdentityTab({
 						set("origin", { kind: "blank" });
 						if (kind === "weapon") set("weapon", emptyWeaponStats());
 						set("armor", undefined);
+						set("ammo", undefined);
 						set("bonuses", []);
 					}}
 					onCopy={(patch) => {
@@ -98,6 +99,7 @@ export function ItemIdentityTab({
 						set("rarity", patch.rarity || "comum");
 						set("weapon", patch.weapon);
 						set("armor", patch.armor);
+						set("ammo", patch.ammo);
 						set("bonuses", patch.bonuses ?? []);
 						set("origin", patch.origin);
 						onCategoryChange(patch.type || type);
@@ -153,6 +155,7 @@ export function ItemIdentityTab({
 					<Field label="Categoria" htmlFor={categoryId}>
 						<Select
 							id={categoryId}
+							aria-label="Categoria"
 							value={type}
 							onChange={(e) => onCategoryChange(e.target.value)}
 						>

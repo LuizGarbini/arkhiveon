@@ -8,6 +8,7 @@ describe("parseDiceFormula", () => {
 			faces: 6,
 			modifier: 3,
 			formula: "2d6+3",
+			pools: [{ count: 2, faces: 6 }],
 		});
 		expect(parseDiceFormula("  2D6 + 0 ").formula).toBe("2d6");
 		expect(parseDiceFormula("d20")).toEqual({
@@ -15,6 +16,7 @@ describe("parseDiceFormula", () => {
 			faces: 20,
 			modifier: 0,
 			formula: "1d20",
+			pools: [{ count: 1, faces: 20 }],
 		});
 		expect(parseDiceFormula("1d20-1")).toMatchObject({
 			modifier: -1,
@@ -30,7 +32,6 @@ describe("parseDiceFormula", () => {
 		const invalid = [
 			"",
 			"   ",
-			"2d6+1d4",
 			"101d6",
 			"0d6",
 			"1d1",
@@ -45,6 +46,20 @@ describe("parseDiceFormula", () => {
 			expect(tryParseDiceFormula(formula), formula).toBeNull();
 			expect(() => parseDiceFormula(formula)).toThrow();
 		}
+	});
+
+	it("aceita fórmula mesclada sem achatar os dados", () => {
+		expect(parseDiceFormula("1d8+1d6+3")).toEqual({
+			count: 2,
+			faces: 8,
+			modifier: 3,
+			formula: "1d8+1d6+3",
+			pools: [
+				{ count: 1, faces: 8 },
+				{ count: 1, faces: 6 },
+			],
+		});
+		expect(parseDiceFormula("2d6+1d4").formula).toBe("2d6+1d4");
 	});
 
 	it("não sorteia valor", () => {
