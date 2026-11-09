@@ -2,6 +2,7 @@ import {
 	BrickWall,
 	Dices,
 	Eye,
+	Footprints,
 	Grid,
 	Hand,
 	Hexagon,
@@ -26,6 +27,7 @@ import {
 	useCombatStore,
 } from "@/lib/vtt/combat-store";
 import { TOOLBAR_WITH_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
+import { useMoveStore } from "@/lib/vtt/move-store";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	hasOpenVttDialog,
@@ -52,12 +54,30 @@ export function wallToolDisabledReason(
 	return null;
 }
 
+/** Combate, chat e movimentos ocupam o mesmo lado: abrir um fecha os outros. */
+function openRightPanel(panel: "combat" | "feed" | "moves") {
+	const combat = useCombatStore.getState();
+	const feed = useRollStore.getState();
+	const moves = useMoveStore.getState();
+	const open = {
+		combat: combat.panelOpen,
+		feed: feed.panelOpen,
+		moves: moves.panelOpen,
+	}[panel];
+	combat.setPanelOpen(panel === "combat" && !open);
+	feed.setPanelOpen(panel === "feed" && !open);
+	moves.setPanelOpen(panel === "moves" && !open);
+	if (panel !== "moves" || open) moves.focusMove(null);
+}
+
 export function VTTToolbar() {
 	const activeTool = useVTTStore((s) => s.activeTool);
 	const setActiveTool = useVTTStore((s) => s.setActiveTool);
 	const activeLayer = useVTTStore((s) => s.activeLayer);
 	const setActiveLayer = useVTTStore((s) => s.setActiveLayer);
 	const isGM = useVTTStore((s) => s.isGM);
+	const isStaff = useVTTStore((s) => s.isGM || s.isCoGM);
+	const movesOpen = useMoveStore((s) => s.panelOpen);
 	const showGridSettings = useVTTStore((s) => s.showGridSettings);
 	const setShowGridSettings = useVTTStore((s) => s.setShowGridSettings);
 	const gridBarOpen = isGM && showGridSettings;
@@ -102,7 +122,12 @@ export function VTTToolbar() {
 			if (e.ctrlKey || e.metaKey || e.altKey) return;
 			const key = e.key.toLowerCase();
 			if (key === "c") {
-				useCombatStore.getState().togglePanel();
+				openRightPanel("combat");
+				return;
+			}
+			if (key === "m") {
+				const role = useVTTStore.getState();
+				if (role.isGM || role.isCoGM) openRightPanel("moves");
 				return;
 			}
 			if (key === "v") setActiveTool("select");
@@ -258,14 +283,25 @@ export function VTTToolbar() {
 					icon={Swords}
 					kind="toggle"
 					active={combatOpen}
-					onClick={() => useCombatStore.getState().togglePanel()}
+					onClick={() => openRightPanel("combat")}
 				/>
+				{isStaff && (
+					<ToolbarButton
+						label="Movimentos dos tokens"
+						tooltip="Histórico de movimentos"
+						shortcut="M"
+						icon={Footprints}
+						kind="toggle"
+						active={movesOpen}
+						onClick={() => openRightPanel("moves")}
+					/>
+				)}
 				<ToolbarButton
 					label="Rolagens e chat"
 					icon={Dices}
 					kind="toggle"
 					active={feedOpen}
-					onClick={() => useRollStore.getState().togglePanel()}
+					onClick={() => openRightPanel("feed")}
 				/>
 			</ToolbarGroup>
 

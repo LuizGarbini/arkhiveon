@@ -456,3 +456,99 @@ export function drawWallPreview(
 	if (cursor) layer.circle(cursor.x, cursor.y, 5);
 	layer.fill({ color: WALL_PREVIEW_COLOR });
 }
+
+export interface MoveArrowOptions {
+	viewScale: number;
+	gridSize: number;
+	color: number;
+	/** Movimento em destaque (forte) ou só trilha de fundo (fraca). */
+	emphasis: boolean;
+	/** Texto junto ao caminho ("4,5 m"); só no movimento em destaque. */
+	caption?: string;
+	bounds?: WorldBounds;
+}
+
+/**
+ * Movimento de um token no mapa: anel vazado onde ele estava, caminho
+ * tracejado e seta na chegada. Espessuras e rótulo acompanham `viewScale`.
+ */
+export function drawMoveArrow(
+	layer: Graphics,
+	labels: Container,
+	from: Point,
+	to: Point,
+	opts: MoveArrowOptions,
+) {
+	const k = 1 / (opts.viewScale || 1);
+	const alpha = opts.emphasis ? 1 : 0.38;
+	const dx = to.x - from.x;
+	const dy = to.y - from.y;
+	const length = Math.hypot(dx, dy);
+	if (length < 1) return;
+	const ux = dx / length;
+	const uy = dy / length;
+	const radius = opts.gridSize * 0.42;
+
+	// Anel da origem: onde o token estava antes do movimento.
+	layer.circle(from.x, from.y, radius);
+	layer.stroke({
+		width: (opts.emphasis ? 3 : 2) * k,
+		color: opts.color,
+		alpha,
+	});
+	layer.circle(from.x, from.y, radius);
+	layer.fill({ color: opts.color, alpha: opts.emphasis ? 0.12 : 0.05 });
+
+	// Caminho tracejado, da borda do anel até perto do destino.
+	const startAt = Math.min(radius, length / 2);
+	const endAt = Math.max(startAt, length - radius * 0.9);
+	const dash = 10 * k;
+	const gap = 7 * k;
+	for (let at = startAt; at < endAt; at += dash + gap) {
+		const a = at;
+		const b = Math.min(at + dash, endAt);
+		layer.moveTo(from.x + ux * a, from.y + uy * a);
+		layer.lineTo(from.x + ux * b, from.y + uy * b);
+	}
+	layer.stroke({
+		width: (opts.emphasis ? 3.5 : 2) * k,
+		color: opts.color,
+		alpha,
+		cap: "round",
+	});
+
+	// Ponta da seta apontando para o destino.
+	const tip = {
+		x: to.x - ux * radius * 0.9,
+		y: to.y - uy * radius * 0.9,
+	};
+	const head = (opts.emphasis ? 16 : 11) * k;
+	const nx = -uy;
+	const ny = ux;
+	layer.moveTo(tip.x, tip.y);
+	layer.lineTo(
+		tip.x - ux * head + nx * head * 0.55,
+		tip.y - uy * head + ny * head * 0.55,
+	);
+	layer.lineTo(
+		tip.x - ux * head - nx * head * 0.55,
+		tip.y - uy * head - ny * head * 0.55,
+	);
+	layer.closePath();
+	layer.fill({ color: opts.color, alpha });
+
+	if (opts.caption) {
+		addMeasureLabel(
+			labels,
+			opts.caption,
+			(from.x + to.x) / 2 + nx * 18 * k,
+			(from.y + to.y) / 2 + ny * 18 * k,
+			{
+				viewScale: opts.viewScale,
+				accent: opts.color,
+				emphasis: true,
+				bounds: opts.bounds,
+			},
+		);
+	}
+}
