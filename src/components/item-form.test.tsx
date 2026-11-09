@@ -283,4 +283,51 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(payload.ammo?.damage).toEqual({ amount: "1d8", type: "piercing" });
 		expect(payload.weapon).toBeUndefined();
 	});
+
+	it("condição da munição escolhe da lista oficial D&D, não texto livre", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Flecha envenenada" },
+		});
+		const category = screen.getByRole("combobox", { name: "Categoria" });
+		await act(async () => {
+			fireEvent.click(category);
+		});
+		const municao = await screen.findByRole("option", { name: "Munição" });
+		await act(async () => {
+			fireEvent.mouseMove(municao);
+		});
+		await act(async () => {
+			fireEvent.click(municao);
+		});
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Efeitos/ }));
+		fireEvent.click(screen.getByRole("button", { name: "Adicionar condição" }));
+		expect(screen.queryByLabelText("Nome da condição")).toBeNull();
+		const condition = screen.getByRole("combobox", { name: "Condição" });
+		expect(condition.textContent).toContain("Envenenado");
+		await act(async () => {
+			fireEvent.click(condition);
+		});
+		const labels = (await screen.findAllByRole("option")).map(
+			(option) => option.textContent,
+		);
+		expect(labels[0]).toBe("Envenenado");
+		expect(labels).toContain("Contido");
+		expect(labels.some((label) => /chamas/i.test(label ?? ""))).toBe(false);
+		fireEvent.change(screen.getByLabelText("Notas da condição"), {
+			target: { value: "CD 13 Constituição, 1 minuto." },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.ammo?.conditions).toEqual([
+			expect.objectContaining({
+				key: "poisoned",
+				name: "Envenenado",
+				notes: "CD 13 Constituição, 1 minuto.",
+			}),
+		]);
+	});
 });

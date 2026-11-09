@@ -14,6 +14,7 @@ import type {
 	ItemWeaponStats,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
+import { type DnDConditionKey, dndConditionDef } from "./conditions";
 import {
 	ABILITY_LABELS,
 	DAMAGE_TYPE_LABELS,
@@ -444,8 +445,13 @@ export function makeExtraDamage(): ItemWeaponStats["extraDamage"][number] {
 	return { id: newId(), label: "", amount: "", type: "radiant" };
 }
 
-export function makeAmmoCondition(): ItemAmmoCondition {
-	return { id: newId(), name: "", notes: "" };
+export function makeAmmoCondition(key: DnDConditionKey): ItemAmmoCondition {
+	return {
+		id: newId(),
+		key,
+		name: dndConditionDef(key)?.label ?? key,
+		notes: "",
+	};
 }
 
 export const BLANK_ORIGIN: ItemOrigin = { kind: "blank" };

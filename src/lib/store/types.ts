@@ -561,9 +561,13 @@ export type WeaponPropertyKey =
 	| "ammunition"
 	| "loading";
 
-/** Condição textual da munição: o mestre aplica na mesa; sem duração automática. */
+/**
+ * Condição da munição. `key` é a oficial do D&D 5e; `name` é o rótulo
+ * (ou texto legado). O mestre aplica na mesa; sem duração automática.
+ */
 export interface ItemAmmoCondition {
 	id: string;
+	key?: string;
 	name: string;
 	notes: string;
 }

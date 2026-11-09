@@ -161,6 +161,10 @@ function SheetPreview({ kind, weapon, armor, ammo }: SheetPreviewProps) {
 			rows.push(["Dano", ammo.damage.amount.replace(/\s+/g, "")]);
 		const extras = ammo?.extraDamage.filter((e) => e.amount.trim()).length ?? 0;
 		if (extras) rows.push(["Extra", String(extras)]);
+		const condNames = (ammo?.conditions ?? [])
+			.map((c) => c.name.trim())
+			.filter(Boolean);
+		if (condNames.length) rows.push(["Condição", condNames.join(" · ")]);
 		if (!rows.length)
 			empty = "Preencha os Efeitos para ver como a munição entra no disparo.";
 	} else if (kind === "weapon") {

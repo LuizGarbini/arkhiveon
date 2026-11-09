@@ -80,6 +80,26 @@ describe("serialização do bloco ammo", () => {
 		const json = JSON.parse(JSON.stringify(flamingAmmo)) as unknown;
 		const read = readItemAmmo(json);
 		expect(read).toEqual(flamingAmmo);
+		expect(read?.conditions[0].key).toBeUndefined();
+	});
+
+	it("chave ou rótulo oficial vira Envenenado", () => {
+		expect(
+			readItemAmmo({
+				unitLabel: "flecha",
+				extraDamage: [],
+				conditions: [{ id: "c", key: "poisoned", name: "", notes: "CD 13" }],
+			})?.conditions,
+		).toEqual([
+			{ id: "c", key: "poisoned", name: "Envenenado", notes: "CD 13" },
+		]);
+		expect(
+			readItemAmmo({
+				unitLabel: "flecha",
+				extraDamage: [],
+				conditions: [{ id: "c", name: "envenenado", notes: "" }],
+			})?.conditions[0],
+		).toEqual({ id: "c", key: "poisoned", name: "Envenenado", notes: "" });
 	});
 
 	it("ignora lixo e itens antigos sem bloco", () => {
@@ -98,7 +118,7 @@ describe("serialização do bloco ammo", () => {
 			{ id: "x", label: "X", amount: "1d6", type: "fire" },
 		]);
 		expect(partial?.conditions).toEqual([
-			{ id: "c", name: "Preso", notes: "" },
+			{ id: "c", key: "restrained", name: "Contido", notes: "" },
 		]);
 	});
 });

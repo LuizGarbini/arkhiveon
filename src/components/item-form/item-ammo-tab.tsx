@@ -3,6 +3,12 @@ import { useId } from "react";
 import { useWatch } from "react-hook-form";
 import { emptyAmmoStats } from "@/core/rules/ammo";
 import {
+	conditionSelectOptions,
+	dndConditionDef,
+	firstUnusedConditionKey,
+	isDnDConditionKey,
+} from "@/core/rules/conditions";
+import {
 	type ItemDraftErrors,
 	makeAmmoCondition,
 	makeExtraDamage,
@@ -34,6 +40,9 @@ export function ItemAmmoTab({ form, errors }: ItemAmmoTabProps) {
 	function update(patch: Partial<ItemAmmoStats>) {
 		setValue("ammo", { ...ammo, ...patch }, { shouldDirty: true });
 	}
+	const nextConditionKey = firstUnusedConditionKey(
+		ammo.conditions.map((row) => row.key),
+	);
 
 	return (
 		<div className="space-y-7">
@@ -210,11 +219,22 @@ export function ItemAmmoTab({ form, errors }: ItemAmmoTabProps) {
 						variant="ghost"
 						size="sm"
 						className="min-h-11 text-primary sm:min-h-8"
-						onClick={() =>
-							update({
-								conditions: [...ammo.conditions, makeAmmoCondition()],
-							})
+						disabled={!nextConditionKey}
+						title={
+							nextConditionKey
+								? undefined
+								: "Todas as condições oficiais já foram adicionadas."
 						}
+						aria-label="Adicionar condição"
+						onClick={() => {
+							if (!nextConditionKey) return;
+							update({
+								conditions: [
+									...ammo.conditions,
+									makeAmmoCondition(nextConditionKey),
+								],
+							});
+						}}
 					>
 						<Plus className="h-3.5 w-3.5" />
 						Adicionar
@@ -223,8 +243,9 @@ export function ItemAmmoTab({ form, errors }: ItemAmmoTabProps) {
 			>
 				{ammo.conditions.length === 0 ? (
 					<HelpText>
-						Nenhuma condição. O mestre aplica o texto na mesa; não há duração
-						automática.
+						Condições oficiais do D&D 5e. Flecha com veneno → Envenenado; rede →
+						Contido. Dano de fogo, gelo ou raio fica em Dano extra — não é
+						condição. O disparo não marca o token; o mestre aplica na mesa.
 					</HelpText>
 				) : (
 					<div className="space-y-3">
@@ -235,20 +256,42 @@ export function ItemAmmoTab({ form, errors }: ItemAmmoTabProps) {
 										row.id === condition.id ? { ...row, ...patch } : row,
 									),
 								});
+							const options = conditionSelectOptions(
+								condition.key,
+								ammo.conditions.map((row) => row.key),
+							);
+							const selectValue = isDnDConditionKey(condition.key)
+								? condition.key
+								: "__legacy__";
 							return (
 								<div
 									key={condition.id}
 									className="space-y-2 rounded-xl border border-border/60 bg-background/40 p-3"
 								>
 									<div className="flex items-start gap-2">
-										<Input
-											aria-label="Nome da condição"
-											placeholder="Em chamas"
-											autoComplete="off"
-											spellCheck={false}
-											value={condition.name}
-											onChange={(e) => patchCondition({ name: e.target.value })}
-										/>
+										<Select
+											aria-label="Condição"
+											value={selectValue}
+											onChange={(e) => {
+												const value = e.target.value;
+												if (!isDnDConditionKey(value)) return;
+												patchCondition({
+													key: value,
+													name: dndConditionDef(value)?.label ?? value,
+												});
+											}}
+										>
+											{selectValue === "__legacy__" ? (
+												<option value="__legacy__">
+													{condition.name.trim() || "Condição antiga"}
+												</option>
+											) : null}
+											{options.map((def) => (
+												<option key={def.key} value={def.key}>
+													{def.label}
+												</option>
+											))}
+										</Select>
 										<Button
 											type="button"
 											variant="ghost"
@@ -268,7 +311,7 @@ export function ItemAmmoTab({ form, errors }: ItemAmmoTabProps) {
 									</div>
 									<Textarea
 										aria-label="Notas da condição"
-										placeholder="O mestre aplica na mesa."
+										placeholder="CD e duração. Ex.: CD 13 Constituição, 1 minuto."
 										rows={2}
 										spellCheck={false}
 										value={condition.notes}

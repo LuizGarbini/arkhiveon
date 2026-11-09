@@ -12,6 +12,11 @@ import type {
 	ItemAmmoStats,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
+import {
+	dndConditionDef,
+	isDnDConditionKey,
+	matchDnDCondition,
+} from "./conditions";
 import { itemCategoryKind } from "./item-mechanics";
 import {
 	averageDamage,
@@ -51,10 +56,17 @@ function readCondition(raw: unknown): ItemAmmoCondition | undefined {
 	if (!raw || typeof raw !== "object") return undefined;
 	const condition = raw as Record<string, unknown>;
 	if (typeof condition.id !== "string" || !condition.id) return undefined;
-	if (typeof condition.name !== "string") return undefined;
+	const name = typeof condition.name === "string" ? condition.name : "";
+	const key =
+		(isDnDConditionKey(condition.key) ? condition.key : undefined) ??
+		matchDnDCondition(typeof condition.key === "string" ? condition.key : "") ??
+		matchDnDCondition(name);
+	if (!key && !name) return undefined;
+	const official = key ? dndConditionDef(key) : undefined;
 	return {
 		id: condition.id,
-		name: condition.name,
+		...(key ? { key } : {}),
+		name: official?.label ?? name,
 		notes: typeof condition.notes === "string" ? condition.notes : "",
 	};
 }
