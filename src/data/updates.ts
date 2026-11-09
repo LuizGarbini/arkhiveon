@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.84-municao-rpc",
+		version: "1.6.84",
+		date: "09/11/2026",
+		title: "Munição: consumo no servidor, ainda sem botão na mesa",
+		description:
+			"Gastar munição passou a ser uma chamada de servidor com registro do disparo. A quantidade no inventário não volta atrás com o save antigo da ficha. A tela de ataque ainda não dispara o gasto; isso vem depois da migration ser aplicada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.83-municao-regras",
 		version: "1.6.83",
 		date: "09/11/2026",
