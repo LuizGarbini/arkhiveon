@@ -14,6 +14,54 @@ export type Database = {
 	};
 	public: {
 		Tables: {
+			ammo_consumptions: {
+				Row: {
+					campaign_id: string;
+					character_id: string;
+					consumption_id: string;
+					created_at: string;
+					inventory_entry_id: string;
+					roll: Json | null;
+					snapshot: Json;
+					user_id: string;
+				};
+				Insert: {
+					campaign_id: string;
+					character_id: string;
+					consumption_id: string;
+					created_at?: string;
+					inventory_entry_id: string;
+					roll?: Json | null;
+					snapshot: Json;
+					user_id: string;
+				};
+				Update: {
+					campaign_id?: string;
+					character_id?: string;
+					consumption_id?: string;
+					created_at?: string;
+					inventory_entry_id?: string;
+					roll?: Json | null;
+					snapshot?: Json;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "ammo_consumptions_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "ammo_consumptions_character_id_fkey";
+						columns: ["character_id"];
+						isOneToOne: false;
+						referencedRelation: "characters";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			activity_log: {
 				Row: {
 					action: string;
@@ -1528,6 +1576,47 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			complete_ammo_consumption_roll: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id: string;
+					p_consumption_id: string;
+					p_inventory_entry_id: string;
+					p_label?: string | null;
+					p_scene_id?: string | null;
+					p_secret?: boolean;
+				};
+				Returns: Json;
+			};
+			consume_ammo: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id: string;
+					p_consumption_id: string;
+					p_inventory_entry_id: string;
+					p_merged_formula?: string | null;
+				};
+				Returns: Json;
+			};
+			get_ammo_consumption: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id: string;
+					p_consumption_id: string;
+					p_inventory_entry_id: string;
+				};
+				Returns: Json;
+			};
+			set_ammo_quantity: {
+				Args: {
+					p_campaign_id: string;
+					p_character_id: string;
+					p_expected: number;
+					p_inventory_entry_id: string;
+					p_new: number;
+				};
+				Returns: Json;
+			};
 			can_attach_campaign_to_world: {
 				Args: { p_world_id: string };
 				Returns: boolean;

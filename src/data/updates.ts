@@ -11,6 +11,24 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.85-municao-ficha",
+		version: "1.6.85",
+		date: "09/11/2026",
+		title: "Munição: efeitos no cadastro e disparo na ficha",
+		description:
+			"Itens de Munição ganharam a aba Efeitos. No inventário, a quantidade de munição vinculada só muda pela chamada de servidor. Na ficha, armas com a propriedade Munição disparam, gastam 1 unidade e rolam o dano mesclado. Sem a migration no servidor, a quantidade permanece só leitura e o disparo avisa que está indisponível.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.84-municao-rpc",
+		version: "1.6.84",
+		date: "09/11/2026",
+		title: "Munição: consumo no servidor, ainda sem botão na mesa",
+		description:
+			"Gastar munição passou a ser uma chamada de servidor com registro do disparo. A quantidade no inventário não volta atrás com o save antigo da ficha. A tela de ataque ainda não dispara o gasto; isso vem depois da migration ser aplicada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.83-municao-regras",
 		version: "1.6.83",
 		date: "09/11/2026",

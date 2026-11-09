@@ -413,6 +413,8 @@ export function LinkedInventoryRow({
 	onChange,
 	onQuantity,
 	onUnlink,
+	quantityDisabled,
+	quantityTitle,
 }: {
 	entry: InventoryItem;
 	/** null = item apagado ou secreto. */
@@ -434,6 +436,8 @@ export function LinkedInventoryRow({
 	onChange: (patch: Partial<InventoryItem>) => void;
 	onQuantity: (delta: number) => void;
 	onUnlink: () => void;
+	quantityDisabled?: boolean;
+	quantityTitle?: string;
 }) {
 	const name = item?.name ?? entry.name;
 	const isWeapon = entry.category === "weapon";
@@ -506,18 +510,23 @@ export function LinkedInventoryRow({
 				<span className="font-mono text-xs text-muted-foreground">
 					{weight.toFixed(1)} lbs
 				</span>
-				<div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-0.5">
+				<div
+					className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-0.5"
+					title={quantityTitle}
+				>
 					<Button
 						type="button"
 						variant="ghost"
 						size="xs"
 						className="h-11 w-11 p-0 sm:h-6 sm:w-6"
 						aria-label={`Diminuir ${name}`}
+						disabled={quantityDisabled}
+						title={quantityTitle}
 						onClick={() => onQuantity(-1)}
 					>
 						-
 					</Button>
-					<span className="px-1.5 font-mono text-xs font-bold">
+					<span className="px-1.5 font-mono text-xs font-bold tabular-nums">
 						{entry.quantity}
 					</span>
 					<Button
@@ -526,6 +535,8 @@ export function LinkedInventoryRow({
 						size="xs"
 						className="h-11 w-11 p-0 sm:h-6 sm:w-6"
 						aria-label={`Aumentar ${name}`}
+						disabled={quantityDisabled}
+						title={quantityTitle}
 						onClick={() => onQuantity(1)}
 					>
 						+

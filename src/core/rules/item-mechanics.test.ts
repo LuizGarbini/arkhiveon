@@ -187,6 +187,27 @@ describe("tabStatus", () => {
 		expect(s.bonus).toEqual({ kind: "optional" });
 		expect(s.description).toEqual({ kind: "optional" });
 	});
+	it("Munição: efeitos são opcionais e o dano vira resumo", () => {
+		expect(
+			tabStatus({ name: "Flecha", type: "Munição" }, "create").mechanics,
+		).toEqual({ kind: "optional" });
+		expect(
+			tabStatus(
+				{
+					name: "Flecha flamejante",
+					type: "Munição",
+					ammo: {
+						unitLabel: "flecha",
+						damage: { amount: "1d8", type: "fire" },
+						extraDamage: [],
+						conditions: [],
+					},
+				},
+				"edit",
+			).mechanics,
+		).toEqual({ kind: "summary", text: "1d8" });
+	});
+
 	it("item antigo sem weapon abre sem erro", () => {
 		const legacy = { name: "Anel velho", type: "Anel", description: "" };
 		expect(() => tabStatus(legacy, "edit")).not.toThrow();
