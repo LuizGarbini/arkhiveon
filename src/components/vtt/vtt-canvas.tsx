@@ -681,8 +681,7 @@ export function VTTCanvas({
 		if (sceneGridType === "none" || sceneGridSize <= 0 || sceneGridOpacity <= 0)
 			return;
 
-		const colorHex =
-			Number.parseInt(sceneGridColor.replace("#", "0x"), 16) || 0xffffff;
+		const colorHex = parseHexColor(sceneGridColor, 0xffffff);
 
 		const gridOrigin = { x: sceneGridOffsetX, y: sceneGridOffsetY };
 		if (sceneGridType === "square") {
@@ -1321,8 +1320,7 @@ export function VTTCanvas({
 			const cursorContainer = new Container();
 			cursorContainer.position.set(cursor.x, cursor.y);
 
-			const colorHex =
-				Number.parseInt(cursor.color.replace("#", "0x"), 16) || 0x38bdf8;
+			const colorHex = parseHexColor(cursor.color, 0x38bdf8);
 
 			// Pointer Arrow
 			const arrow = new Graphics();
@@ -1373,8 +1371,7 @@ export function VTTCanvas({
 		labelsLayer.removeChildren();
 
 		for (const m of Object.values(remoteMeasurements)) {
-			const colorHex =
-				Number.parseInt(m.color.replace("#", "0x"), 16) || 0x38bdf8;
+			const colorHex = parseHexColor(m.color, 0x38bdf8);
 
 			// Line & Endpoints
 			layer.moveTo(m.startX, m.startY);
@@ -1475,8 +1472,7 @@ export function VTTCanvas({
 			const progress = elapsed / 3000;
 			const radius = 20 + progress * 60;
 			const alpha = Math.max(0, 1 - progress);
-			const colorHex =
-				Number.parseInt(ping.color.replace("#", "0x"), 16) || 0xa855f7;
+			const colorHex = parseHexColor(ping.color, 0xa855f7);
 
 			layer.circle(ping.x, ping.y, radius);
 			layer.stroke({ width: 3, color: colorHex, alpha });

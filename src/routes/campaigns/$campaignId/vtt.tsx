@@ -783,7 +783,18 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data?.userId) {
-						setRemoteMeasurement(data.userId, data.measurement || null);
+						const measurement = data.measurement;
+						setRemoteMeasurement(
+							data.userId,
+							measurement
+								? {
+										...measurement,
+										userId: data.userId,
+										userName: measurement.userName || "Jogador",
+										color: measurement.color || "#38bdf8",
+									}
+								: null,
+						);
 					}
 				},
 			)
@@ -798,7 +809,11 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data) {
-						addPing(data);
+						addPing({
+							...data,
+							color: data.color || "#a855f7",
+							userName: data.userName || "Aventureiro",
+						});
 						playPingAudio();
 					}
 				},
@@ -947,16 +962,27 @@ function VTTSession() {
 	const handleBroadcastRuler = useCallback(
 		(measurement: VTTRulerMeasurement | null) => {
 			if (!roomChannelRef.current || !user) return;
+			const userName =
+				user.user_metadata?.full_name ||
+				user.email?.split("@")[0] ||
+				"Aventureiro";
 			roomChannelRef.current.send({
 				type: "broadcast",
 				event: "ruler_move",
 				payload: {
 					userId: user.id,
-					measurement,
+					measurement: measurement
+						? {
+								...measurement,
+								userId: user.id,
+								userName,
+								color: userColor,
+							}
+						: null,
 				},
 			});
 		},
-		[user],
+		[user, userColor],
 	);
 
 	const handleBroadcastPing = useCallback(
