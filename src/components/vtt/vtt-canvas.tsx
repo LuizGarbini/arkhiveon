@@ -993,6 +993,23 @@ export function VTTCanvas({
 					hpBar.fill({ color: hpFill });
 				}
 
+				const tokenTempHp = token.tempHp ?? 0;
+				if (tokenTempHp > 0) {
+					const tempRatio = Math.min(1, tokenTempHp / maxHp);
+					const currentWidth = Math.max(0, barWidth * hpRatio);
+					hpBar.roundRect(
+						-barWidth / 2 + currentWidth,
+						barY,
+						Math.max(
+							2 * tokenScale,
+							Math.min(barWidth - currentWidth, barWidth * tempRatio),
+						),
+						barHeight,
+						barCorner,
+					);
+					hpBar.fill({ color: 0x22d3ee });
+				}
+
 				hpBar.roundRect(-barWidth / 2, barY, barWidth, barHeight, barCorner);
 				hpBar.stroke({ width: 1 * tokenScale, color: 0xffffff, alpha: 0.3 });
 

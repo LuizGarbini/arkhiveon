@@ -16,6 +16,7 @@ export function VttHpAdjust({
 	tempHp = 0,
 	onChange,
 	onChangeMax,
+	onChangeHp,
 	onChangeTempHp,
 }: {
 	hpCurrent: number;
@@ -24,11 +25,17 @@ export function VttHpAdjust({
 	tempHp?: number;
 	onChange: (next: number) => Promise<unknown> | unknown;
 	onChangeMax?: (next: number) => Promise<unknown> | unknown;
+	onChangeHp?: (patch: {
+		current?: number;
+		max?: number;
+	}) => Promise<unknown> | unknown;
 	onChangeTempHp?: (next: number) => Promise<unknown> | unknown;
 }) {
 	const maxFieldId = useId();
+	const currentFieldId = useId();
 	const tempFieldId = useId();
 	const [maxDraft, setMaxDraft] = useState<string | null>(null);
+	const [currentDraft, setCurrentDraft] = useState<string | null>(null);
 	const [tempDraft, setTempDraft] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const pendingRef = useRef(false);
@@ -211,53 +218,112 @@ export function VttHpAdjust({
 				</form>
 			)}
 
-			{showMax && onChangeMax ? (
-				<form
-					className="flex items-end gap-1.5"
-					onSubmit={(event) => {
-						event.preventDefault();
-						if (pendingRef.current) return;
-						const nextMax = Number.parseInt(maxDraft ?? String(hpMax), 10);
-						if (!Number.isFinite(nextMax) || nextMax <= 0) return;
-						const submitter = event.currentTarget.querySelector(
-							"button[type='submit']",
-						);
-						if (submitter instanceof HTMLButtonElement) submitter.blur();
-						run(
-							() => onChangeMax(nextMax),
-							submitter instanceof HTMLButtonElement ? submitter : null,
-						);
-						setMaxDraft(null);
-					}}
+			<form
+				className="space-y-2 pt-1"
+				onSubmit={(event) => {
+					event.preventDefault();
+					if (pendingRef.current) return;
+					const submitter = event.currentTarget.querySelector(
+						"button[type='submit']",
+					);
+					if (submitter instanceof HTMLButtonElement) submitter.blur();
+					run(
+						async () => {
+							const nextCurrent = Number.parseInt(
+								currentDraft ?? String(hpCurrent),
+								10,
+							);
+							const canEditMax =
+								showMax && (Boolean(onChangeMax) || Boolean(onChangeHp));
+							const nextMax = canEditMax
+								? Number.parseInt(maxDraft ?? String(hpMax), 10)
+								: null;
+							const hasCurrentChange =
+								Number.isFinite(nextCurrent) &&
+								nextCurrent >= 0 &&
+								nextCurrent !== hpCurrent;
+							const hasMaxChange =
+								nextMax !== null &&
+								Number.isFinite(nextMax) &&
+								nextMax > 0 &&
+								nextMax !== hpMax;
+
+							if (onChangeHp && (hasCurrentChange || hasMaxChange)) {
+								await onChangeHp({
+									current: hasCurrentChange ? nextCurrent : undefined,
+									max: hasMaxChange ? nextMax : undefined,
+								});
+							} else {
+								if (hasCurrentChange) {
+									await onChange(nextCurrent);
+								}
+								if (hasMaxChange && onChangeMax) {
+									await onChangeMax(nextMax);
+								}
+							}
+							setCurrentDraft(null);
+							setMaxDraft(null);
+						},
+						submitter instanceof HTMLButtonElement ? submitter : null,
+					);
+				}}
+			>
+				<div
+					className={cn(
+						"grid gap-2",
+						showMax && (onChangeMax || onChangeHp)
+							? "grid-cols-2"
+							: "grid-cols-1",
+					)}
 				>
-					<div className="min-w-0 flex-1 space-y-1">
-						<label htmlFor={maxFieldId} className="text-xs font-bold">
-							PV máximo
+					<div className="min-w-0 space-y-1">
+						<label htmlFor={currentFieldId} className="text-xs font-bold">
+							PV atual
 						</label>
 						<Input
-							id={maxFieldId}
+							id={currentFieldId}
 							type="number"
-							min={1}
+							min={0}
 							inputMode="numeric"
 							spellCheck={false}
 							autoComplete="off"
 							disabled={saving}
-							aria-label="PV máximo"
-							value={maxDraft ?? String(hpMax)}
-							onChange={(event) => setMaxDraft(event.target.value)}
+							aria-label="PV atual"
+							value={currentDraft ?? String(hpCurrent)}
+							onChange={(event) => setCurrentDraft(event.target.value)}
 							className="h-11 text-base tabular-nums"
 						/>
 					</div>
-					<Button
-						type="submit"
-						variant="outline"
-						disabled={saving}
-						className="h-11 min-h-11 select-none cursor-pointer"
-					>
-						Aplicar
-					</Button>
-				</form>
-			) : null}
+					{showMax && (onChangeMax || onChangeHp) ? (
+						<div className="min-w-0 space-y-1">
+							<label htmlFor={maxFieldId} className="text-xs font-bold">
+								PV máximo
+							</label>
+							<Input
+								id={maxFieldId}
+								type="number"
+								min={1}
+								inputMode="numeric"
+								spellCheck={false}
+								autoComplete="off"
+								disabled={saving}
+								aria-label="PV máximo"
+								value={maxDraft ?? String(hpMax)}
+								onChange={(event) => setMaxDraft(event.target.value)}
+								className="h-11 text-base tabular-nums"
+							/>
+						</div>
+					) : null}
+				</div>
+				<Button
+					type="submit"
+					variant="outline"
+					disabled={saving}
+					className="h-11 min-h-11 w-full select-none cursor-pointer font-semibold"
+				>
+					Aplicar
+				</Button>
+			</form>
 		</div>
 	);
 }

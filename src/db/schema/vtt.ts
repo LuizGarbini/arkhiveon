@@ -81,6 +81,7 @@ export const vttTokens = pgTable("vtt_tokens", {
 	rotation: real("rotation").notNull().default(0),
 	hpCurrent: integer("hp_current"),
 	hpMax: integer("hp_max"),
+	tempHp: integer("temp_hp"),
 	elevation: real("elevation").notNull().default(0),
 	conditions: jsonb("conditions").notNull().default([]),
 	auras: jsonb("auras").notNull().default([]),

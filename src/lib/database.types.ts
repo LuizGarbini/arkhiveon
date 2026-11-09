@@ -1223,6 +1223,7 @@ export type Database = {
 					elevation: number;
 					hp_current: number | null;
 					hp_max: number | null;
+					temp_hp: number | null;
 					id: string;
 					is_hidden: boolean;
 					is_locked: boolean;
@@ -1247,6 +1248,7 @@ export type Database = {
 					elevation?: number;
 					hp_current?: number | null;
 					hp_max?: number | null;
+					temp_hp?: number | null;
 					id?: string;
 					is_hidden?: boolean;
 					is_locked?: boolean;
@@ -1271,6 +1273,7 @@ export type Database = {
 					elevation?: number;
 					hp_current?: number | null;
 					hp_max?: number | null;
+					temp_hp?: number | null;
 					id?: string;
 					is_hidden?: boolean;
 					is_locked?: boolean;

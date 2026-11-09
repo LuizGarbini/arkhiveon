@@ -411,4 +411,59 @@ describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos
 			expect(updated?.tableResources?.bonusDice[0].quantity).toBe(1);
 		});
 	});
+
+	it("permite adicionar, visualizar e zerar vida temporária em token sem ficha vinculada", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 15,
+			hpMax: 20,
+			tempHp: 0,
+		});
+
+		const input = screen.getByRole("spinbutton", { name: "Vida temporária" });
+		fireEvent.change(input, { target: { value: "7" } });
+		const submit = screen.getByRole("button", { name: "Definir" });
+		fireEvent.click(submit);
+
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { tempHp: 7 });
+	});
+
+	it("absorve dano da vida temporária antes do PV atual em token sem ficha vinculada", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 20,
+			hpMax: 20,
+			tempHp: 5,
+		});
+		expect(screen.getByText("+5 temp")).toBeTruthy();
+
+		const minus1 = screen.getByRole("button", { name: "-1" });
+		fireEvent.click(minus1);
+
+		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { tempHp: 4 });
+	});
+
+	it("permite editar PV atual e PV máximo diretamente pelo formulário em token sem ficha", async () => {
+		const { onUpdateToken } = setup({
+			characterId: null,
+			hpCurrent: 10,
+			hpMax: 15,
+			tempHp: 0,
+		});
+
+		const currentInput = screen.getByRole("spinbutton", { name: "PV atual" });
+		const maxInput = screen.getByRole("spinbutton", { name: "PV máximo" });
+		fireEvent.change(currentInput, { target: { value: "14" } });
+		fireEvent.change(maxInput, { target: { value: "25" } });
+
+		const aplicar = screen.getByRole("button", { name: "Aplicar" });
+		fireEvent.click(aplicar);
+
+		await waitFor(() => {
+			expect(onUpdateToken).toHaveBeenCalledWith("tok-1", {
+				hpCurrent: 14,
+				hpMax: 25,
+			});
+		});
+	});
 });

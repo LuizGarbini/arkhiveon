@@ -485,23 +485,51 @@ function SheetContent({
 					hpCurrent={hp.current}
 					hpMax={hp.max}
 					showMax={showMax}
-					tempHp={character?.tempHealth ?? 0}
+					tempHp={character?.tempHealth ?? token.tempHp ?? 0}
 					onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
-					onChangeTempHp={
-						character
-							? (nextTemp) =>
-									useRPGStore.getState().updateCharacter(character.id, {
-										tempHealth: nextTemp,
-									})
+					onChangeTempHp={(nextTemp) => {
+						const sanitized = Math.max(0, nextTemp);
+						if (character) {
+							void useRPGStore.getState().updateCharacter(character.id, {
+								tempHealth: sanitized,
+							});
+						}
+						void onUpdateToken(token.id, { tempHp: sanitized });
+					}}
+					onChangeMax={
+						isGM || !hp.fromSheet
+							? (nextMax) => {
+									if (character && isGM) {
+										void useRPGStore.getState().updateCharacter(character.id, {
+											healthMax: nextMax,
+										});
+									}
+									void onUpdateToken(token.id, {
+										hpMax: nextMax,
+									});
+								}
 							: undefined
 					}
-					onChangeMax={
-						hp.fromSheet && isGM
-							? (nextMax) =>
-									onUpdateToken(token.id, {
-										hpCurrent: hp.current,
-										hpMax: nextMax,
-									})
+					onChangeHp={
+						isGM || !hp.fromSheet
+							? ({ current, max }) => {
+									if (character && isGM) {
+										const patch: Partial<Character> = {};
+										if (current !== undefined) patch.health = current;
+										if (max !== undefined) patch.healthMax = max;
+										if (Object.keys(patch).length > 0) {
+											void useRPGStore
+												.getState()
+												.updateCharacter(character.id, patch);
+										}
+									}
+									const tokenPatch: Partial<VTTToken> = {};
+									if (current !== undefined) tokenPatch.hpCurrent = current;
+									if (max !== undefined) tokenPatch.hpMax = max;
+									if (Object.keys(tokenPatch).length > 0) {
+										void onUpdateToken(token.id, tokenPatch);
+									}
+								}
 							: undefined
 					}
 				/>
