@@ -158,7 +158,7 @@ describe("menu do token", () => {
 			<VTTTokenMenu
 				token={token}
 				onUpdateToken={vi.fn(async () => {})}
-				onDeleteToken={vi.fn(async () => {})}
+				onDeleteToken={vi.fn(async () => undefined)}
 			/>,
 		);
 

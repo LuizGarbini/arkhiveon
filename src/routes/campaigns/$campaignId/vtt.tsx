@@ -1461,16 +1461,16 @@ function VTTSession() {
 		}
 	};
 
-	const handleDeleteToken = async (tokenId: string) => {
+	const handleDeleteToken = async (tokenId: string): Promise<boolean> => {
 		const sessionGeneration = sessionGenerationRef.current;
 		if (!canEditToken(tokenId)) {
 			setMutationError("Você não controla este token.");
-			return;
+			return false;
 		}
 		const client = getSupabase();
 		if (!client) {
 			setMutationError("Sem conexão para remover o token.");
-			return;
+			return false;
 		}
 		setMutationError(null);
 		try {
@@ -1478,19 +1478,21 @@ function VTTSession() {
 				.from("vtt_tokens")
 				.delete()
 				.eq("id", tokenId)
-				.select("id")
-				.single();
-			if (error || !data) throw error || new Error("Token não removido");
+				.select("id");
+			if (error || !data?.length)
+				throw error || new Error("Token não removido");
 			if (
 				sessionGenerationRef.current === sessionGeneration &&
 				useVTTStore.getState().activeSceneId === activeSceneId
 			)
 				removeToken(tokenId);
+			return true;
 		} catch {
-			if (sessionGenerationRef.current !== sessionGeneration) return;
+			if (sessionGenerationRef.current !== sessionGeneration) return true;
 			setMutationError(
 				"Não foi possível remover o token. Ele foi mantido na mesa.",
 			);
+			return false;
 		}
 	};
 
@@ -1665,6 +1667,7 @@ function VTTSession() {
 				onSpawnToken={handleSpawnToken}
 				onFocusPoint={handleFocusPoint}
 				onSetSceneMap={handleSetSceneMap}
+				onRemoveToken={handleDeleteToken}
 			/>
 
 			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />

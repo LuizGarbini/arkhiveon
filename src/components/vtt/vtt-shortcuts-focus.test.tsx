@@ -54,6 +54,7 @@ function renderMesa() {
 				onSpawnToken={vi.fn(async () => {})}
 				onFocusPoint={vi.fn()}
 				onSetSceneMap={vi.fn(async () => {})}
+				onRemoveToken={vi.fn(async () => true)}
 			/>
 		</>,
 	);
