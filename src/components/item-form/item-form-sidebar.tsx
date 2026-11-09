@@ -144,7 +144,7 @@ interface SheetPreviewProps {
 }
 
 function SheetPreview({ kind, weapon, armor }: SheetPreviewProps) {
-	if (kind === "other") return null;
+	if (kind === "other" || kind === "ammo") return null;
 	const rows: [string, string][] = [];
 	let empty = "";
 	if (kind === "weapon") {

@@ -209,7 +209,9 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const kind = itemCategoryKind(watched.type);
 	const tabs = buildItemTabs(kind);
 	const currentTab: ItemFormTabId =
-		activeTab === "mechanics" && kind === "other" ? "identity" : activeTab;
+		activeTab === "mechanics" && kind !== "weapon" && kind !== "armor"
+			? "identity"
+			: activeTab;
 	const statuses = tabStatus(watched, mode);
 	const { errors } = validateItemDraft(watched);
 	const canSubmit = Boolean(name.trim());
@@ -266,6 +268,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 						}
 					: undefined,
 			armor: dataKind === "armor" ? data.armor : undefined,
+			ammo: dataKind === "ammo" ? data.ammo : undefined,
 			bonuses: data.bonuses?.length ? data.bonuses : undefined,
 		};
 		let createdId: string | null = null;
