@@ -33,7 +33,6 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
-
 import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
@@ -55,6 +54,11 @@ import {
 import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import {
+	buildTokenInsertPayload,
+	insertVttToken,
+	requirePlaceContext,
+} from "@/lib/vtt/token-spawn";
 import type {
 	VTTAura,
 	VTTFogPath,
@@ -779,7 +783,18 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data?.userId) {
-						setRemoteMeasurement(data.userId, data.measurement || null);
+						const measurement = data.measurement;
+						setRemoteMeasurement(
+							data.userId,
+							measurement
+								? {
+										...measurement,
+										userId: data.userId,
+										userName: measurement.userName || "Jogador",
+										color: measurement.color || "#38bdf8",
+									}
+								: null,
+						);
 					}
 				},
 			)
@@ -794,7 +809,11 @@ function VTTSession() {
 						return;
 					const data = payload.payload;
 					if (data) {
-						addPing(data);
+						addPing({
+							...data,
+							color: data.color || "#a855f7",
+							userName: data.userName || "Aventureiro",
+						});
 						playPingAudio();
 					}
 				},
@@ -943,16 +962,27 @@ function VTTSession() {
 	const handleBroadcastRuler = useCallback(
 		(measurement: VTTRulerMeasurement | null) => {
 			if (!roomChannelRef.current || !user) return;
+			const userName =
+				user.user_metadata?.full_name ||
+				user.email?.split("@")[0] ||
+				"Aventureiro";
 			roomChannelRef.current.send({
 				type: "broadcast",
 				event: "ruler_move",
 				payload: {
 					userId: user.id,
-					measurement,
+					measurement: measurement
+						? {
+								...measurement,
+								userId: user.id,
+								userName,
+								color: userColor,
+							}
+						: null,
 				},
 			});
 		},
-		[user],
+		[user, userColor],
 	);
 
 	const handleBroadcastPing = useCallback(
@@ -1265,11 +1295,11 @@ function VTTSession() {
 	// Token Management Handlers
 	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
 		const sessionGeneration = sessionGenerationRef.current;
-		const client = getSupabase();
-		if (!client || !activeSceneId || !isGM)
-			throw new Error(
-				"É necessário estar conectado como mestre para colocar tokens.",
-			);
+		const { client, sceneId } = requirePlaceContext({
+			client: getSupabase(),
+			sceneId: activeSceneId,
+			isGM,
+		});
 
 		const sheetCharacter = tokenData.characterId
 			? readCampaignCharacters().find(
@@ -1282,66 +1312,19 @@ function VTTSession() {
 			hpCurrent: tokenData.hpCurrent,
 			hpMax: tokenData.hpMax,
 		});
-		const insertPayload: Database["public"]["Tables"]["vtt_tokens"]["Insert"] =
-			{
-				scene_id: activeSceneId,
-				character_id: tokenData.characterId || null,
-				npc_id: tokenData.npcId || null,
-				name: tokenData.name || "Token",
-				avatar_url: tokenData.avatarUrl || null,
-				layer: tokenData.layer || "token",
-				x: tokenData.x || 0,
-				y: tokenData.y || 0,
-				size_cells: tokenData.sizeCells || 1.0,
-				rotation: tokenData.rotation || 0,
-				hp_current: hpColumns.hp_current,
-				hp_max: hpColumns.hp_max,
-				temp_hp: tokenData.tempHp ?? 0,
-				elevation: tokenData.elevation || 0,
-				conditions: (tokenData.conditions || []) as unknown as Json,
-				auras: (tokenData.auras || []) as unknown as Json,
-				vision_range: tokenData.visionRange || 6,
-				is_locked: tokenData.isLocked || false,
-				is_hidden: tokenData.isHidden || false,
-				controlled_by: (tokenData.controlledBy || []) as unknown as Json,
-			};
+		const insertPayload = buildTokenInsertPayload(
+			sceneId,
+			tokenData,
+			hpColumns,
+		);
 
-		const { data, error } = await client
-			.from("vtt_tokens")
-			.insert(insertPayload)
-			.select()
-			.single();
+		const data = await insertVttToken(
+			(payload) => client.from("vtt_tokens").insert(payload).select().single(),
+			insertPayload,
+		);
 
-		if (error) {
-			console.error("Erro ao criar token:", error);
-			throw new Error("Não foi possível colocar o token. Tente novamente.");
-		}
-
-		if (data && sessionGenerationRef.current === sessionGeneration) {
-			const spawned: VTTToken = {
-				id: data.id,
-				sceneId: data.scene_id,
-				characterId: data.character_id,
-				npcId: data.npc_id,
-				name: data.name,
-				avatarUrl: data.avatar_url,
-				layer: data.layer as VTTLayer,
-				x: Number(data.x),
-				y: Number(data.y),
-				sizeCells: Number(data.size_cells),
-				rotation: Number(data.rotation || 0),
-				hpCurrent: data.hp_current,
-				hpMax: data.hp_max,
-				tempHp: data.temp_hp ?? tokenData.tempHp ?? 0,
-				elevation: Number(data.elevation || 0),
-				conditions: (data.conditions as unknown as string[]) || [],
-				auras: (data.auras as unknown as VTTAura[]) || [],
-				visionRange: Number(data.vision_range || 0),
-				isLocked: data.is_locked,
-				isHidden: data.is_hidden,
-				controlledBy: (data.controlled_by as unknown as string[]) || [],
-			};
-			addToken(spawned);
+		if (sessionGenerationRef.current === sessionGeneration) {
+			addToken(mapTokenRow(data));
 		}
 	};
 
