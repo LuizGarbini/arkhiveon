@@ -90,6 +90,7 @@ export function VTTTokenMenu({
 	const setActiveTokenIdForMenu = useVTTStore((s) => s.setActiveTokenIdForMenu);
 	const setShowCharacterSheetId = useVTTStore((s) => s.setShowCharacterSheetId);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManage = useVTTStore((s) => s.isGM || s.isCoGM);
 	const viewport = useVTTStore((s) => s.viewport);
 
 	const isMobile = useIsMobile();
@@ -170,11 +171,9 @@ export function VTTTokenMenu({
 		user?.id && token.controlledBy?.includes(user.id),
 	);
 	const canEdit = character
-		? isGM || isCharacterCreator || isTokenController
-		: isGM;
-	const showMax = character
-		? isGM || isCharacterCreator || isTokenController
-		: isGM;
+		? canManage || isCharacterCreator || isTokenController
+		: canManage;
+	const showMax = canEdit;
 
 	const tokenTempHp =
 		character?.tempHealth !== undefined

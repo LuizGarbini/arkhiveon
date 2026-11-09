@@ -288,7 +288,7 @@ function escapeCloses(close: () => void) {
 
 /** PV que a ficha mostra: o da ficha vinculada, senão o do token. */
 function useSheetHp(token: VTTToken | null, character: Character | null) {
-	const isGM = useVTTStore((s) => s.isGM);
+	const canManage = useVTTStore((s) => s.isGM || s.isCoGM);
 	const linkedId = token?.characterId ?? null;
 	const sheetHealth = useRPGStore((s) => selectSheetHealth(s, linkedId));
 	const sheetHealthMax = useRPGStore((s) => selectSheetHealthMax(s, linkedId));
@@ -301,7 +301,7 @@ function useSheetHp(token: VTTToken | null, character: Character | null) {
 		characterHealth: sheetOwnsHp ? undefined : character?.health,
 		characterHealthMax: sheetOwnsHp ? undefined : character?.healthMax,
 	});
-	return { hp, showMax: !hp.fromSheet || isGM };
+	return { hp, showMax: !hp.fromSheet || canManage };
 }
 
 function FloatingSheet({
@@ -669,6 +669,7 @@ function SheetContent({
 }) {
 	const loadStatus = useRPGStore((s) => s.campaignLoadStatus);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManage = useVTTStore((s) => s.isGM || s.isCoGM);
 	const role = useActiveCampaignRole();
 	const { session } = useAuth();
 	const imageAssets = useImageAssetLookup();
@@ -780,7 +781,7 @@ function SheetContent({
 						void onUpdateToken(token.id, { tempHp: sanitized });
 					}}
 					onChangeMax={
-						isGM || (character && !hp.fromSheet)
+						canManage || (character && !hp.fromSheet)
 							? (nextMax) => {
 									if (character && isGM) {
 										void useRPGStore.getState().updateCharacter(character.id, {
@@ -794,7 +795,7 @@ function SheetContent({
 							: undefined
 					}
 					onChangeHp={
-						isGM || (character && !hp.fromSheet)
+						canManage || (character && !hp.fromSheet)
 							? ({ current, max }) => {
 									if (character && isGM) {
 										const patch: Partial<Character> = {};

@@ -422,6 +422,7 @@ export function VTTCanvas({
 	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
 	const userColor = useVTTStore((s) => s.userColor);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	// Position and the remote target stay out of this key so a drag does not
 	// destroy and recreate the sprite on every pointer move.
 	const tokenAppearance = useMemo(() => tokensAppearanceKey(tokens), [tokens]);
@@ -858,7 +859,7 @@ export function VTTCanvas({
 			const canControl = canControlVTTToken(
 				token,
 				user?.id,
-				isGM,
+				canManageTokens,
 				characterOwners,
 			);
 			tokenContainer.cursor =
@@ -1180,7 +1181,7 @@ export function VTTCanvas({
 											canControlVTTToken(
 												item,
 												userIdRef.current,
-												live.isGM,
+												live.isGM || live.isCoGM,
 												characterOwnersRef.current,
 											) && canSelectTokenLayer(live.activeLayer, item.layer),
 									};
@@ -1217,6 +1218,7 @@ export function VTTCanvas({
 		scene,
 		selectedTokenIds,
 		isGM,
+		canManageTokens,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		linkedSheetHp,
@@ -2170,7 +2172,7 @@ export function VTTCanvas({
 								canControlVTTToken(
 									item,
 									userIdRef.current,
-									live.isGM,
+									live.isGM || live.isCoGM,
 									characterOwnersRef.current,
 								) &&
 								!item.isLocked,

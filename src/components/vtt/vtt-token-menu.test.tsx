@@ -500,4 +500,26 @@ describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos
 		expect(screen.queryByRole("button", { name: "Aplicar" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Definir" })).toBeNull();
 	});
+
+	it("co-mestre edita o PV de token sem ficha, mas não vê as ações do mestre", () => {
+		useVTTStore.setState({ isCoGM: true });
+		try {
+			setup(
+				{
+					characterId: null,
+					hpCurrent: 10,
+					hpMax: 20,
+					controlledBy: [],
+				},
+				false,
+			);
+			expect(screen.getByRole("spinbutton", { name: "PV atual" })).toBeTruthy();
+			expect(screen.getByRole("button", { name: "Aplicar" })).toBeTruthy();
+			expect(
+				screen.queryByRole("button", { name: "Ocultar dos Jogadores" }),
+			).toBeNull();
+		} finally {
+			useVTTStore.setState({ isCoGM: false });
+		}
+	});
 });

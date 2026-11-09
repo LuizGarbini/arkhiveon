@@ -37,6 +37,7 @@ import {
 import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	canControlVTTToken,
+	tableRole,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import {
@@ -126,7 +127,9 @@ function VTTSession() {
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const setIsGM = useVTTStore((s) => s.setIsGM);
+	const setIsCoGM = useVTTStore((s) => s.setIsCoGM);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
 	const [sceneSession] = useState(() =>
@@ -240,16 +243,13 @@ function VTTSession() {
 		}
 	}, []);
 
-	// 1. Determine GM vs Player permissions
+	// 1. Papel na mesa: mestre vê tudo; co-mestre vê como jogador, mas
+	// gerencia tokens e fichas (ver tableRole).
 	useEffect(() => {
-		const isOwner = Boolean(
-			activeCampaign &&
-				user &&
-				(activeCampaign.ownerId === user.id ||
-					activeCampaign.myRole === "owner"),
-		);
-		setIsGM(isOwner);
-	}, [activeCampaign, user, setIsGM]);
+		const role = tableRole(activeCampaign, user?.id);
+		setIsGM(role.isGM);
+		setIsCoGM(role.isCoGM);
+	}, [activeCampaign, user, setIsGM, setIsCoGM]);
 
 	// Assistente da mesa (piloto): só aparece se a campanha estiver na allowlist
 	// `ia_mesa_pilot_campaigns` do Supabase. Fora dela: nenhuma UI.
@@ -963,7 +963,10 @@ function VTTSession() {
 		(tokenId: string, x: number, y: number) => {
 			if (!roomChannelRef.current || !user) return;
 			const token = useVTTStore.getState().tokens.find((t) => t.id === tokenId);
-			if (!token || !canControlVTTToken(token, user.id, isGM, characterOwners))
+			if (
+				!token ||
+				!canControlVTTToken(token, user.id, canManageTokens, characterOwners)
+			)
 				return;
 			roomChannelRef.current.send({
 				type: "broadcast",
@@ -971,7 +974,7 @@ function VTTSession() {
 				payload: { tokenId, x, y, userId: user.id },
 			});
 		},
-		[user, isGM, characterOwners],
+		[user, canManageTokens, characterOwners],
 	);
 
 	const handleBroadcastCursor = useCallback(
@@ -1325,7 +1328,7 @@ function VTTSession() {
 		return (
 			token &&
 			token.sceneId === activeSceneId &&
-			canControlVTTToken(token, user?.id, isGM, characterOwners)
+			canControlVTTToken(token, user?.id, canManageTokens, characterOwners)
 		);
 	};
 
@@ -1398,7 +1401,7 @@ function VTTSession() {
 					characterId: character.id,
 					current,
 					max: typeof updates.hpMax === "number" ? updates.hpMax : undefined,
-					canEditMax: isGM,
+					canEditMax: canManageTokens,
 				});
 				const rest = { ...updates };
 				delete rest.hpCurrent;
@@ -1540,7 +1543,7 @@ function VTTSession() {
 		tokens.find(
 			(t) =>
 				t.id === activeTokenIdForMenu &&
-				canControlVTTToken(t, user?.id, isGM, characterOwners),
+				canControlVTTToken(t, user?.id, canManageTokens, characterOwners),
 		) || null;
 
 	return (

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { canControlVTTToken, tokenImageForViewer } from "./permissions";
+import {
+	canControlVTTToken,
+	tableRole,
+	tokenImageForViewer,
+} from "./permissions";
 
 const token = { characterId: "hero", controlledBy: [], isLocked: false };
 
@@ -99,5 +103,46 @@ describe("tokenImageForViewer", () => {
 		expect(
 			tokenImageForViewer({ ...visible, avatarUrl: null }, true),
 		).toBeUndefined();
+	});
+});
+
+describe("papel na mesa", () => {
+	it("dono é mestre; co-mestre (editor) não vê como mestre mas gerencia tokens", () => {
+		expect(tableRole({ ownerId: "u1", myRole: "owner" }, "u1")).toEqual({
+			isGM: true,
+			isCoGM: false,
+		});
+		expect(tableRole({ ownerId: "dono", myRole: "editor" }, "u2")).toEqual({
+			isGM: false,
+			isCoGM: true,
+		});
+		expect(tableRole({ ownerId: "dono", myRole: "viewer" }, "u3")).toEqual({
+			isGM: false,
+			isCoGM: false,
+		});
+		expect(tableRole(undefined, "u1")).toEqual({ isGM: false, isCoGM: false });
+		expect(tableRole({ ownerId: "u1", myRole: "owner" }, null)).toEqual({
+			isGM: false,
+			isCoGM: false,
+		});
+	});
+
+	it("co-mestre controla token de monstro e de outro jogador", () => {
+		const { isGM, isCoGM } = tableRole(
+			{ ownerId: "dono", myRole: "editor" },
+			"co",
+		);
+		const monster = { characterId: null, controlledBy: [], isLocked: false };
+		const otherPlayer = {
+			characterId: "c-1",
+			controlledBy: ["player"],
+			isLocked: false,
+		};
+		expect(canControlVTTToken(monster, "co", isGM || isCoGM, [])).toBe(true);
+		expect(
+			canControlVTTToken(otherPlayer, "co", isGM || isCoGM, [
+				{ id: "c-1", userId: "player" },
+			]),
+		).toBe(true);
 	});
 });

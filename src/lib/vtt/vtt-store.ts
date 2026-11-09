@@ -126,6 +126,8 @@ interface VTTState {
 	/** Fichas abertas na mesa (ordem de abertura, no máximo 3). */
 	openSheetIds: string[];
 	isGM: boolean;
+	/** Co-mestre: vê como jogador, mas gerencia tokens e fichas. */
+	isCoGM: boolean;
 
 	// Actions
 	setScenes: (scenes: VTTScene[]) => void;
@@ -202,6 +204,7 @@ interface VTTState {
 	/** Fecha só esta ficha. */
 	closeCharacterSheet: (id: string) => void;
 	setIsGM: (isGM: boolean) => void;
+	setIsCoGM: (isCoGM: boolean) => void;
 
 	// Paredes (só mestre; F1)
 	walls: VTTWall[];
@@ -307,6 +310,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	showCharacterSheetId: null,
 	openSheetIds: [],
 	isGM: false,
+	isCoGM: false,
 
 	walls: [],
 	wallsStatus: "idle",
@@ -713,6 +717,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 			activeLayer:
 				!isGM && state.activeLayer === "gm" ? "token" : state.activeLayer,
 		})),
+	setIsCoGM: (isCoGM) => set({ isCoGM }),
 
 	setWalls: (walls) => set({ walls }),
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),
