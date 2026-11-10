@@ -22,10 +22,13 @@ export function InviteBanner() {
 				title: "Convite aceito!",
 				description: `Você agora faz parte da campanha "${campaignName}".`,
 			});
-		} catch (error: any) {
+		} catch (error) {
 			toast.error({
 				title: "Erro ao aceitar convite",
-				description: error.message || "Tente novamente mais tarde.",
+				description:
+					error instanceof Error && error.message
+						? error.message
+						: "Tente novamente mais tarde.",
 			});
 		} finally {
 			setProcessingId(null);
@@ -40,10 +43,13 @@ export function InviteBanner() {
 				title: "Convite recusado",
 				description: `Você recusou o convite para a campanha "${campaignName}".`,
 			});
-		} catch (error: any) {
+		} catch (error) {
 			toast.error({
 				title: "Erro ao recusar convite",
-				description: error.message || "Tente novamente mais tarde.",
+				description:
+					error instanceof Error && error.message
+						? error.message
+						: "Tente novamente mais tarde.",
 			});
 		} finally {
 			setProcessingId(null);

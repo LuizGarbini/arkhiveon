@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from 'vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -43,6 +44,16 @@ export default defineConfig(({ command, mode }) => {
     define: {
       'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(buildId),
     },
+    test: {
+      // Os testes não herdam o .env de quem roda: sem isto o app acha que o
+      // Supabase está configurado e segue o caminho de rede (como na CI, que
+      // não tem .env, o caminho é o local).
+      env: {
+        VITE_SUPABASE_URL: '',
+        VITE_SUPABASE_KEY: '',
+        VITE_SUPABASE_ANON_KEY: '',
+      },
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -60,7 +71,6 @@ export default defineConfig(({ command, mode }) => {
             if (id.includes('@paper-design/shaders')) return 'paper-shaders';
             if (id.includes('@dagrejs')) return 'dagre';
             if (id.includes('@dnd-kit')) return 'dnd-kit';
-            if (id.includes('@aws-sdk')) return 'aws-sdk';
           },
         },
       },

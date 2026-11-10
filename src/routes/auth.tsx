@@ -313,7 +313,6 @@ function SubmitButtonWithSwap({
 	className,
 	size,
 	variant,
-	...props
 }: SubmitButtonWithSwapProps) {
 	const [text, setText] = useState(defaultText);
 	const [stateClass, setStateClass] = useState("");
@@ -348,7 +347,6 @@ function SubmitButtonWithSwap({
 			disabled={isSubmitting}
 			size={size}
 			variant={variant}
-			{...(props as any)}
 		>
 			<span className={cn("t-text-swap inline-block", stateClass)}>{text}</span>
 		</Button>

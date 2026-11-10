@@ -5,6 +5,7 @@ import {
 } from "https://esm.sh/@aws-sdk/client-s3@3.540.0";
 import { getSignedUrl } from "https://esm.sh/@aws-sdk/s3-request-presigner@3.540.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+import { checkImageUpload } from "../_shared/image-upload.ts";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
@@ -82,6 +83,15 @@ serve(async (req) => {
 			);
 		}
 
+		// Só imagem de verdade: o tipo declarado e os primeiros bytes têm de bater.
+		const imageCheck = checkImageUpload(
+			payload.contentType,
+			payload.fileBody ?? new Uint8Array(),
+		);
+		if (!imageCheck.ok) {
+			return jsonResponse({ error: imageCheck.message }, 415);
+		}
+
 		let targetUserId = user.id;
 
 		if (payload.campaignId) {
@@ -155,7 +165,7 @@ serve(async (req) => {
 			},
 		});
 
-		const fileExt = extensionFromFileName(payload.fileName);
+		const fileExt = imageCheck.extension;
 		const safeFolder = payload.folder
 			? payload.folder.replace(/[^a-z0-9_-]/gi, "").slice(0, 32)
 			: "";
@@ -272,10 +282,4 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 
 function optionalString(value: unknown): string | undefined {
 	return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function extensionFromFileName(fileName: string): string {
-	const rawExt = fileName.split(".").pop() || "webp";
-	const safeExt = rawExt.replace(/[^a-z0-9]/gi, "").toLowerCase();
-	return safeExt || "webp";
 }

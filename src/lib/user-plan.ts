@@ -28,8 +28,8 @@ export async function loadCurrentUserPlan(
 
 	if (error) throw error;
 
-	const plan = (data as any)?.plan;
-	const storageUsedBytes = (data as any)?.storage_used_bytes ?? 0;
+	const plan = data?.plan;
+	const storageUsedBytes = data?.storage_used_bytes ?? 0;
 	return {
 		plan: isUserPlan(plan) ? plan : "free",
 		storageUsedBytes,
@@ -42,7 +42,8 @@ export function planFromRealtimeRow(row: unknown): UserPlanData {
 	const plan = "plan" in row ? (row as Pick<UserPlanRow, "plan">).plan : "free";
 	const storageUsedBytes =
 		"storage_used_bytes" in row
-			? Number((row as any).storage_used_bytes) || 0
+			? Number((row as { storage_used_bytes?: unknown }).storage_used_bytes) ||
+				0
 			: 0;
 	return {
 		plan: isUserPlan(plan) ? plan : "free",

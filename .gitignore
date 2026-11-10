@@ -25,3 +25,6 @@ docs/previews/
 
 # Local pnpm package cache
 .pnpm-store/
+
+# Arquivos de trabalho de PDF/imagem (já foram parar no histórico uma vez: ~480 MB)
+.codex-pdf-work/

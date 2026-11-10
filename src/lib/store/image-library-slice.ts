@@ -5,6 +5,7 @@ import {
 	resolveImageAssetPrivacy,
 } from "../image-asset-privacy";
 import { imageStorage } from "../image-storage";
+import { isImageUrlInUse } from "../image-url-usage";
 import { DEFAULT_PRIVATE_AUDIENCE } from "../image-visibility";
 import {
 	createRemoteImageAsset,
@@ -134,15 +135,30 @@ export const createImageLibrarySlice: StateCreator<
 			syncError: null,
 		}));
 
-		void Promise.all([
-			deleteRemoteImageAsset(id),
-			imageStorage.delete(asset.url).catch(() => undefined),
-		]).catch((error) => {
-			set((state) => ({
-				imageAssets: [asset, ...state.imageAssets],
-				syncError: remoteErrorMessage(error),
-			}));
-			options?.onSyncError?.(describeImageAssetSyncError(error, "delete"));
-		});
+		// Primeiro a linha da galeria; só se ela saiu é que o arquivo é apagado
+		// (e a cota devolvida), e só se nada mais usa aquela URL.
+		void deleteRemoteImageAsset(id).then(
+			() => {
+				if (
+					isImageUrlInUse(
+						get() as unknown as Record<string, unknown>,
+						asset.url,
+						id,
+					)
+				)
+					return;
+				// Falha ao apagar o arquivo não desfaz a exclusão na galeria.
+				void imageStorage.delete(asset.url).catch((error) => {
+					console.warn("Arquivo da imagem não foi apagado:", error);
+				});
+			},
+			(error) => {
+				set((state) => ({
+					imageAssets: [asset, ...state.imageAssets],
+					syncError: remoteErrorMessage(error),
+				}));
+				options?.onSyncError?.(describeImageAssetSyncError(error, "delete"));
+			},
+		);
 	},
 });

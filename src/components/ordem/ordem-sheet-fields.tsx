@@ -162,15 +162,12 @@ export function OrdemSheetFields({
 					<Field label="Origem">
 						<Input
 							value={String(custom.origem ?? character.race ?? "")}
-							onChange={(e) =>
-								updateOrdemField({ origem: e.target.value })
-							}
+							onChange={(e) => updateOrdemField({ origem: e.target.value })}
 							placeholder="Ex: Agente de Saúde, Acadêmico..."
 							disabled={!isEditMode}
 						/>
 					</Field>
 				</div>
-
 			</FormSection>
 
 			{/* Atributos Básicos de Ordem (AGI, FOR, INT, PRE, VIG) com dados d20 */}
@@ -238,7 +235,7 @@ export function OrdemSheetFields({
 								<Heart className="h-4 w-4" /> Pontos de Vida (PV)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{(character as any).health ?? (character as any).healthMax}/{(character as any).healthMax}
+								{character.health ?? character.healthMax}/{character.healthMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -251,7 +248,7 @@ export function OrdemSheetFields({
 										...character,
 										health: Math.max(
 											0,
-											((character as any).health ?? (character as any).healthMax ?? 0) - 1,
+											(character.health ?? character.healthMax ?? 0) - 1,
 										),
 									})
 								}
@@ -266,8 +263,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												(((character as any).health ?? (character as any).healthMax ?? 1) /
-													((character as any).healthMax ?? 1)) *
+												((character.health ?? character.healthMax ?? 1) /
+													(character.healthMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -282,8 +279,8 @@ export function OrdemSheetFields({
 									onChange({
 										...character,
 										health: Math.min(
-											(character as any).healthMax ?? 100,
-											((character as any).health ?? 0) + 1,
+											character.healthMax ?? 100,
+											(character.health ?? 0) + 1,
 										),
 									})
 								}
@@ -300,7 +297,7 @@ export function OrdemSheetFields({
 								<Brain className="h-4 w-4" /> Sanidade (SAN)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{(character as any).sanity ?? (character as any).sanityMax}/{(character as any).sanityMax}
+								{character.sanity ?? character.sanityMax}/{character.sanityMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -313,7 +310,7 @@ export function OrdemSheetFields({
 										...character,
 										sanity: Math.max(
 											0,
-											((character as any).sanity ?? (character as any).sanityMax ?? 0) - 1,
+											(character.sanity ?? character.sanityMax ?? 0) - 1,
 										),
 									})
 								}
@@ -328,8 +325,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												(((character as any).sanity ?? (character as any).sanityMax ?? 1) /
-													((character as any).sanityMax ?? 1)) *
+												((character.sanity ?? character.sanityMax ?? 1) /
+													(character.sanityMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -344,8 +341,8 @@ export function OrdemSheetFields({
 									onChange({
 										...character,
 										sanity: Math.min(
-											(character as any).sanityMax ?? 100,
-											((character as any).sanity ?? 0) + 1,
+											character.sanityMax ?? 100,
+											(character.sanity ?? 0) + 1,
 										),
 									})
 								}
@@ -362,7 +359,7 @@ export function OrdemSheetFields({
 								<Zap className="h-4 w-4" /> Esforço (PE)
 							</span>
 							<span className="text-xs font-mono font-bold text-foreground">
-								{(character as any).effort ?? (character as any).effortMax}/{(character as any).effortMax}
+								{character.effort ?? character.effortMax}/{character.effortMax}
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -375,7 +372,7 @@ export function OrdemSheetFields({
 										...character,
 										effort: Math.max(
 											0,
-											((character as any).effort ?? (character as any).effortMax ?? 0) - 1,
+											(character.effort ?? character.effortMax ?? 0) - 1,
 										),
 									})
 								}
@@ -390,8 +387,8 @@ export function OrdemSheetFields({
 											100,
 											Math.max(
 												0,
-												(((character as any).effort ?? (character as any).effortMax ?? 1) /
-													((character as any).effortMax ?? 1)) *
+												((character.effort ?? character.effortMax ?? 1) /
+													(character.effortMax ?? 1)) *
 													100,
 											),
 										)}%`,
@@ -406,8 +403,8 @@ export function OrdemSheetFields({
 									onChange({
 										...character,
 										effort: Math.min(
-											(character as any).effortMax ?? 100,
-											((character as any).effort ?? 0) + 1,
+											character.effortMax ?? 100,
+											(character.effort ?? 0) + 1,
 										),
 									})
 								}
@@ -427,7 +424,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{calculateDefesa(atributos.agi)}
 						</div>
-						<span className="text-[9px] text-muted-foreground">10 + AGI ({atributos.agi})</span>
+						<span className="text-[9px] text-muted-foreground">
+							10 + AGI ({atributos.agi})
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
@@ -437,7 +436,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{calculateEsquiva(calculateDefesa(atributos.agi), 5)}
 						</div>
-						<span className="text-[9px] text-muted-foreground">Defesa + Reflexos</span>
+						<span className="text-[9px] text-muted-foreground">
+							Defesa + Reflexos
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-center">
@@ -447,7 +448,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-amber-300 font-display mt-0.5">
 							{pePorTurno} PE
 						</div>
-						<span className="text-[9px] text-amber-400/80">NEX {nex}% / 5%</span>
+						<span className="text-[9px] text-amber-400/80">
+							NEX {nex}% / 5%
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-border/70 bg-card p-3 text-center">
@@ -457,7 +460,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-foreground font-display mt-0.5">
 							{limiteCarga} Espaços
 						</div>
-						<span className="text-[9px] text-muted-foreground">5 + FOR ({atributos.for})</span>
+						<span className="text-[9px] text-muted-foreground">
+							5 + FOR ({atributos.for})
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-center">
@@ -467,7 +472,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-purple-300 font-display mt-0.5">
 							{dtRitual}
 						</div>
-						<span className="text-[9px] text-purple-400/80">10 + PE + INT ({atributos.int})</span>
+						<span className="text-[9px] text-purple-400/80">
+							10 + PE + INT ({atributos.int})
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3 text-center">
@@ -477,7 +484,9 @@ export function OrdemSheetFields({
 						<div className="text-lg font-bold text-purple-300 font-display mt-0.5">
 							{maxCircle > 0 ? `${maxCircle}º Círculo` : "Nenhum"}
 						</div>
-						<span className="text-[9px] text-purple-400/80">Liberado pelo NEX {nex}%</span>
+						<span className="text-[9px] text-purple-400/80">
+							Liberado pelo NEX {nex}%
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 text-center">
@@ -487,7 +496,9 @@ export function OrdemSheetFields({
 						<div className="text-sm font-bold text-cyan-300 font-display mt-1">
 							{degreeLabels[maxDegree]}
 						</div>
-						<span className="text-[9px] text-cyan-400/80">Limite por NEX {nex}%</span>
+						<span className="text-[9px] text-cyan-400/80">
+							Limite por NEX {nex}%
+						</span>
 					</div>
 
 					<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-center flex flex-col justify-center">
@@ -496,9 +507,13 @@ export function OrdemSheetFields({
 						</span>
 						<div className="text-sm font-bold text-emerald-300 font-display mt-1 flex items-center justify-center gap-1">
 							<Sparkles className="h-3.5 w-3.5" />
-							{bonusAttributePoints > 0 ? `+${bonusAttributePoints} Ponto(s)` : "Disponível a partir de 20%"}
+							{bonusAttributePoints > 0
+								? `+${bonusAttributePoints} Ponto(s)`
+								: "Disponível a partir de 20%"}
 						</div>
-						<span className="text-[9px] text-emerald-400/80">Marcos: 20%, 50%, 80%, 95%</span>
+						<span className="text-[9px] text-emerald-400/80">
+							Marcos: 20%, 50%, 80%, 95%
+						</span>
 					</div>
 				</div>
 			</FormSection>

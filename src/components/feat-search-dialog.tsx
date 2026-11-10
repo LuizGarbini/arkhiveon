@@ -91,9 +91,9 @@ export function FeatSearchDialog({
 	useEffect(() => {
 		if (!open) return;
 
-		// biome-ignore lint/suspicious/noExplicitAny: feats table not present in static database.types.ts yet
-		const client = getSupabase() as any;
-		if (!client) return;
+		const maybeClient = getSupabase();
+		if (!maybeClient) return;
+		const client = maybeClient;
 
 		async function fetchAllFeats() {
 			setLoading(true);
@@ -220,8 +220,7 @@ export function FeatSearchDialog({
 			return;
 		}
 
-		// biome-ignore lint/suspicious/noExplicitAny: feats table not present in static database.types.ts yet
-		const client = getSupabase() as any;
+		const client = getSupabase();
 		if (!client) {
 			setHbError("Conexão com o servidor indisponível.");
 			return;

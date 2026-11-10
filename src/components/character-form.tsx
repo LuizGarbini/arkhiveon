@@ -8,7 +8,7 @@ import {
 	Wand2,
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { type Path, useForm, useWatch } from "react-hook-form";
 import { useToast } from "@/components/ui/toast";
 import {
 	useCampaignPeople,
@@ -206,7 +206,7 @@ function CharacterFormDialog({
 
 	const handleRollComplete = (value: number) => {
 		if (rollState.fieldName) {
-			setValue(rollState.fieldName as any, value, {
+			setValue(rollState.fieldName as Path<CharacterFormValues>, value, {
 				shouldValidate: true,
 				shouldDirty: true,
 			});
@@ -516,14 +516,16 @@ export function CustomFieldsRenderer({
 						<Textarea
 							rows={3}
 							placeholder="..."
-							{...register(`systemFields.${field.key}` as any)}
+							{...register(
+								`systemFields.${field.key}` as Path<CharacterFormValues>,
+							)}
 						/>
 					) : (
 						<Input
 							type={field.type}
 							placeholder="..."
 							{...register(
-								`systemFields.${field.key}` as any,
+								`systemFields.${field.key}` as Path<CharacterFormValues>,
 								field.type === "number" ? { valueAsNumber: true } : undefined,
 							)}
 						/>
@@ -765,7 +767,7 @@ function AbilitiesSection({
 				? field.key
 				: `systemAttributes.${field.key}`;
 			const newValue = rollSingle(config.value);
-			setValue(fieldName as any, newValue, {
+			setValue(fieldName as Path<CharacterFormValues>, newValue, {
 				shouldValidate: true,
 				shouldDirty: true,
 			});
@@ -975,7 +977,7 @@ function CombatSection({
 								min={0}
 								max={3}
 								placeholder="0"
-								{...register("deathSaves.successes" as any, {
+								{...register("deathSaves.successes", {
 									valueAsNumber: true,
 								})}
 							/>
@@ -986,7 +988,7 @@ function CombatSection({
 								min={0}
 								max={3}
 								placeholder="0"
-								{...register("deathSaves.failures" as any, {
+								{...register("deathSaves.failures", {
 									valueAsNumber: true,
 								})}
 							/>

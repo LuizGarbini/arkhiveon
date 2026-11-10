@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+import { resolveReturnOrigin } from "../_shared/stripe-plan.ts";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
@@ -23,7 +24,6 @@ serve(async (req) => {
 	try {
 		const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 		const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-		const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 		const authHeader = req.headers.get("Authorization") ?? "";
 
 		// Authenticate user
@@ -43,52 +43,45 @@ serve(async (req) => {
 		const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
 		const stripePriceId = Deno.env.get("STRIPE_PRO_PRICE_ID");
 
-		// Parse origin from request for redirect URLs
-		const body = await req.json().catch(() => ({}));
-		const origin = body.origin || "http://localhost:3000";
-
-		// ── Developer mock mode ──────────────────────────────────────────
-		// When STRIPE_SECRET_KEY is not configured, skip Stripe entirely
-		// and upgrade the user directly in the database.
-		if (!stripeSecretKey) {
-			const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-			const { error: upsertError } = await supabaseAdmin
-				.from("user_plans")
-				.upsert(
-					{
-						user_id: user.id,
-						plan: "pro",
-						updated_at: new Date().toISOString(),
-					},
-					{ onConflict: "user_id" },
-				);
-
-			if (upsertError) {
-				return jsonResponse(
-					{ error: "Failed to update plan: " + upsertError.message },
-					200,
-				);
-			}
-
-			return jsonResponse({
-				url: `${origin}/billing?success=true&mock=true`,
-			});
+		// Sem o Stripe configurado não existe checkout: nunca promover o usuário
+		// sem cobrança (antes havia um "modo de teste" que dava o Pro de graça).
+		if (!stripeSecretKey || !stripePriceId) {
+			console.error("stripe-checkout: Stripe não configurado.");
+			return jsonResponse(
+				{ error: "Pagamentos indisponíveis no momento." },
+				503,
+			);
 		}
 
-		// ── Production Stripe flow ───────────────────────────────────────
+		// O endereço de volta vem do cliente. Com APP_URL / APP_ALLOWED_ORIGINS
+		// configurados, só vale o que estiver na lista. Sem configuração, aceita
+		// a origem enviada (validada, sem caminho), como antes.
+		const body = await req.json().catch(() => ({}));
+		const appUrl = Deno.env.get("APP_URL") ?? "";
+		const allowedOrigins = (Deno.env.get("APP_ALLOWED_ORIGINS") ?? "")
+			.split(",")
+			.map((item) => item.trim())
+			.filter(Boolean);
+		const restricted = Boolean(appUrl) || allowedOrigins.length > 0;
+		if (!restricted)
+			console.warn(
+				"stripe-checkout: APP_URL não configurado; aceitando a origem enviada.",
+			);
+		const requested = typeof body?.origin === "string" ? body.origin : "";
+		const origin = restricted
+			? resolveReturnOrigin(
+					requested,
+					appUrl || allowedOrigins[0],
+					allowedOrigins,
+				)
+			: resolveReturnOrigin(requested, "http://localhost:3000", [requested]);
+
+		// ── Fluxo de produção do Stripe ──────────────────────────────────
 		const Stripe = (await import("https://esm.sh/stripe@14.14.0")).default;
 		const stripe = new Stripe(stripeSecretKey, {
 			apiVersion: "2024-04-10",
 			httpClient: Stripe.createFetchHttpClient(),
 		});
-
-		if (!stripePriceId) {
-			return jsonResponse(
-				{ error: "STRIPE_PRO_PRICE_ID is not configured." },
-				200,
-			);
-		}
 
 		// Check if user already has a Stripe customer
 		const existingCustomers = await stripe.customers.list({
@@ -121,8 +114,10 @@ serve(async (req) => {
 
 		return jsonResponse({ url: session.url });
 	} catch (err) {
-		const message = err instanceof Error ? err.message : "Unknown error";
-		console.error("stripe-checkout error:", message);
-		return jsonResponse({ error: message }, 200);
+		console.error(
+			"stripe-checkout error:",
+			err instanceof Error ? err.message : "Unknown error",
+		);
+		return jsonResponse({ error: "Não foi possível iniciar o pagamento." }, 500);
 	}
 });

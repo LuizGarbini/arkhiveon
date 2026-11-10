@@ -27,3 +27,28 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/library-r2/deno.json"
 entrypoint = "./functions/library-r2/index.ts"
+
+[functions.r2-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/r2-delete/deno.json"
+entrypoint = "./functions/r2-delete/index.ts"
+
+[functions.image-r2]
+enabled = true
+verify_jwt = true
+import_map = "./functions/image-r2/deno.json"
+entrypoint = "./functions/image-r2/index.ts"
+
+[functions.stripe-checkout]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/stripe-checkout/index.ts"
+
+# O Stripe chama o webhook sem login do Supabase: com verify_jwt = true o
+# gateway recusa todo evento. A origem é garantida pela assinatura do webhook,
+# conferida dentro da função antes de qualquer gravação.
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/stripe-webhook/index.ts"

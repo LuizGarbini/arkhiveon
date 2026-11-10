@@ -75,9 +75,13 @@ function JoinCampaignPage() {
 				setTimeout(() => {
 					void navigate({ to: "/dashboard", replace: true });
 				}, 1200);
-			} catch (err: any) {
+			} catch (err) {
 				setStatus("error");
-				setErrorMessage(err.message || "Não foi possível entrar na campanha.");
+				setErrorMessage(
+					err instanceof Error && err.message
+						? err.message
+						: "Não foi possível entrar na campanha.",
+				);
 			}
 		}
 

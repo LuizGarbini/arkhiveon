@@ -6,6 +6,7 @@
  * does not depend on R2 bucket CORS for PUT requests.
  */
 
+import { r2KeyFromPublicUrl } from "./image-url-usage";
 import { supabase } from "./supabase";
 import {
 	describeUploadFailure,
@@ -201,8 +202,14 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 		return publicR2Url(data.key);
 	}
 
-	async delete(_url: string): Promise<void> {
-		// TODO: Delete through the Edge Function when library removal needs it.
+	async delete(url: string): Promise<void> {
+		const key = r2KeyFromPublicUrl(url, import.meta.env.VITE_R2_PUBLIC_URL);
+		// Imagem que não é do nosso R2 (data URL, link externo): nada a apagar.
+		if (!key || !supabase) return;
+		const { error } = await supabase.functions.invoke("r2-delete", {
+			body: { key },
+		});
+		if (error) throw new Error("Não foi possível apagar o arquivo da imagem.");
 	}
 }
 

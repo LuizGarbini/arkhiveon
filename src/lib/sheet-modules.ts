@@ -97,7 +97,7 @@ export function createDefaultSheetLayout(
 			version: 1,
 			template: system,
 			modules: [
-				moduleConfig("custom_template_fields" as any, 10, "main", {
+				moduleConfig("custom_template_fields", 10, "main", {
 					title: "Ficha do Personagem",
 				}),
 			],

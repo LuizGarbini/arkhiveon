@@ -63,6 +63,14 @@ interface CharacterInventoryModuleProps {
 	onUpdateCharacter: (patch: Partial<Character>) => void;
 }
 
+type InventoryCategory =
+	| "weapon"
+	| "armor"
+	| "potion"
+	| "gear"
+	| "treasure"
+	| "custom";
+
 export function CharacterInventoryModule({
 	character,
 	onUpdateCharacter,
@@ -80,9 +88,7 @@ export function CharacterInventoryModule({
 	const [location, setLocation] = useState<
 		"equipped" | "backpack" | "mount_stash"
 	>("backpack");
-	const [category, setCategory] = useState<
-		"weapon" | "armor" | "potion" | "gear" | "treasure" | "custom"
-	>("gear");
+	const [category, setCategory] = useState<InventoryCategory>("gear");
 	const [description, setDescription] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -571,7 +577,9 @@ export function CharacterInventoryModule({
 								<FieldLabel>Categoria</FieldLabel>
 								<Select
 									value={category}
-									onChange={(e) => setCategory(e.target.value as any)}
+									onChange={(e) =>
+										setCategory(e.target.value as InventoryCategory)
+									}
 								>
 									<option value="gear">Equipamento / Geral</option>
 									<option value="weapon">Arma</option>

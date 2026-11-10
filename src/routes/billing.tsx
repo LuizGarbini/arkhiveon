@@ -16,15 +16,35 @@ import { useRPGStore } from "@/lib/store";
 import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getSupabase } from "@/lib/supabase";
 
+/** A função responde com `{ error }` em português; o supabase-js só dá a mensagem genérica. */
+async function checkoutErrorMessage(error: {
+	message?: string;
+	context?: unknown;
+}): Promise<string> {
+	const fallback = "Não foi possível iniciar o pagamento.";
+	if (error.context instanceof Response) {
+		try {
+			const body: unknown = await error.context.clone().json();
+			const message =
+				body && typeof body === "object"
+					? (body as { error?: unknown }).error
+					: null;
+			if (typeof message === "string" && message) return message;
+		} catch {
+			return fallback;
+		}
+	}
+	return fallback;
+}
+
 export const Route = createFileRoute("/billing")({
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { success?: boolean; canceled?: boolean; mock?: boolean } => ({
+	): { success?: boolean; canceled?: boolean } => ({
 		success:
 			search.success === "true" || search.success === true ? true : undefined,
 		canceled:
 			search.canceled === "true" || search.canceled === true ? true : undefined,
-		mock: search.mock === "true" || search.mock === true ? true : undefined,
 	}),
 	component: BillingPage,
 });
@@ -101,9 +121,7 @@ function BillingPage() {
 			});
 
 			if (response.error) {
-				throw new Error(
-					response.error.message || "Erro ao criar sessão de pagamento.",
-				);
+				throw new Error(await checkoutErrorMessage(response.error));
 			}
 
 			const data = response.data as { url?: string; error?: string };
@@ -130,7 +148,7 @@ function BillingPage() {
 		setShowSparkles(false);
 		void navigate({
 			to: "/billing",
-			search: { success: undefined, canceled: undefined, mock: undefined },
+			search: { success: undefined, canceled: undefined },
 			replace: true,
 		});
 	}
@@ -144,7 +162,7 @@ function BillingPage() {
 			});
 			void navigate({
 				to: "/billing",
-				search: { success: undefined, canceled: undefined, mock: undefined },
+				search: { success: undefined, canceled: undefined },
 				replace: true,
 			});
 		}

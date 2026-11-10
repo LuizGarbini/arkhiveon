@@ -1,4 +1,5 @@
 import type { StateCreator } from "zustand";
+import type { Database } from "../database.types";
 import { isTransferCampaignOwnershipEnabled } from "../feature-flags";
 import { getSupabase, SUPABASE_TABLES } from "../supabase";
 import {
@@ -33,6 +34,8 @@ import type {
 	World,
 } from "./types";
 import { RPG_SYSTEMS } from "./types";
+
+type CampaignUpdate = Database["public"]["Tables"]["campaigns"]["Update"];
 
 /** Uma troca mais nova invalida o prazo e o resultado da anterior. */
 let campaignSwitchToken = 0;
@@ -805,7 +808,7 @@ export const createCampaignSlice: StateCreator<
 						owner_id: user.id,
 						world_id: worldId,
 						system: options?.system ?? "dnd5e",
-					} as any);
+					});
 				if (campaignError) {
 					throw new Error(
 						`falha ao salvar campanha: ${remoteErrorMessage(campaignError)}`,
@@ -878,7 +881,7 @@ export const createCampaignSlice: StateCreator<
 
 		const supabase = getSupabase();
 		if (supabase) {
-			const updatePayload: Record<string, unknown> = {};
+			const updatePayload: CampaignUpdate = {};
 			if (data.name !== undefined) updatePayload.name = data.name;
 			if (data.description !== undefined)
 				updatePayload.description = data.description;
@@ -888,7 +891,7 @@ export const createCampaignSlice: StateCreator<
 
 			void supabase
 				.from(SUPABASE_TABLES.campaigns)
-				.update(updatePayload as any)
+				.update(updatePayload)
 				.eq("id", id)
 				.then(({ error }) => {
 					if (error) {
@@ -1083,8 +1086,8 @@ export const createCampaignSlice: StateCreator<
 		// Se o RLS omitiu o nome da campanha no join, buscar nomes diretamente
 		const rawRows = data ?? [];
 		const missingNameCampaignIds = rawRows
-			.filter((row: any) => !row.campaign?.name && row.campaign_id)
-			.map((row: any) => row.campaign_id as string);
+			.filter((row) => !row.campaign?.name && row.campaign_id)
+			.map((row) => row.campaign_id);
 
 		let campaignNamesMap: Record<string, string> = {};
 		if (missingNameCampaignIds.length > 0) {
@@ -1095,17 +1098,17 @@ export const createCampaignSlice: StateCreator<
 
 			if (fetchedCamps) {
 				campaignNamesMap = Object.fromEntries(
-					fetchedCamps.map((c: any) => [c.id, c.name]),
+					fetchedCamps.map((c) => [c.id, c.name]),
 				);
 			}
 		}
 
-		const pendingInvites: Invite[] = rawRows.map((row: any) => ({
+		const pendingInvites: Invite[] = rawRows.map((row) => ({
 			id: row.id,
 			campaignId: row.campaign_id,
 			email: row.email,
-			role: row.role,
-			status: row.status,
+			role: row.role as Invite["role"],
+			status: row.status as InviteStatus,
 			invitedBy: row.invited_by,
 			createdAt: new Date(row.created_at).getTime(),
 			campaignName:
@@ -1337,9 +1340,10 @@ export const createCampaignSlice: StateCreator<
 		if (!supabase) return { members: [], invites: [] };
 
 		// 1. Carregar membros via RPC segura
-		const { data: membersData, error: membersError } = await (
-			supabase as any
-		).rpc("get_campaign_members", { p_campaign_id: campaignId });
+		const { data: membersData, error: membersError } = await supabase.rpc(
+			"get_campaign_members",
+			{ p_campaign_id: campaignId },
+		);
 
 		if (membersError) {
 			set({ syncError: `Erro ao carregar membros: ${membersError.message}` });
@@ -1359,13 +1363,13 @@ export const createCampaignSlice: StateCreator<
 		}
 
 		return {
-			members: (membersData ?? []).map((m: any) => ({
+			members: (membersData ?? []).map((m) => ({
 				id: m.membership_id,
 				userId: m.user_id,
 				email: m.email,
 				role: m.role as MembershipRole,
 			})),
-			invites: (invitesData ?? []).map((i: any) => ({
+			invites: (invitesData ?? []).map((i) => ({
 				id: i.id,
 				campaignId: i.campaign_id,
 				email: i.email,

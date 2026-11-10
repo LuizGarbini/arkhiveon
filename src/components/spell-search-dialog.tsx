@@ -278,8 +278,9 @@ export function SpellSearchDialog({
 	useEffect(() => {
 		if (!open) return;
 
-		const client = getSupabase() as any;
-		if (!client) return;
+		const maybeClient = getSupabase();
+		if (!maybeClient) return;
+		const client = maybeClient;
 
 		async function fetchAllSpells() {
 			setLoading(true);
@@ -403,7 +404,7 @@ export function SpellSearchDialog({
 			return;
 		}
 
-		const client = getSupabase() as any;
+		const client = getSupabase();
 		if (!client) {
 			setHbError("Conexão com o servidor indisponível.");
 			return;
@@ -448,9 +449,13 @@ export function SpellSearchDialog({
 				setShowHomebrewForm(false);
 				resetHbForm();
 			}
-		} catch (err: any) {
+		} catch (err) {
 			console.error("Erro ao criar magia homebrew:", err);
-			setHbError(err.message || "Erro ao criar magia no banco de dados.");
+			setHbError(
+				err instanceof Error && err.message
+					? err.message
+					: "Erro ao criar magia no banco de dados.",
+			);
 		} finally {
 			setCreatingHb(false);
 		}
@@ -1009,7 +1014,8 @@ export function SpellSearchDialog({
 
 												<div className="space-y-0.5 pt-1.5 border-t border-border/40">
 													<span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-														<Clock className="h-2.5 w-2.5 text-primary" /> Duração
+														<Clock className="h-2.5 w-2.5 text-primary" />{" "}
+														Duração
 													</span>
 													<p className="font-semibold text-foreground text-[11px] truncate">
 														{selectedSpell.duration || "Instantânea"}

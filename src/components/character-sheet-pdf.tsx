@@ -415,18 +415,20 @@ function moduleFields(
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG],
 	content?: string,
 ) {
-	const isStandardKey = (key: string) =>
-		[
-			"strength",
-			"dexterity",
-			"constitution",
-			"intelligence",
-			"wisdom",
-			"charisma",
-			"power",
-			"size",
-			"education",
-		].includes(key);
+	const STANDARD_KEYS = [
+		"strength",
+		"dexterity",
+		"constitution",
+		"intelligence",
+		"wisdom",
+		"charisma",
+		"power",
+		"size",
+		"education",
+	] as const;
+	type StandardKey = (typeof STANDARD_KEYS)[number];
+	const isStandardKey = (key: string): key is StandardKey =>
+		(STANDARD_KEYS as readonly string[]).includes(key);
 
 	switch (kind) {
 		case "identity":
@@ -443,7 +445,7 @@ function moduleFields(
 		case "abilities":
 			return (config.attributes || []).map((attr) => {
 				const val = isStandardKey(attr.key)
-					? Number((character as any)[attr.key]) || 0
+					? Number(character[attr.key]) || 0
 					: Number(character.systemAttributes?.[attr.key]) || 0;
 				return field(attr.label, `${val} (${formatSigned(modifier(val))})`, {
 					emphasis: true,
