@@ -33,7 +33,6 @@ import {
 	PLAYER_FOG_COLOR,
 } from "@/lib/vtt/fog-math";
 import {
-	calculateGridDistance,
 	flatHexCenters,
 	getFlatHexCorners,
 	getPointyHexCorners,
@@ -47,6 +46,13 @@ import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
+import {
+	type RulerContext,
+	rulerAddPoint,
+	rulerMoveLive,
+	rulerPin,
+	rulerUndo,
+} from "@/lib/vtt/ruler-path";
 import {
 	isEditableElement,
 	isVttShortcutBlocked,
@@ -93,7 +99,8 @@ import type {
 	VTTToken,
 } from "@/lib/vtt/types";
 import {
-	drawRulerMeasurement,
+	clearLabels,
+	drawRulerPath,
 	drawSpellTemplate,
 	drawWallPreview,
 	drawWalls,
@@ -228,6 +235,7 @@ export function VTTCanvas({
 	const measurementLayerRef = useRef<Graphics | null>(null);
 	const measurementLabelsRef = useRef<Container | null>(null);
 	const templatesLayerRef = useRef<Graphics | null>(null);
+	const templateLabelsRef = useRef<Container | null>(null);
 	const pingsLayerRef = useRef<Graphics | null>(null);
 	const remoteCursorsLayerRef = useRef<Container | null>(null);
 
@@ -319,7 +327,6 @@ export function VTTCanvas({
 	const viewportDragStartRef = useRef({ x: 0, y: 0 });
 	const isSpaceHeldRef = useRef(false);
 	const isAltHeldRef = useRef(false);
-	const rulerStartRef = useRef<{ x: number; y: number } | null>(null);
 	const templateStartRef = useRef<{ x: number; y: number } | null>(null);
 	const lastTokenTapRef = useRef<{ id: string; time: number } | null>(null);
 	// Press that started on a token; shields it from the empty-area deselect
@@ -367,6 +374,18 @@ export function VTTCanvas({
 	const rightPressRef = useRef<RightPress | null>(null);
 	const characterOwnersRef = useRef(characterOwners);
 	characterOwnersRef.current = characterOwners;
+	const onBroadcastRulerRef = useRef(onBroadcastRuler);
+	onBroadcastRulerRef.current = onBroadcastRuler;
+	// Régua: aperto em andamento (clique vs. arrasto) e o último clique (duplo).
+	const rulerPressRef = useRef<{
+		x: number;
+		y: number;
+		moved: boolean;
+		fresh: boolean;
+	} | null>(null);
+	const lastRulerClickRef = useRef<{ x: number; y: number; t: number } | null>(
+		null,
+	);
 	const userIdRef = useRef(user?.id);
 	userIdRef.current = user?.id;
 	const lastBroadcastTimeRef = useRef(0);
@@ -403,6 +422,7 @@ export function VTTCanvas({
 	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
 	const userColor = useVTTStore((s) => s.userColor);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	// Position and the remote target stay out of this key so a drag does not
 	// destroy and recreate the sprite on every pointer move.
 	const tokenAppearance = useMemo(() => tokensAppearanceKey(tokens), [tokens]);
@@ -500,6 +520,14 @@ export function VTTCanvas({
 			wallPreviewLayerRef.current = wallPreviewLayer;
 			world.addChild(wallPreviewLayer);
 
+			const templatesLayer = new Graphics();
+			templatesLayerRef.current = templatesLayer;
+			world.addChild(templatesLayer);
+
+			const templateLabels = new Container();
+			templateLabelsRef.current = templateLabels;
+			world.addChild(templateLabels);
+
 			const remoteRulersLayer = new Graphics();
 			remoteRulersLayerRef.current = remoteRulersLayer;
 			world.addChild(remoteRulersLayer);
@@ -515,10 +543,6 @@ export function VTTCanvas({
 			const measurementLabels = new Container();
 			measurementLabelsRef.current = measurementLabels;
 			world.addChild(measurementLabels);
-
-			const templatesLayer = new Graphics();
-			templatesLayerRef.current = templatesLayer;
-			world.addChild(templatesLayer);
 
 			const pingsLayer = new Graphics();
 			pingsLayerRef.current = pingsLayer;
@@ -835,7 +859,7 @@ export function VTTCanvas({
 			const canControl = canControlVTTToken(
 				token,
 				user?.id,
-				isGM,
+				canManageTokens,
 				characterOwners,
 			);
 			tokenContainer.cursor =
@@ -1157,7 +1181,7 @@ export function VTTCanvas({
 											canControlVTTToken(
 												item,
 												userIdRef.current,
-												live.isGM,
+												live.isGM || live.isCoGM,
 												characterOwnersRef.current,
 											) && canSelectTokenLayer(live.activeLayer, item.layer),
 									};
@@ -1194,6 +1218,7 @@ export function VTTCanvas({
 		scene,
 		selectedTokenIds,
 		isGM,
+		canManageTokens,
 		setSelectedTokenIds,
 		setActiveTokenIdForMenu,
 		linkedSheetHp,
@@ -1363,61 +1388,113 @@ export function VTTCanvas({
 		}
 	}, [remoteCursors, rendererReady]);
 
-	// 7. Render Remote Multiplayer Measurements (with distance labels)
+	const viewScale = viewport.scale;
+	const sceneScaleDistance = scene?.gridScaleDistance ?? 1;
+	const sceneScaleUnit = scene?.gridScaleUnit ?? "m";
+
+	// 7. Réguas dos outros jogadores, com o nome de quem mede no total.
 	useEffect(() => {
-		if (!rendererReady) return;
-		if (!remoteRulersLayerRef.current || !remoteRulersLabelsRef.current) return;
+		if (!rendererReady || !sceneGridType || !sceneGridSize) return;
 		const layer = remoteRulersLayerRef.current;
-		const labelsLayer = remoteRulersLabelsRef.current;
-
+		const labels = remoteRulersLabelsRef.current;
+		if (!layer || !labels) return;
 		layer.clear();
-		labelsLayer.removeChildren();
-
+		clearLabels(labels);
 		for (const m of Object.values(remoteMeasurements)) {
-			const colorHex = parseHexColor(m.color, 0x38bdf8);
-
-			// Line & Endpoints
-			layer.moveTo(m.startX, m.startY);
-			layer.lineTo(m.currentX, m.currentY);
-			layer.stroke({ width: 2.5, color: colorHex, alpha: 0.85 });
-
-			layer.circle(m.startX, m.startY, 5);
-			layer.fill({ color: colorHex });
-			layer.circle(m.currentX, m.currentY, 5);
-			layer.fill({ color: colorHex });
-
-			// Distance Badge Label
-			const label = new Text({
-				text: `${m.userName}: ${m.distance.toFixed(1)}${m.unit}`,
-				style: new TextStyle({
-					fontFamily: "system-ui, sans-serif",
-					fontSize: 11,
-					fontWeight: "bold",
-					fill: m.color || "#38bdf8",
-					dropShadow: {
-						alpha: 0.9,
-						angle: Math.PI / 4,
-						blur: 3,
-						color: "#000000",
-						distance: 1.5,
-					},
-				}),
+			drawRulerPath(layer, labels, m, {
+				gridType: sceneGridType,
+				gridSize: sceneGridSize,
+				origin: { x: sceneGridOffsetX, y: sceneGridOffsetY },
+				viewScale,
+				color: m.color,
+				owner: m.userName,
 			});
-			label.anchor.set(0.5);
-			label.position.set(
-				(m.startX + m.currentX) / 2,
-				(m.startY + m.currentY) / 2 - 12,
-			);
-			labelsLayer.addChild(label);
 		}
-	}, [remoteMeasurements, rendererReady]);
+	}, [
+		remoteMeasurements,
+		rendererReady,
+		sceneGridType,
+		sceneGridSize,
+		sceneGridOffsetX,
+		sceneGridOffsetY,
+		viewScale,
+	]);
 
-	// 7b. Render spell templates (local preview, placed, remote)
+	// 7a. Régua local: desenha direto da store (sem re-render do canvas) e
+	// transmite a cada mudança, com no máximo um envio a cada 40 ms enquanto a
+	// ponta só se move; pontos novos, fixar e apagar saem na hora.
 	useEffect(() => {
 		if (!rendererReady) return;
-		if (!templatesLayerRef.current || !scene) return;
+		let lastSent = 0;
+		let pending: ReturnType<typeof setTimeout> | null = null;
+		const paint = () => {
+			const layer = measurementLayerRef.current;
+			const labels = measurementLabelsRef.current;
+			const current = sceneRef.current;
+			if (!layer || !labels) return;
+			layer.clear();
+			clearLabels(labels);
+			const state = useVTTStore.getState();
+			const m = state.activeMeasurement;
+			if (!m || !current) return;
+			const vp = state.viewport;
+			const screen = appRef.current?.screen;
+			drawRulerPath(layer, labels, m, {
+				gridType: current.gridType,
+				gridSize: current.gridSize,
+				origin: { x: current.gridOffsetX ?? 0, y: current.gridOffsetY ?? 0 },
+				viewScale: vp.scale,
+				color: state.userColor,
+				// Fora do cabeçalho (≈7,5 rem) e da toolbar à esquerda.
+				bounds: screen && {
+					x0: (72 - vp.x) / vp.scale,
+					y0: (120 - vp.y) / vp.scale,
+					x1: (screen.width - 12 - vp.x) / vp.scale,
+					y1: (screen.height - 12 - vp.y) / vp.scale,
+				},
+			});
+		};
+		const send = () => {
+			pending = null;
+			lastSent = Date.now();
+			onBroadcastRulerRef.current?.(useVTTStore.getState().activeMeasurement);
+		};
+		paint();
+		const unsubscribe = useVTTStore.subscribe((state, prev) => {
+			const changed = state.activeMeasurement !== prev.activeMeasurement;
+			if (
+				!changed &&
+				(!state.activeMeasurement || state.viewport === prev.viewport) &&
+				state.userColor === prev.userColor
+			)
+				return;
+			paint();
+			if (!changed) return;
+			const m = state.activeMeasurement;
+			const before = prev.activeMeasurement;
+			const structural =
+				!m ||
+				!before ||
+				m.pinned !== before.pinned ||
+				m.waypoints?.length !== before.waypoints?.length;
+			if (pending) clearTimeout(pending);
+			if (structural || Date.now() - lastSent > 40) send();
+			else pending = setTimeout(send, 40);
+		});
+		return () => {
+			unsubscribe();
+			if (pending) clearTimeout(pending);
+		};
+	}, [rendererReady]);
+
+	// 7b. Moldes (prévia local, colocados e remotos) com a medida na ponta.
+	useEffect(() => {
+		if (!rendererReady || !sceneGridSize) return;
 		const layer = templatesLayerRef.current;
+		const labels = templateLabelsRef.current;
+		if (!layer || !labels) return;
 		layer.clear();
+		clearLabels(labels);
 
 		const allTemplates: VTTSpellTemplate[] = [
 			...placedTemplates,
@@ -1427,14 +1504,21 @@ export function VTTCanvas({
 		if (previewTemplate) allTemplates.push(previewTemplate);
 
 		for (const template of allTemplates) {
-			drawSpellTemplate(layer, template, scene.gridSize);
+			drawSpellTemplate(layer, template, sceneGridSize, labels, {
+				viewScale,
+				scaleDistance: sceneScaleDistance,
+				unit: sceneScaleUnit,
+			});
 		}
 	}, [
 		placedTemplates,
 		remoteTemplates,
 		remoteTemplatePreviews,
 		previewTemplate,
-		scene,
+		sceneGridSize,
+		sceneScaleDistance,
+		sceneScaleUnit,
+		viewScale,
 		rendererReady,
 	]);
 
@@ -1505,6 +1589,24 @@ export function VTTCanvas({
 			};
 		};
 
+		const rulerCtx: RulerContext | null = scene
+			? {
+					gridSize: scene.gridSize,
+					scaleDistance: scene.gridScaleDistance,
+					unit: scene.gridScaleUnit,
+					diagonalRule,
+				}
+			: null;
+		const templateSize = () => {
+			const cells = useVTTStore.getState().templateSizeCells;
+			return cells ? { sizeCells: cells } : {};
+		};
+		// A régua mede de centro a centro de casa ("medir os blocos").
+		const snapRuler = (point: { x: number; y: number }) =>
+			scene
+				? snapToGrid(point, scene.gridType, scene.gridSize, 1, gridOrigin)
+				: point;
+
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const typing = isEditableElement(
 				e.target instanceof Element ? e.target : null,
@@ -1523,6 +1625,26 @@ export function VTTCanvas({
 			// Esc dentro de um dialog (ex.: imagem em tela cheia) fecha só o dialog.
 			const inDialog =
 				e.target instanceof Element && e.target.closest('[role="dialog"]');
+			const ruler = useVTTStore.getState().activeMeasurement;
+			if (
+				activeTool === "ruler" &&
+				ruler &&
+				rulerCtx &&
+				!inDialog &&
+				!blocked
+			) {
+				lastRulerClickRef.current = null;
+				if (e.key === "Escape") {
+					rulerPressRef.current = null;
+					setActiveMeasurement(null);
+				} else if (e.key === "Backspace") {
+					e.preventDefault();
+					setActiveMeasurement(rulerUndo(ruler, rulerCtx));
+				} else if (e.key === "Enter") {
+					e.preventDefault();
+					setActiveMeasurement(rulerPin(ruler, rulerCtx));
+				}
+			}
 			if (e.key === "Escape" && !inDialog) {
 				setActiveTokenIdForMenu(null);
 				setPreviewTemplate(null);
@@ -1572,6 +1694,7 @@ export function VTTCanvas({
 
 			// Right press pans once it moves. A tap on a token still opens its menu.
 			if (isRightClick) {
+				lastRulerClickRef.current = null;
 				if (!rightPressRef.current) {
 					rightPressRef.current = beginRightPress(e.clientX, e.clientY, null);
 				}
@@ -1703,16 +1826,36 @@ export function VTTCanvas({
 				};
 			}
 
-			// Ruler Start
-			if (activeTool === "ruler" && isLeftClick && scene) {
-				const snapped = snapToGrid(
-					worldPoint,
-					scene.gridType,
-					scene.gridSize,
-					1,
-					gridOrigin,
-				);
-				rulerStartRef.current = snapped;
+			// Régua: clique marca pontos; arrastar do zero mede uma reta que some
+			// ao soltar; duplo clique fixa o caminho.
+			if (activeTool === "ruler" && isLeftClick && rulerCtx) {
+				const current = useVTTStore.getState().activeMeasurement;
+				const now = Date.now();
+				const last = lastRulerClickRef.current;
+				lastRulerClickRef.current = { x: e.clientX, y: e.clientY, t: now };
+				if (
+					current &&
+					!current.pinned &&
+					last &&
+					now - last.t < 350 &&
+					Math.hypot(e.clientX - last.x, e.clientY - last.y) < 8
+				) {
+					lastRulerClickRef.current = null;
+					rulerPressRef.current = null;
+					setActiveMeasurement(rulerPin(current, rulerCtx));
+					return;
+				}
+				const fresh = !current || Boolean(current.pinned);
+				if (fresh)
+					setActiveMeasurement(
+						rulerAddPoint(null, snapRuler(worldPoint), rulerCtx),
+					);
+				rulerPressRef.current = {
+					x: e.clientX,
+					y: e.clientY,
+					moved: false,
+					fresh,
+				};
 			}
 
 			if (activeTool === "template" && isLeftClick && scene) {
@@ -1929,62 +2072,20 @@ export function VTTCanvas({
 				return;
 			}
 
-			// Handle Ruler Drawing
-			if (
-				activeTool === "ruler" &&
-				rulerStartRef.current &&
-				scene &&
-				measurementLayerRef.current &&
-				measurementLabelsRef.current
-			) {
-				const currentSnapped = snapToGrid(
-					worldPoint,
-					scene.gridType,
-					scene.gridSize,
-					1,
-					gridOrigin,
-				);
-				const start = rulerStartRef.current;
-
-				const { distance } = calculateGridDistance(
-					start,
-					currentSnapped,
-					scene.gridSize,
-					scene.gridScaleDistance,
-					scene.gridScaleUnit,
-					diagonalRule,
-				);
-
-				const measurement: VTTRulerMeasurement = {
-					startX: start.x,
-					startY: start.y,
-					currentX: currentSnapped.x,
-					currentY: currentSnapped.y,
-					distance,
-					unit: scene.gridScaleUnit,
-				};
-
-				setActiveMeasurement(measurement);
-				if (onBroadcastRuler) {
-					onBroadcastRuler(measurement);
+			// Régua: a ponta segue o cursor (mouse) ou o dedo (arrasto).
+			if (activeTool === "ruler" && rulerCtx) {
+				const press = rulerPressRef.current;
+				if (
+					press &&
+					!press.moved &&
+					Math.hypot(e.clientX - press.x, e.clientY - press.y) >
+						TOKEN_TAP_SLOP_PX
+				) {
+					press.moved = true;
 				}
-
-				const layer = measurementLayerRef.current;
-				const labels = measurementLabelsRef.current;
-				layer.clear();
-				labels.removeChildren();
-				drawRulerMeasurement(
-					layer,
-					labels,
-					start,
-					currentSnapped,
-					scene.gridSize,
-					scene.gridScaleDistance,
-					scene.gridScaleUnit,
-					userColor,
-					diagonalRule,
-					gridOrigin,
-				);
+				const current = useVTTStore.getState().activeMeasurement;
+				const next = rulerMoveLive(current, snapRuler(worldPoint), rulerCtx);
+				if (next !== current) setActiveMeasurement(next);
 			}
 
 			if (activeTool === "template" && templateStartRef.current && scene) {
@@ -2004,6 +2105,7 @@ export function VTTCanvas({
 					targetX: currentSnapped.x,
 					targetY: currentSnapped.y,
 					color: userColor,
+					...templateSize(),
 				};
 				setPreviewTemplate(template);
 				if (onBroadcastTemplate) onBroadcastTemplate(template);
@@ -2070,7 +2172,7 @@ export function VTTCanvas({
 								canControlVTTToken(
 									item,
 									userIdRef.current,
-									live.isGM,
+									live.isGM || live.isCoGM,
 									characterOwnersRef.current,
 								) &&
 								!item.isLocked,
@@ -2222,18 +2324,34 @@ export function VTTCanvas({
 					isSpaceHeldRef.current || activeTool === "pan" ? "grab" : "default";
 			}
 
-			if (rulerStartRef.current) {
-				rulerStartRef.current = null;
-				setActiveMeasurement(null);
-				if (onBroadcastRuler) {
-					onBroadcastRuler(null);
+			const rulerPress = rulerPressRef.current;
+			rulerPressRef.current = null;
+			if (rulerPress && activeTool === "ruler" && rulerCtx) {
+				const current = useVTTStore.getState().activeMeasurement;
+				if (current && !current.pinned) {
+					if (rulerPress.moved && rulerPress.fresh) {
+						setActiveMeasurement(null);
+					} else if (!rulerPress.fresh) {
+						setActiveMeasurement(
+							rulerAddPoint(
+								current,
+								snapRuler(screenToWorld(e.clientX, e.clientY)),
+								rulerCtx,
+							),
+						);
+					}
 				}
-				if (measurementLayerRef.current) {
-					measurementLayerRef.current.clear();
-				}
-				if (measurementLabelsRef.current) {
-					measurementLabelsRef.current.removeChildren();
-				}
+			}
+			// Clique direito no chão (sem arrastar) tira o último ponto.
+			if (
+				right &&
+				!right.moved &&
+				!right.tokenId &&
+				activeTool === "ruler" &&
+				rulerCtx
+			) {
+				const current = useVTTStore.getState().activeMeasurement;
+				if (current) setActiveMeasurement(rulerUndo(current, rulerCtx));
 			}
 
 			if (templateStartRef.current && scene && activeTool === "template") {
@@ -2254,6 +2372,7 @@ export function VTTCanvas({
 					targetX: end.x,
 					targetY: end.y,
 					color: userColor,
+					...templateSize(),
 				};
 				addPlacedTemplate(placed);
 				if (onBroadcastTemplate) onBroadcastTemplate(placed, true);
@@ -2299,7 +2418,6 @@ export function VTTCanvas({
 		onUpdateToken,
 		onBroadcastDrag,
 		onBroadcastCursor,
-		onBroadcastRuler,
 		onBroadcastPing,
 		onBroadcastFog,
 		onBroadcastTemplate,

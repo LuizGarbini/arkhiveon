@@ -92,7 +92,8 @@ export function VTTSceneBar({
 	};
 
 	const activeScene = scenes.find((s) => s.id === activeSceneId);
-	const liveSceneId = scenes.find((s) => s.isActive)?.id ?? null;
+	const liveScene = scenes.find((s) => s.isActive);
+	const liveSceneId = liveScene?.id ?? null;
 	const sceneNavRef = useRef<HTMLElement>(null);
 
 	// Keep the in-play scene ("Em jogo") visible in the scene bar on load and
@@ -191,17 +192,28 @@ export function VTTSceneBar({
 						<Link
 							to="/dashboard"
 							aria-label="Voltar à campanha"
-							className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/70 text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+							className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground"
 						>
 							<ArrowLeft className="size-4" />
 						</Link>
-						<div className="min-w-0">
-							<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-								Arkhiveon · Table Top
-							</p>
-							<h1 className="truncate font-display text-base font-bold sm:text-lg">
+						<div className="min-w-0 leading-tight">
+							<h1 className="truncate font-display text-base font-semibold sm:text-lg">
 								{campaignName}
 							</h1>
+							<p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+								<span
+									aria-hidden
+									className={cn(
+										"size-1.5 shrink-0 rounded-full",
+										liveScene ? "bg-primary" : "bg-muted-foreground/60",
+									)}
+								/>
+								<span className="truncate">
+									{liveScene
+										? `Jogadores veem: ${liveScene.name}`
+										: "Nenhuma cena em jogo"}
+								</span>
+							</p>
 						</div>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
@@ -235,7 +247,7 @@ export function VTTSceneBar({
 				</div>
 				<div className="grid h-14 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-border/50 px-3 sm:px-5">
 					<div className="flex min-w-0 items-center gap-2">
-						<span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:block">
+						<span className="hidden shrink-0 pr-1 text-xs font-medium text-muted-foreground sm:block">
 							Cenas
 						</span>
 						<nav
@@ -253,18 +265,28 @@ export function VTTSceneBar({
 										onClick={() => setActiveSceneId(scene.id)}
 										aria-pressed={scene.id === activeSceneId}
 										className={cn(
-											"flex h-11 min-w-[92px] flex-1 basis-0 items-center gap-1.5 overflow-hidden rounded-xl border px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] sm:h-auto sm:min-h-11 sm:w-auto sm:min-w-0 sm:flex-none sm:shrink-0 sm:basis-auto sm:gap-2 sm:overflow-visible sm:px-3",
+											"flex h-11 min-w-[92px] flex-1 basis-0 items-center gap-2 overflow-hidden rounded-xl px-2.5 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] sm:w-auto sm:min-w-0 sm:flex-none sm:shrink-0 sm:basis-auto sm:px-3",
 											scene.id === activeSceneId
-												? "border-primary/40 bg-primary/10 text-foreground"
-												: "border-transparent text-muted-foreground [@media(hover:hover)]:hover:bg-accent",
+												? "bg-accent text-foreground ring-1 ring-inset ring-border"
+												: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent/60 [@media(hover:hover)]:hover:text-foreground",
 										)}
 									>
-										<Compass className="size-4 shrink-0" />
-										<span className="flex min-w-0 flex-col items-start leading-tight sm:block sm:max-w-36">
-											<span className="w-full truncate">{scene.name}</span>
+										<span
+											aria-hidden
+											className={cn(
+												"size-1.5 shrink-0 rounded-full",
+												scene.isActive
+													? "bg-primary"
+													: "bg-muted-foreground/50",
+											)}
+										/>
+										<span className="flex min-w-0 flex-col items-start leading-tight sm:flex-row sm:items-baseline sm:gap-2">
+											<span className="max-w-full truncate sm:max-w-40">
+												{scene.name}
+											</span>
 											<span
 												className={cn(
-													"w-full truncate text-[10px] sm:hidden",
+													"truncate text-[10px] sm:text-[11px]",
 													scene.isActive
 														? "text-primary"
 														: "text-muted-foreground",
@@ -272,16 +294,6 @@ export function VTTSceneBar({
 											>
 												{scene.isActive ? "Em jogo" : "Preparação"}
 											</span>
-										</span>
-										<span
-											className={cn(
-												"hidden shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] sm:inline",
-												scene.isActive
-													? "bg-primary/15 text-primary"
-													: "bg-muted text-muted-foreground",
-											)}
-										>
-											{scene.isActive ? "Em jogo" : "Preparação"}
 										</span>
 									</button>
 								))}

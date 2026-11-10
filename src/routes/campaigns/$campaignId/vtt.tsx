@@ -13,6 +13,7 @@ import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
+import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
 import { VTTSheetDrawer } from "@/components/vtt/vtt-sheet-drawer";
 import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
@@ -36,12 +37,14 @@ import {
 import { useCombatStore } from "@/lib/vtt/combat-store";
 import {
 	canControlVTTToken,
+	tableRole,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import {
 	type PublishSceneRpc,
 	publishScene,
 } from "@/lib/vtt/persist-publication";
+import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	isRepeatedCreate,
 	newSceneId,
@@ -124,7 +127,9 @@ function VTTSession() {
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const setIsGM = useVTTStore((s) => s.setIsGM);
+	const setIsCoGM = useVTTStore((s) => s.setIsCoGM);
 	const isGM = useVTTStore((s) => s.isGM);
+	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
 	const [sceneSession] = useState(() =>
@@ -229,23 +234,22 @@ function VTTSession() {
 				__vtt_store__?: typeof useVTTStore;
 				__rpg_store__?: typeof useRPGStore;
 				__combat_store__?: typeof useCombatStore;
+				__roll_store__?: typeof useRollStore;
 			};
 			win.__vtt_store__ = useVTTStore;
 			win.__rpg_store__ = useRPGStore;
 			win.__combat_store__ = useCombatStore;
+			win.__roll_store__ = useRollStore;
 		}
 	}, []);
 
-	// 1. Determine GM vs Player permissions
+	// 1. Papel na mesa: mestre vê tudo; co-mestre vê como jogador, mas
+	// gerencia tokens e fichas (ver tableRole).
 	useEffect(() => {
-		const isOwner = Boolean(
-			activeCampaign &&
-				user &&
-				(activeCampaign.ownerId === user.id ||
-					activeCampaign.myRole === "owner"),
-		);
-		setIsGM(isOwner);
-	}, [activeCampaign, user, setIsGM]);
+		const role = tableRole(activeCampaign, user?.id);
+		setIsGM(role.isGM);
+		setIsCoGM(role.isCoGM);
+	}, [activeCampaign, user, setIsGM, setIsCoGM]);
 
 	// Assistente da mesa (piloto): só aparece se a campanha estiver na allowlist
 	// `ia_mesa_pilot_campaigns` do Supabase. Fora dela: nenhuma UI.
@@ -959,7 +963,10 @@ function VTTSession() {
 		(tokenId: string, x: number, y: number) => {
 			if (!roomChannelRef.current || !user) return;
 			const token = useVTTStore.getState().tokens.find((t) => t.id === tokenId);
-			if (!token || !canControlVTTToken(token, user.id, isGM, characterOwners))
+			if (
+				!token ||
+				!canControlVTTToken(token, user.id, canManageTokens, characterOwners)
+			)
 				return;
 			roomChannelRef.current.send({
 				type: "broadcast",
@@ -967,7 +974,7 @@ function VTTSession() {
 				payload: { tokenId, x, y, userId: user.id },
 			});
 		},
-		[user, isGM, characterOwners],
+		[user, canManageTokens, characterOwners],
 	);
 
 	const handleBroadcastCursor = useCallback(
@@ -1321,7 +1328,7 @@ function VTTSession() {
 		return (
 			token &&
 			token.sceneId === activeSceneId &&
-			canControlVTTToken(token, user?.id, isGM, characterOwners)
+			canControlVTTToken(token, user?.id, canManageTokens, characterOwners)
 		);
 	};
 
@@ -1394,7 +1401,7 @@ function VTTSession() {
 					characterId: character.id,
 					current,
 					max: typeof updates.hpMax === "number" ? updates.hpMax : undefined,
-					canEditMax: isGM,
+					canEditMax: canManageTokens,
 				});
 				const rest = { ...updates };
 				delete rest.hpCurrent;
@@ -1536,7 +1543,7 @@ function VTTSession() {
 		tokens.find(
 			(t) =>
 				t.id === activeTokenIdForMenu &&
-				canControlVTTToken(t, user?.id, isGM, characterOwners),
+				canControlVTTToken(t, user?.id, canManageTokens, characterOwners),
 		) || null;
 
 	return (
@@ -1616,6 +1623,8 @@ function VTTSession() {
 				onClearFog={handleClearFog}
 			/>
 
+			<VTTRulerControls />
+
 			<VTTTemplateControls
 				onClearTemplates={(removedIds) => {
 					if (user)
@@ -1662,8 +1671,8 @@ function VTTSession() {
 				/>
 			) : !isLoading ? (
 				<div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-					<div className="p-4 rounded-3xl border border-border/70 bg-card-elevated backdrop-blur-md mb-4 shadow-2xl">
-						<Compass className="h-10 w-10 text-primary animate-pulse" />
+					<div className="mb-4 rounded-2xl border border-border/70 bg-card-elevated p-4">
+						<Compass className="h-8 w-8 text-primary" />
 					</div>
 					<h3 className="font-display text-xl font-bold text-foreground">
 						{isGM ? "Nenhuma cena criada ainda" : "Aguardando a cena do mestre"}
@@ -1681,10 +1690,10 @@ function VTTSession() {
 									(error) => setLoadError(error.message),
 								);
 							}}
-							className="gap-2 font-bold text-sm h-11 px-5 rounded-2xl shadow-lg shadow-primary/20"
+							className="h-11 gap-2 rounded-xl px-5 text-sm font-semibold"
 						>
 							<Sparkles className="h-4 w-4" />
-							Criar Primeira Cena
+							Criar primeira cena
 						</Button>
 					)}
 				</div>

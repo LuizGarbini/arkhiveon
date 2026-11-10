@@ -7,6 +7,8 @@ interface DiceRollOverlayProps {
 	attributeLabel: string;
 	diceType: "d20" | "d100" | "d10" | "d6";
 	modifier?: number;
+	/** Face já sorteada (ex.: pelo servidor da mesa); sem ela, sorteia aqui. */
+	result?: number;
 	onComplete: (value: number) => void;
 	onClose: () => void;
 }
@@ -240,6 +242,7 @@ export function DiceRollOverlay({
 	attributeLabel,
 	diceType,
 	modifier = 0,
+	result,
 	onComplete,
 	onClose,
 }: DiceRollOverlayProps) {
@@ -262,13 +265,15 @@ export function DiceRollOverlay({
 		if (!canvasRef.current) return;
 
 		const finalVal =
-			diceType === "d20"
-				? Math.floor(Math.random() * 20) + 1
-				: diceType === "d10"
-					? Math.floor(Math.random() * 10) + 1
-					: diceType === "d6"
-						? Math.floor(Math.random() * 6) + 1
-						: Math.floor(Math.random() * 100) + 1;
+			result !== undefined
+				? result
+				: diceType === "d20"
+					? Math.floor(Math.random() * 20) + 1
+					: diceType === "d10"
+						? Math.floor(Math.random() * 10) + 1
+						: diceType === "d6"
+							? Math.floor(Math.random() * 6) + 1
+							: Math.floor(Math.random() * 100) + 1;
 
 		// ========================================================
 		// THREE.JS — Cena, Câmera, Renderer
@@ -744,7 +749,7 @@ export function DiceRollOverlay({
 			renderer.dispose();
 			disposeHierarchy(scene);
 		};
-	}, [open, diceType, onComplete, onClose]);
+	}, [open, diceType, result, onComplete, onClose]);
 
 	if (!open) return null;
 

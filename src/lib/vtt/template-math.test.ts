@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
 	pointInPolygon,
+	templateMeasureText,
 	templatePolygon,
+	templateReach,
 	templateReachCells,
+	templateReachPoint,
 } from "./template-math";
 
 const origin = { x: 0, y: 0 };
@@ -78,5 +81,54 @@ describe("templatePolygon", () => {
 			true,
 		);
 		expect(pointInPolygon({ x: -cell, y: -cell }, polygon)).toBe(false);
+	});
+
+	it("alcance fixo ignora o tamanho do arrasto e mantém a direção", () => {
+		const polygon = templatePolygon(
+			"cone60",
+			origin,
+			{ x: cell, y: 0 },
+			cell,
+			6,
+		);
+		expect(pointInPolygon({ x: cell * 5.5, y: 0 }, polygon)).toBe(true);
+		expect(pointInPolygon({ x: -cell * 2, y: 0 }, polygon)).toBe(false);
+	});
+});
+
+describe("medida do molde", () => {
+	const base = { originX: 0, originY: 0, targetX: cell * 4, targetY: 0 };
+
+	it("usa o alcance fixo quando houver, senão o do arrasto", () => {
+		expect(templateReach(base, cell)).toBe(4);
+		expect(templateReach({ ...base, sizeCells: 6 }, cell)).toBe(6);
+	});
+
+	it("escreve a medida na unidade da cena, com vírgula decimal", () => {
+		expect(templateMeasureText("cone60", 6, 1.5, "m")).toBe("Cone 60° · 9 m");
+		expect(templateMeasureText("cone15", 4, 5, "ft")).toBe("Cone 15° · 20 ft");
+		expect(templateMeasureText("sphere", 4, 1.5, "m")).toBe("Raio 6 m");
+		expect(templateMeasureText("line", 20, 1.5, "m")).toBe("Linha 30 m");
+		expect(templateMeasureText("cube", 3, 1.5, "m")).toBe("Cubo 4,5 m");
+	});
+
+	it("o rótulo fica na ponta do alcance; no cubo, no centro", () => {
+		const cone = templateReachPoint(
+			"cone60",
+			origin,
+			{ x: 0, y: cell },
+			cell,
+			3,
+		);
+		expect(cone.point.x).toBeCloseTo(0);
+		expect(cone.point.y).toBeCloseTo(cell * 3);
+		const cube = templateReachPoint(
+			"cube",
+			origin,
+			{ x: -cell, y: cell },
+			cell,
+			2,
+		);
+		expect(cube.point).toEqual({ x: -cell, y: cell });
 	});
 });

@@ -206,10 +206,10 @@ describe("Ficha flutuante: painel", () => {
 			clientY: 200,
 			pointerId: 1,
 		});
-		fireEvent.pointerMove(handle, { clientX: 300, clientY: 260, pointerId: 1 });
-		fireEvent.pointerUp(handle, { clientX: 300, clientY: 260, pointerId: 1 });
+		fireEvent.pointerMove(handle, { clientX: 700, clientY: 260, pointerId: 1 });
+		fireEvent.pointerUp(handle, { clientX: 700, clientY: 260, pointerId: 1 });
 		const moved = {
-			x: Number.parseFloat(start.left) - 200,
+			x: Number.parseFloat(start.left) + 200,
 			y: Number.parseFloat(start.top) + 60,
 		};
 		expect(panel.style.left).toBe(`${moved.x}px`);
@@ -285,6 +285,63 @@ describe("Ficha flutuante: painel", () => {
 		// Cabeçalho de arraste só com alça + X (padrão Figma); nome no título.
 		expect(screen.getByTestId("vtt-sheet-drag-handle").textContent).toBe("");
 		expect(panel.querySelector('[class*="h-14"][class*="w-14"]')).toBeTruthy();
+	});
+});
+
+describe("Ficha flutuante: minimizar", () => {
+	it("minimiza num cartão com PV, continua aberta e restaura no tamanho guardado", () => {
+		mesa({});
+		const panel = panels()[0];
+		const { width, left, top } = panel.style;
+		fireEvent.click(screen.getByRole("button", { name: "Minimizar ficha" }));
+		expect(panels()).toHaveLength(1);
+		expect(panels()[0].dataset.minimized).toBe("true");
+		expect(panels()[0].style.width).toBe("336px");
+		expect(screen.getByText("8/10 PV")).toBeTruthy();
+		expect(screen.queryByRole("list")).toBeNull();
+		// Vai para a doca (canto inferior esquerdo), sem perder a posição da ficha.
+		expect(panels()[0].style.left).toBe("72px");
+		expect(panels()[0].style.top).toBe(`${900 - 16 - 60}px`);
+		expect(
+			JSON.parse(
+				localStorage.getItem(`${sheetStorageKey(CAMPAIGN, "char-1")}:min`) ??
+					"null",
+			),
+		).toEqual({ x: 72, y: 900 - 16 - 60 });
+
+		fireEvent.click(screen.getByRole("button", { name: "Restaurar ficha" }));
+		expect(panels()[0].dataset.minimized).toBeUndefined();
+		expect(panels()[0].style.width).toBe(width);
+		expect(panels()[0].style.left).toBe(left);
+		expect(panels()[0].style.top).toBe(top);
+		expect(screen.getByRole("list")).toBeTruthy();
+	});
+
+	it("reabrir lembra que estava minimizada", () => {
+		const view = mesa({});
+		fireEvent.click(screen.getByRole("button", { name: "Minimizar ficha" }));
+		view.unmount();
+		mesa({});
+		expect(panels()[0].dataset.minimized).toBe("true");
+	});
+
+	it("o cartão minimizado arrasta até a borda de baixo", () => {
+		mesa({});
+		fireEvent.click(screen.getByRole("button", { name: "Minimizar ficha" }));
+		const handle = screen.getByTestId("vtt-sheet-drag-handle");
+		fireEvent.pointerDown(handle, {
+			button: 0,
+			clientX: 500,
+			clientY: 200,
+			pointerId: 1,
+		});
+		fireEvent.pointerMove(handle, {
+			clientX: 500,
+			clientY: 5000,
+			pointerId: 1,
+		});
+		fireEvent.pointerUp(handle, { pointerId: 1 });
+		expect(panels()[0].style.top).toBe(`${900 - 60 - 8}px`);
 	});
 });
 

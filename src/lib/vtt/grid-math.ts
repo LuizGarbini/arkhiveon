@@ -153,6 +153,8 @@ export function calculateGridDistance(
 		const max = Math.max(dx, dy);
 		const min = Math.min(dx, dy);
 		cellDistance = max + Math.floor(min / 2);
+	} else if (diagonalRule === "chebyshev") {
+		cellDistance = Math.max(Math.round(rawDx), Math.round(rawDy));
 	} else {
 		cellDistance = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
 	}

@@ -431,3 +431,51 @@ describe("feed da mesa", () => {
 		}
 	});
 });
+
+describe("chat refinado", () => {
+	it("/r 2d6+3 na caixa de mensagem rola em vez de enviar texto", async () => {
+		render(<VTTFeedPanel />);
+		const input = await screen.findByLabelText("Mensagem");
+		fireEvent.change(input, { target: { value: "/r 2d6+3" } });
+		fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+		await waitFor(() => expect(db.rollsCalls).toBe(1));
+		expect(db.chatCalls).toBe(0);
+		await waitFor(() => expect((input as HTMLInputElement).value).toBe(""));
+	});
+
+	it("/r com fórmula errada avisa e não envia nada", async () => {
+		render(<VTTFeedPanel />);
+		const input = await screen.findByLabelText("Mensagem");
+		fireEvent.change(input, { target: { value: "/r banana" } });
+		expect(
+			(screen.getByRole("button", { name: "Enviar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		expect(screen.getByRole("alert").textContent).toMatch(/Fórmula inválida/);
+	});
+
+	it("o cartão mostra o rótulo da ficha, os dados e o crítico", async () => {
+		db.sessionId = "s1";
+		db.sessions = [{ id: "s1", started_at: "2026-10-29T18:00:00.000Z" }];
+		db.rolls = [{ ...publicRoll, formula: "1d20+5", label: "Ataque" }];
+		db.results = [
+			{
+				roll_id: "roll-lia",
+				total: 25,
+				details: {
+					formula: "1d20+5",
+					count: 1,
+					faces: 20,
+					modifier: 5,
+					rolls: [20],
+				},
+			},
+		];
+		render(<VTTFeedPanel />);
+		expect(await screen.findByText("Ataque")).toBeTruthy();
+		expect(screen.getByText("25")).toBeTruthy();
+		expect(screen.getByText("Crítico")).toBeTruthy();
+		const dice = screen.getByRole("list", { name: "Dados" });
+		expect(dice.textContent).toBe("20+5");
+	});
+});

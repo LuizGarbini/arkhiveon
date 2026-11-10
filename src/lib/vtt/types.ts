@@ -1,7 +1,8 @@
 export type VTTGridType = "square" | "hex_pointy" | "hex_flat" | "none";
 export type VTTGridScaleUnit = "m" | "ft" | "sq";
 export type VTTLayer = "map" | "token" | "gm";
-export type VTTDiagonalRule = "euclidean" | "5105";
+/** `chebyshev`: diagonal custa 1 casa (D&D 5e); `5105`: alterna 1 e 2 casas. */
+export type VTTDiagonalRule = "euclidean" | "5105" | "chebyshev";
 
 export interface VTTScene {
 	id: string;
@@ -120,6 +121,16 @@ export interface VTTRulerMeasurement {
 	currentY: number;
 	distance: number;
 	unit: string;
+	/** Pontos fixados, a origem inclusive. Sem eles, a régua é start → current. */
+	waypoints?: { x: number; y: number }[];
+	/** Distância de cada trecho, na ordem do caminho. */
+	segments?: number[];
+	/** Casas do caminho inteiro pela regra de diagonal. */
+	cells?: number;
+	/** Fixada com duplo clique ou Enter: não segue mais o cursor. */
+	pinned?: boolean;
+	userName?: string;
+	color?: string;
 }
 
 export interface VTTPresenceUser {
@@ -142,14 +153,6 @@ export interface VTTRemoteCursor {
 	timestamp: number;
 }
 
-export interface VTTRemoteMeasurement {
-	userId: string;
-	userName: string;
-	color: string;
-	startX: number;
-	startY: number;
-	currentX: number;
-	currentY: number;
-	distance: number;
-	unit: string;
+export interface VTTRemoteMeasurement extends VTTRulerMeasurement {
+	userId?: string;
 }

@@ -35,24 +35,17 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 	};
 
 	return (
-		<div className="flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-lg select-none">
-			{/* Online Presence Count Indicator */}
-			<div className="flex items-center gap-1.5 pr-2 border-r border-border/70 text-muted-foreground">
-				<div className="relative flex h-2 w-2">
-					{onlineUsers.length > 0 && (
-						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+		<div className="flex items-center gap-1 pl-3 select-none">
+			<span className="flex items-center gap-1.5 pr-1 text-xs text-muted-foreground tabular-nums">
+				<span
+					aria-hidden
+					className={cn(
+						"size-1.5 rounded-full",
+						onlineUsers.length > 0 ? "bg-primary" : "bg-muted-foreground/60",
 					)}
-					<span
-						className={cn(
-							"relative inline-flex rounded-full h-2 w-2",
-							onlineUsers.length > 0 ? "bg-primary" : "bg-muted-foreground",
-						)}
-					/>
-				</div>
-				<span className="text-[11px] font-mono font-bold text-foreground">
-					{onlineUsers.length}
-				</span>
-			</div>
+				/>
+				{onlineUsers.length} online
+			</span>
 
 			{/* Connected Avatars Stack */}
 			<div className="flex items-center -space-x-1.5 overflow-hidden py-0.5 max-w-[180px] sm:max-w-[260px]">
@@ -63,9 +56,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 						onClick={() => handleUserClick(u)}
 						title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
 						style={{ borderColor: u.color }}
-						className={cn(
-							"relative h-11 w-11 rounded-full border-2 bg-card-elevated overflow-hidden shrink-0 transition-transform hover:scale-125 hover:z-20 cursor-pointer shadow-md",
-						)}
+						className="relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 bg-card-elevated transition-transform duration-150 [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:-translate-y-0.5"
 					>
 						{u.avatarUrl ? (
 							<img
@@ -96,7 +87,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 				<PopoverTrigger
 					aria-label="Alterar minha cor de ping e cursor"
 					title="Alterar Minha Cor de Ping e Cursor"
-					className="flex size-11 items-center justify-center rounded-xl hover:bg-accent active:scale-[0.98]"
+					className="flex size-11 items-center justify-center rounded-xl transition-colors duration-150 active:scale-[0.98] [@media(hover:hover)]:hover:bg-accent"
 				>
 					<span
 						style={{ backgroundColor: userColor }}

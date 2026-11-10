@@ -1,21 +1,11 @@
-import { Maximize, Minus, Plus, Ruler } from "lucide-react";
+import { Maximize, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ZOOM_ABOVE_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
-import type { VTTDiagonalRule } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-
-const DIAGONAL_RULES: { id: VTTDiagonalRule; label: string }[] = [
-	{ id: "5105", label: "5-10-5" },
-	{ id: "euclidean", label: "Euclidiano" },
-];
 
 export function VTTZoomControls() {
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
-	const activeMeasurement = useVTTStore((s) => s.activeMeasurement);
-	const activeTool = useVTTStore((s) => s.activeTool);
-	const diagonalRule = useVTTStore((s) => s.diagonalRule);
-	const setDiagonalRule = useVTTStore((s) => s.setDiagonalRule);
 	const scenes = useVTTStore((s) => s.scenes);
 	const activeSceneId = useVTTStore((s) => s.activeSceneId);
 	const scene = scenes.find((s) => s.id === activeSceneId);
@@ -47,46 +37,14 @@ export function VTTZoomControls() {
 		});
 	};
 	const button =
-		"flex size-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]";
+		"flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-150 [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]";
 	return (
 		<>
-			{(activeMeasurement || activeTool === "ruler") && (
-				<div className="pointer-events-none absolute bottom-20 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
-					{activeMeasurement && (
-						<output className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-4 py-3 text-sm shadow-lg backdrop-blur-md">
-							<Ruler className="size-4 text-primary" />
-							<span className="text-muted-foreground">Distância</span>
-							<span className="font-medium tabular-nums text-foreground">
-								{activeMeasurement.distance} {activeMeasurement.unit}
-							</span>
-						</output>
-					)}
-					<fieldset className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-border/70 bg-card p-1 shadow-lg select-none">
-						<legend className="sr-only">Regra de diagonal</legend>
-						{DIAGONAL_RULES.map((rule) => (
-							<button
-								type="button"
-								key={rule.id}
-								aria-pressed={diagonalRule === rule.id}
-								onClick={() => setDiagonalRule(rule.id)}
-								className={cn(
-									"h-11 rounded-xl border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
-									diagonalRule === rule.id
-										? "border-primary/40 bg-primary/15 text-foreground"
-										: "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
-								)}
-							>
-								{rule.label}
-							</button>
-						))}
-					</fieldset>
-				</div>
-			)}
 			{scene && (
 				<div
 					data-slot="vtt-zoom-controls"
 					className={cn(
-						"absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-border/70 bg-card p-1 shadow-lg select-none",
+						"absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-2xl border border-border/70 bg-card/95 p-1 shadow-xl backdrop-blur-md select-none",
 						gridBarOpen &&
 							ZOOM_ABOVE_GRID_BAR_CLASS[gridMoreOpen ? "open" : "closed"],
 					)}
@@ -100,7 +58,7 @@ export function VTTZoomControls() {
 					>
 						<Maximize className="size-4" />
 					</button>
-					<span className="h-5 w-px bg-border/70" />
+					<span aria-hidden className="mx-0.5 h-6 w-px bg-border" />
 					<button
 						type="button"
 						className={button}
@@ -112,7 +70,7 @@ export function VTTZoomControls() {
 					</button>
 					<button
 						type="button"
-						className="h-11 min-w-14 rounded-xl px-2 text-xs font-medium tabular-nums focus-visible:ring-2 focus-visible:ring-primary hover:bg-accent"
+						className="h-11 min-w-14 rounded-xl px-2 text-xs font-medium tabular-nums text-foreground transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-accent"
 						onClick={() => zoom(1)}
 						title="Redefinir Zoom para 100%"
 					>

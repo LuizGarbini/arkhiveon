@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	CHAT_MESSAGE_MAX,
 	canSendChat,
+	continuesPrevious,
 	feedLineView,
+	parseChatCommand,
+	rolledDice,
+	rollHighlight,
 	SECRET_ROLL_TEXT,
 	trackSessionOrdinal,
 } from "./feed-line";
@@ -150,5 +154,97 @@ describe("trackSessionOrdinal", () => {
 				"s2",
 			).number,
 		).toBe(2);
+	});
+});
+
+describe("cartão de rolagem", () => {
+	it("cada dado leva as faces do grupo dele e marca máximo e 1", () => {
+		expect(
+			rolledDice({ formula: "1d12+2d6+3", faces: 12, rolls: [12, 1, 4] }),
+		).toEqual([
+			{ value: 12, faces: 12, tone: "max" },
+			{ value: 1, faces: 6, tone: "min" },
+			{ value: 4, faces: 6, tone: "plain" },
+		]);
+	});
+
+	it("sem os dados ainda (só o total), não inventa dado", () => {
+		expect(rolledDice({ formula: "1d20+2", faces: 20, rolls: [] })).toEqual([]);
+	});
+
+	it("crítico e falha crítica só num d20 sozinho", () => {
+		expect(rollHighlight({ formula: "1d20+5", faces: 20, rolls: [20] })).toBe(
+			"critical",
+		);
+		expect(rollHighlight({ formula: "1d20+6", faces: 20, rolls: [1] })).toBe(
+			"fumble",
+		);
+		expect(rollHighlight({ formula: "1d20", faces: 20, rolls: [11] })).toBe(
+			null,
+		);
+		expect(
+			rollHighlight({ formula: "2d20", faces: 20, rolls: [20, 3] }),
+		).toBeNull();
+		expect(rollHighlight({ formula: "1d6", faces: 6, rolls: [1] })).toBeNull();
+	});
+});
+
+describe("agrupamento do chat", () => {
+	const msg = (
+		authorId: string,
+		createdAt: string,
+		kind: "chat" | "roll" = "chat",
+	) => ({ authorId, createdAt, kind });
+
+	it("mesmo autor em até 5 minutos continua o bloco", () => {
+		expect(
+			continuesPrevious(
+				msg("a", "2026-11-09T22:00:00.000Z"),
+				msg("a", "2026-11-09T22:04:59.000Z"),
+			),
+		).toBe(true);
+	});
+
+	it("outro autor, intervalo longo ou rolagem no meio quebram o bloco", () => {
+		const first = msg("a", "2026-11-09T22:00:00.000Z");
+		expect(continuesPrevious(first, msg("b", "2026-11-09T22:01:00.000Z"))).toBe(
+			false,
+		);
+		expect(continuesPrevious(first, msg("a", "2026-11-09T22:06:00.000Z"))).toBe(
+			false,
+		);
+		expect(
+			continuesPrevious(
+				{ ...first, kind: "roll" },
+				msg("a", "2026-11-09T22:01:00.000Z"),
+			),
+		).toBe(false);
+		expect(continuesPrevious(undefined, first)).toBe(false);
+	});
+});
+
+describe("/r na caixa de mensagem", () => {
+	it("/r e /roll rolam a fórmula canônica", () => {
+		expect(parseChatCommand("/r 2d6 + 3")).toEqual({
+			kind: "roll",
+			formula: "2d6+3",
+		});
+		expect(parseChatCommand("/ROLL d20")).toEqual({
+			kind: "roll",
+			formula: "1d20",
+		});
+	});
+
+	it("fórmula inválida avisa; texto comum é mensagem", () => {
+		expect(parseChatCommand("/r banana")).toEqual({ kind: "invalid-roll" });
+		expect(parseChatCommand("/r")).toEqual({ kind: "invalid-roll" });
+		expect(parseChatCommand("rolei 2d6")).toEqual({
+			kind: "chat",
+			text: "rolei 2d6",
+		});
+		expect(parseChatCommand("/rindo")).toEqual({
+			kind: "chat",
+			text: "/rindo",
+		});
 	});
 });
