@@ -5,9 +5,14 @@
 
 import {
 	type CharacterRow,
+	PATCH_LIMITS,
 	summarizeCharacter,
+	toRoster,
 } from "../_shared/ia-mesa-character.ts";
-import { isCampaignId } from "../_shared/ia-mesa-guard.ts";
+import {
+	type IaMesaClientContext,
+	isCampaignId,
+} from "../_shared/ia-mesa-guard.ts";
 import {
 	fogShapesFromPaths,
 	type MesaContextInput,
@@ -15,6 +20,7 @@ import {
 	type MesaFogShape,
 } from "./logic.ts";
 
+const CAMPAIGN_COLUMNS = "name, system";
 const CHARACTER_COLUMNS = "id, name, system, data";
 const SCENE_COLUMNS = "id, name, fog_enabled";
 const TOKEN_COLUMNS = "name, layer, x, y, is_hidden, character_id";
@@ -135,22 +141,75 @@ export async function loadIaMesaCharacter(
 	return oneCharacter(db, input.campaignId, "id", input.characterId);
 }
 
-/** Ficha de quem pergunta (user_id, senão created_by) e a cena com is_active. */
+/** Ficha de quem pergunta, roster da campanha e a cena ativa. */
 export async function loadIaMesaContext(
 	db: MesaDb,
-	input: { campaignId: string; userId: string; role?: "gm" | "player" },
-): Promise<{ context: MesaContextInput; asker: CharacterRow | null }> {
+	input: {
+		campaignId: string;
+		userId: string;
+		role?: "gm" | "player";
+		clientContext?: IaMesaClientContext;
+	},
+): Promise<{
+	context: MesaContextInput;
+	asker: CharacterRow | null;
+	rosterRows: CharacterRow[];
+}> {
 	const role = input.role ?? "gm";
 	let asker: CharacterRow | null = null;
-	if (isCampaignId(input.campaignId) && isCampaignId(input.userId)) {
-		asker = await oneCharacter(db, input.campaignId, "user_id", input.userId);
-		if (!asker) {
-			asker = await oneCharacter(
-				db,
-				input.campaignId,
-				"created_by",
-				input.userId,
-			);
+	let campaignName = "";
+	let campaignSystem = "dnd5e";
+	let rosterRows: CharacterRow[] = [];
+
+	if (isCampaignId(input.campaignId)) {
+		try {
+			const { data: campaignRow } = await db
+				.from("campaigns")
+				.select(CAMPAIGN_COLUMNS)
+				.eq("id", input.campaignId)
+				.limit(1)
+				.maybeSingle();
+			if (
+				campaignRow &&
+				typeof campaignRow === "object" &&
+				!Array.isArray(campaignRow)
+			) {
+				const c = campaignRow as Record<string, unknown>;
+				if (typeof c.name === "string" && c.name.trim())
+					campaignName = c.name.trim();
+				if (typeof c.system === "string" && c.system.trim())
+					campaignSystem = c.system.trim();
+			}
+		} catch {
+			// Não falha caso o mock da tabela não esteja configurado
+		}
+
+		if (isCampaignId(input.userId)) {
+			asker = await oneCharacter(db, input.campaignId, "user_id", input.userId);
+			if (!asker) {
+				asker = await oneCharacter(
+					db,
+					input.campaignId,
+					"created_by",
+					input.userId,
+				);
+			}
+		}
+
+		try {
+			const { data: charData } = await db
+				.from("characters")
+				.select(CHARACTER_COLUMNS)
+				.eq("campaign_id", input.campaignId)
+				.limit(PATCH_LIMITS.rosterSize)
+				.list();
+			if (Array.isArray(charData)) {
+				rosterRows = charData
+					.map(asCharacter)
+					.filter((r): r is CharacterRow => r !== null);
+			}
+		} catch {
+			// Mantém tolerância a chamadores com selects restritos
 		}
 	}
 
@@ -195,6 +254,7 @@ export async function loadIaMesaContext(
 
 	return {
 		asker,
+		rosterRows,
 		context: {
 			role,
 			sheetText: asker ? JSON.stringify(summarizeCharacter(asker)) : "",
@@ -203,6 +263,10 @@ export async function loadIaMesaContext(
 			fogEnabled,
 			tokens,
 			fog,
+			campaignName,
+			campaignSystem,
+			roster: toRoster(rosterRows),
+			clientContext: input.clientContext,
 		},
 	};
 }

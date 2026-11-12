@@ -47,6 +47,7 @@ export function ShellAiChat() {
 			campaignId={activeCampaignId}
 			campaignName={campaign?.name || "Campanha"}
 			placement="fixed"
+			clientContext={{ route: pathname }}
 		/>
 	);
 }

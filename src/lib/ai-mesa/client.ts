@@ -34,6 +34,11 @@ export async function askMesaAssistant(input: {
 	message: string;
 	history: IaMesaHistoryItem[];
 	images?: IaMesaImageAttachment[];
+	clientContext?: {
+		route?: string;
+		entityName?: string;
+		entityKind?: string;
+	};
 }): Promise<IaMesaResult> {
 	if (isBlockedRequest(input.message)) {
 		return { ok: true, reply: IA_MESA_REFUSAL, proposal: null };

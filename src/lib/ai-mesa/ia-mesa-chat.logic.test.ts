@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { cleanClientContext } from "../../../supabase/functions/_shared/ia-mesa-guard";
 import {
 	buildClaudeRequest,
 	buildMesaContext,
@@ -10,6 +11,7 @@ import {
 	IA_MESA_MODEL_SONNET,
 	type MesaContextInput,
 	nextSaoPauloMidnightIso,
+	selectIaMesaModel,
 } from "../../../supabase/functions/ia-mesa-chat/logic";
 
 function firstRequest(callModel: {
@@ -358,5 +360,110 @@ describe("ia-mesa-chat: imagens e criação de ficha", () => {
 			body: { ok: false, code: "input_too_large" },
 		});
 		expect(d.callModel).not.toHaveBeenCalled();
+	});
+});
+
+describe("ia-mesa-chat: melhorias de contexto e manual do Arkhiveon", () => {
+	it("formata cabeçalho da campanha, navegação do cliente e lista de personagens (roster)", () => {
+		const contextInput: MesaContextInput = {
+			...scene,
+			campaignName: "A Queda de Gondolin",
+			campaignSystem: "dnd5e",
+			clientContext: {
+				route: "/world/factions/123",
+				entityKind: "faction",
+				entityName: "Ordem da Fênix",
+			},
+			roster: [
+				{
+					id: "char-1",
+					name: "Thorin",
+					class: "Guerreiro",
+					level: 5,
+				},
+				{
+					id: "char-2",
+					name: "Lyra",
+					class: "Maga",
+					level: 4,
+				},
+			],
+		};
+
+		const built = buildMesaContext(contextInput);
+		expect(built.header).toContain(
+			"Campanha: A Queda de Gondolin (Sistema: dnd5e)",
+		);
+		expect(built.header).toContain(
+			"[faction] Ordem da Fênix (rota: /world/factions/123)",
+		);
+		expect(built.roster).toContain("Thorin (Guerreiro nível 5): id char-1");
+		expect(built.roster).toContain("Lyra (Maga nível 4): id char-2");
+	});
+
+	it("sanitiza clientContext com segurança contra campos gigantes ou inválidos", () => {
+		expect(cleanClientContext(null)).toBeUndefined();
+		expect(cleanClientContext(undefined)).toBeUndefined();
+		expect(cleanClientContext("string")).toBeUndefined();
+		expect(cleanClientContext([])).toBeUndefined();
+		expect(cleanClientContext({})).toBeUndefined();
+
+		const sanitized = cleanClientContext({
+			route: "/vtt",
+			entityName: "Garganta do Dragão",
+			entityKind: "location",
+		});
+		expect(sanitized).toEqual({
+			route: "/vtt",
+			entityName: "Garganta do Dragão",
+			entityKind: "location",
+		});
+
+		const truncated = cleanClientContext({
+			route: `/${"a".repeat(500)}`,
+			entityName: "b".repeat(500),
+			entityKind: "c".repeat(500),
+		});
+		expect(truncated?.route?.length).toBeLessThanOrEqual(150);
+		expect(truncated?.entityName?.length).toBeLessThanOrEqual(100);
+		expect(truncated?.entityKind?.length).toBeLessThanOrEqual(50);
+	});
+
+	it("o system prompt inclui o manual do Arkhiveon com conhecimento completo e tamanho para cache", () => {
+		const req = buildClaudeRequest({
+			model: IA_MESA_MODEL_HAIKU,
+			maxTokens: 1024,
+			contextText: "Contexto de teste",
+			history: [],
+			message: "Como funciona a névoa de guerra?",
+		});
+		const systemText = req.system.map((s) => s.text).join("\n\n");
+		expect(systemText).toContain(
+			"MANUAL DE FUNCIONALIDADES E GUIA DE REGRAS DO ARKHIVEON",
+		);
+		expect(systemText).toContain("Névoa de Guerra (Fog of War)");
+		expect(systemText).toContain("VTT / MESA VIRTUAL");
+		expect(systemText).toContain("WORLDBUILDING");
+		expect(systemText.length).toBeGreaterThan(12_000);
+	});
+
+	it("verbos coloquiais de ação selecionam Sonnet e ferramentas de proposta", () => {
+		expect(
+			selectIaMesaModel({ message: "Thorin levou 12 de dano" }).model,
+		).toBe(IA_MESA_MODEL_SONNET);
+		expect(
+			selectIaMesaModel({ message: "poe uma espada longa no inventário" })
+				.model,
+		).toBe(IA_MESA_MODEL_SONNET);
+		expect(
+			selectIaMesaModel({ message: "adiciona 50 poções de cura no personagem" })
+				.model,
+		).toBe(IA_MESA_MODEL_SONNET);
+		expect(selectIaMesaModel({ message: "cura 20 PV da Lia" }).model).toBe(
+			IA_MESA_MODEL_SONNET,
+		);
+		expect(
+			selectIaMesaModel({ message: "Qual é a história do Arkhiveon?" }).model,
+		).toBe(IA_MESA_MODEL_HAIKU);
 	});
 });

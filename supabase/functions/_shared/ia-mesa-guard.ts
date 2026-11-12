@@ -304,6 +304,32 @@ export function cleanHistory(value: unknown): IaMesaHistoryItem[] {
 		.filter((item) => item.text.length > 0);
 }
 
+export interface IaMesaClientContext {
+	route?: string;
+	entityName?: string;
+	entityKind?: string;
+}
+
+export function cleanClientContext(
+	value: unknown,
+): IaMesaClientContext | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value))
+		return undefined;
+	const raw = value as Record<string, unknown>;
+	const route =
+		typeof raw.route === "string" ? raw.route.trim().slice(0, 150) : undefined;
+	const entityName =
+		typeof raw.entityName === "string"
+			? raw.entityName.trim().slice(0, 100)
+			: undefined;
+	const entityKind =
+		typeof raw.entityKind === "string"
+			? raw.entityKind.trim().slice(0, 50)
+			: undefined;
+	if (!route && !entityName && !entityKind) return undefined;
+	return { route, entityName, entityKind };
+}
+
 export function buildSystemPrompt(
 	campaign: {
 		name: string;
