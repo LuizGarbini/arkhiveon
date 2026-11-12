@@ -83,15 +83,20 @@ const asker = {
 };
 
 describe("ia-mesa-chat: loadContext busca uma ficha e a cena atual", () => {
-	it("não lista as fichas da campanha; seleciona a de quem pergunta e a cena ativa", async () => {
+	it("seleciona a ficha de quem pergunta, o roster leve e a cena ativa", async () => {
 		const { db, calls } = fakeDb((call) => {
 			if (call.table === "characters") {
 				expect(call.columns).toBe(CHARACTER_COLUMNS);
-				expect(limitOf(call)).toBe(1);
 				expect(eq(call, "campaign_id")).toBe(CAMPAIGN);
-				expect(eq(call, "user_id")).toBe(USER);
 				expect(call.ops.some((op) => op[0] === "or")).toBe(false);
-				return asker;
+				if (limitOf(call) === 1) {
+					expect(eq(call, "user_id")).toBe(USER);
+					return asker;
+				}
+				if (limitOf(call) === 40) {
+					return [asker];
+				}
+				return null;
 			}
 			if (call.table === "vtt_scenes") {
 				expect(call.columns).toBe(SCENE_COLUMNS);
@@ -137,8 +142,10 @@ describe("ia-mesa-chat: loadContext busca uma ficha e a cena atual", () => {
 		});
 
 		const characterCalls = calls.filter((call) => call.table === "characters");
-		expect(characterCalls).toHaveLength(1);
+		expect(characterCalls).toHaveLength(2);
 		expect(calls.map((call) => call.table)).toEqual([
+			"campaigns",
+			"characters",
 			"characters",
 			"vtt_scenes",
 			"vtt_tokens",
@@ -146,6 +153,9 @@ describe("ia-mesa-chat: loadContext busca uma ficha e a cena atual", () => {
 		]);
 		expect(loaded.asker?.id).toBe(CHARACTER);
 		expect(loaded.context.sheetText).toContain("Lia");
+		expect(loaded.context.roster).toEqual([
+			{ id: CHARACTER, name: "Lia", class: "", level: null },
+		]);
 		expect(loaded.context.sceneName).toBe("Cripta");
 		expect(loaded.context.fogEnabled).toBe(true);
 		expect(loaded.context.tokens).toEqual([
@@ -162,16 +172,19 @@ describe("ia-mesa-chat: loadContext busca uma ficha e a cena atual", () => {
 			{ type: "rect", mode: "reveal", x: 0, y: 0, width: 8, height: 8 },
 		]);
 		expect(calls.some((call) => call.columns === "*")).toBe(false);
-		expect(calls.some((call) => limitOf(call) === 40)).toBe(false);
 	});
 
 	it("se user_id não achar ficha, busca a criada por quem pergunta, ainda uma linha", async () => {
 		const { db, calls } = fakeDb((call) => {
 			if (call.table !== "characters") return null;
 			expect(call.columns).toBe(CHARACTER_COLUMNS);
-			expect(limitOf(call)).toBe(1);
-			if (eq(call, "user_id") === USER) return null;
-			if (eq(call, "created_by") === USER) return asker;
+			if (limitOf(call) === 1) {
+				if (eq(call, "user_id") === USER) return null;
+				if (eq(call, "created_by") === USER) return asker;
+			}
+			if (limitOf(call) === 40) {
+				return [asker];
+			}
 			return null;
 		});
 
@@ -181,9 +194,10 @@ describe("ia-mesa-chat: loadContext busca uma ficha e a cena atual", () => {
 		});
 
 		const characterCalls = calls.filter((call) => call.table === "characters");
-		expect(characterCalls).toHaveLength(2);
+		expect(characterCalls).toHaveLength(3);
 		expect(eq(characterCalls[0], "user_id")).toBe(USER);
 		expect(eq(characterCalls[1], "created_by")).toBe(USER);
+		expect(limitOf(characterCalls[2])).toBe(40);
 		expect(loaded.asker?.id).toBe(CHARACTER);
 		expect(calls.filter((call) => call.table === "vtt_tokens")).toHaveLength(0);
 	});

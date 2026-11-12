@@ -175,6 +175,7 @@ export function VTTAiChat({
 	campaignName,
 	sceneName,
 	placement = "absolute",
+	clientContext,
 }: {
 	campaignId: string;
 	campaignName: string;
@@ -184,6 +185,11 @@ export function VTTAiChat({
 	 * `fixed`: ancorado na viewport, para o shell logado. Mesmo visual.
 	 */
 	placement?: "absolute" | "fixed";
+	clientContext?: {
+		route?: string;
+		entityName?: string;
+		entityKind?: string;
+	};
 }) {
 	const { user } = useAuth();
 	const [open, setOpen] = useState(false);
@@ -380,6 +386,7 @@ export function VTTAiChat({
 				message: promptText,
 				history,
 				...(imagePayload.length > 0 ? { images: imagePayload } : {}),
+				...(clientContext ? { clientContext } : {}),
 			});
 			if (result.ok) {
 				const reply = result.reply.trim();

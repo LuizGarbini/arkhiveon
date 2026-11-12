@@ -16,7 +16,10 @@ import {
 	rowName,
 	summarizeCharacter,
 } from "../_shared/ia-mesa-character.ts";
-import { isIaMesaPilotCampaign } from "../_shared/ia-mesa-guard.ts";
+import {
+	cleanClientContext,
+	isIaMesaPilotCampaign,
+} from "../_shared/ia-mesa-guard.ts";
 import {
 	canEditCampaignSheet,
 	snapshotFromCharacterRow,
@@ -92,6 +95,7 @@ serve(async (req) => {
 				now: new Date(),
 				apiKey: apiKey || null,
 				dailyLimit: resolveDailyLimit(Deno.env.get("IA_MESA_DAILY_LIMIT")),
+				clientContext: cleanClientContext(body?.clientContext),
 			},
 			{
 				isAllowed: (campaignId) =>
@@ -122,11 +126,21 @@ serve(async (req) => {
 						campaignId,
 						userId: user?.id ?? "",
 						role: "gm",
+						clientContext: cleanClientContext(body?.clientContext),
 					});
 					rowsById.clear();
 					scope.characters = [];
 					askerId = loaded.asker?.id ?? null;
-					if (loaded.asker) {
+					if (loaded.rosterRows && loaded.rosterRows.length > 0) {
+						for (const r of loaded.rosterRows) {
+							rowsById.set(r.id, r);
+							scope.characters.push({
+								id: r.id,
+								name: rowName(r),
+								itemIds: rowItemIds(r),
+							});
+						}
+					} else if (loaded.asker) {
 						rowsById.set(loaded.asker.id, loaded.asker);
 						scope.characters.push({
 							id: loaded.asker.id,
