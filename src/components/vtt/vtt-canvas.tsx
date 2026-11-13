@@ -53,12 +53,12 @@ import {
 	publishPingLoopStats,
 } from "@/lib/vtt/ping-queue";
 import {
-	type RulerContext,
-	rulerAddPoint,
-	rulerMoveLive,
-	rulerPin,
-	rulerUndo,
-} from "@/lib/vtt/ruler-path";
+	rulerOnKey,
+	rulerPointerDown,
+	rulerPointerMove,
+	rulerPointerUp,
+} from "@/lib/vtt/ruler-gesture";
+import { type RulerContext, rulerUndo } from "@/lib/vtt/ruler-path";
 import {
 	isEditableElement,
 	isVttShortcutBlocked,
@@ -1659,19 +1659,22 @@ export function VTTCanvas({
 				ruler &&
 				rulerCtx &&
 				!inDialog &&
-				!blocked
+				!blocked &&
+				(e.key === "Escape" || e.key === "Backspace" || e.key === "Enter")
 			) {
-				lastRulerClickRef.current = null;
-				if (e.key === "Escape") {
-					rulerPressRef.current = null;
-					setActiveMeasurement(null);
-				} else if (e.key === "Backspace") {
-					e.preventDefault();
-					setActiveMeasurement(rulerUndo(ruler, rulerCtx));
-				} else if (e.key === "Enter") {
-					e.preventDefault();
-					setActiveMeasurement(rulerPin(ruler, rulerCtx));
-				}
+				if (e.key !== "Escape") e.preventDefault();
+				const next = rulerOnKey(
+					{
+						measurement: ruler,
+						press: rulerPressRef.current,
+						lastClick: lastRulerClickRef.current,
+					},
+					e.key,
+					rulerCtx,
+				);
+				rulerPressRef.current = next.press;
+				lastRulerClickRef.current = next.lastClick;
+				setActiveMeasurement(next.measurement);
 			}
 			if (e.key === "Escape" && !inDialog) {
 				setActiveTokenIdForMenu(null);
@@ -1853,36 +1856,28 @@ export function VTTCanvas({
 				};
 			}
 
-			// Régua: clique marca pontos; arrastar do zero mede uma reta que some
-			// ao soltar; duplo clique fixa o caminho.
+			// Régua: clique marca pontos, arrastar mantém a reta ao soltar,
+			// duplo clique fixa o caminho.
 			if (activeTool === "ruler" && isLeftClick && rulerCtx) {
 				const current = useVTTStore.getState().activeMeasurement;
-				const now = Date.now();
-				const last = lastRulerClickRef.current;
-				lastRulerClickRef.current = { x: e.clientX, y: e.clientY, t: now };
-				if (
-					current &&
-					!current.pinned &&
-					last &&
-					now - last.t < 350 &&
-					Math.hypot(e.clientX - last.x, e.clientY - last.y) < 8
-				) {
-					lastRulerClickRef.current = null;
-					rulerPressRef.current = null;
-					setActiveMeasurement(rulerPin(current, rulerCtx));
-					return;
-				}
-				const fresh = !current || Boolean(current.pinned);
-				if (fresh)
-					setActiveMeasurement(
-						rulerAddPoint(null, snapRuler(worldPoint), rulerCtx),
-					);
-				rulerPressRef.current = {
-					x: e.clientX,
-					y: e.clientY,
-					moved: false,
-					fresh,
-				};
+				const next = rulerPointerDown(
+					{
+						measurement: current,
+						press: rulerPressRef.current,
+						lastClick: lastRulerClickRef.current,
+					},
+					{
+						screenX: e.clientX,
+						screenY: e.clientY,
+						world: snapRuler(worldPoint),
+						now: Date.now(),
+					},
+					rulerCtx,
+				);
+				lastRulerClickRef.current = next.lastClick;
+				rulerPressRef.current = next.press;
+				if (next.measurement !== current)
+					setActiveMeasurement(next.measurement);
 			}
 
 			if (activeTool === "template" && isLeftClick && scene) {
@@ -2101,18 +2096,23 @@ export function VTTCanvas({
 
 			// Régua: a ponta segue o cursor (mouse) ou o dedo (arrasto).
 			if (activeTool === "ruler" && rulerCtx) {
-				const press = rulerPressRef.current;
-				if (
-					press &&
-					!press.moved &&
-					Math.hypot(e.clientX - press.x, e.clientY - press.y) >
-						TOKEN_TAP_SLOP_PX
-				) {
-					press.moved = true;
-				}
 				const current = useVTTStore.getState().activeMeasurement;
-				const next = rulerMoveLive(current, snapRuler(worldPoint), rulerCtx);
-				if (next !== current) setActiveMeasurement(next);
+				const next = rulerPointerMove(
+					{
+						measurement: current,
+						press: rulerPressRef.current,
+						lastClick: lastRulerClickRef.current,
+					},
+					{
+						screenX: e.clientX,
+						screenY: e.clientY,
+						world: snapRuler(worldPoint),
+					},
+					rulerCtx,
+				);
+				rulerPressRef.current = next.press;
+				if (next.measurement !== current)
+					setActiveMeasurement(next.measurement);
 			}
 
 			if (activeTool === "template" && templateStartRef.current && scene) {
@@ -2355,19 +2355,17 @@ export function VTTCanvas({
 			rulerPressRef.current = null;
 			if (rulerPress && activeTool === "ruler" && rulerCtx) {
 				const current = useVTTStore.getState().activeMeasurement;
-				if (current && !current.pinned) {
-					if (rulerPress.moved && rulerPress.fresh) {
-						setActiveMeasurement(null);
-					} else if (!rulerPress.fresh) {
-						setActiveMeasurement(
-							rulerAddPoint(
-								current,
-								snapRuler(screenToWorld(e.clientX, e.clientY)),
-								rulerCtx,
-							),
-						);
-					}
-				}
+				const next = rulerPointerUp(
+					{
+						measurement: current,
+						press: rulerPress,
+						lastClick: lastRulerClickRef.current,
+					},
+					{ world: snapRuler(screenToWorld(e.clientX, e.clientY)) },
+					rulerCtx,
+				);
+				if (next.measurement !== current)
+					setActiveMeasurement(next.measurement);
 			}
 			// Clique direito no chão (sem arrastar) tira o último ponto.
 			if (

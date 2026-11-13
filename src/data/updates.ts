@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.87-vtt-regua",
+		version: "1.6.87",
+		date: "13/11/2026",
+		title: "Régua da mesa fica na tela ao soltar",
+		description:
+			"A medida da régua continua no mapa quando o clique ou o arrasto termina. Ela permanece até Esc, a troca de ferramenta ou o duplo clique que fixa o caminho.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.86-vtt-ping",
 		version: "1.6.86",
 		date: "13/11/2026",
