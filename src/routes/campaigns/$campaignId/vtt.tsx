@@ -60,6 +60,7 @@ import {
 import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
@@ -131,6 +132,7 @@ function VTTSession() {
 	const setIsGM = useVTTStore((s) => s.setIsGM);
 	const setIsCoGM = useVTTStore((s) => s.setIsCoGM);
 	const isGM = useVTTStore((s) => s.isGM);
+	const isCoGM = useVTTStore((s) => s.isCoGM);
 	const canManageTokens = useVTTStore((s) => s.isGM || s.isCoGM);
 	const setRemoteTemplate = useVTTStore((s) => s.setRemoteTemplate);
 
@@ -694,6 +696,20 @@ function VTTSession() {
 	useEffect(() => {
 		userColorRef.current = userColor;
 	}, [userColor]);
+	const templateRoleRef = useRef({
+		ownerId: null as string | null,
+		memberships: [] as { userId: string; role: string }[],
+	});
+	const selfRole =
+		activeCampaign?.myRole === "owner" || activeCampaign?.myRole === "editor"
+			? activeCampaign.myRole
+			: activeCampaign?.ownerId === user?.id
+				? "owner"
+				: "player";
+	templateRoleRef.current = {
+		ownerId: activeCampaign?.ownerId ?? null,
+		memberships: user?.id ? [{ userId: user.id, role: selfRole }] : [],
+	};
 
 	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
 	useEffect(() => {
@@ -731,6 +747,7 @@ function VTTSession() {
 								avatarUrl?: string | null;
 								color?: string;
 								isGM?: boolean;
+								isCoGM?: boolean;
 								onlineAt?: number;
 						  }
 						| undefined;
@@ -741,6 +758,7 @@ function VTTSession() {
 							avatarUrl: latest.avatarUrl || null,
 							color: latest.color || "#38bdf8",
 							isGM: !!latest.isGM,
+							isCoGM: !!latest.isCoGM,
 							onlineAt: latest.onlineAt || Date.now(),
 						});
 					}
@@ -899,7 +917,25 @@ function VTTSession() {
 					) {
 						const store = useVTTStore.getState();
 						if (data.removedIds) {
-							store.removeRemoteTemplates(data.userId, data.removedIds);
+							const requested = Array.isArray(data.removedIds)
+								? data.removedIds.filter(
+										(id): id is string => typeof id === "string",
+									)
+								: [];
+							const removed = acceptTemplateRemoval({
+								templates: [
+									...store.placedTemplates,
+									...Object.values(store.remoteTemplates),
+								],
+								requestedIds: requested,
+								senderUserId: data.userId,
+								source: {
+									campaignOwnerId: templateRoleRef.current.ownerId,
+									memberships: templateRoleRef.current.memberships,
+									presence: store.onlineUsers,
+								},
+							});
+							if (removed.length > 0) store.removeTemplatesByIds(removed);
 							store.setRemoteTemplatePreview(data.userId, null);
 						} else if (data.placed && data.template) {
 							setRemoteTemplate(data.userId, data.template);
@@ -921,6 +957,7 @@ function VTTSession() {
 						avatarUrl: user.user_metadata?.avatar_url || null,
 						color: userColorRef.current,
 						isGM,
+						isCoGM,
 						onlineAt: Date.now(),
 					});
 				}
@@ -937,6 +974,7 @@ function VTTSession() {
 		activeSceneId,
 		user,
 		isGM,
+		isCoGM,
 		setOnlineUsers,
 		setTokenTargetPosition,
 		setRemoteCursor,
@@ -962,9 +1000,10 @@ function VTTSession() {
 			avatarUrl: user.user_metadata?.avatar_url || null,
 			color: userColor,
 			isGM,
+			isCoGM,
 			onlineAt: Date.now(),
 		});
-	}, [userColor, user, isGM]);
+	}, [userColor, user, isGM, isCoGM]);
 
 	// Broadcast Helper Handlers
 	const handleBroadcastDrag = useCallback(
@@ -1053,6 +1092,22 @@ function VTTSession() {
 			payload: { path: fogPath },
 		});
 	}, []);
+
+	const broadcastTemplateRemoval = useCallback(
+		(ids: string[]) => {
+			if (!roomChannelRef.current || !user || ids.length === 0) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "template_move",
+				payload: {
+					userId: user.id,
+					sceneId: useVTTStore.getState().activeSceneId,
+					removedIds: ids,
+				},
+			});
+		},
+		[user],
+	);
 
 	const handleBroadcastTemplate = useCallback(
 		(template: VTTSpellTemplate | null, placed = false) => {
@@ -1634,14 +1689,8 @@ function VTTSession() {
 			<VTTRulerControls />
 
 			<VTTTemplateControls
-				onClearTemplates={(removedIds) => {
-					if (user)
-						roomChannelRef.current?.send({
-							type: "broadcast",
-							event: "template_move",
-							payload: { userId: user.id, sceneId: activeSceneId, removedIds },
-						});
-				}}
+				onClearTemplates={broadcastTemplateRemoval}
+				onRemoveTemplates={broadcastTemplateRemoval}
 			/>
 
 			{/* Grid Settings Popover */}
@@ -1675,6 +1724,7 @@ function VTTSession() {
 					onBroadcastPing={handleBroadcastPing}
 					onBroadcastFog={handleBroadcastFog}
 					onBroadcastTemplate={handleBroadcastTemplate}
+					onRemoveTemplates={broadcastTemplateRemoval}
 					onPersistFog={handlePersistFog}
 				/>
 			) : !isLoading ? (

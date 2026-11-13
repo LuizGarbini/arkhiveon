@@ -89,11 +89,18 @@ interface VTTState {
 	placedTemplates: VTTSpellTemplate[];
 	remoteTemplates: Record<string, VTTSpellTemplate>;
 	remoteTemplatePreviews: Record<string, VTTSpellTemplate>;
+	/** Molde selecionado na mesa ou na lista. */
+	selectedTemplateId: string | null;
+	/** Nome da próxima magia colocada. Vazio usa o nome da forma. */
+	templateSpellName: string;
 	setRemoteTemplatePreview: (
 		userId: string,
 		template: VTTSpellTemplate | null,
 	) => void;
 	removeRemoteTemplates: (userId: string, ids: string[]) => void;
+	removeTemplatesByIds: (ids: string[]) => void;
+	setSelectedTemplateId: (id: string | null) => void;
+	setTemplateSpellName: (name: string) => void;
 	showTemplateControls: boolean;
 
 	// Tokens & Fog for current scene
@@ -258,6 +265,7 @@ const emptySceneContents = () => ({
 	previewTemplate: null,
 	remoteTemplates: {},
 	remoteTemplatePreviews: {},
+	selectedTemplateId: null,
 	walls: [],
 	wallsStatus: "idle" as VTTWallsStatus,
 	selectedWallIds: [],
@@ -289,6 +297,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 	placedTemplates: [],
 	remoteTemplates: {},
 	remoteTemplatePreviews: {},
+	selectedTemplateId: null,
+	templateSpellName: "",
 	showTemplateControls: false,
 
 	tokens: [],
@@ -417,7 +427,41 @@ export const useVTTStore = create<VTTState>((set) => ({
 			previewTemplate: null,
 		})),
 	clearPlacedTemplates: () =>
-		set({ placedTemplates: [], previewTemplate: null }),
+		set((state) => ({
+			placedTemplates: [],
+			previewTemplate: null,
+			selectedTemplateId: state.remoteTemplates[state.selectedTemplateId ?? ""]
+				? state.selectedTemplateId
+				: null,
+		})),
+	removeTemplatesByIds: (ids) =>
+		set((state) => {
+			if (ids.length === 0) return state;
+			const drop = new Set(ids);
+			let placedHit = false;
+			const placedTemplates = state.placedTemplates.filter((template) => {
+				if (!drop.has(template.id)) return true;
+				placedHit = true;
+				return false;
+			});
+			let remoteHit = false;
+			const remoteTemplates: Record<string, VTTSpellTemplate> = {};
+			for (const [id, template] of Object.entries(state.remoteTemplates)) {
+				if (drop.has(id)) remoteHit = true;
+				else remoteTemplates[id] = template;
+			}
+			if (!placedHit && !remoteHit) return state;
+			return {
+				placedTemplates: placedHit ? placedTemplates : state.placedTemplates,
+				remoteTemplates: remoteHit ? remoteTemplates : state.remoteTemplates,
+				selectedTemplateId:
+					state.selectedTemplateId && drop.has(state.selectedTemplateId)
+						? null
+						: state.selectedTemplateId,
+			};
+		}),
+	setSelectedTemplateId: (selectedTemplateId) => set({ selectedTemplateId }),
+	setTemplateSpellName: (templateSpellName) => set({ templateSpellName }),
 	setRemoteTemplate: (userId, template) =>
 		set((state) => {
 			if (!template) {

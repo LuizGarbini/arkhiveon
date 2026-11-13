@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
 	pointInPolygon,
+	spellTemplateIdAtPoint,
+	spellTemplateOwnerName,
+	spellTemplateTitle,
 	templateMeasureText,
 	templatePolygon,
 	templateReach,
 	templateReachCells,
 	templateReachPoint,
+	type VTTSpellTemplate,
 } from "./template-math";
 
 const origin = { x: 0, y: 0 };
@@ -130,5 +134,49 @@ describe("medida do molde", () => {
 			2,
 		);
 		expect(cube.point).toEqual({ x: -cell, y: cell });
+	});
+});
+
+describe("spellTemplateIdAtPoint", () => {
+	const sphere = (id: string, originX: number): VTTSpellTemplate => ({
+		id,
+		kind: "sphere",
+		originX,
+		originY: 0,
+		targetX: originX + cell,
+		targetY: 0,
+		color: "white",
+	});
+
+	it("hits the topmost template and ignores a miss", () => {
+		const first = sphere("first", 0);
+		const second = sphere("second", 0);
+		expect(spellTemplateIdAtPoint([first, second], origin, cell)).toBe(
+			"second",
+		);
+		expect(
+			spellTemplateIdAtPoint([first], { x: cell * 8, y: cell * 8 }, cell),
+		).toBeNull();
+	});
+
+	it("shows the spell name and the placer's name, never the raw id", () => {
+		const template: VTTSpellTemplate = {
+			...sphere("id-oculto", 0),
+			spellName: " Bola de Fogo ",
+			userId: "id-oculto",
+			userName: " Lia ",
+		};
+		expect(spellTemplateTitle(template)).toBe("Bola de Fogo");
+		expect(spellTemplateTitle({ ...template, spellName: "  " })).toBe("Raio");
+		expect(spellTemplateOwnerName(template, "outra")).toBe("Lia");
+		expect(
+			spellTemplateOwnerName({ ...template, userName: "" }, "id-oculto"),
+		).toBe("Você");
+		expect(
+			spellTemplateOwnerName(
+				{ ...template, userName: undefined, userId: "id-oculto" },
+				"outra",
+			),
+		).toBe("Jogador");
 	});
 });

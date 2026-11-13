@@ -141,6 +141,8 @@ export interface VTTPresenceUser {
 	avatarUrl?: string | null;
 	color: string;
 	isGM: boolean;
+	/** Declarado pelo cliente na presença. O receptor não lê papel do payload. */
+	isCoGM?: boolean;
 	onlineAt: number;
 	lastActiveAt?: number;
 	cursor?: { x: number; y: number } | null;

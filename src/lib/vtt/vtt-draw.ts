@@ -221,6 +221,15 @@ export function drawRulerPath(
 	}
 }
 
+function tracePolygon(layer: Graphics, points: Point[]) {
+	if (points.length < 2) return;
+	layer.moveTo(points[0].x, points[0].y);
+	for (let i = 1; i < points.length; i++) {
+		layer.lineTo(points[i].x, points[i].y);
+	}
+	layer.closePath();
+}
+
 function fillPolygon(
 	layer: Graphics,
 	points: Point[],
@@ -229,11 +238,7 @@ function fillPolygon(
 	strokeWidth: number,
 ) {
 	if (points.length < 2) return;
-	layer.moveTo(points[0].x, points[0].y);
-	for (let i = 1; i < points.length; i++) {
-		layer.lineTo(points[i].x, points[i].y);
-	}
-	layer.closePath();
+	tracePolygon(layer, points);
 	layer.fill({ color, alpha: fillAlpha });
 	layer.stroke({ width: strokeWidth, color, alpha: 0.92 });
 }
@@ -242,6 +247,8 @@ export interface TemplateDrawOptions {
 	viewScale: number;
 	scaleDistance: number;
 	unit: string;
+	/** Contorno com `--primary` do DS. */
+	selected?: boolean;
 }
 
 /**
@@ -268,6 +275,14 @@ export function drawSpellTemplate(
 		reach,
 	);
 	fillPolygon(layer, polygon, color, 0.2, 2 * k);
+	if (opts?.selected) {
+		tracePolygon(layer, polygon);
+		layer.stroke({
+			width: 4 * k,
+			color: dsColor("--primary", 0xa855f7),
+			alpha: 1,
+		});
+	}
 	const { point, dir } = templateReachPoint(
 		template.kind,
 		origin,
