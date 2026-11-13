@@ -47,6 +47,12 @@ import {
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
 import {
+	type ActivePing,
+	createPingAnimationLoop,
+	pingVisual,
+	publishPingLoopStats,
+} from "@/lib/vtt/ping-queue";
+import {
 	type RulerContext,
 	rulerAddPoint,
 	rulerMoveLive,
@@ -109,6 +115,23 @@ import {
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { finishWallDraft } from "@/lib/vtt/wall-sync";
 import { hitTestWall, snapWallPoint } from "@/lib/vtt/walls";
+
+function paintPings(
+	layer: Graphics,
+	pings: readonly ActivePing[],
+	now: number,
+) {
+	layer.clear();
+	for (const ping of pings) {
+		const frame = pingVisual(ping.timestamp, now);
+		if (!frame.alive) continue;
+		const colorHex = parseHexColor(ping.color, 0xa855f7);
+		layer.circle(ping.x, ping.y, frame.radius);
+		layer.stroke({ width: 3, color: colorHex, alpha: frame.alpha });
+		layer.circle(ping.x, ping.y, 6);
+		layer.fill({ color: colorHex, alpha: frame.alpha });
+	}
+}
 
 function paintTokenAuras(
 	layer: Graphics,
@@ -408,9 +431,6 @@ export function VTTCanvas({
 	const setActiveTokenIdForMenu = useVTTStore((s) => s.setActiveTokenIdForMenu);
 	const updateToken = useVTTStore((s) => s.updateToken);
 	const setActiveMeasurement = useVTTStore((s) => s.setActiveMeasurement);
-	const activePings = useVTTStore((s) => s.activePings);
-	const addPing = useVTTStore((s) => s.addPing);
-	const removePing = useVTTStore((s) => s.removePing);
 	const setDraggedTokenIds = useVTTStore((s) => s.setDraggedTokenIds);
 	const toggleSelectTokenId = useVTTStore((s) => s.toggleSelectTokenId);
 	const fogPaths = useVTTStore((s) => s.fogPaths);
@@ -449,6 +469,7 @@ export function VTTCanvas({
 		let isMounted = true;
 		const app = new Application();
 		let tickerCallback: (() => void) | null = null;
+		let stopPingLoop: (() => void) | null = null;
 
 		async function initPixi() {
 			if (!containerRef.current) return;
@@ -548,6 +569,39 @@ export function VTTCanvas({
 			pingsLayerRef.current = pingsLayer;
 			world.addChild(pingsLayer);
 
+			// O callback entra no ticker do Pixi só enquanto houver ping e sai
+			// quando a lista esvazia. O frame lê o store, sem re-render do React.
+			// Fica neste init porque o app WebGL ainda não existe no render.
+			const pingLoop = createPingAnimationLoop({
+				now: () => Date.now(),
+				getPings: () => useVTTStore.getState().activePings,
+				removeIds: (ids) => {
+					const { removePing } = useVTTStore.getState();
+					for (const id of ids) removePing(id);
+				},
+				draw: (pings, now) => {
+					paintPings(pingsLayer, pings, now);
+				},
+				clear: () => {
+					pingsLayer.clear();
+				},
+				addTicker: (tick) => {
+					app.ticker.add(tick);
+				},
+				removeTicker: (tick) => {
+					app.ticker.remove(tick);
+				},
+				onStats: publishPingLoopStats,
+			});
+			const unsubscribePings = useVTTStore.subscribe((state, previous) => {
+				if (state.activePings !== previous.activePings) pingLoop.sync();
+			});
+			pingLoop.sync();
+			stopPingLoop = () => {
+				unsubscribePings();
+				pingLoop.stop();
+			};
+
 			const remoteCursorsLayer = new Container();
 			remoteCursorsLayerRef.current = remoteCursorsLayer;
 			world.addChild(remoteCursorsLayer);
@@ -602,6 +656,8 @@ export function VTTCanvas({
 
 		return () => {
 			isMounted = false;
+			stopPingLoop?.();
+			stopPingLoop = null;
 			if (appRef.current) {
 				if (tickerCallback) {
 					appRef.current.ticker.remove(tickerCallback);
@@ -1542,34 +1598,6 @@ export function VTTCanvas({
 		);
 	}, [wallDraft, rendererReady]);
 
-	// 8. Render Active Pings (Concentric pulsing ripples)
-	useEffect(() => {
-		if (!rendererReady) return;
-		if (!pingsLayerRef.current) return;
-		const layer = pingsLayerRef.current;
-		layer.clear();
-
-		const now = Date.now();
-		for (const ping of activePings) {
-			const elapsed = now - ping.timestamp;
-			if (elapsed > 3000) {
-				removePing(ping.timestamp);
-				continue;
-			}
-
-			const progress = elapsed / 3000;
-			const radius = 20 + progress * 60;
-			const alpha = Math.max(0, 1 - progress);
-			const colorHex = parseHexColor(ping.color, 0xa855f7);
-
-			layer.circle(ping.x, ping.y, radius);
-			layer.stroke({ width: 3, color: colorHex, alpha });
-
-			layer.circle(ping.x, ping.y, 6);
-			layer.fill({ color: colorHex, alpha });
-		}
-	}, [activePings, removePing, rendererReady]);
-
 	// 9. Native DOM event listeners for Pan, Zoom, Token Drag, Fog Painting, Alt-Ping & Ruler
 	useEffect(() => {
 		const container = containerRef.current;
@@ -1717,21 +1745,20 @@ export function VTTCanvas({
 
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
 
-			// Fast Alt + Click Instant Ping OR Ping tool
+			// Fast Alt + Click Instant Ping OR Ping tool.
+			// Throttle local: ping recusado não toca som nem entra no broadcast.
 			if ((isAltHeldRef.current || activeTool === "ping") && isLeftClick) {
-				const pingEvent: VTTPingEvent = {
+				const accepted = useVTTStore.getState().addPing({
 					x: worldPoint.x,
 					y: worldPoint.y,
-					userId: "self",
+					userId: userIdRef.current ?? "self",
 					userName: isGM ? "Mestre" : "Jogador",
 					color: userColor,
 					timestamp: Date.now(),
-				};
-				addPing(pingEvent);
+				});
+				if (!accepted) return;
 				playPingAudio();
-				if (onBroadcastPing) {
-					onBroadcastPing(pingEvent);
-				}
+				if (onBroadcastPing) onBroadcastPing(accepted);
 				return;
 			}
 
@@ -2422,7 +2449,6 @@ export function VTTCanvas({
 		onBroadcastFog,
 		onBroadcastTemplate,
 		onPersistFog,
-		addPing,
 		fogPaths,
 		addFogPath,
 		activeFogTool,

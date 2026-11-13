@@ -1,4 +1,10 @@
 import { create } from "zustand";
+import {
+	type ActivePing,
+	admitPing,
+	initialPingAdmission,
+	type PingAdmission,
+} from "./ping-queue";
 import { withSceneGridDefaults } from "./scene-settings";
 import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
 import type {
@@ -113,7 +119,8 @@ interface VTTState {
 
 	// Overlays & Ephemeral Events
 	activeMeasurement: VTTRulerMeasurement | null;
-	activePings: VTTPingEvent[];
+	activePings: ActivePing[];
+	pingAdmission: PingAdmission;
 
 	// UI Panels
 	showGridSettings: boolean;
@@ -192,8 +199,9 @@ interface VTTState {
 	setUserColor: (color: string) => void;
 
 	setActiveMeasurement: (measurement: VTTRulerMeasurement | null) => void;
-	addPing: (ping: VTTPingEvent) => void;
-	removePing: (timestamp: number) => void;
+	/** `null` quando o ping foi descartado (throttle, duplicado ou já expirado). */
+	addPing: (ping: VTTPingEvent, now?: number) => ActivePing | null;
+	removePing: (id: string) => void;
 
 	setShowGridSettings: (show: boolean) => void;
 	setGridMoreOpen: (open: boolean) => void;
@@ -244,6 +252,7 @@ const emptySceneContents = () => ({
 	draggedTokenIds: [] as string[],
 	activeMeasurement: null,
 	activePings: [],
+	pingAdmission: initialPingAdmission(),
 	placedTemplates: [],
 	previewTemplate: null,
 	remoteTemplates: {},
@@ -302,6 +311,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	activeMeasurement: null,
 	activePings: [],
+	pingAdmission: initialPingAdmission(),
 
 	showGridSettings: false,
 	gridMoreOpen: false,
@@ -651,14 +661,43 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),
-	addPing: (ping) =>
-		set((state) => ({
-			activePings: [...state.activePings, ping],
-		})),
-	removePing: (timestamp) =>
-		set((state) => ({
-			activePings: state.activePings.filter((p) => p.timestamp !== timestamp),
-		})),
+	addPing: (ping, now = Date.now()) => {
+		let accepted: ActivePing | null = null;
+		set((state) => {
+			const result = admitPing(
+				{
+					pings: state.activePings,
+					lastAcceptedAt: state.pingAdmission.lastAcceptedAt,
+					seq: state.pingAdmission.seq,
+				},
+				ping,
+				now,
+			);
+			accepted = result.ping;
+			if (
+				result.state.pings === state.activePings &&
+				result.state.lastAcceptedAt === state.pingAdmission.lastAcceptedAt &&
+				result.state.seq === state.pingAdmission.seq
+			) {
+				return state;
+			}
+			return {
+				activePings: result.state.pings,
+				pingAdmission: {
+					lastAcceptedAt: result.state.lastAcceptedAt,
+					seq: result.state.seq,
+				},
+			};
+		});
+		return accepted;
+	},
+	removePing: (id) =>
+		set((state) => {
+			if (!state.activePings.some((ping) => ping.id === id)) return state;
+			return {
+				activePings: state.activePings.filter((ping) => ping.id !== id),
+			};
+		}),
 
 	setGridMoreOpen: (open) => set({ gridMoreOpen: open }),
 	setShowGridSettings: (show) =>
