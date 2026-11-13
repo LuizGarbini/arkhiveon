@@ -289,6 +289,11 @@ export interface InventoryItem {
 	campaignItemId?: string;
 	/** Proficiência marcada no vínculo (depende do personagem). Padrão: true. */
 	proficient?: boolean;
+	/**
+	 * Slot da ficha onde o item está equipado. Só vale com `location ===
+	 * "equipped"`; entradas antigas (sem slot) são encaixadas pela categoria.
+	 */
+	slot?: EquipSlot;
 }
 
 /** Tipos de dano do D&D 5e (chaves estáveis; rótulos em pt-BR ficam em core/rules). */
@@ -543,8 +548,15 @@ export interface Item extends WorldEntityFields {
 	ammo?: ItemAmmoStats;
 	/** Dados de armadura/escudo (cadastro rico). */
 	armor?: ItemArmorStats;
-	/** Bônus que o item soma em quem o usa (só cadastro; o cálculo entra depois). */
+	/** Bônus que o item soma em quem o usa (CA, iniciativa, salvaguardas, deslocamento). */
 	bonuses?: ItemBonus[];
+	/** Atributos que o item altera enquanto está equipado (e sintonizado, se exigir). */
+	abilityBonuses?: ItemAbilityBonus[];
+	/**
+	 * Onde o item é vestido. Em branco: deduzido da categoria (arma, armadura,
+	 * escudo, anel, amuleto). Itens "maravilhosos" precisam dizer o slot.
+	 */
+	slot?: ItemSlot;
 	/** De onde o item nasceu no cadastro: em branco ou cópia independente de outro item. */
 	origin?: ItemOrigin;
 }
@@ -622,6 +634,46 @@ export interface ItemBonus {
 	target: ItemBonusTarget;
 	value: number;
 	when?: string;
+}
+
+/**
+ * Onde o item é vestido. É a categoria do item (não a posição na ficha):
+ * `ring` cabe nos dois slots de anel e `weapon` nas duas mãos.
+ */
+export type ItemSlot =
+	| "head"
+	| "neck"
+	| "cloak"
+	| "hands"
+	| "ring"
+	| "weapon"
+	| "shield"
+	| "armor"
+	| "feet";
+
+/** Posição física na ficha onde um item vinculado está equipado. */
+export type EquipSlot =
+	| "head"
+	| "neck"
+	| "cloak"
+	| "hands"
+	| "ring1"
+	| "ring2"
+	| "mainHand"
+	| "offHand"
+	| "armor"
+	| "feet";
+
+/**
+ * Atributo que o item altera. `add` soma ao valor; `set` fixa o atributo
+ * naquele valor, mas só se for maior que o que a pessoa já tem (ex.: Luvas
+ * de Poder de Ogro: FOR 19).
+ */
+export interface ItemAbilityBonus {
+	id: string;
+	ability: WeaponAbility;
+	mode: "add" | "set";
+	value: number;
 }
 
 export type ItemOrigin =

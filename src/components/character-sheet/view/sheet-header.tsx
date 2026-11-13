@@ -9,8 +9,10 @@ import {
 	LockKeyhole,
 	MoreHorizontal,
 	Pencil,
+	Shield,
 	User,
 } from "lucide-react";
+import { useState } from "react";
 import { FramedImage } from "@/components/framed-image";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { CrisImportDialog } from "@/components/ordem/cris-import-dialog";
@@ -27,6 +29,7 @@ import { systemLabel } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
 import type { TableResources } from "@/lib/table-resources";
 import { cn } from "@/lib/utils";
+import { EquipmentDialog } from "../equipment/equipment-dialog";
 import { useCombatStats } from "../use-linked-items";
 import { TableResourcesStrip } from "./table-resources-strip";
 import { QuickStat } from "./ui-primitives";
@@ -67,6 +70,7 @@ export function SheetHeader({
 	onToggleEditLayout,
 	onUpdateTableResources,
 }: SheetHeaderProps) {
+	const [equipmentOpen, setEquipmentOpen] = useState(false);
 	return (
 		<header
 			data-slot="sheet-header"
@@ -104,6 +108,25 @@ export function SheetHeader({
 								<BookOpen className="h-4 w-4 text-primary" />
 								Arquivos Secretos
 							</Link>
+						</>
+					)}
+					{character.system === "dnd5e" && (
+						<>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setEquipmentOpen(true)}
+								className="min-h-[44px] flex-1 gap-2 sm:flex-none"
+							>
+								<Shield className="h-4 w-4" />
+								Equipamento
+							</Button>
+							<EquipmentDialog
+								character={character}
+								open={equipmentOpen}
+								onOpenChange={setEquipmentOpen}
+								speedUnit={config.speedUnit}
+							/>
 						</>
 					)}
 					{isViewer ? (
@@ -361,7 +384,7 @@ export function SheetQuickStats({
 			/>
 			<QuickStat
 				label="MOV"
-				value={`${character.speed}${config.speedUnit}`}
+				value={`${combat.speed.total}${config.speedUnit}`}
 				color="text-emerald-400"
 			/>
 		</dl>

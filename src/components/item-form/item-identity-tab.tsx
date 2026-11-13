@@ -92,6 +92,8 @@ export function ItemIdentityTab({
 						set("armor", undefined);
 						set("ammo", undefined);
 						set("bonuses", []);
+						set("abilityBonuses", []);
+						set("slot", undefined);
 					}}
 					onCopy={(patch) => {
 						set("type", patch.type || type);
@@ -101,6 +103,8 @@ export function ItemIdentityTab({
 						set("armor", patch.armor);
 						set("ammo", patch.ammo);
 						set("bonuses", patch.bonuses ?? []);
+						set("abilityBonuses", patch.abilityBonuses ?? []);
+						set("slot", patch.slot);
 						set("origin", patch.origin);
 						onCategoryChange(patch.type || type);
 					}}

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { showToast } from "@/components/ui/toast";
+import { computeEffectiveStats } from "@/core/rules";
 import type { Database } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
@@ -200,8 +201,18 @@ function sheetFor(tokenId: string): InitiativeSheet | null {
 		.getState()
 		.characters.find((c) => c.id === token.characterId);
 	if (!character) return null;
-	const initiative = character.initiative;
-	const dexterity = character.dexterity;
+	// Com os itens equipados (anel de iniciativa, luvas de Destreza…). Fora do
+	// D&D 5e não há vínculo de itens e o resultado é o valor salvo.
+	const items = useRPGStore.getState().items ?? [];
+	const effective = computeEffectiveStats(
+		character,
+		new Map(items.map((item) => [item.id, item])),
+	);
+	const initiative =
+		effective.initiative.source === "items"
+			? effective.initiative.total
+			: character.initiative;
+	const dexterity = effective.abilities.dexterity.total;
 	return {
 		initiative:
 			typeof initiative === "number" && Number.isFinite(initiative)

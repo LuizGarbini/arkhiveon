@@ -25,6 +25,7 @@ vi.mock("@/lib/store", () => ({
 			campaignLoadStatus: string;
 		}) => unknown,
 	) => selector({ characters: [], campaignLoadStatus: "ready" }),
+	useActiveCampaign: () => null,
 	useActiveCampaignId: () => "campaign",
 	useActiveCampaignRole: () => "owner",
 	useImageAssetLookup: () => ({}),

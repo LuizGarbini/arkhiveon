@@ -44,8 +44,14 @@ export interface ArmorClassStat extends CombatStat {
 	hasShield: boolean;
 }
 
-function dexModOf(character: Pick<Character, "dexterity">): number {
-	return calculateAbilityModifier(Number(character.dexterity) || 10);
+function dexModOf(
+	character: Pick<Character, "dexterity">,
+	/** Destreza com itens; sem ela vale o valor salvo na ficha. */
+	effectiveDexterity?: number,
+): number {
+	return calculateAbilityModifier(
+		effectiveDexterity ?? (Number(character.dexterity) || 10),
+	);
 }
 
 /** Item No Corpo e, se exigir sintonização, sintonizado. */
@@ -75,9 +81,12 @@ function affectsInitiative(item: Item): boolean {
 export function computeArmorClass(
 	character: Pick<Character, "armorClass" | "dexterity">,
 	linked: LinkedEntry[],
+	effectiveDexterity?: number,
 ): ArmorClassStat {
 	const manual = Number(character.armorClass) || 0;
-	const dex = dexModOf(character);
+	const dex = dexModOf(character, effectiveDexterity);
+	// Quanto os itens mexeram no modificador (a CA digitada já conta o da ficha).
+	const dexFromItems = dex - dexModOf(character);
 	const unarmored = 10 + dex;
 	const notes: string[] = [];
 
@@ -111,7 +120,7 @@ export function computeArmorClass(
 
 	const armor = armors[0];
 	const shield = shields[0];
-	if (!armor && !shield && bonusParts.length === 0) {
+	if (!armor && !shield && bonusParts.length === 0 && dexFromItems === 0) {
 		return {
 			total: manual,
 			source: "manual",
@@ -142,6 +151,12 @@ export function computeArmorClass(
 	} else {
 		// Sem armadura vinculada: a base é a CA digitada na ficha.
 		parts.push({ kind: "sheet", label: "CA da ficha", value: manual });
+		if (dexFromItems !== 0)
+			parts.push({
+				kind: "dex",
+				label: "Destreza dos itens",
+				value: dexFromItems,
+			});
 	}
 	if (shield?.item.armor) {
 		parts.push({
@@ -169,9 +184,11 @@ export function computeArmorClass(
 export function computeInitiative(
 	character: Pick<Character, "initiative" | "dexterity">,
 	linked: LinkedEntry[],
+	effectiveDexterity?: number,
 ): CombatStat {
 	const manual = Number(character.initiative) || 0;
-	const dex = dexModOf(character);
+	const baseDex = dexModOf(character);
+	const dex = dexModOf(character, effectiveDexterity);
 	const notes: string[] = [];
 
 	const equipped = linked.filter(
@@ -196,12 +213,13 @@ export function computeInitiative(
 		}
 	}
 
-	if (bonusParts.length === 0) {
+	if (bonusParts.length === 0 && dex === baseDex) {
 		return { total: manual, source: "manual", parts: [], notes };
 	}
 
 	const parts: StatPart[] = [{ kind: "dex", label: "Destreza", value: dex }];
-	const adjust = manual - dex;
+	// O ajuste é medido contra a Destreza da ficha, não a dos itens.
+	const adjust = manual - baseDex;
 	if (adjust !== 0)
 		parts.push({ kind: "sheet", label: "Ajuste da ficha", value: adjust });
 	parts.push(...bonusParts);
@@ -454,6 +472,8 @@ export function armorClassCaption(stat: ArmorClassStat): string | undefined {
 	if (stat.source !== "items") return undefined;
 	if (stat.armorName) return stat.armorName;
 	const extra = stat.parts.filter((p) => p.kind !== "sheet");
+	if (extra.length === 1 && extra[0].kind === "dex")
+		return "Destreza dos itens";
 	return extra.length === 1
 		? `${formatModifier(extra[0].value)} do ${shortName(extra[0].label)}`
 		: "Com itens";
@@ -462,6 +482,7 @@ export function armorClassCaption(stat: ArmorClassStat): string | undefined {
 export function initiativeCaption(stat: CombatStat): string | undefined {
 	if (stat.source !== "items") return undefined;
 	const bonuses = stat.parts.filter((p) => p.kind === "bonus");
+	if (bonuses.length === 0) return "Destreza dos itens";
 	if (bonuses.length === 1)
 		return `${formatModifier(bonuses[0].value)} do ${shortName(bonuses[0].label)}`;
 	const sum = bonuses.reduce((acc, p) => acc + p.value, 0);

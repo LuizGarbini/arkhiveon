@@ -195,6 +195,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 					type: "Arma",
 					weapon: emptyWeaponStats(),
 					bonuses: [],
+					abilityBonuses: [],
 					origin: { kind: "blank" },
 				},
 	});
@@ -279,6 +280,10 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 			armor: dataKind === "armor" ? data.armor : undefined,
 			ammo: dataKind === "ammo" ? data.ammo : undefined,
 			bonuses: data.bonuses?.length ? data.bonuses : undefined,
+			abilityBonuses: data.abilityBonuses?.length
+				? data.abilityBonuses
+				: undefined,
+			slot: data.slot || undefined,
 		};
 		let createdId: string | null = null;
 		if (isEdit && item) {

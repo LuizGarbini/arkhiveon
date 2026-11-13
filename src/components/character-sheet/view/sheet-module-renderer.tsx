@@ -14,6 +14,7 @@ import {
 	explainInitiative,
 	formatModifier,
 	initiativeCaption,
+	isWeaponAbilityKey,
 } from "@/core/rules";
 import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
 import {
@@ -90,8 +91,17 @@ export function SheetModuleContent({
 
 	if (module.kind === "abilities") {
 		const abilities = (config.attributes || []).map((attr) => {
-			const val = characterAttributeScore(character, attr.key);
-			return { label: attr.label, value: val };
+			const base = characterAttributeScore(character, attr.key);
+			// Só os seis atributos clássicos recebem bônus de itens.
+			const withItems = isWeaponAbilityKey(attr.key)
+				? combat.abilities[attr.key]
+				: undefined;
+			return {
+				label: attr.label,
+				value: withItems?.total ?? base,
+				base,
+				fromItems: withItems?.delta ?? 0,
+			};
 		});
 
 		return (
@@ -109,9 +119,29 @@ export function SheetModuleContent({
 							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 								{ability.label}
 							</p>
-							<p className="font-display mt-1 text-2xl font-bold text-foreground">
+							<p
+								className={`font-display mt-1 text-2xl font-bold tabular-nums ${ability.fromItems > 0 ? "text-emerald-300" : "text-foreground"}`}
+							>
 								{ability.value}
 							</p>
+							{ability.fromItems !== 0 && (
+								<p
+									className="text-[10px] font-semibold text-muted-foreground tabular-nums"
+									title="Valor da ficha e quanto os itens equipados mudam"
+								>
+									<span className="line-through">{ability.base}</span>{" "}
+									<span
+										className={
+											ability.fromItems > 0
+												? "text-emerald-300"
+												: "text-rose-300"
+										}
+									>
+										{ability.fromItems > 0 ? "▲" : "▼"}{" "}
+										{Math.abs(ability.fromItems)}
+									</span>
+								</p>
+							)}
 							{extra && (
 								<p className="mt-0.5 text-[11px] font-bold text-primary">
 									{extra}
@@ -133,6 +163,8 @@ export function SheetModuleContent({
 			<SkillsFieldsReadOnly
 				character={character}
 				proficiencyBonus={character.proficiencyBonus || pb}
+				scores={combat.scores}
+				savesBonus={combat.saves.total}
 			/>
 		);
 	}
@@ -203,7 +235,7 @@ export function SheetModuleContent({
 					<MetricCard
 						Icon={Sparkles}
 						label="Deslocamento"
-						value={`${character.speed}${config.speedUnit}`}
+						value={`${combat.speed.total}${config.speedUnit}`}
 					/>
 					{customFields.map((field) => (
 						<MetricCard

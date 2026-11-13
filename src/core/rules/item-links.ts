@@ -17,6 +17,7 @@ import {
 	type LinkedEntry,
 } from "./combat-stats";
 import {
+	ABILITY_SHORT_LABELS,
 	ARMOR_CATEGORY_LABELS,
 	isValidDamageDice,
 	itemCategoryKind,
@@ -245,9 +246,20 @@ export function describeLinkCandidate(item: Item): string {
 		return `Armadura ${ARMOR_CATEGORY_LABELS[a.armorCategory].toLowerCase()} · CA ${a.baseAc}${dex}`;
 	}
 	const bits: string[] = [item.type?.trim() || "Item"];
+	for (const b of item.abilityBonuses ?? []) {
+		const label = ABILITY_SHORT_LABELS[b.ability];
+		if (!label) continue;
+		bits.push(
+			b.mode === "set"
+				? `${label} → ${b.value}`
+				: `${label} ${signed(b.value)}`,
+		);
+	}
 	for (const b of item.bonuses ?? []) {
 		if (b.target === "initiative") bits.push(`${signed(b.value)} Iniciativa`);
 		else if (b.target === "ac") bits.push(`${signed(b.value)} CA`);
+		else if (b.target === "speed") bits.push(`${signed(b.value)} Deslocamento`);
+		else if (b.target === "saves") bits.push(`${signed(b.value)} Salvaguardas`);
 	}
 	if (item.requiresAttunement) bits.push("sintonização");
 	if (bits.length === 1 && item.stats?.trim()) bits.push(item.stats.trim());

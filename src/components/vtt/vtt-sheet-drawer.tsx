@@ -6,6 +6,7 @@ import {
 	Maximize2,
 	Minus,
 	Plus,
+	Shield,
 	User,
 	X,
 } from "lucide-react";
@@ -13,10 +14,13 @@ import {
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { BottomSheet } from "@/components/bottom-sheet";
+import { EquipmentDialog } from "@/components/character-sheet/equipment/equipment-dialog";
+import { useCampaignItems } from "@/components/character-sheet/use-linked-items";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import {
 	SheetIdentity,
@@ -31,7 +35,11 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
-import { characterAttributeScore } from "@/core/rules";
+import {
+	characterAttributeScore,
+	computeEffectiveStats,
+	isWeaponAbilityKey,
+} from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import {
 	isCharacterImageHidden,
@@ -675,6 +683,13 @@ function SheetContent({
 	const imageAssets = useImageAssetLookup();
 	const { hp, showMax } = useSheetHp(token, character);
 	const feedReady = useRollStore((s) => s.status === "ready");
+	const [equipmentOpen, setEquipmentOpen] = useState(false);
+	// Atributos com os itens equipados: as rolagens da mesa usam estes valores.
+	const { byId: campaignItems } = useCampaignItems();
+	const effective = useMemo(
+		() => (character ? computeEffectiveStats(character, campaignItems) : null),
+		[character, campaignItems],
+	);
 
 	if (
 		token?.characterId &&
@@ -755,6 +770,25 @@ function SheetContent({
 						config={config}
 						health={quickHp}
 					/>
+					{character.system === "dnd5e" ? (
+						<>
+							<Button
+								type="button"
+								variant="outline"
+								className="min-h-11 w-full gap-2"
+								onClick={() => setEquipmentOpen(true)}
+							>
+								<Shield className="size-4" aria-hidden />
+								Equipamento e build
+							</Button>
+							<EquipmentDialog
+								character={character}
+								open={equipmentOpen}
+								onOpenChange={setEquipmentOpen}
+								speedUnit={config.speedUnit}
+							/>
+						</>
+					) : null}
 				</>
 			) : token?.characterId ? (
 				<p className="rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
@@ -836,7 +870,11 @@ function SheetContent({
 					</div>
 					<ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/60 bg-background/40">
 						{config.attributes.map((attr) => {
-							const score = characterAttributeScore(character, attr.key);
+							const baseScore = characterAttributeScore(character, attr.key);
+							const fromItems = isWeaponAbilityKey(attr.key)
+								? effective?.abilities[attr.key]
+								: undefined;
+							const score = fromItems?.total ?? baseScore;
 							const mod = abilityModifier(score);
 							const fullName = getAttributeFullName(attr.label);
 							return (
@@ -850,7 +888,19 @@ function SheetContent({
 									<span className="min-w-0 flex-1 truncate text-sm text-foreground">
 										{fullName}
 									</span>
-									<span className="w-7 text-right text-xs text-muted-foreground tabular-nums">
+									<span
+										className={cn(
+											"w-7 text-right text-xs tabular-nums",
+											fromItems && fromItems.delta > 0
+												? "font-semibold text-emerald-300"
+												: "text-muted-foreground",
+										)}
+										title={
+											fromItems && fromItems.delta !== 0
+												? `Ficha ${baseScore}, itens ${fromItems.delta > 0 ? "+" : ""}${fromItems.delta}`
+												: undefined
+										}
+									>
 										{score}
 									</span>
 									<button

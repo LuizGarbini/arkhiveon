@@ -8,7 +8,9 @@ import {
 	calculateProficiencyBonus,
 	canFireAmmo,
 	canSpendAmmo,
+	computeAbilityScores,
 	DAMAGE_TYPE_LABELS,
+	effectiveScores,
 	explainAttack,
 	explainDamage,
 	formatDamageFormula,
@@ -16,9 +18,9 @@ import {
 	getEquippedWeaponAttacks,
 	isCatalogAmmoEntry,
 	parseDamageFormula,
+	resolveLinkedEntries,
 	resolveLinkedInventory,
 	type WeaponAttack,
-	weaponAbilityScores,
 	weaponUsesAmmunition,
 } from "@/core/rules";
 import { WEAPON_PROPERTY_LABELS } from "@/core/rules/item-mechanics";
@@ -211,23 +213,19 @@ export function WeaponAttacksSection({
 			),
 		[character.inventoryList, itemsById],
 	);
-	const { strength, dexterity, constitution, intelligence, wisdom, charisma } =
-		character;
+	// Atributos com os itens equipados (Luvas de Força de Ogro etc.).
 	const scores = useMemo(
 		() =>
-			weaponAbilityScores({
-				strength,
-				dexterity,
-				constitution,
-				intelligence,
-				wisdom,
-				charisma,
-			}),
-		[strength, dexterity, constitution, intelligence, wisdom, charisma],
+			computeAbilityScores(
+				character,
+				resolveLinkedEntries(character.inventoryList, itemsById),
+			),
+		[character, itemsById],
 	);
+	const abilityScores = useMemo(() => effectiveScores(scores), [scores]);
 	const attacks = useMemo(
-		() => getEquippedWeaponAttacks(resolved, scores, proficiencyBonus),
-		[resolved, scores, proficiencyBonus],
+		() => getEquippedWeaponAttacks(resolved, abilityScores, proficiencyBonus),
+		[resolved, abilityScores, proficiencyBonus],
 	);
 	const entryById = useMemo(
 		() => new Map(resolved.map((e) => [e.id, e])),

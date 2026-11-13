@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import {
 	canLinkOnSheet,
-	computeArmorClass,
-	computeInitiative,
-	resolveLinkedEntries,
+	computeEffectiveStats,
+	type EffectiveStats,
 } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import { useActiveCampaignRole, useRPGStore } from "@/lib/store";
@@ -36,18 +35,16 @@ export function useCanLinkOnSheet(character: Pick<Character, "createdBy">) {
 	});
 }
 
-/** CA e iniciativa efetivas (manual quando nenhum item vinculado mexe no número). */
-export function useCombatStats(character: Character) {
+/**
+ * Números efetivos da ficha com os itens No Corpo: atributos, CA, iniciativa,
+ * deslocamento e salvaguardas (o valor salvo quando nenhum item mexe).
+ */
+export function useCombatStats(
+	character: Character,
+): EffectiveStats & { itemsById: ReadonlyMap<string, Item> } {
 	const { byId } = useCampaignItems();
-	return useMemo(() => {
-		const linked =
-			character.system === "dnd5e"
-				? resolveLinkedEntries(character.inventoryList, byId)
-				: [];
-		return {
-			itemsById: byId,
-			ac: computeArmorClass(character, linked),
-			initiative: computeInitiative(character, linked),
-		};
-	}, [character, byId]);
+	return useMemo(
+		() => ({ itemsById: byId, ...computeEffectiveStats(character, byId) }),
+		[character, byId],
+	);
 }

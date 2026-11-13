@@ -10,6 +10,7 @@ import {
 	formatModifier,
 } from "@/core/rules";
 import type { Character } from "@/lib/store";
+import type { WeaponAbility } from "@/lib/store/types";
 import type { SystemConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import type {
@@ -245,6 +246,8 @@ export interface SkillsFieldsViewProps {
 	charisma: number;
 	skillProficiencies: Record<string, string>;
 	savingThrowProficiencies: Record<string, boolean>;
+	/** Bônus geral de salvaguardas vindo de itens equipados (só leitura). */
+	savesBonus?: number;
 	onToggleSavingThrow?: (key: string) => void;
 	onCycleSkillProficiency?: (skillId: string) => void;
 }
@@ -259,6 +262,7 @@ export function SkillsFieldsView({
 	charisma,
 	skillProficiencies,
 	savingThrowProficiencies,
+	savesBonus = 0,
 	onToggleSavingThrow,
 	onCycleSkillProficiency,
 }: SkillsFieldsViewProps) {
@@ -333,6 +337,7 @@ export function SkillsFieldsView({
 							abilityScore: attrScore,
 							proficiencyBonus,
 							isProficient,
+							miscBonus: savesBonus,
 						});
 
 						return (
@@ -539,9 +544,14 @@ export function SkillsFieldsView({
 export function SkillsFieldsReadOnly({
 	character,
 	proficiencyBonus = 2,
+	scores,
+	savesBonus = 0,
 }: {
 	character: Character;
 	proficiencyBonus?: number;
+	/** Atributos com itens equipados; sem eles vale o que está salvo na ficha. */
+	scores?: Record<WeaponAbility, number>;
+	savesBonus?: number;
 }) {
 	const skillProficiencies = character.skillProficiencies || {};
 	const savingThrowProficiencies = character.savingThrowProficiencies || {};
@@ -549,14 +559,15 @@ export function SkillsFieldsReadOnly({
 	return (
 		<SkillsFieldsView
 			proficiencyBonus={proficiencyBonus}
-			strength={character.strength || 10}
-			dexterity={character.dexterity || 10}
-			constitution={character.constitution || 10}
-			intelligence={character.intelligence || 10}
-			wisdom={character.wisdom || 10}
-			charisma={character.charisma || 10}
+			strength={scores?.strength ?? (character.strength || 10)}
+			dexterity={scores?.dexterity ?? (character.dexterity || 10)}
+			constitution={scores?.constitution ?? (character.constitution || 10)}
+			intelligence={scores?.intelligence ?? (character.intelligence || 10)}
+			wisdom={scores?.wisdom ?? (character.wisdom || 10)}
+			charisma={scores?.charisma ?? (character.charisma || 10)}
 			skillProficiencies={skillProficiencies}
 			savingThrowProficiencies={savingThrowProficiencies}
+			savesBonus={savesBonus}
 		/>
 	);
 }

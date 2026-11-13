@@ -2,6 +2,7 @@ export * from "./ability-scores";
 export * from "./ammo";
 export * from "./combat-stats";
 export * from "./conditions";
+export * from "./equipment";
 export * from "./item-links";
 export * from "./modifier-engine";
 export * from "./skills-engine";

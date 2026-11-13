@@ -1,10 +1,12 @@
 /**
- * Cadastro rico de itens (arma, armadura, bônus). Funções puras (sem React/DOM).
- * Nesta etapa só descrevem e validam o item; a ficha ainda não lê esses campos.
+ * Cadastro rico de itens (arma, armadura, bônus, atributos). Funções puras
+ * (sem React/DOM): descrevem e validam o item. Quem soma na ficha é
+ * `combat-stats.ts` (CA, iniciativa) e `equipment.ts` (atributos, deslocamento).
  */
 import type {
 	DamageType,
 	Item,
+	ItemAbilityBonus,
 	ItemAmmoCondition,
 	ItemAmmoStats,
 	ItemArmorStats,
@@ -12,6 +14,7 @@ import type {
 	ItemBonusTarget,
 	ItemOrigin,
 	ItemWeaponStats,
+	WeaponAbility,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
 import { type DnDConditionKey, dndConditionDef } from "./conditions";
@@ -136,6 +139,16 @@ export const ARMOR_CATEGORY_LABELS: Record<
 	shield: "Escudo",
 };
 
+/** Siglas dos seis atributos clássicos (FOR, DES…). */
+export const ABILITY_SHORT_LABELS: Record<WeaponAbility, string> = {
+	strength: "FOR",
+	dexterity: "DES",
+	constitution: "CON",
+	intelligence: "INT",
+	wisdom: "SAB",
+	charisma: "CAR",
+};
+
 export const ITEM_BONUS_TARGET_LABELS: Record<ItemBonusTarget, string> = {
 	attack: "Acerto",
 	damage: "Dano",
@@ -207,6 +220,7 @@ export interface ItemDraft {
 	ammo?: ItemAmmoStats;
 	armor?: ItemArmorStats;
 	bonuses?: ItemBonus[];
+	abilityBonuses?: ItemAbilityBonus[];
 }
 
 export interface ItemDraftErrors {
@@ -307,6 +321,8 @@ export function copyItemMechanics(
 		| "ammo"
 		| "armor"
 		| "bonuses"
+		| "abilityBonuses"
+		| "slot"
 	>,
 ): Pick<
 	Item,
@@ -317,6 +333,8 @@ export function copyItemMechanics(
 	| "ammo"
 	| "armor"
 	| "bonuses"
+	| "abilityBonuses"
+	| "slot"
 	| "origin"
 > {
 	const weapon = from.weapon
@@ -349,6 +367,8 @@ export function copyItemMechanics(
 		ammo,
 		armor: from.armor ? structuredClone(from.armor) : undefined,
 		bonuses: from.bonuses?.map((b) => ({ ...b, id: newId() })),
+		abilityBonuses: from.abilityBonuses?.map((b) => ({ ...b, id: newId() })),
+		slot: from.slot,
 		origin: { kind: "copy", fromItemId: from.id, fromName: from.name },
 	};
 }
@@ -402,7 +422,8 @@ export function tabStatus(
 		}
 	}
 
-	const bonusCount = draft.bonuses?.length ?? 0;
+	const bonusCount =
+		(draft.bonuses?.length ?? 0) + (draft.abilityBonuses?.length ?? 0);
 	return {
 		identity: draft.name?.trim() ? { kind: "done" } : { kind: "required" },
 		mechanics,

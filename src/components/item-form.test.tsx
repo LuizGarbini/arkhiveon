@@ -330,4 +330,70 @@ describe("ItemForm (cadastro rico)", () => {
 			}),
 		]);
 	});
+
+	async function pick(combo: HTMLElement, optionName: string) {
+		await act(async () => {
+			fireEvent.click(combo);
+		});
+		const option = await screen.findByRole("option", { name: optionName });
+		await act(async () => {
+			fireEvent.mouseMove(option);
+		});
+		await act(async () => {
+			fireEvent.click(option);
+		});
+	}
+
+	it("cadastra onde o item se veste e quais atributos ele altera", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Luvas de Poder de Ogro" },
+		});
+		await pick(
+			screen.getByRole("combobox", { name: "Categoria" }),
+			"Item Maravilhoso",
+		);
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Bônus/ }));
+
+		await pick(
+			screen.getByRole("combobox", { name: "Onde o item é vestido" }),
+			"Mãos (luvas)",
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Adicionar atributo" }));
+		await pick(
+			screen.getByRole("combobox", { name: "Como altera" }),
+			"Fixa em",
+		);
+		// Ao trocar para "Fixa em" o valor já vem num número típico (19).
+		expect(
+			(screen.getByLabelText("Valor do atributo") as HTMLInputElement).value,
+		).toBe("19");
+
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.slot).toBe("hands");
+		expect(payload.abilityBonuses).toEqual([
+			expect.objectContaining({
+				ability: "strength",
+				mode: "set",
+				value: 19,
+			}),
+		]);
+	});
+
+	it("item sem slot nem atributo não grava esses campos", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Adaga" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Criar arma/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.slot).toBeUndefined();
+		expect(payload.abilityBonuses).toBeUndefined();
+	});
 });
