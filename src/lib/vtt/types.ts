@@ -106,6 +106,8 @@ export interface VTTFogState {
 }
 
 export interface VTTPingEvent {
+	/** Único na mesa local. Broadcast antigo pode omitir; o receptor gera. */
+	id?: string;
 	x: number;
 	y: number;
 	userId: string;

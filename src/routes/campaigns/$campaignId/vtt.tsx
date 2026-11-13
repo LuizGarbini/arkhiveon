@@ -44,6 +44,7 @@ import {
 	type PublishSceneRpc,
 	publishScene,
 } from "@/lib/vtt/persist-publication";
+import { incomingPing } from "@/lib/vtt/ping-queue";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	isRepeatedCreate,
@@ -844,15 +845,10 @@ function VTTSession() {
 						useVTTStore.getState().activeSceneId !== activeSceneId
 					)
 						return;
-					const data = payload.payload;
-					if (data) {
-						addPing({
-							...data,
-							color: data.color || "#a855f7",
-							userName: data.userName || "Aventureiro",
-						});
-						playPingAudio();
-					}
+					const incoming = incomingPing(payload.payload);
+					if (!incoming) return;
+					const accepted = addPing(incoming);
+					if (accepted) playPingAudio();
 				},
 			)
 			.on(

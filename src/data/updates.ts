@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.86-vtt-ping",
+		version: "1.6.86",
+		date: "13/11/2026",
+		title: "Ping da mesa pulsa e não trava em rajada",
+		description:
+			"O ping na mesa volta a pulsar e some sozinho. Vários pings seguidos deixam de empilhar na tela e no som: o excesso é ignorado e só os mais recentes continuam visíveis.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.85-municao-ficha",
 		version: "1.6.85",
 		date: "09/11/2026",

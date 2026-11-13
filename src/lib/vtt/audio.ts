@@ -3,7 +3,20 @@
  * Zero external asset dependencies, instant playback with envelope shaping.
  */
 
+import { PING_THROTTLE_MS } from "./ping-queue";
+
 let audioCtx: AudioContext | null = null;
+let lastPingSoundAt: number | null = null;
+
+/** `true` quando o som pode tocar. Rajada mais rápida que `gap` é descartada. */
+export function shouldPlayPingSound(
+	lastAt: number | null,
+	now: number,
+	gap = PING_THROTTLE_MS,
+): boolean {
+	if (lastAt === null) return true;
+	return now - lastAt >= gap;
+}
 
 function getAudioContext(): AudioContext | null {
 	if (typeof window === "undefined") return null;
@@ -29,49 +42,51 @@ function getAudioContext(): AudioContext | null {
 /**
  * Plays a gentle, pleasant tactical sonar ping chime
  */
-export function playPingAudio() {
+export function playPingAudio(now = Date.now()) {
+	if (!shouldPlayPingSound(lastPingSoundAt, now)) return;
 	const ctx = getAudioContext();
 	if (!ctx) return;
+	lastPingSoundAt = now;
 
 	try {
-		const now = ctx.currentTime;
+		const tone = ctx.currentTime;
 
 		// Main chime oscillator
 		const osc = ctx.createOscillator();
 		const gain = ctx.createGain();
 
 		osc.type = "sine";
-		osc.frequency.setValueAtTime(880, now); // A5 note
-		osc.frequency.exponentialRampToValueAtTime(1320, now + 0.08); // Quick sweep up to E6
+		osc.frequency.setValueAtTime(880, tone); // A5 note
+		osc.frequency.exponentialRampToValueAtTime(1320, tone + 0.08); // Quick sweep up to E6
 
 		// Envelope: quick attack, smooth exponential decay
-		gain.gain.setValueAtTime(0.001, now);
-		gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
-		gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+		gain.gain.setValueAtTime(0.001, tone);
+		gain.gain.linearRampToValueAtTime(0.18, tone + 0.02);
+		gain.gain.exponentialRampToValueAtTime(0.0001, tone + 0.45);
 
 		osc.connect(gain);
 		gain.connect(ctx.destination);
 
-		osc.start(now);
-		osc.stop(now + 0.5);
+		osc.start(tone);
+		osc.stop(tone + 0.5);
 
 		// Subtle secondary harmony
 		const osc2 = ctx.createOscillator();
 		const gain2 = ctx.createGain();
 
 		osc2.type = "triangle";
-		osc2.frequency.setValueAtTime(440, now);
-		osc2.frequency.exponentialRampToValueAtTime(660, now + 0.1);
+		osc2.frequency.setValueAtTime(440, tone);
+		osc2.frequency.exponentialRampToValueAtTime(660, tone + 0.1);
 
-		gain2.gain.setValueAtTime(0.001, now);
-		gain2.gain.linearRampToValueAtTime(0.08, now + 0.03);
-		gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+		gain2.gain.setValueAtTime(0.001, tone);
+		gain2.gain.linearRampToValueAtTime(0.08, tone + 0.03);
+		gain2.gain.exponentialRampToValueAtTime(0.0001, tone + 0.35);
 
 		osc2.connect(gain2);
 		gain2.connect(ctx.destination);
 
-		osc2.start(now);
-		osc2.stop(now + 0.4);
+		osc2.start(tone);
+		osc2.stop(tone + 0.4);
 	} catch (err) {
 		console.warn("Could not play ping audio effect:", err);
 	}
