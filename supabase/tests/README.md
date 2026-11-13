@@ -57,3 +57,13 @@ docker exec -i supabase_db_arkhiveon psql -U postgres -d postgres -X -v ON_ERROR
 ```
 
 Os testes terminam em `ROLLBACK`, usam contas sintéticas UUID `00000000…` e conferem 30 comportamentos, 21 invariantes, 4 auditorias e reversão de uma falha intencional. Requerem banco descartável sem campanhas/dados reais. O auditor pré-0059 retorna `23514` para campanha sem owner, com dois owners ou mismatch; não conserta legado e não cria objetos quando recusa.
+
+## 0066 — canal Realtime privado do VTT
+
+Somente a stack local `arkhiveon` (Postgres em 127.0.0.1:54322, API em 127.0.0.1:54321). Não usa `supabase link`, `db push` nem projeto remoto. A migração cria quatro policies em `realtime.messages` (`vtt_rt_*`). O rollback fica em `supabase/rollbacks/` e a CLI não o aplica sozinha.
+
+```bash
+bash scripts/test-0066-local.sh
+```
+
+O script recusa host fora do loopback, falha se o Docker ou a stack local não estiver de pé, roda o SQL (N1–N14, transação em `ROLLBACK`), o WebSocket local (R1–R8, T-iso, T-presence-key) e o ciclo de rollback: tira as policies, prova que o join privado passa a ser negado, reaplica a 0066 e termina com ela aplicada. Contas sintéticas `00000000-…` e e-mails `@example.invalid`. A chave local não é impressa.
