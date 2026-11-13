@@ -12,6 +12,8 @@ export interface VTTSpellTemplate {
 	color: string;
 	userId?: string;
 	userName?: string;
+	/** Nome da magia. Sem ele, a lista usa o nome da forma. */
+	spellName?: string;
 	/** Alcance fixo em casas; sem ele, o arrasto define o alcance. */
 	sizeCells?: number;
 }
@@ -150,6 +152,71 @@ const TEMPLATE_NAMES: Record<VTTTemplateKind, string> = {
 	line: "Linha",
 	cube: "Cubo",
 };
+
+export function templateKindLabel(kind: VTTTemplateKind): string {
+	return TEMPLATE_NAMES[kind];
+}
+
+/** Nome na lista: o da magia, ou o da forma quando ninguém nomeou. */
+export function spellTemplateTitle(
+	template: Pick<VTTSpellTemplate, "kind" | "spellName">,
+): string {
+	const name = template.spellName?.trim();
+	return name || TEMPLATE_NAMES[template.kind];
+}
+
+/** Quem colocou, pelo nome. Nunca devolve o id cru. */
+export function spellTemplateOwnerName(
+	template: Pick<VTTSpellTemplate, "userId" | "userName">,
+	selfUserId?: string | null,
+): string {
+	const name = template.userName?.trim();
+	if (name) return name;
+	if (selfUserId && template.userId === selfUserId) return "Você";
+	return "Jogador";
+}
+
+/** Moldes na mesa, locais primeiro, sem repetir id. */
+export function listedSpellTemplates(
+	placed: readonly VTTSpellTemplate[],
+	remote: Readonly<Record<string, VTTSpellTemplate>>,
+): VTTSpellTemplate[] {
+	const seen = new Set<string>();
+	const list: VTTSpellTemplate[] = [];
+	for (const template of placed) {
+		if (seen.has(template.id)) continue;
+		seen.add(template.id);
+		list.push(template);
+	}
+	for (const template of Object.values(remote)) {
+		if (seen.has(template.id)) continue;
+		seen.add(template.id);
+		list.push(template);
+	}
+	return list;
+}
+
+/** O molde de cima (o último desenhado) que contém o ponto. */
+export function spellTemplateIdAtPoint(
+	templates: readonly VTTSpellTemplate[],
+	point: Point,
+	gridSize: number,
+): string | null {
+	if (!(gridSize > 0)) return null;
+	for (let index = templates.length - 1; index >= 0; index--) {
+		const template = templates[index];
+		if (!template) continue;
+		const polygon = templatePolygon(
+			template.kind,
+			{ x: template.originX, y: template.originY },
+			{ x: template.targetX, y: template.targetY },
+			gridSize,
+			templateReach(template, gridSize),
+		);
+		if (pointInPolygon(point, polygon)) return template.id;
+	}
+	return null;
+}
 
 /** Texto da medida: "Cone 60° · 9 m", "Raio 6 m", "Cubo 4,5 m". */
 export function templateMeasureText(

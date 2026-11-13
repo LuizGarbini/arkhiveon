@@ -70,7 +70,14 @@ import {
 	statusRingTexture,
 } from "@/lib/vtt/status-icon-texture";
 import { createStatusLongPress } from "@/lib/vtt/status-long-press";
-import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
+import {
+	spellTemplateIdAtPoint,
+	type VTTSpellTemplate,
+} from "@/lib/vtt/template-math";
+import {
+	canRemoveSpellTemplate,
+	shouldDeleteSelectedTemplate,
+} from "@/lib/vtt/template-permissions";
 import {
 	tokenPose,
 	tokensAppearanceKey,
@@ -115,6 +122,21 @@ import {
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { finishWallDraft } from "@/lib/vtt/wall-sync";
 import { hitTestWall, snapWallPoint } from "@/lib/vtt/walls";
+
+function readFullName(metadata: unknown): string {
+	if (!metadata || typeof metadata !== "object") return "";
+	const name = (metadata as { full_name?: unknown }).full_name;
+	return typeof name === "string" ? name.trim() : "";
+}
+
+function tableUserName(
+	user: { email?: string | null; user_metadata?: unknown } | null,
+): string {
+	const named = readFullName(user?.user_metadata);
+	if (named) return named;
+	const local = user?.email?.split("@")[0]?.trim();
+	return local || "Você";
+}
 
 function paintPings(
 	layer: Graphics,
@@ -214,6 +236,7 @@ interface VTTCanvasProps {
 		template: VTTSpellTemplate | null,
 		placed?: boolean,
 	) => void;
+	onRemoveTemplates?: (ids: string[]) => void;
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
@@ -229,6 +252,7 @@ export function VTTCanvas({
 	onBroadcastPing,
 	onBroadcastFog,
 	onBroadcastTemplate,
+	onRemoveTemplates,
 	onPersistFog,
 }: VTTCanvasProps) {
 	const { user } = useAuth();
@@ -411,6 +435,10 @@ export function VTTCanvas({
 	);
 	const userIdRef = useRef(user?.id);
 	userIdRef.current = user?.id;
+	const userNameRef = useRef("Você");
+	userNameRef.current = tableUserName(user);
+	const onRemoveTemplatesRef = useRef(onRemoveTemplates);
+	onRemoveTemplatesRef.current = onRemoveTemplates;
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
 
@@ -456,6 +484,7 @@ export function VTTCanvas({
 	const placedTemplates = useVTTStore((s) => s.placedTemplates);
 	const remoteTemplates = useVTTStore((s) => s.remoteTemplates);
 	const remoteTemplatePreviews = useVTTStore((s) => s.remoteTemplatePreviews);
+	const selectedTemplateId = useVTTStore((s) => s.selectedTemplateId);
 	const setPreviewTemplate = useVTTStore((s) => s.setPreviewTemplate);
 	const addPlacedTemplate = useVTTStore((s) => s.addPlacedTemplate);
 	const walls = useVTTStore((s) => s.walls);
@@ -1564,6 +1593,7 @@ export function VTTCanvas({
 				viewScale,
 				scaleDistance: sceneScaleDistance,
 				unit: sceneScaleUnit,
+				selected: template.id === selectedTemplateId,
 			});
 		}
 	}, [
@@ -1571,6 +1601,7 @@ export function VTTCanvas({
 		remoteTemplates,
 		remoteTemplatePreviews,
 		previewTemplate,
+		selectedTemplateId,
 		sceneGridSize,
 		sceneScaleDistance,
 		sceneScaleUnit,
@@ -1607,6 +1638,13 @@ export function VTTCanvas({
 			? { x: scene.gridOffsetX ?? 0, y: scene.gridOffsetY ?? 0 }
 			: ZERO_ORIGIN;
 
+		const committedSpellTemplates = () => {
+			const state = useVTTStore.getState();
+			return [
+				...state.placedTemplates,
+				...Object.values(state.remoteTemplates),
+			];
+		};
 		const screenToWorld = (screenX: number, screenY: number) => {
 			const rect = container.getBoundingClientRect();
 			const clientX = screenX - rect.left;
@@ -1636,9 +1674,13 @@ export function VTTCanvas({
 				: point;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
-			const typing = isEditableElement(
-				e.target instanceof Element ? e.target : null,
-			);
+			const activeEl =
+				document.activeElement instanceof Element
+					? document.activeElement
+					: null;
+			const typing =
+				isEditableElement(e.target instanceof Element ? e.target : null) ||
+				isEditableElement(activeEl);
 			// Espaço num campo ou dentro de um dialog não vira a mão de arrastar.
 			const blocked = isVttShortcutBlocked(e);
 			if (e.code === "Space" && !e.repeat && !blocked) {
@@ -1680,7 +1722,46 @@ export function VTTCanvas({
 				setActiveTokenIdForMenu(null);
 				setPreviewTemplate(null);
 				templateStartRef.current = null;
+				useVTTStore.getState().setSelectedTemplateId(null);
 				if (onBroadcastTemplate) onBroadcastTemplate(null);
+			}
+			const live = useVTTStore.getState();
+			if (!(live.activeTool === "wall" && live.selectedWallIds.length > 0)) {
+				const selected =
+					live.placedTemplates.find(
+						(template) => template.id === live.selectedTemplateId,
+					) ??
+					Object.values(live.remoteTemplates).find(
+						(template) => template.id === live.selectedTemplateId,
+					);
+				const canDelete = selected
+					? canRemoveSpellTemplate(
+							{
+								userId: userIdRef.current,
+								isGM: live.isGM,
+								isCoGM: live.isCoGM,
+							},
+							selected,
+							{
+								unownedBelongsTo: live.placedTemplates.some(
+									(template) => template.id === selected.id,
+								)
+									? userIdRef.current
+									: null,
+							},
+						)
+					: false;
+				const removeId = shouldDeleteSelectedTemplate({
+					key: e.key,
+					editable: typing,
+					selectedTemplateId: live.selectedTemplateId,
+					canDelete,
+				});
+				if (removeId) {
+					e.preventDefault();
+					live.removeTemplatesByIds([removeId]);
+					onRemoveTemplatesRef.current?.([removeId]);
+				}
 			}
 		};
 
@@ -1847,6 +1928,18 @@ export function VTTCanvas({
 				!isAltHeldRef.current &&
 				!tokenPressRef.current
 			) {
+				const hit = scene
+					? spellTemplateIdAtPoint(
+							committedSpellTemplates(),
+							worldPoint,
+							scene.gridSize,
+						)
+					: null;
+				if (hit) {
+					useVTTStore.getState().setSelectedTemplateId(hit);
+					return;
+				}
+				useVTTStore.getState().setSelectedTemplateId(null);
 				const rect = container.getBoundingClientRect();
 				marqueeRef.current = {
 					startX: e.clientX - rect.left,
@@ -1881,6 +1974,17 @@ export function VTTCanvas({
 			}
 
 			if (activeTool === "template" && isLeftClick && scene) {
+				const hit = spellTemplateIdAtPoint(
+					committedSpellTemplates(),
+					worldPoint,
+					scene.gridSize,
+				);
+				if (hit) {
+					useVTTStore.getState().setSelectedTemplateId(hit);
+					templateStartRef.current = null;
+					return;
+				}
+				useVTTStore.getState().setSelectedTemplateId(null);
 				const snapped = snapToGrid(
 					worldPoint,
 					scene.gridType,
@@ -2389,6 +2493,7 @@ export function VTTCanvas({
 					1,
 					gridOrigin,
 				);
+				const spellName = useVTTStore.getState().templateSpellName.trim();
 				const placed: VTTSpellTemplate = {
 					id: crypto.randomUUID(),
 					kind: activeTemplateKind,
@@ -2397,6 +2502,9 @@ export function VTTCanvas({
 					targetX: end.x,
 					targetY: end.y,
 					color: userColor,
+					userName: userNameRef.current,
+					...(userIdRef.current ? { userId: userIdRef.current } : {}),
+					...(spellName ? { spellName } : {}),
 					...templateSize(),
 				};
 				addPlacedTemplate(placed);

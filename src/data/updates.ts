@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.88-vtt-templates-delete",
+		version: "1.6.88",
+		date: "13/11/2026",
+		title: "Moldes de magia saem um a um",
+		description:
+			"Na mesa, cada molde mostra o nome da magia e quem o colocou. Dá para selecionar um no mapa e excluir só ele, pelo botão ou pela tecla Delete. Quem colocou apaga o seu; mestre e co-mestre apagam qualquer um. Limpar tudo continua com os seus, e mestre ou co-mestre limpam a mesa inteira. O molde não fica salvo no banco: some da sessão.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.87-vtt-regua",
 		version: "1.6.87",
 		date: "13/11/2026",
