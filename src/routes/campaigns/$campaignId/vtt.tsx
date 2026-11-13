@@ -46,6 +46,7 @@ import {
 } from "@/lib/vtt/persist-publication";
 import { incomingPing } from "@/lib/vtt/ping-queue";
 import { useRollStore } from "@/lib/vtt/roll-store";
+import { applyRemoteRuler } from "@/lib/vtt/ruler-gesture";
 import {
 	isRepeatedCreate,
 	newSceneId,
@@ -753,7 +754,12 @@ function VTTSession() {
 					for (const p of leftPresences || []) {
 						if (p.userId) {
 							removeRemoteCursor(p.userId);
-							setRemoteMeasurement(p.userId, null);
+							const remote = useVTTStore.getState().remoteMeasurements;
+							const next = applyRemoteRuler(remote, {
+								type: "leave",
+								userId: p.userId,
+							});
+							if (next !== remote) setRemoteMeasurement(p.userId, null);
 						}
 					}
 				},
@@ -822,17 +828,23 @@ function VTTSession() {
 					const data = payload.payload;
 					if (data?.userId) {
 						const measurement = data.measurement;
-						setRemoteMeasurement(
-							data.userId,
-							measurement
-								? {
-										...measurement,
-										userId: data.userId,
-										userName: measurement.userName || "Jogador",
-										color: measurement.color || "#38bdf8",
-									}
-								: null,
-						);
+						const remote = useVTTStore.getState().remoteMeasurements;
+						const normalized = measurement
+							? {
+									...measurement,
+									userId: data.userId,
+									userName: measurement.userName || "Jogador",
+									color: measurement.color || "#38bdf8",
+								}
+							: null;
+						const next = applyRemoteRuler(remote, {
+							type: "broadcast",
+							userId: data.userId,
+							measurement: normalized,
+						});
+						if (next !== remote) {
+							setRemoteMeasurement(data.userId, next[data.userId] ?? null);
+						}
 					}
 				},
 			)

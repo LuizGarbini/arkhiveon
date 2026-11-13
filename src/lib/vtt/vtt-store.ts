@@ -5,6 +5,7 @@ import {
 	initialPingAdmission,
 	type PingAdmission,
 } from "./ping-queue";
+import { rulerMeasurementForTool } from "./ruler-gesture";
 import { withSceneGridDefaults } from "./scene-settings";
 import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
 import type {
@@ -397,7 +398,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 			// Sair da ferramenta Parede descarta o desenho e a seleção de paredes.
 			...(tool === "wall" ? {} : { wallDraft: [], selectedWallIds: [] }),
 			// Sair da Régua apaga a medição (inclusive a fixada).
-			...(tool === "ruler" ? {} : { activeMeasurement: null }),
+			activeMeasurement: rulerMeasurementForTool(state.activeMeasurement, tool),
 		})),
 	setActiveLayer: (layer) =>
 		set((state) => ({
