@@ -175,6 +175,10 @@ function ProtectedLayout() {
 			typeof window !== "undefined" &&
 			window.localStorage.getItem("arkhiveon_preview_auth") === "true"
 		) {
+			const previewWindow = window as Window & {
+				__rpg_store__?: typeof useRPGStore;
+			};
+			previewWindow.__rpg_store__ = useRPGStore;
 			const current = useRPGStore.getState();
 			useRPGStore.setState({
 				hasLoadedCampaigns: true,
