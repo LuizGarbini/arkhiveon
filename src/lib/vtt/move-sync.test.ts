@@ -5,6 +5,7 @@ const db = vi.hoisted(() => ({
 	insertError: null as { code?: string; message?: string } | null,
 	selectRows: [] as Record<string, unknown>[],
 	selectError: null as { code?: string; message?: string } | null,
+	selectThrows: false,
 	deletes: 0,
 }));
 
@@ -18,10 +19,10 @@ vi.mock("@/lib/supabase", () => ({
 			select: () => ({
 				eq: () => ({
 					order: () => ({
-						limit: async () => ({
-							data: db.selectRows,
-							error: db.selectError,
-						}),
+						limit: async () => {
+							if (db.selectThrows) throw new Error("rede caiu");
+							return { data: db.selectRows, error: db.selectError };
+						},
 					}),
 				}),
 			}),
@@ -86,6 +87,7 @@ beforeEach(() => {
 	db.insertError = null;
 	db.selectRows = [];
 	db.selectError = null;
+	db.selectThrows = false;
 	db.deletes = 0;
 	useMoveStore.getState().reset();
 	useVTTStore.setState({
@@ -215,6 +217,12 @@ describe("carregar e limpar", () => {
 		const move = recordMove(input);
 		await loadMoves("s1");
 		expect(useMoveStore.getState().moves.map((m) => m.id)).toEqual([move?.id]);
+	});
+
+	it("falha inesperada na carga vira erro na tela e não estoura", async () => {
+		db.selectThrows = true;
+		await expect(loadMoves("s1")).resolves.toBeUndefined();
+		expect(useMoveStore.getState().status).toBe("error");
 	});
 
 	it("tabela ausente na carga vira aviso de sessão, sem erro", async () => {

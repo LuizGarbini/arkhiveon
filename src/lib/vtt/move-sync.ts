@@ -50,12 +50,22 @@ export async function loadMoves(sceneId: string): Promise<void> {
 		return;
 	}
 	store.setStatus("loading");
-	const { data, error } = await client
-		.from("vtt_token_moves")
-		.select("*")
-		.eq("scene_id", sceneId)
-		.order("created_at", { ascending: true })
-		.limit(1000);
+	let data: unknown[] | null = null;
+	let error: DbError = null;
+	try {
+		const result = await client
+			.from("vtt_token_moves")
+			.select("*")
+			.eq("scene_id", sceneId)
+			.order("created_at", { ascending: true })
+			.limit(1000);
+		data = result.data;
+		error = result.error;
+	} catch {
+		// Falha inesperada (rede, cliente): o histórico some da tela, a mesa não.
+		if (requestId === loadRequest) useMoveStore.getState().setStatus("error");
+		return;
+	}
 	if (
 		requestId !== loadRequest ||
 		useVTTStore.getState().activeSceneId !== sceneId
