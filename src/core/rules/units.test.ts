@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertDistance, formatSpeed } from "./units";
+import { convertDistance, formatSpeed, speedUnitOf } from "./units";
 
 describe("convertDistance (convenção do D&D)", () => {
 	it("30 pés são 9 metros e 6 quadrados", () => {
@@ -69,5 +69,25 @@ describe("formatSpeed", () => {
 
 	it("sem 'signed' o positivo não leva sinal", () => {
 		expect(formatSpeed(10, "ft", "m")).toBe("3m");
+	});
+});
+
+describe("speedUnitOf", () => {
+	it("usa a unidade que a ficha escolheu", () => {
+		expect(speedUnitOf({ speedUnit: "m" }, "ft")).toBe("m");
+		expect(speedUnitOf({ speedUnit: "ft" }, "m")).toBe("ft");
+	});
+
+	it("sem escolha (ou valor inválido), usa a do sistema", () => {
+		expect(speedUnitOf({}, "ft")).toBe("ft");
+		expect(speedUnitOf({ speedUnit: undefined }, "m")).toBe("m");
+		expect(speedUnitOf({ speedUnit: "casas" }, "ft")).toBe("ft");
+		expect(speedUnitOf({ speedUnit: 3 }, "ft")).toBe("ft");
+	});
+
+	it("o Dante: 12 em metros numa cena em pés vira 40ft", () => {
+		const unit = speedUnitOf({ speedUnit: "m" }, "ft");
+		expect(formatSpeed(12, unit, "ft")).toBe("40ft");
+		expect(formatSpeed(12, unit, "m")).toBe("12m");
 	});
 });

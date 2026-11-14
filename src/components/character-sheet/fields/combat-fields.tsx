@@ -1,6 +1,8 @@
-import type { FieldErrors } from "react-hook-form";
+import { type FieldErrors, useWatch } from "react-hook-form";
 import { Field, FormSection } from "@/components/ui/form-tabs";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { speedUnitOf } from "@/core/rules";
 import type { SystemConfig } from "@/lib/systems";
 import type {
 	CharacterControl,
@@ -24,6 +26,11 @@ export function CombatFields({
 	config: SystemConfig;
 	errors?: FieldErrors<CharacterFormValues>;
 }) {
+	// Cada ficha sabe em que unidade o deslocamento foi digitado.
+	const speedUnit = speedUnitOf(
+		{ speedUnit: useWatch({ control, name: "speedUnit" }) },
+		config.speedUnit,
+	);
 	return (
 		<FormSection title="Status de Combate">
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -102,7 +109,7 @@ export function CombatFields({
 						placeholder="0"
 					/>
 				</Field>
-				<Field label={`Deslocamento (${config.speedUnit})`}>
+				<Field label={`Deslocamento (${speedUnit})`}>
 					<AdjustableNumberField
 						name="speed"
 						register={register}
@@ -112,6 +119,23 @@ export function CombatFields({
 						step="any"
 						placeholder="9"
 					/>
+				</Field>
+				<Field
+					label="Unidade do deslocamento"
+					hint="Na mesa, aparece na unidade da cena"
+				>
+					<Select
+						aria-label="Unidade do deslocamento"
+						value={speedUnit}
+						onChange={(e) =>
+							setValue("speedUnit", e.target.value as "m" | "ft", {
+								shouldDirty: true,
+							})
+						}
+					>
+						<option value="m">Metros (m)</option>
+						<option value="ft">Pés (ft)</option>
+					</Select>
 				</Field>
 				<Field label="Bônus de proficiência">
 					<AdjustableNumberField

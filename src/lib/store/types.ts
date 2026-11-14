@@ -211,6 +211,11 @@ export interface Character {
 	armorClass: number;
 	initiative: number;
 	speed: number;
+	/**
+	 * Unidade em que o deslocamento foi digitado (m ou ft). Ausente: a do sistema
+	 * (D&D 5e: pés). Na mesa, o número aparece na unidade da cena.
+	 */
+	speedUnit?: "m" | "ft";
 	proficiencyBonus: number;
 	hitDice: string;
 	deathSaves: { successes: number; failures: number };

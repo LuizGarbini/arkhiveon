@@ -39,6 +39,7 @@ import {
 	characterAttributeScore,
 	computeEffectiveStats,
 	isWeaponAbilityKey,
+	speedUnitOf,
 } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import {
@@ -798,7 +799,7 @@ function SheetContent({
 								character={character}
 								open={equipmentOpen}
 								onOpenChange={setEquipmentOpen}
-								speedUnit={config.speedUnit}
+								speedUnit={speedUnitOf(character, config.speedUnit)}
 								sceneUnit={sceneUnit}
 							/>
 						</>

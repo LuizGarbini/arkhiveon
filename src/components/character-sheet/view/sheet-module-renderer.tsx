@@ -15,6 +15,7 @@ import {
 	formatModifier,
 	initiativeCaption,
 	isWeaponAbilityKey,
+	speedUnitOf,
 } from "@/core/rules";
 import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
 import {
@@ -235,7 +236,7 @@ export function SheetModuleContent({
 					<MetricCard
 						Icon={Sparkles}
 						label="Deslocamento"
-						value={`${combat.speed.total}${config.speedUnit}`}
+						value={`${combat.speed.total}${speedUnitOf(character, config.speedUnit)}`}
 					/>
 					{customFields.map((field) => (
 						<MetricCard

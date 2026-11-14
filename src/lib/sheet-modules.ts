@@ -125,7 +125,14 @@ export function createDefaultSheetLayout(
 			fields: ["savingThrows", "skills"],
 		}),
 		moduleConfig("combat", 30, "main", {
-			fields: ["health", "healthMax", "armorClass", "initiative", "speed"],
+			fields: [
+				"health",
+				"healthMax",
+				"armorClass",
+				"initiative",
+				"speed",
+				"speedUnit",
+			],
 		}),
 		moduleConfig("inventory", 40, "main", {
 			fields: ["equipment", "currency"],

@@ -11,6 +11,7 @@ import {
 	buildEquipmentReport,
 	type EquipmentReport,
 	isWeaponAbilityKey,
+	speedUnitOf,
 } from "@/core/rules";
 import { normalizeSheetLayout, SHEET_MODULE_LABELS } from "@/lib/sheet-modules";
 import type {
@@ -345,7 +346,7 @@ export function CharacterSheetPdfDocument({
 								/>
 								<QuickPdfStat
 									label="Movimento"
-									value={`${report?.speed ?? character.speed}${config.speedUnit}`}
+									value={`${report?.speed ?? character.speed}${speedUnitOf(character, config.speedUnit)}`}
 									theme={theme}
 								/>
 							</View>

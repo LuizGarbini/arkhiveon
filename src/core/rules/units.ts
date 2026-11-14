@@ -62,3 +62,16 @@ export function formatSpeed(
 	const sign = shown < 0 ? "-" : options.signed && shown > 0 ? "+" : "";
 	return `${sign}${text}${suffix}`;
 }
+
+/**
+ * Unidade do deslocamento desta ficha: a que ela escolheu (m ou ft) ou, sem
+ * escolha, a do sistema. Cada ficha sabe em que unidade o número foi digitado.
+ */
+export function speedUnitOf(
+	character: { speedUnit?: unknown },
+	systemUnit: string,
+): string {
+	return character.speedUnit === "m" || character.speedUnit === "ft"
+		? character.speedUnit
+		: systemUnit;
+}

@@ -125,6 +125,22 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		expect(quickStat("MOV")).toBe("6sq");
 	});
 
+	it("ficha que escolheu metros (12m) em cena de metros fica 12m, sem virar 3,6m", () => {
+		h.vtt.scenes = [{ id: "sc-1", gridScaleUnit: "m" }];
+		h.vtt.activeSceneId = "sc-1";
+		setCharacter({ speed: 12, speedUnit: "m" });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("12m");
+	});
+
+	it("ficha em metros (12m) numa cena em pés aparece como 40ft", () => {
+		h.vtt.scenes = [{ id: "sc-1", gridScaleUnit: "ft" }];
+		h.vtt.activeSceneId = "sc-1";
+		setCharacter({ speed: 12, speedUnit: "m" });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("40ft");
+	});
+
 	it("sem cena ativa mostra como a ficha guarda", () => {
 		setCharacter(dnd);
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);

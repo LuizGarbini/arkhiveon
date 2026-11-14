@@ -27,6 +27,7 @@ import {
 	computePassivePerception,
 	formatModifier,
 	formatSpeed,
+	speedUnitOf,
 } from "@/core/rules";
 import type { Character } from "@/lib/store";
 import { systemLabel } from "@/lib/store";
@@ -129,7 +130,7 @@ export function SheetHeader({
 								character={character}
 								open={equipmentOpen}
 								onOpenChange={setEquipmentOpen}
-								speedUnit={config.speedUnit}
+								speedUnit={speedUnitOf(character, config.speedUnit)}
 							/>
 						</>
 					)}
@@ -400,7 +401,11 @@ export function SheetQuickStats({
 			/>
 			<QuickStat
 				label="MOV"
-				value={formatSpeed(combat.speed.total, config.speedUnit, sceneUnit)}
+				value={formatSpeed(
+					combat.speed.total,
+					speedUnitOf(character, config.speedUnit),
+					sceneUnit,
+				)}
 				color="text-emerald-400"
 			/>
 			{showPassive ? (
