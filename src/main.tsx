@@ -27,6 +27,21 @@ declare module "@tanstack/react-router" {
 
 import { ToastProvider } from "./components/ui/toast";
 import { AuthProvider } from "./lib/auth";
+import { installChunkReload } from "./lib/chunk-reload";
+
+// Aba com a versão antiga aberta depois de um deploy: recarrega sozinha em vez
+// de mostrar "'text/html' is not a valid JavaScript MIME type".
+installChunkReload(
+	window,
+	(() => {
+		try {
+			return window.sessionStorage;
+		} catch {
+			return null;
+		}
+	})(),
+	() => window.location.reload(),
+);
 
 // Render the app
 const rootElement = document.getElementById("app");
