@@ -114,7 +114,7 @@ it("edits the exact token opened from the token panel", () => {
 	);
 	fireEvent.click(screen.getByRole("button", { name: "Abrir ficha na mesa" }));
 	expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
-	fireEvent.click(screen.getByRole("button", { name: "-1" }));
+	fireEvent.click(screen.getByRole("button", { name: "Tirar 1 PV" }));
 	expect(update).toHaveBeenCalledWith("b", { hpCurrent: 9 });
 });
 it("keeps the running dice renderer when unrelated tokens update", () => {

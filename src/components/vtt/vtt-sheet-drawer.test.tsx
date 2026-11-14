@@ -76,15 +76,21 @@ function setCharacter(scores: Record<string, unknown>) {
 	];
 }
 
-/** Botão de rolar da linha do atributo (lista, não grade de caixinhas). */
+/** Cartão do atributo (botão de rolar): o rótulo curto é o primeiro texto. */
 function chip(label: string): HTMLElement {
-	const row = screen
-		.getAllByRole("listitem")
-		.find((li) => li.firstElementChild?.textContent === label);
-	const el = row?.querySelector("button");
+	const el = screen
+		.getAllByRole("button")
+		.find(
+			(b) =>
+				b.getAttribute("aria-label")?.startsWith("Rolar ") &&
+				b.children[0]?.textContent === label,
+		);
 	if (!el) throw new Error(`chip ${label}`);
 	return el;
 }
+
+/** Modificador mostrado no cartão do atributo (o número grande). */
+const modOf = (label: string) => chip(label).children[1]?.textContent;
 
 afterEach(() => {
 	cleanup();
@@ -106,7 +112,7 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		h.vtt.activeSceneId = "sc-1";
 		setCharacter(dnd);
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("9m");
+		expect(quickStat("Desloc.")).toBe("9m");
 	});
 
 	it("cena em pés mantém 30ft", () => {
@@ -114,7 +120,7 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		h.vtt.activeSceneId = "sc-1";
 		setCharacter(dnd);
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("30ft");
+		expect(quickStat("Desloc.")).toBe("30ft");
 	});
 
 	it("cena em quadrados: 30ft são 6sq", () => {
@@ -122,7 +128,7 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		h.vtt.activeSceneId = "sc-1";
 		setCharacter(dnd);
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("6sq");
+		expect(quickStat("Desloc.")).toBe("6sq");
 	});
 
 	it("ficha que escolheu metros (12m) em cena de metros fica 12m, sem virar 3,6m", () => {
@@ -130,7 +136,7 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		h.vtt.activeSceneId = "sc-1";
 		setCharacter({ speed: 12, speedUnit: "m" });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("12m");
+		expect(quickStat("Desloc.")).toBe("12m");
 	});
 
 	it("ficha em metros (12m) numa cena em pés aparece como 40ft", () => {
@@ -138,13 +144,13 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		h.vtt.activeSceneId = "sc-1";
 		setCharacter({ speed: 12, speedUnit: "m" });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("40ft");
+		expect(quickStat("Desloc.")).toBe("40ft");
 	});
 
 	it("sem cena ativa mostra como a ficha guarda", () => {
 		setCharacter(dnd);
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(quickStat("MOV")).toBe("30ft");
+		expect(quickStat("Desloc.")).toBe("30ft");
 	});
 
 	it("mostra a percepção passiva na ficha da mesa (D&D 5e)", () => {
@@ -155,13 +161,13 @@ describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
 		});
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
 		// 10 + SAB 14 (+2) + proficiência 3
-		expect(quickStat("PASSIVA")).toBe("15");
+		expect(quickStat("Passiva")).toBe("15");
 	});
 
 	it("sistema sem percepção passiva não mostra o quadradinho", () => {
 		setCharacter({ ...dnd, system: "generic" });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(screen.queryByText("PASSIVA")).toBeNull();
+		expect(screen.queryByText("Passiva")).toBeNull();
 	});
 });
 
@@ -176,7 +182,7 @@ describe("VTTSheetDrawer · atributos", () => {
 			charisma: 0,
 		});
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		for (const l of LABELS) expect(chip(l).textContent).toBe("+0");
+		for (const l of LABELS) expect(modOf(l)).toBe("+0");
 	});
 
 	it("ficha nova mostra cada modificador no atributo certo", () => {
@@ -195,7 +201,7 @@ describe("VTTSheetDrawer · atributos", () => {
 		);
 		expect(expected).toEqual(["-1", "+2", "+1", "+4", "+0", "-4"]);
 		LABELS.forEach((l, i) => {
-			expect(chip(l).textContent).toBe(expected[i]);
+			expect(modOf(l)).toBe(expected[i]);
 		});
 	});
 
@@ -222,10 +228,20 @@ describe("VTTSheetDrawer · atributos", () => {
 		];
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(screen.getAllByText("33 / 38")).toHaveLength(1);
-		expect(screen.queryByText("33/38")).toBeNull();
-		expect(screen.queryByText("1 / 2")).toBeNull();
+		// o número grande é o da ficha (33 de 38), nunca o do token (1 de 2)
+		const open = screen.getByRole("button", {
+			name: "Editar pontos de vida (33 / 38)",
+		});
+		expect(open.textContent).toContain("33");
+		expect(screen.getByText("/ 38")).toBeTruthy();
+		expect(screen.queryByText("/ 2")).toBeNull();
+		// o editor reúne PV atual, máximo e vida temporária
+		fireEvent.click(open);
 		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
+		expect(screen.getByRole("spinbutton", { name: "PV atual" })).toBeTruthy();
+		expect(
+			screen.getByRole("spinbutton", { name: "Vida temporária" }),
+		).toBeTruthy();
 	});
 
 	it("jogador não vê nem edita o PV máximo", () => {
@@ -241,9 +257,13 @@ describe("VTTSheetDrawer · atributos", () => {
 		];
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
-		expect(screen.getAllByText("33").length).toBeGreaterThan(0);
-		expect(screen.queryByText("33 / 38")).toBeNull();
+		const open = screen.getByRole("button", {
+			name: "Editar pontos de vida (33)",
+		});
+		expect(open.textContent).toContain("33");
+		expect(screen.queryByText("/ 38")).toBeNull();
 		expect(screen.queryByText("38")).toBeNull();
+		fireEvent.click(open);
 		expect(screen.queryByRole("spinbutton", { name: "PV máximo" })).toBeNull();
 		h.vtt.isGM = true;
 	});
@@ -268,7 +288,7 @@ describe("VTTSheetDrawer · atributos", () => {
 		];
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={onUpdateToken} />);
-		const minus = screen.getByRole("button", { name: "-5" });
+		const minus = screen.getByRole("button", { name: "Tirar 5 PV" });
 		fireEvent.click(minus);
 		fireEvent.click(minus);
 		expect(onUpdateToken).toHaveBeenCalledTimes(1);
@@ -287,5 +307,83 @@ describe("VTTSheetDrawer · atributos", () => {
 		fireEvent.click(chip("FOR"));
 		fireEvent.click(screen.getByText("terminar rolagem"));
 		expect(screen.getByText("FOR: 12 = 12")).toBeTruthy();
+	});
+});
+
+describe("VTTSheetDrawer · abas", () => {
+	const tab = (name: string) => screen.getByRole("tab", { name });
+
+	it("D&D 5e tem Resumo, Ataques, Perícias e Equipamento; Resumo abre primeiro", () => {
+		setCharacter({ dexterity: 14 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+			"Resumo",
+			"Ataques",
+			"Perícias",
+			"Equipamento",
+		]);
+		expect(tab("Resumo").getAttribute("aria-selected")).toBe("true");
+		expect(screen.getByRole("region", { name: "Atributos" })).toBeTruthy();
+	});
+
+	it("outros sistemas mostram só o resumo, sem barra de abas", () => {
+		setCharacter({ system: "generic" });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(screen.queryByRole("tablist")).toBeNull();
+		expect(screen.getByRole("region", { name: "Atributos" })).toBeTruthy();
+	});
+
+	it("trocar de aba mostra o painel certo", () => {
+		setCharacter({});
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		fireEvent.click(tab("Perícias"));
+		expect(screen.getByRole("searchbox")).toBeTruthy();
+		expect(screen.queryByRole("region", { name: "Atributos" })).toBeNull();
+		expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(
+			tab("Perícias").id,
+		);
+		fireEvent.click(tab("Ataques"));
+		expect(screen.getByText("Nenhuma arma equipada")).toBeTruthy();
+		fireEvent.click(tab("Equipamento"));
+		expect(screen.getByText("Nada equipado")).toBeTruthy();
+	});
+
+	it("perícia rola no dado e o resultado aparece com o nome", () => {
+		setCharacter({ dexterity: 14 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		fireEvent.click(tab("Perícias"));
+		fireEvent.click(
+			screen.getByRole("button", { name: "Rolar Acrobacia (+2)" }),
+		);
+		const done = screen.getByText("terminar rolagem");
+		expect(done.getAttribute("data-modifier")).toBe("2");
+		fireEvent.click(done);
+		expect(screen.getByText("Acrobacia: 12 + 2 = 14")).toBeTruthy();
+	});
+
+	it("salvaguarda rola como Salvaguarda de <atributo>", () => {
+		setCharacter({
+			wisdom: 12,
+			proficiencyBonus: 3,
+			savingThrowProficiencies: { wisdom: true },
+		});
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: "Rolar salvaguarda de Sabedoria (+4)",
+			}),
+		);
+		fireEvent.click(screen.getByText("terminar rolagem"));
+		expect(
+			screen.getByText("Salvaguarda de Sabedoria: 12 + 4 = 16"),
+		).toBeTruthy();
+	});
+
+	it("Rolar d20 continua rolando um teste livre", () => {
+		setCharacter({});
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", { name: "Rolar d20" }));
+		fireEvent.click(screen.getByText("terminar rolagem"));
+		expect(screen.getByText("Teste livre: 12 = 12")).toBeTruthy();
 	});
 });

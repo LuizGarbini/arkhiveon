@@ -118,3 +118,35 @@ export function tryParseDiceFormula(input: string): ParsedDiceFormula | null {
 		return null;
 	}
 }
+
+export interface LocalRoll {
+	total: number;
+	/** Cada dado, na ordem da fórmula. */
+	rolls: number[];
+	formula: string;
+}
+
+/**
+ * Rola uma fórmula ("1d6+6", "2d6+1d4+3") sem passar pelo servidor. Serve de
+ * reserva quando o chat da mesa não está no ar. `rng` em [0, 1) para teste.
+ */
+export function rollDiceLocally(
+	input: string,
+	rng: () => number = Math.random,
+): LocalRoll | null {
+	const parsed = tryParseDiceFormula(input);
+	if (!parsed) return null;
+	const rolls: number[] = [];
+	for (const pool of parsed.pools) {
+		for (let i = 0; i < pool.count; i++) {
+			const r = rng();
+			const safe = Number.isFinite(r) ? Math.min(Math.max(r, 0), 0.999999) : 0;
+			rolls.push(1 + Math.floor(safe * pool.faces));
+		}
+	}
+	return {
+		total: rolls.reduce((sum, n) => sum + n, 0) + parsed.modifier,
+		rolls,
+		formula: parsed.formula,
+	};
+}

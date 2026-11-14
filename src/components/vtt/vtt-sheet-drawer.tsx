@@ -6,11 +6,11 @@ import {
 	Maximize2,
 	Minus,
 	Plus,
-	Shield,
 	User,
 	X,
 } from "lucide-react";
 import {
+	type ComponentProps,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
@@ -19,13 +19,8 @@ import {
 	useState,
 } from "react";
 import { BottomSheet } from "@/components/bottom-sheet";
-import { EquipmentDialog } from "@/components/character-sheet/equipment/equipment-dialog";
 import { useCampaignItems } from "@/components/character-sheet/use-linked-items";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
-import {
-	SheetIdentity,
-	SheetQuickStats,
-} from "@/components/character-sheet/view/sheet-header";
 import { DiceRollOverlay } from "@/components/dice-roll-overlay";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,22 +29,16 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
-import {
-	characterAttributeScore,
-	computeEffectiveStats,
-	isWeaponAbilityKey,
-	speedUnitOf,
-} from "@/core/rules";
+import { SheetBody } from "@/components/vtt/sheet/sheet-body";
+import type { SheetHp } from "@/components/vtt/sheet/sheet-hp";
+import type { SheetRolls } from "@/components/vtt/sheet/sheet-types";
+import { computeEffectiveStats } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import {
 	isCharacterImageHidden,
 	resolveCharacterImageUrl,
 } from "@/lib/character-images";
 import {
-	abilityModifier,
-	formatModifier,
-	getAttributeFullName,
 	useActiveCampaignId,
 	useActiveCampaignRole,
 	useImageAssetLookup,
@@ -64,7 +53,7 @@ import {
 	selectSheetHealth,
 	selectSheetHealthMax,
 } from "@/lib/vtt/character-hp";
-import { canonicalDiceFormula } from "@/lib/vtt/dice";
+import { canonicalDiceFormula, rollDiceLocally } from "@/lib/vtt/dice";
 import { rollOnTable } from "@/lib/vtt/feed-sync";
 import {
 	clampMiniPos,
@@ -116,6 +105,14 @@ type StartRoll = (
 	label: string,
 	modifier: number,
 	diceType: DiceType,
+	table?: RollForTable,
+) => void;
+
+/** Rolagem de fórmula ("1d6+6"): o dano de uma arma, por exemplo. */
+type StartFormulaRoll = (
+	tokenId: string,
+	label: string,
+	formula: string,
 	table?: RollForTable,
 ) => void;
 
@@ -191,6 +188,42 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 			else open();
 		});
 	};
+	// Dano e outras fórmulas: sem dado 3D, o resultado vai para o chat da mesa.
+	// Sem o feed no ar, rola aqui mesmo e só mostra na ficha.
+	const startFormulaRoll: StartFormulaRoll = (
+		tokenId,
+		label,
+		formula,
+		table,
+	) => {
+		if (pendingRoll) return;
+		const show = (total: number, shared: boolean) =>
+			setLastRolls((prev) => ({
+				...prev,
+				[tokenId]: { text: `${label}: ${total} (${formula})`, shared },
+			}));
+		const local = () => {
+			const rolled = rollDiceLocally(formula);
+			if (rolled) show(rolled.total, false);
+		};
+		if (feedStatus !== "ready" || !campaignId || !sceneId) {
+			local();
+			return;
+		}
+		setPendingRoll(true);
+		void rollOnTable({
+			campaignId,
+			sceneId,
+			formula,
+			secret: false,
+			characterId: table?.characterId ?? null,
+			label: table?.label ?? label,
+		}).then((rolled) => {
+			setPendingRoll(false);
+			if (rolled.ok) show(rolled.total, true);
+			else local();
+		});
+	};
 	const {
 		tokenId: rollTokenId,
 		label: rollLabel,
@@ -233,6 +266,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 					id={topId}
 					onUpdateToken={onUpdateToken}
 					onStartRoll={startRoll}
+					onRollFormula={startFormulaRoll}
 					rolling={pendingRoll}
 					lastRoll={topId ? (lastRolls[topId] ?? null) : null}
 				/>
@@ -245,6 +279,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 						isTop={id === topId}
 						onUpdateToken={onUpdateToken}
 						onStartRoll={startRoll}
+						onRollFormula={startFormulaRoll}
 						rolling={pendingRoll}
 						lastRoll={lastRolls[id] ?? null}
 					/>
@@ -281,6 +316,7 @@ interface SheetPanelProps {
 	id: string;
 	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
 	onStartRoll: StartRoll;
+	onRollFormula: StartFormulaRoll;
 	rolling: boolean;
 	lastRoll: LastRoll | null;
 }
@@ -319,6 +355,7 @@ function FloatingSheet({
 	isTop,
 	onUpdateToken,
 	onStartRoll,
+	onRollFormula,
 	rolling,
 	lastRoll,
 }: SheetPanelProps & { index: number; isTop: boolean }) {
@@ -495,6 +532,7 @@ function FloatingSheet({
 							character={character}
 							onUpdateToken={onUpdateToken}
 							onStartRoll={onStartRoll}
+							onRollFormula={onRollFormula}
 							rolling={rolling}
 							lastRoll={lastRoll}
 						/>
@@ -631,6 +669,7 @@ function MobileSheet({
 	id,
 	onUpdateToken,
 	onStartRoll,
+	onRollFormula,
 	rolling,
 	lastRoll,
 }: Omit<SheetPanelProps, "id"> & { id: string | null }) {
@@ -654,6 +693,7 @@ function MobileSheet({
 				character={character}
 				onUpdateToken={onUpdateToken}
 				onStartRoll={onStartRoll}
+				onRollFormula={onRollFormula}
 				rolling={rolling}
 				lastRoll={lastRoll}
 			/>
@@ -672,6 +712,7 @@ function SheetContent({
 	character,
 	onUpdateToken,
 	onStartRoll,
+	onRollFormula,
 	rolling,
 	lastRoll,
 }: {
@@ -679,6 +720,7 @@ function SheetContent({
 	character: Character | null;
 	onUpdateToken: VTTSheetDrawerProps["onUpdateToken"];
 	onStartRoll: StartRoll;
+	onRollFormula: StartFormulaRoll;
 	rolling: boolean;
 	lastRoll: LastRoll | null;
 }) {
@@ -689,8 +731,6 @@ function SheetContent({
 	const { session } = useAuth();
 	const imageAssets = useImageAssetLookup();
 	const { hp, showMax } = useSheetHp(token, character);
-	const feedReady = useRollStore((s) => s.status === "ready");
-	const [equipmentOpen, setEquipmentOpen] = useState(false);
 	// Unidade da cena ativa: o deslocamento da ficha aparece nela (30 ft = 9 m).
 	const sceneUnit = useVTTStore(
 		(s) =>
@@ -750,230 +790,96 @@ function SheetContent({
 		label,
 		characterId: character?.id ?? null,
 	});
-	// A faixa compacta usa o mesmo `atual/máximo` do restante da ficha.
-	const quickHp = showMax ? `${hp.current}/${hp.max}` : String(hp.current);
+	const rolls: SheetRolls = {
+		rolling,
+		check: (label, modifier, chatLabel) =>
+			onStartRoll(tokenId, label, modifier, dice, table(chatLabel ?? label)),
+		formula: (label, formula) =>
+			onRollFormula(tokenId, label, formula, table(label)),
+	};
 
-	return (
-		<div className="space-y-4">
-			{character ? (
-				<>
-					<SheetIdentity
-						compact
-						isViewer
-						character={character}
-						config={config}
-						characterImageUrl={resolveCharacterImageUrl(
-							character,
-							imageAssets,
-							role,
-							session?.user.id,
-						)}
-						isImageHidden={isCharacterImageHidden(
-							character,
-							imageAssets,
-							role,
-							session?.user.id,
-						)}
-					/>
-					<SheetQuickStats
-						compact
-						showHealth={false}
-						sceneUnit={sceneUnit}
-						showPassive={HAS_PASSIVE_PERCEPTION.has(character.system)}
-						character={character}
-						config={config}
-						health={quickHp}
-					/>
-					{character.system === "dnd5e" ? (
-						<>
-							<Button
-								type="button"
-								variant="outline"
-								className="min-h-11 w-full gap-2"
-								onClick={() => setEquipmentOpen(true)}
-							>
-								<Shield className="size-4" aria-hidden />
-								Equipamento e build
-							</Button>
-							<EquipmentDialog
-								character={character}
-								open={equipmentOpen}
-								onOpenChange={setEquipmentOpen}
-								speedUnit={speedUnitOf(character, config.speedUnit)}
-								sceneUnit={sceneUnit}
-							/>
-						</>
-					) : null}
-				</>
-			) : token?.characterId ? (
-				<p className="rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
-					Você não tem acesso a esta ficha nesta campanha.
-				</p>
-			) : (
-				<NoSheetNotice canCreate={isGM} />
-			)}
-
-			{token ? (
-				<VttHpAdjust
-					hpCurrent={hp.current}
-					hpMax={hp.max}
-					showMax={showMax}
-					tempHp={character?.tempHealth ?? token.tempHp ?? 0}
-					onChange={(next) => onUpdateToken(token.id, { hpCurrent: next })}
-					onChangeTempHp={(nextTemp) => {
-						const sanitized = Math.max(0, nextTemp);
-						if (character) {
-							void useRPGStore.getState().updateCharacter(character.id, {
-								tempHealth: sanitized,
-							});
-						}
-						void onUpdateToken(token.id, { tempHp: sanitized });
-					}}
-					onChangeMax={
-						canManage || (character && !hp.fromSheet)
-							? (nextMax) => {
-									if (character && isGM) {
-										void useRPGStore.getState().updateCharacter(character.id, {
-											healthMax: nextMax,
-										});
-									}
-									void onUpdateToken(token.id, {
-										hpMax: nextMax,
+	const hpProps: ComponentProps<typeof SheetHp> | null = token
+		? {
+				current: hp.current,
+				max: hp.max,
+				showMax,
+				temp: character?.tempHealth ?? token.tempHp ?? 0,
+				onChange: (next) => onUpdateToken(token.id, { hpCurrent: next }),
+				onChangeTempHp: (nextTemp) => {
+					const sanitized = Math.max(0, nextTemp);
+					if (character) {
+						void useRPGStore.getState().updateCharacter(character.id, {
+							tempHealth: sanitized,
+						});
+					}
+					return onUpdateToken(token.id, { tempHp: sanitized });
+				},
+				onChangeMax:
+					canManage || (character && !hp.fromSheet)
+						? (nextMax) => {
+								if (character && isGM) {
+									void useRPGStore.getState().updateCharacter(character.id, {
+										healthMax: nextMax,
 									});
 								}
-							: undefined
-					}
-					onChangeHp={
-						canManage || (character && !hp.fromSheet)
-							? ({ current, max }) => {
-									if (character && isGM) {
-										const patch: Partial<Character> = {};
-										if (current !== undefined) patch.health = current;
-										if (max !== undefined) patch.healthMax = max;
-										if (Object.keys(patch).length > 0) {
-											void useRPGStore
-												.getState()
-												.updateCharacter(character.id, patch);
-										}
-									}
-									const tokenPatch: Partial<VTTToken> = {};
-									if (current !== undefined) tokenPatch.hpCurrent = current;
-									if (max !== undefined) tokenPatch.hpMax = max;
-									if (Object.keys(tokenPatch).length > 0) {
-										void onUpdateToken(token.id, tokenPatch);
+								return onUpdateToken(token.id, { hpMax: nextMax });
+							}
+						: undefined,
+				onChangeHp:
+					canManage || (character && !hp.fromSheet)
+						? ({ current, max }) => {
+								if (character && isGM) {
+									const patch: Partial<Character> = {};
+									if (current !== undefined) patch.health = current;
+									if (max !== undefined) patch.healthMax = max;
+									if (Object.keys(patch).length > 0) {
+										void useRPGStore
+											.getState()
+											.updateCharacter(character.id, patch);
 									}
 								}
-							: undefined
-					}
-				/>
-			) : null}
+								const tokenPatch: Partial<VTTToken> = {};
+								if (current !== undefined) tokenPatch.hpCurrent = current;
+								if (max !== undefined) tokenPatch.hpMax = max;
+								if (Object.keys(tokenPatch).length > 0) {
+									return onUpdateToken(token.id, tokenPatch);
+								}
+							}
+						: undefined,
+			}
+		: null;
 
-			{character ? (
-				<section aria-labelledby={`attrs-${tokenId}`} className="space-y-2">
-					<div className="flex items-baseline justify-between">
-						<h3
-							id={`attrs-${tokenId}`}
-							className="font-display text-sm font-semibold tracking-tight"
-						>
-							Atributos
-						</h3>
-						{feedReady && (
-							<span className="text-[11px] text-muted-foreground">
-								Rolagens vão para o chat
-							</span>
-						)}
-					</div>
-					<ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/60 bg-background/40">
-						{config.attributes.map((attr) => {
-							const baseScore = characterAttributeScore(character, attr.key);
-							const fromItems = isWeaponAbilityKey(attr.key)
-								? effective?.abilities[attr.key]
-								: undefined;
-							const score = fromItems?.total ?? baseScore;
-							const mod = abilityModifier(score);
-							const fullName = getAttributeFullName(attr.label);
-							return (
-								<li
-									key={attr.key}
-									className="flex min-h-12 items-center gap-3 py-0.5 pr-1 pl-3"
-								>
-									<span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">
-										{attr.label}
-									</span>
-									<span className="min-w-0 flex-1 truncate text-sm text-foreground">
-										{fullName}
-									</span>
-									<span
-										className={cn(
-											"w-7 text-right text-xs tabular-nums",
-											fromItems && fromItems.delta > 0
-												? "font-semibold text-emerald-300"
-												: "text-muted-foreground",
-										)}
-										title={
-											fromItems && fromItems.delta !== 0
-												? `Ficha ${baseScore}, itens ${fromItems.delta > 0 ? "+" : ""}${fromItems.delta}`
-												: undefined
-										}
-									>
-										{score}
-									</span>
-									<button
-										type="button"
-										disabled={rolling}
-										className="flex h-11 min-w-16 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-2.5 font-mono text-sm font-semibold text-primary tabular-nums ring-1 ring-inset ring-primary/25 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] disabled:opacity-50 [@media(hover:hover)]:hover:bg-primary/20"
-										aria-label={`Rolar ${fullName} (${formatModifier(mod)})`}
-										onClick={() =>
-											onStartRoll(
-												tokenId,
-												attr.label,
-												mod,
-												dice,
-												table(fullName),
-											)
-										}
-									>
-										<Dices className="size-3.5" aria-hidden />
-										{formatModifier(mod)}
-									</button>
-								</li>
-							);
-						})}
-					</ul>
-				</section>
-			) : null}
+	const portraitUrl =
+		character &&
+		!isCharacterImageHidden(character, imageAssets, role, session?.user.id)
+			? resolveCharacterImageUrl(character, imageAssets, role, session?.user.id)
+			: "";
 
-			<div className="space-y-2">
-				{lastRoll ? (
-					<div
-						aria-live="polite"
-						className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2"
-					>
-						<Dices className="size-4 shrink-0 text-primary" aria-hidden />
-						<p className="min-w-0 flex-1 font-mono text-xs font-semibold tabular-nums text-foreground">
-							{lastRoll.text}
-						</p>
-						{lastRoll.shared && (
-							<span className="shrink-0 text-[11px] text-muted-foreground">
-								no chat da mesa
-							</span>
-						)}
-					</div>
-				) : null}
-				<Button
-					type="button"
-					variant="outline"
-					disabled={rolling}
-					className="h-[44px] w-full gap-2"
-					onClick={() =>
-						onStartRoll(tokenId, "Teste livre", 0, dice, table("Teste livre"))
-					}
-				>
-					<Dices className="h-4 w-4" />
-					{rolling ? "Rolando…" : `Rolar ${config.defaultDice || "d20"}`}
-				</Button>
-			</div>
-		</div>
+	const notice = character ? undefined : token?.characterId ? (
+		<p className="rounded-xl border border-dashed border-border/70 bg-background/40 p-3 text-xs text-muted-foreground">
+			Você não tem acesso a esta ficha nesta campanha.
+		</p>
+	) : (
+		<NoSheetNotice canCreate={isGM} />
+	);
+
+	return (
+		<SheetBody
+			character={character}
+			config={config}
+			hp={hpProps}
+			stats={effective}
+			itemsById={campaignItems}
+			sceneUnit={sceneUnit}
+			showPassive={
+				character ? HAS_PASSIVE_PERCEPTION.has(character.system) : false
+			}
+			rolls={rolls}
+			lastRoll={lastRoll}
+			diceLabel={config.defaultDice || "d20"}
+			portraitUrl={portraitUrl}
+			notice={notice}
+		/>
 	);
 }
 

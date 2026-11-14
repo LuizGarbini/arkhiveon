@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDiceFormula, tryParseDiceFormula } from "./dice";
+import { parseDiceFormula, rollDiceLocally, tryParseDiceFormula } from "./dice";
 
 describe("parseDiceFormula", () => {
 	it("aceita XdY+Z e devolve a forma canônica", () => {
@@ -66,5 +66,38 @@ describe("parseDiceFormula", () => {
 		const parsed = parseDiceFormula("1d20+5");
 		expect(parsed).not.toHaveProperty("total");
 		expect(parsed).not.toHaveProperty("rolls");
+	});
+});
+
+describe("rollDiceLocally", () => {
+	it("soma os dados e o modificador", () => {
+		// rng 0 → 1 em todo dado; 0.999 → o máximo
+		expect(rollDiceLocally("1d6+6", () => 0)?.total).toBe(7);
+		expect(rollDiceLocally("1d6+6", () => 0.999)?.total).toBe(12);
+		expect(rollDiceLocally("2d6+3", () => 0.999)).toMatchObject({
+			total: 15,
+			rolls: [6, 6],
+		});
+	});
+
+	it("aceita dados de tipos diferentes e modificador negativo", () => {
+		const r = rollDiceLocally("1d8+1d4-1", () => 0.999);
+		expect(r).toMatchObject({ rolls: [8, 4], total: 11 });
+	});
+
+	it("fórmula inválida devolve null, sem lançar", () => {
+		expect(rollDiceLocally("banana")).toBeNull();
+		expect(rollDiceLocally("")).toBeNull();
+	});
+
+	it("rng fora de [0,1) ou inválido não gera dado impossível", () => {
+		const r = rollDiceLocally("1d20", () => 5);
+		expect(r?.rolls[0]).toBeGreaterThanOrEqual(1);
+		expect(r?.rolls[0]).toBeLessThanOrEqual(20);
+		expect(rollDiceLocally("1d20", () => Number.NaN)?.rolls[0]).toBe(1);
+	});
+
+	it("devolve a fórmula canônica", () => {
+		expect(rollDiceLocally("2D6 + 3")?.formula).toBe("2d6+3");
 	});
 });

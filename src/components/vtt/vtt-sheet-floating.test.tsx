@@ -6,6 +6,7 @@ import {
 	render,
 	screen,
 	waitFor,
+	within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -271,7 +272,7 @@ describe("Ficha flutuante: painel", () => {
 		expect(panel.style.height).toBe("280px");
 	});
 
-	it("retrato/identidade da ficha e atributos em lista (sem grade de caixinhas)", () => {
+	it("retrato/identidade da ficha e atributos em grade para rolar", () => {
 		mesa({});
 		const panel = screen.getByRole("region", { name: "Ficha de Lyra" });
 		expect(panel.querySelector('[data-slot="sheet-header"]')).toBeNull();
@@ -279,12 +280,15 @@ describe("Ficha flutuante: painel", () => {
 			screen.getByRole("heading", { level: 2, name: "Lyra" }),
 		).toBeTruthy();
 		expect(screen.getByText("Elfa · Maga · Nível 3")).toBeTruthy();
-		const list = screen.getByRole("list");
-		expect(list.querySelectorAll("li")).toHaveLength(6);
+		const attrs = screen.getByRole("region", { name: "Atributos" });
+		expect(
+			within(attrs).getAllByRole("button", { name: /^Rolar / }),
+		).toHaveLength(6);
 		expect(panel.querySelector("[title]")).toBeNull();
 		// Cabeçalho de arraste só com alça + X (padrão Figma); nome no título.
 		expect(screen.getByTestId("vtt-sheet-drag-handle").textContent).toBe("");
-		expect(panel.querySelector('[class*="h-14"][class*="w-14"]')).toBeTruthy();
+		// retrato de 72 px (monograma quando não há imagem)
+		expect(panel.querySelector('[class*="size-[4.5rem]"]')).toBeTruthy();
 	});
 });
 
@@ -298,7 +302,7 @@ describe("Ficha flutuante: minimizar", () => {
 		expect(panels()[0].dataset.minimized).toBe("true");
 		expect(panels()[0].style.width).toBe("336px");
 		expect(screen.getByText("8/10 PV")).toBeTruthy();
-		expect(screen.queryByRole("list")).toBeNull();
+		expect(screen.queryByRole("region", { name: "Atributos" })).toBeNull();
 		// Vai para a doca (canto inferior esquerdo), sem perder a posição da ficha.
 		expect(panels()[0].style.left).toBe("72px");
 		expect(panels()[0].style.top).toBe(`${900 - 16 - 60}px`);
@@ -314,7 +318,7 @@ describe("Ficha flutuante: minimizar", () => {
 		expect(panels()[0].style.width).toBe(width);
 		expect(panels()[0].style.left).toBe(left);
 		expect(panels()[0].style.top).toBe(top);
-		expect(screen.getByRole("list")).toBeTruthy();
+		expect(screen.getByRole("region", { name: "Atributos" })).toBeTruthy();
 	});
 
 	it("reabrir lembra que estava minimizada", () => {

@@ -12,7 +12,7 @@ export interface SheetRect {
 export const SHEET_MIN_W = 320;
 export const SHEET_MIN_H = 280;
 export const SHEET_DEFAULT_W = 380;
-export const SHEET_DEFAULT_H = 560;
+export const SHEET_DEFAULT_H = 680;
 /** Margem mínima até a borda da janela. */
 export const SHEET_EDGE = 8;
 /** Topo livre para o cabeçalho da mesa. */

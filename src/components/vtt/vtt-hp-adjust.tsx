@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { visibleHpLabel } from "@/lib/vtt/character-hp";
+import { planHpDelta } from "@/lib/vtt/hp-delta";
 
 /**
  * PV do menu do token e da ficha na mesa: os mesmos botões, a mesma barra
@@ -69,26 +70,16 @@ export function VttHpAdjust({
 		if (!onChange) return;
 		button.blur();
 		run(async () => {
-			if (delta < 0 && tempHp > 0 && onChangeTempHp) {
-				const damage = -delta;
-				if (damage <= tempHp) {
-					const nextTemp = tempHp - damage;
-					await onChangeTempHp(nextTemp);
-					return;
-				}
-				const leftover = damage - tempHp;
-				await onChangeTempHp(0);
-				await onChange(Math.max(0, hpCurrent - leftover));
-				return;
+			const plan = planHpDelta(delta, {
+				current: hpCurrent,
+				max: hpMax,
+				temp: tempHp,
+				canTemp: Boolean(onChangeTempHp),
+			});
+			if (plan.temp !== undefined && onChangeTempHp) {
+				await onChangeTempHp(plan.temp);
 			}
-
-			if (delta > 0) {
-				const nextHp = Math.min(hpMax || hpCurrent + delta, hpCurrent + delta);
-				await onChange(nextHp);
-				return;
-			}
-
-			await onChange(Math.max(0, hpCurrent + delta));
+			if (plan.current !== undefined) await onChange(plan.current);
 		}, button);
 	};
 
