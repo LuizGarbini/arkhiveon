@@ -78,9 +78,11 @@ function AttunementDots({ used }: { used: number }) {
 function EquipmentBody({
 	character,
 	speedUnit,
+	sceneUnit,
 }: {
 	character: Character;
 	speedUnit: string;
+	sceneUnit?: string | null;
 }) {
 	const toast = useToast();
 	const { session } = useAuth();
@@ -297,6 +299,7 @@ function EquipmentBody({
 									occupant={slotMap.bySlot.get(pickerSlot)}
 									current={stats}
 									speedUnit={speedUnit}
+									sceneUnit={sceneUnit}
 									imageFor={imageFor}
 									onBack={() => setPickerSlot(null)}
 									onEquip={(outcome) => applyEquip(outcome, pickerSlot)}
@@ -326,6 +329,7 @@ function EquipmentBody({
 									bare={bare}
 									itemsById={byId}
 									speedUnit={speedUnit}
+									sceneUnit={sceneUnit}
 								/>
 							)}
 						</aside>
@@ -356,11 +360,14 @@ export function EquipmentDialog({
 	open,
 	onOpenChange,
 	speedUnit,
+	sceneUnit,
 }: {
 	character: Character;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	speedUnit: string;
+	/** Unidade da cena (na mesa): o deslocamento aparece nela. */
+	sceneUnit?: string | null;
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -372,7 +379,11 @@ export function EquipmentDialog({
 				)}
 			>
 				{open ? (
-					<EquipmentBody character={character} speedUnit={speedUnit} />
+					<EquipmentBody
+						character={character}
+						speedUnit={speedUnit}
+						sceneUnit={sceneUnit}
+					/>
 				) : null}
 			</DialogContent>
 		</Dialog>

@@ -12,6 +12,7 @@ import {
 	attunedCount,
 	computeAbilityScores,
 	computeEffectiveStats,
+	computePassivePerception,
 	computeSavesBonus,
 	computeSpeed,
 	computeWeaponItemBonuses,
@@ -819,6 +820,41 @@ describe("bônus de acerto e dano dos itens", () => {
 		// FOR 19 (+4): prof 3 + 4 + mágica 1 = +8 ; dano 2d6+5
 		expect(attack.attackBonus).toBe(8);
 		expect(attack.formula).toBe("2d6+5");
+	});
+});
+
+describe("percepção passiva", () => {
+	const sheet = { proficiencyBonus: 3, level: 7 } as typeof thalia;
+
+	it("10 + modificador de SAB, sem proficiência", () => {
+		expect(computePassivePerception(sheet, 14)).toBe(12);
+	});
+
+	it("soma a proficiência, e dobra com especialização", () => {
+		const prof = {
+			...sheet,
+			skillProficiencies: { perception: "proficient" },
+		} as typeof thalia;
+		const expert = {
+			...sheet,
+			skillProficiencies: { perception: "expertise" },
+		} as typeof thalia;
+		expect(computePassivePerception(prof, 14)).toBe(15);
+		expect(computePassivePerception(expert, 14)).toBe(18);
+	});
+
+	it("usa a Sabedoria dos itens: SAB 11 → 19 muda o passivo", () => {
+		expect(computePassivePerception(sheet, 11)).toBe(10);
+		expect(computePassivePerception(sheet, 19)).toBe(14);
+	});
+
+	it("sem bônus de proficiência salvo, calcula pelo nível", () => {
+		const noPb = {
+			level: 9,
+			skillProficiencies: { perception: "proficient" },
+		} as unknown as typeof thalia;
+		// nível 9 → +4
+		expect(computePassivePerception(noPb, 10)).toBe(14);
 	});
 });
 

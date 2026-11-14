@@ -569,6 +569,32 @@ export function buildEquipmentReport(
 	};
 }
 
+// ── Percepção passiva ────────────────────────────────────────────────
+
+/**
+ * Percepção passiva com a Sabedoria dos itens equipados: 10 + modificador de
+ * SAB + proficiência (dobrada com especialização) em Percepção.
+ */
+export function computePassivePerception(
+	character: Pick<
+		Character,
+		"proficiencyBonus" | "level" | "skillProficiencies"
+	>,
+	wisdomScore: number,
+): number {
+	const proficiency =
+		character.proficiencyBonus ||
+		calculateProficiencyBonus(character.level || 1);
+	const level = character.skillProficiencies?.perception;
+	const bonus =
+		level === "expertise"
+			? proficiency * 2
+			: level === "proficient"
+				? proficiency
+				: 0;
+	return 10 + calculateAbilityModifier(wisdomScore) + bonus;
+}
+
 // ── PV estimado ──────────────────────────────────────────────────────
 
 /**

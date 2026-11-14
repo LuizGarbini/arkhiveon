@@ -2,23 +2,19 @@ import {
 	Dices,
 	Eye,
 	EyeOff,
-	Footprints,
 	Lock,
 	Maximize2,
 	Minus,
 	Plus,
 	RotateCw,
 	ScrollText,
-	Shield,
 	ShieldAlert,
 	Star,
 	Trash2,
 	Unlock,
 	X,
-	Zap,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import { useCombatStats } from "@/components/character-sheet/use-linked-items";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { AddBonusDieForm } from "@/components/character-sheet/view/table-resources-strip";
 import { ImageViewer } from "@/components/images/image-viewer";
@@ -41,7 +37,6 @@ import {
 	tokenRemovalKind,
 	VTTRemoveTokenDialog,
 } from "@/components/vtt/vtt-remove-token-dialog";
-import { calculateAbilityModifier, formatModifier } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
@@ -432,8 +427,6 @@ export function VTTTokenMenu({
 				className="min-w-0 space-y-3 disabled:opacity-60"
 			>
 				<div className="space-y-3">
-					{character && <TokenCharacterStats character={character} />}
-
 					<VttHpAdjust
 						hpCurrent={hp.current}
 						hpMax={hp.max}
@@ -727,60 +720,6 @@ export function VTTTokenMenu({
 				}}
 				onConfirm={confirmRemove}
 			/>
-		</div>
-	);
-}
-
-function TokenCharacterStats({ character }: { character: Character }) {
-	const combat = useCombatStats(character);
-	const wisMod = calculateAbilityModifier(character.wisdom || 10);
-	const pb = character.proficiencyBonus || 2;
-	const perceptionProf = character.skillProficiencies?.perception;
-	const profBonus =
-		perceptionProf === "expertise"
-			? pb * 2
-			: perceptionProf === "proficient"
-				? pb
-				: 0;
-	const passivePerception = 10 + wisMod + profBonus;
-
-	return (
-		<div
-			data-testid="token-character-stats"
-			className="grid grid-cols-4 gap-1.5 py-0.5"
-		>
-			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-					<Shield className="h-3 w-3 text-blue-400" /> CA
-				</span>
-				<span className="font-display font-bold text-base text-foreground tabular-nums">
-					{combat.ac.total}
-				</span>
-			</div>
-			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-					<Zap className="h-3 w-3 text-amber-400" /> INIC
-				</span>
-				<span className="font-display font-bold text-base text-foreground tabular-nums">
-					{formatModifier(combat.initiative.total)}
-				</span>
-			</div>
-			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-					<Footprints className="h-3 w-3 text-emerald-400" /> MOV
-				</span>
-				<span className="font-display font-bold text-base text-foreground tabular-nums">
-					{character.speed ?? 9}m
-				</span>
-			</div>
-			<div className="flex flex-col items-center justify-center p-2 rounded-xl border border-border/70 bg-card-elevated text-center">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-					<Eye className="h-3 w-3 text-purple-400" /> PASSIVA
-				</span>
-				<span className="font-display font-bold text-base text-foreground tabular-nums">
-					{passivePerception}
-				</span>
-			</div>
 		</div>
 	);
 }

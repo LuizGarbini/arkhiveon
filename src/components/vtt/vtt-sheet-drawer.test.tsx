@@ -20,6 +20,8 @@ const h = vi.hoisted(() => ({
 		tokens: [
 			{ id: "tok-1", name: "QA Guerreira", characterId: "char-1" },
 		] as unknown[],
+		scenes: [] as { id: string; gridScaleUnit: string }[],
+		activeSceneId: null as string | null,
 	},
 }));
 
@@ -84,7 +86,68 @@ function chip(label: string): HTMLElement {
 	return el;
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	h.vtt.scenes = [];
+	h.vtt.activeSceneId = null;
+});
+
+/** Valor da célula de uma estatística da faixa (CA, INIT, MOV, PASSIVA). */
+function quickStat(label: string): string | null | undefined {
+	return screen.getByText(label).closest("div")?.querySelector("dd")
+		?.textContent;
+}
+
+describe("VTTSheetDrawer · deslocamento na unidade da mesa", () => {
+	const dnd = { speed: 30, wisdom: 14 };
+
+	it("ficha em pés, cena em metros: 30ft aparece como 9m", () => {
+		h.vtt.scenes = [{ id: "sc-1", gridScaleUnit: "m" }];
+		h.vtt.activeSceneId = "sc-1";
+		setCharacter(dnd);
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("9m");
+	});
+
+	it("cena em pés mantém 30ft", () => {
+		h.vtt.scenes = [{ id: "sc-1", gridScaleUnit: "ft" }];
+		h.vtt.activeSceneId = "sc-1";
+		setCharacter(dnd);
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("30ft");
+	});
+
+	it("cena em quadrados: 30ft são 6sq", () => {
+		h.vtt.scenes = [{ id: "sc-1", gridScaleUnit: "sq" }];
+		h.vtt.activeSceneId = "sc-1";
+		setCharacter(dnd);
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("6sq");
+	});
+
+	it("sem cena ativa mostra como a ficha guarda", () => {
+		setCharacter(dnd);
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(quickStat("MOV")).toBe("30ft");
+	});
+
+	it("mostra a percepção passiva na ficha da mesa (D&D 5e)", () => {
+		setCharacter({
+			...dnd,
+			proficiencyBonus: 3,
+			skillProficiencies: { perception: "proficient" },
+		});
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		// 10 + SAB 14 (+2) + proficiência 3
+		expect(quickStat("PASSIVA")).toBe("15");
+	});
+
+	it("sistema sem percepção passiva não mostra o quadradinho", () => {
+		setCharacter({ ...dnd, system: "generic" });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(screen.queryByText("PASSIVA")).toBeNull();
+	});
+});
 
 describe("VTTSheetDrawer · atributos", () => {
 	it("ficha antiga (tudo 0) mostra +0 em todos, como a ficha", () => {

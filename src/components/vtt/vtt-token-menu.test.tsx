@@ -332,16 +332,17 @@ describe("VTTTokenMenu — Sincronização da Ficha, Vida Temporária e Recursos
 		return char;
 	}
 
-	it("mostra os Quick Stats da ficha (CA, INIC, MOV, PASSIVA) no menu do token", () => {
+	it("não repete os números da ficha: CA, INIC, MOV e PASSIVA ficam só na ficha da mesa", () => {
 		setupCharacter();
 		setup({ characterId: "char-sync-1" });
-		expect(screen.getByTestId("token-character-stats")).toBeTruthy();
-		expect(screen.getByText("CA")).toBeTruthy();
-		expect(screen.getByText("INIC")).toBeTruthy();
-		expect(screen.getByText("MOV")).toBeTruthy();
-		expect(screen.getByText("PASSIVA")).toBeTruthy();
-		expect(screen.getByText("14")).toBeTruthy();
-		expect(screen.getByText("9m")).toBeTruthy();
+		expect(screen.queryByTestId("token-character-stats")).toBeNull();
+		expect(screen.queryByText("INIC")).toBeNull();
+		expect(screen.queryByText("MOV")).toBeNull();
+		expect(screen.queryByText("PASSIVA")).toBeNull();
+		// quem quer os números abre a ficha
+		expect(
+			screen.getByRole("button", { name: "Abrir ficha na mesa" }),
+		).toBeTruthy();
 	});
 
 	it("mostra vida temporária (+5 temp) e absorve dano da vida temporária antes da vida atual", async () => {

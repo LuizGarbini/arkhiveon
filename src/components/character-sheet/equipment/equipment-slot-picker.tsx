@@ -21,6 +21,7 @@ import {
 	equipEntryInSlot,
 	equipNewItemInSlot,
 	formatModifier,
+	formatSpeed,
 	type LinkedEntry,
 	MAX_ATTUNED_ITEMS,
 	slotsForItem,
@@ -54,7 +55,7 @@ interface DiffRow {
 function diffStats(
 	current: EffectiveStats,
 	next: EffectiveStats,
-	speedUnit: string,
+	formatSpeedValue: (value: number) => string,
 ): DiffRow[] {
 	const rows: DiffRow[] = [];
 	const push = (
@@ -81,12 +82,7 @@ function diffStats(
 		next.initiative.total,
 		formatModifier,
 	);
-	push(
-		"Deslocamento",
-		current.speed.total,
-		next.speed.total,
-		(n) => `${n}${speedUnit}`,
-	);
+	push("Deslocamento", current.speed.total, next.speed.total, formatSpeedValue);
 	push("Salvaguardas", current.saves.total, next.saves.total, formatModifier);
 	return rows;
 }
@@ -104,6 +100,7 @@ export function EquipmentSlotPicker({
 	occupant,
 	current,
 	speedUnit,
+	sceneUnit,
 	imageFor,
 	onBack,
 	onEquip,
@@ -119,6 +116,8 @@ export function EquipmentSlotPicker({
 	occupant?: LinkedEntry;
 	current: EffectiveStats;
 	speedUnit: string;
+	/** Unidade da cena (na mesa): o deslocamento aparece nela. */
+	sceneUnit?: string | null;
 	imageFor: (item: Item) => string;
 	onBack: () => void;
 	onEquip: (outcome: EquipOutcome) => void;
@@ -179,10 +178,21 @@ export function EquipmentSlotPicker({
 		);
 		return {
 			outcome,
-			rows: diffStats(current, next, speedUnit),
+			rows: diffStats(current, next, (n) =>
+				formatSpeed(n, speedUnit, sceneUnit),
+			),
 			attuned: attunedCount(next.linked),
 		};
-	}, [selected, inventory, itemsById, slot, character, current, speedUnit]);
+	}, [
+		selected,
+		inventory,
+		itemsById,
+		slot,
+		character,
+		current,
+		speedUnit,
+		sceneUnit,
+	]);
 
 	const hasCandidates = fromBackpack.length + fromCampaign.length > 0;
 

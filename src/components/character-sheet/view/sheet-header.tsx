@@ -23,7 +23,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatModifier } from "@/core/rules";
+import {
+	computePassivePerception,
+	formatModifier,
+	formatSpeed,
+} from "@/core/rules";
 import type { Character } from "@/lib/store";
 import { systemLabel } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
@@ -339,10 +343,19 @@ export function SheetQuickStats({
 	health,
 	compact = false,
 	showHealth = true,
+	sceneUnit,
+	showPassive = false,
 	className,
 }: {
 	character: Character;
 	config: SystemConfig;
+	/**
+	 * Unidade da cena (m, ft, sq). Na mesa, o deslocamento aparece nela, com a
+	 * conversão do D&D; fora da mesa vale a unidade que a ficha guarda.
+	 */
+	sceneUnit?: string | null;
+	/** Mostra a percepção passiva (com a Sabedoria dos itens equipados). */
+	showPassive?: boolean;
 	/** Texto do PV (a página usa o PV da ficha; a mesa, o do token). */
 	health: string;
 	compact?: boolean;
@@ -352,14 +365,17 @@ export function SheetQuickStats({
 }) {
 	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
 	const combat = useCombatStats(character);
+	const columns = (showHealth ? 4 : 3) + (showPassive ? 1 : 0);
 	return (
 		<dl
 			className={cn(
 				"grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60",
 				compact
-					? showHealth
-						? "grid-cols-4"
-						: "grid-cols-3"
+					? columns >= 5
+						? "grid-cols-5"
+						: columns === 4
+							? "grid-cols-4"
+							: "grid-cols-3"
 					: "sm:grid-cols-4",
 				className,
 			)}
@@ -384,9 +400,18 @@ export function SheetQuickStats({
 			/>
 			<QuickStat
 				label="MOV"
-				value={`${combat.speed.total}${config.speedUnit}`}
+				value={formatSpeed(combat.speed.total, config.speedUnit, sceneUnit)}
 				color="text-emerald-400"
 			/>
+			{showPassive ? (
+				<QuickStat
+					label="PASSIVA"
+					value={String(
+						computePassivePerception(character, combat.abilities.wisdom.total),
+					)}
+					color="text-purple-400"
+				/>
+			) : null}
 		</dl>
 	);
 }

@@ -660,6 +660,12 @@ function MobileSheet({
 	);
 }
 
+/** Sistemas com percepção passiva (D&D 5e): a ficha na mesa mostra o número. */
+const HAS_PASSIVE_PERCEPTION: ReadonlySet<string> = new Set([
+	"dnd5e",
+	"dnd2024",
+]);
+
 function SheetContent({
 	token,
 	character,
@@ -684,6 +690,11 @@ function SheetContent({
 	const { hp, showMax } = useSheetHp(token, character);
 	const feedReady = useRollStore((s) => s.status === "ready");
 	const [equipmentOpen, setEquipmentOpen] = useState(false);
+	// Unidade da cena ativa: o deslocamento da ficha aparece nela (30 ft = 9 m).
+	const sceneUnit = useVTTStore(
+		(s) =>
+			s.scenes.find((scene) => scene.id === s.activeSceneId)?.gridScaleUnit,
+	);
 	// Atributos com os itens equipados: as rolagens da mesa usam estes valores.
 	const { byId: campaignItems } = useCampaignItems();
 	const effective = useMemo(
@@ -766,6 +777,8 @@ function SheetContent({
 					<SheetQuickStats
 						compact
 						showHealth={false}
+						sceneUnit={sceneUnit}
+						showPassive={HAS_PASSIVE_PERCEPTION.has(character.system)}
 						character={character}
 						config={config}
 						health={quickHp}
@@ -786,6 +799,7 @@ function SheetContent({
 								open={equipmentOpen}
 								onOpenChange={setEquipmentOpen}
 								speedUnit={config.speedUnit}
+								sceneUnit={sceneUnit}
 							/>
 						</>
 					) : null}

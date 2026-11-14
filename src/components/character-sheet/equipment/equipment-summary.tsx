@@ -5,6 +5,7 @@ import {
 	type EffectiveStats,
 	estimateHealthMax,
 	formatModifier,
+	formatSpeed,
 	getEquippedWeaponAttacks,
 	resolveLinkedInventory,
 	type StatPart,
@@ -96,6 +97,7 @@ export function EquipmentSummary({
 	bare,
 	itemsById,
 	speedUnit,
+	sceneUnit,
 }: {
 	character: Character;
 	stats: EffectiveStats;
@@ -103,6 +105,8 @@ export function EquipmentSummary({
 	bare: EffectiveStats;
 	itemsById: ReadonlyMap<string, Item>;
 	speedUnit: string;
+	/** Unidade da cena (na mesa): o deslocamento aparece nela. */
+	sceneUnit?: string | null;
 }) {
 	const proficiency =
 		character.proficiencyBonus ||
@@ -135,8 +139,10 @@ export function EquipmentSummary({
 		baseCon: stats.abilities.constitution.base,
 		effectiveCon: stats.abilities.constitution.total,
 	});
+	const speed = (value: number, signed = false) =>
+		formatSpeed(value, speedUnit, sceneUnit, { signed });
 	const speedChips = stats.speed.parts.map(
-		(p) => `${p.label} ${formatModifier(p.value)}${speedUnit}`,
+		(p) => `${p.label} ${speed(p.value, true)}`,
 	);
 
 	return (
@@ -162,8 +168,8 @@ export function EquipmentSummary({
 				/>
 				<StatCard
 					label="Desloc."
-					to={`${stats.speed.total}${speedUnit}`}
-					from={`${bare.speed.total}${speedUnit}`}
+					to={speed(stats.speed.total)}
+					from={speed(bare.speed.total)}
 					chips={speedChips}
 				/>
 			</div>
