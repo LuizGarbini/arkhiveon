@@ -29,7 +29,8 @@
 -- Rollback:
 --   drop function if exists public.set_character_equipment(uuid, jsonb);
 --
--- NÃO APLICADA. Merge e aplicação só pelo Luiz.
+-- Aplicada em produção (axnektdqoxjhbbfsidfj) em 2026-11-14, após teste em
+-- transação descartada (11 cenários de segurança).
 
 begin;
 
