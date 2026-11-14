@@ -401,6 +401,12 @@ export function EquipmentSlotPicker({
 							))}
 						</ul>
 					)}
+					{preview.outcome.displacedAll.length > 0 ? (
+						<p className="text-xs text-muted-foreground">
+							Volta para a mochila:{" "}
+							{preview.outcome.displacedAll.map((e) => e.name).join(", ")}.
+						</p>
+					) : null}
 					{selected.item.requiresAttunement ? (
 						<p
 							className={cn(

@@ -107,24 +107,28 @@ export function EquipmentSummary({
 	const proficiency =
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
-	const attacks = useMemo(
-		() =>
-			getEquippedWeaponAttacks(
-				resolveLinkedInventory(character.inventoryList, itemsById),
-				stats.scores,
-				proficiency,
+	const attacks = useMemo(() => {
+		const blocked = new Set(stats.blockedByTwoHanded.map((l) => l.entry.id));
+		return getEquippedWeaponAttacks(
+			resolveLinkedInventory(character.inventoryList, itemsById).filter(
+				(entry) => !blocked.has(entry.id),
 			),
-		[character.inventoryList, itemsById, stats.scores, proficiency],
-	);
-	const bareAttacks = useMemo(
-		() =>
-			getEquippedWeaponAttacks(
-				resolveLinkedInventory(character.inventoryList, itemsById),
-				bare.scores,
-				proficiency,
+			stats.scores,
+			proficiency,
+			stats.weaponBonuses,
+		);
+	}, [character.inventoryList, itemsById, stats, proficiency]);
+	const bareAttacks = useMemo(() => {
+		const blocked = new Set(stats.blockedByTwoHanded.map((l) => l.entry.id));
+		return getEquippedWeaponAttacks(
+			resolveLinkedInventory(character.inventoryList, itemsById).filter(
+				(entry) => !blocked.has(entry.id),
 			),
-		[character.inventoryList, itemsById, bare.scores, proficiency],
-	);
+			bare.scores,
+			proficiency,
+			bare.weaponBonuses,
+		);
+	}, [character.inventoryList, itemsById, stats, bare, proficiency]);
 	const health = estimateHealthMax({
 		healthMax: character.healthMax || 0,
 		level: character.level || 1,
@@ -214,7 +218,7 @@ export function EquipmentSummary({
 													{formatModifier(before.attackBonus)} ·{" "}
 													{before.formula}
 												</span>{" "}
-												sem itens de atributo
+												sem bônus dos itens
 											</p>
 										) : null}
 									</div>

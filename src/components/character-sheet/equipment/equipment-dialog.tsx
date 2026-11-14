@@ -22,6 +22,7 @@ import {
 	withoutEquipment,
 } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
+import { saveEquipmentAsOwner } from "@/lib/character-equipment";
 import {
 	resolveCharacterImageUrl,
 	resolveItemImageUrl,
@@ -42,6 +43,8 @@ import { ItemThumb } from "./equipment-slot-tile";
 import { EquipmentSummary } from "./equipment-summary";
 
 type Tab = "equipment" | "backpack";
+
+const NO_CAMPAIGN_ITEMS: readonly Item[] = [];
 
 function AttunementDots({ used }: { used: number }) {
 	return (
@@ -85,7 +88,12 @@ function EquipmentBody({
 	const imageAssets = useImageAssetLookup();
 	const updateCharacter = useRPGStore((s) => s.updateCharacter);
 	const { items, byId } = useCampaignItems();
-	const canEdit = useCanLinkOnSheet(character);
+	// Mestre e co-mestre salvam a ficha; o jogador que criou a ficha equipa os
+	// próprios itens pela função segura do banco (só local, slot e sintonia).
+	const staff = useCanLinkOnSheet(character);
+	const isSheetOwner =
+		Boolean(session?.user.id) && character.createdBy === session?.user.id;
+	const canEdit = staff || isSheetOwner;
 	const [tab, setTab] = useState<Tab>("equipment");
 	const [pickerSlot, setPickerSlot] = useState<EquipSlot | null>(null);
 
@@ -117,7 +125,21 @@ function EquipmentBody({
 	);
 
 	const save = (nextInventory: typeof inventory) => {
-		void updateCharacter(character.id, { inventoryList: nextInventory });
+		if (staff) {
+			void updateCharacter(character.id, { inventoryList: nextInventory });
+			return;
+		}
+		void saveEquipmentAsOwner({
+			characterId: character.id,
+			next: nextInventory,
+		}).then((result) => {
+			if (!result.ok) {
+				toast.error({
+					title: "Não foi possível equipar",
+					description: result.message,
+				});
+			}
+		});
 	};
 	const applyEquip = (outcome: EquipOutcome, slot: EquipSlot) => {
 		save(outcome.inventory);
@@ -127,10 +149,10 @@ function EquipmentBody({
 				title: "Equipado sem sintonia",
 				description: `Já há ${MAX_ATTUNED_ITEMS} itens sintonizados. Troque um para este valer.`,
 			});
-		} else if (outcome.displaced) {
+		} else if (outcome.displacedAll.length > 0) {
 			toast.success({
 				title: `${EQUIP_SLOT_LABELS[slot]} trocado`,
-				description: `${outcome.displaced.name} voltou para a mochila.`,
+				description: `${outcome.displacedAll.map((e) => e.name).join(" e ")} ${outcome.displacedAll.length > 1 ? "voltaram" : "voltou"} para a mochila.`,
 			});
 		}
 	};
@@ -203,6 +225,7 @@ function EquipmentBody({
 							<EquipmentDoll
 								character={character}
 								bySlot={slotMap.bySlot}
+								twoHanded={slotMap.twoHanded}
 								abilities={stats.abilities}
 								portraitUrl={portraitUrl}
 								imageFor={imageFor}
@@ -255,7 +278,8 @@ function EquipmentBody({
 							{!canEdit ? (
 								<p className="flex items-center gap-1.5 text-xs text-muted-foreground">
 									<Link2 className="size-3.5" aria-hidden />
-									Só o mestre e os co-mestres trocam o equipamento.
+									Só quem criou a ficha, o mestre e os co-mestres trocam o
+									equipamento.
 								</p>
 							) : null}
 						</div>
@@ -265,7 +289,9 @@ function EquipmentBody({
 									key={pickerSlot}
 									slot={pickerSlot}
 									character={character}
-									campaignItems={items}
+									// O jogador só equipa o que já tem; item novo da campanha
+									// é com o mestre.
+									campaignItems={staff ? items : NO_CAMPAIGN_ITEMS}
 									itemsById={byId}
 									linked={stats.linked}
 									occupant={slotMap.bySlot.get(pickerSlot)}

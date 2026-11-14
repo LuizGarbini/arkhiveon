@@ -25,10 +25,20 @@ import {
 	linkKindOf,
 	makeLinkedEntry,
 	resolveLinkedEntries,
+	resolveLinkedInventory,
 } from "./item-links";
 import { ABILITY_SHORT_LABELS } from "./item-mechanics";
-import { calculateAbilityModifier, formatModifier } from "./modifier-engine";
-import { weaponAbilityScores } from "./weapon-damage";
+import {
+	calculateAbilityModifier,
+	calculateProficiencyBonus,
+	formatModifier,
+} from "./modifier-engine";
+import {
+	DAMAGE_TYPE_LABELS,
+	getEquippedWeaponAttacks,
+	type WeaponItemBonuses,
+	weaponAbilityScores,
+} from "./weapon-damage";
 
 export { ABILITY_SHORT_LABELS };
 
@@ -121,18 +131,36 @@ export function itemSlotOf(
 	return undefined;
 }
 
+/** Arma de duas mãos: ocupa a mão principal e bloqueia a secundária. */
+export function isTwoHanded(
+	item: Pick<Item, "type" | "slot" | "armor" | "weapon">,
+): boolean {
+	return (
+		itemSlotOf(item) === "weapon" &&
+		Boolean(item.weapon?.properties?.includes("two_handed"))
+	);
+}
+
 /** Posições da ficha onde o item pode ficar (vazio = sem slot definido). */
 export function slotsForItem(
-	item: Pick<Item, "type" | "slot" | "armor">,
+	item: Pick<Item, "type" | "slot" | "armor" | "weapon">,
 ): readonly EquipSlot[] {
 	const slot = itemSlotOf(item);
-	return slot ? SLOTS_FOR_ITEM_SLOT[slot] : [];
+	if (!slot) return [];
+	return isTwoHanded(item) ? ["mainHand"] : SLOTS_FOR_ITEM_SLOT[slot];
 }
 
 export interface SlotMap {
 	bySlot: ReadonlyMap<EquipSlot, LinkedEntry>;
 	/** Equipado, mas sem slot que o comporte (item antigo sem categoria). */
 	unslotted: LinkedEntry[];
+	/**
+	 * Mão secundária tomada por uma arma de duas mãos: quem ficou sem lugar por
+	 * isso (escudo, segunda arma) não conta nos números.
+	 */
+	blockedByTwoHanded: LinkedEntry[];
+	/** A arma de duas mãos que bloqueia a mão secundária, se houver. */
+	twoHanded?: LinkedEntry;
 }
 
 /**
@@ -160,7 +188,28 @@ export function resolveSlots(linked: readonly LinkedEntry[]): SlotMap {
 		if (free) bySlot.set(free, l);
 		else unslotted.push(l);
 	}
-	return { bySlot, unslotted };
+
+	// Arma de duas mãos na principal: a secundária não existe. Quem estava
+	// nela (ficha antiga com escudo + espadão) fica de fora e não soma.
+	const main = bySlot.get("mainHand");
+	const twoHanded = main && isTwoHanded(main.item) ? main : undefined;
+	const blockedByTwoHanded: LinkedEntry[] = [];
+	if (twoHanded) {
+		const off = bySlot.get("offHand");
+		if (off) {
+			bySlot.delete("offHand");
+			unslotted.push(off);
+			blockedByTwoHanded.push(off);
+		}
+		// Quem não coube em nenhum slot e era para a mão secundária também.
+		for (const l of unslotted) {
+			const wantsOffHand = slotsForItem(l.item).includes("offHand");
+			if (wantsOffHand && !blockedByTwoHanded.includes(l)) {
+				blockedByTwoHanded.push(l);
+			}
+		}
+	}
+	return { bySlot, unslotted, blockedByTwoHanded, twoHanded };
 }
 
 // ── Sintonização ─────────────────────────────────────────────────────
@@ -317,6 +366,24 @@ export function effectiveScores(
 	};
 }
 
+// ── Acerto e dano dos itens ──────────────────────────────────────────
+
+/** Bônus de acerto/dano de itens equipados que valem para todos os ataques. */
+export function computeWeaponItemBonuses(
+	linked: readonly LinkedEntry[],
+): WeaponItemBonuses {
+	const out: WeaponItemBonuses = { attack: [], damage: [] };
+	for (const l of linked.filter(isLinkActive)) {
+		for (const b of l.item.bonuses ?? []) {
+			if ((b.target !== "attack" && b.target !== "damage") || b.when?.trim())
+				continue;
+			const value = Math.trunc(Number(b.value) || 0);
+			if (value !== 0) out[b.target].push({ label: l.item.name, value });
+		}
+	}
+	return out;
+}
+
 // ── Deslocamento e salvaguardas ──────────────────────────────────────
 
 export interface BonusPart {
@@ -376,6 +443,10 @@ export interface EffectiveStats {
 	initiative: CombatStat;
 	speed: SumStat;
 	saves: SumStat;
+	/** Acerto e dano que os itens somam em todos os ataques. */
+	weaponBonuses: WeaponItemBonuses;
+	/** Quem a arma de duas mãos deixou sem mão (não soma nos números). */
+	blockedByTwoHanded: LinkedEntry[];
 }
 
 /**
@@ -391,15 +462,110 @@ export function computeEffectiveStats(
 		character.system === "dnd5e"
 			? resolveLinkedEntries(character.inventoryList, itemsById)
 			: [];
-	const abilities = computeAbilityScores(character, linked);
+	// Escudo ou segunda arma com um espadão nas mãos não conta.
+	const { blockedByTwoHanded } = resolveSlots(linked);
+	const counting = linked.filter((l) => !blockedByTwoHanded.includes(l));
+	const abilities = computeAbilityScores(character, counting);
 	return {
 		linked,
 		abilities,
 		scores: effectiveScores(abilities),
-		ac: computeArmorClass(character, linked, abilities.dexterity.total),
-		initiative: computeInitiative(character, linked, abilities.dexterity.total),
-		speed: computeSpeed(character, linked),
-		saves: computeSavesBonus(linked),
+		ac: computeArmorClass(character, counting, abilities.dexterity.total),
+		initiative: computeInitiative(
+			character,
+			counting,
+			abilities.dexterity.total,
+		),
+		speed: computeSpeed(character, counting),
+		saves: computeSavesBonus(counting),
+		weaponBonuses: computeWeaponItemBonuses(counting),
+		blockedByTwoHanded,
+	};
+}
+
+// ── Relatório (PDF) ──────────────────────────────────────────────────
+
+export interface EquipmentReport {
+	abilities: {
+		key: WeaponAbility;
+		base: number;
+		total: number;
+		modifier: number;
+	}[];
+	ac: number;
+	initiative: number;
+	speed: number;
+	/** Bônus geral de salvaguardas vindo de itens. */
+	savesBonus: number;
+	attacks: { name: string; hit: number; damage: string; types: string[] }[];
+	/** Um por slot ocupado, na ordem do boneco. */
+	equipped: {
+		slot: EquipSlot;
+		slotLabel: string;
+		name: string;
+		attuned: boolean | undefined;
+		effects: string[];
+	}[];
+}
+
+/**
+ * Tudo o que o PDF precisa dos itens equipados: números com itens, ataques e a
+ * lista do que está vestido. `null` fora do D&D 5e (não há vínculo de itens).
+ */
+export function buildEquipmentReport(
+	character: Character,
+	itemsById: ReadonlyMap<string, Item>,
+): EquipmentReport | null {
+	if (character.system !== "dnd5e") return null;
+	const stats = computeEffectiveStats(character, itemsById);
+	const proficiency =
+		character.proficiencyBonus ||
+		calculateProficiencyBonus(character.level || 1);
+	const blocked = new Set(stats.blockedByTwoHanded.map((l) => l.entry.id));
+	const attacks = getEquippedWeaponAttacks(
+		resolveLinkedInventory(character.inventoryList, itemsById).filter(
+			(entry) => !blocked.has(entry.id),
+		),
+		stats.scores,
+		proficiency,
+		stats.weaponBonuses,
+	).map((attack) => ({
+		name: attack.name,
+		hit: attack.attackBonus,
+		damage: attack.formula,
+		types: attack.types.map((t) => DAMAGE_TYPE_LABELS[t].toLowerCase()),
+	}));
+	const { bySlot } = resolveSlots(stats.linked);
+	const equipped = EQUIP_SLOTS.flatMap((slot) => {
+		const l = bySlot.get(slot);
+		if (!l) return [];
+		return [
+			{
+				slot,
+				slotLabel: EQUIP_SLOT_LABELS[slot],
+				name: l.item.name,
+				attuned: l.item.requiresAttunement
+					? l.entry.isAttuned === true
+					: undefined,
+				effects: describeItemEffects(l.item).map(
+					(c) => `${c.label} ${c.value}`,
+				),
+			},
+		];
+	});
+	return {
+		abilities: ABILITY_KEYS.map((key) => ({
+			key,
+			base: stats.abilities[key].base,
+			total: stats.abilities[key].total,
+			modifier: calculateAbilityModifier(stats.abilities[key].total),
+		})),
+		ac: stats.ac.total,
+		initiative: stats.initiative.total,
+		speed: stats.speed.total,
+		savesBonus: stats.saves.total,
+		attacks,
+		equipped,
 	};
 }
 
@@ -440,8 +606,10 @@ function freeAttunement(
 
 export interface EquipOutcome {
 	inventory: InventoryItem[];
-	/** Entrada que saiu do slot para a mochila, se havia. */
+	/** Primeira entrada que saiu do slot para a mochila, se havia. */
 	displaced?: InventoryItem;
+	/** Todas as que saíram (uma arma de duas mãos pode tirar duas). */
+	displacedAll: InventoryItem[];
 	/** Exige sintonização e já havia 3: ficou equipado, mas sem sintonizar. */
 	attunementFull: boolean;
 }
@@ -464,14 +632,31 @@ export function equipEntryInSlot(
 	const linked = resolveLinkedEntries([...inventory], itemsById);
 	const target = linked.find((l) => l.entry.id === entryId);
 	if (!target || !slotsForItem(target.item).includes(slot)) {
-		return { inventory: [...inventory], attunementFull: false };
+		return {
+			inventory: [...inventory],
+			displacedAll: [],
+			attunementFull: false,
+		};
 	}
-	const occupant = resolveSlots(linked).bySlot.get(slot);
-	const ignore = new Set([entryId, occupant?.entry.id ?? ""]);
+	const map = resolveSlots(linked);
+	// Quem sai: o do slot; com arma de duas mãos, também o da mão secundária;
+	// e, indo para a mão secundária, a arma de duas mãos que ocupava as duas.
+	const leaving = new Set<string>();
+	const occupant = map.bySlot.get(slot);
+	if (occupant) leaving.add(occupant.entry.id);
+	if (isTwoHanded(target.item)) {
+		const off = map.bySlot.get("offHand");
+		if (off) leaving.add(off.entry.id);
+		for (const l of map.blockedByTwoHanded) leaving.add(l.entry.id);
+	}
+	if (slot === "offHand" && map.twoHanded) leaving.add(map.twoHanded.entry.id);
+	leaving.delete(entryId);
+
+	const ignore = new Set([entryId, ...leaving]);
 	const needsAttunement = target.item.requiresAttunement;
 	const canAttune = !needsAttunement || freeAttunement(linked, ignore);
 
-	let displaced: InventoryItem | undefined;
+	const displacedAll: InventoryItem[] = [];
 	const next = inventory.map((entry) => {
 		if (entry.id === entryId) {
 			return {
@@ -481,15 +666,20 @@ export function equipEntryInSlot(
 				...(needsAttunement ? { isAttuned: canAttune } : {}),
 			};
 		}
-		if (occupant && entry.id === occupant.entry.id) {
-			displaced = { ...withoutSlot(entry), location: "backpack" };
-			return displaced;
+		if (leaving.has(entry.id)) {
+			const out: InventoryItem = {
+				...withoutSlot(entry),
+				location: "backpack",
+			};
+			displacedAll.push(out);
+			return out;
 		}
 		return entry;
 	});
 	return {
 		inventory: next,
-		displaced,
+		displaced: displacedAll[0],
+		displacedAll,
 		attunementFull: needsAttunement && !canAttune,
 	};
 }
@@ -503,7 +693,11 @@ export function equipNewItemInSlot(
 	options: { proficient?: boolean; newId?: () => string } = {},
 ): EquipOutcome {
 	if (!slotsForItem(item).includes(slot)) {
-		return { inventory: [...inventory], attunementFull: false };
+		return {
+			inventory: [...inventory],
+			displacedAll: [],
+			attunementFull: false,
+		};
 	}
 	const entry = makeLinkedEntry(
 		item,

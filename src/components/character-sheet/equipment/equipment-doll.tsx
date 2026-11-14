@@ -89,6 +89,7 @@ function AbilityStrip({ abilities }: { abilities: AbilityScoreStats }) {
 export function EquipmentDoll({
 	character,
 	bySlot,
+	twoHanded,
 	abilities,
 	portraitUrl,
 	imageFor,
@@ -98,6 +99,8 @@ export function EquipmentDoll({
 }: {
 	character: Character;
 	bySlot: ReadonlyMap<EquipSlot, LinkedEntry>;
+	/** Arma de duas mãos na principal (bloqueia a secundária). */
+	twoHanded?: LinkedEntry;
 	abilities: AbilityScoreStats;
 	portraitUrl: string;
 	imageFor: (item: Item) => string;
@@ -112,6 +115,8 @@ export function EquipmentDoll({
 				key={slot}
 				slot={slot}
 				linked={linked}
+				blockedBy={slot === "offHand" ? twoHanded : undefined}
+				blockedImageUrl={twoHanded ? imageFor(twoHanded.item) : ""}
 				imageUrl={linked ? imageFor(linked.item) : ""}
 				canEdit={canEdit}
 				selected={selectedSlot === slot}

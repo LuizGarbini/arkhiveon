@@ -8,9 +8,8 @@ import {
 	calculateProficiencyBonus,
 	canFireAmmo,
 	canSpendAmmo,
-	computeAbilityScores,
+	computeEffectiveStats,
 	DAMAGE_TYPE_LABELS,
-	effectiveScores,
 	explainAttack,
 	explainDamage,
 	formatDamageFormula,
@@ -18,7 +17,6 @@ import {
 	getEquippedWeaponAttacks,
 	isCatalogAmmoEntry,
 	parseDamageFormula,
-	resolveLinkedEntries,
 	resolveLinkedInventory,
 	type WeaponAttack,
 	weaponUsesAmmunition,
@@ -213,20 +211,20 @@ export function WeaponAttacksSection({
 			),
 		[character.inventoryList, itemsById],
 	);
-	// Atributos com os itens equipados (Luvas de Força de Ogro etc.).
-	const scores = useMemo(
-		() =>
-			computeAbilityScores(
-				character,
-				resolveLinkedEntries(character.inventoryList, itemsById),
-			),
+	// Atributos e bônus de acerto/dano dos itens equipados.
+	const stats = useMemo(
+		() => computeEffectiveStats(character, itemsById),
 		[character, itemsById],
 	);
-	const abilityScores = useMemo(() => effectiveScores(scores), [scores]);
-	const attacks = useMemo(
-		() => getEquippedWeaponAttacks(resolved, abilityScores, proficiencyBonus),
-		[resolved, abilityScores, proficiencyBonus],
-	);
+	const attacks = useMemo(() => {
+		const blocked = new Set(stats.blockedByTwoHanded.map((l) => l.entry.id));
+		return getEquippedWeaponAttacks(
+			resolved.filter((entry) => !blocked.has(entry.id)),
+			stats.scores,
+			proficiencyBonus,
+			stats.weaponBonuses,
+		);
+	}, [resolved, stats, proficiencyBonus]);
 	const entryById = useMemo(
 		() => new Map(resolved.map((e) => [e.id, e])),
 		[resolved],

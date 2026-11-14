@@ -258,14 +258,24 @@ const s = (text: string): ProseSegment => ({ text });
 const b = (text: string): ProseSegment => ({ text, strong: true });
 
 /** Artigo pelo fim da primeira palavra ("a Espada", "o Arco", "o Anel"). */
-export function articleFor(name: string): "a" | "o" {
+export function articleFor(name: string): "a" | "o" | "as" | "os" {
 	const first = name
 		.trim()
 		.split(/\s+/)[0]
 		?.toLowerCase()
 		.normalize("NFD")
 		.replace(/[\u0300-\u036f]/g, "");
+	// Plural primeiro ("as Botas", "os Óculos"); depois o gênero pelo fim.
+	if (first && first.length > 3) {
+		if (first.endsWith("as")) return "as";
+		if (first.endsWith("os")) return "os";
+	}
 	return first?.endsWith("a") ? "a" : "o";
+}
+
+/** "dá" ou "dão", conforme o nome do item seja plural ("as Botas dão"). */
+function givesVerb(name: string): string {
+	return articleFor(name).endsWith("s") ? " dão " : " dá ";
 }
 
 function shortName(name: string): string {
@@ -315,7 +325,7 @@ export function explainDamage(attack: WeaponAttack): Explanation {
 		clauses.push([
 			s(`${articleFor(attack.name)} `),
 			b(attack.name),
-			s(" rola "),
+			s(articleFor(attack.name).endsWith("s") ? " rolam " : " rola "),
 			b(formatDamageFormula(weapon.dice, weapon.flat)),
 		]);
 	for (const p of counted) {
@@ -326,6 +336,13 @@ export function explainDamage(attack: WeaponAttack): Explanation {
 			]);
 		else if (p.origin === "magic")
 			clauses.push([s("a magia da arma dá "), b(formatModifier(p.flat))]);
+		else if (p.origin === "item")
+			clauses.push([
+				s(`${articleFor(p.label)} `),
+				b(p.label),
+				s(givesVerb(p.label)),
+				b(formatModifier(p.flat)),
+			]);
 		else if (p.origin === "extra")
 			clauses.push([
 				b(p.label),
@@ -355,7 +372,9 @@ export function explainDamage(attack: WeaponAttack): Explanation {
 					? p.label
 					: p.origin === "magic"
 						? "Mágica"
-						: p.label,
+						: p.origin === "item"
+							? shortName(p.label)
+							: p.label,
 	}));
 	return {
 		sentence: sentence(head, clauses),
@@ -373,9 +392,17 @@ export function explainAttack(attack: WeaponAttack): Explanation {
 		if (p.label === "Proficiência") {
 			clauses.push([s("você soma proficiência "), b(v)]);
 			blocks.push({ value: v, label: "Prof." });
-		} else if (p.label === "Arma mágica") {
+		} else if (p.label === "Arma mágica" && p.source !== "item") {
 			clauses.push([s("a magia da arma dá "), b(v)]);
 			blocks.push({ value: v, label: "Mágica" });
+		} else if (p.source === "item") {
+			clauses.push([
+				s(`${articleFor(p.label)} `),
+				b(p.label),
+				s(givesVerb(p.label)),
+				b(v),
+			]);
+			blocks.push({ value: v, label: shortName(p.label) });
 		} else {
 			clauses.push([s(possessive(p.label)), b(`${p.label} ${v}`)]);
 			blocks.push({ value: v, label: p.label });
@@ -420,7 +447,12 @@ export function explainArmorClass(stat: ArmorClassStat): Explanation {
 			);
 			blocks.push({ value: v, label: "Destreza" });
 		} else {
-			clauses.push([s(`${articleFor(p.label)} `), b(p.label), s(" dá "), b(v)]);
+			clauses.push([
+				s(`${articleFor(p.label)} `),
+				b(p.label),
+				s(givesVerb(p.label)),
+				b(v),
+			]);
 			blocks.push({ value: v, label: p.label });
 		}
 	}
@@ -452,7 +484,12 @@ export function explainInitiative(stat: CombatStat): Explanation {
 			clauses.push([s("a ficha ajusta "), b(v)]);
 			blocks.push({ value: v, label: "Ajuste da ficha" });
 		} else {
-			clauses.push([s(`${articleFor(p.label)} `), b(p.label), s(" dá "), b(v)]);
+			clauses.push([
+				s(`${articleFor(p.label)} `),
+				b(p.label),
+				s(givesVerb(p.label)),
+				b(v),
+			]);
 			blocks.push({ value: v, label: shortName(p.label) });
 		}
 	}

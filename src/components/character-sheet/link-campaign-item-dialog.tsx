@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+	computeAbilityScores,
+	computeWeaponItemBonuses,
 	describeLinkCandidate,
+	effectiveScores,
 	type InventoryLocation,
 	LINK_FILTERS,
 	type LinkedEntry,
@@ -156,6 +159,14 @@ function LinkCampaignItemBody({
 
 	const selected = items.find((i) => i.id === selectedId) ?? null;
 	const isWeapon = selected ? linkKindOf(selected) === "weapon" : false;
+	// Atributos e bônus de acerto/dano dos itens que a ficha já veste.
+	const effective = useMemo(
+		() => ({
+			scores: effectiveScores(computeAbilityScores(character, current)),
+			weaponBonuses: computeWeaponItemBonuses(current),
+		}),
+		[character, current],
+	);
 	const effect = useMemo(
 		() =>
 			selected
@@ -164,9 +175,10 @@ function LinkCampaignItemBody({
 						character,
 						{ location, proficient },
 						current,
+						effective,
 					)
 				: null,
-		[selected, character, location, proficient, current],
+		[selected, character, location, proficient, current, effective],
 	);
 	const firstName =
 		character.characterName?.trim().split(/\s+/)[0] || "O personagem";

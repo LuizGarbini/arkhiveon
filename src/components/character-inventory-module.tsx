@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import {
 	ABILITY_LABELS,
+	computeEffectiveStats,
 	DAMAGE_TYPE_LABELS,
 	DAMAGE_TYPES,
 	normalizeWeaponAbility,
@@ -111,6 +112,12 @@ export function CharacterInventoryModule({
 	const linkedEntries = useMemo(
 		() => resolveLinkedEntries(inventoryList, campaignItems.byId),
 		[inventoryList, campaignItems.byId],
+	);
+	// Atributos e bônus de acerto/dano dos itens equipados: o acerto mostrado em
+	// cada card tem de bater com a seção de ataques.
+	const effectiveStats = useMemo(
+		() => computeEffectiveStats(character, campaignItems.byId),
+		[character, campaignItems.byId],
 	);
 	const patchEntry = (id: string, patch: Partial<InventoryItem>) => {
 		onUpdateCharacter({
@@ -872,6 +879,7 @@ export function CharacterInventoryModule({
 										item={campaignItems.byId.get(item.campaignItemId) ?? null}
 										character={character}
 										canEditLink={canLink}
+										effective={effectiveStats}
 										onChange={(patch) => patchEntry(item.id, patch)}
 										onQuantity={(delta) => handleUpdateQuantity(item.id, delta)}
 										onUnlink={() => handleRemoveItem(item.id)}

@@ -18,6 +18,20 @@ import { useRPGStore } from "@/lib/store";
 import type { Character, InventoryItem, Item } from "@/lib/store/types";
 
 vi.mock("@/lib/supabase", () => ({ getSupabase: () => null }));
+const auth = vi.hoisted(() => ({ userId: "" }));
+vi.mock("@/lib/auth", async (orig) => ({
+	...(await orig<typeof import("@/lib/auth")>()),
+	useAuth: () => ({
+		user: auth.userId ? { id: auth.userId } : null,
+		session: auth.userId ? { user: { id: auth.userId } } : null,
+	}),
+}));
+const equipOwner = vi.hoisted(() => ({
+	save: vi.fn(async () => ({ ok: true }) as { ok: boolean; message?: string }),
+}));
+vi.mock("@/lib/character-equipment", () => ({
+	saveEquipmentAsOwner: equipOwner.save,
+}));
 
 import { EquipmentDialog } from "./equipment-dialog";
 
@@ -91,9 +105,11 @@ const updateCharacter = vi.fn();
 function setup({
 	role = "owner",
 	inventory,
+	createdBy,
 }: {
 	role?: "owner" | "viewer";
 	inventory: InventoryItem[];
+	createdBy?: string;
 }) {
 	const character = {
 		...thalia,
@@ -104,6 +120,7 @@ function setup({
 		healthMax: 58,
 		armorClass: 11,
 		characterName: "Thalia",
+		createdBy: createdBy ?? thalia.createdBy,
 		inventoryList: inventory,
 	} as unknown as Character;
 	useRPGStore.setState({
@@ -127,6 +144,8 @@ function setup({
 
 beforeEach(() => {
 	updateCharacter.mockReset();
+	equipOwner.save.mockClear();
+	auth.userId = "";
 });
 afterEach(cleanup);
 
@@ -273,7 +292,62 @@ describe("EquipmentDialog", () => {
 		});
 		const emptyHead = screen.getByRole("button", { name: /Cabeça: vazio/ });
 		expect((emptyHead as HTMLButtonElement).disabled).toBe(true);
-		expect(screen.getByText(/Só o mestre e os co-mestres/)).toBeTruthy();
+		expect(screen.getByText(/Só quem criou a ficha, o mestre/)).toBeTruthy();
+	});
+
+	describe("jogador (quem criou a ficha)", () => {
+		const asPlayer = (inventory: InventoryItem[]) => {
+			auth.userId = "player-1";
+			return setup({ role: "viewer", inventory, createdBy: "player-1" });
+		};
+
+		it("equipa o que já tem, pela função segura e não pela ficha", () => {
+			asPlayer([entry(protRing, "backpack")]);
+			fireEvent.click(screen.getByRole("button", { name: /Anel 1: vazio/ }));
+			fireEvent.click(screen.getByRole("button", { name: /Anel da Proteção/ }));
+			fireEvent.click(screen.getByRole("button", { name: "Equipar" }));
+			expect(updateCharacter).not.toHaveBeenCalled();
+			expect(equipOwner.save).toHaveBeenCalledTimes(1);
+			const [input] = equipOwner.save.mock.calls[0] as unknown as [
+				{ characterId: string; next: InventoryItem[] },
+			];
+			expect(input.characterId).toBe(thalia.id);
+			expect(input.next[0]).toMatchObject({
+				location: "equipped",
+				slot: "ring1",
+			});
+		});
+
+		it("não vê itens da campanha que não são dele para equipar", () => {
+			asPlayer([]);
+			fireEvent.click(screen.getByRole("button", { name: /Anel 2: vazio/ }));
+			expect(screen.queryByText("Anel da Evasão")).toBeNull();
+			expect(screen.queryByText("Itens da campanha")).toBeNull();
+		});
+
+		it("desequipar também vai pela função segura", () => {
+			asPlayer([entry(longsword, "equipped", { slot: "mainHand" })]);
+			fireEvent.click(
+				screen.getByRole("button", { name: /Mão principal: Espada longa/ }),
+			);
+			fireEvent.click(screen.getByRole("button", { name: "Desequipar" }));
+			expect(updateCharacter).not.toHaveBeenCalled();
+			const [input] = equipOwner.save.mock.calls[0] as unknown as [
+				{ next: InventoryItem[] },
+			];
+			expect(input.next[0]).toMatchObject({ location: "backpack" });
+		});
+
+		it("jogador de outra ficha continua só lendo", () => {
+			auth.userId = "outro-jogador";
+			setup({
+				role: "viewer",
+				inventory: [entry(protRing, "backpack")],
+				createdBy: "player-1",
+			});
+			const emptyHead = screen.getByRole("button", { name: /Cabeça: vazio/ });
+			expect((emptyHead as HTMLButtonElement).disabled).toBe(true);
+		});
 	});
 
 	it("equipado sem slot aparece à parte, com Desequipar", () => {

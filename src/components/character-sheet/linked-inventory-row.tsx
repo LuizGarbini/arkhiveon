@@ -33,6 +33,8 @@ import {
 	describeLinkCandidate,
 	type InventoryLocation,
 	previewLinkEffect,
+	type WeaponAbilityScores,
+	type WeaponItemBonuses,
 } from "@/core/rules";
 import { resolveItemImageUrl } from "@/lib/character-images";
 import { useActiveCampaignRole, useImageAssetLookup } from "@/lib/store";
@@ -410,6 +412,7 @@ export function LinkedInventoryRow({
 	item,
 	character,
 	canEditLink,
+	effective,
 	onChange,
 	onQuantity,
 	onUnlink,
@@ -433,6 +436,11 @@ export function LinkedInventoryRow({
 		| "initiative"
 	>;
 	canEditLink: boolean;
+	/** Atributos e bônus de acerto/dano dos itens equipados (para o acerto do card). */
+	effective?: {
+		scores?: Partial<WeaponAbilityScores>;
+		weaponBonuses?: WeaponItemBonuses;
+	};
 	onChange: (patch: Partial<InventoryItem>) => void;
 	onQuantity: (delta: number) => void;
 	onUnlink: () => void;
@@ -443,10 +451,16 @@ export function LinkedInventoryRow({
 	const isWeapon = entry.category === "weapon";
 	const weight = (entry.weightLbs || 0) * (entry.quantity || 1);
 	const effect = item
-		? previewLinkEffect(item, character, {
-				location: entry.location,
-				proficient: entry.proficient !== false,
-			})
+		? previewLinkEffect(
+				item,
+				character,
+				{
+					location: entry.location,
+					proficient: entry.proficient !== false,
+				},
+				[],
+				effective,
+			)
 		: null;
 	const showSheetEffect =
 		effect !== null && (effect.kind === "attack" || effect.kind === "defense");

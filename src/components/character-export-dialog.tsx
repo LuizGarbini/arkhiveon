@@ -1,5 +1,6 @@
 import { Download, Image as ImageIcon, Palette, Stamp } from "lucide-react";
 import { useId, useState } from "react";
+import { useCampaignItems } from "@/components/character-sheet/use-linked-items";
 import type {
 	CharacterSheetPdfOptions,
 	CharacterSheetPdfVariant,
@@ -32,6 +33,8 @@ export function CharacterExportDialog({
 	const [includeAppLogo, setIncludeAppLogo] = useState(true);
 	const [isExporting, setIsExporting] = useState(false);
 	const variantSelectId = useId();
+	// Itens da campanha: a ficha D&D 5e sai com os itens equipados contados.
+	const { byId: itemsById } = useCampaignItems();
 
 	const hasImage = !!character.imageUrl;
 
@@ -40,6 +43,7 @@ export function CharacterExportDialog({
 			variant,
 			includeImage: includeImage && hasImage,
 			includeAppLogo,
+			itemsById,
 		};
 		setIsExporting(true);
 		try {

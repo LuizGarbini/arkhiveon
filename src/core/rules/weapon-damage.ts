@@ -28,7 +28,7 @@ export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
 
 export const DAMAGE_TYPES = Object.keys(DAMAGE_TYPE_LABELS) as DamageType[];
 
-export type DamageOrigin = "weapon" | "ability" | "magic" | "extra";
+export type DamageOrigin = "weapon" | "ability" | "magic" | "extra" | "item";
 
 export interface DiceTerm {
 	count: number;
@@ -48,6 +48,14 @@ export interface DamagePart {
 export interface AttackPart {
 	label: string;
 	value: number;
+	/** `item`: bônus geral de um item equipado (não é da arma). */
+	source?: "item";
+}
+
+/** Bônus de itens equipados que somam em todos os ataques (sem condição). */
+export interface WeaponItemBonuses {
+	attack: { label: string; value: number }[];
+	damage: { label: string; value: number }[];
 }
 
 export interface DamageByType {
@@ -219,6 +227,7 @@ export function buildWeaponAttack(
 	item: InventoryItem & { weapon: InventoryWeaponStats },
 	scores: Partial<WeaponAbilityScores>,
 	proficiencyBonus: number,
+	itemBonuses?: WeaponItemBonuses,
 ): WeaponAttack {
 	const w = item.weapon;
 	const base = parseDamageFormula(w.damageDice) ?? { dice: [], flat: 0 };
@@ -231,6 +240,10 @@ export function buildWeaponAttack(
 		attackParts.push({ label: "Proficiência", value: proficiencyBonus });
 	attackParts.push({ label: ability.label, value: ability.mod });
 	if (magic !== 0) attackParts.push({ label: "Arma mágica", value: magic });
+	for (const b of itemBonuses?.attack ?? []) {
+		if (b.value !== 0)
+			attackParts.push({ label: b.label, value: b.value, source: "item" });
+	}
 	const attackBonus = attackParts.reduce((s, p) => s + p.value, 0);
 
 	const damageParts: DamagePart[] = [
@@ -257,6 +270,17 @@ export function buildWeaponAttack(
 			label: "Arma mágica",
 			dice: [],
 			flat: magic,
+			type: w.damageType,
+			excluded: false,
+		});
+	}
+	for (const b of itemBonuses?.damage ?? []) {
+		if (b.value === 0) continue;
+		damageParts.push({
+			origin: "item",
+			label: b.label,
+			dice: [],
+			flat: b.value,
 			type: w.damageType,
 			excluded: false,
 		});
@@ -320,8 +344,11 @@ export function getEquippedWeaponAttacks(
 	inventory: InventoryItem[] | undefined,
 	scores: Partial<WeaponAbilityScores>,
 	proficiencyBonus: number,
+	itemBonuses?: WeaponItemBonuses,
 ): WeaponAttack[] {
 	return (inventory ?? [])
 		.filter(isEquippedWeapon)
-		.map((item) => buildWeaponAttack(item, scores, proficiencyBonus));
+		.map((item) =>
+			buildWeaponAttack(item, scores, proficiencyBonus, itemBonuses),
+		);
 }

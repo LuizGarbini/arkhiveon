@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryItem, Item } from "@/lib/store/types";
-import { computeArmorClass, computeInitiative } from "./combat-stats";
+import {
+	articleFor,
+	computeArmorClass,
+	computeInitiative,
+	explainAttack,
+	explainDamage,
+	proseText,
+} from "./combat-stats";
 import {
 	attunedCount,
 	computeAbilityScores,
 	computeEffectiveStats,
 	computeSavesBonus,
 	computeSpeed,
+	computeWeaponItemBonuses,
 	defaultSlotFor,
 	describeAbilityBonus,
 	describeItemEffects,
@@ -14,6 +22,7 @@ import {
 	equipEntryInSlot,
 	equipNewItemInSlot,
 	estimateHealthMax,
+	isTwoHanded,
 	itemSlotOf,
 	MAX_ATTUNED_ITEMS,
 	resolveSlots,
@@ -543,6 +552,273 @@ describe("equipar e desequipar", () => {
 		equipEntryInSlot(inv, map, `inv-${longsword.id}`, "mainHand");
 		unequipEntry(inv, `inv-${longsword.id}`);
 		expect(inv).toEqual(snapshot);
+	});
+});
+
+const greatsword = make("greatsword", {
+	name: "Espadão da Aurora",
+	type: "Arma",
+	requiresAttunement: false,
+	weapon: {
+		damageDice: "2d6",
+		damageType: "slashing",
+		magicBonus: 1,
+		ability: "strength",
+		weaponCategory: "martial",
+		properties: ["two_handed", "heavy"],
+		customProperties: [],
+		extraDamage: [],
+	},
+});
+const dagger = make("dagger", {
+	name: "Adaga",
+	type: "Arma",
+	requiresAttunement: false,
+	weapon: {
+		damageDice: "1d4",
+		damageType: "piercing",
+		ability: "dexterity",
+		weaponCategory: "simple",
+		properties: ["light", "finesse"],
+		customProperties: [],
+		extraDamage: [],
+	},
+});
+const bracers = make("bracers", {
+	name: "Braçadeiras do Duelista",
+	type: "Item Maravilhoso",
+	slot: "hands",
+	requiresAttunement: false,
+	bonuses: [
+		{ id: "x1", target: "attack", value: 1 },
+		{ id: "x2", target: "damage", value: 2 },
+		{ id: "x3", target: "damage", value: 5, when: "contra mortos-vivos" },
+	],
+});
+
+describe("arma de duas mãos", () => {
+	const map = byId(greatsword, shield, dagger, longsword);
+
+	it("só cabe na mão principal", () => {
+		expect(isTwoHanded(greatsword)).toBe(true);
+		expect(isTwoHanded(longsword)).toBe(false);
+		expect(slotsForItem(greatsword)).toEqual(["mainHand"]);
+		expect(slotsForItem(longsword)).toEqual(["mainHand", "offHand"]);
+	});
+
+	it("equipar o espadão tira o escudo e a arma que estavam nas mãos", () => {
+		const inv = [
+			entry(longsword, "equipped", { slot: "mainHand" }),
+			entry(shield, "equipped", { slot: "offHand" }),
+			entry(greatsword, "backpack"),
+		];
+		const out = equipEntryInSlot(inv, map, `inv-${greatsword.id}`, "mainHand");
+		expect(out.displacedAll.map((e) => e.id).sort()).toEqual(
+			[`inv-${longsword.id}`, `inv-${shield.id}`].sort(),
+		);
+		for (const id of [`inv-${longsword.id}`, `inv-${shield.id}`]) {
+			const e = out.inventory.find((x) => x.id === id);
+			expect(e).toMatchObject({ location: "backpack" });
+			expect(e?.slot).toBeUndefined();
+		}
+		expect(
+			out.inventory.find((e) => e.id === `inv-${greatsword.id}`),
+		).toMatchObject({ location: "equipped", slot: "mainHand" });
+	});
+
+	it("equipar escudo com o espadão nas mãos devolve o espadão", () => {
+		const inv = [
+			entry(greatsword, "equipped", { slot: "mainHand" }),
+			entry(shield, "backpack"),
+		];
+		const out = equipEntryInSlot(inv, map, `inv-${shield.id}`, "offHand");
+		expect(out.displacedAll.map((e) => e.id)).toEqual([`inv-${greatsword.id}`]);
+		expect(
+			out.inventory.find((e) => e.id === `inv-${shield.id}`),
+		).toMatchObject({
+			location: "equipped",
+			slot: "offHand",
+		});
+	});
+
+	it("não deixa pôr o espadão na mão secundária", () => {
+		const inv = [entry(greatsword, "backpack")];
+		const out = equipEntryInSlot(inv, map, `inv-${greatsword.id}`, "offHand");
+		expect(out.inventory).toEqual(inv);
+	});
+
+	it("sem conflito não tira ninguém", () => {
+		const inv = [entry(greatsword, "backpack")];
+		const out = equipEntryInSlot(inv, map, `inv-${greatsword.id}`, "mainHand");
+		expect(out.displacedAll).toEqual([]);
+	});
+
+	it("o boneco mostra a mão secundária bloqueada", () => {
+		const linked = linkedOf(
+			[greatsword],
+			[entry(greatsword, "equipped", { slot: "mainHand" })],
+		);
+		const slots = resolveSlots(linked);
+		expect(slots.twoHanded?.item.id).toBe(greatsword.id);
+		expect(slots.bySlot.has("offHand")).toBe(false);
+	});
+
+	it("ficha antiga com espadão + escudo: o escudo fica de fora e não soma CA", () => {
+		const sheet = { ...thalia, armorClass: 11 } as typeof thalia;
+		const withBoth = computeEffectiveStats(
+			{
+				...sheet,
+				inventoryList: [
+					entry(greatsword, "equipped"),
+					entry(shield, "equipped"),
+				],
+			},
+			map,
+		);
+		expect(withBoth.blockedByTwoHanded.map((l) => l.item.id)).toEqual([
+			shield.id,
+		]);
+		expect(withBoth.ac.total).toBe(11);
+		const withShieldOnly = computeEffectiveStats(
+			{ ...sheet, inventoryList: [entry(shield, "equipped")] },
+			map,
+		);
+		expect(withShieldOnly.ac.total).toBe(13);
+	});
+
+	it("uma arma de uma mão com escudo convive normalmente", () => {
+		const linked = linkedOf(
+			[longsword, shield],
+			[
+				entry(longsword, "equipped", { slot: "mainHand" }),
+				entry(shield, "equipped", { slot: "offHand" }),
+			],
+		);
+		const slots = resolveSlots(linked);
+		expect(slots.blockedByTwoHanded).toEqual([]);
+		expect(slots.bySlot.size).toBe(2);
+	});
+
+	it("o espadão e o escudo não se bloqueiam fora das mãos", () => {
+		// só o espadão equipado: nada bloqueado
+		const linked = linkedOf(
+			[greatsword],
+			[entry(greatsword, "equipped", { slot: "mainHand" })],
+		);
+		expect(resolveSlots(linked).blockedByTwoHanded).toEqual([]);
+	});
+});
+
+describe("bônus de acerto e dano dos itens", () => {
+	const sheet = { ...thalia, strength: 14, system: "dnd5e" } as typeof thalia;
+	const weaponEntry = (id: string) => ({
+		id,
+		name: "Espada",
+		quantity: 1,
+		weightLbs: 0,
+		location: "equipped" as const,
+		category: "weapon" as const,
+		weapon: {
+			damageDice: "1d8",
+			damageType: "slashing" as const,
+			ability: "strength" as const,
+			proficient: true,
+			extraDamage: [],
+		},
+	});
+
+	it("soma acerto e dano de itens equipados, ignorando os condicionais", () => {
+		const bonuses = computeWeaponItemBonuses(
+			linkedOf([bracers], [entry(bracers)]),
+		);
+		expect(bonuses.attack).toEqual([{ label: bracers.name, value: 1 }]);
+		expect(bonuses.damage).toEqual([{ label: bracers.name, value: 2 }]);
+	});
+
+	it("item na mochila não soma", () => {
+		const bonuses = computeWeaponItemBonuses(
+			linkedOf([bracers], [entry(bracers, "backpack")]),
+		);
+		expect(bonuses).toEqual({ attack: [], damage: [] });
+	});
+
+	it("entra no acerto e no dano da arma, com a origem na conta", () => {
+		const stats = computeEffectiveStats(
+			{
+				...sheet,
+				inventoryList: [entry(bracers, "equipped", { slot: "hands" })],
+			},
+			byId(bracers),
+		);
+		const attack = buildWeaponAttack(
+			weaponEntry("w1"),
+			stats.scores,
+			3,
+			stats.weaponBonuses,
+		);
+		// prof 3 + FOR 14 (+2) + braçadeiras +1 = +6 ; dano 1d8 + 2 + 2 = 1d8+4
+		expect(attack.attackBonus).toBe(6);
+		expect(attack.formula).toBe("1d8+4");
+		expect(attack.attackParts.at(-1)).toMatchObject({
+			label: bracers.name,
+			value: 1,
+			source: "item",
+		});
+		expect(attack.damageParts.at(-1)).toMatchObject({
+			origin: "item",
+			flat: 2,
+		});
+	});
+
+	it("sem itens o ataque é o mesmo de antes", () => {
+		const bare = buildWeaponAttack(weaponEntry("w1"), { strength: 14 }, 3);
+		expect(bare.attackBonus).toBe(5);
+		expect(bare.formula).toBe("1d8+2");
+	});
+
+	it("a explicação cita o item que deu o bônus", () => {
+		const attack = buildWeaponAttack(weaponEntry("w1"), { strength: 14 }, 3, {
+			attack: [{ label: "Braçadeiras do Duelista", value: 1 }],
+			damage: [{ label: "Braçadeiras do Duelista", value: 2 }],
+		});
+		expect(proseText(explainAttack(attack).sentence)).toContain(
+			"as Braçadeiras do Duelista dão +1",
+		);
+		expect(proseText(explainDamage(attack).sentence)).toContain(
+			"as Braçadeiras do Duelista dão +2",
+		);
+	});
+
+	it("o artigo e o verbo concordam com nomes no plural", () => {
+		expect(articleFor("Botas da Velocidade")).toBe("as");
+		expect(articleFor("Óculos de Visão")).toBe("os");
+		expect(articleFor("Anel da Proteção")).toBe("o");
+		expect(articleFor("Espada Longa")).toBe("a");
+	});
+
+	it("espadão de duas mãos com FOR de itens: acerto e dano sobem juntos", () => {
+		const inv = [
+			entry(greatsword, "equipped", { slot: "mainHand" }),
+			entry(gauntlets, "equipped", { slot: "hands" }),
+		];
+		const stats = computeEffectiveStats(
+			{ ...sheet, inventoryList: inv },
+			byId(greatsword, gauntlets),
+		);
+		const resolved = [
+			{
+				...weaponEntry("g"),
+				weapon: {
+					...weaponEntry("g").weapon,
+					damageDice: "2d6",
+					magicBonus: 1,
+				},
+			},
+		];
+		const attack = buildWeaponAttack(resolved[0], stats.scores, 3);
+		// FOR 19 (+4): prof 3 + 4 + mágica 1 = +8 ; dano 2d6+5
+		expect(attack.attackBonus).toBe(8);
+		expect(attack.formula).toBe("2d6+5");
 	});
 });
 

@@ -90,9 +90,14 @@ export function EquipmentSlotTile({
 	selected,
 	onSelect,
 	layout,
+	blockedBy,
+	blockedImageUrl = "",
 }: {
 	slot: EquipSlot;
 	linked?: LinkedEntry;
+	/** Arma de duas mãos que ocupa este slot (só a mão secundária). */
+	blockedBy?: LinkedEntry;
+	blockedImageUrl?: string;
 	imageUrl: string;
 	canEdit: boolean;
 	selected: boolean;
@@ -111,6 +116,40 @@ export function EquipmentSlotTile({
 		? `${EQUIP_SLOT_LABELS[slot]}: ${item.name}${canEdit ? ". Trocar ou desequipar" : ""}`
 		: `${EQUIP_SLOT_LABELS[slot]}: vazio${canEdit ? ". Equipar item" : ""}`;
 	const disabled = !canEdit && !item;
+
+	if (blockedBy && !item) {
+		return (
+			<button
+				type="button"
+				aria-label={`${EQUIP_SLOT_LABELS[slot]}: ocupada por ${blockedBy.item.name}, arma de duas mãos${canEdit ? ". Equipar outro item aqui devolve a arma para a mochila" : ""}`}
+				aria-pressed={selected}
+				disabled={!canEdit}
+				onClick={() => onSelect(slot)}
+				className={cn(
+					"relative select-none overflow-hidden rounded-2xl border border-dashed border-border/80 bg-background/30 text-left transition-[transform,border-color,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:active:scale-100",
+					sizeClass,
+					selected &&
+						"ring-2 ring-primary shadow-[0_0_24px_var(--primary-glow)]",
+				)}
+			>
+				{blockedImageUrl ? (
+					<span className="absolute inset-0 opacity-30">
+						<FramedImage
+							src={blockedImageUrl}
+							alt=""
+							framing={blockedBy.item}
+						/>
+					</span>
+				) : null}
+				<span className="relative flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center">
+					<Hand className="size-5 text-muted-foreground" aria-hidden />
+					<span className="text-[10.5px] leading-tight font-semibold text-muted-foreground">
+						Duas mãos
+					</span>
+				</span>
+			</button>
+		);
+	}
 
 	return (
 		<button

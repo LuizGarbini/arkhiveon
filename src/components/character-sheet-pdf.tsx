@@ -7,9 +7,15 @@ import {
 	Text,
 	View,
 } from "@react-pdf/renderer";
+import {
+	buildEquipmentReport,
+	type EquipmentReport,
+	isWeaponAbilityKey,
+} from "@/core/rules";
 import { normalizeSheetLayout, SHEET_MODULE_LABELS } from "@/lib/sheet-modules";
 import type {
 	Character,
+	Item,
 	SheetModuleConfig,
 	SheetModuleKind,
 } from "@/lib/store";
@@ -22,7 +28,18 @@ export interface CharacterSheetPdfOptions {
 	variant?: CharacterSheetPdfVariant;
 	includeImage?: boolean;
 	includeAppLogo?: boolean;
+	/**
+	 * Itens da campanha. Com eles (D&D 5e), a ficha sai com atributos, CA,
+	 * iniciativa, deslocamento e ataques já contando os itens equipados.
+	 */
+	itemsById?: ReadonlyMap<string, Item>;
 }
+
+type ResolvedPdfOptions = Required<
+	Omit<CharacterSheetPdfOptions, "itemsById">
+> & {
+	itemsById: ReadonlyMap<string, Item>;
+};
 
 const styles = StyleSheet.create({
 	page: {
@@ -210,11 +227,12 @@ export async function downloadCharacterSheetPdf(
 	character: Character,
 	options: CharacterSheetPdfOptions = {},
 ) {
-	const normalizedOptions = {
+	const normalizedOptions: ResolvedPdfOptions = {
 		variant: options.variant ?? "color",
 		includeImage: options.includeImage ?? false,
 		includeAppLogo: options.includeAppLogo ?? true,
-	} satisfies Required<CharacterSheetPdfOptions>;
+		itemsById: options.itemsById ?? new Map<string, Item>(),
+	};
 	const blob = await pdf(
 		<CharacterSheetPdfDocument
 			character={character}
@@ -233,14 +251,16 @@ export async function downloadCharacterSheetPdf(
 	URL.revokeObjectURL(url);
 }
 
-function CharacterSheetPdfDocument({
+export function CharacterSheetPdfDocument({
 	character,
 	options,
 }: {
 	character: Character;
-	options: Required<CharacterSheetPdfOptions>;
+	options: ResolvedPdfOptions;
 }) {
 	const config = SYSTEM_CONFIG[character.system] ?? SYSTEM_CONFIG.generic;
+	// D&D 5e: números já com os itens equipados (null nos outros sistemas).
+	const report = buildEquipmentReport(character, options.itemsById);
 	const modules = normalizeSheetLayout(character)
 		.modules.filter((module) => module.enabled)
 		.sort((a, b) => a.order - b.order);
@@ -313,17 +333,19 @@ function CharacterSheetPdfDocument({
 								/>
 								<QuickPdfStat
 									label="CA"
-									value={String(character.armorClass)}
+									value={String(report?.ac ?? character.armorClass)}
 									theme={theme}
 								/>
 								<QuickPdfStat
 									label="Iniciativa"
-									value={formatSigned(character.initiative)}
+									value={formatSigned(
+										report?.initiative ?? character.initiative,
+									)}
 									theme={theme}
 								/>
 								<QuickPdfStat
 									label="Movimento"
-									value={`${character.speed}${config.speedUnit}`}
+									value={`${report?.speed ?? character.speed}${config.speedUnit}`}
 									theme={theme}
 								/>
 							</View>
@@ -338,6 +360,7 @@ function CharacterSheetPdfDocument({
 						character={character}
 						config={config}
 						theme={theme}
+						report={report}
 					/>
 				))}
 
@@ -373,14 +396,22 @@ function PdfModule({
 	character,
 	config,
 	theme,
+	report,
 }: {
 	module: SheetModuleConfig;
 	character: Character;
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG];
 	theme: typeof colorTheme;
+	report: EquipmentReport | null;
 }) {
 	const title = module.title || SHEET_MODULE_LABELS[module.kind];
-	const fields = moduleFields(module.kind, character, config, module.content);
+	const fields = moduleFields(
+		module.kind,
+		character,
+		config,
+		module.content,
+		report,
+	);
 	if (fields.length === 0) return null;
 
 	return (
@@ -414,6 +445,7 @@ function moduleFields(
 	character: Character,
 	config: (typeof SYSTEM_CONFIG)[keyof typeof SYSTEM_CONFIG],
 	content?: string,
+	report: EquipmentReport | null = null,
 ) {
 	const STANDARD_KEYS = [
 		"strength",
@@ -447,6 +479,18 @@ function moduleFields(
 				const val = isStandardKey(attr.key)
 					? Number(character[attr.key]) || 0
 					: Number(character.systemAttributes?.[attr.key]) || 0;
+				// Com itens equipados: valor efetivo; a base da ficha vai no rótulo.
+				const withItems =
+					report && isWeaponAbilityKey(attr.key)
+						? report.abilities.find((a) => a.key === attr.key)
+						: undefined;
+				if (withItems && withItems.total !== withItems.base) {
+					return field(
+						`${attr.label} (ficha ${withItems.base})`,
+						`${withItems.total} (${formatSigned(withItems.modifier)})`,
+						{ emphasis: true },
+					);
+				}
 				return field(attr.label, `${val} (${formatSigned(modifier(val))})`, {
 					emphasis: true,
 				});
@@ -455,12 +499,24 @@ function moduleFields(
 			return [
 				field("Pontos de Vida", `${character.health}/${character.healthMax}`),
 				field("PV Temporarios", String(character.tempHealth)),
-				field("Classe de Armadura", String(character.armorClass)),
-				field("Iniciativa", formatSigned(character.initiative)),
-				field("Movimento", String(character.speed)),
+				field("Classe de Armadura", String(report?.ac ?? character.armorClass)),
+				field(
+					"Iniciativa",
+					formatSigned(report?.initiative ?? character.initiative),
+				),
+				field("Movimento", String(report?.speed ?? character.speed)),
 				field("Dados de Vida", character.hitDice),
 				field("Proficiencia", formatSigned(character.proficiencyBonus)),
 				field("Salvaguardas", character.savingThrows, { full: true }),
+				...(report && report.savesBonus !== 0
+					? [
+							field(
+								"Bonus de itens (salvaguardas)",
+								formatSigned(report.savesBonus),
+							),
+						]
+					: []),
+				...attackFields(report),
 			];
 		case "sanity":
 			return [
@@ -480,6 +536,9 @@ function moduleFields(
 			];
 		case "inventory":
 			return [
+				...(report && report.equipped.length > 0
+					? [field("Equipado", equippedLines(report), { full: true })]
+					: []),
 				field("Equipamento", character.equipment, { full: true }),
 				field("Moedas", character.currency, { full: true }),
 			];
@@ -498,6 +557,44 @@ function moduleFields(
 		default:
 			return [];
 	}
+}
+
+/** Sem acento: o PDF usa a fonte padrão e o resto dos rótulos também não usa. */
+function plain(value: string) {
+	return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Um campo por arma equipada: "+8 para acertar - dano 1d8+5 cortante". */
+function attackFields(report: EquipmentReport | null) {
+	if (!report) return [];
+	const seen = new Map<string, number>();
+	return report.attacks.map((attack) => {
+		const count = (seen.get(attack.name) ?? 0) + 1;
+		seen.set(attack.name, count);
+		const label = `Ataque: ${attack.name}${count > 1 ? ` (${count})` : ""}`;
+		const types = attack.types.length ? ` ${attack.types.join("/")}` : "";
+		return field(
+			label,
+			`${formatSigned(attack.hit)} para acertar - dano ${attack.damage}${types}`,
+			{ full: true },
+		);
+	});
+}
+
+/** "Cabeca: Elmo do Vigia (Iniciativa +1)", um por linha; sintonia marcada. */
+function equippedLines(report: EquipmentReport) {
+	return report.equipped
+		.map((e) => {
+			const effects = e.effects.length ? ` (${e.effects.join(", ")})` : "";
+			const attune =
+				e.attuned === undefined
+					? ""
+					: e.attuned
+						? " [sintonizado]"
+						: " [sem sintonia]";
+			return `${plain(e.slotLabel)}: ${e.name}${effects}${attune}`;
+		})
+		.join("\n");
 }
 
 function field(

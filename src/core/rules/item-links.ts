@@ -27,6 +27,8 @@ import {
 	buildWeaponAttack,
 	DAMAGE_TYPE_LABELS,
 	normalizeWeaponAbility,
+	type WeaponAbilityScores,
+	type WeaponItemBonuses,
 	weaponAbilityScores,
 } from "./weapon-damage";
 
@@ -326,6 +328,14 @@ export function previewLinkEffect(
 	>,
 	{ location, proficient }: LinkOptions,
 	current: LinkedEntry[] = [],
+	/**
+	 * Atributos e bônus de acerto/dano que os itens já equipados dão. Sem isso o
+	 * preview usa os valores salvos na ficha.
+	 */
+	effective: {
+		scores?: Partial<WeaponAbilityScores>;
+		weaponBonuses?: WeaponItemBonuses;
+	} = {},
 ): LinkEffect {
 	if (location === "backpack") return effectOf("carry", "", [], "Só carrega");
 	if (location === "mount_stash") return effectOf("stash", "", [], "Não pesa");
@@ -345,8 +355,9 @@ export function previewLinkEffect(
 				category: "weapon",
 				weapon,
 			},
-			weaponAbilityScores(character),
+			{ ...weaponAbilityScores(character), ...effective.scores },
 			prof,
+			effective.weaponBonuses,
 		);
 		const single = attack.types.length === 1 ? attack.types[0] : undefined;
 		return effectOf(
@@ -373,10 +384,14 @@ export function previewLinkEffect(
 	const parts: LinkEffectPart[] = [];
 	const touches = (target: "ac" | "initiative") =>
 		(item.bonuses ?? []).some((b) => b.target === target && !b.when?.trim());
-	const ac: ArmorClassStat = computeArmorClass(character, next);
+	const ac: ArmorClassStat = computeArmorClass(
+		character,
+		next,
+		effective.scores?.dexterity,
+	);
 	if (ac.source === "items" && (item.armor || touches("ac")))
 		parts.push({ label: "CA", value: String(ac.total) });
-	const init = computeInitiative(character, next);
+	const init = computeInitiative(character, next, effective.scores?.dexterity);
 	if (init.source === "items" && touches("initiative"))
 		parts.push({ label: "Iniciativa", value: signed(init.total) });
 	if (parts.length > 0) {
