@@ -42,6 +42,12 @@ import {
 	type DragMove,
 	readDragBatch,
 } from "@/lib/vtt/drag-broadcast";
+import { useExploredStore } from "@/lib/vtt/explored-store";
+import {
+	exploredSync,
+	readExploredCells,
+	readExploredReset,
+} from "@/lib/vtt/explored-sync";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { subscribeMoves } from "@/lib/vtt/move-sync";
 import { useNotesStore } from "@/lib/vtt/notes-store";
@@ -263,12 +269,14 @@ function VTTSession() {
 				__combat_store__?: typeof useCombatStore;
 				__roll_store__?: typeof useRollStore;
 				__move_store__?: typeof useMoveStore;
+				__explored_store__?: typeof useExploredStore;
 			};
 			win.__vtt_store__ = useVTTStore;
 			win.__rpg_store__ = useRPGStore;
 			win.__combat_store__ = useCombatStore;
 			win.__roll_store__ = useRollStore;
 			win.__move_store__ = useMoveStore;
+			win.__explored_store__ = useExploredStore;
 		}
 	}, []);
 
@@ -741,6 +749,10 @@ function VTTSession() {
 		);
 
 		roomChannelRef.current = roomChannel;
+		// A memória de exploração avisa os outros por este canal.
+		exploredSync.bind((event, payload) => {
+			void roomChannel.send({ type: "broadcast", event, payload });
+		});
 
 		roomChannel
 			.on("presence", { event: "sync" }, () => {
@@ -819,6 +831,32 @@ function VTTSession() {
 					const moves = readDragBatch(payload.payload);
 					if (moves.length > 0) {
 						useVTTStore.getState().setTokenTargetPositions(moves);
+					}
+				},
+			)
+			.on(
+				"broadcast",
+				{ event: "explored_cells" },
+				(payload: { payload: unknown }) => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					const data = readExploredCells(payload.payload);
+					if (data && data.sceneId === activeSceneId) {
+						useExploredStore.getState().applyRemote(data.sceneId, data.cells);
+					}
+				},
+			)
+			.on(
+				"broadcast",
+				{ event: "explored_reset" },
+				(payload: { payload: unknown }) => {
+					if (cancelled) return;
+					const sceneId = readExploredReset(payload.payload);
+					if (sceneId && sceneId === activeSceneId) {
+						useExploredStore.getState().clear(sceneId);
 					}
 				},
 			)
@@ -989,6 +1027,9 @@ function VTTSession() {
 		return () => {
 			cancelled = true;
 			setOnlineUsers([]);
+			// Grava o que falta da exploração antes de largar o canal.
+			void exploredSync.flush();
+			exploredSync.bind(null);
 			client.removeChannel(roomChannel);
 			roomChannelRef.current = null;
 		};

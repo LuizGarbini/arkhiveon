@@ -1828,6 +1828,30 @@ export type Database = {
 				Args: { p_character_id: string; p_changes: Json };
 				Returns: Json;
 			};
+			get_scene_explored: {
+				Args: { p_scene_id: string };
+				Returns: {
+					cell_px: number;
+					cols: number;
+					rows: number;
+					bits: string;
+					updated_at: string;
+				}[];
+			};
+			explore_scene_cells: {
+				Args: {
+					p_scene_id: string;
+					p_cell_px: number;
+					p_cols: number;
+					p_rows: number;
+					p_cells: number[];
+				};
+				Returns: undefined;
+			};
+			reset_scene_explored: {
+				Args: { p_scene_id: string };
+				Returns: undefined;
+			};
 			set_character_hp: {
 				Args: { p_character_id: string; p_current: number; p_max?: number };
 				Returns: Json;

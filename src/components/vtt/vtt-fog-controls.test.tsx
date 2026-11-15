@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
+import { exploredSync } from "@/lib/vtt/explored-sync";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -202,4 +203,89 @@ it("offline recusa sem overlay aceito não executa Revelar Tudo", async () => {
 	} finally {
 		online.mockRestore();
 	}
+});
+
+describe("Esquecer o que já foi explorado", () => {
+	function renderControls(fogExploration: boolean) {
+		render(
+			<ToastProvider>
+				<VTTFogControls
+					scene={{ ...scene, fogEnabled: true, fogExploration }}
+					onUpdateScene={vi.fn(async () => {})}
+					onClearFog={vi.fn()}
+				/>
+			</ToastProvider>,
+		);
+	}
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it("só aparece com o modo Exploração ligado", () => {
+		renderControls(false);
+		expect(screen.queryByText("Esquecer o que já foi explorado")).toBeNull();
+		cleanup();
+		renderControls(true);
+		expect(screen.getByText("Esquecer o que já foi explorado")).toBeTruthy();
+	});
+
+	it("o primeiro toque só pede confirmação; o segundo esquece", async () => {
+		const reset = vi
+			.spyOn(exploredSync, "reset")
+			.mockResolvedValue({ ok: true });
+		renderControls(true);
+		fireEvent.click(screen.getByText("Esquecer o que já foi explorado"));
+		expect(reset).not.toHaveBeenCalled();
+		fireEvent.click(screen.getByText("Toque de novo para confirmar"));
+		await waitFor(() => expect(reset).toHaveBeenCalledWith("scene-1"));
+		await waitFor(() =>
+			expect(screen.getByText(/Mapa esquecido/)).toBeTruthy(),
+		);
+	});
+
+	it("a confirmação some sozinha depois de 4 s", () => {
+		vi.useFakeTimers();
+		try {
+			renderControls(true);
+			fireEvent.click(screen.getByText("Esquecer o que já foi explorado"));
+			expect(screen.getByText("Toque de novo para confirmar")).toBeTruthy();
+			act(() => {
+				vi.advanceTimersByTime(4100);
+			});
+			expect(screen.getByText("Esquecer o que já foi explorado")).toBeTruthy();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("travado enquanto grava: toque duplo não apaga duas vezes", async () => {
+		let release: (v: { ok: true }) => void = () => {};
+		const reset = vi.spyOn(exploredSync, "reset").mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		renderControls(true);
+		fireEvent.click(screen.getByText("Esquecer o que já foi explorado"));
+		fireEvent.click(screen.getByText("Toque de novo para confirmar"));
+		const busy = await screen.findByText("Esquecendo…");
+		fireEvent.click(busy);
+		fireEvent.click(busy);
+		expect(reset).toHaveBeenCalledTimes(1);
+		await act(async () => release({ ok: true }));
+	});
+
+	it("erro do servidor: mostra a mensagem junto do botão e destrava", async () => {
+		vi.spyOn(exploredSync, "reset").mockResolvedValue({
+			ok: false,
+			message: "Só o mestre ou co-mestre pode esquecer o mapa.",
+		});
+		renderControls(true);
+		fireEvent.click(screen.getByText("Esquecer o que já foi explorado"));
+		fireEvent.click(screen.getByText("Toque de novo para confirmar"));
+		await waitFor(() =>
+			expect(screen.getByText(/Só o mestre ou co-mestre/)).toBeTruthy(),
+		);
+		expect(screen.getByText("Esquecer o que já foi explorado")).toBeTruthy();
+	});
 });

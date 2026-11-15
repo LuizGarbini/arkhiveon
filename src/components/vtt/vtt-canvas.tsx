@@ -30,6 +30,9 @@ import {
 	type DragMove,
 	dragBroadcastDue,
 } from "@/lib/vtt/drag-broadcast";
+import { exploredMeta, exploredRuns } from "@/lib/vtt/explored";
+import { useExploredStore } from "@/lib/vtt/explored-store";
+import { exploredSync } from "@/lib/vtt/explored-sync";
 import {
 	buildFogComposite,
 	drawFogGeometry,
@@ -125,12 +128,14 @@ import type {
 import {
 	flattenPolygon,
 	isSeenByAny,
-	parseVisionStamp,
-	selectLinkedVisionStamp,
 	visibilityPolygon,
 	visionKey,
 	visionSources,
 } from "@/lib/vtt/vision";
+import {
+	parseVisionStamp,
+	selectLinkedVisionStamp,
+} from "@/lib/vtt/vision-sheet";
 import {
 	clearLabels,
 	drawMoveArrow,
@@ -1473,12 +1478,15 @@ export function VTTCanvas({
 		isGM,
 	]);
 
-	// 5b. Visão do modo Exploração. Para o jogador, cada token que enxerga recorta
-	// a névoa opaca (revela o mapa) e a penumbra, sempre respeitando as paredes.
+	// 5b. Visão do modo Exploração. Cada token que enxerga ganha um polígono
+	// (recortado pelas paredes). Em TODOS os clientes o que ele vê vira memória do
+	// grupo; só para o jogador o polígono recorta a névoa opaca e a penumbra.
 	// É vetor (barato) e só refaz quando QUEM ENXERGA muda ou as paredes mudam
 	// (visionSig / walls), não quando qualquer token da mesa se mexe.
 	const visionSig = visionKey(visionList);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig e walls são as dependências; o efeito lê a lista na hora pelo ref.
+	const sceneId = scene?.id ?? null;
+	const exploredVersion = useExploredStore((s) => s.version);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig, walls e exploredVersion são as dependências; o efeito lê a lista e a grade na hora (ref/store).
 	useEffect(() => {
 		if (!rendererReady) return;
 		const layer = fogExplorationLayerRef.current;
@@ -1487,7 +1495,46 @@ export function VTTCanvas({
 		if (!layer || !fogLayer || !mask) return;
 		layer.clear();
 		mask.clear();
-		if (!sceneFogEnabled || isGM || !sceneFogExploration) {
+		if (!sceneFogEnabled || !sceneFogExploration || !sceneId) {
+			layer.visible = false;
+			fogLayer.mask = null;
+			return;
+		}
+
+		const polygons = visionListRef.current.map((source) => ({
+			id: source.id,
+			points: visibilityPolygon(source, source.range, wallsRef.current),
+		}));
+
+		// Memória do grupo: o que cada um vê fica marcado. Só quem controla o token
+		// (e o mestre) grava no banco; os outros marcam a tela e recebem o resto
+		// pelo aviso em tempo real.
+		const meta = exploredMeta(fogWidth, fogHeight, visionCell);
+		const explored = useExploredStore.getState();
+		const before = explored.grid;
+		explored.ensure(sceneId, meta);
+		if (useExploredStore.getState().grid !== before) {
+			void exploredSync.load(sceneId, meta);
+		}
+		const live = useVTTStore.getState();
+		for (const polygon of polygons) {
+			const fresh = useExploredStore.getState().mark(sceneId, [polygon.points]);
+			if (fresh.length === 0) continue;
+			const token = live.tokens.find((item) => item.id === polygon.id);
+			if (
+				token &&
+				canControlVTTToken(
+					token,
+					userIdRef.current,
+					live.isGM || live.isCoGM,
+					characterOwnersRef.current,
+				)
+			) {
+				exploredSync.track(sceneId, meta, fresh);
+			}
+		}
+
+		if (isGM) {
 			layer.visible = false;
 			fogLayer.mask = null;
 			return;
@@ -1495,10 +1542,17 @@ export function VTTCanvas({
 		layer.visible = true;
 		layer.rect(0, 0, fogWidth, fogHeight);
 		layer.fill({ color: 0x090a0f, alpha: 0.55 });
-		for (const source of visionListRef.current) {
-			const flat = flattenPolygon(
-				visibilityPolygon(source, source.range, wallsRef.current),
-			);
+		// O que o grupo já explorou também revela o mapa (a penumbra o deixa em
+		// meia-luz). Vai na MESMA máscara da visão: duas máscaras aninhadas não se
+		// combinam no Pixi.
+		const memory = useExploredStore.getState();
+		if (memory.sceneId === sceneId && memory.grid) {
+			for (const run of exploredRuns(memory.grid)) {
+				mask.rect(run.x, run.y, run.w, run.h);
+			}
+		}
+		for (const polygon of polygons) {
+			const flat = flattenPolygon(polygon.points);
 			if (flat.length < 6) continue;
 			layer.beginPath();
 			layer.poly(flat, true);
@@ -1512,11 +1566,14 @@ export function VTTCanvas({
 		rendererReady,
 		sceneFogEnabled,
 		sceneFogExploration,
+		sceneId,
 		isGM,
 		fogWidth,
 		fogHeight,
+		visionCell,
 		visionSig,
 		walls,
+		exploredVersion,
 	]);
 
 	// 6. Render Remote Multiplayer Cursors

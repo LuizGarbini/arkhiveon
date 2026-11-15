@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.90-vtt-memoria-exploracao",
+		version: "1.6.90",
+		date: "15/11/2026",
+		title: "O mapa lembra o que o grupo já explorou",
+		description:
+			"No modo Exploração, o que qualquer personagem já viu fica marcado no mapa em penumbra, mesmo depois que ele se afasta, e continua assim ao recarregar a mesa. A memória é do grupo: se um jogador descobre uma sala, todos passam a vê-la como explorada, e as paredes continuam bloqueando o que fica atrás delas. O mestre pode apagar tudo no painel da névoa, em Esquecer o que já foi explorado.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.89-vtt-visao",
 		version: "1.6.89",
 		date: "15/11/2026",

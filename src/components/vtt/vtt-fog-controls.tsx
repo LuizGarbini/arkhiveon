@@ -10,8 +10,10 @@ import {
 	Square,
 	X,
 } from "lucide-react";
+import { useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { exploredSync } from "@/lib/vtt/explored-sync";
 import type { SceneSession } from "@/lib/vtt/scene-session";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
@@ -69,12 +71,37 @@ export function VTTFogControls({
 		(navigator.onLine !== false &&
 			saveState.snapshot?.pendingPatch.fogEnabled !== undefined);
 
+	const [confirmForget, setConfirmForget] = useState(false);
+	const [forgetting, setForgetting] = useState(false);
+
 	if (!isGM || !showFogControls) return null;
 
 	const handleClose = () => {
 		setShowFogControls(false);
 		if (activeTool === "fog") {
 			setActiveTool("select");
+		}
+	};
+
+	// Esquecer o mapa explorado: dois toques (o primeiro só pede confirmação) e o
+	// botão trava enquanto grava, para não apagar duas vezes.
+	const handleForget = async () => {
+		if (!scene || forgetting) return;
+		if (!confirmForget) {
+			setConfirmForget(true);
+			window.setTimeout(() => setConfirmForget(false), 4000);
+			return;
+		}
+		setConfirmForget(false);
+		setForgetting(true);
+		const result = await exploredSync.reset(scene.id);
+		setForgetting(false);
+		if (result.ok) {
+			toast.info({
+				title: "Mapa esquecido: o grupo volta a não ter explorado nada",
+			});
+		} else {
+			toast.error({ title: result.message });
 		}
 	};
 
@@ -166,6 +193,30 @@ export function VTTFogControls({
 					<span>Exploração</span>
 				</button>
 			</div>
+
+			{scene?.fogExploration ? (
+				<button
+					type="button"
+					disabled={forgetting}
+					onClick={() => void handleForget()}
+					title="Apaga a memória do que o grupo já explorou nesta cena"
+					className={cn(
+						"min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-[11px] font-semibold transition-[background-color,color,transform] duration-150 active:scale-[0.98] cursor-pointer touch-manipulation disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+						confirmForget
+							? "bg-destructive/15 text-destructive border border-destructive/40"
+							: "bg-card-elevated text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
+					)}
+				>
+					<RotateCcw className="h-4 w-4" />
+					<span>
+						{forgetting
+							? "Esquecendo…"
+							: confirmForget
+								? "Toque de novo para confirmar"
+								: "Esquecer o que já foi explorado"}
+					</span>
+				</button>
+			) : null}
 
 			{/* Mode Selector (Reveal vs Hide) */}
 			<div className="flex flex-col gap-1.5">
