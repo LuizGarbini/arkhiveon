@@ -1440,7 +1440,7 @@ export function VTTCanvas({
 				if (
 					e.button === 0 &&
 					!isSpaceHeldRef.current &&
-					!isAltHeldRef.current &&
+					!e.altKey &&
 					live.activeTool === "select"
 				) {
 					// Strict Layer Isolation:
@@ -2391,6 +2391,17 @@ export function VTTCanvas({
 			}
 		};
 
+		// Perder o foco da janela (Alt+Tab, Cmd+Tab, outra aba) perde o keyup: solta
+		// Alt e Espaço, senão o ping/a mão de arrastar ficam presos.
+		const releaseHeldKeys = () => {
+			isSpaceHeldRef.current = false;
+			isAltHeldRef.current = false;
+			container.style.cursor = activeTool === "pan" ? "grab" : "default";
+		};
+		const handleVisibility = () => {
+			if (document.visibilityState === "hidden") releaseHeldKeys();
+		};
+
 		const handleKeyUp = (e: KeyboardEvent) => {
 			if (e.code === "Space") {
 				isSpaceHeldRef.current = false;
@@ -2421,6 +2432,14 @@ export function VTTCanvas({
 		};
 
 		const handlePointerDown = (e: PointerEvent) => {
+			// O evento sabe se o Alt está apertado AGORA; a variável pode ter ficado
+			// ligada se o keyup se perdeu (Alt+Tab, Cmd+Tab, menu do navegador), e aí
+			// todo clique virava ping até o F5. O Espaço não tem essa informação no
+			// evento: sem o foco da janela, o keyup dele também se perdeu.
+			isAltHeldRef.current = e.altKey;
+			if (isSpaceHeldRef.current && !document.hasFocus()) {
+				isSpaceHeldRef.current = false;
+			}
 			// Toque novo fecha a lista de status aberta pelo toque longo.
 			if (e.pointerType !== "mouse") {
 				const s = useVTTStore.getState();
@@ -2706,6 +2725,8 @@ export function VTTCanvas({
 		};
 
 		const handlePointerMove = (e: PointerEvent) => {
+			// Mesmo remédio do clique: se o Alt já foi solto, a variável acompanha.
+			if (isAltHeldRef.current && !e.altKey) isAltHeldRef.current = false;
 			statusLongPressRef.current.move(e.clientX, e.clientY);
 			const right = rightPressRef.current;
 			if (right && !isDraggingViewportRef.current) {
@@ -3299,6 +3320,8 @@ export function VTTCanvas({
 		container.addEventListener("pointerdown", handlePointerDown);
 		container.addEventListener("contextmenu", handleContextMenu);
 		container.addEventListener("touchend", handleTouchEnd, { passive: false });
+		window.addEventListener("blur", releaseHeldKeys);
+		document.addEventListener("visibilitychange", handleVisibility);
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
 		window.addEventListener("pointercancel", handlePointerUp);
@@ -3310,6 +3333,8 @@ export function VTTCanvas({
 			container.removeEventListener("pointerdown", handlePointerDown);
 			container.removeEventListener("touchend", handleTouchEnd);
 			container.removeEventListener("contextmenu", handleContextMenu);
+			window.removeEventListener("blur", releaseHeldKeys);
+			document.removeEventListener("visibilitychange", handleVisibility);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);
 			window.removeEventListener("pointercancel", handlePointerUp);
