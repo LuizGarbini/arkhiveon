@@ -1,4 +1,4 @@
-import { BrickWall, DoorOpen, Trash2 } from "lucide-react";
+import { AppWindow, BrickWall, DoorOpen, Trash2 } from "lucide-react";
 import {
 	Kbd,
 	segmentClass,
@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { deleteSelectedWalls, setWallsKind } from "@/lib/vtt/wall-sync";
-import { isDoor, type WallKind } from "@/lib/vtt/walls";
+import type { WallKind } from "@/lib/vtt/walls";
 
 const KINDS: { id: WallKind; label: string; hint: string }[] = [
 	{
@@ -22,6 +22,22 @@ const KINDS: { id: WallKind; label: string; hint: string }[] = [
 		label: "Porta",
 		hint: "Nasce fechada; o jogador clica para abrir e ver o que há dentro",
 	},
+	{
+		id: "window",
+		label: "Janela",
+		hint: "Nasce fechada; abre para ver o que há atrás, mas ninguém passa (só o mestre move o token para o outro lado)",
+	},
+];
+
+/** Conversões da seleção: o botão aparece se alguma selecionada muda de tipo. */
+const CONVERSIONS: {
+	kind: WallKind;
+	label: string;
+	icon: typeof BrickWall;
+}[] = [
+	{ kind: "door", label: "Virar porta", icon: DoorOpen },
+	{ kind: "window", label: "Virar janela", icon: AppWindow },
+	{ kind: "wall", label: "Virar parede", icon: BrickWall },
 ];
 
 const actionClass =
@@ -44,12 +60,10 @@ export function VTTWallControls() {
 	if (!isGM || activeTool !== "wall") return null;
 
 	const selected = walls.filter((w) => selectedIds.includes(w.id));
-	const hasPlain = selected.some((w) => !isDoor(w));
-	const hasDoor = selected.some(isDoor);
 
 	return (
 		<VTTOptionsBar
-			label="Paredes e portas"
+			label="Paredes, portas e janelas"
 			icon={BrickWall}
 			closeLabel="Fechar ferramenta de paredes"
 			onClose={() => setActiveTool("select")}
@@ -94,26 +108,19 @@ export function VTTWallControls() {
 							? "1 selecionada"
 							: `${selected.length} selecionadas`}
 					</output>
-					{hasPlain ? (
+					{CONVERSIONS.filter(({ kind }) =>
+						selected.some((w) => (w.kind ?? "wall") !== kind),
+					).map(({ kind, label, icon: Icon }) => (
 						<button
 							type="button"
+							key={kind}
 							className={actionClass}
-							onClick={() => void setWallsKind(selectedIds, "door")}
+							onClick={() => void setWallsKind(selectedIds, kind)}
 						>
-							<DoorOpen aria-hidden className="size-4" />
-							Virar porta
+							<Icon aria-hidden className="size-4" />
+							{label}
 						</button>
-					) : null}
-					{hasDoor ? (
-						<button
-							type="button"
-							className={actionClass}
-							onClick={() => void setWallsKind(selectedIds, "wall")}
-						>
-							<BrickWall aria-hidden className="size-4" />
-							Virar parede
-						</button>
-					) : null}
+					))}
 					<button
 						type="button"
 						aria-label="Apagar selecionadas"

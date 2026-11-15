@@ -1,7 +1,10 @@
 import type { VTTGridType } from "./types";
 
-/** Parede comum ou porta (a porta abre e fecha; a parede nunca). */
-export type WallKind = "wall" | "door";
+/**
+ * Parede comum, porta ou janela. Porta e janela abrem e fecham; a parede nunca.
+ * A janela aberta deixa ver, mas ninguém atravessa (só o mestre move o token).
+ */
+export type WallKind = "wall" | "door" | "window";
 
 /** Um segmento de parede (coordenadas do mundo da cena). */
 export interface VTTWall {
@@ -13,7 +16,7 @@ export interface VTTWall {
 	y2: number;
 	/** Sem `kind`, é parede comum (era o único tipo antes da 0073). */
 	kind?: WallKind;
-	/** Só vale para porta: aberta deixa ver e passar. */
+	/** Só vale para porta e janela: aberta deixa ver (a porta, também passar). */
 	isOpen?: boolean;
 }
 
@@ -21,25 +24,52 @@ export function isDoor(wall: Pick<VTTWall, "kind">): boolean {
 	return wall.kind === "door";
 }
 
-/** Parede e porta fechada bloqueiam a visão e o movimento; porta aberta, não. */
-export function blocksSight(wall: Pick<VTTWall, "kind" | "isOpen">): boolean {
-	return !(isDoor(wall) && wall.isOpen === true);
+export function isWindow(wall: Pick<VTTWall, "kind">): boolean {
+	return wall.kind === "window";
 }
 
-/** Só o que bloqueia agora (é o que entra na visão e na checagem de movimento). */
+/** Abre e fecha: porta e janela (o ícone delas é clicável). */
+export function isOpenable(wall: Pick<VTTWall, "kind">): boolean {
+	return wall.kind === "door" || wall.kind === "window";
+}
+
+/** Parede e porta/janela fechada bloqueiam a visão; aberta, deixa ver. */
+export function blocksSight(wall: Pick<VTTWall, "kind" | "isOpen">): boolean {
+	return !(isOpenable(wall) && wall.isOpen === true);
+}
+
+/**
+ * O que barra o MOVIMENTO do jogador: o que bloqueia a visão e também a janela,
+ * aberta ou fechada (dá para ver por ela, mas não para passar; quem decide se um
+ * personagem passa por uma janela é o mestre, movendo o token).
+ */
+export function blocksMovement(
+	wall: Pick<VTTWall, "kind" | "isOpen">,
+): boolean {
+	return isWindow(wall) || blocksSight(wall);
+}
+
+/** Só o que bloqueia a visão agora (é o que entra no cálculo de visão). */
 export function blockingWalls<T extends Pick<VTTWall, "kind" | "isOpen">>(
 	walls: readonly T[],
 ): T[] {
 	return walls.filter(blocksSight);
 }
 
-/** Raio do ícone da porta (px), proporcional à casa e limitado para ficar legível. */
+/** Só o que barra o movimento do jogador agora (inclui toda janela). */
+export function movementBlockingWalls<
+	T extends Pick<VTTWall, "kind" | "isOpen">,
+>(walls: readonly T[]): T[] {
+	return walls.filter(blocksMovement);
+}
+
+/** Raio do ícone da porta ou janela (px), proporcional à casa e limitado para ficar legível. */
 export function doorIconRadius(gridSize: number): number {
 	const cell = gridSize > 0 ? gridSize : 70;
 	return Math.min(22, Math.max(12, cell * 0.2));
 }
 
-/** Onde fica o ícone da porta: no meio do vão. */
+/** Onde fica o ícone da porta ou janela: no meio do vão. */
 export function doorIconCenter(
 	door: Pick<VTTWall, "x1" | "y1" | "x2" | "y2">,
 ): WallPoint {
@@ -47,7 +77,7 @@ export function doorIconCenter(
 }
 
 /**
- * A porta cujo ÍCONE está sob o ponto (o ícone é a única coisa clicável da porta:
+ * A porta ou janela cujo ÍCONE está sob o ponto (o ícone é a única coisa clicável:
  * o traço do vão não é desenhado). A mais próxima, se houver mais de uma.
  */
 export function hitTestDoorIcon(
@@ -58,7 +88,7 @@ export function hitTestDoorIcon(
 	let best: VTTWall | null = null;
 	let bestDist = radius;
 	for (const wall of walls) {
-		if (!isDoor(wall)) continue;
+		if (!isOpenable(wall)) continue;
 		const c = doorIconCenter(wall);
 		const d = Math.hypot(p.x - c.x, p.y - c.y);
 		if (d <= bestDist) {
@@ -75,14 +105,14 @@ export function hitTestDoor(
 	p: WallPoint,
 	tolerance: number,
 ): VTTWall | null {
-	const id = hitTestWall(walls.filter(isDoor), p, tolerance);
+	const id = hitTestWall(walls.filter(isOpenable), p, tolerance);
 	return id ? (walls.find((w) => w.id === id) ?? null) : null;
 }
 
 /** Alcance para abrir uma porta, em casas da grade (do centro do token à porta). */
 export const DOOR_REACH_CELLS = 1.5;
 
-/** Algum dos pontos (tokens do jogador) está perto o bastante da porta? */
+/** Algum dos pontos (tokens do jogador) está perto o bastante da porta ou janela? */
 export function doorWithinReach(
 	door: Pick<VTTWall, "x1" | "y1" | "x2" | "y2">,
 	points: readonly WallPoint[],
@@ -177,9 +207,9 @@ export function draftToWalls(
 			x2: b.x,
 			y2: b.y,
 		};
-		// Parede comum fica sem `kind` (igual a antes); porta nasce fechada.
-		if (kind === "door") {
-			wall.kind = "door";
+		// Parede comum fica sem `kind` (igual a antes); porta e janela nascem fechadas.
+		if (kind === "door" || kind === "window") {
+			wall.kind = kind;
 			wall.isOpen = false;
 		}
 		out.push(wall);
@@ -229,9 +259,9 @@ export function mapWallRow(row: {
 		x2: Number(row.x2),
 		y2: Number(row.y2),
 	};
-	// Parede comum fica sem `kind`; só a porta carrega tipo e estado.
-	if (row.kind === "door") {
-		wall.kind = "door";
+	// Parede comum fica sem `kind`; só porta e janela carregam tipo e estado.
+	if (row.kind === "door" || row.kind === "window") {
+		wall.kind = row.kind;
 		wall.isOpen = row.is_open === true;
 	}
 	return wall;
@@ -246,8 +276,10 @@ export function patchWalls(
 	return walls.map((wall) => (ids.has(wall.id) ? patch(wall) : wall));
 }
 
-/** O que a parede vira ao trocar de tipo: porta nasce fechada; parede perde o estado. */
+/** O que a parede vira ao trocar de tipo: porta e janela nascem fechadas; parede perde o estado. */
 export function withWallKind(wall: VTTWall, kind: WallKind): VTTWall {
 	const { kind: _kind, isOpen: _isOpen, ...rest } = wall;
-	return kind === "door" ? { ...rest, kind: "door", isOpen: false } : rest;
+	return kind === "door" || kind === "window"
+		? { ...rest, kind, isOpen: false }
+		: rest;
 }

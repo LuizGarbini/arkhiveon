@@ -165,6 +165,8 @@ import {
 	doorWithinReach,
 	hitTestDoorIcon,
 	hitTestWall,
+	isOpenable,
+	movementBlockingWalls,
 	snapWallPoint,
 } from "@/lib/vtt/walls";
 
@@ -2047,9 +2049,7 @@ export function VTTCanvas({
 		const grid = memory.sceneId === sceneId ? memory.grid : null;
 		const shown = isGM
 			? walls
-			: walls.filter(
-					(wall) => wall.kind !== "door" || doorRevealed(wall, grid),
-				);
+			: walls.filter((wall) => !isOpenable(wall) || doorRevealed(wall, grid));
 		drawDoors(top, shown, radius);
 	}, [
 		walls,
@@ -3058,7 +3058,11 @@ export function VTTCanvas({
 					worldPoint.y - group.grabY,
 				);
 				const liveTokens = useVTTStore.getState().tokens;
-				const currentWalls = blockingWalls(useVTTStore.getState().walls);
+				// Parede, porta fechada e TODA janela barram o jogador (a janela aberta
+				// deixa ver, mas não passar); o mestre não é barrado.
+				const currentWalls = movementBlockingWalls(
+					useVTTStore.getState().walls,
+				);
 				let wasBlocked = false;
 				const finalMoves: DragMove[] = [];
 				for (const member of moved) {
@@ -3130,7 +3134,8 @@ export function VTTCanvas({
 				if (wasBlocked) {
 					showToast("info", {
 						title: "Movimento bloqueado",
-						description: "Você não pode atravessar paredes.",
+						description:
+							"Você não pode atravessar paredes nem janelas. Peça ao mestre.",
 					});
 				}
 				paintAurasRef.current();

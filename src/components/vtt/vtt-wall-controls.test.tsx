@@ -30,6 +30,11 @@ const door = (id: string): VTTWall => ({
 	kind: "door",
 	isOpen: false,
 });
+const windowWall = (id: string): VTTWall => ({
+	...plain(id),
+	kind: "window",
+	isOpen: false,
+});
 
 beforeEach(() => {
 	mock.setWallsKind.mockReset();
@@ -38,7 +43,7 @@ beforeEach(() => {
 		isGM: true,
 		activeTool: "wall",
 		wallKind: "wall",
-		walls: [plain("a"), plain("b"), door("d")],
+		walls: [plain("a"), plain("b"), door("d"), windowWall("w")],
 		selectedWallIds: [],
 	});
 });
@@ -46,7 +51,7 @@ beforeEach(() => {
 describe("painel da ferramenta Parede", () => {
 	it("só aparece para o mestre com a ferramenta Parede ativa", () => {
 		const { container, rerender } = render(<VTTWallControls />);
-		expect(screen.getByText("Paredes e portas")).toBeTruthy();
+		expect(screen.getByText("Paredes, portas e janelas")).toBeTruthy();
 		useVTTStore.setState({ activeTool: "select" });
 		rerender(<VTTWallControls />);
 		expect(container.textContent).toBe("");
@@ -86,6 +91,7 @@ describe("painel da ferramenta Parede", () => {
 		render(<VTTWallControls />);
 		expect(screen.getByText("2 selecionadas")).toBeTruthy();
 		expect(screen.queryByText("Virar parede")).toBeNull();
+		expect(screen.getByText("Virar janela")).toBeTruthy();
 		fireEvent.click(screen.getByText("Virar porta"));
 		expect(mock.setWallsKind).toHaveBeenCalledWith(["a", "b"], "door");
 	});
@@ -97,6 +103,52 @@ describe("painel da ferramenta Parede", () => {
 		expect(screen.queryByText("Virar porta")).toBeNull();
 		fireEvent.click(screen.getByText("Virar parede"));
 		expect(mock.setWallsKind).toHaveBeenCalledWith(["d"], "wall");
+	});
+
+	it("o seletor também escolhe Janela como o que desenhar", () => {
+		render(<VTTWallControls />);
+		const windowButton = screen.getByRole("button", { name: "Janela" });
+		expect(windowButton.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(windowButton);
+		expect(useVTTStore.getState().wallKind).toBe("window");
+		expect(
+			screen
+				.getByRole("button", { name: "Janela" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		expect(
+			screen
+				.getByRole("button", { name: "Porta" })
+				.getAttribute("aria-pressed"),
+		).toBe("false");
+	});
+
+	it("janela selecionada: oferece Virar parede e Virar porta, não Virar janela", () => {
+		useVTTStore.setState({ selectedWallIds: ["w"] });
+		render(<VTTWallControls />);
+		expect(screen.queryByText("Virar janela")).toBeNull();
+		fireEvent.click(screen.getByText("Virar porta"));
+		expect(mock.setWallsKind).toHaveBeenLastCalledWith(["w"], "door");
+		fireEvent.click(screen.getByText("Virar parede"));
+		expect(mock.setWallsKind).toHaveBeenLastCalledWith(["w"], "wall");
+	});
+
+	it("virar janela chama a conversão da seleção para janela", () => {
+		useVTTStore.setState({ selectedWallIds: ["a", "d"] });
+		render(<VTTWallControls />);
+		fireEvent.click(screen.getByText("Virar janela"));
+		expect(mock.setWallsKind).toHaveBeenCalledWith(["a", "d"], "window");
+	});
+
+	it("só janelas selecionadas e todas iguais: não oferece conversão para o mesmo tipo", () => {
+		useVTTStore.setState({
+			walls: [windowWall("w"), windowWall("w2")],
+			selectedWallIds: ["w", "w2"],
+		});
+		render(<VTTWallControls />);
+		expect(screen.queryByText("Virar janela")).toBeNull();
+		expect(screen.getByText("Virar porta")).toBeTruthy();
+		expect(screen.getByText("Virar parede")).toBeTruthy();
 	});
 
 	it("seleção mista: oferece as duas conversões", () => {

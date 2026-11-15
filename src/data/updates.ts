@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.101-vtt-janelas",
+		version: "1.6.101",
+		date: "15/11/2026",
+		title: "Janelas na mesa: abre e vê, mas ninguém passa",
+		description:
+			"Na ferramenta Parede o mestre agora escolhe Janela, além de Parede e Porta (ou seleciona paredes que já existem e usa Virar janela). A janela nasce fechada e bloqueia a vista; o jogador clica no ícone dela (com o personagem a até 1,5 casa) para abrir e ver o que há atrás. Diferente da porta, a janela nunca deixa o jogador passar, nem aberta: se ele tentar arrastar o token por ela, o token volta e aparece um aviso. Só o mestre move o token para o outro lado, para decidir caso a caso quais janelas dão para atravessar (com um teste, por exemplo). O ícone da janela é ciano, para não confundir com o da porta.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.100-vtt-areas-de-luz",
 		version: "1.6.100",
 		date: "15/11/2026",

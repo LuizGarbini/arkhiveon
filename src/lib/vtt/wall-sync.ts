@@ -4,8 +4,8 @@ import { useVTTStore } from "./vtt-store";
 import {
 	draftToWalls,
 	invertWallOp,
-	isDoor,
 	isMissingWallsTable,
+	isOpenable,
 	mapWallRow,
 	patchWalls,
 	type VTTWall,
@@ -70,7 +70,7 @@ async function persist(op: WallOp): Promise<boolean> {
 					x2: w.x2,
 					y2: w.y2,
 					kind: w.kind ?? "wall",
-					is_open: w.kind === "door" && w.isOpen === true,
+					is_open: isOpenable(w) && w.isOpen === true,
 				})),
 			);
 			return !error;
@@ -136,6 +136,12 @@ export async function runWallOp(op: WallOp, source: Source): Promise<boolean> {
 	});
 	return false;
 }
+
+const KIND_NOUN: Record<WallKind, string> = {
+	wall: "parede",
+	door: "porta",
+	window: "janela",
+};
 
 const newWallId = () => crypto.randomUUID();
 
@@ -212,14 +218,14 @@ export function handleWallKey(e: KeyboardEvent): boolean {
 /* Portas                                                              */
 /* ------------------------------------------------------------------ */
 
-function doorErrorMessage(error: unknown): string {
+function doorErrorMessage(error: unknown, noun: string): string {
 	const e = (error ?? {}) as { code?: string | null; message?: string | null };
 	if (e.code === "PGRST202" || e.code === "42883")
-		return "Portas ainda não estão disponíveis no servidor.";
+		return "Portas e janelas ainda não estão disponíveis no servidor.";
 	if (e.code === "42501")
-		return e.message || "Você não pode abrir esta porta agora.";
-	if (e.code === "P0002") return "Essa porta não existe mais.";
-	return "A porta voltou ao que estava.";
+		return e.message || `Você não pode abrir esta ${noun} agora.`;
+	if (e.code === "P0002") return `Essa ${noun} não existe mais.`;
+	return `A ${noun} voltou ao que estava.`;
 }
 
 function setDoorLocal(wallId: string, open: boolean): void {
@@ -239,7 +245,8 @@ export async function toggleDoor(
 	open: boolean,
 ): Promise<boolean> {
 	const door = useVTTStore.getState().walls.find((w) => w.id === wallId);
-	if (!door || !isDoor(door)) return false;
+	if (!door || !isOpenable(door)) return false;
+	const noun = door.kind === "window" ? "janela" : "porta";
 	const previous = door.isOpen === true;
 	if (previous === open) return true;
 
@@ -258,17 +265,18 @@ export async function toggleDoor(
 		if (now && now.isOpen === open) setDoorLocal(wallId, previous);
 		showToast("error", {
 			title: open
-				? "Não foi possível abrir a porta"
-				: "Não foi possível fechar a porta",
-			description: doorErrorMessage(error),
+				? `Não foi possível abrir a ${noun}`
+				: `Não foi possível fechar a ${noun}`,
+			description: doorErrorMessage(error, noun),
 		});
 		return false;
 	}
 }
 
 /**
- * Mestre: troca o tipo das paredes escolhidas (parede ↔ porta). A porta nasce
- * fechada e a parede perde o estado. Otimista, com volta se o banco recusar.
+ * Mestre: troca o tipo das paredes escolhidas (parede, porta ou janela). Porta e
+ * janela nascem fechadas e a parede perde o estado. Otimista, com volta se o
+ * banco recusar.
  */
 export async function setWallsKind(
 	ids: readonly string[],
@@ -278,7 +286,7 @@ export async function setWallsKind(
 	const store = useVTTStore.getState();
 	const wanted = new Set(ids);
 	const before = store.walls.filter((w) => wanted.has(w.id));
-	const changing = before.filter((w) => isDoor(w) !== (kind === "door"));
+	const changing = before.filter((w) => (w.kind ?? "wall") !== kind);
 	if (changing.length === 0) return true;
 	const targets = new Set(changing.map((w) => w.id));
 
@@ -301,10 +309,7 @@ export async function setWallsKind(
 			patchWalls(now.walls, targets, (w) => original.get(w.id) ?? w),
 		);
 		showToast("error", {
-			title:
-				kind === "door"
-					? "Não foi possível transformar em porta"
-					: "Não foi possível transformar em parede",
+			title: `Não foi possível transformar em ${KIND_NOUN[kind]}`,
 			description: "As paredes voltaram ao que estavam.",
 		});
 		return false;

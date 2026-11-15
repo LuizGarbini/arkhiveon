@@ -27,7 +27,12 @@ vi.mock("@/components/ui/toast", () => ({
 	showToast: (...args: unknown[]) => mock.toast(...args),
 }));
 
-import { finishWallDraft, setWallsKind, toggleDoor } from "./wall-sync";
+import {
+	finishWallDraft,
+	runWallOp,
+	setWallsKind,
+	toggleDoor,
+} from "./wall-sync";
 
 const plain: VTTWall = { id: "w", sceneId: "s", x1: 0, y1: 0, x2: 70, y2: 0 };
 const door = (over: Partial<VTTWall> = {}): VTTWall => ({
@@ -118,7 +123,8 @@ describe("toggleDoor", () => {
 		expect(mock.toast).toHaveBeenLastCalledWith(
 			"error",
 			expect.objectContaining({
-				description: "Portas ainda não estão disponíveis no servidor.",
+				description:
+					"Portas e janelas ainda não estão disponíveis no servidor.",
 			}),
 		);
 		mock.rpc.mockResolvedValue({ data: null, error: { code: "P0002" } });
@@ -240,5 +246,147 @@ describe("desenhar com a ferramenta em modo porta", () => {
 				.getState()
 				.walls.some((w) => w.kind === "door" && w.isOpen === false),
 		).toBe(true);
+	});
+});
+
+describe("janelas no sync", () => {
+	const win = (over: Partial<VTTWall> = {}): VTTWall => ({
+		id: "j",
+		sceneId: "s",
+		x1: 200,
+		y1: 0,
+		x2: 200,
+		y2: 70,
+		kind: "window",
+		isOpen: false,
+		...over,
+	});
+
+	it("abrir a janela é na hora e usa a mesma função do banco da porta", async () => {
+		useVTTStore.setState({ walls: [win()] });
+		expect(await toggleDoor("j", true)).toBe(true);
+		expect(doorNow("j")?.isOpen).toBe(true);
+		expect(mock.rpc).toHaveBeenCalledWith("toggle_wall_door", {
+			p_wall_id: "j",
+			p_open: true,
+		});
+	});
+
+	it("falha ao abrir: a janela volta a fechar e o aviso fala em janela", async () => {
+		useVTTStore.setState({ walls: [win()] });
+		mock.rpc.mockResolvedValue({
+			data: null,
+			error: { code: "42501", message: "" },
+		});
+		expect(await toggleDoor("j", true)).toBe(false);
+		expect(doorNow("j")?.isOpen).toBe(false);
+		expect(mock.toast).toHaveBeenCalledWith(
+			"error",
+			expect.objectContaining({
+				title: "Não foi possível abrir a janela",
+				description: "Você não pode abrir esta janela agora.",
+			}),
+		);
+	});
+
+	it("o aviso da porta continua falando em porta", async () => {
+		mock.rpc.mockResolvedValue({ data: null, error: { code: "P0002" } });
+		await toggleDoor("d", true);
+		expect(mock.toast).toHaveBeenCalledWith(
+			"error",
+			expect.objectContaining({
+				title: "Não foi possível abrir a porta",
+				description: "Essa porta não existe mais.",
+			}),
+		);
+	});
+
+	it("parede comum não abre", async () => {
+		expect(await toggleDoor("w", true)).toBe(false);
+		expect(mock.rpc).not.toHaveBeenCalled();
+	});
+
+	it("virar janela: a parede vira janela fechada e o banco recebe kind window", async () => {
+		expect(await setWallsKind(["w"], "window")).toBe(true);
+		expect(doorNow("w")).toMatchObject({ kind: "window", isOpen: false });
+		expect(mock.update).toHaveBeenCalledWith(
+			{ kind: "window", is_open: false },
+			["w"],
+		);
+	});
+
+	it("virar janela uma que já é janela não grava nada", async () => {
+		useVTTStore.setState({ walls: [win()] });
+		expect(await setWallsKind(["j"], "window")).toBe(true);
+		expect(mock.update).not.toHaveBeenCalled();
+	});
+
+	it("porta aberta que vira janela fecha (janela nasce fechada)", async () => {
+		useVTTStore.setState({ walls: [door({ isOpen: true })] });
+		await setWallsKind(["d"], "window");
+		expect(doorNow("d")).toMatchObject({ kind: "window", isOpen: false });
+	});
+
+	it("falha ao virar janela: volta ao que era e avisa", async () => {
+		mock.update.mockResolvedValue({ error: { code: "42501" } });
+		expect(await setWallsKind(["w"], "window")).toBe(false);
+		expect(doorNow("w")?.kind).toBeUndefined();
+		expect(mock.toast).toHaveBeenCalledWith(
+			"error",
+			expect.objectContaining({
+				title: "Não foi possível transformar em janela",
+			}),
+		);
+	});
+
+	it("recriar uma janela ABERTA (desfazer uma exclusão) grava o estado aberto; parede não", async () => {
+		useVTTStore.setState({ walls: [] });
+		await runWallOp(
+			{
+				kind: "create",
+				walls: [
+					win({ id: "j1", isOpen: true }),
+					door({ id: "d1", isOpen: true }),
+					{ id: "p1", sceneId: "s", x1: 0, y1: 0, x2: 1, y2: 1 },
+				],
+			},
+			"do",
+		);
+		const rows = mock.insert.mock.calls[0]?.[0] as {
+			id: string;
+			kind: string;
+			is_open: boolean;
+		}[];
+		expect(rows.find((r) => r.id === "j1")).toMatchObject({
+			kind: "window",
+			is_open: true,
+		});
+		expect(rows.find((r) => r.id === "d1")).toMatchObject({
+			kind: "door",
+			is_open: true,
+		});
+		expect(rows.find((r) => r.id === "p1")).toMatchObject({
+			kind: "wall",
+			is_open: false,
+		});
+	});
+
+	it("desenhar com a ferramenta em Janela grava janelas fechadas", async () => {
+		useVTTStore.setState({
+			walls: [],
+			wallKind: "window",
+			wallDraft: [
+				{ x: 0, y: 0 },
+				{ x: 70, y: 0 },
+			],
+		});
+		finishWallDraft();
+		await vi.waitFor(() => expect(mock.insert).toHaveBeenCalled());
+		const rows = mock.insert.mock.calls[0]?.[0] as {
+			kind: string;
+			is_open: boolean;
+		}[];
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ kind: "window", is_open: false });
 	});
 });

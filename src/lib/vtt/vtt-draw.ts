@@ -396,7 +396,7 @@ type DrawableWall = {
 	y1: number;
 	x2: number;
 	y2: number;
-	kind?: "wall" | "door";
+	kind?: "wall" | "door" | "window";
 	isOpen?: boolean;
 };
 
@@ -404,12 +404,16 @@ type DrawableWall = {
 const DOOR_CLOSED_COLOR = 0xd97706;
 const DOOR_OPEN_COLOR = 0xfbbf24;
 const DOOR_BADGE_COLOR = 0x18181b;
+// Janela fechada: ciano; aberta: ciano claro (a porta é âmbar, a janela é outra cor).
+const WINDOW_CLOSED_COLOR = 0x22d3ee;
+const WINDOW_OPEN_COLOR = 0x67e8f9;
 
 /**
- * Portas, para todo mundo ver (ficam abaixo da névoa: o jogador só vê as que já
- * revelou). Cada porta é só um ÍCONE no meio do vão, sem desenhar o traço: um
- * selo escuro com uma porta fechada (laranja) ou entreaberta (amarela). O ícone
- * é também o que se clica para abrir e fechar.
+ * Portas e janelas, para todo mundo ver (o jogador só vê as que já revelou). Cada
+ * uma é só um ÍCONE no meio do vão, sem desenhar o traço: um selo escuro com uma
+ * porta fechada (laranja) ou entreaberta (amarela), ou uma janela com vidraças
+ * (ciano) ou com as folhas abertas (ciano claro). O ícone é também o que se clica
+ * para abrir e fechar.
  */
 export function drawDoors(
 	layer: Graphics,
@@ -419,9 +423,13 @@ export function drawDoors(
 	layer.clear();
 	const s = iconRadius / 14; // o desenho é feito para raio 14
 	for (const w of walls) {
-		if (w.kind !== "door") continue;
+		if (w.kind !== "door" && w.kind !== "window") continue;
 		const cx = (w.x1 + w.x2) / 2;
 		const cy = (w.y1 + w.y2) / 2;
+		if (w.kind === "window") {
+			drawWindowIcon(layer, cx, cy, iconRadius, w.isOpen === true);
+			continue;
+		}
 		const color = w.isOpen ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
 		// Selo
 		layer.circle(cx, cy, iconRadius);
@@ -452,6 +460,57 @@ export function drawDoors(
 	}
 }
 
+/** Selo da janela: batente quadrado com vidraças (fechada) ou folhas abertas. */
+function drawWindowIcon(
+	layer: Graphics,
+	cx: number,
+	cy: number,
+	iconRadius: number,
+	isOpen: boolean,
+) {
+	const s = iconRadius / 14;
+	const color = isOpen ? WINDOW_OPEN_COLOR : WINDOW_CLOSED_COLOR;
+	layer.circle(cx, cy, iconRadius);
+	layer.fill({ color: DOOR_BADGE_COLOR, alpha: 0.92 });
+	layer.circle(cx, cy, iconRadius);
+	layer.stroke({ width: 2 * s, color, alpha: 1 });
+	// Batente
+	layer.roundRect(cx - 5.5 * s, cy - 5.5 * s, 11 * s, 11 * s, 1 * s);
+	layer.stroke({ width: 1.6 * s, color, alpha: 1 });
+	if (isOpen) {
+		// Duas folhas viradas para fora (perspectiva), com o vão aberto no meio
+		layer.poly([
+			cx - 5.5 * s,
+			cy - 5.5 * s,
+			cx - 2 * s,
+			cy - 4 * s,
+			cx - 2 * s,
+			cy + 4 * s,
+			cx - 5.5 * s,
+			cy + 5.5 * s,
+		]);
+		layer.fill({ color, alpha: 0.9 });
+		layer.poly([
+			cx + 5.5 * s,
+			cy - 5.5 * s,
+			cx + 2 * s,
+			cy - 4 * s,
+			cx + 2 * s,
+			cy + 4 * s,
+			cx + 5.5 * s,
+			cy + 5.5 * s,
+		]);
+		layer.fill({ color, alpha: 0.9 });
+	} else {
+		// Vidraças em cruz
+		layer.moveTo(cx, cy - 5.5 * s);
+		layer.lineTo(cx, cy + 5.5 * s);
+		layer.moveTo(cx - 5.5 * s, cy);
+		layer.lineTo(cx + 5.5 * s, cy);
+		layer.stroke({ width: 1.2 * s, color, alpha: 1 });
+	}
+}
+
 export function drawWalls(
 	layer: Graphics,
 	walls: readonly DrawableWall[],
@@ -463,30 +522,31 @@ export function drawWalls(
 	let normal = 0;
 	for (const w of walls) {
 		if (selected.has(w.id)) continue;
-		// Porta: o ícone vem de drawDoors; na camada do mestre o vão aparece como um
-		// traço fino, para ele ver o tamanho dela (a selecionada é destacada abaixo).
-		if (w.kind === "door") continue;
+		// Porta e janela: o ícone vem de drawDoors; na camada do mestre o vão aparece
+		// como um traço fino, para ele ver o tamanho dela (a selecionada é destacada
+		// abaixo).
+		if (w.kind === "door" || w.kind === "window") continue;
 		layer.moveTo(w.x1, w.y1);
 		layer.lineTo(w.x2, w.y2);
 		normal++;
 	}
 	if (normal > 0)
 		layer.stroke({ width: 4, color: WALL_COLOR, alpha: 0.95, cap: "round" });
-	// Vão das portas (só aqui, na camada do mestre): traço fino para ver o tamanho.
-	let spans = 0;
-	for (const w of walls) {
-		if (w.kind !== "door" || selected.has(w.id)) continue;
-		layer.moveTo(w.x1, w.y1);
-		layer.lineTo(w.x2, w.y2);
-		spans++;
+	// Vão das portas (âmbar) e das janelas (ciano), só aqui, na camada do mestre:
+	// traço fino para ver o tamanho.
+	for (const [kind, color] of [
+		["door", DOOR_CLOSED_COLOR],
+		["window", WINDOW_CLOSED_COLOR],
+	] as const) {
+		let spans = 0;
+		for (const w of walls) {
+			if (w.kind !== kind || selected.has(w.id)) continue;
+			layer.moveTo(w.x1, w.y1);
+			layer.lineTo(w.x2, w.y2);
+			spans++;
+		}
+		if (spans > 0) layer.stroke({ width: 2, color, alpha: 0.6, cap: "round" });
 	}
-	if (spans > 0)
-		layer.stroke({
-			width: 2,
-			color: DOOR_CLOSED_COLOR,
-			alpha: 0.6,
-			cap: "round",
-		});
 	if (selected.size === 0) return;
 	const primary = dsColor("--primary", 0xa855f7);
 	const background = dsColor("--background", 0x18181b);
