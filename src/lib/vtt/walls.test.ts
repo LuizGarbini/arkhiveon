@@ -97,3 +97,37 @@ describe("isMissingWallsTable", () => {
 		expect(isMissingWallsTable(null)).toBe(false);
 	});
 });
+
+describe("op move (arrastar paredes)", () => {
+	const from = { x1: 0, y1: 0, x2: 70, y2: 0 };
+	const to = { x1: 5.5, y1: 3, x2: 75.5, y2: 3 };
+	const base: VTTWall[] = [
+		{ ...w("a", 0, 0, 70, 0) },
+		{ ...w("d", 100, 0, 100, 70), kind: "door", isOpen: true },
+	];
+
+	it("aplica só as coordenadas e preserva tipo e estado", () => {
+		const next = applyWallOp(base, {
+			kind: "move",
+			moves: [{ id: "d", from: { x1: 100, y1: 0, x2: 100, y2: 70 }, to }],
+		});
+		expect(next[0]).toEqual(base[0]);
+		expect(next[1]).toEqual({ ...base[1], ...to });
+		expect(next[1]).toMatchObject({ kind: "door", isOpen: true });
+	});
+
+	it("a inversa troca de-para e desfaz exatamente", () => {
+		const op = { kind: "move" as const, moves: [{ id: "a", from, to }] };
+		const moved = applyWallOp(base, op);
+		expect(moved[0]).toMatchObject(to);
+		expect(applyWallOp(moved, invertWallOp(op))).toEqual(base);
+	});
+
+	it("id que sumiu não faz nada (nem recria a parede)", () => {
+		const next = applyWallOp(base, {
+			kind: "move",
+			moves: [{ id: "x", from, to }],
+		});
+		expect(next).toEqual(base);
+	});
+});

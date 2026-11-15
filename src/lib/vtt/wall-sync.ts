@@ -2,6 +2,15 @@ import { showToast } from "@/components/ui/toast";
 import { getSupabase } from "@/lib/supabase";
 import { useVTTStore } from "./vtt-store";
 import {
+	isWallDragging,
+	movesBetween,
+	NUDGE_FLUSH_MS,
+	NUDGE_REPEAT_MS,
+	nudgeDelta,
+	translateCoords,
+	wallCoordsOf,
+} from "./wall-edit";
+import {
 	draftToWalls,
 	invertWallOp,
 	isMissingWallsTable,
@@ -9,7 +18,9 @@ import {
 	mapWallRow,
 	patchWalls,
 	type VTTWall,
+	type WallCoords,
 	type WallKind,
+	type WallMove,
 	type WallOp,
 	withWallKind,
 } from "./walls";
@@ -22,6 +33,27 @@ import {
  */
 
 let loadRequest = 0;
+
+// Paredes movidas cuja gravação ainda não terminou (ou terminou há pouco): uma
+// recarga do Realtime que chegar no meio não pode devolver a parede ao lugar
+// antigo (ela ainda não está no banco, ou a consulta saiu antes da gravação).
+const pendingMoves = new Map<string, WallCoords>();
+/** Quanto tempo a posição gravada vale mais que uma recarga já em voo (ms). */
+const MOVE_GRACE_MS = 2000;
+
+function holdMoves(moves: readonly WallMove[]): void {
+	for (const m of moves) pendingMoves.set(m.id, m.to);
+}
+
+function releaseMoves(moves: readonly WallMove[], graceMs: number): void {
+	const held = moves.map((m) => [m.id, pendingMoves.get(m.id)] as const);
+	const drop = () => {
+		for (const [id, coords] of held)
+			if (pendingMoves.get(id) === coords) pendingMoves.delete(id);
+	};
+	if (graceMs <= 0) drop();
+	else setTimeout(drop, graceMs);
+}
 
 export async function loadWalls(
 	sceneId: string,
@@ -52,14 +84,39 @@ export async function loadWalls(
 		now.setWallsStatus(isMissingWallsTable(error) ? "missing" : "error");
 		return;
 	}
-	now.setWalls((data ?? []).map(mapWallRow));
+	now.setWalls(
+		(data ?? []).map(mapWallRow).map((wall) => {
+			const held = pendingMoves.get(wall.id);
+			return held ? { ...wall, ...held } : wall;
+		}),
+	);
 	now.setWallsStatus("ready");
 }
 
-async function persist(op: WallOp): Promise<boolean> {
+async function persistNow(op: WallOp): Promise<boolean> {
 	const client = getSupabase();
 	if (!client) return false;
 	try {
+		if (op.kind === "move") {
+			// Cada parede tem coordenadas próprias: uma gravação por parede, juntas.
+			// `select("id")` mostra se a linha foi mesmo atualizada (a política de
+			// segurança devolve 0 linhas, sem erro, quando recusa).
+			const results = await Promise.all(
+				op.moves.map((m) =>
+					client
+						.from("vtt_walls")
+						.update({
+							x1: m.to.x1,
+							y1: m.to.y1,
+							x2: m.to.x2,
+							y2: m.to.y2,
+						})
+						.eq("id", m.id)
+						.select("id"),
+				),
+			);
+			return results.every((r) => !r.error && (r.data?.length ?? 0) > 0);
+		}
 		if (op.kind === "create") {
 			const { error } = await client.from("vtt_walls").insert(
 				op.walls.map((w) => ({
@@ -88,6 +145,16 @@ async function persist(op: WallOp): Promise<boolean> {
 	}
 }
 
+// As gravações saem em fila: desenhar uma parede e arrastá-la logo em seguida (ou
+// desfazer um movimento ainda em voo) chegam ao banco na ordem em que aconteceram.
+let persistQueue: Promise<unknown> = Promise.resolve();
+
+function persist(op: WallOp): Promise<boolean> {
+	const run = persistQueue.then(() => persistNow(op));
+	persistQueue = run.catch(() => false);
+	return run;
+}
+
 type Source = "do" | "undo" | "redo";
 
 /**
@@ -95,7 +162,8 @@ type Source = "do" | "undo" | "redo";
  * efeito local, devolve o histórico ao que era e avisa com toast.
  */
 export async function runWallOp(op: WallOp, source: Source): Promise<boolean> {
-	if (op.walls.length === 0) return true;
+	if (op.kind === "move" ? op.moves.length === 0 : op.walls.length === 0)
+		return true;
 	const store = useVTTStore.getState();
 	const sceneId = store.activeSceneId;
 	const prevUndo = store.wallUndo;
@@ -110,13 +178,26 @@ export async function runWallOp(op: WallOp, source: Source): Promise<boolean> {
 	if (source === "redo")
 		store.setWallHistory([...prevUndo, op], prevRedo.slice(0, -1));
 
+	if (applied.kind === "move") holdMoves(applied.moves);
 	const ok = await persist(applied);
+	if (applied.kind === "move")
+		releaseMoves(applied.moves, ok ? MOVE_GRACE_MS : 0);
 	if (ok) return true;
 
 	const now = useVTTStore.getState();
 	if (now.activeSceneId !== sceneId) return false;
 	now.applyWallOpLocal(invertWallOp(applied));
 	now.setWallHistory(prevUndo, prevRedo);
+	if (applied.kind === "move") {
+		// Falhou no meio de um lote: o banco pode ter aceitado parte dele; a
+		// mesa confere com o que está salvo.
+		if (sceneId) void loadWalls(sceneId);
+		showToast("error", {
+			title: "Não foi possível mover a parede",
+			description: "A mesa voltou ao que estava antes.",
+		});
+		return false;
+	}
 	if (applied.kind === "delete") {
 		// Falhou ao apagar: a parede volta já selecionada, como estava.
 		const back = new Set(applied.walls.map((w) => w.id));
@@ -157,6 +238,7 @@ export function finishWallDraft(): void {
 }
 
 export function deleteSelectedWalls(): void {
+	flushWallNudge();
 	const { walls, selectedWallIds } = useVTTStore.getState();
 	if (selectedWallIds.length === 0) return;
 	const ids = new Set(selectedWallIds);
@@ -164,12 +246,94 @@ export function deleteSelectedWalls(): void {
 	void runWallOp({ kind: "delete", walls: doomed }, "do");
 }
 
+/** Grava um movimento já decidido (soltar o arrasto): uma gravação, um passo no desfazer. */
+export function commitWallMoves(moves: readonly WallMove[]): void {
+	if (moves.length === 0) return;
+	void runWallOp({ kind: "move", moves: [...moves] }, "do");
+}
+
+/* Ajuste fino pelas setas: cada toque anda na hora (otimista) e o lote todo vira UMA
+   gravação e UM passo no desfazer quando a pessoa para de apertar. */
+interface NudgeBatch {
+	sceneId: string | null;
+	/** Posição de cada parede antes do primeiro toque do lote. */
+	before: Map<string, WallCoords>;
+	timer: ReturnType<typeof setTimeout>;
+}
+let nudgeBatch: NudgeBatch | null = null;
+let lastNudgeAt = 0;
+
+/** Fecha o lote de setas agora: grava e registra no histórico (se saiu do lugar). */
+export function flushWallNudge(): void {
+	const batch = nudgeBatch;
+	if (!batch) return;
+	nudgeBatch = null;
+	clearTimeout(batch.timer);
+	const { walls, activeSceneId } = useVTTStore.getState();
+	const ids = new Set(batch.before.keys());
+	const original = walls
+		.filter((w) => ids.has(w.id))
+		.map((w) => ({ ...w, ...batch.before.get(w.id) }));
+	const moves = movesBetween(original, walls, ids);
+	// O lote segurava a posição de cada parede; sem saldo (foi e voltou) ou em
+	// outra cena não há o que gravar, então só solta.
+	if (activeSceneId !== batch.sceneId || moves.length === 0) {
+		for (const id of ids) pendingMoves.delete(id);
+		return;
+	}
+	void runWallOp({ kind: "move", moves }, "do");
+}
+
+/**
+ * Empurra as paredes selecionadas por (dx, dy) px do mapa. Segurar a seta repete,
+ * mas com um intervalo mínimo; `now` só existe para teste.
+ */
+export function nudgeSelectedWalls(
+	dx: number,
+	dy: number,
+	repeat = false,
+	now: number = Date.now(),
+): boolean {
+	const store = useVTTStore.getState();
+	if (store.selectedWallIds.length === 0) return false;
+	if (repeat && now - lastNudgeAt < NUDGE_REPEAT_MS) return true;
+	lastNudgeAt = now;
+	const ids = new Set(store.selectedWallIds);
+	const targets = store.walls.filter((w) => ids.has(w.id));
+	if (targets.length === 0) return false;
+
+	if (!nudgeBatch) {
+		nudgeBatch = {
+			sceneId: store.activeSceneId,
+			before: new Map(targets.map((w) => [w.id, wallCoordsOf(w)])),
+			timer: setTimeout(flushWallNudge, NUDGE_FLUSH_MS),
+		};
+	} else {
+		clearTimeout(nudgeBatch.timer);
+		nudgeBatch.timer = setTimeout(flushWallNudge, NUDGE_FLUSH_MS);
+	}
+	const moved = targets.map((w) => ({ ...w, ...translateCoords(w, dx, dy) }));
+	const next = new Map(moved.map((w) => [w.id, w]));
+	store.setWalls(store.walls.map((w) => next.get(w.id) ?? w));
+	// Enquanto o lote não grava, uma recarga não pode desfazer o que já andou.
+	holdMoves(
+		moved.map((w) => ({
+			id: w.id,
+			from: nudgeBatch?.before.get(w.id) ?? wallCoordsOf(w),
+			to: wallCoordsOf(w),
+		})),
+	);
+	return true;
+}
+
 export function undoWall(): void {
+	flushWallNudge();
 	const op = useVTTStore.getState().wallUndo.at(-1);
 	if (op) void runWallOp(op, "undo");
 }
 
 export function redoWall(): void {
+	flushWallNudge();
 	const op = useVTTStore.getState().wallRedo.at(-1);
 	if (op) void runWallOp(op, "redo");
 }
@@ -178,6 +342,11 @@ export function redoWall(): void {
  * Teclas da ferramenta Parede (já passadas pelo shortcut-guard). Devolve true
  * se tratou a tecla.
  */
+function activeGridSize(): number {
+	const { scenes, activeSceneId } = useVTTStore.getState();
+	return scenes.find((scene) => scene.id === activeSceneId)?.gridSize ?? 70;
+}
+
 export function handleWallKey(e: KeyboardEvent): boolean {
 	const s = useVTTStore.getState();
 	if (!s.isGM || s.activeTool !== "wall") return false;
@@ -192,8 +361,19 @@ export function handleWallKey(e: KeyboardEvent): boolean {
 		redoWall();
 		return true;
 	}
-	if (mod || e.altKey) return false;
+	if (mod) return false;
 	const drawing = s.wallDraft.length > 0;
+	// Setas: empurram a seleção (1 px; Shift 10 px; Alt a casa inteira da grade).
+	const step = nudgeDelta(e.key, {
+		shift: e.shiftKey,
+		alt: e.altKey,
+		gridSize: activeGridSize(),
+	});
+	if (step && !drawing && s.selectedWallIds.length > 0) {
+		if (isWallDragging()) return true;
+		return nudgeSelectedWalls(step.dx, step.dy, e.repeat);
+	}
+	if (e.altKey) return false;
 	if (e.key === "Escape" || e.key === "Enter") {
 		if (!drawing) return false;
 		finishWallDraft();

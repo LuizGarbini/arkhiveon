@@ -593,6 +593,28 @@ export function drawWallPreview(
 	layer.fill({ color: WALL_PREVIEW_COLOR });
 }
 
+/** Raio, em px de TELA, do anel que marca onde o ímã encaixou. */
+export const WALL_MAGNET_RING_PX = 9;
+
+/**
+ * Anel discreto na ponta em que o ímã encaixou (tamanho fixo na tela, qualquer
+ * zoom). Desenha por cima do que já está na camada; quem chama limpa antes.
+ */
+export function drawWallMagnet(
+	layer: Graphics,
+	point: Point | null,
+	viewScale: number,
+) {
+	if (!point) return;
+	const k = 1 / Math.max(viewScale, 0.01);
+	const primary = dsColor("--primary", 0xa855f7);
+	const background = dsColor("--background", 0x18181b);
+	layer.circle(point.x, point.y, WALL_MAGNET_RING_PX * k);
+	layer.fill({ color: background, alpha: 0.35 });
+	layer.circle(point.x, point.y, WALL_MAGNET_RING_PX * k);
+	layer.stroke({ width: 2 * k, color: primary, alpha: 0.95 });
+}
+
 export interface MoveArrowOptions {
 	viewScale: number;
 	gridSize: number;

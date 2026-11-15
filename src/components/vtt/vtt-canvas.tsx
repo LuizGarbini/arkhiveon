@@ -170,22 +170,37 @@ import {
 	drawMoveArrow,
 	drawRulerPath,
 	drawSpellTemplate,
+	drawWallMagnet,
 	drawWallPreview,
 	drawWalls,
 	dsColor,
 	parseHexColor,
 } from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import { finishWallDraft, toggleDoor } from "@/lib/vtt/wall-sync";
+import {
+	beginWallPress,
+	computeWallDrag,
+	pickWallGrab,
+	resolveWallPoint,
+	setWallDragging,
+	WALL_MAGNET_SCREEN_PX,
+	type WallPress,
+	type WallSnapContext,
+	wallEndpoints,
+} from "@/lib/vtt/wall-edit";
+import {
+	commitWallMoves,
+	finishWallDraft,
+	toggleDoor,
+} from "@/lib/vtt/wall-sync";
 import {
 	blockingWalls,
 	doorIconRadius,
 	doorWithinReach,
 	hitTestDoorIcon,
-	hitTestWall,
 	isOpenable,
 	movementBlockingWalls,
-	snapWallPoint,
+	type VTTWall,
 } from "@/lib/vtt/walls";
 
 function readFullName(metadata: unknown): string {
@@ -406,6 +421,10 @@ export function VTTCanvas({
 	const lastWallClickRef = useRef<{ x: number; y: number; t: number } | null>(
 		null,
 	);
+	// Arrasto de parede/vértice (clique ainda sem arrastar também mora aqui) e o
+	// ponto onde o ímã encaixou por último (para só redesenhar quando mudar).
+	const wallPressRef = useRef<WallPress | null>(null);
+	const wallMagnetRef = useRef<{ x: number; y: number } | null>(null);
 	const remoteRulersLayerRef = useRef<Graphics | null>(null);
 	const remoteRulersLabelsRef = useRef<Container | null>(null);
 	const measurementLayerRef = useRef<Graphics | null>(null);
@@ -2312,7 +2331,45 @@ export function VTTCanvas({
 			);
 		};
 
+		// Parede: grade (preferência + Shift), ímã (Alt desliga) e as pontas candidatas.
+		const wallSnapContext = (mods: {
+			shiftKey: boolean;
+			altKey: boolean;
+		}): WallSnapContext | null =>
+			scene
+				? {
+						gridType: scene.gridType,
+						gridSize: scene.gridSize,
+						origin: gridOrigin,
+						snapGrid: useVTTStore.getState().wallSnapGrid,
+						invert: mods.shiftKey,
+						magnetOff: mods.altKey,
+						magnetRadius: WALL_MAGNET_SCREEN_PX / viewport.scale,
+					}
+				: null;
+		// Prévia do arrasto: redesenha só as camadas das paredes e dos ícones de porta.
+		const paintWallEdit = (list: readonly VTTWall[]) => {
+			const layer = wallsLayerRef.current;
+			if (layer) drawWalls(layer, list, useVTTStore.getState().selectedWallIds);
+			const top = doorIconsTopRef.current;
+			if (top && scene)
+				drawDoors(top, list, doorIconRadius(scene.gridSize || 70));
+		};
+		const endWallPress = () => {
+			wallPressRef.current = null;
+			wallMagnetRef.current = null;
+			setWallDragging(false);
+			wallPreviewLayerRef.current?.clear();
+			paintWallEdit(useVTTStore.getState().walls);
+		};
+
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Esc durante o arrasto de uma parede: cancela e ela volta ao lugar.
+			if (e.key === "Escape" && wallPressRef.current) {
+				e.preventDefault();
+				endWallPress();
+				return;
+			}
 			const activeEl =
 				document.activeElement instanceof Element
 					? document.activeElement
@@ -2567,7 +2624,12 @@ export function VTTCanvas({
 
 			// Fast Alt + Click Instant Ping OR Ping tool.
 			// Throttle local: ping recusado não toca som nem entra no broadcast.
-			if ((isAltHeldRef.current || activeTool === "ping") && isLeftClick) {
+			// Na ferramenta Parede (mestre), Alt é "sem ímã": não vira ping.
+			const altIsWallMagnet = activeTool === "wall" && isGM;
+			if (
+				((isAltHeldRef.current && !altIsWallMagnet) || activeTool === "ping") &&
+				isLeftClick
+			) {
 				sendPingRef.current(useVTTStore.getState().pingKind, {
 					x: worldPoint.x,
 					y: worldPoint.y,
@@ -2583,32 +2645,51 @@ export function VTTCanvas({
 			}
 
 			// Parede (mestre): clique fixa um ponto da polilinha; sem desenho em
-			// andamento, clique perto de uma parede a seleciona (Shift soma).
+			// andamento, clique numa parede a seleciona (Shift soma) e arrastar move
+			// a seleção; arrastar um vértice move só aquela ponta.
 			if (activeTool === "wall" && isGM && isLeftClick && scene) {
 				const store = useVTTStore.getState();
 				const draft = store.wallDraft;
 				if (draft.length === 0) {
-					const hit = hitTestWall(store.walls, worldPoint, 8 / viewport.scale);
-					if (hit) {
-						const sel = store.selectedWallIds;
-						store.setSelectedWallIds(
-							e.shiftKey
-								? sel.includes(hit)
-									? sel.filter((id) => id !== hit)
-									: [...sel, hit]
-								: [hit],
-						);
+					const grab = pickWallGrab({
+						walls: store.walls,
+						selectedIds: store.selectedWallIds,
+						world: worldPoint,
+						scale: viewport.scale,
+						shift: e.shiftKey,
+					});
+					if (grab) {
 						lastWallClickRef.current = null;
+						if (grab.type === "toggle") {
+							const sel = store.selectedWallIds;
+							store.setSelectedWallIds(
+								sel.includes(grab.id)
+									? sel.filter((id) => id !== grab.id)
+									: [...sel, grab.id],
+							);
+							return;
+						}
+						if (grab.select) store.setSelectedWallIds(grab.select);
+						wallPressRef.current = beginWallPress({
+							mode: grab.mode,
+							hitId: grab.hitId,
+							wasMultiSelected: grab.wasMultiSelected,
+							screen: { x: e.clientX, y: e.clientY },
+							world: worldPoint,
+							walls: store.walls,
+							ids: grab.ids,
+							vertex: grab.vertex,
+						});
 						return;
 					}
 				}
-				const p = snapWallPoint(
-					worldPoint,
-					scene.gridType,
-					scene.gridSize,
-					e.shiftKey,
-					gridOrigin,
-				);
+				const snapCtx = wallSnapContext(e);
+				const p = snapCtx
+					? resolveWallPoint(worldPoint, snapCtx, [
+							...wallEndpoints(store.walls),
+							...draft,
+						]).point
+					: worldPoint;
 				const now = Date.now();
 				const last = lastWallClickRef.current;
 				lastWallClickRef.current = { x: e.clientX, y: e.clientY, t: now };
@@ -2958,28 +3039,71 @@ export function VTTCanvas({
 				}
 			}
 
-			// Prévia do segmento até o cursor (só redesenha a camada da prévia).
+			// Parede: arrasto (prévia ao vivo, nada gravado) ou prévia do segmento até
+			// o cursor com o ímã. Só redesenha as camadas da parede e da prévia.
 			if (
 				activeTool === "wall" &&
 				isGM &&
 				scene &&
 				wallPreviewLayerRef.current
 			) {
-				const draft = useVTTStore.getState().wallDraft;
-				if (draft.length > 0) {
-					const p = snapWallPoint(
-						worldPoint,
-						scene.gridType,
-						scene.gridSize,
-						e.shiftKey,
-						gridOrigin,
-					);
+				const layer = wallPreviewLayerRef.current;
+				const live = useVTTStore.getState();
+				const snapCtx = wallSnapContext(e);
+				const press = wallPressRef.current;
+				if (press && snapCtx) {
+					if (
+						!press.moved &&
+						Math.hypot(
+							e.clientX - press.startScreen.x,
+							e.clientY - press.startScreen.y,
+						) > TOKEN_TAP_SLOP_PX
+					) {
+						press.moved = true;
+						setWallDragging(true);
+					}
+					if (press.moved) {
+						const preview = computeWallDrag(press, worldPoint, snapCtx);
+						paintWallEdit(preview.walls);
+						layer.clear();
+						drawWallMagnet(layer, preview.magnet, viewport.scale);
+					}
+				} else if (snapCtx) {
+					const draft = live.wallDraft;
+					const resolved = resolveWallPoint(worldPoint, snapCtx, [
+						...wallEndpoints(live.walls),
+						...draft,
+					]);
 					const c = wallCursorRef.current;
-					if (!c || c.x !== p.x || c.y !== p.y) {
-						wallCursorRef.current = p;
-						drawWallPreview(wallPreviewLayerRef.current, draft, p);
+					const m = wallMagnetRef.current;
+					const magnet = resolved.magnet;
+					const magnetChanged = m?.x !== magnet?.x || m?.y !== magnet?.y;
+					if (draft.length > 0) {
+						if (!c || c.x !== resolved.point.x || c.y !== resolved.point.y) {
+							wallCursorRef.current = resolved.point;
+						}
+						if (
+							!c ||
+							c.x !== resolved.point.x ||
+							c.y !== resolved.point.y ||
+							magnetChanged
+						) {
+							wallMagnetRef.current = magnet;
+							drawWallPreview(layer, draft, resolved.point);
+							drawWallMagnet(layer, magnet, viewport.scale);
+						}
+					} else if (magnetChanged) {
+						// Sem desenho: o anel mostra onde um clique começaria encaixado.
+						wallMagnetRef.current = magnet;
+						layer.clear();
+						drawWallMagnet(layer, magnet, viewport.scale);
 					}
 				}
+			}
+			// Saiu da ferramenta Parede: o anel do ímã não fica para trás.
+			if (activeTool !== "wall" && wallMagnetRef.current) {
+				wallMagnetRef.current = null;
+				wallPreviewLayerRef.current?.clear();
 			}
 			const now = Date.now();
 
@@ -3233,6 +3357,21 @@ export function VTTCanvas({
 					}
 				}
 				return;
+			}
+			// Parede: soltar grava o movimento UMA vez (a prévia que apareceu); um
+			// clique sem arrastar só seleciona.
+			const wallPress = wallPressRef.current;
+			if (wallPress) {
+				if (e.type !== "pointercancel" && wallPress.moved) {
+					commitWallMoves(wallPress.last.moves);
+				} else if (
+					e.type !== "pointercancel" &&
+					wallPress.wasMultiSelected &&
+					wallPress.mode === "body"
+				) {
+					useVTTStore.getState().setSelectedWallIds([wallPress.hitId]);
+				}
+				endWallPress();
 			}
 			const right = rightPressRef.current;
 			rightPressRef.current = null;

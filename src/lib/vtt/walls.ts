@@ -132,7 +132,24 @@ export interface WallPoint {
  * Operação de parede no histórico da sessão. `create` põe os segmentos na
  * cena, `delete` tira. Desfazer é aplicar a inversa (os ids se mantêm).
  */
-export type WallOp = { kind: "create" | "delete"; walls: VTTWall[] };
+export type WallOp =
+	| { kind: "create" | "delete"; walls: VTTWall[] }
+	| { kind: "move"; moves: WallMove[] };
+
+/** As quatro coordenadas de um segmento. */
+export interface WallCoords {
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+}
+
+/** Uma parede que mudou de lugar: de onde saiu e para onde foi (mesmo id). */
+export interface WallMove {
+	id: string;
+	from: WallCoords;
+	to: WallCoords;
+}
 
 /**
  * Snap aos cantos da grade quadrada. Hex e "sem grade" desenham livre na F1.
@@ -218,11 +235,24 @@ export function draftToWalls(
 }
 
 export function invertWallOp(op: WallOp): WallOp {
+	if (op.kind === "move")
+		return {
+			kind: "move",
+			moves: op.moves.map((m) => ({ id: m.id, from: m.to, to: m.from })),
+		};
 	return { kind: op.kind === "create" ? "delete" : "create", walls: op.walls };
 }
 
 /** Aplica a operação à lista local (sem duplicar ids). */
 export function applyWallOp(walls: readonly VTTWall[], op: WallOp): VTTWall[] {
+	if (op.kind === "move") {
+		// Só as coordenadas mudam: tipo e estado (porta aberta) ficam como estavam.
+		const target = new Map(op.moves.map((m) => [m.id, m.to]));
+		return walls.map((w) => {
+			const to = target.get(w.id);
+			return to ? { ...w, ...to } : w;
+		});
+	}
 	const ids = new Set(op.walls.map((w) => w.id));
 	const rest = walls.filter((w) => !ids.has(w.id));
 	return op.kind === "create" ? [...rest, ...op.walls] : rest;
