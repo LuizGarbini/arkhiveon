@@ -97,6 +97,8 @@ function rolls(): SheetRolls & {
 	return { rolling: false, check: vi.fn(), formula: vi.fn() };
 }
 
+const resourcesApi = () => ({ canEdit: true, isStaff: false, save: vi.fn() });
+
 describe("SheetTabs", () => {
 	function Harness() {
 		const [value, setValue] = useState("a");
@@ -156,6 +158,7 @@ describe("AttacksTab", () => {
 				stats={stats}
 				itemsById={itemsById}
 				rolls={r}
+				resources={resourcesApi()}
 				onOpenEquipment={open}
 			/>,
 		);
@@ -216,6 +219,7 @@ describe("AttacksTab", () => {
 				stats={stats}
 				itemsById={itemsById}
 				rolls={{ ...rolls(), rolling: true }}
+				resources={resourcesApi()}
 				onOpenEquipment={() => {}}
 			/>,
 		);
@@ -327,6 +331,7 @@ describe("SummaryTab", () => {
 				sceneUnit={sceneUnit}
 				showPassive
 				rolls={r}
+				resources={resourcesApi()}
 			/>,
 		);
 		return r;
@@ -380,6 +385,7 @@ describe("SummaryTab", () => {
 				stats={computeEffectiveStats(c, itemsById)}
 				showPassive={false}
 				rolls={rolls()}
+				resources={resourcesApi()}
 			/>,
 		);
 		expect(screen.queryByRole("region", { name: "Salvaguardas" })).toBeNull();

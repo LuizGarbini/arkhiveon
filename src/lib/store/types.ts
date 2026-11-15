@@ -173,6 +173,25 @@ export interface EntityLink {
 // =====================================================
 //  Interfaces das Entidades
 // =====================================================
+/** Espaços de magia de um nível: quantos existem e quantos já foram gastos. */
+export interface SpellSlotLevel {
+	total: number;
+	used: number;
+}
+
+/** Espaços de Pacto do bruxo: um nível só, recuperam no descanso curto. */
+export interface PactSlots {
+	level: number;
+	total: number;
+	used: number;
+}
+
+/** Contador de espaços de magia. As chaves de `slots` são "1" a "9". */
+export interface SpellSlotsState {
+	slots: Record<string, SpellSlotLevel>;
+	pact?: PactSlots;
+}
+
 export interface Character {
 	id: string;
 	createdAt: number;
@@ -233,6 +252,13 @@ export interface Character {
 	spellAttackBonus: number;
 	spells: string;
 	spellSlots: string;
+	/**
+	 * Contador de espaços de magia (gastos e recuperados na mesa). Sem ele, vale o
+	 * texto de `spellSlots`. Vive em `data`.
+	 */
+	spellSlotsState?: SpellSlotsState;
+	/** Dados de vida já gastos (o total vem de `hitDice`, ex.: "14d8"). */
+	hitDiceUsed?: number;
 	equipment: string;
 	currency: string;
 	personalityTraits: string;

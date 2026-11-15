@@ -32,6 +32,7 @@ import {
 import { SheetBody } from "@/components/vtt/sheet/sheet-body";
 import type { SheetHp } from "@/components/vtt/sheet/sheet-hp";
 import type { SheetRolls } from "@/components/vtt/sheet/sheet-types";
+import { useSheetResources } from "@/components/vtt/sheet/use-sheet-resources";
 import { computeEffectiveStats } from "@/core/rules";
 import { useAuth } from "@/lib/auth";
 import {
@@ -738,6 +739,7 @@ function SheetContent({
 	);
 	// Atributos com os itens equipados: as rolagens da mesa usam estes valores.
 	const { byId: campaignItems } = useCampaignItems();
+	const resources = useSheetResources(character);
 	const effective = useMemo(
 		() => (character ? computeEffectiveStats(character, campaignItems) : null),
 		[character, campaignItems],
@@ -875,6 +877,8 @@ function SheetContent({
 				character ? HAS_PASSIVE_PERCEPTION.has(character.system) : false
 			}
 			rolls={rolls}
+			resources={resources}
+			conditions={token?.conditions ?? []}
 			lastRoll={lastRoll}
 			diceLabel={config.defaultDice || "d20"}
 			portraitUrl={portraitUrl}

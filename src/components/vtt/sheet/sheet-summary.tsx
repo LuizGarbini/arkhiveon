@@ -13,10 +13,20 @@ import { type Character, getAttributeFullName } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import { abilityModifier } from "@/lib/vtt/combat";
+import { SheetResources } from "./sheet-resources";
 import type { SheetRolls } from "./sheet-types";
+import type { SheetResourceApi } from "./use-sheet-resources";
 
-/** Número da faixa de estatísticas: sem caixa, sem cor decorativa. */
-function Stat({ value, label }: { value: string; label: string }) {
+/** Célula do painel de combate. O primeiro número (CA) ganha destaque. */
+function Stat({
+	value,
+	label,
+	featured,
+}: {
+	value: string;
+	label: string;
+	featured?: boolean;
+}) {
 	// "12m" → número em destaque e unidade pequena ao lado ("12ft", "6sq").
 	const [, number, unit] = /^([+-−]?[\d.]+)(\D.*)?$/.exec(value) ?? [
 		"",
@@ -24,7 +34,14 @@ function Stat({ value, label }: { value: string; label: string }) {
 		"",
 	];
 	return (
-		<div className="min-w-0 px-1 text-center not-first:border-l not-first:border-border/60">
+		<div
+			className={cn(
+				"min-w-0 rounded-2xl border px-2 py-2.5 text-center",
+				featured
+					? "border-primary/35 bg-gradient-to-b from-primary/15 to-primary/5"
+					: "border-border/70 bg-background/40",
+			)}
+		>
 			<dd className="truncate font-display text-[1.5rem] leading-tight font-semibold tabular-nums">
 				{number}
 				{unit ? (
@@ -33,7 +50,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 					</span>
 				) : null}
 			</dd>
-			<dt className="mt-0.5 text-[11.5px] text-muted-foreground">{label}</dt>
+			<dt className="mt-0.5 text-[11px] text-muted-foreground">{label}</dt>
 		</div>
 	);
 }
@@ -48,8 +65,9 @@ const SAVE_LABELS: Record<string, string> = {
 };
 
 /**
- * Resumo: CA, iniciativa, deslocamento e passiva em linha; atributos em grade
- * (o modificador é o número grande: é o que se rola); salvaguardas.
+ * Resumo: painel de combate (CA, iniciativa, deslocamento, passiva, CD de magia
+ * e proficiência), atributos em linha (o modificador é o número grande: é o que
+ * se rola), salvaguardas e recursos (espaços de magia, dados de vida, descansos).
  */
 export function SummaryTab({
 	character,
@@ -58,6 +76,7 @@ export function SummaryTab({
 	sceneUnit,
 	showPassive,
 	rolls,
+	resources,
 }: {
 	character: Character;
 	config: SystemConfig;
@@ -66,17 +85,19 @@ export function SummaryTab({
 	sceneUnit?: string | null;
 	showPassive: boolean;
 	rolls: SheetRolls;
+	resources: SheetResourceApi;
 }) {
 	const proficiency =
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
-	const hasSaves = character.system.startsWith("dnd");
-	const columns = showPassive ? 4 : 3;
+	const isDnd = character.system.startsWith("dnd");
+	const spellDc = character.spellSaveDc > 0 ? character.spellSaveDc : 0;
+	const attributes = config.attributes;
 
 	return (
 		<div className="space-y-5">
-			<dl className={cn("grid", columns === 4 ? "grid-cols-4" : "grid-cols-3")}>
-				<Stat value={String(stats.ac.total)} label="CA" />
+			<dl className="grid grid-cols-3 gap-2">
+				<Stat featured value={String(stats.ac.total)} label="CA" />
 				<Stat
 					value={formatModifier(stats.initiative.total)}
 					label="Iniciativa"
@@ -97,6 +118,12 @@ export function SummaryTab({
 						label="Passiva"
 					/>
 				) : null}
+				{spellDc > 0 ? (
+					<Stat value={String(spellDc)} label="CD de magia" />
+				) : null}
+				{isDnd ? (
+					<Stat value={formatModifier(proficiency)} label="Proficiência" />
+				) : null}
 			</dl>
 
 			<section aria-label="Atributos">
@@ -108,8 +135,13 @@ export function SummaryTab({
 						toque para rolar no chat
 					</span>
 				</div>
-				<div className="grid grid-cols-3 gap-2 @[44rem]:grid-cols-6">
-					{config.attributes.map((attr) => {
+				<div
+					className="grid gap-1.5"
+					style={{
+						gridTemplateColumns: `repeat(${Math.min(Math.max(attributes.length, 3), 6)}, minmax(0, 1fr))`,
+					}}
+				>
+					{attributes.map((attr) => {
 						const baseScore = characterAttributeScore(character, attr.key);
 						const withItems = isWeaponAbilityKey(attr.key)
 							? stats.abilities[attr.key]
@@ -118,7 +150,7 @@ export function SummaryTab({
 						const mod = abilityModifier(score);
 						const fullName = getAttributeFullName(attr.label);
 						const proficient =
-							hasSaves && character.savingThrowProficiencies?.[attr.key];
+							isDnd && character.savingThrowProficiencies?.[attr.key];
 						return (
 							<button
 								key={attr.key}
@@ -127,23 +159,23 @@ export function SummaryTab({
 								aria-label={`Rolar ${fullName} (${formatModifier(mod)})`}
 								onClick={() => rolls.check(attr.label, mod, fullName)}
 								className={cn(
-									"relative flex min-h-[4.25rem] cursor-pointer select-none flex-col gap-0.5 rounded-2xl border px-2.5 py-2 text-left transition-[background-color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50",
+									"relative flex min-h-[4.5rem] cursor-pointer select-none flex-col items-center gap-0.5 rounded-2xl border px-1 py-2 text-center transition-[background-color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50",
 									proficient
 										? "border-primary/35 bg-primary/10 [@media(hover:hover)]:hover:bg-primary/15"
 										: "border-border/70 bg-background/40 [@media(hover:hover)]:hover:border-primary/35 [@media(hover:hover)]:hover:bg-muted/40",
 								)}
 							>
-								<span className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+								<span className="text-[10.5px] font-semibold text-muted-foreground">
 									{attr.label}
-									{proficient ? (
-										<span
-											role="img"
-											aria-label="Salvaguarda proficiente"
-											className="size-1.5 rounded-full bg-primary"
-										/>
-									) : null}
 								</span>
-								<span className="font-display text-[1.625rem] leading-none font-semibold tabular-nums">
+								{proficient ? (
+									<span
+										role="img"
+										aria-label="Salvaguarda proficiente"
+										className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary"
+									/>
+								) : null}
+								<span className="font-display text-[1.3rem] leading-none font-semibold tabular-nums">
 									{formatModifier(mod)}
 								</span>
 								<span
@@ -153,7 +185,7 @@ export function SummaryTab({
 											: undefined
 									}
 									className={cn(
-										"text-[11.5px] tabular-nums",
+										"text-[11px] tabular-nums",
 										withItems && withItems.delta > 0
 											? "font-semibold text-primary"
 											: "text-muted-foreground",
@@ -167,7 +199,7 @@ export function SummaryTab({
 				</div>
 			</section>
 
-			{hasSaves ? (
+			{isDnd ? (
 				<section aria-label="Salvaguardas">
 					<div className="mb-2.5 flex items-baseline justify-between">
 						<h3 className="text-xs font-semibold text-muted-foreground">
@@ -215,6 +247,10 @@ export function SummaryTab({
 						})}
 					</div>
 				</section>
+			) : null}
+
+			{isDnd ? (
+				<SheetResources character={character} resources={resources} />
 			) : null}
 		</div>
 	);

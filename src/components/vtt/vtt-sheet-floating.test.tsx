@@ -287,8 +287,8 @@ describe("Ficha flutuante: painel", () => {
 		expect(panel.querySelector("[title]")).toBeNull();
 		// Cabeçalho de arraste só com alça + X (padrão Figma); nome no título.
 		expect(screen.getByTestId("vtt-sheet-drag-handle").textContent).toBe("");
-		// retrato de 72 px (monograma quando não há imagem)
-		expect(panel.querySelector('[class*="size-[4.5rem]"]')).toBeTruthy();
+		// retrato de 64 px (monograma quando não há imagem)
+		expect(panel.querySelector('[class*="size-16"]')).toBeTruthy();
 	});
 });
 

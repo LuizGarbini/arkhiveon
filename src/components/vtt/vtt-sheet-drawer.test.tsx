@@ -387,3 +387,131 @@ describe("VTTSheetDrawer · abas", () => {
 		expect(screen.getByText("Teste livre: 12 = 12")).toBeTruthy();
 	});
 });
+
+describe("VTTSheetDrawer · cabeçalho novo", () => {
+	const withToken = (extra: Record<string, unknown> = {}) => {
+		h.vtt.isGM = true;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 7,
+				hpMax: 10,
+				conditions: [],
+				...extra,
+			},
+		];
+	};
+
+	it("mostra as condições do token como etiquetas", () => {
+		withToken({ conditions: ["envenenado"] });
+		setCharacter({});
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const list = screen.getByRole("list", { name: "Condições" });
+		expect(list.textContent).toBe("Envenenado");
+	});
+
+	it("salvaguardas contra a morte só aparecem com o PV em zero", () => {
+		withToken({ hpCurrent: 7 });
+		setCharacter({ health: 7, healthMax: 10 });
+		const view = render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(
+			screen.queryByRole("region", { name: "Salvaguardas contra a morte" }),
+		).toBeNull();
+		view.unmount();
+		withToken({ hpCurrent: 0 });
+		setCharacter({ health: 0, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		expect(
+			screen.getByRole("region", { name: "Salvaguardas contra a morte" }),
+		).toBeTruthy();
+	});
+
+	it("ao rolar o conteúdo o cabeçalho recolhe numa barra, e tocar nela devolve", () => {
+		withToken();
+		setCharacter({ health: 7, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const panel = screen.getByRole("tabpanel");
+		const set = (name: string, value: number) =>
+			Object.defineProperty(panel, name, { configurable: true, value });
+		set("scrollTop", 120);
+		set("scrollHeight", 1200);
+		set("clientHeight", 300);
+		expect(
+			screen.queryByRole("button", { name: /Mostrar cabeçalho/ }),
+		).toBeNull();
+		fireEvent.scroll(panel);
+		const bar = screen.getByRole("button", {
+			name: /QA Guerreira, 7 \/ 10 PV. Mostrar cabeçalho/,
+		});
+		fireEvent.click(bar);
+		expect(
+			screen.queryByRole("button", { name: /Mostrar cabeçalho/ }),
+		).toBeNull();
+	});
+
+	it("conteúdo curto: rolar não recolhe o cabeçalho (evita pisca-pisca)", () => {
+		withToken();
+		setCharacter({ health: 7, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const panel = screen.getByRole("tabpanel");
+		for (const [name, value] of [
+			["scrollTop", 60],
+			["scrollHeight", 360],
+			["clientHeight", 300],
+		] as const) {
+			Object.defineProperty(panel, name, { configurable: true, value });
+		}
+		fireEvent.scroll(panel);
+		expect(
+			screen.queryByRole("button", { name: /Mostrar cabeçalho/ }),
+		).toBeNull();
+	});
+
+	it("trocar de aba reabre o cabeçalho recolhido", () => {
+		withToken();
+		setCharacter({ health: 7, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const panel = screen.getByRole("tabpanel");
+		for (const [name, value] of [
+			["scrollTop", 120],
+			["scrollHeight", 1200],
+			["clientHeight", 300],
+		] as const) {
+			Object.defineProperty(panel, name, { configurable: true, value });
+		}
+		fireEvent.scroll(panel);
+		expect(
+			screen.getByRole("button", { name: /Mostrar cabeçalho/ }),
+		).toBeTruthy();
+		fireEvent.click(screen.getByRole("tab", { name: "Perícias" }));
+		expect(
+			screen.queryByRole("button", { name: /Mostrar cabeçalho/ }),
+		).toBeNull();
+	});
+});
+
+describe("VTTSheetDrawer · rolagem entre abas", () => {
+	it("a rolagem de uma aba não vaza para a outra (painel novo, no topo)", () => {
+		h.vtt.isGM = true;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 7,
+				hpMax: 10,
+				conditions: [],
+			},
+		];
+		setCharacter({ health: 7, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const before = screen.getByRole("tabpanel");
+		before.scrollTop = 240;
+		fireEvent.click(screen.getByRole("tab", { name: "Perícias" }));
+		const after = screen.getByRole("tabpanel");
+		expect(after).not.toBe(before);
+		expect(after.scrollTop).toBe(0);
+	});
+});

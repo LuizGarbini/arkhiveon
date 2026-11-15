@@ -1779,6 +1779,10 @@ export type Database = {
 				Args: { p_character_id: string; p_changes: Json };
 				Returns: Json;
 			};
+			set_character_resources: {
+				Args: { p_character_id: string; p_changes: Json };
+				Returns: Json;
+			};
 			set_character_hp: {
 				Args: { p_character_id: string; p_current: number; p_max?: number };
 				Returns: Json;
