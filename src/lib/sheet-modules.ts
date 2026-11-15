@@ -132,6 +132,7 @@ export function createDefaultSheetLayout(
 				"initiative",
 				"speed",
 				"speedUnit",
+				"visionDistance",
 			],
 		}),
 		moduleConfig("inventory", 40, "main", {

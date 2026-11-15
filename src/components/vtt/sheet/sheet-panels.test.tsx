@@ -383,6 +383,17 @@ describe("SummaryTab", () => {
 		expect(stat?.textContent).toBe("40ft");
 	});
 
+	it("visão da ficha aparece na unidade da cena (18 m → 60 ft)", () => {
+		renderSummary(character({ visionDistance: 18 }), rolls(), "ft");
+		const stat = screen.getByText("Visão").previousElementSibling;
+		expect(stat?.textContent).toBe("60ft");
+	});
+
+	it("sem visão definida na ficha, o resumo não mostra o campo", () => {
+		renderSummary(character(), rolls(), "ft");
+		expect(screen.queryByText("Visão")).toBeNull();
+	});
+
 	it("outros sistemas não mostram salvaguardas", () => {
 		const c = character({ system: "generic" });
 		render(

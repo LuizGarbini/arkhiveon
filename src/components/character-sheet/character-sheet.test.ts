@@ -74,6 +74,30 @@ describe("Character Sheet Form & Domain Contract", () => {
 			expect(sanitized.tempHealth).toBe(0);
 			expect(sanitized.armorClass).toBe(15);
 		});
+
+		it("visão: valor válido fica; vazio, zero, negativo e NaN viram 'sem visão'", () => {
+			const clean = (visionDistance: unknown) =>
+				sanitizeCharacterFormValues(
+					{ visionDistance } as unknown as CharacterFormValues,
+					{ emptyToZero: true },
+				).visionDistance;
+			expect(clean(18)).toBe(18);
+			expect(clean(7.46)).toBe(7.5);
+			expect(clean(undefined)).toBeUndefined();
+			expect(clean(Number.NaN)).toBeUndefined();
+			expect(clean(0)).toBeUndefined();
+			expect(clean(-5)).toBeUndefined();
+			expect(clean("18")).toBeUndefined();
+			expect(clean(Number.POSITIVE_INFINITY)).toBeUndefined();
+		});
+
+		it("visão absurda é limitada a 1000", () => {
+			const out = sanitizeCharacterFormValues(
+				{ visionDistance: 99999 } as unknown as CharacterFormValues,
+				{ emptyToZero: true },
+			);
+			expect(out.visionDistance).toBe(1000);
+		});
 	});
 
 	describe("Custom Template Persistence Contract", () => {

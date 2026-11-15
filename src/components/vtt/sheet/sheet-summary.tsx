@@ -108,6 +108,16 @@ export function SummaryTab({
 						)}
 						label="Desloc."
 					/>
+					{character.visionDistance && character.visionDistance > 0 ? (
+						<Vital
+							value={formatSpeed(
+								character.visionDistance,
+								speedUnitOf(character, config.speedUnit),
+								sceneUnit,
+							)}
+							label="Visão"
+						/>
+					) : null}
 					{showPassive ? (
 						<Vital
 							value={String(

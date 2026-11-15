@@ -1,3 +1,6 @@
+import { convertDistance, speedUnitOf } from "@/core/rules/units";
+import { SYSTEM_CONFIG } from "@/lib/systems";
+import { hasLineOfSight } from "./line-of-sight";
 import type { VTTToken } from "./types";
 
 /**
@@ -37,22 +40,62 @@ export function isVisionToken(token: VisionToken): boolean {
 	);
 }
 
+/**
+ * `rangeCells` deixa a ficha mandar: se devolver um alcance (em casas) para o
+ * token, vale ele; senão vale o do token, e por fim o padrão.
+ */
 export function visionSources(
 	tokens: readonly VisionToken[],
 	gridSize: number,
+	rangeCells?: (token: VisionToken) => number | undefined,
 ): VisionSource[] {
 	const cell = gridSize > 0 ? gridSize : 70;
 	const out: VisionSource[] = [];
 	for (const token of tokens) {
 		if (!isVisionToken(token)) continue;
-		out.push({
-			id: token.id,
-			x: token.x,
-			y: token.y,
-			range: (token.visionRange || DEFAULT_VISION_CELLS) * cell,
-		});
+		const fromSheet = rangeCells?.(token);
+		const cells =
+			fromSheet && fromSheet > 0
+				? fromSheet
+				: token.visionRange || DEFAULT_VISION_CELLS;
+		out.push({ id: token.id, x: token.x, y: token.y, range: cells * cell });
 	}
 	return out;
+}
+
+/**
+ * Alcance de visão da ficha, em casas da grade. A ficha guarda o número na
+ * unidade do deslocamento (m ou pés, mesma conversão do D&D: 1 casa = 1,5 m =
+ * 5 pés). `undefined` quando a ficha não define a visão (vale o do token).
+ */
+export function characterVisionCells(
+	character: { visionDistance?: unknown; speedUnit?: unknown },
+	systemUnit: string,
+): number | undefined {
+	const distance = character.visionDistance;
+	if (typeof distance !== "number" || !(distance > 0)) return undefined;
+	const cells = convertDistance(
+		distance,
+		speedUnitOf(character, systemUnit),
+		"sq",
+	);
+	return cells !== null && cells > 0 ? cells : undefined;
+}
+
+/**
+ * Alguém que enxerga vê este ponto? Precisa estar no alcance E sem parede no
+ * meio. É a regra única para esconder monstros fora da visão.
+ */
+export function isSeenByAny(
+	target: VisionPoint,
+	sources: readonly VisionSource[],
+	walls: readonly VisionSegment[],
+): boolean {
+	return sources.some(
+		(source) =>
+			Math.hypot(source.x - target.x, source.y - target.y) <= source.range &&
+			hasLineOfSight({ x: source.x, y: source.y }, target, walls),
+	);
 }
 
 /**
@@ -64,4 +107,179 @@ export function visionKey(sources: readonly VisionSource[]): string {
 	return sources
 		.map((s) => `${s.id}:${Math.round(s.x)}:${Math.round(s.y)}:${s.range}`)
 		.join("|");
+}
+
+/* ------------------------------------------------------------------ */
+/* Polígono de visibilidade: o que um token enxerga, com as paredes.   */
+/* ------------------------------------------------------------------ */
+
+export interface VisionPoint {
+	x: number;
+	y: number;
+}
+
+export interface VisionSegment {
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+}
+
+/** Raios do "círculo" quando nada bloqueia: mais raios, borda mais redonda. */
+const CIRCLE_RAYS = 96;
+/** Abertura em volta de cada ponta de parede, para o raio passar rente ao canto. */
+const CORNER_EPS = 1e-4;
+
+/** Onde o raio (origem + t·dir) cruza o segmento? `null` se não cruza. */
+function rayHit(
+	ox: number,
+	oy: number,
+	dx: number,
+	dy: number,
+	w: VisionSegment,
+): number | null {
+	const sx = w.x2 - w.x1;
+	const sy = w.y2 - w.y1;
+	const denom = dx * sy - dy * sx;
+	if (Math.abs(denom) < 1e-12) return null; // paralelo
+	const qx = w.x1 - ox;
+	const qy = w.y1 - oy;
+	const t = (qx * sy - qy * sx) / denom;
+	const u = (qx * dy - qy * dx) / denom;
+	if (t <= 1e-6 || u < 0 || u > 1) return null;
+	return t;
+}
+
+/**
+ * O que o token enxerga: um polígono em volta de `origin`, de raio `radius`,
+ * recortado pelas paredes (que bloqueiam o raio). Varredura angular: um raio por
+ * ponta de parede (um pouco antes e um pouco depois, para o canto sair certo)
+ * mais raios fixos em volta para a borda ficar redonda. Os pontos saem em
+ * ordem de ângulo, prontos para preencher.
+ */
+export function visibilityPolygon(
+	origin: VisionPoint,
+	radius: number,
+	walls: readonly VisionSegment[],
+	rays: number = CIRCLE_RAYS,
+): VisionPoint[] {
+	if (!(radius > 0)) return [];
+	const { x: ox, y: oy } = origin;
+	// Só paredes cuja caixa encosta no quadrado de visão importam.
+	const near = walls.filter((w) => {
+		if (w.x1 === w.x2 && w.y1 === w.y2) return false;
+		return !(
+			Math.max(w.x1, w.x2) < ox - radius ||
+			Math.min(w.x1, w.x2) > ox + radius ||
+			Math.max(w.y1, w.y2) < oy - radius ||
+			Math.min(w.y1, w.y2) > oy + radius
+		);
+	});
+
+	const angles: number[] = [];
+	const steps = Math.max(8, Math.floor(rays));
+	for (let i = 0; i < steps; i++) angles.push((i / steps) * Math.PI * 2);
+	for (const w of near) {
+		for (const [px, py] of [
+			[w.x1, w.y1],
+			[w.x2, w.y2],
+		] as const) {
+			if (Math.hypot(px - ox, py - oy) > radius * 1.0001) continue;
+			const a = Math.atan2(py - oy, px - ox);
+			angles.push(a - CORNER_EPS, a, a + CORNER_EPS);
+		}
+	}
+	const TAU = Math.PI * 2;
+	const sorted = angles
+		.map((a) => ((a % TAU) + TAU) % TAU)
+		.sort((a, b) => a - b);
+
+	const points: VisionPoint[] = [];
+	let last = Number.NaN;
+	for (const a of sorted) {
+		if (a === last) continue;
+		last = a;
+		const dx = Math.cos(a);
+		const dy = Math.sin(a);
+		let dist = radius;
+		for (const w of near) {
+			const t = rayHit(ox, oy, dx, dy, w);
+			if (t !== null && t < dist) dist = t;
+		}
+		points.push({ x: ox + dx * dist, y: oy + dy * dist });
+	}
+	return points;
+}
+
+/** O ponto está dentro do polígono? (par-ímpar) */
+export function pointInPolygon(
+	point: VisionPoint,
+	polygon: readonly VisionPoint[],
+): boolean {
+	let inside = false;
+	for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+		const a = polygon[i] as VisionPoint;
+		const b = polygon[j] as VisionPoint;
+		if (
+			a.y > point.y !== b.y > point.y &&
+			point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x
+		)
+			inside = !inside;
+	}
+	return inside;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ponte ficha → mesa                                                  */
+/* ------------------------------------------------------------------ */
+
+interface SheetVisionCharacter {
+	id: string;
+	system?: string;
+	visionDistance?: unknown;
+	speedUnit?: unknown;
+}
+
+/**
+ * Selo (texto) com a visão, em casas, dos personagens ligados a tokens da mesa.
+ * Devolve só primitivo para o seletor do Zustand ficar estável: só muda quando a
+ * visão de alguém realmente muda. Formato: `id:casas;id:casas;`.
+ */
+export function selectLinkedVisionStamp(
+	characters: readonly SheetVisionCharacter[],
+	characterIds: string,
+): string {
+	if (!characterIds) return "";
+	const wanted = new Set(characterIds.split("|"));
+	let stamp = "";
+	for (const character of characters) {
+		if (!wanted.has(character.id)) continue;
+		const systemUnit =
+			(SYSTEM_CONFIG as Record<string, { speedUnit: string } | undefined>)[
+				character.system ?? ""
+			]?.speedUnit ?? "ft";
+		const cells = characterVisionCells(character, systemUnit);
+		if (cells !== undefined)
+			stamp += `${character.id}:${Math.round(cells * 100) / 100};`;
+	}
+	return stamp;
+}
+
+/** Lê o selo de volta: id do personagem → alcance em casas. */
+export function parseVisionStamp(stamp: string): Map<string, number> {
+	const map = new Map<string, number>();
+	for (const part of stamp.split(";")) {
+		const at = part.lastIndexOf(":");
+		if (at <= 0) continue;
+		const cells = Number(part.slice(at + 1));
+		if (cells > 0) map.set(part.slice(0, at), cells);
+	}
+	return map;
+}
+
+/** Pontos do polígono em lista plana [x0, y0, x1, y1, ...] (formato do Pixi). */
+export function flattenPolygon(points: readonly VisionPoint[]): number[] {
+	const flat: number[] = [];
+	for (const point of points) flat.push(point.x, point.y);
+	return flat;
 }

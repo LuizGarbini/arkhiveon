@@ -122,7 +122,15 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
-import { visionKey, visionSources } from "@/lib/vtt/vision";
+import {
+	flattenPolygon,
+	isSeenByAny,
+	parseVisionStamp,
+	selectLinkedVisionStamp,
+	visibilityPolygon,
+	visionKey,
+	visionSources,
+} from "@/lib/vtt/vision";
 import {
 	clearLabels,
 	drawMoveArrow,
@@ -297,6 +305,7 @@ export function VTTCanvas({
 	const tokensLayerRef = useRef<Container | null>(null);
 	const gmTokensLayerRef = useRef<Container | null>(null);
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
+	const visionMaskRef = useRef<Graphics | null>(null);
 	const fogOfWarLayerRef = useRef<Container | null>(null);
 	const fogSpriteRef = useRef<Sprite | null>(null);
 	const fogTextureRef = useRef<RenderTexture | null>(null);
@@ -510,9 +519,32 @@ export function VTTCanvas({
 	// Position and the remote target stay out of this key so a drag does not
 	// destroy and recreate the sprite on every pointer move.
 	const tokenAppearance = useMemo(() => tokensAppearanceKey(tokens), [tokens]);
+	// Visão dos jogadores: o alcance vem da ficha (se definido) e as paredes
+	// bloqueiam. A lista só é lida pelos efeitos via ref; o que dispara refazer a
+	// névoa é a assinatura (visionSig), não qualquer token da mesa se mexer.
+	const walls = useVTTStore((s) => s.walls);
+	const sheetVisionStamp = useRPGStore((s) =>
+		selectLinkedVisionStamp(s.characters, linkedCharacterIds),
+	);
+	const sheetVision = useMemo(
+		() => parseVisionStamp(sheetVisionStamp),
+		[sheetVisionStamp],
+	);
+	const visionCell = scene?.gridSize || 70;
+	const visionList = useMemo(
+		() =>
+			visionSources(tokens, visionCell, (token) =>
+				token.characterId ? sheetVision.get(token.characterId) : undefined,
+			),
+		[tokens, visionCell, sheetVision],
+	);
+	const visionListRef = useRef(visionList);
+	visionListRef.current = visionList;
+	const wallsRef = useRef(walls);
+	wallsRef.current = walls;
 	const tokenVisibility = useMemo(
-		() => visibleTokenIds(tokens, isGM, scene),
-		[tokens, isGM, scene],
+		() => visibleTokenIds(tokens, isGM, scene, { sources: visionList, walls }),
+		[tokens, isGM, scene, visionList, walls],
 	);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
@@ -523,7 +555,6 @@ export function VTTCanvas({
 	const selectedTemplateId = useVTTStore((s) => s.selectedTemplateId);
 	const setPreviewTemplate = useVTTStore((s) => s.setPreviewTemplate);
 	const addPlacedTemplate = useVTTStore((s) => s.addPlacedTemplate);
-	const walls = useVTTStore((s) => s.walls);
 	const selectedWallIds = useVTTStore((s) => s.selectedWallIds);
 	const wallDraft = useVTTStore((s) => s.wallDraft);
 
@@ -592,6 +623,12 @@ export function VTTCanvas({
 			fogOfWarLayer.addChild(fogSprite);
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
+
+			// Máscara da visão (recorta a névoa opaca). Fica no mundo para herdar zoom
+			// e pan, mas não desenha nada por si só.
+			const visionMask = new Graphics();
+			visionMaskRef.current = visionMask;
+			world.addChild(visionMask);
 
 			const fogBrushPreviewLayer = new Graphics();
 			fogBrushPreviewLayerRef.current = fogBrushPreviewLayer;
@@ -940,14 +977,6 @@ export function VTTCanvas({
 			window.matchMedia?.("(max-width: 639px), (pointer: coarse)").matches ===
 				true;
 
-		// Calculate player tokens vision circles for Exploration Mode (Penumbra LOS check)
-		const playerTokens = liveTokens.filter(
-			(t) =>
-				t.layer === "token" &&
-				!t.isHidden &&
-				(t.characterId || t.controlledBy?.length > 0),
-		);
-
 		for (const token of liveTokens) {
 			// Security filter: GM layer tokens are NEVER added to player view
 			if (token.layer === "gm" && !isGM) continue;
@@ -960,12 +989,12 @@ export function VTTCanvas({
 					token.characterId ||
 					(token.controlledBy && token.controlledBy.length > 0);
 				if (!isPlayerControlled) {
-					// Check if this NPC/monster token is inside any active player token's vision circle
-					const isInActiveVision = playerTokens.some((pt) => {
-						const vRange = (pt.visionRange || 6) * gridSize;
-						const dist = Math.hypot(pt.x - token.x, pt.y - token.y);
-						return dist <= vRange;
-					});
+					// Monstro só aparece se alguém que enxerga o vê: no alcance e sem parede no meio.
+					const isInActiveVision = isSeenByAny(
+						{ x: token.x, y: token.y },
+						visionListRef.current,
+						wallsRef.current,
+					);
 
 					if (!isInActiveVision) {
 						continue; // Hide enemy/monster in explored penumbra
@@ -1444,35 +1473,41 @@ export function VTTCanvas({
 		isGM,
 	]);
 
-	// 5b. Penumbra do modo Exploração: um recorte em volta de cada token de
-	// jogador. É vetor (barato) e só refaz quando QUEM ENXERGA muda, não quando
-	// qualquer token da mesa se mexe.
-	const visionCell = scene?.gridSize || 70;
-	const visionList = useMemo(
-		() => visionSources(tokens, visionCell),
-		[tokens, visionCell],
-	);
+	// 5b. Visão do modo Exploração. Para o jogador, cada token que enxerga recorta
+	// a névoa opaca (revela o mapa) e a penumbra, sempre respeitando as paredes.
+	// É vetor (barato) e só refaz quando QUEM ENXERGA muda ou as paredes mudam
+	// (visionSig / walls), não quando qualquer token da mesa se mexe.
 	const visionSig = visionKey(visionList);
-	const visionListRef = useRef(visionList);
-	visionListRef.current = visionList;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig é a dependência; o efeito lê a lista na hora pelo ref.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig e walls são as dependências; o efeito lê a lista na hora pelo ref.
 	useEffect(() => {
 		if (!rendererReady) return;
 		const layer = fogExplorationLayerRef.current;
-		if (!layer) return;
+		const fogLayer = fogOfWarLayerRef.current;
+		const mask = visionMaskRef.current;
+		if (!layer || !fogLayer || !mask) return;
 		layer.clear();
+		mask.clear();
 		if (!sceneFogEnabled || isGM || !sceneFogExploration) {
 			layer.visible = false;
+			fogLayer.mask = null;
 			return;
 		}
 		layer.visible = true;
 		layer.rect(0, 0, fogWidth, fogHeight);
 		layer.fill({ color: 0x090a0f, alpha: 0.55 });
 		for (const source of visionListRef.current) {
+			const flat = flattenPolygon(
+				visibilityPolygon(source, source.range, wallsRef.current),
+			);
+			if (flat.length < 6) continue;
 			layer.beginPath();
-			layer.circle(source.x, source.y, source.range);
+			layer.poly(flat, true);
 			layer.cut();
+			mask.poly(flat, true);
 		}
+		mask.fill(0xffffff);
+		// Máscara invertida: a névoa opaca fica só FORA do que se enxerga.
+		fogLayer.setMask({ mask, inverse: true });
 	}, [
 		rendererReady,
 		sceneFogEnabled,
@@ -1481,6 +1516,7 @@ export function VTTCanvas({
 		fogWidth,
 		fogHeight,
 		visionSig,
+		walls,
 	]);
 
 	// 6. Render Remote Multiplayer Cursors

@@ -1,4 +1,10 @@
 import type { VTTToken } from "./types";
+import {
+	isSeenByAny,
+	type VisionSegment,
+	type VisionSource,
+	visionSources,
+} from "./vision";
 
 /**
  * How a token is drawn. Position and the remote interpolation target are
@@ -48,29 +54,31 @@ export function visibleTokenIds(
 	tokens: readonly VTTToken[],
 	isGM: boolean,
 	scene: TokenVisibilityScene | null,
+	vision: {
+		/** Quem enxerga (já com o alcance da ficha). Sem isso, calcula do token. */
+		sources?: readonly VisionSource[];
+		walls?: readonly VisionSegment[];
+	} = {},
 ): string {
 	if (!scene) return "";
 	const gridSize = scene.gridSize || 70;
 	const explore = !isGM && scene.fogEnabled && scene.fogExploration;
-	const playerTokens = explore
-		? tokens.filter(
-				(token) =>
-					token.layer === "token" &&
-					!token.isHidden &&
-					(token.characterId || token.controlledBy.length > 0),
-			)
+	const sources = explore
+		? (vision.sources ?? visionSources(tokens, gridSize))
 		: [];
+	const walls = vision.walls ?? [];
 	const ids: string[] = [];
 	for (const token of tokens) {
 		if (token.layer === "gm" && !isGM) continue;
 		if (token.isHidden && !isGM) continue;
-		if (explore && !token.characterId && token.controlledBy.length === 0) {
-			const seen = playerTokens.some((player) => {
-				const range = (player.visionRange || 6) * gridSize;
-				return Math.hypot(player.x - token.x, player.y - token.y) <= range;
-			});
-			if (!seen) continue;
-		}
+		const isPlayerToken =
+			Boolean(token.characterId) || token.controlledBy.length > 0;
+		if (
+			explore &&
+			!isPlayerToken &&
+			!isSeenByAny({ x: token.x, y: token.y }, sources, walls)
+		)
+			continue;
 		ids.push(token.id);
 	}
 	return ids.join("|");

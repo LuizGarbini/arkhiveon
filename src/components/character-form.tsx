@@ -959,6 +959,23 @@ function CombatSection({
 						{...register("speed", { valueAsNumber: true })}
 					/>
 				</Field>
+				<Field
+					label={`Visão (${config.speedUnit})`}
+					hint="Até onde enxerga na mesa. Vazio: 6 casas"
+				>
+					<Input
+						type="number"
+						inputMode="decimal"
+						min={0}
+						placeholder={config.speedUnit === "ft" ? "60" : "18"}
+						{...register("visionDistance", {
+							setValueAs: (value) =>
+								value === "" || value == null || Number.isNaN(Number(value))
+									? undefined
+									: Number(value),
+						})}
+					/>
+				</Field>
 				<Field label="Bônus de proficiência">
 					<Input
 						type="number"

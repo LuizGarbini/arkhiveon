@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.89-vtt-visao",
+		version: "1.6.89",
+		date: "15/11/2026",
+		title: "A visão do personagem revela o mapa",
+		description:
+			"No modo Exploração, o jogador agora só enxerga o mapa até onde o personagem enxerga, e as paredes bloqueiam a vista: atrás de uma parede fica a sombra, e monstros escondidos ali não aparecem. A ficha ganhou o campo Visão (na mesma unidade do deslocamento); ele manda no alcance do token e aparece no resumo da ficha na mesa. Vazio, vale o alcance do token (6 casas). Também corrigi o travamento ao arrastar tokens com a névoa ligada: a névoa deixou de ser redesenhada a cada movimento do mouse.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.88-vtt-templates-delete",
 		version: "1.6.88",
 		date: "13/11/2026",

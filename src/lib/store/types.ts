@@ -235,6 +235,12 @@ export interface Character {
 	 * (D&D 5e: pés). Na mesa, o número aparece na unidade da cena.
 	 */
 	speedUnit?: "m" | "ft";
+	/**
+	 * Até onde o personagem enxerga na mesa, na mesma unidade do deslocamento. Na
+	 * mesa de exploração (névoa) a visão dele revela o mapa até essa distância,
+	 * respeitando as paredes. Ausente: vale o alcance do token (6 casas).
+	 */
+	visionDistance?: number;
 	proficiencyBonus: number;
 	hitDice: string;
 	deathSaves: { successes: number; failures: number };

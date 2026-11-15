@@ -125,6 +125,15 @@ export function sanitizeCharacterFormValues(
 		}
 	}
 
+	// Visão é opcional: vazio, zero, negativo ou lixo = "sem visão definida"
+	// (a mesa usa o alcance do token). Limitada a um valor que caiba num mapa.
+	const vision = sanitized.visionDistance;
+	if (typeof vision !== "number" || !Number.isFinite(vision) || vision <= 0) {
+		delete sanitized.visionDistance;
+	} else {
+		sanitized.visionDistance = Math.min(1000, Math.round(vision * 10) / 10);
+	}
+
 	const deathSaves = { ...sanitized.deathSaves };
 	if (Number.isNaN(deathSaves.successes)) {
 		deathSaves.successes = options?.emptyToZero
