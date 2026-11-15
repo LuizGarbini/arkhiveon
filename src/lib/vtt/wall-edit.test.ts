@@ -74,7 +74,7 @@ describe("resolveWallPoint · grade, Shift e ímã", () => {
 	it("hex e sem grade ficam livres mesmo com a grade ligada", () => {
 		const hex = resolveWallPoint(
 			{ x: 33.3, y: 44.4 },
-			ctx({ snapGrid: true, gridType: "hex-pointy" }),
+			ctx({ snapGrid: true, gridType: "hex_pointy" }),
 			[],
 		);
 		expect(hex.point).toEqual({ x: 33.3, y: 44.4 });

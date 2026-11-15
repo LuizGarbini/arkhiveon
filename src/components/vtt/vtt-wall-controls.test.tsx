@@ -97,7 +97,7 @@ describe("painel da ferramenta Parede", () => {
 
 	it("Encaixar na grade fica indisponível em grade hex (não há cantos)", () => {
 		useVTTStore.setState({
-			scenes: [{ id: "s", gridType: "hex-pointy" } as never],
+			scenes: [{ id: "s", gridType: "hex_pointy" } as never],
 		});
 		render(<VTTWallControls />);
 		const toggle = screen.getByRole("button", {

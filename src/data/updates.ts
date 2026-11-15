@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.130-vtt-paredes-livres",
+		version: "1.6.130",
+		date: "15/11/2026",
+		title: "Paredes livres da grade, com ímã nas pontas, e dá para arrastar",
+		description:
+			"Na ferramenta Parede o traço agora segue o ponteiro com precisão de pixel do mapa, sem prender na grade (as coordenadas são guardadas com até 2 casas decimais). O painel ganhou o interruptor Encaixar na grade, desligado por padrão e lembrado neste navegador; segurar Shift inverte na hora (ligado vira livre, desligado encaixa). Perto da ponta de outra parede (uns 10 px de tela, qualquer zoom) o ponto gruda exatamente nela, com um anel discreto no encaixe, para as paredes se unirem sem fresta e a visão não vazar; Alt desliga o ímã (e, na ferramenta Parede, Alt+clique não vira ping). Também dá para arrastar o que já foi desenhado: arrastar o corpo de uma parede move todas as selecionadas juntas (porta e janela mantêm tipo e estado, e o ícone acompanha o meio do vão); arrastar um vértice (os quadradinhos das selecionadas) move só aquela ponta, junto com as paredes que dividem exatamente o mesmo ponto. A prévia aparece ao vivo, a gravação é uma só ao soltar (com volta e aviso se o servidor recusar), Esc cancela o arrasto e um clique sem arrastar só seleciona. Ctrl/⌘+Z e Shift+Ctrl+Z desfazem e refazem os movimentos. Com paredes selecionadas, as setas empurram 1 px (Shift: 10 px, Alt: uma casa) e um lote de toques vira uma gravação só. A visão dos jogadores recalcula com a geometria nova.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.106-vtt-pings-de-varios-tipos",
 		version: "1.6.106",
 		date: "15/11/2026",
