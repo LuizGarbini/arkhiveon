@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.102",
+	"version": "1.6.110",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -28,6 +28,8 @@
 		"check:doors": "node scripts/check-doors.cjs",
 		"check:windows": "node scripts/check-windows.cjs",
 		"check:token-keys": "node scripts/check-token-keys.cjs",
+		"check:cursores": "node scripts/check-cursores.cjs",
+		"check:historico": "node scripts/check-historico.cjs",
 		"check:fog-hide": "node scripts/check-fog-hide.cjs",
 		"check:light-zones": "node scripts/check-light-zones.cjs",
 		"impeccable:detect": "impeccable detect src/components/vtt/vtt-ai-chat.tsx src/components/vtt/sheet-batch-review.tsx src/components/ai-mesa/shell-ai-chat.tsx src/lib/ai-mesa/sheet-batch.ts"

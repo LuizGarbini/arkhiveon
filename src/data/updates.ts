@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.110-vtt-cursores-e-historico",
+		version: "1.6.110",
+		date: "15/11/2026",
+		title: "Cursores bonitos, cada um na sua cor, e histórico que fica salvo",
+		description:
+			"O cursor dos outros integrantes ganhou ponteiro com contorno e sombra e uma etiqueta com o nome na cor da pessoa (texto sempre legível), que desliza suave e acompanha o zoom. Cada um tem agora uma cor própria por padrão (antes era sorteada e várias pessoas ficavam iguais), e quem chega depois cede se alguém já usa a mesma. Pelo botão da cor, ao lado do avatar, você escolhe a cor do seu cursor, ping e régua entre 12 opções, uma cor livre, ou volta para a automática; a escolha fica salva neste navegador e todos veem. Um novo interruptor, ao lado dela, oculta os cursores com nome dos outros só para você (é uma preferência sua, salva neste navegador): pings, réguas, moldes e tokens arrastados continuam aparecendo, e o seu cursor segue sendo enviado. No histórico de movimentos, a tabela do banco finalmente existe em produção, então as linhas ficam salvas e outros mestres veem tudo em tempo real. Também foram corrigidos: recarregar com mais de 1000 linhas mostrava só as mais antigas, a ordem usava o relógio de cada computador, encaixar o token no centro da mesma casa virava uma linha de 0 m, linhas apagadas por outro mestre continuavam na tela e falha ao gravar não avisava.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.102-vtt-setas-do-teclado",
 		version: "1.6.102",
 		date: "15/11/2026",

@@ -64,6 +64,7 @@ import {
 	pingVisual,
 	publishPingLoopStats,
 } from "@/lib/vtt/ping-queue";
+import { attachRemoteCursors } from "@/lib/vtt/remote-cursor-layer";
 import {
 	rulerOnKey,
 	rulerPointerDown,
@@ -594,7 +595,6 @@ export function VTTCanvas({
 	const activeFogTool = useVTTStore((s) => s.activeFogTool);
 	const activeFogMode = useVTTStore((s) => s.activeFogMode);
 	const fogBrushRadius = useVTTStore((s) => s.fogBrushRadius);
-	const remoteCursors = useVTTStore((s) => s.remoteCursors);
 	const remoteMeasurements = useVTTStore((s) => s.remoteMeasurements);
 	const userColor = useVTTStore((s) => s.userColor);
 	const isGM = useVTTStore((s) => s.isGM);
@@ -686,6 +686,7 @@ export function VTTCanvas({
 		const app = new Application();
 		let tickerCallback: (() => void) | null = null;
 		let stopPingLoop: (() => void) | null = null;
+		let stopRemoteCursors: (() => void) | null = null;
 
 		async function initPixi() {
 			if (!containerRef.current) return;
@@ -880,6 +881,8 @@ export function VTTCanvas({
 			const remoteCursorsLayer = new Container();
 			remoteCursorsLayerRef.current = remoteCursorsLayer;
 			world.addChild(remoteCursorsLayer);
+			// Cursores dos outros: desenho e suavizado em `remote-cursor-layer.ts`.
+			stopRemoteCursors = attachRemoteCursors(remoteCursorsLayer, app.ticker);
 
 			// Initial viewport position
 			const initVp = useVTTStore.getState().viewport;
@@ -933,6 +936,8 @@ export function VTTCanvas({
 			isMounted = false;
 			stopPingLoop?.();
 			stopPingLoop = null;
+			stopRemoteCursors?.();
+			stopRemoteCursors = null;
 			if (appRef.current) {
 				if (tickerCallback) {
 					appRef.current.ticker.remove(tickerCallback);
@@ -1795,57 +1800,6 @@ export function VTTCanvas({
 		showAllVisionCones,
 		selectedTokenIds,
 	]);
-
-	// 6. Render Remote Multiplayer Cursors
-	useEffect(() => {
-		if (!rendererReady) return;
-		if (!remoteCursorsLayerRef.current) return;
-		const layer = remoteCursorsLayerRef.current;
-		layer.removeChildren();
-
-		for (const cursor of Object.values(remoteCursors)) {
-			const cursorContainer = new Container();
-			cursorContainer.position.set(cursor.x, cursor.y);
-
-			const colorHex = parseHexColor(cursor.color, 0x38bdf8);
-
-			// Pointer Arrow
-			const arrow = new Graphics();
-			arrow.moveTo(0, 0);
-			arrow.lineTo(0, 16);
-			arrow.lineTo(4, 12);
-			arrow.lineTo(10, 16);
-			arrow.lineTo(12, 14);
-			arrow.lineTo(6, 10);
-			arrow.lineTo(14, 8);
-			arrow.closePath();
-			arrow.fill({ color: colorHex });
-			arrow.stroke({ width: 1, color: 0xffffff, alpha: 0.9 });
-			cursorContainer.addChild(arrow);
-
-			// User Name Tag
-			const nameTag = new Text({
-				text: cursor.userName,
-				style: new TextStyle({
-					fontFamily: "system-ui, sans-serif",
-					fontSize: 10,
-					fontWeight: "bold",
-					fill: "#ffffff",
-					dropShadow: {
-						alpha: 0.9,
-						angle: Math.PI / 4,
-						blur: 2,
-						color: "#000000",
-						distance: 1,
-					},
-				}),
-			});
-			nameTag.position.set(14, 12);
-			cursorContainer.addChild(nameTag);
-
-			layer.addChild(cursorContainer);
-		}
-	}, [remoteCursors, rendererReady]);
 
 	const viewScale = viewport.scale;
 	const sceneScaleDistance = scene?.gridScaleDistance ?? 1;
