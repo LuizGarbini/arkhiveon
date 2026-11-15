@@ -10,9 +10,12 @@ import {
 	blockingWalls,
 	blocksSight,
 	DOOR_REACH_CELLS,
+	doorIconCenter,
+	doorIconRadius,
 	doorWithinReach,
 	draftToWalls,
 	hitTestDoor,
+	hitTestDoorIcon,
 	isDoor,
 	type VTTWall,
 } from "./walls";
@@ -221,5 +224,81 @@ describe("doorWithinReach · quem está perto abre", () => {
 
 	it("grade inválida usa 70 px", () => {
 		expect(doorWithinReach(door, [{ x: 230, y: 0 }], 0)).toBe(true);
+	});
+});
+
+describe("ícone da porta", () => {
+	it("o raio acompanha a casa, com mínimo e máximo para ficar legível", () => {
+		expect(doorIconRadius(70)).toBe(14);
+		expect(doorIconRadius(30)).toBe(12); // casa pequena: não some
+		expect(doorIconRadius(500)).toBe(22); // casa enorme: não vira um balão
+		expect(doorIconRadius(0)).toBe(14); // grade inválida usa 70 px
+	});
+
+	it("o ícone fica no meio do vão", () => {
+		expect(doorIconCenter({ x1: 100, y1: 0, x2: 100, y2: 140 })).toEqual({
+			x: 100,
+			y: 70,
+		});
+		expect(doorIconCenter({ x1: 0, y1: 0, x2: 70, y2: 70 })).toEqual({
+			x: 35,
+			y: 35,
+		});
+	});
+
+	const doorAt = (id: string, x: number): VTTWall => ({
+		id,
+		sceneId: "s",
+		x1: x,
+		y1: 0,
+		x2: x,
+		y2: 140,
+		kind: "door",
+		isOpen: false,
+	});
+
+	it("só o ÍCONE é clicável: o meio do vão acha a porta, a ponta do vão não", () => {
+		const walls = [doorAt("d", 300)];
+		expect(hitTestDoorIcon(walls, { x: 300, y: 70 }, 19)?.id).toBe("d");
+		expect(hitTestDoorIcon(walls, { x: 305, y: 80 }, 19)?.id).toBe("d");
+		// em cima do vão, mas longe do ícone (a 60 px do meio): não é clique de porta
+		expect(hitTestDoorIcon(walls, { x: 300, y: 10 }, 19)).toBeNull();
+		expect(hitTestDoorIcon(walls, { x: 300, y: 130 }, 19)).toBeNull();
+	});
+
+	it("parede comum não tem ícone, mesmo com o clique no meio dela", () => {
+		const plain: VTTWall = {
+			id: "p",
+			sceneId: "s",
+			x1: 300,
+			y1: 0,
+			x2: 300,
+			y2: 140,
+		};
+		expect(hitTestDoorIcon([plain], { x: 300, y: 70 }, 19)).toBeNull();
+	});
+
+	it("portas aberta e fechada têm ícone clicável do mesmo jeito", () => {
+		const open: VTTWall = { ...doorAt("o", 500), isOpen: true };
+		expect(
+			hitTestDoorIcon([doorAt("c", 300), open], { x: 500, y: 70 }, 19)?.id,
+		).toBe("o");
+		expect(
+			hitTestDoorIcon([doorAt("c", 300), open], { x: 300, y: 70 }, 19)?.id,
+		).toBe("c");
+	});
+
+	it("com dois ícones perto, vence o mais próximo", () => {
+		const a = doorAt("a", 300);
+		const b = { ...doorAt("b", 330) };
+		expect(hitTestDoorIcon([a, b], { x: 322, y: 70 }, 30)?.id).toBe("b");
+		expect(hitTestDoorIcon([a, b], { x: 308, y: 70 }, 30)?.id).toBe("a");
+	});
+
+	it("sem portas ou fora do alcance: null", () => {
+		expect(hitTestDoorIcon([], { x: 0, y: 0 }, 19)).toBeNull();
+		expect(
+			hitTestDoorIcon([doorAt("d", 300)], { x: 800, y: 800 }, 19),
+		).toBeNull();
 	});
 });

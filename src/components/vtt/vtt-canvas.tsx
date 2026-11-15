@@ -30,7 +30,7 @@ import {
 	type DragMove,
 	dragBroadcastDue,
 } from "@/lib/vtt/drag-broadcast";
-import { exploredMeta, exploredRuns } from "@/lib/vtt/explored";
+import { doorRevealed, exploredMeta, exploredRuns } from "@/lib/vtt/explored";
 import { uncoverExploredUnder } from "@/lib/vtt/explored-fog";
 import { useExploredStore } from "@/lib/vtt/explored-store";
 import { exploredSync } from "@/lib/vtt/explored-sync";
@@ -157,8 +157,9 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { finishWallDraft, toggleDoor } from "@/lib/vtt/wall-sync";
 import {
 	blockingWalls,
+	doorIconRadius,
 	doorWithinReach,
-	hitTestDoor,
+	hitTestDoorIcon,
 	hitTestWall,
 	snapWallPoint,
 } from "@/lib/vtt/walls";
@@ -375,6 +376,7 @@ export function VTTCanvas({
 	// Paredes (só mestre): um Graphics para todas + um para a prévia do desenho.
 	const wallsLayerRef = useRef<Graphics | null>(null);
 	const doorsLayerRef = useRef<Graphics | null>(null);
+	const doorIconsTopRef = useRef<Graphics | null>(null);
 	const wallPreviewLayerRef = useRef<Graphics | null>(null);
 	const wallCursorRef = useRef<{ x: number; y: number } | null>(null);
 	const lastWallClickRef = useRef<{ x: number; y: number; t: number } | null>(
@@ -711,6 +713,13 @@ export function VTTCanvas({
 			fogOfWarLayer.addChild(fogSprite);
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
+
+			// Ícones das portas ACIMA da névoa (mestre e modo Exploração): em cima da
+			// parede, que é a borda da visão, o ícone abaixo da névoa saía cortado.
+			const doorIconsTop = new Graphics();
+			doorIconsTop.eventMode = "none";
+			doorIconsTopRef.current = doorIconsTop;
+			world.addChild(doorIconsTop);
 
 			// Só o mestre: realce do que os jogadores já exploraram e da visão atual.
 			// Fica ACIMA do véu do mestre (senão o véu apaga o realce); a opacidade é
@@ -1978,10 +1987,39 @@ export function VTTCanvas({
 
 	// 7c. Paredes: redesenha só na camada do mestre ou quando usando a ferramenta de parede.
 	// Na camada normal (token ou mapa), as linhas das paredes não aparecem no mapa.
+	// Portas: ícone no meio do vão. Com névoa de exploração (ou para o mestre) o
+	// ícone vai acima da névoa e o jogador só vê as portas que já revelou; nos demais
+	// casos fica abaixo dela, como os tokens.
+	const doorsOnTop = isGM || (sceneFogEnabled && sceneFogExploration);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: exploredVersion é a dependência; a grade é lida na hora pela store.
 	useEffect(() => {
-		if (!rendererReady || !doorsLayerRef.current) return;
-		drawDoors(doorsLayerRef.current, walls);
-	}, [walls, rendererReady]);
+		const below = doorsLayerRef.current;
+		const top = doorIconsTopRef.current;
+		if (!rendererReady || !below || !top) return;
+		const radius = doorIconRadius(visionCell);
+		if (!doorsOnTop) {
+			drawDoors(below, walls, radius);
+			top.clear();
+			return;
+		}
+		below.clear();
+		const memory = useExploredStore.getState();
+		const grid = memory.sceneId === sceneId ? memory.grid : null;
+		const shown = isGM
+			? walls
+			: walls.filter(
+					(wall) => wall.kind !== "door" || doorRevealed(wall, grid),
+				);
+		drawDoors(top, shown, radius);
+	}, [
+		walls,
+		rendererReady,
+		visionCell,
+		doorsOnTop,
+		isGM,
+		sceneId,
+		exploredVersion,
+	]);
 
 	// Paredes só aparecem para o mestre, na camada do mestre (a ferramenta Parede
 	// já leva para ela). Portas são do mapa: todo mundo vê, abaixo da névoa.
@@ -2291,7 +2329,12 @@ export function VTTCanvas({
 				scene
 			) {
 				const live = useVTTStore.getState();
-				const door = hitTestDoor(live.walls, worldPoint, 10 / viewport.scale);
+				// O ícone é a única parte clicável da porta (o traço do vão não aparece).
+				const door = hitTestDoorIcon(
+					live.walls,
+					worldPoint,
+					doorIconRadius(scene.gridSize || 70) * 1.35,
+				);
 				if (door) {
 					const staff = live.isGM || live.isCoGM;
 					const mine = live.tokens.filter(

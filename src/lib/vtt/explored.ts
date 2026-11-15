@@ -330,3 +330,35 @@ export function fogPathCells(
 	}
 	return cells;
 }
+
+/**
+ * O jogador já viu esta porta? O ícone fica no meio do vão, em cima da parede,
+ * que é justamente a borda da visão: o centro dele nunca está "dentro". Por isso
+ * olha as células dos DOIS lados da porta (a uma célula do meio, na direção
+ * perpendicular a ela): basta uma estar explorada (ou à vista agora, que também
+ * vira memória). Porta de uma área nunca vista não aparece.
+ */
+export function doorRevealed(
+	door: { x1: number; y1: number; x2: number; y2: number },
+	grid: ExploredGrid | null,
+): boolean {
+	if (!grid) return false;
+	const mx = (door.x1 + door.x2) / 2;
+	const my = (door.y1 + door.y2) / 2;
+	const dx = door.x2 - door.x1;
+	const dy = door.y2 - door.y1;
+	const length = Math.hypot(dx, dy);
+	if (length === 0) return false;
+	// Normal unitária da porta; meia célula + 1 px de cada lado cai em células
+	// vizinhas à parede, nunca na mesma célula do meio.
+	const nx = -dy / length;
+	const ny = dx / length;
+	const offset = grid.cell * 0.5 + 1;
+	for (const side of [1, -1]) {
+		const col = Math.floor((mx + nx * offset * side) / grid.cell);
+		const row = Math.floor((my + ny * offset * side) / grid.cell);
+		if (col < 0 || row < 0 || col >= grid.cols || row >= grid.rows) continue;
+		if (isExplored(grid, row * grid.cols + col)) return true;
+	}
+	return false;
+}

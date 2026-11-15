@@ -33,6 +33,42 @@ export function blockingWalls<T extends Pick<VTTWall, "kind" | "isOpen">>(
 	return walls.filter(blocksSight);
 }
 
+/** Raio do ícone da porta (px), proporcional à casa e limitado para ficar legível. */
+export function doorIconRadius(gridSize: number): number {
+	const cell = gridSize > 0 ? gridSize : 70;
+	return Math.min(22, Math.max(12, cell * 0.2));
+}
+
+/** Onde fica o ícone da porta: no meio do vão. */
+export function doorIconCenter(
+	door: Pick<VTTWall, "x1" | "y1" | "x2" | "y2">,
+): WallPoint {
+	return { x: (door.x1 + door.x2) / 2, y: (door.y1 + door.y2) / 2 };
+}
+
+/**
+ * A porta cujo ÍCONE está sob o ponto (o ícone é a única coisa clicável da porta:
+ * o traço do vão não é desenhado). A mais próxima, se houver mais de uma.
+ */
+export function hitTestDoorIcon(
+	walls: readonly VTTWall[],
+	p: WallPoint,
+	radius: number,
+): VTTWall | null {
+	let best: VTTWall | null = null;
+	let bestDist = radius;
+	for (const wall of walls) {
+		if (!isDoor(wall)) continue;
+		const c = doorIconCenter(wall);
+		const d = Math.hypot(p.x - c.x, p.y - c.y);
+		if (d <= bestDist) {
+			bestDist = d;
+			best = wall;
+		}
+	}
+	return best;
+}
+
 /** A porta mais próxima do ponto dentro da tolerância, ou null. */
 export function hitTestDoor(
 	walls: readonly VTTWall[],

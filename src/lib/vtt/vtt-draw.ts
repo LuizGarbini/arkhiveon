@@ -401,55 +401,52 @@ type DrawableWall = {
 // Porta fechada: âmbar escuro; aberta: âmbar claro (é objeto do mapa, não token).
 const DOOR_CLOSED_COLOR = 0xd97706;
 const DOOR_OPEN_COLOR = 0xfbbf24;
+const DOOR_BADGE_COLOR = 0x18181b;
 
 /**
  * Portas, para todo mundo ver (ficam abaixo da névoa: o jogador só vê as que já
- * revelou). Fechada = batente grosso com um puxador; aberta = os dois batentes,
- * o vão pontilhado e a folha virada para o lado.
+ * revelou). Cada porta é só um ÍCONE no meio do vão, sem desenhar o traço: um
+ * selo escuro com uma porta fechada (laranja) ou entreaberta (amarela). O ícone
+ * é também o que se clica para abrir e fechar.
  */
-export function drawDoors(layer: Graphics, walls: readonly DrawableWall[]) {
+export function drawDoors(
+	layer: Graphics,
+	walls: readonly DrawableWall[],
+	iconRadius = 14,
+) {
 	layer.clear();
+	const s = iconRadius / 14; // o desenho é feito para raio 14
 	for (const w of walls) {
 		if (w.kind !== "door") continue;
-		const dx = w.x2 - w.x1;
-		const dy = w.y2 - w.y1;
-		const length = Math.hypot(dx, dy);
-		if (length === 0) continue;
+		const cx = (w.x1 + w.x2) / 2;
+		const cy = (w.y1 + w.y2) / 2;
+		const color = w.isOpen ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+		// Selo
+		layer.circle(cx, cy, iconRadius);
+		layer.fill({ color: DOOR_BADGE_COLOR, alpha: 0.92 });
+		layer.circle(cx, cy, iconRadius);
+		layer.stroke({ width: 2 * s, color, alpha: 1 });
+		// Batente da porta
+		layer.roundRect(cx - 4.5 * s, cy - 6.5 * s, 9 * s, 13 * s, 1 * s);
+		layer.stroke({ width: 1.6 * s, color, alpha: 1 });
 		if (w.isOpen) {
-			// Vão pontilhado: marca onde a porta fica quando fecha.
-			const dashes = Math.max(2, Math.floor(length / 14));
-			for (let i = 0; i < dashes; i++) {
-				const a = (i + 0.15) / dashes;
-				const b = (i + 0.65) / dashes;
-				layer.moveTo(w.x1 + dx * a, w.y1 + dy * a);
-				layer.lineTo(w.x1 + dx * b, w.y1 + dy * b);
-			}
-			layer.stroke({ width: 2, color: DOOR_OPEN_COLOR, alpha: 0.45 });
-			// Folha aberta: sai do batente do 1º ponto, virada para o lado.
-			const nx = -dy / length;
-			const ny = dx / length;
-			layer.moveTo(w.x1, w.y1);
-			layer.lineTo(w.x1 + nx * length * 0.9, w.y1 + ny * length * 0.9);
-			layer.stroke({
-				width: 4,
-				color: DOOR_OPEN_COLOR,
-				alpha: 0.95,
-				cap: "round",
-			});
-			layer.circle(w.x1, w.y1, 4.5);
-			layer.circle(w.x2, w.y2, 4.5);
-			layer.fill({ color: DOOR_OPEN_COLOR });
-			continue;
+			// Folha entreaberta (perspectiva): o vão escuro e a folha virada
+			layer.poly([
+				cx - 4.5 * s,
+				cy - 6.5 * s,
+				cx + 1.5 * s,
+				cy - 4.5 * s,
+				cx + 1.5 * s,
+				cy + 7.5 * s,
+				cx - 4.5 * s,
+				cy + 6.5 * s,
+			]);
+			layer.fill({ color, alpha: 0.9 });
+		} else {
+			// Puxador
+			layer.circle(cx + 2 * s, cy, 1.1 * s);
+			layer.fill({ color, alpha: 1 });
 		}
-		layer.moveTo(w.x1, w.y1);
-		layer.lineTo(w.x2, w.y2);
-		layer.stroke({ width: 8, color: DOOR_CLOSED_COLOR, alpha: 1, cap: "butt" });
-		layer.moveTo(w.x1, w.y1);
-		layer.lineTo(w.x2, w.y2);
-		layer.stroke({ width: 3, color: DOOR_OPEN_COLOR, alpha: 0.7, cap: "butt" });
-		// Puxador no meio.
-		layer.circle(w.x1 + dx / 2, w.y1 + dy / 2, 3.5);
-		layer.fill({ color: 0xfef3c7 });
 	}
 }
 
@@ -464,7 +461,8 @@ export function drawWalls(
 	let normal = 0;
 	for (const w of walls) {
 		if (selected.has(w.id)) continue;
-		// As portas já são desenhadas por drawDoors; aqui só se destaca a selecionada.
+		// Porta: o ícone vem de drawDoors; na camada do mestre o vão aparece como um
+		// traço fino, para ele ver o tamanho dela (a selecionada é destacada abaixo).
 		if (w.kind === "door") continue;
 		layer.moveTo(w.x1, w.y1);
 		layer.lineTo(w.x2, w.y2);
@@ -472,6 +470,21 @@ export function drawWalls(
 	}
 	if (normal > 0)
 		layer.stroke({ width: 4, color: WALL_COLOR, alpha: 0.95, cap: "round" });
+	// Vão das portas (só aqui, na camada do mestre): traço fino para ver o tamanho.
+	let spans = 0;
+	for (const w of walls) {
+		if (w.kind !== "door" || selected.has(w.id)) continue;
+		layer.moveTo(w.x1, w.y1);
+		layer.lineTo(w.x2, w.y2);
+		spans++;
+	}
+	if (spans > 0)
+		layer.stroke({
+			width: 2,
+			color: DOOR_CLOSED_COLOR,
+			alpha: 0.6,
+			cap: "round",
+		});
 	if (selected.size === 0) return;
 	const primary = dsColor("--primary", 0xa855f7);
 	const background = dsColor("--background", 0x18181b);

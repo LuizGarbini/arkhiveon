@@ -3,6 +3,7 @@ import {
 	clearIndexes,
 	createExploredGrid,
 	decodeBits,
+	doorRevealed,
 	encodeBits,
 	exploredMeta,
 	exploredRuns,
@@ -372,5 +373,62 @@ describe("fogPathCells · o que a forma da névoa cobre", () => {
 		expect(
 			fogPathCells(g, { type: "brush", points: [{ x: 1, y: 1 }] }),
 		).toEqual([]);
+	});
+});
+
+describe("doorRevealed · o jogador já viu esta porta?", () => {
+	const g = () => createExploredGrid(exploredMeta(1400, 900, 70)); // célula 35 px
+	const cellAt = (grid: ReturnType<typeof g>, x: number, y: number) =>
+		Math.floor(y / 35) * grid.cols + Math.floor(x / 35);
+	// porta vertical em x=560 (borda entre as colunas 15 e 16), de y=420 a 560
+	const door = { x1: 560, y1: 420, x2: 560, y2: 560 };
+
+	it("sem grade carregada: não aparece", () => {
+		expect(doorRevealed(door, null)).toBe(false);
+	});
+
+	it("nada explorado: a porta escondida não aparece", () => {
+		expect(doorRevealed(door, g())).toBe(false);
+	});
+
+	it("explorou só do lado de cá da parede: a porta aparece (é a borda da visão)", () => {
+		const grid = g();
+		markIndexes(grid, [cellAt(grid, 540, 490)]); // coluna 15, atrás de quem olha
+		expect(doorRevealed(door, grid)).toBe(true);
+	});
+
+	it("explorou só do outro lado: também aparece (quem está do lado de lá a vê)", () => {
+		const grid = g();
+		markIndexes(grid, [cellAt(grid, 580, 490)]); // coluna 16
+		expect(doorRevealed(door, grid)).toBe(true);
+	});
+
+	it("explorou longe da porta: não aparece", () => {
+		const grid = g();
+		markIndexes(grid, [cellAt(grid, 100, 100), cellAt(grid, 900, 700)]);
+		expect(doorRevealed(door, grid)).toBe(false);
+	});
+
+	it("funciona com porta horizontal e diagonal", () => {
+		const grid = g();
+		markIndexes(grid, [cellAt(grid, 490, 420 - 20)]); // acima de uma porta horizontal
+		expect(doorRevealed({ x1: 420, y1: 420, x2: 560, y2: 420 }, grid)).toBe(
+			true,
+		);
+		const grid2 = g();
+		// as células dos lados da diagonal são (16,17) e (17,16); a (17,17) está EM CIMA dela
+		markIndexes(grid2, [cellAt(grid2, 581, 608)]);
+		expect(doorRevealed({ x1: 560, y1: 560, x2: 630, y2: 630 }, grid2)).toBe(
+			true,
+		);
+	});
+
+	it("porta na borda do mapa e porta de comprimento zero não quebram", () => {
+		const grid = g();
+		expect(doorRevealed({ x1: 0, y1: 0, x2: 0, y2: 70 }, grid)).toBe(false);
+		expect(doorRevealed({ x1: 5, y1: 5, x2: 5, y2: 5 }, grid)).toBe(false);
+		expect(doorRevealed({ x1: 1400, y1: 100, x2: 1400, y2: 170 }, grid)).toBe(
+			false,
+		);
 	});
 });

@@ -69,7 +69,7 @@ async function main() {
 
 	const closed = await info();
 	console.log("1 porta fechada      ", JSON.stringify(closed));
-	await page.screenshot({ path: "docs/previews/doors-1-closed.png" });
+	await page.screenshot({ path: "docs/previews/doors-icon2-1-closed.png" });
 
 	// de longe (Dante a 245 px da porta): não abre
 	await page.mouse.click(doorPt.x, doorPt.y);
@@ -84,13 +84,21 @@ async function main() {
 	await page.waitForTimeout(3500);
 	const open = await info();
 	console.log("3 clique de perto    ", JSON.stringify(open));
-	await page.screenshot({ path: "docs/previews/doors-2-open.png" });
+	await page.screenshot({ path: "docs/previews/doors-icon2-2-open.png" });
 
 	// de novo: fecha
 	await page.mouse.click(doorPt.x, doorPt.y);
 	await page.waitForTimeout(1500);
 	const closedAgain = await info();
 	console.log("4 clique de novo     ", JSON.stringify(closedAgain));
+
+	// o ÍCONE é a única parte clicável: o vão da porta, longe do ícone, não abre
+	// (a porta está fechada neste ponto; o personagem está a 70 px do vão)
+	const spanPt = at(560, 440);
+	await page.mouse.click(spanPt.x, spanPt.y);
+	await page.waitForTimeout(1500);
+	const spanClick = await info();
+	console.log("4b clique no vão     ", JSON.stringify(spanClick));
 
 	// mestre: paredes só na camada do mestre; ferramenta Parede leva para ela
 	await page.evaluate(() => { const s = window.__vtt_store__.getState(); s.setIsGM(true); s.setActiveLayer("token"); s.setActiveTool("select"); });
@@ -101,7 +109,7 @@ async function main() {
 	await page.waitForTimeout(2500);
 	const afterTool = await info();
 	const gmWallLayer = await page.screenshot({ clip });
-	await page.screenshot({ path: "docs/previews/doors-3-gm-wall-tool.png" });
+	await page.screenshot({ path: "docs/previews/doors-icon2-3-gm.png" });
 	await page.evaluate(() => window.__vtt_store__.getState().setActiveLayer("token"));
 	await page.waitForTimeout(1500);
 	const backToToken = await info();
@@ -120,6 +128,7 @@ async function main() {
 	if (!open.doorOpen) problems.push("a porta NÃO abriu com o jogador perto");
 	if (open.beyond <= 0) problems.push("porta aberta, mas o outro lado não foi visto");
 	if (closedAgain.doorOpen) problems.push("a porta não fechou no segundo clique");
+	if (spanClick.doorOpen) problems.push("clicar no VÃO (longe do ícone) abriu a porta: só o ícone deve ser clicável");
 	if (!rpcs.some((r) => r.p_open === true) || !rpcs.some((r) => r.p_open === false)) problems.push(`o banco deveria receber abrir e fechar (veio ${JSON.stringify(rpcs)})`);
 	if (gmTokenLayer.equals(gmWallLayer)) problems.push("o mestre não vê as paredes ao ir para a camada do mestre");
 	if (afterTool.layer !== "gm") problems.push(`escolher a ferramenta Parede não levou para a camada do mestre (camada: ${afterTool.layer})`);
