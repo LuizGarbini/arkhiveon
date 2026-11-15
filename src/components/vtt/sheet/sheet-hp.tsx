@@ -133,7 +133,7 @@ export function SheetHp({
 	};
 
 	const numberClass =
-		"font-display text-[2.75rem] leading-none font-semibold tabular-nums";
+		"font-display text-[2.125rem] leading-none font-semibold tabular-nums";
 
 	return (
 		<section aria-label="Pontos de vida" aria-busy={saving}>
@@ -153,7 +153,7 @@ export function SheetHp({
 									aria-label={`Editar pontos de vida (${visibleHpLabel(current, max, showMax)})`}
 									className={cn(
 										numberClass,
-										"-mx-1.5 inline-flex min-h-11 cursor-pointer select-none items-baseline rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[7px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/50 [@media(hover:hover)]:hover:decoration-muted-foreground/70",
+										"-mx-1.5 inline-flex min-h-10 cursor-pointer [@media(pointer:coarse)]:min-h-11 select-none items-baseline rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[7px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/50 [@media(hover:hover)]:hover:decoration-muted-foreground/70",
 										low ? "text-destructive" : "text-foreground",
 									)}
 								/>
@@ -298,7 +298,7 @@ export function SheetHp({
 				</output>
 			</div>
 
-			<div className="mt-3 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted">
+			<div className="mt-2 flex h-1 gap-0.5 overflow-hidden rounded-full bg-muted">
 				<div
 					data-testid="vtt-hp-bar"
 					className={cn(
@@ -317,7 +317,7 @@ export function SheetHp({
 			</div>
 
 			{onChange ? (
-				<div className="mt-3 grid grid-cols-4 overflow-hidden rounded-xl border border-border/70">
+				<div className="mt-2.5 grid grid-cols-4 overflow-hidden rounded-xl border border-border/60">
 					{[-5, -1, 1, 5].map((amount) => (
 						<button
 							key={amount}
@@ -326,7 +326,7 @@ export function SheetHp({
 							aria-label={`${amount > 0 ? "Curar" : "Tirar"} ${Math.abs(amount)} PV`}
 							onClick={(event) => delta(amount, event.currentTarget)}
 							className={cn(
-								"min-h-11 cursor-pointer select-none bg-background/40 text-[13px] font-semibold tabular-nums transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/60",
+								"min-h-9 cursor-pointer select-none bg-transparent text-[13px] font-semibold tabular-nums [@media(pointer:coarse)]:min-h-11 transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/60",
 								"not-first:border-l not-first:border-border/60",
 								amount < 0 ? "text-destructive" : "text-foreground",
 							)}

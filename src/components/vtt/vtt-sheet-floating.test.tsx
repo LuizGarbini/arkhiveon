@@ -281,14 +281,18 @@ describe("Ficha flutuante: painel", () => {
 		).toBeTruthy();
 		expect(screen.getByText("Elfa · Maga · Nível 3")).toBeTruthy();
 		const attrs = screen.getByRole("region", { name: "Atributos" });
+		// 6 atributos para rolar e, na mesma coluna de cada um, a salvaguarda
 		expect(
-			within(attrs).getAllByRole("button", { name: /^Rolar / }),
+			within(attrs).getAllByRole("button", { name: /^Rolar (?!salvaguarda)/ }),
+		).toHaveLength(6);
+		expect(
+			within(attrs).getAllByRole("button", { name: /^Rolar salvaguarda/ }),
 		).toHaveLength(6);
 		expect(panel.querySelector("[title]")).toBeNull();
 		// Cabeçalho de arraste só com alça + X (padrão Figma); nome no título.
 		expect(screen.getByTestId("vtt-sheet-drag-handle").textContent).toBe("");
-		// retrato de 64 px (monograma quando não há imagem)
-		expect(panel.querySelector('[class*="size-16"]')).toBeTruthy();
+		// retrato de 44 px (monograma quando não há imagem)
+		expect(panel.querySelector('[class*="size-11"]')).toBeTruthy();
 	});
 });
 

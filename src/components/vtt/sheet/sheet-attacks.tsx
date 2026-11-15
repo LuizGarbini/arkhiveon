@@ -159,7 +159,7 @@ export function AttacksTab({
 									key={attack.itemId}
 									className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 py-3 first:pt-0"
 								>
-									<span className="flex size-10 items-center justify-center rounded-xl border border-border/70 bg-muted/50 text-primary">
+									<span className="flex size-10 items-center justify-center rounded-xl bg-muted/60 text-primary">
 										{ranged ? (
 											<Crosshair className="size-[1.125rem]" aria-hidden />
 										) : (
@@ -218,28 +218,30 @@ export function AttacksTab({
 			{hasCasting ? (
 				<section aria-label="Magias" className="space-y-3">
 					{spellAttack !== 0 || spellDc > 0 ? (
-						<dl className="grid grid-cols-2 gap-2">
+						<dl className="flex items-stretch gap-4">
 							<button
 								type="button"
 								disabled={rolls.rolling || spellAttack === 0}
 								aria-label={`Rolar ataque de magia (${formatModifier(spellAttack)})`}
 								onClick={() => rolls.check("Ataque de magia", spellAttack)}
-								className="cursor-pointer select-none rounded-2xl border border-primary/35 bg-gradient-to-b from-primary/15 to-primary/5 px-2 py-2.5 text-center transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
+								className="flex w-[4.75rem] shrink-0 cursor-pointer select-none flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 py-2.5 transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(hover:hover)]:hover:bg-primary/15"
 							>
-								<dd className="font-display text-[1.5rem] leading-tight font-semibold tabular-nums">
+								<dd className="font-display text-[1.75rem] leading-none font-semibold tabular-nums">
 									{formatModifier(spellAttack)}
 								</dd>
-								<dt className="mt-0.5 text-[11px] text-muted-foreground">
-									Ataque de magia
+								<dt className="mt-1 text-[11px] font-medium text-muted-foreground">
+									Ataque
 								</dt>
 							</button>
-							<div className="rounded-2xl border border-border/70 bg-background/40 px-2 py-2.5 text-center">
-								<dd className="font-display text-[1.5rem] leading-tight font-semibold tabular-nums">
-									{spellDc || "—"}
-								</dd>
-								<dt className="mt-0.5 text-[11px] text-muted-foreground">
-									CD de salvaguarda
-								</dt>
+							<div className="flex min-w-0 flex-1 items-center gap-6">
+								<div>
+									<dd className="text-[1.0625rem] leading-tight font-semibold tabular-nums">
+										{spellDc || "—"}
+									</dd>
+									<dt className="mt-0.5 text-[11px] text-muted-foreground">
+										CD de salvaguarda
+									</dt>
+								</div>
 							</div>
 						</dl>
 					) : null}
@@ -269,7 +271,7 @@ export function AttacksTab({
 													key={spell.id}
 													className="flex items-center gap-3 py-2.5"
 												>
-													<span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/50 text-primary">
+													<span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-primary">
 														<Sparkles className="size-4" aria-hidden />
 													</span>
 													<div className="min-w-0 flex-1">

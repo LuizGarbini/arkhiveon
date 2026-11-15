@@ -28,17 +28,17 @@ export function ConditionChips({
 	const shown = conditions.slice(0, MAX_CONDITION_CHIPS);
 	const extra = conditions.length - shown.length;
 	return (
-		<ul aria-label="Condições" className="flex flex-wrap gap-1.5">
+		<ul aria-label="Condições" className="flex flex-wrap gap-1">
 			{shown.map((id) => (
 				<li
 					key={id}
-					className="rounded-full border border-border/70 bg-background/50 px-2.5 py-0.5 text-[11px] font-semibold"
+					className="rounded-full bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/90"
 				>
 					{conditionDef(id).label}
 				</li>
 			))}
 			{extra > 0 ? (
-				<li className="rounded-full border border-border/70 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums">
+				<li className="rounded-full bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
 					+{extra}
 				</li>
 			) : null}
@@ -74,13 +74,13 @@ function InspirationStar({
 			aria-pressed={has}
 			onClick={() => onChange(has ? count - 1 : 1)}
 			className={cn(
-				"relative flex size-11 shrink-0 cursor-pointer select-none items-center justify-center rounded-xl border transition-[background-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default",
+				"relative flex size-9 shrink-0 cursor-pointer select-none items-center justify-center rounded-xl border transition-[background-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(pointer:coarse)]:size-11",
 				has
 					? "border-primary/45 bg-primary/15 text-primary"
 					: "border-border/70 text-muted-foreground",
 			)}
 		>
-			<Star className={cn("size-5", has && "fill-primary")} aria-hidden />
+			<Star className={cn("size-4", has && "fill-primary")} aria-hidden />
 			{count > 1 ? (
 				<span className="absolute -top-1.5 -right-1.5 min-w-5 rounded-full bg-primary px-1 text-center text-[10.5px] font-bold text-primary-foreground tabular-nums">
 					{count}
@@ -123,9 +123,9 @@ export function SheetHero({
 		.filter(Boolean)
 		.join(" · ");
 	return (
-		<header className="relative space-y-2.5">
-			<div className="flex items-center gap-3.5 @[44rem]:flex-col @[44rem]:items-stretch @[44rem]:gap-3">
-				<div className="relative size-16 shrink-0 overflow-hidden rounded-[1.1rem] border border-border/70 bg-gradient-to-br from-primary/40 to-card shadow-lg shadow-primary/20 @[44rem]:aspect-[5/4] @[44rem]:size-auto @[44rem]:w-full @[44rem]:rounded-2xl">
+		<header className="relative space-y-2">
+			<div className="flex items-center gap-3 @[44rem]:flex-col @[44rem]:items-stretch @[44rem]:gap-3">
+				<div className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-primary/35 to-card @[44rem]:aspect-[5/4] @[44rem]:size-auto @[44rem]:w-full @[44rem]:rounded-2xl">
 					{portraitUrl ? (
 						<img
 							src={portraitUrl}
@@ -136,21 +136,23 @@ export function SheetHero({
 					) : (
 						<span
 							aria-hidden
-							className="flex size-full items-center justify-center font-display text-2xl font-semibold text-foreground/90 @[44rem]:text-5xl"
+							className="flex size-full items-center justify-center font-display text-base font-semibold text-foreground/90 @[44rem]:text-5xl"
 						>
 							{monogram(character.characterName || "?")}
 						</span>
 					)}
 				</div>
 				<div className="min-w-0 flex-1 @[44rem]:flex-none">
-					<h2 className="font-display text-xl leading-tight font-semibold tracking-[0.01em] text-foreground @[44rem]:text-[1.25rem]">
+					<h2 className="truncate font-display text-[1.125rem] leading-tight font-semibold text-foreground @[44rem]:text-[1.25rem]">
 						{character.characterName}
 					</h2>
 					{summary ? (
-						<p className="mt-1 text-[13px] text-muted-foreground">{summary}</p>
+						<p className="mt-0.5 truncate text-xs text-muted-foreground">
+							{summary}
+						</p>
 					) : null}
 					{character.playerName ? (
-						<p className="mt-0.5 text-xs text-muted-foreground">
+						<p className="mt-0.5 hidden text-xs text-muted-foreground @[44rem]:block">
 							Jogador: {character.playerName}
 						</p>
 					) : null}
@@ -169,7 +171,7 @@ export function SheetHero({
 							size="icon"
 							onClick={onOpenEquipment}
 							aria-label="Abrir equipamento e build"
-							className="size-11 shrink-0"
+							className="size-9 shrink-0 [@media(pointer:coarse)]:size-11"
 						>
 							<Shield className="size-4" aria-hidden />
 						</Button>

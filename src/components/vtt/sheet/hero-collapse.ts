@@ -10,7 +10,7 @@
  */
 export const HERO_COLLAPSE_AFTER_PX = 28;
 /** Altura aproximada que o cabeçalho completo ocupa a mais que a barra. */
-export const HERO_FREED_PX = 150;
+export const HERO_FREED_PX = 120;
 export const HERO_SETTLE_MS = 250;
 
 export function nextHeroCollapsed(input: {

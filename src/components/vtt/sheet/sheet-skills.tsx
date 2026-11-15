@@ -31,18 +31,43 @@ const ATTRIBUTE_FILTERS = [
 
 type Filter = "all" | "proficient" | (typeof ATTRIBUTE_FILTERS)[number]["key"];
 
+/** Filtro discreto: texto sobre fundo suave; o ativo ganha o acento. */
 const chip = (active: boolean) =>
 	cn(
-		"min-h-11 shrink-0 cursor-pointer select-none rounded-full border px-3.5 text-[12.5px] font-semibold transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+		"min-h-8 shrink-0 cursor-pointer select-none rounded-full px-3 text-xs font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(pointer:coarse)]:min-h-11",
 		active
-			? "border-primary/45 bg-primary/15 text-foreground"
-			: "border-border/70 text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
+			? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+			: "bg-muted/60 text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
 	);
 
+/** Marca de proficiência: anel vazio, ponto cheio ou dois pontos (especialista). */
+function Pips({ level }: { level: "none" | "proficient" | "expertise" }) {
+	if (level === "none") {
+		return (
+			<span
+				aria-hidden
+				className="size-2 rounded-full border border-muted-foreground/40"
+			/>
+		);
+	}
+	return (
+		<span
+			role="img"
+			aria-label={level === "expertise" ? "Especialista" : "Proficiente"}
+			className="flex gap-0.5"
+		>
+			<i className="size-2 rounded-full bg-primary" />
+			{level === "expertise" ? (
+				<i className="size-2 rounded-full bg-primary" />
+			) : null}
+		</span>
+	);
+}
+
 /**
- * Perícias do D&D 5e em cartões: o modificador é o número grande (é o que se
- * rola), com marca de proficiente/especialista e filtros por atributo. Usa os
- * atributos dos itens equipados.
+ * Perícias do D&D 5e numa lista densa: marca de proficiência, nome, atributo e,
+ * à direita, o modificador (é o que se rola). Usa os atributos dos itens
+ * equipados.
  */
 export function SkillsTab({
 	character,
@@ -115,7 +140,7 @@ export function SkillsTab({
 					placeholder="Buscar perícia…"
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
-					className="h-11 pl-9"
+					className="h-10 pl-9 [@media(pointer:coarse)]:h-11"
 				/>
 			</div>
 
@@ -169,48 +194,32 @@ export function SkillsTab({
 					</Button>
 				</div>
 			) : (
-				<ul className="grid grid-cols-2 gap-2 @[44rem]:grid-cols-3">
+				<ul className="grid gap-x-6 @[44rem]:grid-cols-2">
 					{rows.map((row) => (
-						<li key={row.id}>
+						<li key={row.id} className="border-b border-border/40">
 							<button
 								type="button"
 								disabled={rolls.rolling}
 								aria-label={`Rolar ${row.name} (${formatModifier(row.modifier)})`}
 								onClick={() => rolls.check(row.name, row.modifier)}
-								className={cn(
-									"relative flex min-h-[4.75rem] w-full cursor-pointer select-none flex-col items-start gap-1 rounded-2xl border px-3 py-2.5 text-left transition-[background-color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50",
-									row.level !== "none"
-										? "border-primary/40 bg-gradient-to-b from-primary/15 to-primary/5 [@media(hover:hover)]:hover:from-primary/20"
-										: "border-border/70 bg-background/40 [@media(hover:hover)]:hover:border-primary/35 [@media(hover:hover)]:hover:bg-muted/40",
-								)}
+								className="grid min-h-10 w-full cursor-pointer select-none grid-cols-[1rem_minmax(0,1fr)_auto_2.75rem] items-center gap-2.5 rounded-lg px-1.5 text-left transition-[background-color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/40 [@media(pointer:coarse)]:min-h-11"
 							>
-								{row.level !== "none" ? (
-									<span
-										role="img"
-										aria-label={
-											row.level === "expertise" ? "Especialista" : "Proficiente"
-										}
-										className="absolute top-3 right-3 flex gap-0.5"
-									>
-										<i className="size-1.5 rounded-full bg-primary" />
-										{row.level === "expertise" ? (
-											<i className="size-1.5 rounded-full bg-primary" />
-										) : null}
-									</span>
-								) : null}
-								<span className="font-display text-[1.6rem] leading-none font-semibold tabular-nums">
-									{formatModifier(row.modifier)}
-								</span>
-								<span className="truncate text-[13px] font-semibold">
+								<Pips level={row.level} />
+								<span
+									className={cn(
+										"truncate text-[13.5px]",
+										row.level === "none"
+											? "font-medium text-foreground/80"
+											: "font-semibold text-foreground",
+									)}
+								>
 									{row.name}
 								</span>
 								<span className="text-[11px] text-muted-foreground">
 									{row.attributeShort}
-									{row.level === "expertise"
-										? " · especialista"
-										: row.level === "proficient"
-											? " · proficiente"
-											: ""}
+								</span>
+								<span className="text-right text-[0.9375rem] font-semibold tabular-nums">
+									{formatModifier(row.modifier)}
 								</span>
 							</button>
 						</li>

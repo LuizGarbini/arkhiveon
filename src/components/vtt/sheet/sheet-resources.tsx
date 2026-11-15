@@ -31,7 +31,7 @@ function Pips({
 	onRestore: () => void;
 }) {
 	return (
-		<fieldset className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0">
+		<fieldset className="m-0 flex min-w-0 flex-wrap justify-end gap-1.5 border-0 p-0">
 			<legend className="sr-only">{label}</legend>
 			{Array.from({ length: total }, (_, i) => {
 				const available = i < total - used;
@@ -46,7 +46,7 @@ function Pips({
 						// A última bolinha cheia gasta; a primeira vazia devolve.
 						onClick={() => (available ? onSpend() : onRestore())}
 						className={cn(
-							"size-6 cursor-pointer select-none rounded-md border-[1.5px] border-primary/60 transition-[background-color,transform] duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default",
+							"size-5 cursor-pointer select-none rounded-md border-[1.5px] border-primary/60 transition-[background-color,transform] duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default",
 							available ? "bg-primary" : "bg-transparent",
 						)}
 					/>
@@ -87,116 +87,118 @@ export function SheetResources({
 		});
 	const levels = Object.keys(slots.slots).sort((a, b) => Number(a) - Number(b));
 
-	return (
-		<section aria-label="Recursos" className="space-y-2.5">
-			<h3 className="text-xs font-semibold text-muted-foreground">Recursos</h3>
+	const stepper =
+		"min-h-9 min-w-9 cursor-pointer select-none rounded-lg border border-border/60 text-base font-semibold transition-transform duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
+	const rest =
+		"flex min-h-10 cursor-pointer select-none items-center justify-center gap-2 text-[13px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/40 [@media(pointer:coarse)]:min-h-11";
 
-			{showSlots ? (
-				<div className="space-y-3 rounded-2xl border border-border/70 bg-background/40 p-3">
-					<div className="flex items-baseline justify-between">
-						<span className="text-xs font-semibold text-muted-foreground">
-							Espaços de magia
-						</span>
-						<span className="text-[11px] text-muted-foreground">
-							toque para gastar ou devolver
-						</span>
-					</div>
-					{slots.pact ? (
-						<div className="space-y-1.5">
-							<p className="text-[11.5px] text-muted-foreground tabular-nums">
-								Pacto · nível {slots.pact.level} · {slotsRemaining(slots.pact)}{" "}
-								de {slots.pact.total}
-							</p>
-							<Pips
-								total={slots.pact.total}
-								used={slots.pact.used}
-								label={`Espaço de Pacto nível ${slots.pact.level}`}
-								canEdit={resources.canEdit}
-								onSpend={() => saveSlots(spendSlot(slots, "pact"))}
-								onRestore={() => saveSlots(restoreSlot(slots, "pact"))}
-							/>
-						</div>
-					) : null}
-					{levels.map((level) => {
-						const entry = slots.slots[level];
-						if (!entry) return null;
-						return (
-							<div key={level} className="space-y-1.5">
-								<p className="text-[11.5px] text-muted-foreground tabular-nums">
-									Nível {level} · {slotsRemaining(entry)} de {entry.total}
+	return (
+		<section aria-label="Recursos" className="space-y-2">
+			<div className="flex items-baseline justify-between">
+				<h3 className="text-xs font-semibold text-muted-foreground">
+					Recursos
+				</h3>
+				{showSlots && resources.canEdit ? (
+					<span className="text-[11.5px] text-muted-foreground">
+						toque numa bolinha para gastar ou devolver
+					</span>
+				) : null}
+			</div>
+			<div className="divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60 bg-background/30">
+				{showSlots ? (
+					<div className="space-y-2.5 px-3 py-3">
+						{slots.pact ? (
+							<div className="flex items-center justify-between gap-3">
+								<p className="text-xs text-muted-foreground tabular-nums">
+									Pacto · nível {slots.pact.level} ·{" "}
+									{slotsRemaining(slots.pact)} de {slots.pact.total}
 								</p>
 								<Pips
-									total={entry.total}
-									used={entry.used}
-									label={`Espaço de magia nível ${level}`}
+									total={slots.pact.total}
+									used={slots.pact.used}
+									label={`Espaço de Pacto nível ${slots.pact.level}`}
 									canEdit={resources.canEdit}
-									onSpend={() => saveSlots(spendSlot(slots, Number(level)))}
-									onRestore={() => saveSlots(restoreSlot(slots, Number(level)))}
+									onSpend={() => saveSlots(spendSlot(slots, "pact"))}
+									onRestore={() => saveSlots(restoreSlot(slots, "pact"))}
 								/>
 							</div>
-						);
-					})}
-				</div>
-			) : null}
-
-			{diceTotal > 0 ? (
-				<div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/40 px-3 py-2.5">
-					<div>
-						<p className="text-xs font-semibold text-muted-foreground">
-							Dados de vida
-						</p>
-						<p className="font-display text-xl font-semibold tabular-nums">
-							{diceLeft}
-							<span className="ml-1 font-sans text-[13px] font-normal text-muted-foreground">
-								de {character.hitDice}
-							</span>
-						</p>
+						) : null}
+						{levels.map((level) => {
+							const entry = slots.slots[level];
+							if (!entry) return null;
+							return (
+								<div
+									key={level}
+									className="flex items-center justify-between gap-3"
+								>
+									<p className="text-xs text-muted-foreground tabular-nums">
+										Nível {level} · {slotsRemaining(entry)} de {entry.total}
+									</p>
+									<Pips
+										total={entry.total}
+										used={entry.used}
+										label={`Espaço de magia nível ${level}`}
+										canEdit={resources.canEdit}
+										onSpend={() => saveSlots(spendSlot(slots, Number(level)))}
+										onRestore={() =>
+											saveSlots(restoreSlot(slots, Number(level)))
+										}
+									/>
+								</div>
+							);
+						})}
 					</div>
-					{resources.canEdit ? (
-						<div className="flex gap-1.5">
-							<button
-								type="button"
-								disabled={diceLeft <= 0}
-								aria-label="Gastar um dado de vida"
-								onClick={() => resources.save({ hitDiceUsed: diceUsed + 1 })}
-								className="min-h-11 min-w-11 cursor-pointer select-none rounded-xl border border-border/70 text-base font-semibold transition-transform duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
-							>
-								−
-							</button>
-							<button
-								type="button"
-								disabled={diceUsed <= 0}
-								aria-label="Recuperar um dado de vida"
-								onClick={() => resources.save({ hitDiceUsed: diceUsed - 1 })}
-								className="min-h-11 min-w-11 cursor-pointer select-none rounded-xl border border-border/70 text-base font-semibold transition-transform duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
-							>
-								+
-							</button>
-						</div>
-					) : null}
-				</div>
-			) : null}
+				) : null}
 
-			{resources.canEdit ? (
-				<div className="grid grid-cols-2 gap-2">
-					<button
-						type="button"
-						onClick={shortRest}
-						className="flex min-h-11 cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-border/70 text-[13px] font-semibold transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/40"
-					>
-						<Sun className="size-4" aria-hidden />
-						Descanso curto
-					</button>
-					<button
-						type="button"
-						onClick={longRest}
-						className="flex min-h-11 cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-border/70 text-[13px] font-semibold transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/40"
-					>
-						<Moon className="size-4" aria-hidden />
-						Descanso longo
-					</button>
-				</div>
-			) : null}
+				{diceTotal > 0 ? (
+					<div className="flex items-center justify-between gap-3 px-3 py-2.5">
+						<div>
+							<p className="text-xs text-muted-foreground">Dados de vida</p>
+							<p className="font-display text-xl leading-tight font-semibold tabular-nums">
+								{diceLeft}
+								<span className="ml-1 font-sans text-[13px] font-normal text-muted-foreground">
+									de {character.hitDice}
+								</span>
+							</p>
+						</div>
+						{resources.canEdit ? (
+							<div className="flex gap-1.5">
+								<button
+									type="button"
+									disabled={diceLeft <= 0}
+									aria-label="Gastar um dado de vida"
+									onClick={() => resources.save({ hitDiceUsed: diceUsed + 1 })}
+									className={stepper}
+								>
+									−
+								</button>
+								<button
+									type="button"
+									disabled={diceUsed <= 0}
+									aria-label="Recuperar um dado de vida"
+									onClick={() => resources.save({ hitDiceUsed: diceUsed - 1 })}
+									className={stepper}
+								>
+									+
+								</button>
+							</div>
+						) : null}
+					</div>
+				) : null}
+
+				{resources.canEdit ? (
+					<div className="grid grid-cols-2 divide-x divide-border/40">
+						<button type="button" onClick={shortRest} className={rest}>
+							<Sun className="size-4 text-muted-foreground" aria-hidden />
+							Descanso curto
+						</button>
+						<button type="button" onClick={longRest} className={rest}>
+							<Moon className="size-4 text-muted-foreground" aria-hidden />
+							Descanso longo
+						</button>
+					</div>
+				) : null}
+			</div>
 		</section>
 	);
 }
@@ -221,9 +223,9 @@ export function DeathSaves({
 			aria-label="Salvaguardas contra a morte"
 			className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/35 bg-destructive/10 px-3 py-2.5"
 		>
-			<span className="flex items-center gap-2 text-xs font-semibold text-destructive">
+			<span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-destructive">
 				<Skull className="size-4" aria-hidden />
-				Contra a morte
+				Morte
 			</span>
 			<div className="flex gap-4">
 				{(["successes", "failures"] as const).map((kind) => (

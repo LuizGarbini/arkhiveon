@@ -44,7 +44,7 @@ const TABS: readonly (SheetTab & { id: TabId })[] = [
 // O esmaecido na borda de baixo indica que há mais conteúdo ao rolar; o pb-4
 // garante que o último item nunca fique sob ele.
 const PANEL_CLASS =
-	"min-h-0 flex-1 overflow-y-auto px-0.5 pb-4 [mask-image:linear-gradient(to_bottom,black_calc(100%-14px),transparent)]";
+	"min-h-0 flex-1 animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none overflow-y-auto px-0.5 pb-4 [mask-image:linear-gradient(to_bottom,black_calc(100%-14px),transparent)]";
 
 export interface SheetLastRoll {
 	text: string;
@@ -159,47 +159,72 @@ export function SheetBody({
 		);
 	})();
 
-	// Janela estreita e recolhido: a barra fina no lugar do cabeçalho e do PV.
-	const hideFull = collapsed ? "hidden @[44rem]:flex" : "";
+	const asideContent = (
+		<>
+			{character ? (
+				// Barra fina: desliza para dentro quando o cabeçalho recolhe (só janela estreita).
+				<div
+					aria-hidden={!collapsed}
+					inert={!collapsed}
+					className={cn(
+						"grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none @[44rem]:hidden",
+						collapsed
+							? "grid-rows-[1fr] opacity-100"
+							: "grid-rows-[0fr] opacity-0",
+					)}
+				>
+					<div className="-mx-2 -my-1 min-h-0 overflow-hidden px-2 py-1">
+						<SheetCompactBar
+							character={character}
+							portraitUrl={portraitUrl}
+							hpLabel={hpLabel}
+							hpRatio={hpRatio}
+							low={lowHp}
+							onExpand={() => setCollapsedNow(false)}
+						/>
+					</div>
+				</div>
+			) : null}
+			<div
+				aria-hidden={collapsed}
+				inert={collapsed}
+				className={cn(
+					"grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none @[44rem]:grid-rows-[1fr] @[44rem]:opacity-100",
+					collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]",
+				)}
+			>
+				<div className="-mx-2 -my-1 flex min-h-0 flex-col gap-3 overflow-hidden px-2 py-1">
+					{character ? (
+						<SheetHero
+							character={character}
+							portraitUrl={portraitUrl}
+							conditions={conditions}
+							inspiration={inspiration}
+							canEditInspiration={resources.canEdit}
+							canGrantInspiration={resources.isStaff}
+							onInspirationChange={(next) =>
+								resources.save({ inspiration: next })
+							}
+							onOpenEquipment={tabbed ? openEquipment : undefined}
+						/>
+					) : (
+						notice
+					)}
+					{hp ? <SheetHp {...hp} /> : null}
+				</div>
+			</div>
+			{/* Caído: as salvaguardas contra a morte ficam sempre à vista. */}
+			{character && hp && hp.current === 0 ? (
+				<DeathSaves character={character} resources={resources} />
+			) : null}
+		</>
+	);
 
 	return (
 		<div className="@container flex h-full min-h-[30rem] flex-col">
-			<div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-4 @[44rem]:grid-cols-[15.5rem_minmax(0,1fr)] @[44rem]:grid-rows-1 @[44rem]:gap-5">
-				<aside className="flex min-w-0 flex-col gap-4 @[44rem]:min-h-0 @[44rem]:overflow-y-auto">
-					{character && collapsed ? (
-						<div className="@[44rem]:hidden">
-							<SheetCompactBar
-								character={character}
-								portraitUrl={portraitUrl}
-								hpLabel={hpLabel}
-								hpRatio={hpRatio}
-								low={lowHp}
-								onExpand={() => setCollapsedNow(false)}
-							/>
-						</div>
-					) : null}
-					<div className={cn("flex flex-col gap-4", hideFull)}>
-						{character ? (
-							<SheetHero
-								character={character}
-								portraitUrl={portraitUrl}
-								conditions={conditions}
-								inspiration={inspiration}
-								canEditInspiration={resources.canEdit}
-								canGrantInspiration={resources.isStaff}
-								onInspirationChange={(next) =>
-									resources.save({ inspiration: next })
-								}
-								onOpenEquipment={tabbed ? openEquipment : undefined}
-							/>
-						) : (
-							notice
-						)}
-						{hp ? <SheetHp {...hp} /> : null}
-						{character && hp && hp.current === 0 ? (
-							<DeathSaves character={character} resources={resources} />
-						) : null}
-					</div>
+			<div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-3 @[44rem]:grid-cols-[15.5rem_minmax(0,1fr)] @[44rem]:grid-rows-1 @[44rem]:gap-5">
+				<aside className="flex min-w-0 flex-col gap-3 @[44rem]:min-h-0 @[44rem]:overflow-y-auto">
+					{asideContent}
 				</aside>
 
 				<div className="flex min-h-0 min-w-0 flex-col gap-3">
@@ -232,28 +257,34 @@ export function SheetBody({
 						<div className="flex-1" />
 					)}
 
-					<div className="space-y-2 border-t border-border/60 pt-3">
-						{lastRoll ? (
-							<div
-								aria-live="polite"
-								className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2"
-							>
-								<Dices className="size-4 shrink-0 text-primary" aria-hidden />
-								<p className="min-w-0 flex-1 truncate font-mono text-xs font-semibold tabular-nums text-foreground">
-									{lastRoll.text}
+					<div className="flex items-center gap-2.5 border-t border-border/50 pt-2.5">
+						<div className="min-w-0 flex-1" aria-live="polite">
+							{lastRoll ? (
+								<div
+									key={lastRoll.text}
+									className="flex animate-in items-center gap-2 duration-200 fade-in-0 slide-in-from-bottom-1 motion-reduce:animate-none"
+								>
+									<Dices className="size-4 shrink-0 text-primary" aria-hidden />
+									<p className="min-w-0 truncate font-mono text-xs font-semibold tabular-nums text-foreground">
+										{lastRoll.text}
+									</p>
+									{lastRoll.shared ? (
+										<span className="shrink-0 text-[11px] text-muted-foreground">
+											no chat da mesa
+										</span>
+									) : null}
+								</div>
+							) : (
+								<p className="truncate text-xs text-muted-foreground">
+									Toque num número para rolar
 								</p>
-								{lastRoll.shared ? (
-									<span className="shrink-0 text-[11px] text-muted-foreground">
-										no chat da mesa
-									</span>
-								) : null}
-							</div>
-						) : null}
+							)}
+						</div>
 						<Button
 							type="button"
 							variant="outline"
 							disabled={rolls.rolling}
-							className="min-h-11 w-full gap-2"
+							className="min-h-9 shrink-0 gap-1.5 px-3 [@media(pointer:coarse)]:min-h-11"
 							onClick={() => rolls.check("Teste livre", 0)}
 						>
 							<Dices className="size-4" aria-hidden />

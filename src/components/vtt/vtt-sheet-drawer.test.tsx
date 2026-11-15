@@ -515,3 +515,61 @@ describe("VTTSheetDrawer · rolagem entre abas", () => {
 		expect(after.scrollTop).toBe(0);
 	});
 });
+
+describe("VTTSheetDrawer · recolher o cabeçalho com animação", () => {
+	const collapse = () => {
+		h.vtt.isGM = true;
+		h.vtt.tokens = [
+			{
+				id: "tok-1",
+				name: "QA Guerreira",
+				characterId: "char-1",
+				hpCurrent: 7,
+				hpMax: 10,
+				conditions: [],
+			},
+		];
+		setCharacter({ health: 7, healthMax: 10 });
+		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
+		const panel = screen.getByRole("tabpanel");
+		for (const [name, value] of [
+			["scrollTop", 120],
+			["scrollHeight", 1200],
+			["clientHeight", 300],
+		] as const) {
+			Object.defineProperty(panel, name, { configurable: true, value });
+		}
+		return panel;
+	};
+	const heading = () => document.querySelector("h2") as HTMLElement;
+
+	it("aberto: o cabeçalho é alcançável e a barra fina fica fora do teclado", () => {
+		collapse();
+		expect(heading().closest("[inert]")).toBeNull();
+		expect(heading().closest("[aria-hidden='true']")).toBeNull();
+		// a barra existe (para animar), mas inerte e escondida de leitor de tela
+		const bar = document.querySelector(
+			"button[aria-label*='Mostrar cabeçalho']",
+		) as HTMLElement;
+		expect(bar.closest("[inert]")).not.toBeNull();
+		expect(bar.closest("[aria-hidden='true']")).not.toBeNull();
+	});
+
+	it("recolhido: o cabeçalho completo fica inerte (Tab não entra nele) e a barra vira alcançável", () => {
+		const panel = collapse();
+		fireEvent.scroll(panel);
+		expect(heading().closest("[inert]")).not.toBeNull();
+		expect(heading().closest("[aria-hidden='true']")).not.toBeNull();
+		const bar = screen.getByRole("button", { name: /Mostrar cabeçalho/ });
+		expect(bar.closest("[inert]")).toBeNull();
+	});
+
+	it("a animação respeita 'reduzir movimento'", () => {
+		collapse();
+		const wrapper = heading().closest("[class*='grid-rows']") as HTMLElement;
+		expect(wrapper.className).toContain(
+			"transition-[grid-template-rows,opacity]",
+		);
+		expect(wrapper.className).toContain("motion-reduce:transition-none");
+	});
+});

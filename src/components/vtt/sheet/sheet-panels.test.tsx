@@ -347,20 +347,27 @@ describe("SummaryTab", () => {
 
 	it("salvaguarda soma a proficiência só onde ela existe", () => {
 		const r = renderSummary();
-		const saves = screen.getByRole("region", { name: "Salvaguardas" });
 		fireEvent.click(
-			within(saves).getByRole("button", {
+			screen.getByRole("button", {
 				name: "Rolar salvaguarda de Sabedoria (+6)",
 			}),
 		);
 		expect(r.check).toHaveBeenLastCalledWith("Salvaguarda de Sabedoria", 6);
 		// Força: sem proficiência, só o atributo (+0)
 		fireEvent.click(
-			within(saves).getByRole("button", {
+			screen.getByRole("button", {
 				name: "Rolar salvaguarda de Força (+0)",
 			}),
 		);
 		expect(r.check).toHaveBeenLastCalledWith("Salvaguarda de Força", 0);
+	});
+
+	it("a salvaguarda fica na mesma coluna do atributo", () => {
+		renderSummary();
+		const attrs = screen.getByRole("region", { name: "Atributos" });
+		expect(
+			within(attrs).getAllByRole("button", { name: /^Rolar salvaguarda/ }),
+		).toHaveLength(6);
 	});
 
 	it("atributos com salvaguarda proficiente ganham marca", () => {
@@ -388,6 +395,8 @@ describe("SummaryTab", () => {
 				resources={resourcesApi()}
 			/>,
 		);
-		expect(screen.queryByRole("region", { name: "Salvaguardas" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: /^Rolar salvaguarda/ }),
+		).toBeNull();
 	});
 });

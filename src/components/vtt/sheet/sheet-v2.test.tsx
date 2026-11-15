@@ -670,3 +670,98 @@ describe("SummaryTab · painel de combate", () => {
 		expect(screen.queryByRole("region", { name: "Recursos" })).toBeNull();
 	});
 });
+
+describe("SkillsTab · lista com marca de proficiência", () => {
+	const stats = (c: Character) => computeEffectiveStats(c, itemsById);
+	const renderSkills = () => {
+		const c = character({
+			skillProficiencies: { persuasion: "expertise", perception: "proficient" },
+		});
+		render(
+			<SkillsTab
+				character={c}
+				stats={stats(c)}
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+			/>,
+		);
+	};
+	const rowOf = (name: string) =>
+		screen.getByRole("button", { name: new RegExp(`^Rolar ${name} `) });
+
+	it("especialista tem marca própria; proficiente também; sem proficiência não tem marca anunciada", () => {
+		renderSkills();
+		expect(
+			within(rowOf("Persuasão")).getByRole("img", { name: "Especialista" }),
+		).toBeTruthy();
+		expect(
+			within(rowOf("Percepção")).getByRole("img", { name: "Proficiente" }),
+		).toBeTruthy();
+		expect(within(rowOf("Acrobacia")).queryByRole("img")).toBeNull();
+	});
+
+	it("a linha mostra nome, atributo e modificador (que é o que se rola)", () => {
+		renderSkills();
+		const row = rowOf("Persuasão");
+		expect(row.textContent).toContain("Persuasão");
+		expect(row.textContent).toContain("CAR");
+		expect(row.textContent).toContain("+11"); // CAR +5 + 2 × proficiência 3
+	});
+
+	it("proficientes aparecem em destaque (peso da fonte), as demais mais discretas", () => {
+		renderSkills();
+		expect(
+			rowOf("Persuasão").querySelector("span:nth-child(2)")?.className,
+		).toContain("font-semibold");
+		expect(
+			rowOf("Acrobacia").querySelector("span:nth-child(2)")?.className,
+		).not.toContain("font-semibold");
+	});
+});
+
+describe("SummaryTab · atributos com salvaguarda na mesma coluna", () => {
+	it("a salvaguarda proficiente tem escudo marcado; a sem proficiência, não", () => {
+		const c = character({ savingThrowProficiencies: { wisdom: true } });
+		render(
+			<SummaryTab
+				character={c}
+				config={SYSTEM_CONFIG.dnd5e}
+				stats={computeEffectiveStats(c, itemsById)}
+				showPassive
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+				resources={api()}
+			/>,
+		);
+		const wis = screen.getByRole("button", {
+			name: /^Rolar salvaguarda de Sabedoria/,
+		});
+		const str = screen.getByRole("button", {
+			name: /^Rolar salvaguarda de Força/,
+		});
+		expect(
+			within(wis).getByRole("img", { name: "Salvaguarda proficiente" }),
+		).toBeTruthy();
+		expect(within(str).queryByRole("img")).toBeNull();
+	});
+
+	it("a CA é o único número com moldura; os demais ficam soltos", () => {
+		const c = character({ spellSaveDc: 15 });
+		render(
+			<SummaryTab
+				character={c}
+				config={SYSTEM_CONFIG.dnd5e}
+				stats={computeEffectiveStats(c, itemsById)}
+				showPassive
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+				resources={api()}
+			/>,
+		);
+		const framed = (label: string) =>
+			(
+				screen.getByText(label).closest("div") as HTMLElement
+			).className.includes("border");
+		expect(framed("CA")).toBe(true);
+		expect(framed("Iniciativa")).toBe(false);
+		expect(framed("CD de magia")).toBe(false);
+		expect(framed("Proficiência")).toBe(false);
+	});
+});
