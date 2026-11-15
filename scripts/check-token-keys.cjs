@@ -5,7 +5,8 @@
 //  - o jogador não atravessa janela nem parede (aviso, nada é gravado);
 //  - o mestre atravessa;
 //  - sem seleção, com outra ferramenta ou digitando num campo, a seta não move;
-//  - segurar a seta repete, mas com limite (cada casa é gravada).
+//  - segurar a seta repete, mas com limite (a última casa sempre é gravada; passos
+//    muito rápidos são fundidos numa gravação só, veja check:setas-perf).
 // Uso: pnpm check:token-keys   (sai com código 1 se alguma regra quebrar)
 const { chromium } = require("playwright");
 async function main() {
@@ -16,9 +17,13 @@ async function main() {
 	const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 	await context.routeWebSocket("**/realtime/v1/**", (r) => r.close());
 	let tokenWrites = 0;
+	let lastBodyOfA = null;
 	await context.route("**/rest/v1/**", (r) => {
 		const req = r.request();
-		if (req.url().includes("vtt_tokens") && req.method() !== "GET") tokenWrites++;
+		if (req.url().includes("vtt_tokens") && req.method() !== "GET") {
+			tokenWrites++;
+			if (req.url().includes("eq.a")) lastBodyOfA = JSON.parse(req.postData() || "{}");
+		}
 		return r.fulfill({ status: 200, contentType: "application/json", body: req.url().includes("/rpc/") ? "null" : "[]" });
 	});
 	await context.addInitScript(() => {
@@ -70,7 +75,10 @@ async function main() {
 	await press("ArrowLeft"); const left = await pos();
 	await press("ArrowUp"); const up = await pos();
 	console.log("1 direita/baixo/esq/cima    ", JSON.stringify([right.a, down.a, left.a, up.a]));
+	// as gravações saem em fila (uma em voo por token): espera a última chegar
+	await page.waitForTimeout(600);
 	const writesAfterOne = tokenWrites;
+	const lastWriteAfterOne = lastBodyOfA;
 
 	// 2. vários andam juntos
 	await reset(); await select(["a", "b", "c"]);
@@ -114,12 +122,14 @@ async function main() {
 	// 6. segurar a seta repete, com limite
 	await reset(); await select(["a"]);
 	const before6 = tokenWrites;
+	const holdStart = Date.now();
 	for (let i = 0; i < 24; i++) { await page.keyboard.down("ArrowRight"); await page.waitForTimeout(30); }
 	await page.keyboard.up("ArrowRight");
+	const holdMs = Date.now() - holdStart;
 	await page.waitForTimeout(500);
 	const held = await pos();
 	const steps = Math.round((held.a.x - 455) / 70);
-	console.log("6 segurando (~720 ms)        ", JSON.stringify({ casas: steps, gravacoes: tokenWrites - before6 }));
+	console.log("6 segurando (24 toques)      ", JSON.stringify({ casas: steps, gravacoes: tokenWrites - before6, duracaoMs: holdMs }));
 	console.log("erros de página:", errors.length ? errors.slice(0, 3) : "nenhum");
 	await browser.close();
 	await server.close();
@@ -130,7 +140,8 @@ async function main() {
 	if (!eq(down.a, 525, 525) || down.a.r !== 180) problems.push(`baixo: esperava (525,525) a 180°, veio ${JSON.stringify(down.a)}`);
 	if (!eq(left.a, 455, 525) || left.a.r !== 270) problems.push(`esquerda: esperava (455,525) a 270°, veio ${JSON.stringify(left.a)}`);
 	if (!eq(up.a, 455, 455) || up.a.r !== 0) problems.push(`cima: esperava voltar a (455,455) a 0°, veio ${JSON.stringify(up.a)}`);
-	if (writesAfterOne < 4) problems.push(`cada casa deveria ser gravada (gravações: ${writesAfterOne})`);
+	if (writesAfterOne < 2) problems.push(`as casas deveriam ser gravadas (gravações: ${writesAfterOne})`);
+	if (!lastWriteAfterOne || lastWriteAfterOne.x !== 455 || lastWriteAfterOne.y !== 455 || lastWriteAfterOne.rotation !== 0) problems.push(`a ÚLTIMA casa (cima, de volta a 455,455) deveria ser a última gravação: ${JSON.stringify(lastWriteAfterOne)}`);
 	if (!eq(group.a, 455, 385) || !eq(group.b, 455, 455) || !eq(group.c, 665, 385)) problems.push(`grupo para cima: ${JSON.stringify([group.a, group.b, group.c])}`);
 	if (!eq(group2.a, 525, 385) || !eq(group2.b, 525, 455) || !eq(group2.c, 735, 385)) problems.push(`grupo para a direita: ${JSON.stringify([group2.a, group2.b, group2.c])}`);
 	if (group2.c.x - group2.a.x !== 210 || group2.b.y - group2.a.y !== 70) problems.push("o grupo perdeu a formação");
@@ -144,8 +155,9 @@ async function main() {
 	if (blockedToast < 1) problems.push("faltou o aviso de movimento bloqueado");
 	if (writesAfterBlocked !== writesBefore5) problems.push("a seta barrada gravou algo no banco");
 	if (!eq(gm.a, 525, 455)) problems.push(`o mestre deveria atravessar a janela com a seta: ${JSON.stringify(gm.a)}`);
-	if (steps < 3 || steps > 8) problems.push(`segurar a seta deveria andar de 3 a 8 casas em ~720 ms (andou ${steps})`);
-	if (tokenWrites - before6 > 9) problems.push(`gravações demais ao segurar a seta (${tokenWrites - before6})`);
+	// limite de repetição: no máximo 1 casa a cada 140 ms (o tempo real do laço depende da máquina)
+	if (steps < 3 || steps > Math.floor(holdMs / 140) + 2) problems.push(`segurar a seta deveria andar de 3 a ${Math.floor(holdMs / 140) + 2} casas em ${holdMs} ms (andou ${steps})`);
+	if (tokenWrites - before6 > steps + 1) problems.push(`gravações demais ao segurar a seta (${tokenWrites - before6} para ${steps} casas)`);
 	if (errors.length) problems.push(`erros de página: ${errors[0]}`);
 	if (problems.length) {
 		console.error("FALHOU:\n - " + problems.join("\n - "));
