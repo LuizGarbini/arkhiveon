@@ -185,6 +185,26 @@ async function main() {
 	expect(hidden.rulers.includes("peer-ana"), "oculto: a régua remota deveria continuar aparecendo");
 	await page.screenshot({ path: path.join(OUT, "cursores-ocultos.png") });
 
+	// pings de todos os tipos (e o "Todos aqui" do mestre) convivem com os cursores ocultos
+	rt.peerJoin("peer-gm", { userId: "peer-gm", userName: "Mestre Peer", avatarUrl: null, color: "#f97316", colorChosen: false, isGM: true, isCoGM: false, onlineAt: 500 });
+	await page.waitForTimeout(300);
+	const vpBefore = await page.evaluate(() => ({ ...window.__vtt_store__.getState().viewport }));
+	const mkPing = (id, userId, userName, kind, x, y) => ({ id, x, y, userId, userName, color: "#22c55e", timestamp: Date.now(), kind });
+	rt.peerBroadcast("ping", mkPing("k1", "peer-ana", "Ana", "danger", 600, 300));
+	rt.peerBroadcast("ping", mkPing("k2", "peer-bruno", "Bruno", "help", 650, 330));
+	rt.peerBroadcast("ping", mkPing("k3", "peer-evil", "Mal", "focus", 200, 200)); // jogador forçando "Todos aqui"
+	rt.peerBroadcast("ping", mkPing("k4", "peer-gm", "Mestre Peer", "focus", 1000, 700));
+	await page.waitForTimeout(1500);
+	const kinds = await page.evaluate(() => window.__vtt_store__.getState().activePings.map((p) => [p.userId, p.kind]));
+	const vpAfter = await page.evaluate(() => ({ ...window.__vtt_store__.getState().viewport }));
+	console.log("4 oculto + pings de vários tipos", JSON.stringify(kinds), "| câmera:", JSON.stringify([Math.round(vpBefore.x), Math.round(vpBefore.y)]), "→", JSON.stringify([Math.round(vpAfter.x), Math.round(vpAfter.y)]));
+	const kindOf = (u) => kinds.find(([id]) => id === u)?.[1];
+	expect(kindOf("peer-ana") === "danger" && kindOf("peer-bruno") === "help", "oculto: pings de perigo e ajuda deveriam aparecer");
+	expect(kindOf("peer-gm") === "focus", "oculto: o 'Todos aqui' do mestre deveria aparecer");
+	expect(kindOf("peer-evil") && kindOf("peer-evil") !== "focus", "jogador forçando 'Todos aqui' vira ping comum");
+	expect(vpAfter.x !== vpBefore.x || vpAfter.y !== vpBefore.y, "'Todos aqui' do mestre deveria levar a câmera, mesmo com os cursores ocultos");
+	expect((await cursors(page)).length === 0, "pings não podem trazer os cursores de volta");
+
 	// o MEU cursor continua sendo enviado aos outros
 	await page.mouse.move(300, 300);
 	for (let i = 0; i < 12; i++) { await page.mouse.move(300 + i * 25, 320 + i * 8); await page.waitForTimeout(40); }
