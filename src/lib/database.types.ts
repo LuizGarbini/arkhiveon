@@ -1174,6 +1174,51 @@ export type Database = {
 					},
 				];
 			};
+			vtt_notes: {
+				Row: {
+					author_id: string;
+					body: string;
+					campaign_id: string;
+					created_at: string;
+					id: string;
+					title: string;
+					updated_at: string;
+				};
+				Insert: {
+					author_id?: string;
+					body?: string;
+					campaign_id: string;
+					created_at?: string;
+					id?: string;
+					title?: string;
+					updated_at?: string;
+				};
+				Update: {
+					author_id?: string;
+					body?: string;
+					campaign_id?: string;
+					created_at?: string;
+					id?: string;
+					title?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_notes_author_id_fkey";
+						columns: ["author_id"];
+						isOneToOne: false;
+						referencedRelation: "users";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_notes_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			vtt_scenes: {
 				Row: {
 					campaign_id: string;

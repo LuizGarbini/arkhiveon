@@ -8,6 +8,7 @@ import {
 	Hexagon,
 	Map as MapIcon,
 	MousePointer2,
+	NotebookPen,
 	Radio,
 	Ruler,
 	ShieldAlert,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/vtt/combat-store";
 import { TOOLBAR_WITH_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
 import { useMoveStore } from "@/lib/vtt/move-store";
+import { useNotesStore } from "@/lib/vtt/notes-store";
+import { flushAllNotes } from "@/lib/vtt/notes-sync";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	hasOpenVttDialog,
@@ -54,19 +57,24 @@ export function wallToolDisabledReason(
 	return null;
 }
 
-/** Combate, chat e movimentos ocupam o mesmo lado: abrir um fecha os outros. */
-function openRightPanel(panel: "combat" | "feed" | "moves") {
+/** Combate, chat, movimentos e notas ocupam o mesmo lado: abrir um fecha os outros. */
+function openRightPanel(panel: "combat" | "feed" | "moves" | "notes") {
 	const combat = useCombatStore.getState();
 	const feed = useRollStore.getState();
 	const moves = useMoveStore.getState();
+	const notes = useNotesStore.getState();
 	const open = {
 		combat: combat.panelOpen,
 		feed: feed.panelOpen,
 		moves: moves.panelOpen,
+		notes: notes.panelOpen,
 	}[panel];
+	// Trocar de painel não pode perder o que acabou de ser digitado numa nota.
+	void flushAllNotes();
 	combat.setPanelOpen(panel === "combat" && !open);
 	feed.setPanelOpen(panel === "feed" && !open);
 	moves.setPanelOpen(panel === "moves" && !open);
+	notes.setPanelOpen(panel === "notes" && !open);
 	if (panel !== "moves" || open) moves.focusMove(null);
 }
 
@@ -87,6 +95,7 @@ export function VTTToolbar() {
 	const combatOpen = useCombatStore((s) => s.panelOpen);
 	const combatStatus = useCombatStore((s) => s.status);
 	const feedOpen = useRollStore((s) => s.panelOpen);
+	const notesOpen = useNotesStore((s) => s.panelOpen);
 	const isMobile = useIsMobile();
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
@@ -128,6 +137,10 @@ export function VTTToolbar() {
 			if (key === "m") {
 				const role = useVTTStore.getState();
 				if (role.isGM || role.isCoGM) openRightPanel("moves");
+				return;
+			}
+			if (key === "n") {
+				openRightPanel("notes");
 				return;
 			}
 			if (key === "v") setActiveTool("select");
@@ -302,6 +315,17 @@ export function VTTToolbar() {
 					kind="toggle"
 					active={feedOpen}
 					onClick={() => openRightPanel("feed")}
+				/>
+				<ToolbarButton
+					label="Notas"
+					tooltip={
+						isGM ? "Notas do mestre (só você vê)" : "Minhas notas (só você vê)"
+					}
+					shortcut="N"
+					icon={NotebookPen}
+					kind="toggle"
+					active={notesOpen}
+					onClick={() => openRightPanel("notes")}
 				/>
 			</ToolbarGroup>
 

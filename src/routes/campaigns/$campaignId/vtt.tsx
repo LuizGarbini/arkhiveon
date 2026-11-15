@@ -13,6 +13,7 @@ import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTMoveHistoryPanel } from "@/components/vtt/vtt-move-history-panel";
+import { VTTNotesPanel } from "@/components/vtt/vtt-notes-panel";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
@@ -43,6 +44,8 @@ import {
 } from "@/lib/vtt/drag-broadcast";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { subscribeMoves } from "@/lib/vtt/move-sync";
+import { useNotesStore } from "@/lib/vtt/notes-store";
+import { flushAllNotes, loadNotes } from "@/lib/vtt/notes-sync";
 import {
 	canControlVTTToken,
 	tableRole,
@@ -231,6 +234,17 @@ function VTTSession() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [isJournalOpen, setIsJournalOpen] = useState(false);
+
+	// Notas privadas: carrega ao entrar na mesa; ao sair, grava o que estiver
+	// pendente. O store não é limpo aqui: ele troca sozinho ao mudar de campanha
+	// (limpar na saída apagaria a carga de uma remontagem logo em seguida).
+	useEffect(() => {
+		void loadNotes(campaignId);
+		return () => {
+			void flushAllNotes();
+			useNotesStore.getState().setPanelOpen(false);
+		};
+	}, [campaignId]);
 	const roomChannelRef = useRef<ReturnType<
 		NonNullable<ReturnType<typeof getSupabase>>["channel"]
 	> | null>(null);
@@ -1707,6 +1721,7 @@ function VTTSession() {
 					<VTTCombatPanel />
 					<VTTFeedPanel />
 					<VTTMoveHistoryPanel onUpdateToken={handleUpdateToken} />
+					<VTTNotesPanel />
 				</>
 			)}
 
