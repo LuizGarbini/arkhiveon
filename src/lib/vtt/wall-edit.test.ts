@@ -331,6 +331,17 @@ describe("computeWallDrag · corpo", () => {
 		expect(r.walls[0]).toMatchObject({ x1: 70, y1: 0, x2: 170, y2: 0 });
 	});
 
+	it("grade com deslocamento: o corpo encaixa nos cantos deslocados", () => {
+		const p = press(["a"], { x: 5, y: 0 });
+		const r = computeWallDrag(
+			p,
+			{ x: 75, y: 3 },
+			ctx({ snapGrid: true, origin: { x: 30, y: 30 } }),
+		);
+		// âncora (0,0) + (70,3) → (70,3) encaixa em (100,30): delta (100,30)
+		expect(r.walls[0]).toMatchObject({ x1: 100, y1: 30, x2: 200, y2: 30 });
+	});
+
 	it("Shift com a grade ligada solta o encaixe", () => {
 		const p = press(["a"], { x: 5, y: 0 });
 		const r = computeWallDrag(

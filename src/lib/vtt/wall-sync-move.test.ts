@@ -36,6 +36,7 @@ vi.mock("@/components/ui/toast", () => ({
 	showToast: (...args: unknown[]) => mock.toast(...args),
 }));
 
+import { setWallDragging } from "./wall-edit";
 import {
 	commitWallMoves,
 	flushWallNudge,
@@ -312,6 +313,48 @@ describe("recarga do Realtime no meio de um movimento", () => {
 	});
 });
 
+describe("falha no meio de um lote", () => {
+	it("uma parede gravou e a outra não: a mesa confere com o que o banco guardou", async () => {
+		mock.update.mockImplementation((_values: unknown, id: string) =>
+			Promise.resolve(
+				id === "a"
+					? { data: [{ id }], error: null }
+					: { data: null, error: { message: "boom" } },
+			),
+		);
+		// o banco aceitou a "a" (agora está em 40) e recusou a porta
+		mock.selectAnswer = Promise.resolve({
+			data: [
+				{ id: "a", scene_id: "s", x1: 40, y1: 0, x2: 110, y2: 0 },
+				{
+					id: "door",
+					scene_id: "s",
+					x1: 100,
+					y1: 0,
+					x2: 100,
+					y2: 70,
+					kind: "door",
+					is_open: true,
+				},
+			],
+			error: null,
+		});
+		await runWallOp(
+			{
+				kind: "move",
+				moves: [
+					move("a", { x1: 40, x2: 110 }),
+					move("door", { x1: 150, x2: 150 }),
+				],
+			},
+			"do",
+		);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(get("a")).toMatchObject({ x1: 40, x2: 110 });
+		expect(get("door")).toMatchObject({ x1: 100, x2: 100 });
+	});
+});
+
 describe("setas com a seleção de paredes", () => {
 	beforeEach(() => useVTTStore.setState({ selectedWallIds: ["a", "door"] }));
 
@@ -337,15 +380,16 @@ describe("setas com a seleção de paredes", () => {
 	});
 
 	it("vários toques viram UMA gravação e UM passo no desfazer", async () => {
-		for (let i = 0; i < 5; i++) {
+		// 8 toques a 80 ms: o lote dura mais que a pausa de 300 ms e não pode fechar antes
+		for (let i = 0; i < 8; i++) {
 			handleWallKey(key("ArrowRight"));
-			await vi.advanceTimersByTimeAsync(50);
+			await vi.advanceTimersByTimeAsync(80);
 		}
 		expect(mock.update).not.toHaveBeenCalled();
 		await vi.advanceTimersByTimeAsync(400);
 		expect(mock.update).toHaveBeenCalledTimes(2); // 2 paredes, 1 lote
 		expect(mock.update).toHaveBeenCalledWith(
-			{ x1: 5, y1: 0, x2: 75, y2: 0 },
+			{ x1: 8, y1: 0, x2: 78, y2: 0 },
 			"a",
 		);
 		expect(useVTTStore.getState().wallUndo).toHaveLength(1);
@@ -375,6 +419,23 @@ describe("setas com a seleção de paredes", () => {
 		await vi.advanceTimersByTimeAsync(400);
 		expect(mock.update).not.toHaveBeenCalled();
 		expect(useVTTStore.getState().wallUndo).toHaveLength(0);
+		// e não deixa a posição presa: uma recarga depois traz o que o banco tem
+		mock.selectAnswer = Promise.resolve({
+			data: [{ id: "a", scene_id: "s", x1: 500, y1: 0, x2: 570, y2: 0 }],
+			error: null,
+		});
+		await loadWalls("s");
+		expect(get("a")).toMatchObject({ x1: 500 });
+	});
+
+	it("durante um arrasto as setas não mexem nas paredes", () => {
+		setWallDragging(true);
+		try {
+			expect(handleWallKey(key("ArrowRight"))).toBe(true);
+			expect(get("a")).toMatchObject({ x1: 0, x2: 70 });
+		} finally {
+			setWallDragging(false);
+		}
 	});
 
 	it("uma recarga no meio do lote não desfaz os toques", async () => {

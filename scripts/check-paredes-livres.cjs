@@ -268,6 +268,16 @@ async function main() {
 	const mvA = await wallOf("mv");
 	expect(mvA.x1 === 140 && mvA.x2 === 280 && mvA.y1 === 330, "clique sem arrasto mexeu na parede");
 
+	// 4a' um tremor de 3 px no clique (abaixo do limite de arrasto) também não move nada
+	await page.mouse.move(mvMid.x, mvMid.y);
+	await page.mouse.down();
+	await page.mouse.move(mvMid.x + 3, mvMid.y + 2, { steps: 3 });
+	await page.mouse.up();
+	await page.waitForTimeout(300);
+	const mvJitter = await wallOf("mv");
+	log("4a' tremor de 3 px", { mvJitter, patches: patches.length });
+	expect(patches.length === 0 && mvJitter.x1 === 140 && mvJitter.y1 === 330, "um tremor abaixo do limite de arrasto não pode mover nem gravar a parede");
+
 	// 4b arrasto: prévia ao vivo sem gravar, UMA gravação ao soltar
 	const dxS = 90, dyS = 60;
 	const vp0 = await view();
