@@ -20,26 +20,6 @@ function normalize(value: string): string {
 		.replace(/[\u0300-\u036f]/g, "");
 }
 
-const ATTRIBUTE_FILTERS = [
-	{ key: "strength", short: "FOR" },
-	{ key: "dexterity", short: "DES" },
-	{ key: "constitution", short: "CON" },
-	{ key: "intelligence", short: "INT" },
-	{ key: "wisdom", short: "SAB" },
-	{ key: "charisma", short: "CAR" },
-] as const;
-
-type Filter = "all" | "proficient" | (typeof ATTRIBUTE_FILTERS)[number]["key"];
-
-/** Filtro discreto: texto sobre fundo suave; o ativo ganha o acento. */
-const chip = (active: boolean) =>
-	cn(
-		"min-h-8 shrink-0 cursor-pointer select-none rounded-full px-3 text-xs font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(pointer:coarse)]:min-h-11",
-		active
-			? "bg-primary/15 text-foreground ring-1 ring-primary/40"
-			: "bg-muted/60 text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
-	);
-
 /** Marca de proficiência: anel vazio, ponto cheio ou dois pontos (especialista). */
 function Pips({ level }: { level: "none" | "proficient" | "expertise" }) {
 	if (level === "none") {
@@ -81,7 +61,6 @@ export function SkillsTab({
 	const searchId = useId();
 	const [query, setQuery] = useState("");
 	const deferred = useDeferredValue(query);
-	const [filter, setFilter] = useState<Filter>("all");
 	const proficiency =
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
@@ -100,13 +79,6 @@ export function SkillsTab({
 				}),
 			};
 		}).filter((row) => {
-			if (filter === "proficient" && row.level === "none") return false;
-			if (
-				filter !== "all" &&
-				filter !== "proficient" &&
-				row.attributeKey !== filter
-			)
-				return false;
 			return (
 				!q ||
 				normalize(row.name).includes(q) ||
@@ -114,13 +86,7 @@ export function SkillsTab({
 				normalize(row.attributeShort).includes(q)
 			);
 		});
-	}, [
-		character.skillProficiencies,
-		stats.scores,
-		proficiency,
-		deferred,
-		filter,
-	]);
+	}, [character.skillProficiencies, stats.scores, proficiency, deferred]);
 
 	return (
 		<div className="space-y-3">
@@ -144,40 +110,6 @@ export function SkillsTab({
 				/>
 			</div>
 
-			<div
-				role="toolbar"
-				aria-label="Filtrar perícias"
-				className="-mx-0.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5"
-			>
-				<button
-					type="button"
-					aria-pressed={filter === "all"}
-					onClick={() => setFilter("all")}
-					className={chip(filter === "all")}
-				>
-					Todas
-				</button>
-				<button
-					type="button"
-					aria-pressed={filter === "proficient"}
-					onClick={() => setFilter("proficient")}
-					className={chip(filter === "proficient")}
-				>
-					Proficientes
-				</button>
-				{ATTRIBUTE_FILTERS.map(({ key, short }) => (
-					<button
-						key={key}
-						type="button"
-						aria-pressed={filter === key}
-						onClick={() => setFilter(filter === key ? "all" : key)}
-						className={chip(filter === key)}
-					>
-						{short}
-					</button>
-				))}
-			</div>
-
 			{rows.length === 0 ? (
 				<div className="flex flex-col items-center gap-2.5 rounded-2xl border border-dashed border-border/70 bg-background/30 px-5 py-8 text-center">
 					<p className="text-sm font-semibold">Nenhuma perícia encontrada</p>
@@ -185,12 +117,9 @@ export function SkillsTab({
 						type="button"
 						variant="outline"
 						className="min-h-11"
-						onClick={() => {
-							setQuery("");
-							setFilter("all");
-						}}
+						onClick={() => setQuery("")}
 					>
-						Limpar filtros
+						Limpar busca
 					</Button>
 				</div>
 			) : (

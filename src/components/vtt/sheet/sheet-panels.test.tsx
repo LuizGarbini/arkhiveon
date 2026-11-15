@@ -272,20 +272,22 @@ describe("SkillsTab", () => {
 		).toBeNull();
 	});
 
-	it("filtro Proficientes mostra só proficientes e especialistas", () => {
+	it("não há chips de filtro: a lista traz as 18 perícias e só a busca filtra", () => {
 		renderSkills();
-		fireEvent.click(screen.getByRole("button", { name: "Proficientes" }));
-		const rows = screen.getAllByRole("button", { name: /^Rolar / });
-		expect(rows).toHaveLength(2);
+		expect(
+			screen.queryByRole("toolbar", { name: "Filtrar perícias" }),
+		).toBeNull();
+		expect(screen.queryByRole("button", { name: "Proficientes" })).toBeNull();
+		expect(screen.getAllByRole("button", { name: /^Rolar / })).toHaveLength(18);
 	});
 
-	it("nada encontrado: estado vazio com Limpar filtros", () => {
+	it("nada encontrado: estado vazio com Limpar busca", () => {
 		renderSkills();
 		fireEvent.change(screen.getByRole("searchbox"), {
 			target: { value: "xyzxyz" },
 		});
 		expect(screen.getByText("Nenhuma perícia encontrada")).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+		fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
 		expect(screen.getAllByRole("button", { name: /^Rolar / }).length).toBe(18);
 	});
 

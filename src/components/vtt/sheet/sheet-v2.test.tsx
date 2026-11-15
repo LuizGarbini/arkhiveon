@@ -420,53 +420,6 @@ describe("SheetCompactBar", () => {
 	});
 });
 
-describe("SkillsTab · filtros por atributo", () => {
-	const stats = (c: Character) => computeEffectiveStats(c, itemsById);
-	const rolls = () => ({ rolling: false, check: vi.fn(), formula: vi.fn() });
-
-	it("filtrar por CAR mostra só as perícias de Carisma", () => {
-		const c = character();
-		render(<SkillsTab character={c} stats={stats(c)} rolls={rolls()} />);
-		fireEvent.click(screen.getByRole("button", { name: "CAR" }));
-		const names = screen
-			.getAllByRole("button", { name: /^Rolar / })
-			.map((b) => b.getAttribute("aria-label")?.replace(/^Rolar | \(.*$/g, ""));
-		expect(names.sort()).toEqual([
-			"Atuação",
-			"Enganação",
-			"Intimidação",
-			"Persuasão",
-		]);
-	});
-
-	it("tocar de novo no mesmo atributo tira o filtro", () => {
-		const c = character();
-		render(<SkillsTab character={c} stats={stats(c)} rolls={rolls()} />);
-		fireEvent.click(screen.getByRole("button", { name: "DES" }));
-		fireEvent.click(screen.getByRole("button", { name: "DES" }));
-		expect(screen.getAllByRole("button", { name: /^Rolar / }).length).toBe(18);
-	});
-
-	it("o filtro marcado fica com aria-pressed", () => {
-		const c = character();
-		render(<SkillsTab character={c} stats={stats(c)} rolls={rolls()} />);
-		expect(
-			screen
-				.getByRole("button", { name: "Todas" })
-				.getAttribute("aria-pressed"),
-		).toBe("true");
-		fireEvent.click(screen.getByRole("button", { name: "SAB" }));
-		expect(
-			screen.getByRole("button", { name: "SAB" }).getAttribute("aria-pressed"),
-		).toBe("true");
-		expect(
-			screen
-				.getByRole("button", { name: "Todas" })
-				.getAttribute("aria-pressed"),
-		).toBe("false");
-	});
-});
-
 describe("AttacksTab · magias", () => {
 	const caster = (extra: Partial<Character> = {}) =>
 		character({
