@@ -9,6 +9,7 @@ import { VTTCanvas } from "@/components/vtt/vtt-canvas";
 import { VTTCombatPanel } from "@/components/vtt/vtt-combat-panel";
 import { VTTFeedPanel } from "@/components/vtt/vtt-feed-panel";
 import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
+import { VTTGMTableBar } from "@/components/vtt/vtt-gm-table-bar";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
@@ -1782,6 +1783,11 @@ function VTTSession() {
 			<VTTRulerControls />
 
 			<VTTWallControls />
+
+			<VTTGMTableBar
+				scene={currentActiveScene}
+				onClearTemplates={broadcastTemplateRemoval}
+			/>
 
 			<VTTTemplateControls
 				onClearTemplates={broadcastTemplateRemoval}

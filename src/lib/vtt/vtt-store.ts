@@ -121,6 +121,8 @@ interface VTTState {
 	showFogControls: boolean;
 	/** Mestre: realça o que os jogadores já exploraram e a visão atual de cada um. */
 	showPlayerExploration: boolean;
+	/** Mestre: desenha o cone de visão de TODOS os personagens (senão, só dos selecionados). */
+	showAllVisionCones: boolean;
 
 	// Realtime Presence & Remote Multiplayers
 	onlineUsers: VTTPresenceUser[];
@@ -203,6 +205,7 @@ interface VTTState {
 	setFogBrushRadius: (radius: number) => void;
 	setShowFogControls: (show: boolean) => void;
 	setShowPlayerExploration: (show: boolean) => void;
+	setShowAllVisionCones: (show: boolean) => void;
 
 	// Presence & Broadcast actions
 	setOnlineUsers: (users: VTTPresenceUser[]) => void;
@@ -327,6 +330,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	fogBrushRadius: 40,
 	showFogControls: false,
 	showPlayerExploration: true,
+	showAllVisionCones: false,
 
 	onlineUsers: [],
 	remoteCursors: {},
@@ -753,6 +757,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 		),
 
 	setShowPlayerExploration: (show) => set({ showPlayerExploration: show }),
+	setShowAllVisionCones: (show) => set({ showAllVisionCones: show }),
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),

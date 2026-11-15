@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.96-vtt-barra-do-mestre",
+		version: "1.6.96",
+		date: "15/11/2026",
+		title: "Barra do mestre: limpar magias e mesa sem poluição",
+		description:
+			"O mestre ganhou uma barra sempre à vista no canto da mesa com Limpar magias, que tira de uma vez todos os moldes de magia em campo, inclusive os dos jogadores (aparece só quando há moldes). Os contornos roxos que enchiam a mesa não eram magias: eram os cones de visão de cada personagem, que agora só aparecem para o token selecionado. A mesma barra tem Explorado (realce do que o grupo já viu) e Cones de todos, para quem quiser ver todos os cones de uma vez.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.95-vtt-portas",
 		version: "1.6.95",
 		date: "15/11/2026",

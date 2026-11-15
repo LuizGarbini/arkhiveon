@@ -1603,6 +1603,7 @@ export function VTTCanvas({
 	const sceneId = scene?.id ?? null;
 	const exploredVersion = useExploredStore((s) => s.version);
 	const showPlayerExploration = useVTTStore((s) => s.showPlayerExploration);
+	const showAllVisionCones = useVTTStore((s) => s.showAllVisionCones);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig, walls e exploredVersion são as dependências; o efeito lê a lista e a grade na hora (ref/store).
 	useEffect(() => {
 		if (!rendererReady) return;
@@ -1673,6 +1674,13 @@ export function VTTCanvas({
 					overlay.fill({ color: tint, alpha: 0.15 });
 				}
 				for (const polygon of polygons) {
+					// Cone só do token selecionado (ou de todos, se o mestre pedir):
+					// com muitos personagens, todos os cones juntos viram uma bagunça.
+					if (
+						!showAllVisionCones &&
+						!useVTTStore.getState().selectedTokenIds.includes(polygon.id)
+					)
+						continue;
 					polygon.parts.forEach((part, index) => {
 						const flat = flattenPolygon(part);
 						if (flat.length < 6) return;
@@ -1727,6 +1735,8 @@ export function VTTCanvas({
 		blockers,
 		exploredVersion,
 		showPlayerExploration,
+		showAllVisionCones,
+		selectedTokenIds,
 	]);
 
 	// 6. Render Remote Multiplayer Cursors

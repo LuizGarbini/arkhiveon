@@ -1,5 +1,6 @@
 // Verificação: o mestre vê o que os jogadores já exploraram (realce) e a visão
-// atual deles; o interruptor liga/desliga; o jogador nunca vê esse realce.
+// atual do token SELECIONADO (ou de todos, sob pedido); o interruptor liga/desliga;
+// o jogador nunca vê esse realce. Por padrão a mesa fica limpa: sem cones.
 // Compara o MESMO trecho do mapa (região explorada) em três situações.
 // Uso: pnpm check:gm-exploration   (sai com código 1 se o realce sumir ou vazar)
 const { chromium } = require("playwright");
@@ -51,6 +52,18 @@ async function main() {
 	await page.evaluate(() => window.__vtt_store__.getState().setShowPlayerExploration(true));
 	await page.waitForTimeout(2500);
 	const gmOnAgain = await shot();
+	// cones: padrão = nenhum; selecionar um token mostra o cone dele; "Cones de todos" mostra todos
+	await page.evaluate(() => window.__vtt_store__.getState().setSelectedTokenIds(["a"]));
+	await page.waitForTimeout(2500);
+	const oneCone = await shot();
+	await page.evaluate(() => window.__vtt_store__.getState().setSelectedTokenIds([]));
+	await page.waitForTimeout(2500);
+	const noConeAgain = await shot();
+	await page.evaluate(() => window.__vtt_store__.getState().setShowAllVisionCones(true));
+	await page.waitForTimeout(2500);
+	const allCones = await shot();
+	await page.evaluate(() => window.__vtt_store__.getState().setShowAllVisionCones(false));
+	await page.waitForTimeout(2500);
 	await page.evaluate(() => window.__vtt_store__.getState().setIsGM(false));
 	await page.waitForTimeout(3000);
 	const asPlayer = await shot();
@@ -63,6 +76,9 @@ async function main() {
 	const problems = [];
 	if (gmOn.equals(gmOff)) problems.push("o realce do mestre não aparece (ligado = desligado)");
 	if (!gmOn.equals(gmOnAgain)) problems.push("religar o interruptor não devolveu o mesmo realce");
+	if (gmOn.equals(oneCone)) problems.push("selecionar um token não mostrou o cone dele");
+	if (!gmOn.equals(noConeAgain)) problems.push("sem seleção a mesa deveria voltar a ficar sem cones");
+	if (allCones.equals(oneCone) || allCones.equals(gmOn)) problems.push("'Cones de todos' não mostrou os cones de todos");
 	if (gmOn.equals(asPlayer)) problems.push("o jogador vê a mesma coisa que o mestre com o realce");
 	if (!gmOff.equals(await Promise.resolve(gmOff))) problems.push("estado instável");
 	if (!backToGm.equals(gmOn)) problems.push("voltar a ser mestre não trouxe o realce de volta");
