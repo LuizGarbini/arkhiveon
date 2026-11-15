@@ -216,6 +216,14 @@ async function main() {
 	// começa num ponto vazio e termina PERTO (5 px de tela) da ponta da primeira parede
 	const farStart = { x: endScreen.x + 180, y: endScreen.y + 90 };
 	await clickAt(farStart.x, farStart.y);
+	// o ponteiro chega perto da ponta: o anel do ímã aparece (sem encaixar fora do alcance)
+	await page.mouse.move(endScreen.x + 60, endScreen.y + 40, { steps: 6 });
+	const ringClip = { x: endScreen.x - 60, y: endScreen.y - 50, width: 260, height: 180 };
+	const noRing = await page.screenshot({ clip: ringClip });
+	await page.mouse.move(endScreen.x + 5, endScreen.y + 4, { steps: 8 });
+	await page.waitForTimeout(250);
+	const withRing = await page.screenshot({ clip: ringClip, path: "docs/previews/paredes-livres-0-ima.png" });
+	expect(!noRing.equals(withRing), "o anel do ímã não apareceu perto da ponta");
 	await clickAt(endScreen.x + 5, endScreen.y + 4);
 	await page.keyboard.press("Enter");
 	await page.waitForTimeout(500);
@@ -281,10 +289,14 @@ async function main() {
 	// 4b arrasto: prévia ao vivo sem gravar, UMA gravação ao soltar
 	const dxS = 90, dyS = 60;
 	const vp0 = await view();
+	const clip = { x: Math.max(0, mvMid.x - 180), y: mvMid.y - 60, width: 420, height: 200 };
+	const stillShot = await page.screenshot({ clip });
 	await page.mouse.move(mvMid.x, mvMid.y);
 	await page.mouse.down();
 	await page.mouse.move(mvMid.x + dxS, mvMid.y + dyS, { steps: 20 });
-	await page.waitForTimeout(200);
+	await page.waitForTimeout(400);
+	const dragShot = await page.screenshot({ clip });
+	expect(!stillShot.equals(dragShot), "a prévia ao vivo não apareceu: a tela não mudou durante o arrasto");
 	const during = { patches: patches.length, wall: await wallOf("mv") };
 	log("4b durante o arrasto", during);
 	expect(during.patches === 0, `durante o arrasto não pode gravar (gravou ${during.patches})`);
