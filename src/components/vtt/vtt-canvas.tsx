@@ -52,7 +52,6 @@ import {
 } from "@/lib/vtt/grid-math";
 import { createLightZone, finishLightDraft } from "@/lib/vtt/light-zone-sync";
 import { geometryFromDrag, lightAt, zoneAt } from "@/lib/vtt/light-zones";
-import { hasLineOfSight } from "@/lib/vtt/line-of-sight";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { recordMove } from "@/lib/vtt/move-sync";
 import {
@@ -121,6 +120,12 @@ import {
 	trackRightPress,
 	translateMembers,
 } from "@/lib/vtt/token-selection";
+import {
+	keyboardMovers,
+	moveBlocked,
+	planStep,
+	stepDirectionOf,
+} from "@/lib/vtt/token-step";
 import type {
 	VTTFogPath,
 	VTTPingEvent,
@@ -2115,6 +2120,89 @@ export function VTTCanvas({
 		);
 	}, [wallDraft, rendererReady]);
 
+	// Confirma o movimento de tokens, seja soltar o arrasto ou apertar uma seta: o
+	// jogador é barrado por parede, porta fechada e janela; o token vira para onde
+	// andou; a posição é gravada, entra no histórico e vai para os outros. Um só
+	// caminho para os dois jeitos de mover, para as regras não divergirem.
+	// `commitUnchanged`: o arrasto sempre confirma (os outros precisam ver o token
+	// voltar quando foi barrado); a seta barrada não grava nem registra nada.
+	const commitTokenMoves = (
+		moves: readonly {
+			id: string;
+			from: { x: number; y: number };
+			to: { x: number; y: number };
+		}[],
+		options: { commitUnchanged: boolean },
+	): { wasBlocked: boolean } => {
+		if (!scene) return { wasBlocked: false };
+		const live = useVTTStore.getState();
+		const blockers = movementBlockingWalls(live.walls);
+		let wasBlocked = false;
+		const finalMoves: DragMove[] = [];
+		for (const move of moves) {
+			const token = live.tokens.find((item) => item.id === move.id);
+			if (!token) continue;
+			const blocked = moveBlocked(move.from, move.to, blockers, isGM);
+			const finalPos = blocked ? move.from : move.to;
+			if (blocked) wasBlocked = true;
+			if (
+				!options.commitUnchanged &&
+				finalPos.x === move.from.x &&
+				finalPos.y === move.from.y
+			)
+				continue;
+			const display = tokenDisplayObjectsRef.current.get(move.id);
+			if (display) display.position.set(finalPos.x, finalPos.y);
+			// Mover de verdade também vira o token para onde ele andou (é para lá
+			// que o cone de visão aponta). Ficar no mesmo lugar não vira.
+			const facing = facingFromMove(move.from, finalPos);
+			const committed =
+				facing === null
+					? { x: finalPos.x, y: finalPos.y }
+					: { x: finalPos.x, y: finalPos.y, rotation: facing };
+			updateToken(move.id, committed);
+			if (onUpdateToken) {
+				const saved = onUpdateToken(move.id, committed);
+				// Histórico: aparece na hora; se o servidor recusar a posição
+				// (o token volta), a linha é retirada.
+				const authorId = userIdRef.current;
+				if (authorId) {
+					recordMove(
+						{
+							sceneId: scene.id,
+							tokenId: move.id,
+							tokenName: token.name,
+							from: { x: move.from.x, y: move.from.y },
+							to: { x: finalPos.x, y: finalPos.y },
+							authorId,
+							authorName: authorNameRef.current,
+						},
+						Promise.resolve(saved),
+					);
+				}
+			}
+			if (!onBroadcastDragBatch && onBroadcastDrag) {
+				onBroadcastDrag(move.id, finalPos.x, finalPos.y);
+			}
+			finalMoves.push({ tokenId: move.id, x: finalPos.x, y: finalPos.y });
+		}
+		// A posição final de todo o grupo sai numa mensagem só.
+		if (onBroadcastDragBatch && finalMoves.length > 0) {
+			onBroadcastDragBatch(finalMoves);
+		}
+		if (wasBlocked) {
+			showToast("info", {
+				title: "Movimento bloqueado",
+				description:
+					"Você não pode atravessar paredes nem janelas. Peça ao mestre.",
+			});
+		}
+		return { wasBlocked };
+	};
+	const commitTokenMovesRef = useRef(commitTokenMoves);
+	commitTokenMovesRef.current = commitTokenMoves;
+	const lastArrowStepRef = useRef(0);
+
 	// 9. Native DOM event listeners for Pan, Zoom, Token Drag, Fog Painting, Alt-Ping & Ruler
 	useEffect(() => {
 		const container = containerRef.current;
@@ -2178,6 +2266,58 @@ export function VTTCanvas({
 			}
 			// Tool shortcuts (V/H/R/G/T/F) live in VTTToolbar; only Escape here.
 			if (typing) return;
+			// Setas: movem os tokens selecionados uma casa (juntos, se forem vários),
+			// com as mesmas regras do arrasto. Não vale com campo, diálogo, Biblioteca
+			// ou ficha com o foco, nem durante um arrasto.
+			const stepDir = stepDirectionOf(e.key);
+			if (
+				stepDir &&
+				scene &&
+				activeTool === "select" &&
+				!blocked &&
+				!e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey &&
+				!draggingTokenIdRef.current &&
+				!dragGroupRef.current
+			) {
+				const live = useVTTStore.getState();
+				const movers = keyboardMovers(
+					live.selectedTokenIds,
+					live.tokens.map((item) => ({
+						id: item.id,
+						x: item.x,
+						y: item.y,
+						sizeCells: item.sizeCells,
+						isLocked: item.isLocked,
+						canMove:
+							canControlVTTToken(
+								item,
+								userIdRef.current,
+								live.isGM || live.isCoGM,
+								characterOwnersRef.current,
+							) && canSelectTokenLayer(live.activeLayer, item.layer),
+					})),
+				);
+				if (movers.length > 0) {
+					// Segurar a seta repete, mas no máximo ~7 casas por segundo: cada
+					// casa é gravada e entra no histórico.
+					e.preventDefault();
+					const now = Date.now();
+					if (e.repeat && now - lastArrowStepRef.current < 140) return;
+					lastArrowStepRef.current = now;
+					commitTokenMovesRef.current(
+						planStep(movers, stepDir, {
+							gridType: scene.gridType,
+							gridSize: scene.gridSize,
+							origin: gridOrigin,
+						}),
+						{ commitUnchanged: false },
+					);
+					paintAurasRef.current();
+					return;
+				}
+			}
 			// Esc dentro de um dialog (ex.: imagem em tela cheia) fecha só o dialog.
 			const inDialog =
 				e.target instanceof Element && e.target.closest('[role="dialog"]');
@@ -3058,17 +3198,10 @@ export function VTTCanvas({
 					worldPoint.y - group.grabY,
 				);
 				const liveTokens = useVTTStore.getState().tokens;
-				// Parede, porta fechada e TODA janela barram o jogador (a janela aberta
-				// deixa ver, mas não passar); o mestre não é barrado.
-				const currentWalls = movementBlockingWalls(
-					useVTTStore.getState().walls,
-				);
-				let wasBlocked = false;
-				const finalMoves: DragMove[] = [];
-				for (const member of moved) {
+				const dropMoves = moved.flatMap((member) => {
 					const orig = group.members.find((m) => m.id === member.id);
 					const token = liveTokens.find((item) => item.id === member.id);
-					if (!token || !orig) continue;
+					if (!token || !orig) return [];
 					const snapped = snapToGrid(
 						{ x: member.x, y: member.y },
 						scene.gridType,
@@ -3076,68 +3209,11 @@ export function VTTCanvas({
 						token.sizeCells,
 						gridOrigin,
 					);
-					const isBlocked =
-						!isGM &&
-						currentWalls.length > 0 &&
-						!hasLineOfSight(
-							{ x: orig.x, y: orig.y },
-							{ x: snapped.x, y: snapped.y },
-							currentWalls,
-						);
-					const finalPos = isBlocked ? { x: orig.x, y: orig.y } : snapped;
-					if (isBlocked) {
-						wasBlocked = true;
-					}
-					const display = tokenDisplayObjectsRef.current.get(member.id);
-					if (display) display.position.set(finalPos.x, finalPos.y);
-					// Mover de verdade também vira o token para onde ele andou (é para
-					// lá que o cone de visão aponta). Soltar no mesmo lugar não vira.
-					const facing = facingFromMove({ x: orig.x, y: orig.y }, finalPos);
-					const committed =
-						facing === null
-							? { x: finalPos.x, y: finalPos.y }
-							: { x: finalPos.x, y: finalPos.y, rotation: facing };
-					updateToken(member.id, committed);
-					if (onUpdateToken) {
-						const saved = onUpdateToken(member.id, committed);
-						// Histórico: aparece na hora; se o servidor recusar a posição
-						// (o token volta), a linha é retirada.
-						const authorId = userIdRef.current;
-						if (authorId) {
-							recordMove(
-								{
-									sceneId: scene.id,
-									tokenId: member.id,
-									tokenName: token.name,
-									from: { x: orig.x, y: orig.y },
-									to: { x: finalPos.x, y: finalPos.y },
-									authorId,
-									authorName: authorNameRef.current,
-								},
-								Promise.resolve(saved),
-							);
-						}
-					}
-					if (!onBroadcastDragBatch && onBroadcastDrag) {
-						onBroadcastDrag(member.id, finalPos.x, finalPos.y);
-					}
-					finalMoves.push({
-						tokenId: member.id,
-						x: finalPos.x,
-						y: finalPos.y,
-					});
-				}
-				// A posição final de todo o grupo sai numa mensagem só.
-				if (onBroadcastDragBatch && finalMoves.length > 0) {
-					onBroadcastDragBatch(finalMoves);
-				}
-				if (wasBlocked) {
-					showToast("info", {
-						title: "Movimento bloqueado",
-						description:
-							"Você não pode atravessar paredes nem janelas. Peça ao mestre.",
-					});
-				}
+					return [
+						{ id: member.id, from: { x: orig.x, y: orig.y }, to: snapped },
+					];
+				});
+				commitTokenMovesRef.current(dropMoves, { commitUnchanged: true });
 				paintAurasRef.current();
 				draggingTokenIdRef.current = null;
 				dragGroupRef.current = null;
@@ -3244,7 +3320,6 @@ export function VTTCanvas({
 		activeTool,
 		scene,
 		updateToken,
-		onUpdateToken,
 		onBroadcastDrag,
 		onBroadcastDragBatch,
 		onBroadcastCursor,

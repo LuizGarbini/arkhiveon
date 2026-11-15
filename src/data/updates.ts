@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.102-vtt-setas-do-teclado",
+		version: "1.6.102",
+		date: "15/11/2026",
+		title: "Mover tokens com as setas do teclado",
+		description:
+			"Com um ou vários tokens selecionados (ferramenta Selecionar), as setas do teclado movem uma casa por toque, além de poder arrastar. Vários tokens andam juntos, mantendo a formação. As regras são as mesmas do arrasto: o token vira para onde andou, o jogador não atravessa parede nem janela (aparece o aviso e nada é gravado), o mestre passa, e token travado ou que você não controla fica parado. Segurar a seta repete, no máximo umas 7 casas por segundo, porque cada casa é gravada e entra no histórico de movimentos. Não vale enquanto você digita num campo ou com a Biblioteca, a ficha ou um diálogo em foco. Na grade hexagonal cada toque vai para o hexágono vizinho mais alinhado com a seta.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.101-vtt-janelas",
 		version: "1.6.101",
 		date: "15/11/2026",

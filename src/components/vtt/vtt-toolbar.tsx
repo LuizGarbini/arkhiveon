@@ -191,7 +191,7 @@ export function VTTToolbar() {
 			{
 				id: "select",
 				label: "Selecionar e mover vários",
-				tooltip: "Selecionar e mover",
+				tooltip: "Selecionar e mover (setas movem os selecionados)",
 				icon: MousePointer2,
 				shortcut: "V",
 			},
