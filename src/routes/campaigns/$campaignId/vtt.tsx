@@ -16,6 +16,7 @@ import { VTTLightControls } from "@/components/vtt/vtt-light-controls";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTMoveHistoryPanel } from "@/components/vtt/vtt-move-history-panel";
 import { VTTNotesPanel } from "@/components/vtt/vtt-notes-panel";
+import { VTTPinnedRuler } from "@/components/vtt/vtt-pinned-ruler";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
@@ -1848,6 +1849,7 @@ function VTTSession() {
 			/>
 
 			<VTTRulerControls />
+			<VTTPinnedRuler />
 
 			<VTTWallControls />
 

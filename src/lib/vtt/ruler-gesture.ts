@@ -2,6 +2,7 @@ import type { Point } from "./grid-math";
 import {
 	type RulerContext,
 	rulerAddPoint,
+	rulerFreeze,
 	rulerMoveLive,
 	rulerPin,
 	rulerUndo,
@@ -119,11 +120,16 @@ export function rulerOnKey(
 	};
 }
 
-export function rulerMeasurementForTool<T>(
-	measurement: T | null,
+/**
+ * O que acontece com a medição ao trocar de ferramenta. Continuar na régua
+ * mantém como está; sair dela CONGELA a medição (fica fixa no mapa, para arrastar
+ * o token ao longo dela) até a pessoa medir de novo ou limpar.
+ */
+export function rulerMeasurementForTool(
+	measurement: VTTRulerMeasurement | null,
 	tool: string,
-): T | null {
-	return tool === "ruler" ? measurement : null;
+): VTTRulerMeasurement | null {
+	return tool === "ruler" ? measurement : rulerFreeze(measurement);
 }
 
 export type RemoteRulerEvent =

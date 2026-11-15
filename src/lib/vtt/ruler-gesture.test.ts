@@ -125,14 +125,123 @@ describe("encerrar a régua", () => {
 		expect(state.press).toBeNull();
 	});
 
-	it("trocar de ferramenta limpa e continuar na régua mantém", () => {
+	it("só o clique inicial (nada medido): sair da régua não deixa nada para fixar", () => {
 		const state = down(blank(), at(0, 0), 1_000);
 		expect(rulerMeasurementForTool(state.measurement, "select")).toBeNull();
+	});
+
+	it("continuar na régua mantém a medição exatamente como está", () => {
+		let state = down(blank(), at(0, 0), 1_000);
+		state = move(state, at(4, 0));
 		expect(rulerMeasurementForTool(state.measurement, "ruler")).toBe(
 			state.measurement,
 		);
 	});
 
+	it("sem medição, qualquer ferramenta segue sem medição", () => {
+		expect(rulerMeasurementForTool(null, "select")).toBeNull();
+		expect(rulerMeasurementForTool(null, "ruler")).toBeNull();
+	});
+});
+
+describe("régua fixa ao trocar de ferramenta", () => {
+	const measured = () => {
+		let state = down(blank(), at(0, 0), 1_000);
+		state = up(state, at(0, 0));
+		state = move(state, at(4, 0));
+		return state;
+	};
+
+	it("sair da régua congela: continua no mapa, fixada, com o mesmo caminho e a mesma distância", () => {
+		const before = measured().measurement;
+		const frozen = rulerMeasurementForTool(before, "select");
+		expect(frozen).not.toBeNull();
+		expect(frozen?.pinned).toBe(true);
+		expect(frozen?.distance).toBe(before?.distance);
+		expect(frozen?.segments).toEqual(before?.segments);
+		expect(frozen?.cells).toEqual(before?.cells);
+		// o que se vê no mapa é o mesmo: a ponta ao vivo virou o último ponto
+		expect(rulerPathPoints(frozen as NonNullable<typeof frozen>)).toEqual(
+			rulerPathPoints(before as NonNullable<typeof before>),
+		);
+	});
+
+	it("vale para qualquer ferramenta que não seja a régua", () => {
+		const before = measured().measurement;
+		for (const tool of [
+			"select",
+			"pan",
+			"ping",
+			"fog",
+			"template",
+			"wall",
+			"light",
+		]) {
+			expect(rulerMeasurementForTool(before, tool)?.pinned).toBe(true);
+		}
+	});
+
+	it("com vários pontos, todos ficam e a ponta ao vivo entra no fim", () => {
+		let state = down(blank(), at(0, 0), 1_000);
+		state = up(state, at(0, 0));
+		state = move(state, at(3, 0));
+		state = down(state, at(3, 0), 2_000);
+		state = up(state, at(3, 0));
+		state = move(state, at(3, 3));
+		const frozen = rulerMeasurementForTool(state.measurement, "select");
+		expect(frozen?.waypoints).toEqual([at(0, 0), at(3, 0), at(3, 3)]);
+		expect(frozen?.pinned).toBe(true);
+	});
+
+	it("a ponta ao vivo igual ao último ponto não duplica o ponto", () => {
+		let state = down(blank(), at(0, 0), 1_000);
+		state = up(state, at(0, 0));
+		state = move(state, at(4, 0));
+		state = down(state, at(4, 0), 2_000);
+		state = up(state, at(4, 0));
+		const frozen = rulerMeasurementForTool(state.measurement, "select");
+		expect(frozen?.waypoints).toEqual([at(0, 0), at(4, 0)]);
+	});
+
+	it("já fixada: fica a mesma medição (nada refeito)", () => {
+		const pinned = rulerMeasurementForTool(measured().measurement, "select");
+		expect(rulerMeasurementForTool(pinned, "pan")).toBe(pinned);
+	});
+
+	it("congelada, o cursor não estica mais a medição", () => {
+		const frozen = rulerMeasurementForTool(measured().measurement, "select");
+		const state = rulerPointerMove(
+			{ measurement: frozen, press: null, lastClick: null },
+			{ screenX: 900, screenY: 900, world: at(9, 9) },
+			ctx,
+		);
+		expect(state.measurement).toBe(frozen);
+	});
+
+	it("voltar à régua e clicar mede de novo: a congelada é substituída", () => {
+		const frozen = rulerMeasurementForTool(measured().measurement, "select");
+		const next = down(
+			{ measurement: frozen, press: null, lastClick: null },
+			at(7, 7),
+			9_000,
+		);
+		expect(next.measurement?.pinned).toBe(false);
+		expect(next.measurement?.startX).toBe(at(7, 7).x);
+		expect(next.measurement?.waypoints).toEqual([at(7, 7)]);
+	});
+
+	it("desfazer na congelada tira o último ponto; com dois pontos ela some", () => {
+		const frozen = rulerMeasurementForTool(measured().measurement, "select");
+		const state = rulerOnKey(
+			{ measurement: frozen, press: null, lastClick: null },
+			"Backspace",
+			ctx,
+		);
+		expect(state.measurement).toBeNull();
+	});
+});
+
+describe("fluxo L da régua (continuação)", () => {
 	it("duplo clique fixa o caminho e o cursor deixa de esticar", () => {
 		const start = at(0, 0);
 		const curve = at(4, 0);
