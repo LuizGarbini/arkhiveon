@@ -675,18 +675,27 @@ function VTTSession() {
 						const rowX = Number(row.x);
 						const rowY = Number(row.y);
 						const rowRotation = Number(row.rotation || 0);
-						const patch = remoteTokenPatch(
-							row,
-							isTokenDragged(useVTTStore.getState(), row.id),
-							tokenMoveQueueRef.current?.isStaleEcho(row.id, {
-								x: rowX,
-								y: rowY,
-								rotation: rowRotation,
-							}) ?? false,
-						);
 						const local = useVTTStore
 							.getState()
 							.tokens.find((token) => token.id === row.id);
+						// Eco velho de uma gravação minha, ou linha que só repete o que a
+						// mesa já mostra: a posição/direção não é reaplicada.
+						const ownEcho =
+							(tokenMoveQueueRef.current?.isStaleEcho(row.id, {
+								x: rowX,
+								y: rowY,
+								rotation: rowRotation,
+							}) ??
+								false) ||
+							(local !== undefined &&
+								local.x === rowX &&
+								local.y === rowY &&
+								local.rotation === rowRotation);
+						const patch = remoteTokenPatch(
+							row,
+							isTokenDragged(useVTTStore.getState(), row.id),
+							ownEcho,
+						);
 						if (!local || !tokenPatchIsNoop(local, patch)) {
 							updateToken(row.id, patch);
 						}

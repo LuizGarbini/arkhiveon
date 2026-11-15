@@ -34,6 +34,7 @@ const SCENARIOS = [
 	{ name: "grupo de 8, cima/baixo, mesa simples, com alvo remoto antigo", group: 8, keys: ["ArrowUp", "ArrowDown"], fog: false, staleTarget: true },
 	{ name: "1 token, direita/esquerda, exploração", group: 1, keys: ["ArrowRight", "ArrowLeft"], fog: true },
 	{ name: "grupo de 8, direita/esquerda, exploração", group: 8, keys: ["ArrowRight", "ArrowLeft"], fog: true },
+	{ name: "misto: setas + Q/E + arrasto + outro usuário mexendo noutro token", group: 3, keys: [], fog: true, mixed: true },
 ];
 const TAPS = 31; // ímpar: termina uma casa adiante do começo
 const GAP_MS = 45;
@@ -48,6 +49,8 @@ async function runScenario(browser, scenario, index) {
 	const inflight = new Map();
 	const maxInflight = new Map();
 	let broadcasts = 0;
+	let moveInserts = 0;
+	const reqCounts = {};
 	let arrivals = 0;
 	let echoChain = 0;
 	let tokenChannel = null;
@@ -91,6 +94,8 @@ async function runScenario(browser, scenario, index) {
 	await context.route("**/rest/v1/**", async (r) => {
 		const req = r.request();
 		const url = req.url();
+		if (url.includes("vtt_token_moves") && req.method() === "POST") moveInserts++;
+		{ const key = `${req.method()} ${new URL(url).pathname.replace("/rest/v1/", "")}`; reqCounts[key] = (reqCounts[key] || 0) + 1; }
 		if (url.includes("/rest/v1/vtt_tokens") && req.method() === "PATCH") {
 			const id = decodeURIComponent((url.match(/[?&]id=eq\.([^&]+)/) || [])[1] || "");
 			const body = JSON.parse(req.postData() || "{}");
@@ -117,7 +122,8 @@ async function runScenario(browser, scenario, index) {
 	await context.addInitScript(() => {
 		window.__fetches = [];
 		const of = window.fetch.bind(window);
-		window.fetch = (...a) => { const u = String(a[0]?.url || a[0]); const m = a[1]?.method || a[0]?.method || 'GET'; if (u.includes('vtt_tokens') && m === 'PATCH') window.__fetches.push(performance.now()); return of(...a); };
+		window.__lat = [];
+		window.fetch = (...a) => { const u = String(a[0]?.url || a[0]); const m = a[1]?.method || a[0]?.method || 'GET'; if (u.includes('vtt_tokens') && m === 'PATCH') { const t = performance.now(); window.__fetches.push(t); return of(...a).then((res) => { window.__lat.push(performance.now() - t); return res; }); } return of(...a); };
 		localStorage.setItem("arkhiveon_preview_auth", "true");
 		localStorage.setItem("rpg-notes-storage", JSON.stringify({ state: { campaigns: [{ id: "demo", name: "D", ownerId: "preview-gm-user", myRole: "owner", system: "dnd5e" }], activeCampaignId: "demo", hasLoadedCampaigns: true, campaignLoadStatus: "ready", characters: [], npcs: [] }, version: 0 }));
 	});
@@ -175,9 +181,45 @@ async function runScenario(browser, scenario, index) {
 	const writesBefore = writes.length;
 	const broadcastsBefore = broadcasts;
 	const burstStart = Date.now();
-	for (let i = 0; i < TAPS; i++) {
-		await page.keyboard.press(scenario.keys[i % 2]);
-		await page.waitForTimeout(GAP_MS);
+	const model = scenario.mixed ? Object.fromEntries(mine.map((t) => [t.id, { x: t.x, y: t.y, r: 0 }])) : null;
+	let otherExpected = null;
+	if (scenario.mixed) {
+		// Rajada MISTA: setas, giro Q/E (com e sem Shift), arrasto com o mouse e, no meio,
+		// OUTRO usuário movendo um token qualquer (o eco dele nunca pode ser engolido).
+		const script = ["ArrowUp", "ArrowRight", "e", "e", "ArrowDown", "q", "other", "ArrowLeft", "ArrowRight", "drag", "e", "ArrowUp", "ArrowUp", "q", "Shift+E", "ArrowDown", "ArrowLeft"];
+		const box = await page.locator("canvas").first().boundingBox();
+		for (const action of script) {
+			if (action === "other") {
+				const n0 = db.get("n0");
+				n0.x += CELL;
+				otherExpected = { x: n0.x, y: n0.y };
+				echo({ ...n0 });
+			} else if (action === "drag") {
+				await page.waitForTimeout(400); // o último passo termina de deslizar
+				const vp = await page.evaluate(() => window.__vtt_store__.getState().viewport);
+				const at = await page.evaluate((id) => window.__vtt_probe__.tokenPos(id), mine[0].id);
+				const from = { x: box.x + vp.x + at.x * vp.scale, y: box.y + vp.y + at.y * vp.scale };
+				await page.mouse.move(from.x, from.y);
+				await page.mouse.down();
+				for (let i = 1; i <= 12; i++) { await page.mouse.move(from.x + (3 * CELL * vp.scale * i) / 12, from.y, { steps: 2 }); await page.waitForTimeout(30); }
+				await page.mouse.up();
+				for (const m of Object.values(model)) { m.x += 3 * CELL; m.r = 90; }
+			} else {
+				await page.keyboard.press(action);
+				for (const m of Object.values(model)) {
+					if (VEC[action]) { m.x += VEC[action][0] * CELL; m.y += VEC[action][1] * CELL; m.r = ROT[action]; }
+					else if (action === "e") m.r = (m.r + 45) % 360;
+					else if (action === "q") m.r = (m.r + 315) % 360;
+					else if (action === "Shift+E") m.r = (m.r + 15) % 360;
+				}
+			}
+			await page.waitForTimeout(action === "drag" ? 150 : GAP_MS + 20);
+		}
+	} else {
+		for (let i = 0; i < TAPS; i++) {
+			await page.keyboard.press(scenario.keys[i % 2]);
+			await page.waitForTimeout(GAP_MS);
+		}
 	}
 	const burstMs = Date.now() - burstStart;
 	const lastTapAt = Date.now();
@@ -199,10 +241,27 @@ async function runScenario(browser, scenario, index) {
 	const settleMs = Date.now() - lastTapAt;
 	const lastWriteAt = writes.length ? writes[writes.length - 1].appliedAt : 0;
 	const pageCalls = await page.evaluate(() => window.__fetches.length);
+	const lat = (await page.evaluate(() => window.__lat)).sort((a, b) => a - b);
+	const latStats = lat.length ? { mean: Math.round(lat.reduce((x, y) => x + y, 0) / lat.length), p95: Math.round(lat[Math.floor(lat.length * 0.95)]), max: Math.round(lat[lat.length - 1]) } : null;
 	await page.evaluate(() => { window.__perf.running = false; });
 	const countsAfter = await page.evaluate(() => ({ ...window.__vtt_probe__.counts }));
 	const perf = await page.evaluate(() => window.__perf);
 	const finalStore = await page.evaluate((ids) => Object.fromEntries(window.__vtt_store__.getState().tokens.filter((t) => ids.includes(t.id)).map((t) => [t.id, { x: t.x, y: t.y, r: t.rotation }])), mine.map((t) => t.id));
+	// (c) depois da rajada: a seta de direção desenhada bate com o ângulo final (convive com o
+	// giro Q/E) e o destaque de personagem (ping) ainda acha o token onde ele está agora.
+	let facingOk = true, facingGot = null, highlightOk = true, highlightGot = null;
+	if (scenario.mixed) {
+		facingGot = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.__vtt_probe__.facing(id)])), mine.map((t) => t.id));
+		facingOk = mine.every((t) => facingGot[t.id] === model[t.id].r);
+		const box2 = await page.locator("canvas").first().boundingBox();
+		const vp2 = await page.evaluate(() => window.__vtt_store__.getState().viewport);
+		await page.evaluate(() => { const st = window.__vtt_store__.getState(); st.setSelectedTokenIds([]); st.setPingKind("highlight"); st.setActiveTool("ping"); });
+		await page.mouse.click(box2.x + vp2.x + model[mine[1].id].x * vp2.scale, box2.y + vp2.y + model[mine[1].id].y * vp2.scale);
+		await page.waitForTimeout(400);
+		highlightGot = await page.evaluate(() => window.__vtt_store__.getState().activePings.map((p) => ({ kind: p.kind, tokenId: p.tokenId, x: p.x, y: p.y })));
+		highlightOk = highlightGot.length === 1 && highlightGot[0].kind === "highlight" && highlightGot[0].tokenId === mine[1].id && highlightGot[0].x === model[mine[1].id].x && highlightGot[0].y === model[mine[1].id].y;
+	}
+	const otherStore = otherExpected ? await page.evaluate(() => { const t = window.__vtt_store__.getState().tokens.find((x) => x.id === "n0"); return t && { x: t.x, y: t.y }; }) : null;
 	const finalVisual = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.__vtt_probe__.tokenPos(id)])), mine.map((t) => t.id));
 	const banner = await page.locator('[role="alert"]').allInnerTexts();
 	await context.close();
@@ -223,7 +282,7 @@ async function runScenario(browser, scenario, index) {
 	let teleports = 0;
 	let maxJump = 0;
 	let maxBack = 0;
-	for (let i = 1; i < frames.length; i++) {
+	for (let i = 1; !scenario.mixed && i < frames.length; i++) {
 		const a = frames[i - 1], b = frames[i];
 		if (b.t < firstTap - 50) continue;
 		const pa = a[lead.id], pb = b[lead.id];
@@ -252,24 +311,25 @@ async function runScenario(browser, scenario, index) {
 	const lastTapKey = taps[taps.length - 1]?.key;
 	const expected = { x: lead.x + taps.reduce((s, tap) => s + VEC[tap.key][0] * CELL, 0), y: lead.y + taps.reduce((s, tap) => s + VEC[tap.key][1] * CELL, 0) };
 	const finals = mine.map((t, i) => {
-		const ex = { x: t.x + (expected.x - lead.x), y: t.y + (expected.y - lead.y) };
+		const ex = model ? { x: model[t.id].x, y: model[t.id].y } : { x: t.x + (expected.x - lead.x), y: t.y + (expected.y - lead.y) };
+		const wantRot = model ? model[t.id].r : ROT[lastTapKey];
 		const row = db.get(t.id);
 		const store = finalStore[t.id];
 		const vis = finalVisual[t.id];
 		const lastWrite = [...writes].reverse().find((w) => w.id === t.id);
-		return { id: t.id, ex, got: { db: { x: row.x, y: row.y, r: row.rotation }, store, last: lastWrite && { x: lastWrite.x, y: lastWrite.y } }, dbOk: row.x === ex.x && row.y === ex.y && row.rotation === ROT[lastTapKey], storeOk: store && store.x === ex.x && store.y === ex.y && store.r === ROT[lastTapKey], visOk: vis && Math.abs(vis.x - ex.x) < 0.5 && Math.abs(vis.y - ex.y) < 0.5, lastApplied: lastWrite && lastWrite.x === ex.x && lastWrite.y === ex.y };
+		return { id: t.id, ex, got: { db: { x: row.x, y: row.y, r: row.rotation }, store, last: lastWrite && { x: lastWrite.x, y: lastWrite.y } }, dbOk: row.x === ex.x && row.y === ex.y && row.rotation === wantRot, storeOk: store && store.x === ex.x && store.y === ex.y && store.r === wantRot, visOk: vis && Math.abs(vis.x - ex.x) < 0.5 && Math.abs(vis.y - ex.y) < 0.5, lastApplied: model ? row.x === ex.x && row.y === ex.y && row.rotation === wantRot : lastWrite && lastWrite.x === ex.x && lastWrite.y === ex.y, wantRot };
 	});
 	const myWrites = writes.slice(writesBefore).filter((w) => w.id.startsWith("p"));
 	const perTokenWrites = myWrites.length / scenario.group;
 	const maxConc = Math.max(0, ...mine.map((t) => maxInflight.get(t.id) || 0));
 	const tapsDone = taps.length;
 	return {
-		scenario, tapsDone, burstMs, errors, arrivals, banner, settleMs, settled, pageCalls, lastWriteLagMs: Math.max(0, lastWriteAt - (lastTapAt - t0)),
+		scenario, tapsDone, burstMs, errors, arrivals, banner, settleMs, settled, pageCalls, latStats, moveInserts, reqCounts, lastWriteLagMs: Math.max(0, lastWriteAt - (lastTapAt - t0)),
 		rebuilds: diff("tokenRebuild"), renders: diff("canvasRender"), visionRuns: diff("visionRun"),
 		storeSets: perf.sets, tokenSets: perf.tokenSets,
 		writes: myWrites.length, perTokenWrites, maxConc, broadcasts: broadcasts - broadcastsBefore,
 		backward, maxBack, teleports, maxJump, p95, maxDt, idleP95, longTasks: longTasks.length, longTaskMs: Math.round(longTasks.reduce((s, l) => s + l.d, 0)), longTaskMax: Math.round(Math.max(0, ...longTasks.map((l) => l.d))),
-		finals,
+		facingOk, facingGot, highlightOk, highlightGot, finals, otherOk: otherExpected ? Boolean(otherStore) && otherStore.x === otherExpected.x && otherStore.y === otherExpected.y : true, otherStore, otherExpected,
 		debugWrites: process.env.SETAS_DEBUG ? writes.filter((w) => w.id === (finals.find((f) => !f.dbOk) || {}).id).map((w) => `${w.sentAt - (lastTapAt - t0)}ms ${w.x},${w.y},${w.rotation} applied ${w.appliedAt - (lastTapAt - t0)}`) : [],
 	};
 }
@@ -291,6 +351,8 @@ async function main() {
 		console.log(`\n== ${r.scenario.name} ==`);
 		console.log(`  PATCH chamados pela página: ${r.pageCalls}, recebidos pelo servidor: ${r.arrivals}; ${r.settled ? "assentou" : "NÃO assentou (limite de 60 s)"} ${r.settleMs} ms após o último toque (última gravação aplicada ${r.lastWriteLagMs} ms depois dele)`);
 		if (r.banner.length) console.log(`  aviso na tela: ${r.banner.join(" / ").slice(0, 120)}`);
+		console.log(`  latência de cada gravação (chamada→resposta na página): ${r.latStats ? `média ${r.latStats.mean} ms, p95 ${r.latStats.p95} ms, máx ${r.latStats.max} ms` : "n/a"} | inserts do histórico (vtt_token_moves): ${r.moveInserts}`);
+		if (process.env.SETAS_DEBUG) console.log(`  requisições REST (desde o início da página): ${JSON.stringify(r.reqCounts)}`);
 		console.log(`  toques registrados: ${r.tapsDone} em ${r.burstMs} ms`);
 		console.log(`  token visual: saltos para trás ${r.backward} (máx ${r.maxBack.toFixed(1)} px) | teleportes ${r.teleports} (maior salto/quadro ${r.maxJump.toFixed(1)} px)`);
 		console.log(`  reconstruções de tokens: ${r.rebuilds} (${(r.rebuilds / n).toFixed(2)}/toque) | renders do canvas: ${r.renders} (${(r.renders / n).toFixed(2)}/toque; StrictMode renderiza 2x em dev => ~${(r.renders / 2 / n).toFixed(2)} reais/toque) | recálculos de visão: ${r.visionRuns}`);
@@ -300,7 +362,7 @@ async function main() {
 		console.log(`  final: banco ${r.finals.every((f) => f.dbOk) ? "ok" : "ERRADO"}, store ${r.finals.every((f) => f.storeOk) ? "ok" : "ERRADO"}, visual ${r.finals.every((f) => f.visOk) ? "ok" : "ERRADO"}, última gravação aplicada é a final ${r.finals.every((f) => f.lastApplied) ? "sim" : "NÃO"}`);
 		if (r.debugWrites.length) console.log("  escritas do token errado (relativas ao último toque):\n    " + r.debugWrites.join("\n    "));
 		const tag = r.scenario.name;
-		if (cpuRate === 1) {
+		if (cpuRate === 1 && !r.scenario.mixed) {
 			if (r.backward > 0) problems.push(`${tag}: o token visual voltou para trás ${r.backward}x (até ${r.maxBack.toFixed(0)} px)`);
 			if (r.teleports > 0) problems.push(`${tag}: ${r.teleports} quadros com salto de quase uma casa (teletransporte; maior ${r.maxJump.toFixed(0)} px)`);
 			if (r.visionRuns > Math.max(4, n * 0.25)) problems.push(`${tag}: ${r.visionRuns} recálculos de visão em ${n} toques (limite ${Math.max(4, Math.floor(n * 0.25))}; sem adiar, é um por toque)`);
@@ -316,7 +378,10 @@ async function main() {
 		if (!r.finals.every((f) => f.storeOk)) problems.push(`${tag}: a posição final na mesa não é a última pedida`);
 		if (!r.finals.every((f) => f.visOk)) problems.push(`${tag}: o token desenhado não terminou na última posição pedida`);
 		if (!r.settled) problems.push(`${tag}: as gravações não assentaram em 60 s depois do último toque`);
-		if (r.tapsDone < TAPS) problems.push(`${tag}: só ${r.tapsDone} de ${TAPS} toques chegaram`);
+		if (!r.facingOk) problems.push(`${tag}: a seta de direção desenhada não bate com o ângulo final (${JSON.stringify(r.facingGot)})`);
+		if (!r.highlightOk) problems.push(`${tag}: o destaque de personagem não achou o token na posição final (${JSON.stringify(r.highlightGot)})`);
+		if (!r.otherOk) problems.push(`${tag}: a mudança de OUTRO usuário no token n0 foi engolida (mesa ${JSON.stringify(r.otherStore)}, esperado ${JSON.stringify(r.otherExpected)})`);
+		if (!r.scenario.mixed && r.tapsDone < TAPS) problems.push(`${tag}: só ${r.tapsDone} de ${TAPS} toques chegaram`);
 		if (r.errors.length) problems.push(`${tag}: erros de página: ${r.errors[0]}`);
 	}
 	await browser.close();

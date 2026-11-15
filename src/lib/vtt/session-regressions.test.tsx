@@ -473,6 +473,17 @@ it("giro pelo painel (a mesa só gira quando a gravação confirma): o eco velho
 	expect(useVTTStore.getState().tokens[0].rotation).toBe(0);
 });
 
+it("a linha que só repete o que a mesa já mostra não mexe na store (sem render à toa)", async () => {
+	await open();
+	// a linha do banco traz todos os campos: a mesa já tem os mesmos valores
+	act(() =>
+		useVTTStore.getState().updateToken("token", { hpMax: null, tempHp: 0 }),
+	);
+	const before = useVTTStore.getState().tokens;
+	echo({ x: 0, y: 0, rotation: 0 });
+	expect(useVTTStore.getState().tokens).toBe(before);
+});
+
 it("mudança de OUTRO usuário em outro token ou em posição nunca enviada por mim é aplicada", async () => {
 	await open();
 	act(() => {

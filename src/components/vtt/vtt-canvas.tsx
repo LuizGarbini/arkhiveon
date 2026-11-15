@@ -25,7 +25,11 @@ import {
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
-import { devCount, devExposeTokenPos } from "@/lib/vtt/dev-probe";
+import {
+	devCount,
+	devExposeFacing,
+	devExposeTokenPos,
+} from "@/lib/vtt/dev-probe";
 import {
 	cursorBroadcastDue,
 	type DragMove,
@@ -991,6 +995,12 @@ export function VTTCanvas({
 			devExposeTokenPos((id) => {
 				const display = tokenDisplayObjectsRef.current.get(id);
 				return display ? { x: display.x, y: display.y } : null;
+			});
+			devExposeFacing((id) => {
+				const arrow = facingArrowsRef.current.get(id);
+				if (!arrow) return null;
+				const degrees = (arrow.rotation * 180) / Math.PI;
+				return Math.round(((degrees % 360) + 360) % 360);
 			});
 			setRendererReady(true);
 		}

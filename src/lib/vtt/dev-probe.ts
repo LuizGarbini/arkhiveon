@@ -7,6 +7,8 @@ export interface VttProbe {
 	counts: Record<string, number>;
 	/** Posição visual (objeto Pixi) de um token, ou null se não está desenhado. */
 	tokenPos?: (id: string) => { x: number; y: number } | null;
+	/** Ângulo (graus, 0–360) da seta de direção desenhada no token, ou null se não há. */
+	facing?: (id: string) => number | null;
 	/** Quantos tokens ainda têm gravação de posição em voo ou esperando. */
 	writesBusy?: () => number;
 }
@@ -38,4 +40,10 @@ export function devExposeTokenPos(read: VttProbe["tokenPos"]): void {
 export function devExposeWritesBusy(read: VttProbe["writesBusy"]): void {
 	const probe = probeHost();
 	if (probe) probe.writesBusy = read;
+}
+
+/** Registra o leitor do ângulo da seta de direção de cada token. */
+export function devExposeFacing(read: VttProbe["facing"]): void {
+	const probe = probeHost();
+	if (probe) probe.facing = read;
 }
