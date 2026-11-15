@@ -7,6 +7,7 @@ import {
 	loadSheetMini,
 	loadSheetRect,
 	moveMiniPos,
+	nextDockPos,
 	SHEET_DEFAULT_X,
 	SHEET_MIN_W,
 	SHEET_MINI_H,
@@ -72,5 +73,92 @@ describe("geometria da ficha flutuante", () => {
 			w: 3,
 			h: 4,
 		});
+	});
+});
+
+describe("doca de cartões minimizados sem limite", () => {
+	const overlap = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+		Math.abs(a.x - b.x) < SHEET_MINI_W - 4 &&
+		Math.abs(a.y - b.y) < SHEET_MINI_H - 4;
+
+	it("as vagas sobem e, com a coluna cheia, seguem numa coluna nova à direita", () => {
+		// 900 de altura: (900 - 128 - 16 + 8) / 68 = 11 cartões por coluna
+		const lastOfFirstColumn = dockMiniPos(10, 1440, 900);
+		const firstOfSecondColumn = dockMiniPos(11, 1440, 900);
+		expect(lastOfFirstColumn.x).toBe(72);
+		expect(firstOfSecondColumn.x).toBe(72 + SHEET_MINI_W + 8);
+		expect(firstOfSecondColumn.y).toBe(dockMiniPos(0, 1440, 900).y);
+	});
+
+	it("40 vagas seguidas, até onde a tela comporta, não se sobrepõem e ficam na tela", () => {
+		const slots = Array.from({ length: 33 }, (_, s) =>
+			dockMiniPos(s, 1440, 900),
+		);
+		for (const p of slots) {
+			expect(p.y).toBeGreaterThanOrEqual(8);
+			expect(p.x + SHEET_MINI_W).toBeLessThanOrEqual(1440);
+		}
+		for (let i = 0; i < slots.length; i++)
+			for (let j = i + 1; j < slots.length; j++)
+				expect(
+					overlap(slots[i] as never, slots[j] as never),
+					`${i} x ${j}`,
+				).toBe(false);
+	});
+
+	it("tela baixa: pelo menos 1 por coluna, sem travar", () => {
+		const p = dockMiniPos(3, 800, 220);
+		expect(Number.isFinite(p.x) && Number.isFinite(p.y)).toBe(true);
+	});
+
+	it("nextDockPos: sem ninguém, a primeira vaga", () => {
+		expect(nextDockPos([], 1440, 900)).toEqual(dockMiniPos(0, 1440, 900));
+	});
+
+	it("nextDockPos pula as vagas ocupadas, mesmo fora de ordem", () => {
+		const taken = [dockMiniPos(0, 1440, 900), dockMiniPos(2, 1440, 900)];
+		expect(nextDockPos(taken, 1440, 900)).toEqual(dockMiniPos(1, 1440, 900));
+		const more = [...taken, dockMiniPos(1, 1440, 900)];
+		expect(nextDockPos(more, 1440, 900)).toEqual(dockMiniPos(3, 1440, 900));
+	});
+
+	it("respeita um cartão que o mestre arrastou para uma vaga", () => {
+		const dragged = {
+			x: dockMiniPos(0, 1440, 900).x + 10,
+			y: dockMiniPos(0, 1440, 900).y - 5,
+		};
+		const pos = nextDockPos([dragged], 1440, 900);
+		expect(overlap(pos, dragged)).toBe(false);
+	});
+
+	it("preenche a coluna e passa para a seguinte conforme ocupa", () => {
+		const occupied: { x: number; y: number }[] = [];
+		for (let i = 0; i < 25; i++)
+			occupied.push(nextDockPos(occupied, 1440, 900));
+		const xs = new Set(occupied.map((p) => p.x));
+		expect(xs.size).toBe(3);
+		for (let i = 0; i < occupied.length; i++)
+			for (let j = i + 1; j < occupied.length; j++)
+				expect(overlap(occupied[i] as never, occupied[j] as never)).toBe(false);
+	});
+
+	it("tela cheia de cartões: ainda devolve uma posição válida (não quebra)", () => {
+		const occupied: { x: number; y: number }[] = [];
+		for (let i = 0; i < 80; i++)
+			occupied.push(nextDockPos(occupied, 1440, 900));
+		const p = nextDockPos(occupied, 1440, 900);
+		expect(Number.isFinite(p.x) && Number.isFinite(p.y)).toBe(true);
+	});
+});
+
+describe("cascata das janelas abertas", () => {
+	it("a cascata recomeça depois de 8 janelas (não se acumula no canto)", () => {
+		const first = defaultSheetRect(0, 1440, 900);
+		const ninth = defaultSheetRect(8, 1440, 900);
+		expect(ninth.x).toBe(first.x);
+		expect(ninth.y).toBe(first.y);
+		const second = defaultSheetRect(1, 1440, 900);
+		expect(second.x).toBeGreaterThan(first.x);
+		expect(second.y).toBeGreaterThan(first.y);
 	});
 });

@@ -290,9 +290,6 @@ const emptySceneContents = () => ({
 	wallRedo: [],
 });
 
-/** Máximo de fichas abertas ao mesmo tempo na mesa. */
-export const MAX_OPEN_SHEETS = 3;
-
 export const useVTTStore = create<VTTState>((set) => ({
 	scenes: [],
 	activeSceneId: null,
@@ -829,9 +826,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setShowCharacterSheetId: (id) =>
 		set((state) => {
 			if (!id) return { showCharacterSheetId: null, openSheetIds: [] };
+			// Sem limite: o mestre pode deixar todas as fichas abertas (ou minimizadas).
 			const open = state.openSheetIds.includes(id)
 				? state.openSheetIds
-				: [...state.openSheetIds, id].slice(-MAX_OPEN_SHEETS);
+				: [...state.openSheetIds, id];
 			return {
 				showCharacterSheetId: id,
 				openSheetIds: open,

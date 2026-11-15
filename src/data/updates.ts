@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.97-vtt-fichas-ilimitadas",
+		version: "1.6.97",
+		date: "15/11/2026",
+		title: "Fichas abertas e minimizadas sem limite",
+		description:
+			"Antes a mesa guardava só 3 fichas: ao abrir a 4ª, a mais antiga era descartada, mesmo minimizada. Agora dá para abrir e minimizar quantas fichas quiser, inclusive todas. Os cartões minimizados ocupam sempre uma vaga livre da doca no canto inferior esquerdo, sem cair um em cima do outro, e quando a coluna enche seguem numa nova coluna ao lado.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.96-vtt-barra-do-mestre",
 		version: "1.6.96",
 		date: "15/11/2026",

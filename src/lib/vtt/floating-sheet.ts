@@ -18,6 +18,8 @@ export const SHEET_EDGE = 8;
 /** Topo livre para o cabeçalho da mesa. */
 export const SHEET_TOP = 128;
 const CASCADE = 28;
+/** A cascata recomeça depois destas janelas, para não se acumular no canto. */
+const CASCADE_STEPS = 8;
 
 export function clampSheetRect(
 	r: SheetRect,
@@ -49,8 +51,8 @@ export function defaultSheetRect(
 		{
 			w: SHEET_DEFAULT_W,
 			h: Math.min(SHEET_DEFAULT_H, viewH - SHEET_TOP - 88),
-			x: SHEET_DEFAULT_X + index * CASCADE,
-			y: SHEET_TOP + index * CASCADE,
+			x: SHEET_DEFAULT_X + (index % CASCADE_STEPS) * CASCADE,
+			y: SHEET_TOP + (index % CASCADE_STEPS) * CASCADE,
 		},
 		viewW,
 		viewH,
@@ -123,24 +125,62 @@ export function clampMiniPos(
 	};
 }
 
-/** Lugar do cartão na doca (canto inferior esquerdo), por ordem de abertura. */
+/**
+ * Lugar do cartão na doca (canto inferior esquerdo): as vagas sobem de baixo
+ * para cima e, quando a coluna enche, seguem numa nova coluna à direita.
+ */
 export function dockMiniPos(
 	slot: number,
 	viewW: number,
 	viewH: number,
 ): MiniPos {
+	const step = SHEET_MINI_H + MINI_DOCK_GAP;
+	const usable = viewH - SHEET_TOP - SHEET_EDGE * 2;
+	const perColumn = Math.max(1, Math.floor((usable + MINI_DOCK_GAP) / step));
+	const column = Math.floor(slot / perColumn);
+	const row = slot % perColumn;
 	return clampMiniPos(
 		{
-			x: MINI_DOCK_X,
-			y:
-				viewH -
-				SHEET_EDGE * 2 -
-				SHEET_MINI_H -
-				slot * (SHEET_MINI_H + MINI_DOCK_GAP),
+			x: MINI_DOCK_X + column * (SHEET_MINI_W + MINI_DOCK_GAP),
+			y: viewH - SHEET_EDGE * 2 - SHEET_MINI_H - row * step,
 		},
 		viewW,
 		viewH,
 	);
+}
+
+export interface OccupiedMini {
+	x: number;
+	y: number;
+}
+
+/** Os cartões se tocam (com uma folga pequena)? */
+function miniOverlaps(a: MiniPos, b: OccupiedMini): boolean {
+	const slack = 4;
+	return (
+		Math.abs(a.x - b.x) < SHEET_MINI_W - slack &&
+		Math.abs(a.y - b.y) < SHEET_MINI_H - slack
+	);
+}
+
+/**
+ * Primeira vaga livre da doca, olhando onde os OUTROS cartões minimizados estão
+ * agora (inclusive os que o mestre arrastou). Sem isso, a vaga vinha da ordem de
+ * abertura e uma ficha nova minimizada podia cair em cima de outra.
+ * Se não couber mais nenhuma sem sobrepor, usa a vaga seguinte à última.
+ */
+export function nextDockPos(
+	occupied: readonly OccupiedMini[],
+	viewW: number,
+	viewH: number,
+): MiniPos {
+	const limit = occupied.length + 1;
+	for (let slot = 0; slot <= limit; slot++) {
+		const candidate = dockMiniPos(slot, viewW, viewH);
+		if (!occupied.some((other) => miniOverlaps(candidate, other)))
+			return candidate;
+	}
+	return dockMiniPos(limit, viewW, viewH);
 }
 
 export function moveMiniPos(

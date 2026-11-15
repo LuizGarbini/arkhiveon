@@ -60,12 +60,12 @@ import {
 	clampMiniPos,
 	clampSheetRect,
 	defaultSheetRect,
-	dockMiniPos,
 	loadSheetMini,
 	loadSheetRect,
 	type MiniPos,
 	moveMiniPos,
 	moveSheetRect,
+	nextDockPos,
 	resizeSheetRect,
 	SHEET_MINI_H,
 	SHEET_MINI_W,
@@ -124,7 +124,7 @@ interface LastRoll {
 }
 
 /**
- * Fichas na mesa. Desktop: até 3 painéis flutuantes (arrastar pelo
+ * Fichas na mesa. Desktop: painéis flutuantes sem limite (arrastar pelo
  * cabeçalho, redimensionar no canto, posição/tamanho lembrados). Celular:
  * Sheet de baixo do DS, sem X. As rolagens que já existiam continuam iguais.
  */
@@ -450,7 +450,19 @@ function FloatingSheet({
 		saveSheetRect(storageKey, g.last);
 	};
 	const minimize = () => {
-		const pos = dockMiniPos(index, window.innerWidth, window.innerHeight);
+		// Vaga livre da doca, olhando onde os outros cartões estão agora.
+		const others = Array.from(
+			document.querySelectorAll<HTMLElement>(
+				'[data-vtt-focus-scope="sheet"][data-minimized="true"]',
+			),
+		)
+			.filter((el) => el !== panelRef.current)
+			.map((el) => ({
+				x: Number.parseFloat(el.style.left),
+				y: Number.parseFloat(el.style.top),
+			}))
+			.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+		const pos = nextDockPos(others, window.innerWidth, window.innerHeight);
 		setMini(pos);
 		saveSheetMini(storageKey, pos);
 	};

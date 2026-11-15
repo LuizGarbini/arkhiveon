@@ -182,18 +182,18 @@ describe("Ficha flutuante: atalhos (painel tipo Figma)", () => {
 });
 
 describe("Ficha flutuante: painel", () => {
-	it("até 3 abertas; a 4ª fecha a mais antiga", () => {
-		const ids = ["1", "2", "3", "4"];
+	it("sem limite: a 4ª, a 5ª... ficha abrem e NENHUMA fecha as outras", () => {
+		const ids = Array.from({ length: 6 }, (_, i) => String(i + 1));
 		mesa({
 			tokens: ids.map((i) => token(i)),
 			characters: ids.map((i) => char(i, `Herói ${i}`)),
 			open: ids,
 		});
-		expect(panels()).toHaveLength(3);
-		expect(useVTTStore.getState().openSheetIds).toEqual(["2", "3", "4"]);
+		expect(panels()).toHaveLength(6);
+		expect(useVTTStore.getState().openSheetIds).toEqual(ids);
 		expect(
-			screen.queryByRole("region", { name: "Ficha de Herói 1" }),
-		).toBeNull();
+			screen.getByRole("region", { name: "Ficha de Herói 1" }),
+		).toBeTruthy();
 	});
 
 	it("arrastar pelo cabeçalho move, fica na viewport e é lembrado", () => {
@@ -409,3 +409,169 @@ describe("Ficha no celular (390): Sheet de baixo", () => {
 		);
 	});
 });
+
+describe(
+	"Ficha flutuante: muitas fichas minimizadas",
+	{ timeout: 30000 },
+	() => {
+		// Tela baixa: a coluna da doca comporta 4 cartões, então 7 fichas já passam para
+		// uma segunda coluna (montar 12 fichas completas no jsdom é pesado demais).
+		const VIEW_H = 420;
+		beforeEach(() => {
+			Object.assign(window, { innerWidth: 1440, innerHeight: VIEW_H });
+		});
+
+		const SIZE = { w: 336, h: 60 };
+		const many = (n: number) => {
+			const ids = Array.from({ length: n }, (_, i) => String(i + 1));
+			return mesa({
+				tokens: ids.map((i) => token(i)),
+				characters: ids.map((i) => char(i, `Herói ${i}`)),
+				open: ids,
+			});
+		};
+		const minimizeAll = () => {
+			for (;;) {
+				const next = screen.queryAllByRole("button", {
+					name: "Minimizar ficha",
+				})[0];
+				if (!next) break;
+				fireEvent.click(next);
+			}
+		};
+		const positions = () =>
+			panels().map((el) => ({
+				x: Number.parseFloat(el.style.left),
+				y: Number.parseFloat(el.style.top),
+			}));
+
+		it("dá para minimizar TODAS as fichas (7), e todas continuam abertas", () => {
+			many(7);
+			minimizeAll();
+			expect(panels()).toHaveLength(7);
+			expect(panels().every((el) => el.dataset.minimized === "true")).toBe(
+				true,
+			);
+			expect(useVTTStore.getState().openSheetIds).toHaveLength(7);
+		});
+
+		it("nenhum cartão cai em cima de outro, nem sai da tela", () => {
+			many(7);
+			minimizeAll();
+			const pos = positions();
+			for (const p of pos) {
+				expect(p.x).toBeGreaterThanOrEqual(8);
+				expect(p.y).toBeGreaterThanOrEqual(8);
+				expect(p.x + SIZE.w).toBeLessThanOrEqual(1440);
+				expect(p.y + SIZE.h).toBeLessThanOrEqual(VIEW_H);
+			}
+			for (let i = 0; i < pos.length; i++) {
+				for (let j = i + 1; j < pos.length; j++) {
+					const a = pos[i] as { x: number; y: number };
+					const b = pos[j] as { x: number; y: number };
+					const overlap =
+						Math.abs(a.x - b.x) < SIZE.w - 4 &&
+						Math.abs(a.y - b.y) < SIZE.h - 4;
+					expect(overlap, `cartões ${i + 1} e ${j + 1} se sobrepõem`).toBe(
+						false,
+					);
+				}
+			}
+		});
+
+		it("passando da coluna cheia, segue numa nova coluna à direita", () => {
+			many(7);
+			minimizeAll();
+			const xs = new Set(positions().map((p) => p.x));
+			expect(xs.size).toBe(2);
+			expect([...xs].sort((a, b) => a - b)).toEqual([72, 72 + 336 + 8]);
+		});
+
+		it("o cenário do pedido: minimizar 3 e abrir mais NÃO faz as minimizadas sumirem", () => {
+			const ids = ["1", "2", "3", "4", "5"];
+			mesa({
+				tokens: ids.map((i) => token(i)),
+				characters: ids.map((i) => char(i, `Herói ${i}`)),
+				open: ["1", "2", "3"],
+			});
+			minimizeAll();
+			expect(panels().every((el) => el.dataset.minimized === "true")).toBe(
+				true,
+			);
+			act(() => {
+				useVTTStore.getState().setShowCharacterSheetId("4");
+				useVTTStore.getState().setShowCharacterSheetId("5");
+			});
+			expect(useVTTStore.getState().openSheetIds).toEqual(ids);
+			expect(panels()).toHaveLength(5);
+			expect(
+				panels().filter((el) => el.dataset.minimized === "true"),
+			).toHaveLength(3);
+		});
+
+		it("restaurar uma e minimizar de novo usa uma vaga livre (não cai em outra)", () => {
+			many(4);
+			minimizeAll();
+			const before = positions();
+			// restaura a segunda, minimiza outra vez: tem de ocupar uma vaga que está livre
+			fireEvent.click(
+				screen.getAllByRole("button", {
+					name: "Restaurar ficha",
+				})[1] as HTMLElement,
+			);
+			fireEvent.click(screen.getByRole("button", { name: "Minimizar ficha" }));
+			const after = positions();
+			for (let i = 0; i < after.length; i++) {
+				for (let j = i + 1; j < after.length; j++) {
+					const a = after[i] as { x: number; y: number };
+					const b = after[j] as { x: number; y: number };
+					expect(
+						Math.abs(a.x - b.x) < SIZE.w - 4 &&
+							Math.abs(a.y - b.y) < SIZE.h - 4,
+					).toBe(false);
+				}
+			}
+			expect(after).toHaveLength(before.length);
+		});
+
+		it("minimizar FORA de ordem (a 3ª e depois a 1ª) não coloca uma em cima da outra", () => {
+			many(3);
+			fireEvent.click(
+				screen.getAllByRole("button", {
+					name: "Minimizar ficha",
+				})[2] as HTMLElement,
+			);
+			fireEvent.click(
+				screen.getAllByRole("button", {
+					name: "Minimizar ficha",
+				})[0] as HTMLElement,
+			);
+			const minimized = panels().filter(
+				(el) => el.dataset.minimized === "true",
+			);
+			expect(minimized).toHaveLength(2);
+			const [a, b] = minimized.map((el) => ({
+				x: Number.parseFloat(el.style.left),
+				y: Number.parseFloat(el.style.top),
+			})) as [{ x: number; y: number }, { x: number; y: number }];
+			expect(
+				Math.abs(a.x - b.x) < SIZE.w - 4 && Math.abs(a.y - b.y) < SIZE.h - 4,
+			).toBe(false);
+		});
+
+		it("uma ficha aberta aparece antes de minimizar as outras sem atrapalhar a doca", () => {
+			many(3);
+			// minimiza só a última; as outras ficam abertas
+			const buttons = screen.getAllByRole("button", {
+				name: "Minimizar ficha",
+			});
+			fireEvent.click(buttons[2] as HTMLElement);
+			const minimized = panels().filter(
+				(el) => el.dataset.minimized === "true",
+			);
+			expect(minimized).toHaveLength(1);
+			// vai para a PRIMEIRA vaga da doca (não para a vaga 2 só por ser a 3ª ficha)
+			expect(minimized[0]?.style.top).toBe(`${VIEW_H - 16 - 60}px`);
+		});
+	},
+);
