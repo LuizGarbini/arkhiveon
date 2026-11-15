@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, PointerEvent, ReactNode } from "react";
 import {
 	Tooltip,
 	TooltipContent,
@@ -29,6 +29,8 @@ export function ToolbarButton({
 	disabled = false,
 	expanded,
 	onClick,
+	onPointerDown,
+	className,
 }: {
 	label: string;
 	tooltip?: string;
@@ -40,6 +42,9 @@ export function ToolbarButton({
 	/** Painéis usam aria-expanded em vez de aria-pressed. */
 	expanded?: boolean;
 	onClick: () => void;
+	/** Gestos do botão (ex.: segurar o Ping para escolher o tipo). */
+	onPointerDown?: (event: PointerEvent<HTMLButtonElement>) => void;
+	className?: string;
 }) {
 	return (
 		<Tooltip>
@@ -50,6 +55,10 @@ export function ToolbarButton({
 						onClick={() => {
 							if (!disabled) onClick();
 						}}
+						onPointerDown={onPointerDown}
+						onContextMenu={
+							onPointerDown ? (e) => e.preventDefault() : undefined
+						}
 						aria-label={label}
 						aria-pressed={expanded === undefined ? active : undefined}
 						aria-expanded={expanded}
@@ -57,6 +66,7 @@ export function ToolbarButton({
 						aria-disabled={disabled ? true : undefined}
 						className={cn(
 							"relative flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary",
+							className,
 							disabled
 								? "cursor-not-allowed text-muted-foreground opacity-45"
 								: active

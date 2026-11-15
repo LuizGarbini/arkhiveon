@@ -16,7 +16,13 @@ import {
 	Swords,
 	Users,
 } from "lucide-react";
-import { type ComponentType, Fragment, useEffect } from "react";
+import {
+	type ComponentType,
+	Fragment,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useRef,
+} from "react";
 import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import {
 	ToolbarButton,
@@ -33,6 +39,13 @@ import { handleLightKey } from "@/lib/vtt/light-zone-sync";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { useNotesStore } from "@/lib/vtt/notes-store";
 import { flushAllNotes } from "@/lib/vtt/notes-sync";
+import { pingKindsFor } from "@/lib/vtt/ping-kinds";
+import {
+	PICKER_HOLD_MS,
+	PICKER_MOVE_SLOP_PX,
+	pickerBox,
+	pickerIndexAt,
+} from "@/lib/vtt/ping-picker";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	hasOpenVttDialog,
@@ -101,6 +114,87 @@ export function VTTToolbar() {
 	const isMobile = useIsMobile();
 	const sheetOpen = useVTTStore((s) => s.showCharacterSheetId);
 	const wallDisabledReason = wallToolDisabledReason(wallsStatus, isMobile);
+
+	// Segurar o botão de Ping abre a lista de tipos ao lado dele; arrastar o dedo
+	// escolhe e soltar fixa o tipo (e liga a ferramenta). É o jeito do celular
+	// trocar o tipo; no computador o mesmo vale com o mouse. Um toque rápido segue
+	// só ligando a ferramenta, como antes.
+	const suppressPingClickRef = useRef(false);
+	const handlePingPointerDown = (
+		event: ReactPointerEvent<HTMLButtonElement>,
+	) => {
+		if (event.button !== 0) return;
+		const rect = event.currentTarget.getBoundingClientRect();
+		const start = useVTTStore.getState();
+		const kinds = pingKindsFor(start.isGM || start.isCoGM).map(
+			(kind) => kind.id,
+		);
+		const box = pickerBox(rect, kinds.length, {
+			width: window.innerWidth,
+			height: window.innerHeight,
+		});
+		const hold = {
+			opened: false,
+			x: event.clientX,
+			y: event.clientY,
+			timer: null as ReturnType<typeof setTimeout> | null,
+		};
+		const stop = () => {
+			if (hold.timer) clearTimeout(hold.timer);
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", finish);
+			window.removeEventListener("pointercancel", finish);
+		};
+		const move = (e: PointerEvent) => {
+			if (!hold.opened) {
+				// Mexeu antes da lista abrir: não é um "segurar".
+				if (
+					Math.hypot(e.clientX - hold.x, e.clientY - hold.y) >
+					PICKER_MOVE_SLOP_PX
+				)
+					stop();
+				return;
+			}
+			const index = pickerIndexAt(
+				{ x: e.clientX, y: e.clientY },
+				box,
+				kinds.length,
+			);
+			useVTTStore
+				.getState()
+				.setPingPickerHover(index >= 0 ? (kinds[index] ?? null) : null);
+		};
+		const finish = (e: PointerEvent) => {
+			stop();
+			if (!hold.opened) return;
+			const live = useVTTStore.getState();
+			const picked = live.pingPicker?.hover ?? null;
+			live.closePingPicker();
+			// Soltar fora do botão não dispara o clique dele; soltar nele dispara.
+			// A trava expira sozinha para não engolir o próximo toque de verdade.
+			suppressPingClickRef.current = true;
+			setTimeout(() => {
+				suppressPingClickRef.current = false;
+			}, 120);
+			if (e.type !== "pointercancel" && picked) {
+				live.setPingKind(picked);
+				live.setActiveTool("ping");
+				setShowFogControls(false);
+			}
+		};
+		hold.timer = setTimeout(() => {
+			hold.opened = true;
+			useVTTStore.getState().openPingPicker({
+				left: box.left,
+				top: box.top,
+				kinds,
+				hover: null,
+			});
+		}, PICKER_HOLD_MS);
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", finish);
+		window.addEventListener("pointercancel", finish);
+	};
 
 	// Global Keyboard Shortcuts
 	useEffect(() => {
@@ -220,7 +314,7 @@ export function VTTToolbar() {
 			{
 				id: "ping",
 				label: "Ponteiro Laser (Ping)",
-				tooltip: "Ping (ou Alt + clique)",
+				tooltip: "Ping (segure para escolher o tipo)",
 				icon: Radio,
 				shortcut: "G",
 			},
@@ -263,7 +357,15 @@ export function VTTToolbar() {
 								shortcut={tool.shortcut}
 								icon={tool.icon}
 								active={activeTool === tool.id}
+								onPointerDown={
+									tool.id === "ping" ? handlePingPointerDown : undefined
+								}
+								className={tool.id === "ping" ? "touch-none" : undefined}
 								onClick={() => {
+									if (tool.id === "ping" && suppressPingClickRef.current) {
+										suppressPingClickRef.current = false;
+										return;
+									}
 									setActiveTool(tool.id);
 									setShowFogControls(false);
 								}}

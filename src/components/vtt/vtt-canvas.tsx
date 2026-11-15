@@ -58,12 +58,23 @@ import {
 	canControlVTTToken,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
+import { drawPing, type PingPaintContext } from "@/lib/vtt/ping-draw";
+import {
+	allowedPingKind,
+	type PingKind,
+	pingKindsFor,
+} from "@/lib/vtt/ping-kinds";
 import {
 	type ActivePing,
 	createPingAnimationLoop,
-	pingVisual,
 	publishPingLoopStats,
 } from "@/lib/vtt/ping-queue";
+import { highlightTarget } from "@/lib/vtt/ping-target";
+import {
+	kindAtOffset,
+	WHEEL_HOLD_MS,
+	WHEEL_MOVE_SLOP_PX,
+} from "@/lib/vtt/ping-wheel";
 import { attachRemoteCursors } from "@/lib/vtt/remote-cursor-layer";
 import {
 	rulerOnKey,
@@ -110,6 +121,7 @@ import {
 	tokenPressEndAction,
 	trackTokenPressMove,
 } from "@/lib/vtt/token-press";
+import { planRotation, rotationDelta } from "@/lib/vtt/token-rotate";
 import {
 	beginRightPress,
 	canSelectTokenLayer,
@@ -195,17 +207,10 @@ function paintPings(
 	layer: Graphics,
 	pings: readonly ActivePing[],
 	now: number,
+	context: PingPaintContext,
 ) {
 	layer.clear();
-	for (const ping of pings) {
-		const frame = pingVisual(ping.timestamp, now);
-		if (!frame.alive) continue;
-		const colorHex = parseHexColor(ping.color, 0xa855f7);
-		layer.circle(ping.x, ping.y, frame.radius);
-		layer.stroke({ width: 3, color: colorHex, alpha: frame.alpha });
-		layer.circle(ping.x, ping.y, 6);
-		layer.fill({ color: colorHex, alpha: frame.alpha });
-	}
+	for (const ping of pings) drawPing(layer, ping, now, context);
 }
 
 function paintTokenAuras(
@@ -549,6 +554,8 @@ export function VTTCanvas({
 	characterOwnersRef.current = characterOwners;
 	const onBroadcastRulerRef = useRef(onBroadcastRuler);
 	onBroadcastRulerRef.current = onBroadcastRuler;
+	const onUpdateTokenRef = useRef(onUpdateToken);
+	onUpdateTokenRef.current = onUpdateToken;
 	// Régua: aperto em andamento (clique vs. arrasto) e o último clique (duplo).
 	const rulerPressRef = useRef<{
 		x: number;
@@ -848,6 +855,25 @@ export function VTTCanvas({
 			// O callback entra no ticker do Pixi só enquanto houver ping e sai
 			// quando a lista esvazia. O frame lê o store, sem re-render do React.
 			// Fica neste init porque o app WebGL ainda não existe no render.
+			// Cor de quem pingou e, no destaque, onde está o token (só se você o vê:
+			// um token escondido ou fora da sua visão não ganha setas).
+			const pingContext: PingPaintContext = {
+				resolveColor: (hex) => parseHexColor(hex, 0xa855f7),
+				resolveToken: (id) => {
+					const display = tokenDisplayObjectsRef.current.get(id);
+					if (!display || !display.visible) return null;
+					const token = useVTTStore
+						.getState()
+						.tokens.find((item) => item.id === id);
+					if (!token) return null;
+					const cell = sceneRef.current?.gridSize || 70;
+					return {
+						x: display.position.x,
+						y: display.position.y,
+						radius: ((token.sizeCells > 0 ? token.sizeCells : 1) * cell) / 2,
+					};
+				},
+			};
 			const pingLoop = createPingAnimationLoop({
 				now: () => Date.now(),
 				getPings: () => useVTTStore.getState().activePings,
@@ -856,7 +882,7 @@ export function VTTCanvas({
 					for (const id of ids) removePing(id);
 				},
 				draw: (pings, now) => {
-					paintPings(pingsLayer, pings, now);
+					paintPings(pingsLayer, pings, now, pingContext);
 				},
 				clear: () => {
 					pingsLayer.clear();
@@ -1445,7 +1471,7 @@ export function VTTCanvas({
 				if (
 					e.button === 0 &&
 					!isSpaceHeldRef.current &&
-					!isAltHeldRef.current &&
+					!e.altKey &&
 					live.activeTool === "select"
 				) {
 					// Strict Layer Isolation:
@@ -2155,7 +2181,69 @@ export function VTTCanvas({
 	};
 	const commitTokenMovesRef = useRef(commitTokenMoves);
 	commitTokenMovesRef.current = commitTokenMoves;
+
+	// Manda um ping do tipo pedido. "Todos aqui" é do mestre (jogador manda ping
+	// comum); "Destacar" precisa de um personagem que você vê, apontado ou
+	// selecionado. O som e o desenho variam com o tipo.
+	const sendPing = (requested: PingKind, world: { x: number; y: number }) => {
+		const live = useVTTStore.getState();
+		const canManage = live.isGM || live.isCoGM;
+		const kind = allowedPingKind(requested, canManage);
+		let x = world.x;
+		let y = world.y;
+		let tokenId: string | undefined;
+		if (kind === "highlight") {
+			const eligible = live.tokens.filter(
+				(token) =>
+					(canManage || (!token.isHidden && token.layer !== "gm")) &&
+					tokenDisplayObjectsRef.current.get(token.id)?.visible !== false,
+			);
+			const target = highlightTarget(
+				world,
+				eligible,
+				scene?.gridSize ?? 70,
+				live.selectedTokenIds,
+			);
+			const token = eligible.find((item) => item.id === target);
+			if (!token) {
+				showToast("info", {
+					title: "Escolha um personagem",
+					description: "Aponte para um token ou selecione-o antes de destacar.",
+				});
+				return;
+			}
+			tokenId = token.id;
+			x = token.x;
+			y = token.y;
+		}
+		const accepted = live.addPing({
+			x,
+			y,
+			userId: userIdRef.current ?? "self",
+			userName: isGM ? "Mestre" : "Jogador",
+			color: userColor,
+			timestamp: Date.now(),
+			kind,
+			...(tokenId ? { tokenId } : {}),
+		});
+		if (!accepted) return;
+		playPingAudio(Date.now(), kind);
+		onBroadcastPingRef.current?.(accepted);
+	};
+	const sendPingRef = useRef(sendPing);
+	sendPingRef.current = sendPing;
 	const lastArrowStepRef = useRef(0);
+	const onBroadcastPingRef = useRef(onBroadcastPing);
+	onBroadcastPingRef.current = onBroadcastPing;
+	// Ctrl + segurar no mapa vazio: espera um instante e abre a roda de pings; se o
+	// mouse andar antes disso é arrasto de seleção, como sempre foi.
+	const pingHoldRef = useRef<{
+		clientX: number;
+		clientY: number;
+		world: { x: number; y: number };
+		opened: boolean;
+		timer: ReturnType<typeof setTimeout> | null;
+	} | null>(null);
 
 	// 9. Native DOM event listeners for Pan, Zoom, Token Drag, Fog Painting, Alt-Ping & Ruler
 	useEffect(() => {
@@ -2201,6 +2289,29 @@ export function VTTCanvas({
 				? snapToGrid(point, scene.gridType, scene.gridSize, 1, gridOrigin)
 				: point;
 
+		// Quem responde ao teclado: os selecionados que o usuário pode mover (controla,
+		// não está travado e está na camada ativa). Vale para setas e giro.
+		const keyboardTargets = () => {
+			const live = useVTTStore.getState();
+			return keyboardMovers(
+				live.selectedTokenIds,
+				live.tokens.map((item) => ({
+					id: item.id,
+					x: item.x,
+					y: item.y,
+					sizeCells: item.sizeCells,
+					isLocked: item.isLocked,
+					canMove:
+						canControlVTTToken(
+							item,
+							userIdRef.current,
+							live.isGM || live.isCoGM,
+							characterOwnersRef.current,
+						) && canSelectTokenLayer(live.activeLayer, item.layer),
+				})),
+			);
+		};
+
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const activeEl =
 				document.activeElement instanceof Element
@@ -2235,24 +2346,7 @@ export function VTTCanvas({
 				!draggingTokenIdRef.current &&
 				!dragGroupRef.current
 			) {
-				const live = useVTTStore.getState();
-				const movers = keyboardMovers(
-					live.selectedTokenIds,
-					live.tokens.map((item) => ({
-						id: item.id,
-						x: item.x,
-						y: item.y,
-						sizeCells: item.sizeCells,
-						isLocked: item.isLocked,
-						canMove:
-							canControlVTTToken(
-								item,
-								userIdRef.current,
-								live.isGM || live.isCoGM,
-								characterOwnersRef.current,
-							) && canSelectTokenLayer(live.activeLayer, item.layer),
-					})),
-				);
+				const movers = keyboardTargets();
 				if (movers.length > 0) {
 					// Segurar a seta repete, mas no máximo ~7 casas por segundo: cada
 					// casa é gravada e entra no histórico.
@@ -2269,6 +2363,39 @@ export function VTTCanvas({
 						{ commitUnchanged: false },
 					);
 					paintAurasRef.current();
+					return;
+				}
+			}
+
+			// Q/E: giram os selecionados no mesmo lugar (45°; com Shift, 15°). Mesmas
+			// condições das setas. Cada toque é gravado, então segurar repete com limite.
+			const turn = rotationDelta(e.key, e.shiftKey);
+			if (
+				turn !== null &&
+				activeTool === "select" &&
+				!blocked &&
+				!e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey &&
+				!draggingTokenIdRef.current &&
+				!dragGroupRef.current
+			) {
+				const live = useVTTStore.getState();
+				const targets = keyboardTargets().map((member) => ({
+					id: member.id,
+					rotation: live.tokens.find((item) => item.id === member.id)?.rotation,
+				}));
+				if (targets.length > 0) {
+					e.preventDefault();
+					const now = Date.now();
+					if (e.repeat && now - lastArrowStepRef.current < 120) return;
+					lastArrowStepRef.current = now;
+					for (const next of planRotation(targets, turn)) {
+						updateToken(next.id, { rotation: next.rotation });
+						void onUpdateTokenRef.current?.(next.id, {
+							rotation: next.rotation,
+						});
+					}
 					return;
 				}
 			}
@@ -2298,6 +2425,7 @@ export function VTTCanvas({
 				lastRulerClickRef.current = next.lastClick;
 				setActiveMeasurement(next.measurement);
 			}
+			if (e.key === "Escape" && pingHoldRef.current) cancelPingHold();
 			if (e.key === "Escape" && !inDialog) {
 				setActiveTokenIdForMenu(null);
 				setPreviewTemplate(null);
@@ -2345,6 +2473,18 @@ export function VTTCanvas({
 			}
 		};
 
+		// Perder o foco da janela (Alt+Tab, Cmd+Tab, outra aba) perde o keyup: solta
+		// Alt e Espaço, senão o ping/a mão de arrastar ficam presos.
+		const releaseHeldKeys = () => {
+			isSpaceHeldRef.current = false;
+			isAltHeldRef.current = false;
+			if (pingHoldRef.current) cancelPingHold();
+			container.style.cursor = activeTool === "pan" ? "grab" : "default";
+		};
+		const handleVisibility = () => {
+			if (document.visibilityState === "hidden") releaseHeldKeys();
+		};
+
 		const handleKeyUp = (e: KeyboardEvent) => {
 			if (e.code === "Space") {
 				isSpaceHeldRef.current = false;
@@ -2374,7 +2514,23 @@ export function VTTCanvas({
 			setViewport({ x: newX, y: newY, scale: newScale });
 		};
 
+		// Desiste do gesto da roda (esc, perder o foco, arrasto, soltar): fecha a roda.
+		const cancelPingHold = () => {
+			const hold = pingHoldRef.current;
+			if (hold?.timer) clearTimeout(hold.timer);
+			pingHoldRef.current = null;
+			useVTTStore.getState().closePingWheel();
+		};
+
 		const handlePointerDown = (e: PointerEvent) => {
+			// O evento sabe se o Alt está apertado AGORA; a variável pode ter ficado
+			// ligada se o keyup se perdeu (Alt+Tab, Cmd+Tab, menu do navegador), e aí
+			// todo clique virava ping até o F5. O Espaço não tem essa informação no
+			// evento: sem o foco da janela, o keyup dele também se perdeu.
+			isAltHeldRef.current = e.altKey;
+			if (isSpaceHeldRef.current && !document.hasFocus()) {
+				isSpaceHeldRef.current = false;
+			}
 			// Toque novo fecha a lista de status aberta pelo toque longo.
 			if (e.pointerType !== "mouse") {
 				const s = useVTTStore.getState();
@@ -2412,17 +2568,10 @@ export function VTTCanvas({
 			// Fast Alt + Click Instant Ping OR Ping tool.
 			// Throttle local: ping recusado não toca som nem entra no broadcast.
 			if ((isAltHeldRef.current || activeTool === "ping") && isLeftClick) {
-				const accepted = useVTTStore.getState().addPing({
+				sendPingRef.current(useVTTStore.getState().pingKind, {
 					x: worldPoint.x,
 					y: worldPoint.y,
-					userId: userIdRef.current ?? "self",
-					userName: isGM ? "Mestre" : "Jogador",
-					color: userColor,
-					timestamp: Date.now(),
 				});
-				if (!accepted) return;
-				playPingAudio();
-				if (onBroadcastPing) onBroadcastPing(accepted);
 				return;
 			}
 
@@ -2583,6 +2732,49 @@ export function VTTCanvas({
 				setActiveTokenIdForMenu(null);
 			}
 
+			// Ctrl + segurar no mapa vazio abre a roda de pings (como no LoL). Antes de
+			// a roda abrir, mexer o mouse é arrasto de seleção, como sempre foi, e um
+			// Ctrl+clique rápido, sem mexer, manda o ping do tipo escolhido.
+			if (
+				isLeftClick &&
+				e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey &&
+				scene &&
+				activeTool === "select" &&
+				!isSpaceHeldRef.current &&
+				!tokenPressRef.current
+			) {
+				cancelPingHold();
+				const held = useVTTStore.getState();
+				const kinds = pingKindsFor(held.isGM || held.isCoGM).map(
+					(kind) => kind.id,
+				);
+				const hold = {
+					clientX: e.clientX,
+					clientY: e.clientY,
+					world: { x: worldPoint.x, y: worldPoint.y },
+					opened: false,
+					timer: null as ReturnType<typeof setTimeout> | null,
+				};
+				hold.timer = setTimeout(() => {
+					if (pingHoldRef.current !== hold) return;
+					hold.opened = true;
+					// A roda cancela a caixa de seleção que o mesmo clique iniciou.
+					marqueeRef.current = null;
+					hideMarquee(marqueeElRef.current);
+					useVTTStore.getState().openPingWheel({
+						x: hold.clientX,
+						y: hold.clientY,
+						worldX: hold.world.x,
+						worldY: hold.world.y,
+						kinds,
+						hover: null,
+					});
+				}, WHEEL_HOLD_MS);
+				pingHoldRef.current = hold;
+			}
+
 			// Drag on empty ground draws a selection box. Shift adds to it.
 			if (
 				isLeftClick &&
@@ -2660,6 +2852,35 @@ export function VTTCanvas({
 		};
 
 		const handlePointerMove = (e: PointerEvent) => {
+			const hold = pingHoldRef.current;
+			if (hold) {
+				if (hold.opened) {
+					// Com a roda aberta o mouse só escolhe a opção.
+					const wheel = useVTTStore.getState().pingWheel;
+					if (wheel) {
+						useVTTStore
+							.getState()
+							.setPingWheelHover(
+								kindAtOffset(
+									e.clientX - wheel.x,
+									e.clientY - wheel.y,
+									wheel.kinds,
+								),
+							);
+					}
+					return;
+				}
+				if (
+					Math.hypot(e.clientX - hold.clientX, e.clientY - hold.clientY) >
+					WHEEL_MOVE_SLOP_PX
+				) {
+					// Mexeu antes da roda abrir: é arrasto de seleção, não roda.
+					if (hold.timer) clearTimeout(hold.timer);
+					pingHoldRef.current = null;
+				}
+			}
+			// Mesmo remédio do clique: se o Alt já foi solto, a variável acompanha.
+			if (isAltHeldRef.current && !e.altKey) isAltHeldRef.current = false;
 			statusLongPressRef.current.move(e.clientX, e.clientY);
 			const right = rightPressRef.current;
 			if (right && !isDraggingViewportRef.current) {
@@ -2964,6 +3185,28 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			// Roda de pings: soltar escolhe a opção sob o cursor (ou o tipo escolhido,
+			// no miolo). Ctrl+clique rápido, sem a roda, manda o ping do tipo escolhido.
+			const hold = pingHoldRef.current;
+			if (hold) {
+				if (hold.timer) clearTimeout(hold.timer);
+				pingHoldRef.current = null;
+				const live = useVTTStore.getState();
+				const wheel = live.pingWheel;
+				live.closePingWheel();
+				if (hold.opened) {
+					if (e.type !== "pointercancel" && wheel) {
+						sendPingRef.current(wheel.hover ?? live.pingKind, {
+							x: wheel.worldX,
+							y: wheel.worldY,
+						});
+					}
+					return;
+				}
+				if (e.type !== "pointercancel") {
+					sendPingRef.current(live.pingKind, hold.world);
+				}
+			}
 			// Luz: soltar fecha o círculo ou retângulo arrastado (cancelar o toque
 			// descarta). A área nova já nasce selecionada para trocar a luz ou apagar.
 			if (lightDragRef.current) {
@@ -3253,6 +3496,8 @@ export function VTTCanvas({
 		container.addEventListener("pointerdown", handlePointerDown);
 		container.addEventListener("contextmenu", handleContextMenu);
 		container.addEventListener("touchend", handleTouchEnd, { passive: false });
+		window.addEventListener("blur", releaseHeldKeys);
+		document.addEventListener("visibilitychange", handleVisibility);
 		window.addEventListener("pointermove", handlePointerMove);
 		window.addEventListener("pointerup", handlePointerUp);
 		window.addEventListener("pointercancel", handlePointerUp);
@@ -3264,6 +3509,8 @@ export function VTTCanvas({
 			container.removeEventListener("pointerdown", handlePointerDown);
 			container.removeEventListener("touchend", handleTouchEnd);
 			container.removeEventListener("contextmenu", handleContextMenu);
+			window.removeEventListener("blur", releaseHeldKeys);
+			document.removeEventListener("visibilitychange", handleVisibility);
 			window.removeEventListener("pointermove", handlePointerMove);
 			window.removeEventListener("pointerup", handlePointerUp);
 			window.removeEventListener("pointercancel", handlePointerUp);
@@ -3277,7 +3524,6 @@ export function VTTCanvas({
 		onBroadcastDrag,
 		onBroadcastDragBatch,
 		onBroadcastCursor,
-		onBroadcastPing,
 		onBroadcastFog,
 		onBroadcastTemplate,
 		onPersistFog,

@@ -16,6 +16,10 @@ import { VTTLightControls } from "@/components/vtt/vtt-light-controls";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTMoveHistoryPanel } from "@/components/vtt/vtt-move-history-panel";
 import { VTTNotesPanel } from "@/components/vtt/vtt-notes-panel";
+import { VTTPingControls } from "@/components/vtt/vtt-ping-controls";
+import { VTTPingPicker } from "@/components/vtt/vtt-ping-picker";
+import { VTTPingWheel } from "@/components/vtt/vtt-ping-wheel";
+import { VTTPinnedRuler } from "@/components/vtt/vtt-pinned-ruler";
 import { VTTRosterDrawer } from "@/components/vtt/vtt-roster-drawer";
 import { VTTRulerControls } from "@/components/vtt/vtt-ruler-controls";
 import { VTTSceneBar } from "@/components/vtt/vtt-scene-bar";
@@ -33,6 +37,11 @@ import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
+import {
+	CAMERA_PULL_MS,
+	cameraAt,
+	cameraCenteredOn,
+} from "@/lib/vtt/camera-pull";
 import {
 	characterSheetOwnsHp,
 	saveLinkedCharacterHp,
@@ -65,7 +74,7 @@ import {
 	type PublishSceneRpc,
 	publishScene,
 } from "@/lib/vtt/persist-publication";
-import { incomingPing } from "@/lib/vtt/ping-queue";
+import { acceptIncomingPing } from "@/lib/vtt/ping-receive";
 import { readPresenceUsers, readRemoteCursor } from "@/lib/vtt/presence-input";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import { applyRemoteRuler } from "@/lib/vtt/ruler-gesture";
@@ -775,6 +784,34 @@ function VTTSession() {
 		memberships: user?.id ? [{ userId: user.id, role: selfRole }] : [],
 	};
 
+	// "Todos aqui" do mestre: leva a câmera até o ponto com um movimento suave,
+	// mantendo o zoom de quem recebe, e avisa por que a tela andou.
+	const cameraAnimationRef = useRef<number | null>(null);
+	const pullCameraRef = useRef<
+		((world: { x: number; y: number }) => void) | null
+	>(null);
+	pullCameraRef.current = (world) => {
+		const from = useVTTStore.getState().viewport;
+		const to = cameraCenteredOn(world, from.scale, {
+			width: window.innerWidth,
+			height: window.innerHeight,
+		});
+		if (cameraAnimationRef.current !== null)
+			cancelAnimationFrame(cameraAnimationRef.current);
+		const startedAt = performance.now();
+		const step = (now: number) => {
+			const t = (now - startedAt) / CAMERA_PULL_MS;
+			const camera = cameraAt(from, to, t);
+			useVTTStore.getState().setViewport(camera);
+			cameraAnimationRef.current = t < 1 ? requestAnimationFrame(step) : null;
+		};
+		cameraAnimationRef.current = requestAnimationFrame(step);
+		showToast("info", {
+			title: "O mestre levou a câmera",
+			description: "Todos estão olhando para o mesmo ponto do mapa.",
+		});
+	};
+
 	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
 	useEffect(() => {
 		const client = getSupabase();
@@ -972,10 +1009,18 @@ function VTTSession() {
 						useVTTStore.getState().activeSceneId !== activeSceneId
 					)
 						return;
-					const incoming = incomingPing(payload.payload);
-					if (!incoming) return;
-					const accepted = addPing(incoming);
-					if (accepted) playPingAudio();
+					// Quem pode levar a câmera de todos é conferido aqui, no lado de quem
+					// recebe: jogador que manda "Todos aqui" à força vira ping comum.
+					const received = acceptIncomingPing(payload.payload, {
+						campaignOwnerId: templateRoleRef.current.ownerId,
+						memberships: templateRoleRef.current.memberships,
+						presence: useVTTStore.getState().onlineUsers,
+					});
+					if (!received) return;
+					const accepted = addPing(received.ping);
+					if (!accepted) return;
+					playPingAudio(Date.now(), accepted.kind);
+					if (received.pullTo) pullCameraRef.current?.(received.pullTo);
 				},
 			)
 			.on(
@@ -1822,6 +1867,11 @@ function VTTSession() {
 			/>
 
 			<VTTRulerControls />
+			<VTTPinnedRuler />
+
+			<VTTPingControls />
+			<VTTPingWheel />
+			<VTTPingPicker />
 
 			<VTTWallControls />
 

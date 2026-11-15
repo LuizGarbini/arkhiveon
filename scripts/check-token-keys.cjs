@@ -5,7 +5,8 @@
 //  - o jogador não atravessa janela nem parede (aviso, nada é gravado);
 //  - o mestre atravessa;
 //  - sem seleção, com outra ferramenta ou digitando num campo, a seta não move;
-//  - segurar a seta repete, mas com limite (cada casa é gravada).
+//  - segurar a seta repete, mas com limite (cada casa é gravada);
+//  - Q/E giram os selecionados no mesmo lugar (45°; Shift 15°), com as mesmas regras.
 // Uso: pnpm check:token-keys   (sai com código 1 se alguma regra quebrar)
 const { chromium } = require("playwright");
 async function main() {
@@ -47,6 +48,11 @@ async function main() {
 		mk("alheio", "Alheio", 805, 455, { controlledBy: [] }),
 	]);
 	await page.waitForTimeout(1500);
+	// As gravações do servidor falso chegam com atraso sob carga: espera o contador
+	// alcançar o mínimo esperado (até 3 s) antes de conferir.
+	const settleWrites = async (atLeast) => {
+		for (let i = 0; i < 30 && tokenWrites < atLeast; i++) await page.waitForTimeout(100);
+	};
 	const pos = () => page.evaluate(() => Object.fromEntries(window.__vtt_store__.getState().tokens.map((t) => [t.id, { x: t.x, y: t.y, r: t.rotation }])));
 	const select = (ids) => page.evaluate((ids) => window.__vtt_store__.getState().setSelectedTokenIds(ids), ids);
 	const press = async (key) => { await page.keyboard.press(key); await page.waitForTimeout(250); };
@@ -54,7 +60,15 @@ async function main() {
 	// na store (sem passar pelo contador de gravações) e uma gravação atrasada
 	// reaplicaria o movimento antigo por cima dele.
 	const reset = async () => {
-		await page.waitForTimeout(900);
+		// Espera as gravações pendentes acabarem de verdade: o contador do servidor
+		// falso fica parado por 600 ms (até 8 s). Um tempo fixo falha sob carga.
+		let last = -1;
+		let stableSince = Date.now();
+		for (let i = 0; i < 80; i++) {
+			if (tokenWrites !== last) { last = tokenWrites; stableSince = Date.now(); }
+			else if (Date.now() - stableSince >= 600) break;
+			await page.waitForTimeout(100);
+		}
 		await page.evaluate(() => {
 		const st = window.__vtt_store__.getState();
 		st.updateToken("a", { x: 455, y: 455, rotation: 0 }); st.updateToken("b", { x: 455, y: 525, rotation: 0 });
@@ -70,6 +84,7 @@ async function main() {
 	await press("ArrowLeft"); const left = await pos();
 	await press("ArrowUp"); const up = await pos();
 	console.log("1 direita/baixo/esq/cima    ", JSON.stringify([right.a, down.a, left.a, up.a]));
+	await settleWrites(4);
 	const writesAfterOne = tokenWrites;
 
 	// 2. vários andam juntos
@@ -114,12 +129,34 @@ async function main() {
 	// 6. segurar a seta repete, com limite
 	await reset(); await select(["a"]);
 	const before6 = tokenWrites;
+	const t0 = Date.now();
 	for (let i = 0; i < 24; i++) { await page.keyboard.down("ArrowRight"); await page.waitForTimeout(30); }
+	const heldMs = Date.now() - t0;
 	await page.keyboard.up("ArrowRight");
 	await page.waitForTimeout(500);
 	const held = await pos();
 	const steps = Math.round((held.a.x - 455) / 70);
-	console.log("6 segurando (~720 ms)        ", JSON.stringify({ casas: steps, gravacoes: tokenWrites - before6 }));
+	const writes6 = tokenWrites - before6;
+	console.log("6 segurando (~720 ms)        ", JSON.stringify({ casas: steps, gravacoes: writes6, segurouMs: heldMs }));
+
+	// 7. girar no mesmo lugar: E (direita), Q (esquerda), Shift (15°), grupo, travado/alheio, digitando
+	await reset(); await select(["a", "b"]);
+	const w7 = tokenWrites;
+	await press("e"); const turnE = await pos();
+	await press("e"); const turnE2 = await pos();
+	await press("q"); await press("q"); await press("q"); const turnQ = await pos();
+	await press("Shift+E"); const turnFine = await pos();
+	await reset(); await select(["a", "lock", "alheio"]);
+	await press("e"); const turnLocked = await pos();
+	await reset(); await select(["a"]);
+	await page.evaluate(() => { const i = document.createElement("input"); i.id = "tmp-input2"; i.type = "text"; document.body.appendChild(i); i.focus(); });
+	await press("e"); const turnTyping = await pos();
+	await page.evaluate(() => document.getElementById("tmp-input2")?.remove());
+	await page.evaluate(() => window.__vtt_store__.getState().setActiveTool("ruler"));
+	await press("e"); const turnRuler = await pos();
+	await settleWrites(w7 + 5);
+	console.log("7 girar E, EE, QQQ, Shift+E  ", JSON.stringify([turnE.a.r, turnE2.a.r, turnQ.a.r, turnFine.a.r]), "posição:", JSON.stringify([turnE.a.x, turnE.a.y]), "grupo b:", JSON.stringify(turnE.b.r), "gravações:", tokenWrites - w7);
+	console.log("   travado/alheio/digitando/régua", JSON.stringify([turnLocked.a.r, turnLocked.lock.r, turnLocked.alheio.r, turnTyping.a.r, turnRuler.a.r]));
 	console.log("erros de página:", errors.length ? errors.slice(0, 3) : "nenhum");
 	await browser.close();
 	await server.close();
@@ -144,13 +181,29 @@ async function main() {
 	if (blockedToast < 1) problems.push("faltou o aviso de movimento bloqueado");
 	if (writesAfterBlocked !== writesBefore5) problems.push("a seta barrada gravou algo no banco");
 	if (!eq(gm.a, 525, 455)) problems.push(`o mestre deveria atravessar a janela com a seta: ${JSON.stringify(gm.a)}`);
-	if (steps < 3 || steps > 8) problems.push(`segurar a seta deveria andar de 3 a 8 casas em ~720 ms (andou ${steps})`);
-	if (tokenWrites - before6 > 9) problems.push(`gravações demais ao segurar a seta (${tokenWrites - before6})`);
+	// O limite é de uma casa a cada 140 ms de RELÓGIO: compara com o tempo que a tecla
+	// ficou mesmo apertada (a máquina pode estar lenta), não com um número fixo.
+	const maxSteps = Math.floor(heldMs / 140) + 2;
+	if (steps > maxSteps) problems.push(`segurar a seta andou ${steps} casas em ${heldMs} ms (o limite permite no máximo ${maxSteps})`);
+	if (steps < 2) problems.push(`segurar a seta deveria repetir (andou ${steps} casa)`);
+	if (steps >= 24) problems.push("segurar a seta andou uma casa por repetição: o limite não funcionou");
+	if (writes6 > maxSteps + 1) problems.push(`gravações demais ao segurar a seta (${writes6}; limite ${maxSteps + 1})`);
+	if (turnE.a.r !== 45 || turnE.b.r !== 45) problems.push(`E deveria girar a e b para 45° (a=${turnE.a.r}, b=${turnE.b.r})`);
+	if (turnE.a.x !== 455 || turnE.a.y !== 455 || turnE.b.x !== 455 || turnE.b.y !== 525) problems.push("girar mexeu na posição do token");
+	if (turnE2.a.r !== 90) problems.push(`E de novo deveria dar 90° (veio ${turnE2.a.r})`);
+	if (turnQ.a.r !== 315) problems.push(`QQQ a partir de 90° deveria dar 315° (veio ${turnQ.a.r})`);
+	if (turnFine.a.r !== 330) problems.push(`Shift+E deveria girar só 15° (315 → 330, veio ${turnFine.a.r})`);
+	if (tokenWrites - w7 < 5) problems.push(`cada giro deveria ser gravado (gravações: ${tokenWrites - w7})`);
+	if (turnLocked.a.r !== 45) problems.push("o token livre deveria girar mesmo com travado e alheio selecionados");
+	if (turnLocked.lock.r !== 0) problems.push("o token TRAVADO girou");
+	if (turnLocked.alheio.r !== 0) problems.push("um token que o jogador NÃO controla girou");
+	if (turnTyping.a.r !== 0) problems.push("digitando num campo a tecla E girou o token");
+	if (turnRuler.a.r !== 0) problems.push("com a régua ativa a tecla E girou o token");
 	if (errors.length) problems.push(`erros de página: ${errors[0]}`);
 	if (problems.length) {
 		console.error("FALHOU:\n - " + problems.join("\n - "));
 		process.exit(1);
 	}
-	console.log("OK: setas movem 1 ou vários tokens uma casa; travado/alheio ficam; janela barra o jogador; mestre passa; segurar repete com limite");
+	console.log("OK: setas movem 1 ou vários tokens uma casa; Q/E giram no lugar; travado/alheio ficam; janela barra o jogador; mestre passa; segurar repete com limite");
 }
 main().catch((e) => { console.error(e); process.exit(1); });
