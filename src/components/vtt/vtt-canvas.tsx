@@ -109,6 +109,7 @@ import {
 	tokenPressEndAction,
 	trackTokenPressMove,
 } from "@/lib/vtt/token-press";
+import { planRotation, rotationDelta } from "@/lib/vtt/token-rotate";
 import {
 	beginRightPress,
 	canSelectTokenLayer,
@@ -548,6 +549,8 @@ export function VTTCanvas({
 	characterOwnersRef.current = characterOwners;
 	const onBroadcastRulerRef = useRef(onBroadcastRuler);
 	onBroadcastRulerRef.current = onBroadcastRuler;
+	const onUpdateTokenRef = useRef(onUpdateToken);
+	onUpdateTokenRef.current = onUpdateToken;
 	// Régua: aperto em andamento (clique vs. arrasto) e o último clique (duplo).
 	const rulerPressRef = useRef<{
 		x: number;
@@ -2247,6 +2250,29 @@ export function VTTCanvas({
 				? snapToGrid(point, scene.gridType, scene.gridSize, 1, gridOrigin)
 				: point;
 
+		// Quem responde ao teclado: os selecionados que o usuário pode mover (controla,
+		// não está travado e está na camada ativa). Vale para setas e giro.
+		const keyboardTargets = () => {
+			const live = useVTTStore.getState();
+			return keyboardMovers(
+				live.selectedTokenIds,
+				live.tokens.map((item) => ({
+					id: item.id,
+					x: item.x,
+					y: item.y,
+					sizeCells: item.sizeCells,
+					isLocked: item.isLocked,
+					canMove:
+						canControlVTTToken(
+							item,
+							userIdRef.current,
+							live.isGM || live.isCoGM,
+							characterOwnersRef.current,
+						) && canSelectTokenLayer(live.activeLayer, item.layer),
+				})),
+			);
+		};
+
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const activeEl =
 				document.activeElement instanceof Element
@@ -2281,24 +2307,7 @@ export function VTTCanvas({
 				!draggingTokenIdRef.current &&
 				!dragGroupRef.current
 			) {
-				const live = useVTTStore.getState();
-				const movers = keyboardMovers(
-					live.selectedTokenIds,
-					live.tokens.map((item) => ({
-						id: item.id,
-						x: item.x,
-						y: item.y,
-						sizeCells: item.sizeCells,
-						isLocked: item.isLocked,
-						canMove:
-							canControlVTTToken(
-								item,
-								userIdRef.current,
-								live.isGM || live.isCoGM,
-								characterOwnersRef.current,
-							) && canSelectTokenLayer(live.activeLayer, item.layer),
-					})),
-				);
+				const movers = keyboardTargets();
 				if (movers.length > 0) {
 					// Segurar a seta repete, mas no máximo ~7 casas por segundo: cada
 					// casa é gravada e entra no histórico.
@@ -2315,6 +2324,39 @@ export function VTTCanvas({
 						{ commitUnchanged: false },
 					);
 					paintAurasRef.current();
+					return;
+				}
+			}
+
+			// Q/E: giram os selecionados no mesmo lugar (45°; com Shift, 15°). Mesmas
+			// condições das setas. Cada toque é gravado, então segurar repete com limite.
+			const turn = rotationDelta(e.key, e.shiftKey);
+			if (
+				turn !== null &&
+				activeTool === "select" &&
+				!blocked &&
+				!e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey &&
+				!draggingTokenIdRef.current &&
+				!dragGroupRef.current
+			) {
+				const live = useVTTStore.getState();
+				const targets = keyboardTargets().map((member) => ({
+					id: member.id,
+					rotation: live.tokens.find((item) => item.id === member.id)?.rotation,
+				}));
+				if (targets.length > 0) {
+					e.preventDefault();
+					const now = Date.now();
+					if (e.repeat && now - lastArrowStepRef.current < 120) return;
+					lastArrowStepRef.current = now;
+					for (const next of planRotation(targets, turn)) {
+						updateToken(next.id, { rotation: next.rotation });
+						void onUpdateTokenRef.current?.(next.id, {
+							rotation: next.rotation,
+						});
+					}
 					return;
 				}
 			}
