@@ -4,10 +4,12 @@ import {
 	Eraser,
 	Eye,
 	EyeOff,
+	Moon,
 	Paintbrush,
 	RotateCcw,
 	Sparkles,
 	Square,
+	Sun,
 	X,
 } from "lucide-react";
 import { useState } from "react";
@@ -16,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { exploredSync } from "@/lib/vtt/explored-sync";
 import type { SceneSession } from "@/lib/vtt/scene-session";
 import type { VTTScene } from "@/lib/vtt/types";
+import { toLightLevel } from "@/lib/vtt/vision";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { SceneSaveStatus, useSceneSaveState } from "./scene-save-status";
 
@@ -115,6 +118,12 @@ export function VTTFogControls({
 		void onUpdateScene(scene.id, { fogExploration: !scene.fogExploration });
 	};
 
+	const handleLight = (level: "bright" | "dark") => {
+		if (!scene || !onUpdateScene || blocked) return;
+		if (toLightLevel(scene.lightLevel) === level) return;
+		void onUpdateScene(scene.id, { lightLevel: level });
+	};
+
 	const handleClearAll = async (mode: "all_hidden" | "all_revealed") => {
 		if (!onClearFog || clearBlocked || !scene) return;
 		// Com a névoa desligada, cobrir/revelar não teria efeito visível:
@@ -193,6 +202,46 @@ export function VTTFogControls({
 					<span>Exploração</span>
 				</button>
 			</div>
+
+			{scene?.fogExploration ? (
+				<div className="flex flex-col gap-1.5">
+					<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+						Luz da cena
+					</span>
+					<fieldset
+						aria-label="Luz da cena"
+						className="m-0 min-w-0 grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/40 border border-border/70"
+					>
+						{(
+							[
+								["bright", "Clara", Sun, "Enxergam até o alcance da visão"],
+								["dark", "Escura", Moon, "Só vale a visão no escuro"],
+							] as const
+						).map(([level, label, Icon, hint]) => {
+							const active = toLightLevel(scene.lightLevel) === level;
+							return (
+								<button
+									key={level}
+									type="button"
+									aria-pressed={active}
+									disabled={blocked}
+									title={hint}
+									onClick={() => handleLight(level)}
+									className={cn(
+										"min-h-[44px] flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-[background-color,color,transform] duration-150 active:scale-[0.98] cursor-pointer touch-manipulation select-none disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+										active
+											? "bg-card-elevated text-foreground ring-1 ring-primary/40"
+											: "text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
+									)}
+								>
+									<Icon className="h-4 w-4" />
+									<span>{label}</span>
+								</button>
+							);
+						})}
+					</fieldset>
+				</div>
+			) : null}
 
 			{scene?.fogExploration ? (
 				<button

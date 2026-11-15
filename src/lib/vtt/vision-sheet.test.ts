@@ -44,3 +44,42 @@ describe("selectLinkedVisionStamp · ponte ficha → mesa", () => {
 		expect(parseVisionStamp("sem-dois-pontos;a:abc;b:0;c:5;").size).toBe(1);
 	});
 });
+
+describe("selectLinkedVisionStamp · luz da cena", () => {
+	const chars = [
+		{ id: "a", system: "dnd5e", visionDistance: 30, darkvisionDistance: 60 }, // 6 e 12
+		{ id: "b", system: "dnd5e", visionDistance: 60 }, // 12, sem visão no escuro
+		{ id: "c", system: "dnd5e" }, // nada
+	];
+
+	it("clara: o maior de cada ficha; quem não definiu nada fica de fora", () => {
+		const m = parseVisionStamp(
+			selectLinkedVisionStamp(chars, "a|b|c", "bright"),
+		);
+		expect([...m.entries()]).toEqual([
+			["a", 12],
+			["b", 12],
+		]);
+	});
+
+	it("escura: visão no escuro; sem ela, 1 casa (inclusive quem não definiu nada)", () => {
+		const m = parseVisionStamp(selectLinkedVisionStamp(chars, "a|b|c", "dark"));
+		expect([...m.entries()]).toEqual([
+			["a", 12],
+			["b", 1],
+			["c", 1],
+		]);
+	});
+
+	it("o padrão é a cena clara (compatível com o uso anterior)", () => {
+		expect(selectLinkedVisionStamp(chars, "a|b")).toBe(
+			selectLinkedVisionStamp(chars, "a|b", "bright"),
+		);
+	});
+
+	it("trocar a luz muda o selo (a visão é recalculada)", () => {
+		expect(selectLinkedVisionStamp(chars, "b", "bright")).not.toBe(
+			selectLinkedVisionStamp(chars, "b", "dark"),
+		);
+	});
+});

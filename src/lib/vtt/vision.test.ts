@@ -264,7 +264,14 @@ describe("visibilityPolygon · paredes bloqueiam", () => {
 });
 
 import { visibleTokenIds } from "./token-motion";
-import { characterVisionCells, isSeenByAny } from "./vision";
+import {
+	characterDarkvisionCells,
+	characterVisionCells,
+	isSeenByAny,
+	NO_DARKVISION_CELLS,
+	resolveTokenVisionCells,
+	sheetVisionCells,
+} from "./vision";
 
 describe("characterVisionCells · visão da ficha em casas", () => {
 	it("D&D em pés: 60 pés = 12 casas; em metros: 18 m = 12 casas", () => {
@@ -361,5 +368,99 @@ describe("visibleTokenIds · monstros atrás de parede somem para o jogador", ()
 		expect(visibleTokenIds(tokens, false, scene, { sources })).toBe(
 			"pc|near|far",
 		);
+	});
+});
+
+describe("visão com a luz da cena", () => {
+	const both = { visionDistance: 30, darkvisionDistance: 60 }; // 6 e 12 casas (pés)
+	const onlyNormal = { visionDistance: 30 };
+	const onlyDark = { darkvisionDistance: 60 };
+
+	it("darkvision lida na mesma unidade da visão normal", () => {
+		expect(
+			characterDarkvisionCells({ darkvisionDistance: 60 }, "ft"),
+		).toBeCloseTo(12, 6);
+		expect(
+			characterDarkvisionCells(
+				{ darkvisionDistance: 18, speedUnit: "m" },
+				"ft",
+			),
+		).toBeCloseTo(12, 6);
+		expect(characterDarkvisionCells({}, "ft")).toBeUndefined();
+		expect(
+			characterDarkvisionCells({ darkvisionDistance: 0 }, "ft"),
+		).toBeUndefined();
+	});
+
+	it("cena CLARA: vale o maior entre a visão normal e a no escuro", () => {
+		expect(sheetVisionCells(both, "ft", "bright")).toBeCloseTo(12, 6);
+		expect(
+			sheetVisionCells(
+				{ visionDistance: 90, darkvisionDistance: 30 },
+				"ft",
+				"bright",
+			),
+		).toBeCloseTo(18, 6);
+		expect(sheetVisionCells(onlyNormal, "ft", "bright")).toBeCloseTo(6, 6);
+		expect(sheetVisionCells(onlyDark, "ft", "bright")).toBeCloseTo(12, 6);
+	});
+
+	it("cena CLARA sem nada na ficha: o token decide (undefined)", () => {
+		expect(sheetVisionCells({}, "ft", "bright")).toBeUndefined();
+	});
+
+	it("cena ESCURA: só vale a visão no escuro", () => {
+		expect(sheetVisionCells(both, "ft", "dark")).toBeCloseTo(12, 6);
+		expect(sheetVisionCells(onlyDark, "ft", "dark")).toBeCloseTo(12, 6);
+	});
+
+	it("cena ESCURA sem visão no escuro: só a casa ao lado, mesmo com visão normal grande", () => {
+		expect(sheetVisionCells(onlyNormal, "ft", "dark")).toBe(
+			NO_DARKVISION_CELLS,
+		);
+		expect(sheetVisionCells({ visionDistance: 300 }, "ft", "dark")).toBe(1);
+		expect(sheetVisionCells({}, "ft", "dark")).toBe(1);
+	});
+
+	it("a unidade da ficha vale nas duas visões", () => {
+		const metric = {
+			visionDistance: 9,
+			darkvisionDistance: 18,
+			speedUnit: "m",
+		};
+		expect(sheetVisionCells(metric, "ft", "bright")).toBeCloseTo(12, 6);
+		expect(sheetVisionCells(metric, "ft", "dark")).toBeCloseTo(12, 6);
+	});
+});
+
+describe("resolveTokenVisionCells", () => {
+	const sheet = new Map([["dante", 12]]);
+
+	it("token com ficha usa o alcance dela, clara ou escura", () => {
+		expect(
+			resolveTokenVisionCells({ characterId: "dante" }, sheet, "bright"),
+		).toBe(12);
+		expect(
+			resolveTokenVisionCells({ characterId: "dante" }, sheet, "dark"),
+		).toBe(12);
+	});
+
+	it("token sem ficha: na cena clara o do token; na escura, a casa ao lado", () => {
+		expect(resolveTokenVisionCells({}, sheet, "bright")).toBeUndefined();
+		expect(resolveTokenVisionCells({}, sheet, "dark")).toBe(
+			NO_DARKVISION_CELLS,
+		);
+		expect(resolveTokenVisionCells({ characterId: null }, sheet, "dark")).toBe(
+			1,
+		);
+	});
+
+	it("ficha ainda não carregada na cena escura também só vê a casa ao lado", () => {
+		expect(
+			resolveTokenVisionCells({ characterId: "outro" }, sheet, "dark"),
+		).toBe(1);
+		expect(
+			resolveTokenVisionCells({ characterId: "outro" }, sheet, "bright"),
+		).toBeUndefined();
 	});
 });

@@ -7,6 +7,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "./types";
+import { toLightLevel } from "./vision";
 export function mapSceneRow(
 	row: Database["public"]["Tables"]["vtt_scenes"]["Row"],
 ): VTTScene {
@@ -28,6 +29,7 @@ export function mapSceneRow(
 		height: row.height,
 		fogEnabled: row.fog_enabled,
 		fogExploration: row.fog_exploration,
+		lightLevel: toLightLevel(row.light_level),
 		isActive: row.is_active,
 		orderIndex: row.order_index,
 		createdAt: row.created_at,

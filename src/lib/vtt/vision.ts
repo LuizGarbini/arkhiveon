@@ -81,6 +81,73 @@ export function characterVisionCells(
 	return cells !== null && cells > 0 ? cells : undefined;
 }
 
+/** Luz da cena: na escura só vale a visão no escuro. */
+export type LightLevel = "bright" | "dark";
+
+/** Valor vindo do banco (ou de um rascunho) → luz válida; o resto é cena clara. */
+export function toLightLevel(value: unknown): LightLevel {
+	return value === "dark" ? "dark" : "bright";
+}
+
+/**
+ * No escuro, quem não tem visão no escuro só distingue o que está colado nele
+ * (1 casa). Sem isso o personagem ficaria cego e sem como se orientar.
+ */
+export const NO_DARKVISION_CELLS = 1;
+
+/** Visão no escuro da ficha, em casas (mesma conversão da visão normal). */
+export function characterDarkvisionCells(
+	character: { darkvisionDistance?: unknown; speedUnit?: unknown },
+	systemUnit: string,
+): number | undefined {
+	return characterVisionCells(
+		{
+			visionDistance: character.darkvisionDistance,
+			speedUnit: character.speedUnit,
+		},
+		systemUnit,
+	);
+}
+
+/**
+ * Quanto a ficha enxerga, em casas, na luz da cena.
+ *  - Cena clara: o maior entre a visão normal e a visão no escuro (quem tem
+ *    visão no escuro não enxerga menos na luz).
+ *  - Cena escura: a visão no escuro; sem ela, só a casa ao lado.
+ * `undefined` na cena clara quando a ficha não define nada (vale o do token).
+ */
+export function sheetVisionCells(
+	character: {
+		visionDistance?: unknown;
+		darkvisionDistance?: unknown;
+		speedUnit?: unknown;
+	},
+	systemUnit: string,
+	light: LightLevel,
+): number | undefined {
+	const normal = characterVisionCells(character, systemUnit);
+	const dark = characterDarkvisionCells(character, systemUnit);
+	if (light === "dark") return dark ?? NO_DARKVISION_CELLS;
+	if (normal === undefined && dark === undefined) return undefined;
+	return Math.max(normal ?? 0, dark ?? 0);
+}
+
+/**
+ * Alcance (em casas) de um token na luz da cena, vindo da ficha quando há.
+ * Token sem ficha, no escuro, também só vê a casa ao lado.
+ */
+export function resolveTokenVisionCells(
+	token: { characterId?: string | null },
+	sheetCells: ReadonlyMap<string, number>,
+	light: LightLevel,
+): number | undefined {
+	const fromSheet = token.characterId
+		? sheetCells.get(token.characterId)
+		: undefined;
+	if (fromSheet !== undefined) return fromSheet;
+	return light === "dark" ? NO_DARKVISION_CELLS : undefined;
+}
+
 /**
  * Alguém que enxerga vê este ponto? Precisa estar no alcance E sem parede no
  * meio. É a regra única para esconder monstros fora da visão.

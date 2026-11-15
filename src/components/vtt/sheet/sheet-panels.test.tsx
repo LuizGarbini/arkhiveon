@@ -97,7 +97,12 @@ function rolls(): SheetRolls & {
 	return { rolling: false, check: vi.fn(), formula: vi.fn() };
 }
 
-const resourcesApi = () => ({ canEdit: true, isStaff: false, save: vi.fn() });
+const resourcesApi = () => ({
+	canEdit: true,
+	isStaff: false,
+	save: vi.fn(),
+	saveVision: vi.fn(),
+});
 
 describe("SheetTabs", () => {
 	function Harness() {
@@ -383,17 +388,6 @@ describe("SummaryTab", () => {
 		renderSummary(character(), rolls(), "ft");
 		const stat = screen.getByText("Desloc.").previousElementSibling;
 		expect(stat?.textContent).toBe("40ft");
-	});
-
-	it("visão da ficha aparece na unidade da cena (18 m → 60 ft)", () => {
-		renderSummary(character({ visionDistance: 18 }), rolls(), "ft");
-		const stat = screen.getByText("Visão").previousElementSibling;
-		expect(stat?.textContent).toBe("60ft");
-	});
-
-	it("sem visão definida na ficha, o resumo não mostra o campo", () => {
-		renderSummary(character(), rolls(), "ft");
-		expect(screen.queryByText("Visão")).toBeNull();
 	});
 
 	it("outros sistemas não mostram salvaguardas", () => {

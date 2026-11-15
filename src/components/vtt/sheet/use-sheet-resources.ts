@@ -4,6 +4,7 @@ import {
 	type ResourceChanges,
 	saveCharacterResources,
 } from "@/lib/character-resources";
+import { saveCharacterVision, type VisionValues } from "@/lib/character-vision";
 import type { Character } from "@/lib/store/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -14,6 +15,8 @@ export interface SheetResourceApi {
 	isStaff: boolean;
 	/** Muda os recursos: a tela muda na hora; se falhar, volta e avisa. */
 	save: (changes: ResourceChanges) => void;
+	/** Muda a visão (na luz e no escuro); mesma regra de quem pode editar. */
+	saveVision: (values: VisionValues) => void;
 }
 
 /**
@@ -40,6 +43,14 @@ export function useSheetResources(
 			}).then((result) => {
 				if (!result.ok) toast.error({ title: result.message });
 			});
+		},
+		saveVision: (values) => {
+			if (!character || !canEdit) return;
+			void saveCharacterVision({ characterId: character.id, values }).then(
+				(result) => {
+					if (!result.ok) toast.error({ title: result.message });
+				},
+			);
 		},
 	};
 }

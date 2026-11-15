@@ -91,6 +91,30 @@ describe("Character Sheet Form & Domain Contract", () => {
 			expect(clean(Number.POSITIVE_INFINITY)).toBeUndefined();
 		});
 
+		it("visão no escuro segue as mesmas regras da visão normal", () => {
+			const clean = (darkvisionDistance: unknown) =>
+				sanitizeCharacterFormValues(
+					{ darkvisionDistance } as unknown as CharacterFormValues,
+					{ emptyToZero: true },
+				).darkvisionDistance;
+			expect(clean(60)).toBe(60);
+			expect(clean(7.46)).toBe(7.5);
+			expect(clean(0)).toBeUndefined();
+			expect(clean(-1)).toBeUndefined();
+			expect(clean(Number.NaN)).toBeUndefined();
+			expect(clean("60")).toBeUndefined();
+			expect(clean(99999)).toBe(1000);
+		});
+
+		it("as duas visões são independentes", () => {
+			const out = sanitizeCharacterFormValues(
+				{ visionDistance: 30 } as unknown as CharacterFormValues,
+				{ emptyToZero: true },
+			);
+			expect(out.visionDistance).toBe(30);
+			expect(out.darkvisionDistance).toBeUndefined();
+		});
+
 		it("visão absurda é limitada a 1000", () => {
 			const out = sanitizeCharacterFormValues(
 				{ visionDistance: 99999 } as unknown as CharacterFormValues,

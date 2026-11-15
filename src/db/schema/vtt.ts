@@ -37,6 +37,7 @@ export const vttScenes = pgTable(
 		height: integer("height").notNull().default(4000),
 		fogEnabled: boolean("fog_enabled").notNull().default(false),
 		fogExploration: boolean("fog_exploration").notNull().default(true),
+		lightLevel: text("light_level").notNull().default("bright"),
 		isActive: boolean("is_active").notNull().default(false),
 		orderIndex: integer("order_index").notNull().default(0),
 		createdAt: timestamp("created_at", { withTimezone: true })

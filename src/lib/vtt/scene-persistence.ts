@@ -8,7 +8,7 @@ import type { EntityScope } from "./persistence-reconcile";
 import type { VTTScene, VTTSceneSettingsPatch } from "./types";
 
 export type ScenePatch = VTTSceneSettingsPatch &
-	Partial<Pick<VTTScene, "fogEnabled" | "fogExploration">>;
+	Partial<Pick<VTTScene, "fogEnabled" | "fogExploration" | "lightLevel">>;
 export interface SceneScaleGate {
 	isScaleLocked(sceneId: string): boolean;
 }
@@ -60,6 +60,7 @@ const MAPPING = [
 	["gridOffsetY", "grid_offset_y"],
 	["fogEnabled", "fog_enabled"],
 	["fogExploration", "fog_exploration"],
+	["lightLevel", "light_level"],
 ] as const;
 function assign(target: object, field: keyof ScenePatch, value: unknown): void {
 	Object.assign(target, { [field]: value });

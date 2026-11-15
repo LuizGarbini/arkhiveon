@@ -91,6 +91,18 @@ describe("P2a — contrato puro", () => {
 		expect(scenePatchFromDb(scenePatchToDb(patch))).toEqual(patch);
 	});
 
+	it("a luz da cena vai e volta pelo mesmo patch (light_level)", () => {
+		expect(scenePatchToDb({ lightLevel: "dark" })).toEqual({
+			light_level: "dark",
+		});
+		expect(scenePatchFromDb({ light_level: "dark" })).toEqual({
+			lightLevel: "dark",
+		});
+		expect(scenePatchFromDb(scenePatchToDb({ lightLevel: "bright" }))).toEqual({
+			lightLevel: "bright",
+		});
+	});
+
 	it("emite a todos os inscritos e mantém o snapshot vazio estável", async () => {
 		const { adapter } = setup();
 		const unknown = adapter.getSceneSnapshot("não-instalada");

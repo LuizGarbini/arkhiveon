@@ -64,6 +64,7 @@ const api = (over: Partial<SheetResourceApi> = {}) => ({
 	canEdit: true,
 	isStaff: false,
 	save: vi.fn(),
+	saveVision: vi.fn(),
 	...over,
 });
 const slots = (over = {}) => ({

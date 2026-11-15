@@ -93,7 +93,9 @@ export function changedResources(
 
 type RpcErrorLike = { code?: string | null; message?: string | null };
 
-function toFailure(error: unknown): Extract<ResourceSaveResult, { ok: false }> {
+export function toFailure(
+	error: unknown,
+): Extract<ResourceSaveResult, { ok: false }> {
 	const e = (error ?? {}) as RpcErrorLike;
 	if (e.code === "offline") {
 		return {

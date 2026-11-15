@@ -1,5 +1,5 @@
 import { SYSTEM_CONFIG } from "@/lib/systems";
-import { characterVisionCells } from "./vision";
+import { type LightLevel, sheetVisionCells } from "./vision";
 
 /**
  * Ponte ficha → mesa. Fica fora de vision.ts de propósito: precisa da unidade
@@ -11,6 +11,7 @@ interface SheetVisionCharacter {
 	id: string;
 	system?: string;
 	visionDistance?: unknown;
+	darkvisionDistance?: unknown;
 	speedUnit?: unknown;
 }
 
@@ -22,6 +23,7 @@ interface SheetVisionCharacter {
 export function selectLinkedVisionStamp(
 	characters: readonly SheetVisionCharacter[],
 	characterIds: string,
+	light: LightLevel = "bright",
 ): string {
 	if (!characterIds) return "";
 	const wanted = new Set(characterIds.split("|"));
@@ -32,7 +34,7 @@ export function selectLinkedVisionStamp(
 			(SYSTEM_CONFIG as Record<string, { speedUnit: string } | undefined>)[
 				character.system ?? ""
 			]?.speedUnit ?? "ft";
-		const cells = characterVisionCells(character, systemUnit);
+		const cells = sheetVisionCells(character, systemUnit, light);
 		if (cells !== undefined)
 			stamp += `${character.id}:${Math.round(cells * 100) / 100};`;
 	}

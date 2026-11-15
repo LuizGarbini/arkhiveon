@@ -99,6 +99,7 @@ import type {
 	VTTToken,
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
+import { toLightLevel } from "@/lib/vtt/vision";
 import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls } from "@/lib/vtt/wall-sync";
 
@@ -523,6 +524,7 @@ function VTTSession() {
 								height: row.height,
 								fogEnabled: row.fog_enabled,
 								fogExploration: row.fog_exploration,
+								lightLevel: toLightLevel(row.light_level),
 								isActive: row.is_active,
 								orderIndex: row.order_index,
 							}),
@@ -550,6 +552,7 @@ function VTTSession() {
 								height: row.height,
 								fogEnabled: row.fog_enabled,
 								fogExploration: row.fog_exploration,
+								lightLevel: toLightLevel(row.light_level),
 								isActive: row.is_active,
 							}),
 						);
@@ -1337,6 +1340,7 @@ function VTTSession() {
 				height: data.height,
 				fogEnabled: data.fog_enabled,
 				fogExploration: data.fog_exploration,
+				lightLevel: toLightLevel(data.light_level),
 				isActive: data.is_active,
 				orderIndex: data.order_index,
 				createdAt: data.created_at,

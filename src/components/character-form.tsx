@@ -961,7 +961,7 @@ function CombatSection({
 				</Field>
 				<Field
 					label={`Visão (${config.speedUnit})`}
-					hint="Até onde enxerga na mesa. Vazio: 6 casas"
+					hint="Na luz. Vazio: 6 casas"
 				>
 					<Input
 						type="number"
@@ -969,6 +969,23 @@ function CombatSection({
 						min={0}
 						placeholder={config.speedUnit === "ft" ? "60" : "18"}
 						{...register("visionDistance", {
+							setValueAs: (value) =>
+								value === "" || value == null || Number.isNaN(Number(value))
+									? undefined
+									: Number(value),
+						})}
+					/>
+				</Field>
+				<Field
+					label={`Visão no escuro (${config.speedUnit})`}
+					hint="Numa cena escura, só vale esta. Vazio: 1 casa"
+				>
+					<Input
+						type="number"
+						inputMode="decimal"
+						min={0}
+						placeholder={config.speedUnit === "ft" ? "60" : "18"}
+						{...register("darkvisionDistance", {
 							setValueAs: (value) =>
 								value === "" || value == null || Number.isNaN(Number(value))
 									? undefined

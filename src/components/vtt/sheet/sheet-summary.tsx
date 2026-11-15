@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { abilityModifier } from "@/lib/vtt/combat";
 import { SheetResources } from "./sheet-resources";
 import type { SheetRolls } from "./sheet-types";
+import { VisionSection } from "./sheet-vision";
 import type { SheetResourceApi } from "./use-sheet-resources";
 
 /** "12m" → número e unidade pequena ao lado ("12ft", "6sq"). */
@@ -108,16 +109,6 @@ export function SummaryTab({
 						)}
 						label="Desloc."
 					/>
-					{character.visionDistance && character.visionDistance > 0 ? (
-						<Vital
-							value={formatSpeed(
-								character.visionDistance,
-								speedUnitOf(character, config.speedUnit),
-								sceneUnit,
-							)}
-							label="Visão"
-						/>
-					) : null}
 					{showPassive ? (
 						<Vital
 							value={String(
@@ -137,6 +128,13 @@ export function SummaryTab({
 					) : null}
 				</div>
 			</dl>
+
+			<VisionSection
+				character={character}
+				config={config}
+				sceneUnit={sceneUnit}
+				resources={resources}
+			/>
 
 			<section aria-label="Atributos">
 				<div className="mb-2 flex items-baseline justify-between">

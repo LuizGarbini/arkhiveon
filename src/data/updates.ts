@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.91-vtt-luz-visao-escuro",
+		version: "1.6.91",
+		date: "15/11/2026",
+		title: "Visão no escuro e luz da cena",
+		description:
+			"A ficha agora tem Visão (na luz) e Visão no escuro. Na mesa, o mestre escolhe se a cena é Clara ou Escura no painel da névoa (com o modo Exploração ligado): na escura, cada personagem só enxerga até a sua visão no escuro e, sem ela, apenas a casa ao lado. Na clara vale o maior alcance entre os dois. Dá para editar a visão direto no resumo da ficha, na mesa: mestre, co-mestre e quem criou a ficha. Também corrigi um defeito em que a visão de dois personagens próximos se sobrepunha e deixava a área escurecida mesmo dentro do alcance.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.90-vtt-memoria-exploracao",
 		version: "1.6.90",
 		date: "15/11/2026",

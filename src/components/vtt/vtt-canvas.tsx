@@ -128,6 +128,8 @@ import type {
 import {
 	flattenPolygon,
 	isSeenByAny,
+	resolveTokenVisionCells,
+	toLightLevel,
 	visibilityPolygon,
 	visionKey,
 	visionSources,
@@ -311,6 +313,7 @@ export function VTTCanvas({
 	const gmTokensLayerRef = useRef<Container | null>(null);
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
 	const visionMaskRef = useRef<Graphics | null>(null);
+	const penumbraMaskRef = useRef<Graphics | null>(null);
 	const fogOfWarLayerRef = useRef<Container | null>(null);
 	const fogSpriteRef = useRef<Sprite | null>(null);
 	const fogTextureRef = useRef<RenderTexture | null>(null);
@@ -528,8 +531,10 @@ export function VTTCanvas({
 	// bloqueiam. A lista só é lida pelos efeitos via ref; o que dispara refazer a
 	// névoa é a assinatura (visionSig), não qualquer token da mesa se mexer.
 	const walls = useVTTStore((s) => s.walls);
+	// Cena escura: só vale a visão no escuro da ficha (sem ela, 1 casa).
+	const sceneLight = toLightLevel(scene?.lightLevel);
 	const sheetVisionStamp = useRPGStore((s) =>
-		selectLinkedVisionStamp(s.characters, linkedCharacterIds),
+		selectLinkedVisionStamp(s.characters, linkedCharacterIds, sceneLight),
 	);
 	const sheetVision = useMemo(
 		() => parseVisionStamp(sheetVisionStamp),
@@ -539,9 +544,9 @@ export function VTTCanvas({
 	const visionList = useMemo(
 		() =>
 			visionSources(tokens, visionCell, (token) =>
-				token.characterId ? sheetVision.get(token.characterId) : undefined,
+				resolveTokenVisionCells(token, sheetVision, sceneLight),
 			),
-		[tokens, visionCell, sheetVision],
+		[tokens, visionCell, sheetVision, sceneLight],
 	);
 	const visionListRef = useRef(visionList);
 	visionListRef.current = visionList;
@@ -634,6 +639,13 @@ export function VTTCanvas({
 			const visionMask = new Graphics();
 			visionMaskRef.current = visionMask;
 			world.addChild(visionMask);
+
+			// Máscara da penumbra: só o que se enxerga AGORA (a da névoa também leva o
+			// que já foi explorado). Recortar com cut() quebrava quando as visões de
+			// dois personagens se sobrepunham.
+			const penumbraMask = new Graphics();
+			penumbraMaskRef.current = penumbraMask;
+			world.addChild(penumbraMask);
 
 			const fogBrushPreviewLayer = new Graphics();
 			fogBrushPreviewLayerRef.current = fogBrushPreviewLayer;
@@ -1492,11 +1504,14 @@ export function VTTCanvas({
 		const layer = fogExplorationLayerRef.current;
 		const fogLayer = fogOfWarLayerRef.current;
 		const mask = visionMaskRef.current;
-		if (!layer || !fogLayer || !mask) return;
+		const penumbraMask = penumbraMaskRef.current;
+		if (!layer || !fogLayer || !mask || !penumbraMask) return;
 		layer.clear();
 		mask.clear();
+		penumbraMask.clear();
 		if (!sceneFogEnabled || !sceneFogExploration || !sceneId) {
 			layer.visible = false;
+			layer.mask = null;
 			fogLayer.mask = null;
 			return;
 		}
@@ -1536,6 +1551,7 @@ export function VTTCanvas({
 
 		if (isGM) {
 			layer.visible = false;
+			layer.mask = null;
 			fogLayer.mask = null;
 			return;
 		}
@@ -1554,14 +1570,15 @@ export function VTTCanvas({
 		for (const polygon of polygons) {
 			const flat = flattenPolygon(polygon.points);
 			if (flat.length < 6) continue;
-			layer.beginPath();
-			layer.poly(flat, true);
-			layer.cut();
 			mask.poly(flat, true);
+			penumbraMask.poly(flat, true);
 		}
 		mask.fill(0xffffff);
-		// Máscara invertida: a névoa opaca fica só FORA do que se enxerga.
+		penumbraMask.fill(0xffffff);
+		// Máscaras invertidas: a névoa opaca e a penumbra ficam só FORA do que se
+		// enxerga (a névoa também libera o que o grupo já explorou).
 		fogLayer.setMask({ mask, inverse: true });
+		layer.setMask({ mask: penumbraMask, inverse: true });
 	}, [
 		rendererReady,
 		sceneFogEnabled,

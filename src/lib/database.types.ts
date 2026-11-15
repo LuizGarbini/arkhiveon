@@ -1227,6 +1227,7 @@ export type Database = {
 					created_at: string;
 					fog_enabled: boolean;
 					fog_exploration: boolean;
+					light_level: string;
 					grid_color: string;
 					grid_offset_x: number;
 					grid_offset_y: number;
@@ -1252,6 +1253,7 @@ export type Database = {
 					created_at?: string;
 					fog_enabled?: boolean;
 					fog_exploration?: boolean;
+					light_level?: string;
 					grid_color?: string;
 					grid_offset_x?: number;
 					grid_offset_y?: number;
@@ -1277,6 +1279,7 @@ export type Database = {
 					created_at?: string;
 					fog_enabled?: boolean;
 					fog_exploration?: boolean;
+					light_level?: string;
 					grid_color?: string;
 					grid_offset_x?: number;
 					grid_offset_y?: number;
@@ -1826,6 +1829,14 @@ export type Database = {
 			};
 			set_character_resources: {
 				Args: { p_character_id: string; p_changes: Json };
+				Returns: Json;
+			};
+			set_character_vision: {
+				Args: {
+					p_character_id: string;
+					p_vision: number | null;
+					p_darkvision: number | null;
+				};
 				Returns: Json;
 			};
 			get_scene_explored: {

@@ -241,6 +241,12 @@ export interface Character {
 	 * respeitando as paredes. Ausente: vale o alcance do token (6 casas).
 	 */
 	visionDistance?: number;
+	/**
+	 * Até onde enxerga no escuro (D&D: visão no escuro), na mesma unidade do
+	 * deslocamento. Numa cena escura da mesa vale ESTE alcance; sem ele, só a
+	 * casa ao lado. Na cena clara vale o maior entre os dois.
+	 */
+	darkvisionDistance?: number;
 	proficiencyBonus: number;
 	hitDice: string;
 	deathSaves: { successes: number; failures: number };

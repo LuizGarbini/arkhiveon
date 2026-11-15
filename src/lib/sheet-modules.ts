@@ -133,6 +133,7 @@ export function createDefaultSheetLayout(
 				"speed",
 				"speedUnit",
 				"visionDistance",
+				"darkvisionDistance",
 			],
 		}),
 		moduleConfig("inventory", 40, "main", {
