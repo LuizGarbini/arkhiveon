@@ -4,9 +4,14 @@ import { useVTTStore } from "./vtt-store";
 import {
 	draftToWalls,
 	invertWallOp,
+	isDoor,
 	isMissingWallsTable,
+	mapWallRow,
+	patchWalls,
 	type VTTWall,
+	type WallKind,
 	type WallOp,
+	withWallKind,
 } from "./walls";
 
 /**
@@ -32,7 +37,7 @@ export async function loadWalls(
 	store.setWallsStatus("loading");
 	const { data, error } = await client
 		.from("vtt_walls")
-		.select("id, scene_id, x1, y1, x2, y2")
+		.select("id, scene_id, x1, y1, x2, y2, kind, is_open")
 		.eq("scene_id", sceneId)
 		.order("created_at", { ascending: true });
 	const now = useVTTStore.getState();
@@ -47,16 +52,7 @@ export async function loadWalls(
 		now.setWallsStatus(isMissingWallsTable(error) ? "missing" : "error");
 		return;
 	}
-	now.setWalls(
-		(data ?? []).map((r) => ({
-			id: r.id,
-			sceneId: r.scene_id,
-			x1: Number(r.x1),
-			y1: Number(r.y1),
-			x2: Number(r.x2),
-			y2: Number(r.y2),
-		})),
-	);
+	now.setWalls((data ?? []).map(mapWallRow));
 	now.setWallsStatus("ready");
 }
 
@@ -73,6 +69,8 @@ async function persist(op: WallOp): Promise<boolean> {
 					y1: w.y1,
 					x2: w.x2,
 					y2: w.y2,
+					kind: w.kind ?? "wall",
+					is_open: w.kind === "door" && w.isOpen === true,
 				})),
 			);
 			return !error;
@@ -148,7 +146,7 @@ export function finishWallDraft(): void {
 	const points = store.wallDraft;
 	store.setWallDraft([]);
 	if (!sceneId || points.length < 2) return;
-	const walls = draftToWalls(points, sceneId, newWallId);
+	const walls = draftToWalls(points, sceneId, newWallId, store.wallKind);
 	if (walls.length > 0) void runWallOp({ kind: "create", walls }, "do");
 }
 
@@ -208,4 +206,107 @@ export function handleWallKey(e: KeyboardEvent): boolean {
 		return true;
 	}
 	return false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Portas                                                              */
+/* ------------------------------------------------------------------ */
+
+function doorErrorMessage(error: unknown): string {
+	const e = (error ?? {}) as { code?: string | null; message?: string | null };
+	if (e.code === "PGRST202" || e.code === "42883")
+		return "Portas ainda não estão disponíveis no servidor.";
+	if (e.code === "42501")
+		return e.message || "Você não pode abrir esta porta agora.";
+	if (e.code === "P0002") return "Essa porta não existe mais.";
+	return "A porta voltou ao que estava.";
+}
+
+function setDoorLocal(wallId: string, open: boolean): void {
+	const store = useVTTStore.getState();
+	store.setWalls(
+		patchWalls(store.walls, new Set([wallId]), (w) => ({ ...w, isOpen: open })),
+	);
+}
+
+/**
+ * Abre ou fecha uma porta: a tela muda na hora (a visão do mapa acompanha) e a
+ * função do banco confirma. Se o servidor recusar, a porta volta e um aviso diz
+ * por quê. Não desfaz se outra pessoa mexeu na mesma porta nesse meio tempo.
+ */
+export async function toggleDoor(
+	wallId: string,
+	open: boolean,
+): Promise<boolean> {
+	const door = useVTTStore.getState().walls.find((w) => w.id === wallId);
+	if (!door || !isDoor(door)) return false;
+	const previous = door.isOpen === true;
+	if (previous === open) return true;
+
+	setDoorLocal(wallId, open);
+	try {
+		const client = getSupabase();
+		if (!client) throw { code: "offline" };
+		const { error } = await client.rpc("toggle_wall_door", {
+			p_wall_id: wallId,
+			p_open: open,
+		});
+		if (error) throw error;
+		return true;
+	} catch (error) {
+		const now = useVTTStore.getState().walls.find((w) => w.id === wallId);
+		if (now && now.isOpen === open) setDoorLocal(wallId, previous);
+		showToast("error", {
+			title: open
+				? "Não foi possível abrir a porta"
+				: "Não foi possível fechar a porta",
+			description: doorErrorMessage(error),
+		});
+		return false;
+	}
+}
+
+/**
+ * Mestre: troca o tipo das paredes escolhidas (parede ↔ porta). A porta nasce
+ * fechada e a parede perde o estado. Otimista, com volta se o banco recusar.
+ */
+export async function setWallsKind(
+	ids: readonly string[],
+	kind: WallKind,
+): Promise<boolean> {
+	if (ids.length === 0) return true;
+	const store = useVTTStore.getState();
+	const wanted = new Set(ids);
+	const before = store.walls.filter((w) => wanted.has(w.id));
+	const changing = before.filter((w) => isDoor(w) !== (kind === "door"));
+	if (changing.length === 0) return true;
+	const targets = new Set(changing.map((w) => w.id));
+
+	store.setWalls(
+		patchWalls(store.walls, targets, (w) => withWallKind(w, kind)),
+	);
+	try {
+		const client = getSupabase();
+		if (!client) throw { code: "offline" };
+		const { error } = await client
+			.from("vtt_walls")
+			.update({ kind, is_open: false })
+			.in("id", [...targets]);
+		if (error) throw error;
+		return true;
+	} catch {
+		const now = useVTTStore.getState();
+		const original = new Map(changing.map((w) => [w.id, w]));
+		now.setWalls(
+			patchWalls(now.walls, targets, (w) => original.get(w.id) ?? w),
+		);
+		showToast("error", {
+			title:
+				kind === "door"
+					? "Não foi possível transformar em porta"
+					: "Não foi possível transformar em parede",
+			description: "As paredes voltaram ao que estavam.",
+		});
+		return false;
+	}
 }

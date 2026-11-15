@@ -1,5 +1,8 @@
 import type { VTTGridType } from "./types";
 
+/** Parede comum ou porta (a porta abre e fecha; a parede nunca). */
+export type WallKind = "wall" | "door";
+
 /** Um segmento de parede (coordenadas do mundo da cena). */
 export interface VTTWall {
 	id: string;
@@ -8,6 +11,50 @@ export interface VTTWall {
 	y1: number;
 	x2: number;
 	y2: number;
+	/** Sem `kind`, é parede comum (era o único tipo antes da 0073). */
+	kind?: WallKind;
+	/** Só vale para porta: aberta deixa ver e passar. */
+	isOpen?: boolean;
+}
+
+export function isDoor(wall: Pick<VTTWall, "kind">): boolean {
+	return wall.kind === "door";
+}
+
+/** Parede e porta fechada bloqueiam a visão e o movimento; porta aberta, não. */
+export function blocksSight(wall: Pick<VTTWall, "kind" | "isOpen">): boolean {
+	return !(isDoor(wall) && wall.isOpen === true);
+}
+
+/** Só o que bloqueia agora (é o que entra na visão e na checagem de movimento). */
+export function blockingWalls<T extends Pick<VTTWall, "kind" | "isOpen">>(
+	walls: readonly T[],
+): T[] {
+	return walls.filter(blocksSight);
+}
+
+/** A porta mais próxima do ponto dentro da tolerância, ou null. */
+export function hitTestDoor(
+	walls: readonly VTTWall[],
+	p: WallPoint,
+	tolerance: number,
+): VTTWall | null {
+	const id = hitTestWall(walls.filter(isDoor), p, tolerance);
+	return id ? (walls.find((w) => w.id === id) ?? null) : null;
+}
+
+/** Alcance para abrir uma porta, em casas da grade (do centro do token à porta). */
+export const DOOR_REACH_CELLS = 1.5;
+
+/** Algum dos pontos (tokens do jogador) está perto o bastante da porta? */
+export function doorWithinReach(
+	door: Pick<VTTWall, "x1" | "y1" | "x2" | "y2">,
+	points: readonly WallPoint[],
+	gridSize: number,
+	reachCells: number = DOOR_REACH_CELLS,
+): boolean {
+	const reach = (gridSize > 0 ? gridSize : 70) * reachCells;
+	return points.some((p) => distanceToSegment(p, door) <= reach);
 }
 
 export interface WallPoint {
@@ -79,13 +126,27 @@ export function draftToWalls(
 	points: readonly WallPoint[],
 	sceneId: string,
 	newId: () => string,
+	kind: WallKind = "wall",
 ): VTTWall[] {
 	const out: VTTWall[] = [];
 	for (let i = 1; i < points.length; i++) {
 		const a = points[i - 1];
 		const b = points[i];
 		if (a.x === b.x && a.y === b.y) continue;
-		out.push({ id: newId(), sceneId, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+		const wall: VTTWall = {
+			id: newId(),
+			sceneId,
+			x1: a.x,
+			y1: a.y,
+			x2: b.x,
+			y2: b.y,
+		};
+		// Parede comum fica sem `kind` (igual a antes); porta nasce fechada.
+		if (kind === "door") {
+			wall.kind = "door";
+			wall.isOpen = false;
+		}
+		out.push(wall);
 	}
 	return out;
 }
@@ -111,4 +172,46 @@ export function isMissingWallsTable(
 		/vtt_walls/.test(error.message ?? "") &&
 		/exist|schema cache/i.test(error.message ?? "")
 	);
+}
+
+/** Linha de `vtt_walls` (como o PostgREST devolve) → parede da mesa. */
+export function mapWallRow(row: {
+	id: string;
+	scene_id: string;
+	x1: number | string;
+	y1: number | string;
+	x2: number | string;
+	y2: number | string;
+	kind?: string | null;
+	is_open?: boolean | null;
+}): VTTWall {
+	const wall: VTTWall = {
+		id: row.id,
+		sceneId: row.scene_id,
+		x1: Number(row.x1),
+		y1: Number(row.y1),
+		x2: Number(row.x2),
+		y2: Number(row.y2),
+	};
+	// Parede comum fica sem `kind`; só a porta carrega tipo e estado.
+	if (row.kind === "door") {
+		wall.kind = "door";
+		wall.isOpen = row.is_open === true;
+	}
+	return wall;
+}
+
+/** Aplica uma mudança a algumas paredes (por id) sem mexer nas outras. */
+export function patchWalls(
+	walls: readonly VTTWall[],
+	ids: ReadonlySet<string>,
+	patch: (wall: VTTWall) => VTTWall,
+): VTTWall[] {
+	return walls.map((wall) => (ids.has(wall.id) ? patch(wall) : wall));
+}
+
+/** O que a parede vira ao trocar de tipo: porta nasce fechada; parede perde o estado. */
+export function withWallKind(wall: VTTWall, kind: WallKind): VTTWall {
+	const { kind: _kind, isOpen: _isOpen, ...rest } = wall;
+	return kind === "door" ? { ...rest, kind: "door", isOpen: false } : rest;
 }

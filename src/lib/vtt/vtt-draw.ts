@@ -388,15 +388,74 @@ export const WALL_HANDLE_SIZE = 10;
  * Espessura em unidades do mapa (acompanha o zoom, como a grade), para o zoom
  * não exigir redesenho.
  */
+type DrawableWall = {
+	id: string;
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+	kind?: "wall" | "door";
+	isOpen?: boolean;
+};
+
+// Porta fechada: âmbar escuro; aberta: âmbar claro (é objeto do mapa, não token).
+const DOOR_CLOSED_COLOR = 0xd97706;
+const DOOR_OPEN_COLOR = 0xfbbf24;
+
+/**
+ * Portas, para todo mundo ver (ficam abaixo da névoa: o jogador só vê as que já
+ * revelou). Fechada = batente grosso com um puxador; aberta = os dois batentes,
+ * o vão pontilhado e a folha virada para o lado.
+ */
+export function drawDoors(layer: Graphics, walls: readonly DrawableWall[]) {
+	layer.clear();
+	for (const w of walls) {
+		if (w.kind !== "door") continue;
+		const dx = w.x2 - w.x1;
+		const dy = w.y2 - w.y1;
+		const length = Math.hypot(dx, dy);
+		if (length === 0) continue;
+		if (w.isOpen) {
+			// Vão pontilhado: marca onde a porta fica quando fecha.
+			const dashes = Math.max(2, Math.floor(length / 14));
+			for (let i = 0; i < dashes; i++) {
+				const a = (i + 0.15) / dashes;
+				const b = (i + 0.65) / dashes;
+				layer.moveTo(w.x1 + dx * a, w.y1 + dy * a);
+				layer.lineTo(w.x1 + dx * b, w.y1 + dy * b);
+			}
+			layer.stroke({ width: 2, color: DOOR_OPEN_COLOR, alpha: 0.45 });
+			// Folha aberta: sai do batente do 1º ponto, virada para o lado.
+			const nx = -dy / length;
+			const ny = dx / length;
+			layer.moveTo(w.x1, w.y1);
+			layer.lineTo(w.x1 + nx * length * 0.9, w.y1 + ny * length * 0.9);
+			layer.stroke({
+				width: 4,
+				color: DOOR_OPEN_COLOR,
+				alpha: 0.95,
+				cap: "round",
+			});
+			layer.circle(w.x1, w.y1, 4.5);
+			layer.circle(w.x2, w.y2, 4.5);
+			layer.fill({ color: DOOR_OPEN_COLOR });
+			continue;
+		}
+		layer.moveTo(w.x1, w.y1);
+		layer.lineTo(w.x2, w.y2);
+		layer.stroke({ width: 8, color: DOOR_CLOSED_COLOR, alpha: 1, cap: "butt" });
+		layer.moveTo(w.x1, w.y1);
+		layer.lineTo(w.x2, w.y2);
+		layer.stroke({ width: 3, color: DOOR_OPEN_COLOR, alpha: 0.7, cap: "butt" });
+		// Puxador no meio.
+		layer.circle(w.x1 + dx / 2, w.y1 + dy / 2, 3.5);
+		layer.fill({ color: 0xfef3c7 });
+	}
+}
+
 export function drawWalls(
 	layer: Graphics,
-	walls: readonly {
-		id: string;
-		x1: number;
-		y1: number;
-		x2: number;
-		y2: number;
-	}[],
+	walls: readonly DrawableWall[],
 	selectedIds: readonly string[],
 ) {
 	layer.clear();
@@ -405,6 +464,8 @@ export function drawWalls(
 	let normal = 0;
 	for (const w of walls) {
 		if (selected.has(w.id)) continue;
+		// As portas já são desenhadas por drawDoors; aqui só se destaca a selecionada.
+		if (w.kind === "door") continue;
 		layer.moveTo(w.x1, w.y1);
 		layer.lineTo(w.x2, w.y2);
 		normal++;

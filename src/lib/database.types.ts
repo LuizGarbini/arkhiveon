@@ -1482,6 +1482,7 @@ export type Database = {
 					created_at: string;
 					created_by: string | null;
 					id: string;
+					is_open: boolean;
 					kind: string;
 					scene_id: string;
 					updated_at: string;
@@ -1494,6 +1495,7 @@ export type Database = {
 					created_at?: string;
 					created_by?: string | null;
 					id?: string;
+					is_open?: boolean;
 					kind?: string;
 					scene_id: string;
 					updated_at?: string;
@@ -1506,6 +1508,7 @@ export type Database = {
 					created_at?: string;
 					created_by?: string | null;
 					id?: string;
+					is_open?: boolean;
 					kind?: string;
 					scene_id?: string;
 					updated_at?: string;
@@ -1830,6 +1833,10 @@ export type Database = {
 			set_character_resources: {
 				Args: { p_character_id: string; p_changes: Json };
 				Returns: Json;
+			};
+			toggle_wall_door: {
+				Args: { p_wall_id: string; p_open: boolean };
+				Returns: boolean;
 			};
 			set_character_vision: {
 				Args: {

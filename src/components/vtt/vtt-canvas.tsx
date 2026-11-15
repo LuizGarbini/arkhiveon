@@ -143,6 +143,7 @@ import {
 } from "@/lib/vtt/vision-sheet";
 import {
 	clearLabels,
+	drawDoors,
 	drawMoveArrow,
 	drawRulerPath,
 	drawSpellTemplate,
@@ -152,8 +153,14 @@ import {
 	parseHexColor,
 } from "@/lib/vtt/vtt-draw";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
-import { finishWallDraft } from "@/lib/vtt/wall-sync";
-import { hitTestWall, snapWallPoint } from "@/lib/vtt/walls";
+import { finishWallDraft, toggleDoor } from "@/lib/vtt/wall-sync";
+import {
+	blockingWalls,
+	doorWithinReach,
+	hitTestDoor,
+	hitTestWall,
+	snapWallPoint,
+} from "@/lib/vtt/walls";
 
 function readFullName(metadata: unknown): string {
 	if (!metadata || typeof metadata !== "object") return "";
@@ -366,6 +373,7 @@ export function VTTCanvas({
 	const fogBrushPreviewLayerRef = useRef<Graphics | null>(null);
 	// Paredes (só mestre): um Graphics para todas + um para a prévia do desenho.
 	const wallsLayerRef = useRef<Graphics | null>(null);
+	const doorsLayerRef = useRef<Graphics | null>(null);
 	const wallPreviewLayerRef = useRef<Graphics | null>(null);
 	const wallCursorRef = useRef<{ x: number; y: number } | null>(null);
 	const lastWallClickRef = useRef<{ x: number; y: number; t: number } | null>(
@@ -577,6 +585,8 @@ export function VTTCanvas({
 	// bloqueiam. A lista só é lida pelos efeitos via ref; o que dispara refazer a
 	// névoa é a assinatura (visionSig), não qualquer token da mesa se mexer.
 	const walls = useVTTStore((s) => s.walls);
+	// Só o que bloqueia agora: parede e porta fechada. Porta aberta deixa ver e passar.
+	const blockers = useMemo(() => blockingWalls(walls), [walls]);
 	// Cena escura: só vale a visão no escuro da ficha (sem ela, 1 casa).
 	const sceneLight = toLightLevel(scene?.lightLevel);
 	const sheetVisionStamp = useRPGStore((s) =>
@@ -607,11 +617,15 @@ export function VTTCanvas({
 	}, [tokens, visionCell, sheetVision, sceneLight, draggedForVision]);
 	const visionListRef = useRef(visionList);
 	visionListRef.current = visionList;
-	const wallsRef = useRef(walls);
-	wallsRef.current = walls;
+	const wallsRef = useRef(blockers);
+	wallsRef.current = blockers;
 	const tokenVisibility = useMemo(
-		() => visibleTokenIds(tokens, isGM, scene, { sources: visionList, walls }),
-		[tokens, isGM, scene, visionList, walls],
+		() =>
+			visibleTokenIds(tokens, isGM, scene, {
+				sources: visionList,
+				walls: blockers,
+			}),
+		[tokens, isGM, scene, visionList, blockers],
 	);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
@@ -669,6 +683,12 @@ export function VTTCanvas({
 			const gridLayer = new Graphics();
 			gridLayerRef.current = gridLayer;
 			world.addChild(gridLayer);
+
+			// Portas: objeto do mapa que todo mundo vê, abaixo dos tokens e da névoa.
+			const doorsLayer = new Graphics();
+			doorsLayer.eventMode = "none";
+			doorsLayerRef.current = doorsLayer;
+			world.addChild(doorsLayer);
 
 			const tokensLayer = new Container();
 			tokensLayerRef.current = tokensLayer;
@@ -1578,7 +1598,7 @@ export function VTTCanvas({
 	// (recortado pelas paredes). Em TODOS os clientes o que ele vê vira memória do
 	// grupo; só para o jogador o polígono recorta a névoa opaca e a penumbra.
 	// É vetor (barato) e só refaz quando QUEM ENXERGA muda ou as paredes mudam
-	// (visionSig / walls), não quando qualquer token da mesa se mexe.
+	// (visionSig / blockers), não quando qualquer token da mesa se mexe.
 	const visionSig = visionKey(visionList);
 	const sceneId = scene?.id ?? null;
 	const exploredVersion = useExploredStore((s) => s.version);
@@ -1704,7 +1724,7 @@ export function VTTCanvas({
 		fogHeight,
 		visionCell,
 		visionSig,
-		walls,
+		blockers,
 		exploredVersion,
 		showPlayerExploration,
 	]);
@@ -1947,7 +1967,14 @@ export function VTTCanvas({
 
 	// 7c. Paredes: redesenha só na camada do mestre ou quando usando a ferramenta de parede.
 	// Na camada normal (token ou mapa), as linhas das paredes não aparecem no mapa.
-	const showWalls = isGM && (activeLayer === "gm" || activeTool === "wall");
+	useEffect(() => {
+		if (!rendererReady || !doorsLayerRef.current) return;
+		drawDoors(doorsLayerRef.current, walls);
+	}, [walls, rendererReady]);
+
+	// Paredes só aparecem para o mestre, na camada do mestre (a ferramenta Parede
+	// já leva para ela). Portas são do mapa: todo mundo vê, abaixo da névoa.
+	const showWalls = isGM && activeLayer === "gm";
 	useEffect(() => {
 		if (!rendererReady || !wallsLayerRef.current) return;
 		drawWalls(wallsLayerRef.current, showWalls ? walls : [], selectedWallIds);
@@ -2243,6 +2270,48 @@ export function VTTCanvas({
 			// Deselect if clicking on empty canvas. A press on a token reaches this
 			// listener right after the token handler (same DOM event), so it must
 			// not undo the selection/panel that handler just set.
+			// Porta: o clique abre ou fecha. O mestre abre qualquer uma; o jogador
+			// precisa de um personagem a até 1,5 casa dela. Um token pressionado tem
+			// prioridade (não vira clique na porta atrás dele).
+			if (
+				isLeftClick &&
+				activeTool === "select" &&
+				!tokenPressRef.current &&
+				scene
+			) {
+				const live = useVTTStore.getState();
+				const door = hitTestDoor(live.walls, worldPoint, 10 / viewport.scale);
+				if (door) {
+					const staff = live.isGM || live.isCoGM;
+					const mine = live.tokens.filter(
+						(t) =>
+							t.layer === "token" &&
+							canControlVTTToken(
+								t,
+								userIdRef.current,
+								staff,
+								characterOwnersRef.current,
+							),
+					);
+					if (
+						staff ||
+						doorWithinReach(
+							door,
+							mine.map((t) => ({ x: t.x, y: t.y })),
+							scene.gridSize || 70,
+						)
+					) {
+						void toggleDoor(door.id, door.isOpen !== true);
+					} else {
+						showToast("info", {
+							title: "Longe demais da porta",
+							description: "Chegue mais perto com o seu personagem para abrir.",
+						});
+					}
+					return;
+				}
+			}
+
 			const additive = isAdditiveSelect(e);
 			if (
 				canvasPressAction(tokenPressRef.current, e, {
@@ -2770,7 +2839,7 @@ export function VTTCanvas({
 					worldPoint.y - group.grabY,
 				);
 				const liveTokens = useVTTStore.getState().tokens;
-				const currentWalls = useVTTStore.getState().walls;
+				const currentWalls = blockingWalls(useVTTStore.getState().walls);
 				let wasBlocked = false;
 				const finalMoves: DragMove[] = [];
 				for (const member of moved) {

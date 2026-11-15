@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.95-vtt-portas",
+		version: "1.6.95",
+		date: "15/11/2026",
+		title: "Portas na mesa e paredes só na camada do mestre",
+		description:
+			"O mestre agora desenha portas, além de paredes: na ferramenta Parede, escolha Parede ou Porta, ou selecione paredes que já existem e use Virar porta. A porta nasce fechada e bloqueia a vista e o movimento como uma parede; o jogador clica nela (com o personagem a até 1,5 casa) para abrir e então vê o que há do outro lado; clicar de novo fecha. As portas aparecem para todos. As paredes continuam bloqueando a visão do jogador, mas agora só o mestre as vê, e só na camada do mestre: ao escolher a ferramenta Parede a mesa vai sozinha para essa camada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.94-vtt-mestre-ve-exploracao",
 		version: "1.6.94",
 		date: "15/11/2026",

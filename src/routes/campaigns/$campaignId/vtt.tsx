@@ -22,6 +22,7 @@ import { VTTTemplateControls } from "@/components/vtt/vtt-template-controls";
 import { VTTTokenMenu } from "@/components/vtt/vtt-token-menu";
 import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip";
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
+import { VTTWallControls } from "@/components/vtt/vtt-wall-controls";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
 import { canUseMesaAssistant } from "@/lib/ai-mesa/gate";
@@ -1779,6 +1780,8 @@ function VTTSession() {
 			/>
 
 			<VTTRulerControls />
+
+			<VTTWallControls />
 
 			<VTTTemplateControls
 				onClearTemplates={broadcastTemplateRemoval}

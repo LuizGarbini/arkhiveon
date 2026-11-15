@@ -26,6 +26,7 @@ import type {
 import {
 	applyWallOp,
 	type VTTWall,
+	type WallKind,
 	type WallOp,
 	type WallPoint,
 } from "./walls";
@@ -235,9 +236,12 @@ interface VTTState {
 	selectedWallIds: string[];
 	/** Pontos já fixados da polilinha em desenho (vazio = sem desenho). */
 	wallDraft: WallPoint[];
+	/** O que a ferramenta desenha agora: parede ou porta. */
+	wallKind: WallKind;
 	wallUndo: WallOp[];
 	wallRedo: WallOp[];
 	setWalls: (walls: VTTWall[]) => void;
+	setWallKind: (kind: WallKind) => void;
 	setWallsStatus: (status: VTTWallsStatus) => void;
 	applyWallOpLocal: (op: WallOp) => void;
 	setSelectedWallIds: (ids: string[]) => void;
@@ -278,6 +282,7 @@ const emptySceneContents = () => ({
 	wallsStatus: "idle" as VTTWallsStatus,
 	selectedWallIds: [],
 	wallDraft: [],
+	wallKind: "wall" as WallKind,
 	wallUndo: [],
 	wallRedo: [],
 });
@@ -346,6 +351,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	wallsStatus: "idle",
 	selectedWallIds: [],
 	wallDraft: [],
+	wallKind: "wall",
 	wallUndo: [],
 	wallRedo: [],
 
@@ -414,15 +420,29 @@ export const useVTTStore = create<VTTState>((set) => ({
 				tool === "fog" || tool === "template" ? false : state.showGridSettings,
 			showRosterDrawer:
 				tool === "fog" || tool === "template" ? false : state.showRosterDrawer,
-			// Sair da ferramenta Parede descarta o desenho e a seleção de paredes.
-			...(tool === "wall" ? {} : { wallDraft: [], selectedWallIds: [] }),
+			// Paredes só existem na camada do mestre: ao escolher a ferramenta, a
+			// mesa vai para essa camada. Sair dela descarta o desenho e a seleção.
+			...(tool === "wall"
+				? { activeLayer: state.isGM ? ("gm" as const) : state.activeLayer }
+				: { wallDraft: [], selectedWallIds: [] }),
 			// Sair da Régua apaga a medição (inclusive a fixada).
 			activeMeasurement: rulerMeasurementForTool(state.activeMeasurement, tool),
 		})),
 	setActiveLayer: (layer) =>
-		set((state) => ({
-			activeLayer: layer === "gm" && !state.isGM ? "token" : layer,
-		})),
+		set((state) => {
+			const activeLayer = layer === "gm" && !state.isGM ? "token" : layer;
+			// Sem a camada do mestre as paredes somem: a ferramenta Parede não faz
+			// mais sentido, então volta para a seleção.
+			if (activeLayer !== "gm" && state.activeTool === "wall") {
+				return {
+					activeLayer,
+					activeTool: "select" as const,
+					wallDraft: [],
+					selectedWallIds: [],
+				};
+			}
+			return { activeLayer };
+		}),
 	setDiagonalRule: (rule) => set({ diagonalRule: rule }),
 	setActiveTemplateKind: (kind) => set({ activeTemplateKind: kind }),
 	setTemplateSizeCells: (cells) => set({ templateSizeCells: cells }),
@@ -834,6 +854,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setIsCoGM: (isCoGM) => set({ isCoGM }),
 
 	setWalls: (walls) => set({ walls }),
+	setWallKind: (wallKind) => set({ wallKind }),
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),
 	applyWallOpLocal: (op) =>
 		set((state) => {
