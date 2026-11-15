@@ -11,6 +11,42 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.106-vtt-pings-de-varios-tipos",
+		version: "1.6.106",
+		date: "15/11/2026",
+		title: "Pings de vários tipos, roda do Ctrl e ping do mestre",
+		description:
+			"O ping agora tem tipos: Atenção (o de sempre), Perigo, A caminho, Ajuda e Destacar personagem, cada um com símbolo, cor e som próprios. No computador, segure Ctrl e o botão do mouse no mapa vazio: abre uma roda em volta do cursor (como no LoL), mova até o tipo e solte; soltar no centro usa o tipo escolhido, e um Ctrl+clique rápido pinga na hora. Arrastar com Ctrl continua sendo a caixa de seleção. Destacar põe setas em volta de um personagem (o que você aponta ou o selecionado) e só aparece para quem vê aquele token. O mestre ganha Todos aqui: leva a câmera de todos até aquele ponto com um movimento suave, mantendo o zoom de cada um; só vale se quem mandou é o mestre ou co-mestre (um jogador que force esse tipo manda um ping comum). A ferramenta Ping tem um painel para escolher o tipo. No celular, segure o botão de ping na barra e arraste o dedo até o tipo para escolher; um toque rápido segue só ligando a ferramenta.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.105-vtt-girar-token",
+		version: "1.6.105",
+		date: "15/11/2026",
+		title: "Girar tokens no mesmo lugar",
+		description:
+			"Com um ou vários tokens selecionados, Q gira para a esquerda e E para a direita, 45° por toque; com Shift, 15° para acertar o ângulo. Cada token gira no próprio lugar, sem andar, e só o ângulo é gravado. Vale as mesmas regras das setas: não age digitando, e token travado ou que você não controla fica parado. O painel do token ganhou o botão de girar para a esquerda ao lado do da direita.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.104-vtt-regua-fixa",
+		version: "1.6.104",
+		date: "15/11/2026",
+		title: "Régua fixa ao trocar de ferramenta",
+		description:
+			'Antes, sair da ferramenta Régua apagava a medição, então não dava para medir o caminho e depois arrastar o token ao longo dele. Agora a medição fica fixada no mapa quando você troca de ferramenta (inclusive para os outros jogadores), com um selo "Régua fixada" e a distância acima do zoom. Limpe com o X do selo, ou meça de novo com a régua para substituir.',
+		bullets: [],
+	},
+	{
+		id: "v1.6.103-vtt-ping-preso",
+		version: "1.6.103",
+		date: "15/11/2026",
+		title: "Corrigido: o ping ficava preso na tela",
+		description:
+			'Depois de selecionar tokens, alguns jogadores ficavam só pingando: todo clique virava ping, mesmo com a seta de selecionar ativa, e não dava para clicar nos personagens até recarregar a página. A causa era o Alt (ou o Espaço) ficar "apertado" na memória do app quando o navegador perdia o foco da janela (Alt+Tab, Cmd+Tab, menu do navegador) e o aviso de que a tecla foi solta se perdia. Agora o app confere o Alt no próprio clique e solta Alt e Espaço quando a janela perde o foco.',
+		bullets: [],
+	},
+	{
 		id: "v1.6.102-vtt-setas-do-teclado",
 		version: "1.6.102",
 		date: "15/11/2026",

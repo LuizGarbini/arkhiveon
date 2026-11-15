@@ -1,3 +1,4 @@
+import type { PingKind } from "./ping-kinds";
 export type VTTGridType = "square" | "hex_pointy" | "hex_flat" | "none";
 export type VTTGridScaleUnit = "m" | "ft" | "sq";
 export type VTTLayer = "map" | "token" | "gm";
@@ -119,6 +120,10 @@ export interface VTTPingEvent {
 	userName: string;
 	color: string;
 	timestamp: number;
+	/** Tipo do ping. Broadcast antigo pode omitir: vale o ping comum. */
+	kind?: PingKind;
+	/** Destaque de personagem: o token que ganha as setas em volta. */
+	tokenId?: string;
 }
 
 export interface VTTRulerMeasurement {

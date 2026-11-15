@@ -3,10 +3,36 @@
  * Zero external asset dependencies, instant playback with envelope shaping.
  */
 
+import { DEFAULT_PING_KIND, type PingKind } from "./ping-kinds";
 import { PING_THROTTLE_MS } from "./ping-queue";
 
 let audioCtx: AudioContext | null = null;
 let lastPingSoundAt: number | null = null;
+
+/**
+ * Nota inicial e final (Hz) do estalo de cada tipo de ping: o de perigo desce
+ * (alerta), o de ajuda e o de "a caminho" têm timbres próprios e o do mestre sobe
+ * mais alto, para se destacar.
+ */
+export function pingTone(kind: PingKind = DEFAULT_PING_KIND): {
+	from: number;
+	to: number;
+} {
+	switch (kind) {
+		case "danger":
+			return { from: 620, to: 392 };
+		case "going":
+			return { from: 660, to: 880 };
+		case "help":
+			return { from: 740, to: 740 };
+		case "highlight":
+			return { from: 988, to: 1319 };
+		case "focus":
+			return { from: 523, to: 1568 };
+		default:
+			return { from: 880, to: 1320 };
+	}
+}
 
 /** `true` quando o som pode tocar. Rajada mais rápida que `gap` é descartada. */
 export function shouldPlayPingSound(
@@ -42,7 +68,10 @@ function getAudioContext(): AudioContext | null {
 /**
  * Plays a gentle, pleasant tactical sonar ping chime
  */
-export function playPingAudio(now = Date.now()) {
+export function playPingAudio(
+	now = Date.now(),
+	kind: PingKind = DEFAULT_PING_KIND,
+) {
 	if (!shouldPlayPingSound(lastPingSoundAt, now)) return;
 	const ctx = getAudioContext();
 	if (!ctx) return;
@@ -56,8 +85,9 @@ export function playPingAudio(now = Date.now()) {
 		const gain = ctx.createGain();
 
 		osc.type = "sine";
-		osc.frequency.setValueAtTime(880, tone); // A5 note
-		osc.frequency.exponentialRampToValueAtTime(1320, tone + 0.08); // Quick sweep up to E6
+		const { from, to } = pingTone(kind);
+		osc.frequency.setValueAtTime(from, tone);
+		osc.frequency.exponentialRampToValueAtTime(to, tone + 0.08);
 
 		// Envelope: quick attack, smooth exponential decay
 		gain.gain.setValueAtTime(0.001, tone);

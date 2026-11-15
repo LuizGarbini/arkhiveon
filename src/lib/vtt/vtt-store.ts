@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { LightPoint, LightToolMode, VTTLightZone } from "./light-zones";
+import { DEFAULT_PING_KIND, type PingKind } from "./ping-kinds";
 import {
 	type ActivePing,
 	admitPing,
@@ -44,6 +45,26 @@ export type VTTTool =
 	| "light";
 
 /** Paredes da cena: `missing` = tabela ainda não existe (migração não aplicada). */
+/** Roda de pings: onde abriu (tela e mapa), as opções e a que está sob o cursor. */
+export interface PingWheelState {
+	/** Centro da roda na tela (px do cliente). */
+	x: number;
+	y: number;
+	/** Ponto do mapa onde o ping vai cair. */
+	worldX: number;
+	worldY: number;
+	kinds: PingKind[];
+	hover: PingKind | null;
+}
+
+/** Lista de tipos de ping: canto da lista, as opções e a que está sob o dedo. */
+export interface PingPickerState {
+	left: number;
+	top: number;
+	kinds: PingKind[];
+	hover: PingKind | null;
+}
+
 export type VTTWallsStatus = "idle" | "loading" | "ready" | "missing" | "error";
 
 /** Áreas de luz da cena: `missing` = tabela ainda não existe (migração não aplicada). */
@@ -231,6 +252,19 @@ interface VTTState {
 	setActiveMeasurement: (measurement: VTTRulerMeasurement | null) => void;
 	/** `null` quando o ping foi descartado (throttle, duplicado ou já expirado). */
 	addPing: (ping: VTTPingEvent, now?: number) => ActivePing | null;
+	/** Tipo do próximo ping (Alt+clique, ferramenta Ping e o toque no mapa). */
+	pingKind: PingKind;
+	setPingKind: (kind: PingKind) => void;
+	/** Roda de pings aberta (Ctrl + segurar), com a opção sob o cursor. */
+	pingWheel: PingWheelState | null;
+	openPingWheel: (wheel: PingWheelState) => void;
+	setPingWheelHover: (hover: PingKind | null) => void;
+	closePingWheel: () => void;
+	/** Lista de tipos aberta ao segurar o botão de ping da barra (celular). */
+	pingPicker: PingPickerState | null;
+	openPingPicker: (picker: PingPickerState) => void;
+	setPingPickerHover: (hover: PingKind | null) => void;
+	closePingPicker: () => void;
 	removePing: (id: string) => void;
 
 	setShowGridSettings: (show: boolean) => void;
@@ -371,6 +405,9 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	activeMeasurement: null,
 	activePings: [],
+	pingKind: DEFAULT_PING_KIND,
+	pingWheel: null,
+	pingPicker: null,
 	pingAdmission: initialPingAdmission(),
 
 	showGridSettings: false,
@@ -803,6 +840,25 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),
+	setPingKind: (pingKind) => set({ pingKind }),
+	openPingWheel: (pingWheel) => set({ pingWheel }),
+	setPingWheelHover: (hover) =>
+		set((state) =>
+			state.pingWheel && state.pingWheel.hover !== hover
+				? { pingWheel: { ...state.pingWheel, hover } }
+				: state,
+		),
+	openPingPicker: (pingPicker) => set({ pingPicker }),
+	setPingPickerHover: (hover) =>
+		set((state) =>
+			state.pingPicker && state.pingPicker.hover !== hover
+				? { pingPicker: { ...state.pingPicker, hover } }
+				: state,
+		),
+	closePingPicker: () =>
+		set((state) => (state.pingPicker ? { pingPicker: null } : state)),
+	closePingWheel: () =>
+		set((state) => (state.pingWheel ? { pingWheel: null } : state)),
 	addPing: (ping, now = Date.now()) => {
 		let accepted: ActivePing | null = null;
 		set((state) => {
