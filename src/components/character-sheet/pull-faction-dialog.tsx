@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Check, Crown, Flag, Plus, Search, X } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
+import { FactionAvatar } from "@/components/faction-avatar";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -262,20 +263,10 @@ export function PullFactionDialog({
 									>
 										<div className="flex items-start justify-between gap-3">
 											<div className="flex items-center gap-2.5 min-w-0">
-												<div
-													className={cn(
-														"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
-														isPatron
-															? "border-amber-500/40 bg-amber-500/15 text-amber-300"
-															: "border-primary/30 bg-primary/10 text-primary",
-													)}
-												>
-													{isPatron ? (
-														<Crown className="h-4 w-4" />
-													) : (
-														<Flag className="h-4 w-4" />
-													)}
-												</div>
+												<FactionAvatar
+													imageUrl={f.imageUrl}
+													isPatron={isPatron}
+												/>
 												<div className="min-w-0">
 													<div className="flex items-center gap-2">
 														<span className="font-display font-bold text-foreground truncate text-sm">

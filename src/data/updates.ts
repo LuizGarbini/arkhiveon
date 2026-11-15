@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.93-faccoes-imagem",
+		version: "1.6.93",
+		date: "15/11/2026",
+		title: "Imagens das facções aparecem e o envio voltou a funcionar",
+		description:
+			'A imagem da facção ou do patrono agora aparece na lista de Puxar Patrono / Facção e no cartão da ficha, com o ícone de sempre quando não há imagem (ou ela não carrega). Também corrigi o erro ao enviar imagens ("O arquivo não é a imagem que o tipo informa"): em navegadores que não geram WebP, como o Safari, o app declarava o tipo errado e o servidor recusava. Agora o tipo é sempre o da imagem de verdade. Vale para facções, NPCs, itens, locais e qualquer outro envio de imagem.',
+		bullets: [],
+	},
+	{
 		id: "v1.6.92-vtt-visao-cone",
 		version: "1.6.92",
 		date: "15/11/2026",

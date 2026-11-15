@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Crown, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { Crown, ExternalLink, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EntityLinkChips } from "@/components/entity-links";
+import { FactionAvatar } from "@/components/faction-avatar";
 import { Button } from "@/components/ui/button";
 import { addEntityLink, removeEntityLink } from "@/lib/entity-links";
 import type { Character, EntityLink, Faction } from "@/lib/store";
@@ -90,20 +91,11 @@ export function SheetConnectionsModule({
 							>
 								<div className="flex items-start justify-between gap-3">
 									<div className="flex items-start gap-2.5 min-w-0">
-										<div
-											className={cn(
-												"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border mt-0.5",
-												isPatron
-													? "border-amber-500/40 bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/20"
-													: "border-primary/30 bg-primary/10 text-primary",
-											)}
-										>
-											{isPatron ? (
-												<Crown className="h-4 w-4" />
-											) : (
-												<Flag className="h-4 w-4" />
-											)}
-										</div>
+										<FactionAvatar
+											imageUrl={faction?.imageUrl}
+											isPatron={isPatron}
+											className="mt-0.5"
+										/>
 
 										<div className="min-w-0 space-y-1">
 											<div className="flex flex-wrap items-center gap-1.5">

@@ -1,12 +1,14 @@
 /**
  * Image storage layer.
  *
- * Images are resized to WebP in the browser, then sent to a Supabase Edge
- * Function. The function uploads to Cloudflare R2 server-side so the browser
+ * Images are resized to WebP in the browser (PNG when the browser cannot
+ * encode WebP; the declared type always comes from the bytes), then sent to a
+ * Supabase Edge Function. The function uploads to Cloudflare R2 server-side so the browser
  * does not depend on R2 bucket CORS for PUT requests.
  */
 
 import { r2KeyFromPublicUrl } from "./image-url-usage";
+import { encodedImageFile } from "./images/encoded-image";
 import { supabase } from "./supabase";
 import {
 	describeUploadFailure,
@@ -184,9 +186,8 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 		const quality = options.quality ?? DEFAULT_QUALITY;
 		const blob = await resizeToBlob(file, max, quality);
 		if (options.signal?.aborted) throw uploadAbortError();
-		const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
-			type: "image/webp",
-		});
+		// O tipo declarado vem dos bytes: sem WebP no navegador o canvas devolve PNG.
+		const encodedFile = await encodedImageFile(blob, file.name);
 
 		if (!supabase) {
 			throw new Error(
@@ -194,7 +195,7 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 			);
 		}
 
-		const data = await uploadThroughFunction(supabase, webpFile, options);
+		const data = await uploadThroughFunction(supabase, encodedFile, options);
 		if (!data.key) {
 			throw new Error(data.error || "Falha ao enviar imagem para o R2.");
 		}
@@ -215,11 +216,11 @@ export class CloudflareR2ImageStorage implements ImageStorage {
 
 async function uploadThroughFunction(
 	client: ConfiguredSupabaseClient,
-	webpFile: File,
+	file: File,
 	options: UploadOptions,
 ): Promise<R2UploadResponse> {
 	const body = new FormData();
-	body.append("file", webpFile);
+	body.append("file", file);
 	appendOptionalFormValue(body, "campaignId", options.campaignId);
 	appendOptionalFormValue(body, "folder", options.folder);
 
