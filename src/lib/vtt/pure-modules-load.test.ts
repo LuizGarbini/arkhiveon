@@ -9,6 +9,7 @@ describe("módulos puros carregam sem o store", () => {
 	it.each([
 		["vision", () => import("./vision")],
 		["explored", () => import("./explored")],
+		["light-zones", () => import("./light-zones")],
 		["explored-store", () => import("./explored-store")],
 		["token-motion", () => import("./token-motion")],
 		["line-of-sight", () => import("./line-of-sight")],

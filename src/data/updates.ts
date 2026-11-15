@@ -11,6 +11,33 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.100-vtt-areas-de-luz",
+		version: "1.6.100",
+		date: "15/11/2026",
+		title: "Áreas de luz na cena: dia, penumbra e escuridão",
+		description:
+			"A luz da cena deixou de ser uma só. A nova ferramenta Luz (atalho L) deixa o mestre marcar áreas dentro do mapa, em círculo, retângulo ou polígono, cada uma com luz do dia, penumbra ou escuridão, e escolher a luz padrão da cena (também com Penumbra). O alcance de visão de cada personagem passa a depender da luz do lugar onde ele está: na penumbra a visão normal cai à metade, no escuro só vale a visão no escuro (sem ela, a casa ao lado), e quem tem visão no escuro enxerga a penumbra por inteiro. Se duas áreas se sobrepõem, vale a criada por último, então dá para acender uma tocha dentro de uma sala escura. Clique numa área no modo Selecionar para trocar a luz dela ou apagar. Só o mestre vê o contorno das áreas, e a luz só vale com a Exploração ligada (o painel avisa e liga por você).",
+		bullets: [],
+	},
+	{
+		id: "v1.6.99-vtt-porta-icone",
+		version: "1.6.99",
+		date: "15/11/2026",
+		title: "Porta vira um ícone",
+		description:
+			"A porta deixou de ser desenhada como um risco de madeira no vão. Agora é só um ícone no meio dele: uma porta fechada (laranja) ou entreaberta (amarela). O ícone é a única parte clicável, então clicar no vão longe dele não abre mais. Abrir revela o outro lado e fechada bloqueia, como antes. O jogador só vê o ícone das portas que já revelou, e o mestre vê o vão em traço fino na camada dele, para saber o tamanho da porta.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.98-vtt-escurecer-explorado",
+		version: "1.6.98",
+		date: "15/11/2026",
+		title: "O mestre escurece de novo o que o grupo já explorou",
+		description:
+			"Corrigido: o pincel, o retângulo e o círculo de Ocultar da névoa não faziam efeito sobre áreas que os jogadores já tinham explorado, porque a memória do mapa aparecia por cima. Agora cobrir um trecho apaga o que o grupo lembrava ali (na tela de todos e no servidor), e eles precisam explorar de novo. Cobrir o mapa todo apaga a memória inteira.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.97-vtt-fichas-ilimitadas",
 		version: "1.6.97",
 		date: "15/11/2026",

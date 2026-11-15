@@ -1477,6 +1477,47 @@ export type Database = {
 					},
 				];
 			};
+			vtt_light_zones: {
+				Row: {
+					created_at: string;
+					created_by: string | null;
+					geometry: Json;
+					id: string;
+					level: string;
+					scene_id: string;
+					shape: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					created_by?: string | null;
+					geometry: Json;
+					id?: string;
+					level: string;
+					scene_id: string;
+					shape: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					created_by?: string | null;
+					geometry?: Json;
+					id?: string;
+					level?: string;
+					scene_id?: string;
+					shape?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_light_zones_scene_id_fkey";
+						columns: ["scene_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scenes";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			vtt_walls: {
 				Row: {
 					created_at: string;

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { VTTToken } from "./types";
 import {
 	DEFAULT_VISION_CELLS,
+	DIM_DEFAULT_CELLS,
 	isVisionToken,
+	toLightLevel,
 	visionKey,
 	visionSources,
 } from "./vision";
@@ -452,20 +454,95 @@ describe("visão com a luz da cena", () => {
 	});
 });
 
-describe("resolveTokenVisionCells", () => {
-	const sheet = new Map([["dante", 12]]);
+describe("sheetVisionCells · penumbra", () => {
+	const both = { visionDistance: 30, darkvisionDistance: 60 }; // 6 e 12 casas
 
-	it("token com ficha usa o alcance dela, clara ou escura", () => {
+	it("metade da visão normal", () => {
+		expect(sheetVisionCells({ visionDistance: 60 }, "ft", "dim")).toBeCloseTo(
+			6,
+			6,
+		);
+		expect(sheetVisionCells({ visionDistance: 30 }, "ft", "dim")).toBeCloseTo(
+			3,
+			6,
+		);
+	});
+
+	it("quem tem visão no escuro maior que a metade enxerga a penumbra por ela", () => {
+		expect(sheetVisionCells(both, "ft", "dim")).toBeCloseTo(12, 6);
 		expect(
-			resolveTokenVisionCells({ characterId: "dante" }, sheet, "bright"),
+			sheetVisionCells({ darkvisionDistance: 60 }, "ft", "dim"),
+		).toBeCloseTo(12, 6);
+	});
+
+	it("a visão no escuro menor que a metade não piora a penumbra", () => {
+		expect(
+			sheetVisionCells(
+				{ visionDistance: 120, darkvisionDistance: 30 },
+				"ft",
+				"dim",
+			),
+		).toBeCloseTo(12, 6); // metade de 24 casas
+	});
+
+	it("ficha sem nada: metade da visão padrão (3 casas)", () => {
+		expect(sheetVisionCells({}, "ft", "dim")).toBe(DIM_DEFAULT_CELLS);
+		expect(DIM_DEFAULT_CELLS).toBe(3);
+	});
+
+	it("nunca menos que 1 casa, mesmo com visão minúscula", () => {
+		expect(sheetVisionCells({ visionDistance: 5 }, "ft", "dim")).toBe(1);
+	});
+
+	it("a penumbra fica entre o dia e o escuro para quem não tem visão no escuro", () => {
+		const c = { visionDistance: 60 };
+		const day = sheetVisionCells(c, "ft", "bright") as number;
+		const dim = sheetVisionCells(c, "ft", "dim") as number;
+		const dark = sheetVisionCells(c, "ft", "dark") as number;
+		expect(day).toBeGreaterThan(dim);
+		expect(dim).toBeGreaterThan(dark);
+	});
+});
+
+describe("toLightLevel · três luzes", () => {
+	it("aceita dia, penumbra e escuro; o resto é luz do dia", () => {
+		expect(toLightLevel("bright")).toBe("bright");
+		expect(toLightLevel("dim")).toBe("dim");
+		expect(toLightLevel("dark")).toBe("dark");
+		expect(toLightLevel("twilight")).toBe("bright");
+		expect(toLightLevel(undefined)).toBe("bright");
+	});
+});
+
+describe("resolveTokenVisionCells", () => {
+	const sheet = new Map([["dante", { bright: 12, dim: 12, dark: 12 }]]);
+	const humano = new Map([["h", { bright: 12, dim: 6, dark: 1 }]]);
+	const semNada = new Map([["z", { dim: 3, dark: 1 }]]);
+
+	it("token com ficha usa o alcance dela em cada luz", () => {
+		expect(
+			resolveTokenVisionCells({ characterId: "h" }, humano, "bright"),
 		).toBe(12);
+		expect(resolveTokenVisionCells({ characterId: "h" }, humano, "dim")).toBe(
+			6,
+		);
+		expect(resolveTokenVisionCells({ characterId: "h" }, humano, "dark")).toBe(
+			1,
+		);
 		expect(
 			resolveTokenVisionCells({ characterId: "dante" }, sheet, "dark"),
 		).toBe(12);
 	});
 
-	it("token sem ficha: na cena clara o do token; na escura, a casa ao lado", () => {
+	it("ficha que não define a visão do dia: vale o do token (undefined)", () => {
+		expect(
+			resolveTokenVisionCells({ characterId: "z" }, semNada, "bright"),
+		).toBeUndefined();
+	});
+
+	it("token sem ficha: dia = o do token; penumbra = 3 casas; escuro = a casa ao lado", () => {
 		expect(resolveTokenVisionCells({}, sheet, "bright")).toBeUndefined();
+		expect(resolveTokenVisionCells({}, sheet, "dim")).toBe(DIM_DEFAULT_CELLS);
 		expect(resolveTokenVisionCells({}, sheet, "dark")).toBe(
 			NO_DARKVISION_CELLS,
 		);
@@ -474,10 +551,13 @@ describe("resolveTokenVisionCells", () => {
 		);
 	});
 
-	it("ficha ainda não carregada na cena escura também só vê a casa ao lado", () => {
+	it("ficha ainda não carregada: penumbra e escuro usam o mínimo; dia, o do token", () => {
 		expect(
 			resolveTokenVisionCells({ characterId: "outro" }, sheet, "dark"),
 		).toBe(1);
+		expect(
+			resolveTokenVisionCells({ characterId: "outro" }, sheet, "dim"),
+		).toBe(3);
 		expect(
 			resolveTokenVisionCells({ characterId: "outro" }, sheet, "bright"),
 		).toBeUndefined();

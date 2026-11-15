@@ -15,6 +15,7 @@ export function VTTOptionsBar({
 	children,
 	footer,
 	wrapOnPhone = false,
+	compactLabel = false,
 }: {
 	label: string;
 	icon: ComponentType<{ className?: string }>;
@@ -24,6 +25,8 @@ export function VTTOptionsBar({
 	footer?: ReactNode;
 	/** 390 px: quebra em linhas em vez de rolar (os filhos usam `order`). */
 	wrapOnPhone?: boolean;
+	/** Barra larga: o título só aparece em telas largas (2xl), para dar espaço. */
+	compactLabel?: boolean;
 }) {
 	return (
 		<section
@@ -36,7 +39,12 @@ export function VTTOptionsBar({
 					wrapOnPhone && "max-sm:flex-wrap max-sm:overflow-visible",
 				)}
 			>
-				<span className="hidden shrink-0 items-center gap-1.5 pr-1 pl-2.5 text-xs font-semibold text-foreground md:flex">
+				<span
+					className={cn(
+						"hidden shrink-0 items-center gap-1.5 pr-1 pl-2.5 text-xs font-semibold text-foreground",
+						compactLabel ? "2xl:flex" : "md:flex",
+					)}
+				>
 					<Icon className="size-4 text-primary" />
 					{label}
 				</span>

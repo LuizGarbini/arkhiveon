@@ -12,6 +12,7 @@ import { VTTFogControls } from "@/components/vtt/vtt-fog-controls";
 import { VTTGMTableBar } from "@/components/vtt/vtt-gm-table-bar";
 import { VTTGridSettings } from "@/components/vtt/vtt-grid-settings";
 import { VTTJournal } from "@/components/vtt/vtt-journal";
+import { VTTLightControls } from "@/components/vtt/vtt-light-controls";
 import type { VTTMapImage } from "@/components/vtt/vtt-map-dropzone";
 import { VTTMoveHistoryPanel } from "@/components/vtt/vtt-move-history-panel";
 import { VTTNotesPanel } from "@/components/vtt/vtt-notes-panel";
@@ -50,6 +51,7 @@ import {
 	readExploredCells,
 	readExploredReset,
 } from "@/lib/vtt/explored-sync";
+import { loadLightZones } from "@/lib/vtt/light-zone-sync";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { subscribeMoves } from "@/lib/vtt/move-sync";
 import { useNotesStore } from "@/lib/vtt/notes-store";
@@ -475,6 +477,17 @@ function VTTSession() {
 		}
 	}, [activeSceneId, sceneSession]);
 
+	// 3b'. Áreas de luz da cena: todos carregam, porque a luz do lugar muda a visão
+	// de cada personagem.
+	useEffect(() => {
+		if (activeSceneId) {
+			const revision = sceneSession.getReadGeneration(activeSceneId);
+			void loadLightZones(activeSceneId, () =>
+				sceneSession.isReadCurrent(revision, activeSceneId),
+			);
+		}
+	}, [activeSceneId, sceneSession]);
+
 	// 3c. Histórico de movimentos: só mestre e co-mestre carregam e assinam.
 	const canSeeMoves = isGM || isCoGM;
 	useEffect(() => {
@@ -703,6 +716,39 @@ function VTTSession() {
 					)
 						return;
 					void loadWalls(activeSceneId);
+				},
+			)
+			.subscribe();
+
+		return () => {
+			cancelled = true;
+			void client.removeChannel(channel);
+		};
+	}, [activeSceneId]);
+
+	// 5c. Realtime em vtt_light_zones: áreas de luz criadas, trocadas ou apagadas
+	useEffect(() => {
+		const client = getSupabase();
+		if (!client || !activeSceneId) return;
+		let cancelled = false;
+
+		const channel = client
+			.channel(`vtt-light-zones-live:${activeSceneId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "vtt_light_zones",
+					filter: `scene_id=eq.${activeSceneId}`,
+				},
+				() => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					void loadLightZones(activeSceneId);
 				},
 			)
 			.subscribe();
@@ -1804,6 +1850,11 @@ function VTTSession() {
 			<VTTRulerControls />
 
 			<VTTWallControls />
+
+			<VTTLightControls
+				scene={currentActiveScene}
+				onUpdateScene={handleUpdateScene}
+			/>
 
 			<VTTGMTableBar
 				scene={currentActiveScene}

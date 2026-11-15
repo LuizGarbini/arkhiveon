@@ -50,6 +50,8 @@ import {
 	squareGridLines,
 	ZERO_ORIGIN,
 } from "@/lib/vtt/grid-math";
+import { createLightZone, finishLightDraft } from "@/lib/vtt/light-zone-sync";
+import { geometryFromDrag, lightAt, zoneAt } from "@/lib/vtt/light-zones";
 import { hasLineOfSight } from "@/lib/vtt/line-of-sight";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { recordMove } from "@/lib/vtt/move-sync";
@@ -145,6 +147,8 @@ import {
 import {
 	clearLabels,
 	drawDoors,
+	drawLightPreview,
+	drawLightZones,
 	drawMoveArrow,
 	drawRulerPath,
 	drawSpellTemplate,
@@ -378,6 +382,13 @@ export function VTTCanvas({
 	const doorsLayerRef = useRef<Graphics | null>(null);
 	const doorIconsTopRef = useRef<Graphics | null>(null);
 	const wallPreviewLayerRef = useRef<Graphics | null>(null);
+	const lightZonesLayerRef = useRef<Graphics | null>(null);
+	const lightPreviewLayerRef = useRef<Graphics | null>(null);
+	const lightDragRef = useRef<{ x: number; y: number } | null>(null);
+	const lightCursorRef = useRef<{ x: number; y: number } | null>(null);
+	const lastLightClickRef = useRef<{ x: number; y: number; t: number } | null>(
+		null,
+	);
 	const wallCursorRef = useRef<{ x: number; y: number } | null>(null);
 	const lastWallClickRef = useRef<{ x: number; y: number; t: number } | null>(
 		null,
@@ -590,10 +601,12 @@ export function VTTCanvas({
 	const walls = useVTTStore((s) => s.walls);
 	// Só o que bloqueia agora: parede e porta fechada. Porta aberta deixa ver e passar.
 	const blockers = useMemo(() => blockingWalls(walls), [walls]);
-	// Cena escura: só vale a visão no escuro da ficha (sem ela, 1 casa).
+	// Luz padrão da cena e áreas de luz: o alcance de cada personagem depende da
+	// luz do lugar onde ele está (dia, penumbra ou escuro).
 	const sceneLight = toLightLevel(scene?.lightLevel);
+	const lightZones = useVTTStore((s) => s.lightZones);
 	const sheetVisionStamp = useRPGStore((s) =>
-		selectLinkedVisionStamp(s.characters, linkedCharacterIds, sceneLight),
+		selectLinkedVisionStamp(s.characters, linkedCharacterIds),
 	);
 	const sheetVision = useMemo(
 		() => parseVisionStamp(sheetVisionStamp),
@@ -614,10 +627,26 @@ export function VTTCanvas({
 		return visionSources(
 			tokens,
 			visionCell,
-			(token) => resolveTokenVisionCells(token, sheetVision, sceneLight),
+			(token) => {
+				// A luz é a do lugar onde o token está para a visão (parado, não a
+				// meio do arrasto).
+				const at = standing.get(token.id) ?? token;
+				return resolveTokenVisionCells(
+					token,
+					sheetVision,
+					lightAt({ x: at.x, y: at.y }, lightZones, sceneLight),
+				);
+			},
 			(token) => standing.get(token.id) ?? token,
 		);
-	}, [tokens, visionCell, sheetVision, sceneLight, draggedForVision]);
+	}, [
+		tokens,
+		visionCell,
+		sheetVision,
+		sceneLight,
+		lightZones,
+		draggedForVision,
+	]);
 	const visionListRef = useRef(visionList);
 	visionListRef.current = visionList;
 	const wallsRef = useRef(blockers);
@@ -760,6 +789,17 @@ export function VTTCanvas({
 			const wallPreviewLayer = new Graphics();
 			wallPreviewLayerRef.current = wallPreviewLayer;
 			world.addChild(wallPreviewLayer);
+
+			// Áreas de luz (só o mestre as vê) e a prévia do desenho de uma nova.
+			const lightZonesLayer = new Graphics();
+			lightZonesLayer.eventMode = "none";
+			lightZonesLayerRef.current = lightZonesLayer;
+			world.addChild(lightZonesLayer);
+
+			const lightPreviewLayer = new Graphics();
+			lightPreviewLayer.eventMode = "none";
+			lightPreviewLayerRef.current = lightPreviewLayer;
+			world.addChild(lightPreviewLayer);
 
 			const templatesLayer = new Graphics();
 			templatesLayerRef.current = templatesLayer;
@@ -2029,6 +2069,40 @@ export function VTTCanvas({
 		drawWalls(wallsLayerRef.current, showWalls ? walls : [], selectedWallIds);
 	}, [walls, selectedWallIds, showWalls, rendererReady]);
 
+	// Áreas de luz: o mestre as vê com a ferramenta Luz ou na camada do mestre.
+	const lightSelectedId = useVTTStore((s) => s.selectedLightZoneId);
+	const lightDraftPoints = useVTTStore((s) => s.lightDraft);
+	const lightDrawLevel = useVTTStore((s) => s.lightDrawLevel);
+	const showLightZones =
+		isGM && (activeTool === "light" || activeLayer === "gm");
+	useEffect(() => {
+		const layer = lightZonesLayerRef.current;
+		if (!rendererReady || !layer) return;
+		if (!showLightZones) {
+			layer.clear();
+			return;
+		}
+		drawLightZones(
+			layer,
+			lightZones,
+			activeTool === "light" ? lightSelectedId : null,
+		);
+	}, [lightZones, lightSelectedId, showLightZones, activeTool, rendererReady]);
+	useEffect(() => {
+		const layer = lightPreviewLayerRef.current;
+		if (!rendererReady || !layer) return;
+		if (lightDraftPoints.length === 0) {
+			lightCursorRef.current = null;
+			layer.clear();
+			return;
+		}
+		drawLightPreview(layer, lightDrawLevel, {
+			kind: "polygon",
+			points: lightDraftPoints,
+			cursor: lightCursorRef.current,
+		});
+	}, [lightDraftPoints, lightDrawLevel, rendererReady]);
+
 	// 7d. Prévia da polilinha (os pontos fixos; o trecho até o cursor é
 	// atualizado direto no pointermove, sem passar pelo React).
 	useEffect(() => {
@@ -2316,6 +2390,42 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Luz (mestre): em "Selecionar" o clique escolhe uma área; nas formas, o
+			// arrasto desenha círculo ou retângulo e os cliques marcam o polígono.
+			if (activeTool === "light" && isGM && isLeftClick && scene) {
+				const store = useVTTStore.getState();
+				const mode = store.lightDrawShape;
+				if (mode === "select") {
+					const hit = zoneAt(worldPoint, store.lightZones);
+					store.setSelectedLightZoneId(hit ? hit.id : null);
+					return;
+				}
+				if (mode === "polygon") {
+					const draft = store.lightDraft;
+					const now = Date.now();
+					const last = lastLightClickRef.current;
+					lastLightClickRef.current = { x: e.clientX, y: e.clientY, t: now };
+					// Duplo clique fecha a área.
+					if (
+						draft.length > 0 &&
+						last &&
+						now - last.t < 350 &&
+						Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6
+					) {
+						lastLightClickRef.current = null;
+						void finishLightDraft();
+						return;
+					}
+					lightCursorRef.current = { x: worldPoint.x, y: worldPoint.y };
+					store.setLightDraft([...draft, { x: worldPoint.x, y: worldPoint.y }]);
+					store.setSelectedLightZoneId(null);
+					return;
+				}
+				lightDragRef.current = { x: worldPoint.x, y: worldPoint.y };
+				store.setSelectedLightZoneId(null);
+				return;
+			}
+
 			// Deselect if clicking on empty canvas. A press on a token reaches this
 			// listener right after the token handler (same DOM event), so it must
 			// not undo the selection/panel that handler just set.
@@ -2507,6 +2617,31 @@ export function VTTCanvas({
 			}
 
 			const worldPoint = screenToWorld(e.clientX, e.clientY);
+
+			// Luz: prévia do círculo/retângulo arrastado ou do polígono até o cursor.
+			if (activeTool === "light" && isGM && lightPreviewLayerRef.current) {
+				const store = useVTTStore.getState();
+				const mode = store.lightDrawShape;
+				if ((mode === "circle" || mode === "rect") && lightDragRef.current) {
+					const geometry = geometryFromDrag(
+						mode,
+						lightDragRef.current,
+						worldPoint,
+					);
+					drawLightPreview(
+						lightPreviewLayerRef.current,
+						store.lightDrawLevel,
+						geometry ? { kind: "geometry", geometry } : null,
+					);
+				} else if (mode === "polygon" && store.lightDraft.length > 0) {
+					lightCursorRef.current = { x: worldPoint.x, y: worldPoint.y };
+					drawLightPreview(lightPreviewLayerRef.current, store.lightDrawLevel, {
+						kind: "polygon",
+						points: store.lightDraft,
+						cursor: worldPoint,
+					});
+				}
+			}
 
 			// Prévia do segmento até o cursor (só redesenha a camada da prévia).
 			if (
@@ -2735,6 +2870,33 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			// Luz: soltar fecha o círculo ou retângulo arrastado (cancelar o toque
+			// descarta). A área nova já nasce selecionada para trocar a luz ou apagar.
+			if (lightDragRef.current) {
+				const start = lightDragRef.current;
+				lightDragRef.current = null;
+				lightPreviewLayerRef.current?.clear();
+				const store = useVTTStore.getState();
+				const mode = store.lightDrawShape;
+				if (
+					e.type !== "pointercancel" &&
+					store.activeTool === "light" &&
+					store.isGM &&
+					(mode === "circle" || mode === "rect")
+				) {
+					const geometry = geometryFromDrag(
+						mode,
+						start,
+						screenToWorld(e.clientX, e.clientY),
+					);
+					if (geometry) {
+						void createLightZone(geometry, store.lightDrawLevel).then((id) => {
+							if (id) useVTTStore.getState().setSelectedLightZoneId(id);
+						});
+					}
+				}
+				return;
+			}
 			const right = rightPressRef.current;
 			rightPressRef.current = null;
 			const marquee = marqueeRef.current;

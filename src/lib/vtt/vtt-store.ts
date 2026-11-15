@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { LightPoint, LightToolMode, VTTLightZone } from "./light-zones";
 import {
 	type ActivePing,
 	admitPing,
@@ -23,6 +24,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "./types";
+import type { LightLevel } from "./vision";
 import {
 	applyWallOp,
 	type VTTWall,
@@ -38,10 +40,19 @@ export type VTTTool =
 	| "ping"
 	| "fog"
 	| "template"
-	| "wall";
+	| "wall"
+	| "light";
 
 /** Paredes da cena: `missing` = tabela ainda não existe (migração não aplicada). */
 export type VTTWallsStatus = "idle" | "loading" | "ready" | "missing" | "error";
+
+/** Áreas de luz da cena: `missing` = tabela ainda não existe (migração não aplicada). */
+export type VTTLightZonesStatus =
+	| "idle"
+	| "loading"
+	| "ready"
+	| "missing"
+	| "error";
 
 /** Mesmo corte de `useIsMobile` (390px cabe aqui). */
 function isPhoneViewport(): boolean {
@@ -250,6 +261,25 @@ interface VTTState {
 	setSelectedWallIds: (ids: string[]) => void;
 	setWallDraft: (points: WallPoint[]) => void;
 	setWallHistory: (undo: WallOp[], redo: WallOp[]) => void;
+
+	// Áreas de luz (só mestre desenha; todos leem para calcular a visão)
+	lightZones: VTTLightZone[];
+	lightZonesStatus: VTTLightZonesStatus;
+	selectedLightZoneId: string | null;
+	/** Pontos já fixados do polígono em desenho (vazio = sem desenho). */
+	lightDraft: LightPoint[];
+	/** Luz e forma que a ferramenta desenha agora. */
+	lightDrawLevel: LightLevel;
+	lightDrawShape: LightToolMode;
+	setLightZones: (zones: VTTLightZone[]) => void;
+	setLightZonesStatus: (status: VTTLightZonesStatus) => void;
+	addLightZoneLocal: (zone: VTTLightZone) => void;
+	removeLightZoneLocal: (id: string) => void;
+	setLightZoneLevelLocal: (id: string, level: LightLevel) => void;
+	setSelectedLightZoneId: (id: string | null) => void;
+	setLightDraft: (points: LightPoint[]) => void;
+	setLightDrawLevel: (level: LightLevel) => void;
+	setLightDrawShape: (shape: LightToolMode) => void;
 }
 
 /** O ponteiro local está arrastando este token (sozinho ou num grupo)? */
@@ -288,6 +318,10 @@ const emptySceneContents = () => ({
 	wallKind: "wall" as WallKind,
 	wallUndo: [],
 	wallRedo: [],
+	lightZones: [] as VTTLightZone[],
+	lightZonesStatus: "idle" as VTTLightZonesStatus,
+	selectedLightZoneId: null as string | null,
+	lightDraft: [] as LightPoint[],
 });
 
 export const useVTTStore = create<VTTState>((set) => ({
@@ -355,6 +389,13 @@ export const useVTTStore = create<VTTState>((set) => ({
 	wallKind: "wall",
 	wallUndo: [],
 	wallRedo: [],
+
+	lightZones: [],
+	lightZonesStatus: "idle",
+	selectedLightZoneId: null,
+	lightDraft: [],
+	lightDrawLevel: "dark",
+	lightDrawShape: "circle",
 
 	setScenes: (scenes) =>
 		set({ scenes: scenes.map((scene) => withSceneGridDefaults(scene)) }),
@@ -426,6 +467,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 			...(tool === "wall"
 				? { activeLayer: state.isGM ? ("gm" as const) : state.activeLayer }
 				: { wallDraft: [], selectedWallIds: [] }),
+			// Sair da ferramenta de luz descarta o polígono em desenho e a seleção.
+			...(tool === "light"
+				? {}
+				: { lightDraft: [], selectedLightZoneId: null }),
 			// Sair da Régua apaga a medição (inclusive a fixada).
 			activeMeasurement: rulerMeasurementForTool(state.activeMeasurement, tool),
 		})),
@@ -873,4 +918,29 @@ export const useVTTStore = create<VTTState>((set) => ({
 	setSelectedWallIds: (selectedWallIds) => set({ selectedWallIds }),
 	setWallDraft: (wallDraft) => set({ wallDraft }),
 	setWallHistory: (wallUndo, wallRedo) => set({ wallUndo, wallRedo }),
+
+	setLightZones: (lightZones) => set({ lightZones }),
+	setLightZonesStatus: (lightZonesStatus) => set({ lightZonesStatus }),
+	addLightZoneLocal: (zone) =>
+		set((state) =>
+			state.lightZones.some((z) => z.id === zone.id)
+				? state
+				: { lightZones: [...state.lightZones, zone] },
+		),
+	removeLightZoneLocal: (id) =>
+		set((state) => ({
+			lightZones: state.lightZones.filter((z) => z.id !== id),
+			selectedLightZoneId:
+				state.selectedLightZoneId === id ? null : state.selectedLightZoneId,
+		})),
+	setLightZoneLevelLocal: (id, level) =>
+		set((state) => ({
+			lightZones: state.lightZones.map((z) =>
+				z.id === id ? { ...z, level } : z,
+			),
+		})),
+	setSelectedLightZoneId: (selectedLightZoneId) => set({ selectedLightZoneId }),
+	setLightDraft: (lightDraft) => set({ lightDraft }),
+	setLightDrawLevel: (lightDrawLevel) => set({ lightDrawLevel }),
+	setLightDrawShape: (lightDrawShape) => set({ lightDrawShape }),
 }));

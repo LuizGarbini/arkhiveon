@@ -28,7 +28,7 @@ export interface VTTScene {
 	 * Luz da cena (migration 0072). Escura: o jogador só enxerga até o alcance da
 	 * visão no escuro. Ausente: cena clara.
 	 */
-	lightLevel?: "bright" | "dark";
+	lightLevel?: "bright" | "dim" | "dark";
 	isActive: boolean;
 	orderIndex: number;
 	createdAt?: string;

@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { type Point, rulerTickPoints, ZERO_ORIGIN } from "./grid-math";
+import type { LightZoneGeometry } from "./light-zones";
 import {
 	formatCells,
 	formatDistance,
@@ -15,6 +16,7 @@ import {
 	type VTTSpellTemplate,
 } from "./template-math";
 import type { VTTGridType, VTTRulerMeasurement } from "./types";
+import type { LightLevel } from "./vision";
 
 export function parseHexColor(
 	color: string | null | undefined,
@@ -625,4 +627,82 @@ export function drawMoveArrow(
 			},
 		);
 	}
+}
+
+/* ------------------------------------------------------------------ */
+/* Áreas de luz (só o mestre vê)                                       */
+/* ------------------------------------------------------------------ */
+
+const LIGHT_ZONE_COLORS = {
+	bright: 0xfbbf24, // luz do dia: âmbar
+	dim: 0x38bdf8, // penumbra: azul
+	dark: 0x818cf8, // escuridão: índigo
+} as const;
+
+const LIGHT_ZONE_FILL_ALPHA = { bright: 0.14, dim: 0.16, dark: 0.24 } as const;
+
+function pathLightGeometry(layer: Graphics, zone: LightZoneGeometry) {
+	if (zone.shape === "circle") {
+		layer.circle(zone.x, zone.y, zone.radius);
+	} else if (zone.shape === "rect") {
+		layer.rect(zone.x, zone.y, zone.width, zone.height);
+	} else {
+		layer.poly(zone.points.flatMap((p) => [p.x, p.y]));
+	}
+}
+
+/**
+ * Áreas de luz na camada do mestre: contorno e véu na cor da luz (âmbar = dia,
+ * azul = penumbra, índigo = escuridão); a selecionada ganha contorno grosso.
+ */
+export function drawLightZones(
+	layer: Graphics,
+	zones: readonly (LightZoneGeometry & { id: string; level: LightLevel })[],
+	selectedId: string | null,
+) {
+	layer.clear();
+	for (const zone of zones) {
+		const color = LIGHT_ZONE_COLORS[zone.level];
+		pathLightGeometry(layer, zone);
+		layer.fill({ color, alpha: LIGHT_ZONE_FILL_ALPHA[zone.level] });
+		pathLightGeometry(layer, zone);
+		layer.stroke({
+			width: zone.id === selectedId ? 4 : 2,
+			color,
+			alpha: zone.id === selectedId ? 1 : 0.75,
+		});
+	}
+}
+
+/**
+ * Prévia do que está sendo desenhado: o círculo ou retângulo do arrasto, ou o
+ * polígono com a linha até o cursor.
+ */
+export function drawLightPreview(
+	layer: Graphics,
+	level: LightLevel,
+	preview:
+		| { kind: "geometry"; geometry: LightZoneGeometry }
+		| { kind: "polygon"; points: readonly Point[]; cursor: Point | null }
+		| null,
+) {
+	layer.clear();
+	if (!preview) return;
+	const color = LIGHT_ZONE_COLORS[level];
+	if (preview.kind === "geometry") {
+		pathLightGeometry(layer, preview.geometry);
+		layer.fill({ color, alpha: LIGHT_ZONE_FILL_ALPHA[level] });
+		pathLightGeometry(layer, preview.geometry);
+		layer.stroke({ width: 3, color, alpha: 0.9 });
+		return;
+	}
+	const { points, cursor } = preview;
+	if (points.length === 0) return;
+	layer.moveTo(points[0].x, points[0].y);
+	for (let i = 1; i < points.length; i++)
+		layer.lineTo(points[i].x, points[i].y);
+	if (cursor) layer.lineTo(cursor.x, cursor.y);
+	layer.stroke({ width: 3, color, alpha: 0.9, cap: "round", join: "round" });
+	for (const p of points) layer.circle(p.x, p.y, 5);
+	layer.fill({ color });
 }

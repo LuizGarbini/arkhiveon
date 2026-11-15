@@ -107,12 +107,17 @@ export function characterVisionCells(
 	return cells !== null && cells > 0 ? cells : undefined;
 }
 
-/** Luz da cena: na escura só vale a visão no escuro. */
-export type LightLevel = "bright" | "dark";
+/**
+ * Luz de um lugar: luz do dia (vale a visão normal), penumbra (a visão normal cai
+ * à metade) ou escuridão (só vale a visão no escuro).
+ */
+export type LightLevel = "bright" | "dim" | "dark";
 
-/** Valor vindo do banco (ou de um rascunho) → luz válida; o resto é cena clara. */
+export const LIGHT_LEVELS: readonly LightLevel[] = ["bright", "dim", "dark"];
+
+/** Valor vindo do banco (ou de um rascunho) → luz válida; o resto é luz do dia. */
 export function toLightLevel(value: unknown): LightLevel {
-	return value === "dark" ? "dark" : "bright";
+	return value === "dark" || value === "dim" ? value : "bright";
 }
 
 /**
@@ -120,6 +125,9 @@ export function toLightLevel(value: unknown): LightLevel {
  * (1 casa). Sem isso o personagem ficaria cego e sem como se orientar.
  */
 export const NO_DARKVISION_CELLS = 1;
+
+/** Penumbra para quem a ficha não diz nada: metade da visão padrão. */
+export const DIM_DEFAULT_CELLS = DEFAULT_VISION_CELLS / 2;
 
 /** Visão no escuro da ficha, em casas (mesma conversão da visão normal). */
 export function characterDarkvisionCells(
@@ -136,11 +144,14 @@ export function characterDarkvisionCells(
 }
 
 /**
- * Quanto a ficha enxerga, em casas, na luz da cena.
- *  - Cena clara: o maior entre a visão normal e a visão no escuro (quem tem
- *    visão no escuro não enxerga menos na luz).
- *  - Cena escura: a visão no escuro; sem ela, só a casa ao lado.
- * `undefined` na cena clara quando a ficha não define nada (vale o do token).
+ * Quanto a ficha enxerga, em casas, numa luz.
+ *  - Luz do dia: o maior entre a visão normal e a visão no escuro (quem tem visão
+ *    no escuro não enxerga menos na luz). `undefined` quando a ficha não define
+ *    nada (vale o do token).
+ *  - Penumbra: a visão normal pela METADE, ou a visão no escuro se for maior (a
+ *    visão no escuro enxerga a penumbra como se fosse luz do dia). Sem visão
+ *    normal na ficha, a metade da padrão. Nunca menos que 1 casa.
+ *  - Escuridão: a visão no escuro; sem ela, só a casa ao lado.
  */
 export function sheetVisionCells(
 	character: {
@@ -154,24 +165,37 @@ export function sheetVisionCells(
 	const normal = characterVisionCells(character, systemUnit);
 	const dark = characterDarkvisionCells(character, systemUnit);
 	if (light === "dark") return dark ?? NO_DARKVISION_CELLS;
+	if (light === "dim") {
+		const half = normal !== undefined ? normal / 2 : DIM_DEFAULT_CELLS;
+		return Math.max(half, dark ?? 0, NO_DARKVISION_CELLS);
+	}
 	if (normal === undefined && dark === undefined) return undefined;
 	return Math.max(normal ?? 0, dark ?? 0);
 }
 
+/** Alcance da ficha em cada luz (casas). `bright` vazio: vale o do token. */
+export interface SheetVision {
+	bright?: number;
+	dim: number;
+	dark: number;
+}
+
 /**
- * Alcance (em casas) de um token na luz da cena, vindo da ficha quando há.
- * Token sem ficha, no escuro, também só vê a casa ao lado.
+ * Alcance (em casas) de um token numa luz, vindo da ficha quando há. Token sem
+ * ficha: na luz do dia vale o do token, na penumbra a metade da visão padrão, no
+ * escuro só a casa ao lado.
  */
 export function resolveTokenVisionCells(
 	token: { characterId?: string | null },
-	sheetCells: ReadonlyMap<string, number>,
+	sheetCells: ReadonlyMap<string, SheetVision>,
 	light: LightLevel,
 ): number | undefined {
-	const fromSheet = token.characterId
+	const sheet = token.characterId
 		? sheetCells.get(token.characterId)
 		: undefined;
-	if (fromSheet !== undefined) return fromSheet;
-	return light === "dark" ? NO_DARKVISION_CELLS : undefined;
+	if (light === "bright") return sheet?.bright;
+	if (light === "dim") return sheet?.dim ?? DIM_DEFAULT_CELLS;
+	return sheet?.dark ?? NO_DARKVISION_CELLS;
 }
 
 /**

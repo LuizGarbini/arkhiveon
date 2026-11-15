@@ -10,13 +10,15 @@ describe("selectLinkedVisionStamp · ponte ficha → mesa", () => {
 		{ id: "x", system: "dnd5e", visionDistance: 30 }, // não está na mesa
 	];
 
-	it("só inclui quem está na mesa e tem visão definida", () => {
+	it("só inclui quem está na mesa; quem não definiu nada fica sem alcance de dia", () => {
 		const stamp = selectLinkedVisionStamp(chars, "a|b|c|d");
-		expect([...parseVisionStamp(stamp).entries()]).toEqual([
-			["a", 12],
-			["b", 6],
-			["d", 12],
-		]);
+		const m = parseVisionStamp(stamp);
+		expect([...m.keys()]).toEqual(["a", "b", "c", "d"]);
+		expect(m.get("a")?.bright).toBe(12);
+		expect(m.get("b")?.bright).toBe(6);
+		expect(m.get("d")?.bright).toBe(12);
+		expect(m.get("c")?.bright).toBeUndefined(); // vale o do token
+		expect(m.has("x")).toBe(false);
 	});
 
 	it("sem personagens ligados: vazio", () => {
@@ -40,46 +42,41 @@ describe("selectLinkedVisionStamp · ponte ficha → mesa", () => {
 
 	it("parse tolera lixo", () => {
 		expect(parseVisionStamp("").size).toBe(0);
-		expect(parseVisionStamp("sem-dois-pontos;a:abc;b:0;c:5;").get("c")).toBe(5);
-		expect(parseVisionStamp("sem-dois-pontos;a:abc;b:0;c:5;").size).toBe(1);
+		const messy = parseVisionStamp(
+			"sem-dois-pontos;a:abc;b:0,0,0;c:,5,2;d:4,3;e:7,x,2;",
+		);
+		expect([...messy.keys()]).toEqual(["c"]);
+		expect(messy.get("c")).toEqual({ dim: 5, dark: 2 });
 	});
 });
 
-describe("selectLinkedVisionStamp · luz da cena", () => {
+describe("selectLinkedVisionStamp · as três luzes de cada ficha", () => {
 	const chars = [
-		{ id: "a", system: "dnd5e", visionDistance: 30, darkvisionDistance: 60 }, // 6 e 12
-		{ id: "b", system: "dnd5e", visionDistance: 60 }, // 12, sem visão no escuro
+		{ id: "a", system: "dnd5e", visionDistance: 30, darkvisionDistance: 60 }, // 6 e 12 casas
+		{ id: "b", system: "dnd5e", visionDistance: 60 }, // 12 casas, sem visão no escuro
 		{ id: "c", system: "dnd5e" }, // nada
 	];
+	const read = () => parseVisionStamp(selectLinkedVisionStamp(chars, "a|b|c"));
 
-	it("clara: o maior de cada ficha; quem não definiu nada fica de fora", () => {
-		const m = parseVisionStamp(
-			selectLinkedVisionStamp(chars, "a|b|c", "bright"),
-		);
-		expect([...m.entries()]).toEqual([
-			["a", 12],
-			["b", 12],
-		]);
+	it("luz do dia: o maior entre visão normal e no escuro", () => {
+		expect(read().get("a")?.bright).toBe(12);
+		expect(read().get("b")?.bright).toBe(12);
 	});
 
-	it("escura: visão no escuro; sem ela, 1 casa (inclusive quem não definiu nada)", () => {
-		const m = parseVisionStamp(selectLinkedVisionStamp(chars, "a|b|c", "dark"));
-		expect([...m.entries()]).toEqual([
-			["a", 12],
-			["b", 1],
-			["c", 1],
-		]);
+	it("penumbra: metade da visão normal, ou a visão no escuro se for maior", () => {
+		expect(read().get("a")?.dim).toBe(12); // max(6/2, 12)
+		expect(read().get("b")?.dim).toBe(6); // 12/2
+		expect(read().get("c")?.dim).toBe(3); // metade da padrão (6)
 	});
 
-	it("o padrão é a cena clara (compatível com o uso anterior)", () => {
-		expect(selectLinkedVisionStamp(chars, "a|b")).toBe(
-			selectLinkedVisionStamp(chars, "a|b", "bright"),
-		);
+	it("escuridão: a visão no escuro; sem ela, 1 casa", () => {
+		expect(read().get("a")?.dark).toBe(12);
+		expect(read().get("b")?.dark).toBe(1);
+		expect(read().get("c")?.dark).toBe(1);
 	});
 
-	it("trocar a luz muda o selo (a visão é recalculada)", () => {
-		expect(selectLinkedVisionStamp(chars, "b", "bright")).not.toBe(
-			selectLinkedVisionStamp(chars, "b", "dark"),
-		);
+	it("o selo não depende da luz da cena: ele já traz as três", () => {
+		// a luz muda a cada passo do token (área de luz), então o selo guarda as três
+		expect(selectLinkedVisionStamp(chars, "b")).toContain(":12,6,1;");
 	});
 });

@@ -30,6 +30,10 @@ const base = {
 } as unknown as Row;
 
 describe("luz da cena na leitura do banco", () => {
+	it("penumbra vira dim", () => {
+		expect(mapSceneRow({ ...base, light_level: "dim" }).lightLevel).toBe("dim");
+	});
+
 	it("escura vira dark; clara vira bright", () => {
 		expect(mapSceneRow({ ...base, light_level: "dark" }).lightLevel).toBe(
 			"dark",
@@ -38,7 +42,7 @@ describe("luz da cena na leitura do banco", () => {
 	});
 
 	it("valor desconhecido ou ausente (linha antiga) é cena clara", () => {
-		expect(mapSceneRow({ ...base, light_level: "dim" }).lightLevel).toBe(
+		expect(mapSceneRow({ ...base, light_level: "twilight" }).lightLevel).toBe(
 			"bright",
 		);
 		const old = { ...base } as unknown as Record<string, unknown>;
@@ -47,5 +51,6 @@ describe("luz da cena na leitura do banco", () => {
 		expect(toLightLevel(null)).toBe("bright");
 		expect(toLightLevel(7)).toBe("bright");
 		expect(toLightLevel("dark")).toBe("dark");
+		expect(toLightLevel("dim")).toBe("dim");
 	});
 });

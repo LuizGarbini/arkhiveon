@@ -290,62 +290,19 @@ describe("Esquecer o que já foi explorado", () => {
 	});
 });
 
-describe("Luz da cena", () => {
-	function renderLight(
-		over: Partial<VTTScene>,
-		onUpdateScene = vi.fn(async () => {}),
-	) {
+describe("Luz da cena (mudou para a ferramenta Luz)", () => {
+	it("o painel da névoa não tem mais o seletor de luz: ele vive na ferramenta Luz", () => {
 		render(
 			<ToastProvider>
 				<VTTFogControls
-					scene={{ ...scene, fogEnabled: true, fogExploration: true, ...over }}
-					onUpdateScene={onUpdateScene}
+					scene={{ ...scene, fogEnabled: true, fogExploration: true }}
+					onUpdateScene={vi.fn(async () => {})}
 					onClearFog={vi.fn()}
 				/>
 			</ToastProvider>,
 		);
-		return onUpdateScene;
-	}
-
-	it("só aparece com o modo Exploração ligado", () => {
-		renderLight({ fogExploration: false });
 		expect(screen.queryByRole("group", { name: "Luz da cena" })).toBeNull();
-		cleanup();
-		renderLight({});
-		expect(screen.getByRole("group", { name: "Luz da cena" })).toBeTruthy();
-	});
-
-	it("cena sem luz definida conta como clara", () => {
-		renderLight({ lightLevel: undefined });
-		expect(
-			screen
-				.getByRole("button", { name: "Clara" })
-				.getAttribute("aria-pressed"),
-		).toBe("true");
-		expect(
-			screen
-				.getByRole("button", { name: "Escura" })
-				.getAttribute("aria-pressed"),
-		).toBe("false");
-	});
-
-	it("tocar em Escura grava lightLevel dark; tocar na atual não grava nada", () => {
-		const onUpdate = renderLight({ lightLevel: "bright" });
-		fireEvent.click(screen.getByRole("button", { name: "Clara" }));
-		expect(onUpdate).not.toHaveBeenCalled();
-		fireEvent.click(screen.getByRole("button", { name: "Escura" }));
-		expect(onUpdate).toHaveBeenCalledWith("scene-1", { lightLevel: "dark" });
-	});
-
-	it("de escura volta para clara", () => {
-		const onUpdate = renderLight({ lightLevel: "dark" });
-		expect(
-			screen
-				.getByRole("button", { name: "Escura" })
-				.getAttribute("aria-pressed"),
-		).toBe("true");
-		fireEvent.click(screen.getByRole("button", { name: "Clara" }));
-		expect(onUpdate).toHaveBeenCalledWith("scene-1", { lightLevel: "bright" });
+		expect(screen.queryByRole("button", { name: "Escura" })).toBeNull();
 	});
 });
 

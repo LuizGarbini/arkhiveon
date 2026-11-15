@@ -12,6 +12,7 @@ import {
 	Radio,
 	Ruler,
 	ShieldAlert,
+	Sun,
 	Swords,
 	Users,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
 	useCombatStore,
 } from "@/lib/vtt/combat-store";
 import { TOOLBAR_WITH_GRID_BAR_CLASS } from "@/lib/vtt/grid-bar-layout";
+import { handleLightKey } from "@/lib/vtt/light-zone-sync";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { useNotesStore } from "@/lib/vtt/notes-store";
 import { flushAllNotes } from "@/lib/vtt/notes-sync";
@@ -114,6 +116,18 @@ export function VTTToolbar() {
 				e.preventDefault();
 				return;
 			}
+			// Esc na ferramenta Luz: cancela o polígono ou tira a seleção antes de
+			// qualquer outra coisa (como a Parede).
+			if (
+				e.key === "Escape" &&
+				(useVTTStore.getState().lightDraft.length > 0 ||
+					useVTTStore.getState().selectedLightZoneId !== null) &&
+				!isVttShortcutBlocked(e) &&
+				handleLightKey(e)
+			) {
+				e.preventDefault();
+				return;
+			}
 			if (e.key === "Escape" && !e.defaultPrevented && !hasOpenVttDialog()) {
 				const { showRosterDrawer, setShowRosterDrawer } =
 					useVTTStore.getState();
@@ -124,6 +138,12 @@ export function VTTToolbar() {
 			// Ferramenta Parede: Esc/Enter encerram o desenho, Backspace tira o
 			// último ponto, Delete/Backspace apagam a seleção, Ctrl/⌘+Z desfaz.
 			if (!e.defaultPrevented && handleWallKey(e)) {
+				e.preventDefault();
+				return;
+			}
+			// Ferramenta Luz: Enter fecha o polígono, Backspace tira um ponto,
+			// Delete/Backspace apagam a área selecionada.
+			if (!e.defaultPrevented && handleLightKey(e)) {
 				e.preventDefault();
 				return;
 			}
@@ -149,6 +169,7 @@ export function VTTToolbar() {
 			if (key === "g") setActiveTool("ping");
 			if (key === "t") setActiveTool("template");
 			if (key === "w" && isGM && !wallDisabledReason) setActiveTool("wall");
+			if (key === "l" && isGM) setActiveTool("light");
 			if (key === "f" && isGM) {
 				setActiveTool("fog");
 				setShowFogControls(true);
@@ -266,6 +287,17 @@ export function VTTToolbar() {
 								setShowFogControls(true);
 							}}
 						/>
+						{/* Luz: áreas de luz do dia, penumbra e escuridão (desenhar pede mouse
+						    ou toque preciso, então some no celular, como a Parede). */}
+						{!isMobile && (
+							<ToolbarButton
+								label="Luz"
+								shortcut="L"
+								icon={Sun}
+								active={activeTool === "light"}
+								onClick={() => setActiveTool("light")}
+							/>
+						)}
 						{/* Celular: só visualização (o mestre vê as paredes no mapa; o
 						    Tooltip não abre no toque, então o botão nem aparece). */}
 						{!isMobile && (
