@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.94-vtt-mestre-ve-exploracao",
+		version: "1.6.94",
+		date: "15/11/2026",
+		title: "O mestre vê o que os jogadores já exploraram",
+		description:
+			"Com o modo Exploração ligado, o mestre agora vê no mapa, em realce, tudo o que o grupo já explorou e, em contorno, o cone de visão que cada personagem tem neste momento. Só o mestre vê esse realce. Dá para ligar e desligar no painel da névoa, em Ver exploração dos jogadores (vem ligado).",
+		bullets: [],
+	},
+	{
 		id: "v1.6.93-faccoes-imagem",
 		version: "1.6.93",
 		date: "15/11/2026",

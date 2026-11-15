@@ -118,6 +118,8 @@ interface VTTState {
 	activeFogMode: VTTFogMode;
 	fogBrushRadius: number;
 	showFogControls: boolean;
+	/** Mestre: realça o que os jogadores já exploraram e a visão atual de cada um. */
+	showPlayerExploration: boolean;
 
 	// Realtime Presence & Remote Multiplayers
 	onlineUsers: VTTPresenceUser[];
@@ -199,6 +201,7 @@ interface VTTState {
 	setActiveFogMode: (mode: VTTFogMode) => void;
 	setFogBrushRadius: (radius: number) => void;
 	setShowFogControls: (show: boolean) => void;
+	setShowPlayerExploration: (show: boolean) => void;
 
 	// Presence & Broadcast actions
 	setOnlineUsers: (users: VTTPresenceUser[]) => void;
@@ -318,6 +321,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	activeFogMode: "reveal",
 	fogBrushRadius: 40,
 	showFogControls: false,
+	showPlayerExploration: true,
 
 	onlineUsers: [],
 	remoteCursors: {},
@@ -727,6 +731,8 @@ export const useVTTStore = create<VTTState>((set) => ({
 					}
 				: { showFogControls: false },
 		),
+
+	setShowPlayerExploration: (show) => set({ showPlayerExploration: show }),
 
 	setActiveMeasurement: (measurement) =>
 		set({ activeMeasurement: measurement }),

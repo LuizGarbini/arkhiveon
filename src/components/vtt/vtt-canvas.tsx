@@ -358,6 +358,7 @@ export function VTTCanvas({
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
 	const visionMaskRef = useRef<Graphics | null>(null);
 	const dragGhostLayerRef = useRef<Container | null>(null);
+	const gmExploredLayerRef = useRef<Graphics | null>(null);
 	const penumbraMaskRef = useRef<Graphics | null>(null);
 	const fogOfWarLayerRef = useRef<Container | null>(null);
 	const fogSpriteRef = useRef<Sprite | null>(null);
@@ -689,6 +690,14 @@ export function VTTCanvas({
 			fogOfWarLayer.addChild(fogSprite);
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
+
+			// Só o mestre: realce do que os jogadores já exploraram e da visão atual.
+			// Fica ACIMA do véu do mestre (senão o véu apaga o realce); a opacidade é
+			// baixa para os tokens continuarem legíveis por baixo.
+			const gmExploredLayer = new Graphics();
+			gmExploredLayer.eventMode = "none";
+			gmExploredLayerRef.current = gmExploredLayer;
+			world.addChild(gmExploredLayer);
 
 			// Fantasma do token arrastado (acima da névoa).
 			const dragGhostLayer = new Container();
@@ -1573,6 +1582,7 @@ export function VTTCanvas({
 	const visionSig = visionKey(visionList);
 	const sceneId = scene?.id ?? null;
 	const exploredVersion = useExploredStore((s) => s.version);
+	const showPlayerExploration = useVTTStore((s) => s.showPlayerExploration);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig, walls e exploredVersion são as dependências; o efeito lê a lista e a grade na hora (ref/store).
 	useEffect(() => {
 		if (!rendererReady) return;
@@ -1584,6 +1594,8 @@ export function VTTCanvas({
 		layer.clear();
 		mask.clear();
 		penumbraMask.clear();
+		const overlay = gmExploredLayerRef.current;
+		overlay?.clear();
 		if (!sceneFogEnabled || !sceneFogExploration || !sceneId) {
 			layer.visible = false;
 			layer.mask = null;
@@ -1629,6 +1641,31 @@ export function VTTCanvas({
 			layer.visible = false;
 			layer.mask = null;
 			fogLayer.mask = null;
+			// O mestre não tem névoa de jogador, mas vê o que o grupo já liberou: o
+			// explorado em realce e, em contorno, para onde cada um olha agora.
+			if (overlay && showPlayerExploration) {
+				const tint = cssVarColor("--primary", 0x6d28d9);
+				const memory = useExploredStore.getState();
+				if (memory.sceneId === sceneId && memory.grid) {
+					for (const run of exploredRuns(memory.grid)) {
+						overlay.rect(run.x, run.y, run.w, run.h);
+					}
+					overlay.fill({ color: tint, alpha: 0.15 });
+				}
+				for (const polygon of polygons) {
+					polygon.parts.forEach((part, index) => {
+						const flat = flattenPolygon(part);
+						if (flat.length < 6) return;
+						overlay.poly(flat, true);
+						overlay.fill({ color: tint, alpha: 0.1 });
+						// Só o cone leva contorno (o círculo curto fica só no realce).
+						if (index === 0) {
+							overlay.poly(flat, true);
+							overlay.stroke({ width: 2, color: tint, alpha: 0.85 });
+						}
+					});
+				}
+			}
 			return;
 		}
 		layer.visible = true;
@@ -1669,6 +1706,7 @@ export function VTTCanvas({
 		visionSig,
 		walls,
 		exploredVersion,
+		showPlayerExploration,
 	]);
 
 	// 6. Render Remote Multiplayer Cursors

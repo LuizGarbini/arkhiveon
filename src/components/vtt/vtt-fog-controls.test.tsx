@@ -348,3 +348,40 @@ describe("Luz da cena", () => {
 		expect(onUpdate).toHaveBeenCalledWith("scene-1", { lightLevel: "bright" });
 	});
 });
+
+describe("Ver exploração dos jogadores", () => {
+	function renderToggle(fogExploration: boolean) {
+		render(
+			<ToastProvider>
+				<VTTFogControls
+					scene={{ ...scene, fogEnabled: true, fogExploration }}
+					onUpdateScene={vi.fn(async () => {})}
+					onClearFog={vi.fn()}
+				/>
+			</ToastProvider>,
+		);
+	}
+
+	beforeEach(() => useVTTStore.setState({ showPlayerExploration: true }));
+
+	it("só aparece com o modo Exploração ligado", () => {
+		renderToggle(false);
+		expect(screen.queryByText("Ver exploração dos jogadores")).toBeNull();
+		cleanup();
+		renderToggle(true);
+		expect(screen.getByText("Ver exploração dos jogadores")).toBeTruthy();
+	});
+
+	it("vem ligado por padrão e alterna na hora, sem confirmação", () => {
+		renderToggle(true);
+		const button = screen.getByRole("button", {
+			name: /Ver exploração dos jogadores/,
+		});
+		expect(button.getAttribute("aria-pressed")).toBe("true");
+		fireEvent.click(button);
+		expect(useVTTStore.getState().showPlayerExploration).toBe(false);
+		expect(button.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(button);
+		expect(useVTTStore.getState().showPlayerExploration).toBe(true);
+	});
+});

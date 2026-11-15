@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.93",
+	"version": "1.6.94",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -24,6 +24,7 @@
 		"preview:record": "tsx scripts/record-preview.ts",
 		"check:fog-drag": "node scripts/check-fog-drag.cjs",
 		"check:vision-drag": "node scripts/check-vision-drag.cjs",
+		"check:gm-exploration": "node scripts/check-gm-exploration.cjs",
 		"impeccable:detect": "impeccable detect src/components/vtt/vtt-ai-chat.tsx src/components/vtt/sheet-batch-review.tsx src/components/ai-mesa/shell-ai-chat.tsx src/lib/ai-mesa/sheet-batch.ts"
 	},
 	"dependencies": {

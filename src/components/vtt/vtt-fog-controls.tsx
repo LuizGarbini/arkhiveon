@@ -63,6 +63,10 @@ export function VTTFogControls({
 	const setActiveFogMode = useVTTStore((s) => s.setActiveFogMode);
 	const fogBrushRadius = useVTTStore((s) => s.fogBrushRadius);
 	const setFogBrushRadius = useVTTStore((s) => s.setFogBrushRadius);
+	const showPlayerExploration = useVTTStore((s) => s.showPlayerExploration);
+	const setShowPlayerExploration = useVTTStore(
+		(s) => s.setShowPlayerExploration,
+	);
 	const showFogControls = useVTTStore((s) => s.showFogControls);
 	const setShowFogControls = useVTTStore((s) => s.setShowFogControls);
 	const toast = useToast();
@@ -241,6 +245,28 @@ export function VTTFogControls({
 						})}
 					</fieldset>
 				</div>
+			) : null}
+
+			{scene?.fogExploration ? (
+				<button
+					type="button"
+					aria-pressed={showPlayerExploration}
+					onClick={() => setShowPlayerExploration(!showPlayerExploration)}
+					title="Realça no mapa o que os jogadores já exploraram e, em contorno, para onde cada um olha agora. Só o mestre vê."
+					className={cn(
+						"min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-[11px] font-semibold transition-[background-color,color,transform] duration-150 active:scale-[0.98] cursor-pointer touch-manipulation select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+						showPlayerExploration
+							? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+							: "bg-card-elevated text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
+					)}
+				>
+					{showPlayerExploration ? (
+						<Eye className="h-4 w-4" />
+					) : (
+						<EyeOff className="h-4 w-4" />
+					)}
+					<span>Ver exploração dos jogadores</span>
+				</button>
 			) : null}
 
 			{scene?.fogExploration ? (
