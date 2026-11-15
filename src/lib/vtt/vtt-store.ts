@@ -178,6 +178,10 @@ interface VTTState {
 		targetX: number,
 		targetY: number,
 	) => void;
+	/** Vários alvos de uma vez (arrasto em grupo): uma única mudança na store. */
+	setTokenTargetPositions: (
+		moves: readonly { tokenId: string; x: number; y: number }[],
+	) => void;
 	removeToken: (tokenId: string) => void;
 	setSelectedTokenIds: (ids: string[]) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
@@ -238,7 +242,8 @@ interface VTTState {
 	setWallHistory: (undo: WallOp[], redo: WallOp[]) => void;
 }
 
-function tokenIsBeingDragged(
+/** O ponteiro local está arrastando este token (sozinho ou num grupo)? */
+export function isTokenDragged(
 	state: { draggedTokenId: string | null; draggedTokenIds: readonly string[] },
 	tokenId: string,
 ) {
@@ -527,7 +532,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 				// A local drag's x/y is where the token is. An old interpolation
 				// target would pull the sprite back the other way on the next frame.
 				if (
-					tokenIsBeingDragged(state, tokenId) &&
+					isTokenDragged(state, tokenId) &&
 					(updates.x !== undefined || updates.y !== undefined) &&
 					updates.targetX === undefined &&
 					updates.targetY === undefined
@@ -542,7 +547,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 		set((state) => {
 			// The pointer owns this token until pointerup. A drag broadcast
 			// (including an echo) must not start a second position.
-			if (tokenIsBeingDragged(state, tokenId)) return state;
+			if (isTokenDragged(state, tokenId)) return state;
 			const current = state.tokens.find((t) => t.id === tokenId);
 			if (
 				!current ||
@@ -554,6 +559,25 @@ export const useVTTStore = create<VTTState>((set) => ({
 					t.id === tokenId ? { ...t, targetX, targetY } : t,
 				),
 			};
+		}),
+	setTokenTargetPositions: (moves) =>
+		set((state) => {
+			const byId = new Map<string, { x: number; y: number }>();
+			for (const move of moves) {
+				// O ponteiro manda nos tokens que ele está arrastando.
+				if (isTokenDragged(state, move.tokenId)) continue;
+				byId.set(move.tokenId, { x: move.x, y: move.y });
+			}
+			let changed = false;
+			const tokens = state.tokens.map((t) => {
+				const target = byId.get(t.id);
+				if (!target || (t.targetX === target.x && t.targetY === target.y)) {
+					return t;
+				}
+				changed = true;
+				return { ...t, targetX: target.x, targetY: target.y };
+			});
+			return changed ? { tokens } : state;
 		}),
 	removeToken: (tokenId) =>
 		set((state) => ({

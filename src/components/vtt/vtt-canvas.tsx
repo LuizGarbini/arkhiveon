@@ -26,6 +26,11 @@ import {
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
 import {
+	cursorBroadcastDue,
+	type DragMove,
+	dragBroadcastDue,
+} from "@/lib/vtt/drag-broadcast";
+import {
 	buildFogComposite,
 	drawFogGeometry,
 	GM_FOG_ALPHA,
@@ -231,6 +236,8 @@ function auraPoseSignature(
 interface VTTCanvasProps {
 	scene: VTTScene | null;
 	characterOwners?: readonly VTTCharacterOwner[];
+	/** Um lote por tick do arrasto, com todos os tokens do grupo. */
+	onBroadcastDragBatch?: (moves: DragMove[]) => void;
 	onUpdateToken?: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
@@ -253,6 +260,7 @@ const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
 export function VTTCanvas({
 	scene,
 	characterOwners = EMPTY_CHARACTER_OWNERS,
+	onBroadcastDragBatch,
 	onUpdateToken,
 	onBroadcastDrag,
 	onBroadcastCursor,
@@ -2180,7 +2188,17 @@ export function VTTCanvas({
 			}
 
 			// Broadcast Live Cursor movement (throttled to ~30-60fps)
-			if (onBroadcastCursor && now - lastCursorBroadcastRef.current > 30) {
+			// Quem arrasta um token não manda o cursor: o token já mostra onde ele
+			// está, e cada mensagem a mais conta contra o limite do Realtime.
+			if (
+				onBroadcastCursor &&
+				!draggingTokenIdRef.current &&
+				cursorBroadcastDue(
+					now,
+					lastCursorBroadcastRef.current,
+					useVTTStore.getState().onlineUsers.length,
+				)
+			) {
 				lastCursorBroadcastRef.current = now;
 				onBroadcastCursor(worldPoint.x, worldPoint.y);
 			}
@@ -2254,15 +2272,20 @@ export function VTTCanvas({
 					worldPoint.x - group.grabX,
 					worldPoint.y - group.grabY,
 				);
-				const broadcast = now - lastBroadcastTimeRef.current > 30;
+				const broadcast = dragBroadcastDue(now, lastBroadcastTimeRef.current);
 				if (broadcast) lastBroadcastTimeRef.current = now;
 				for (const member of moved) {
 					const display = tokenDisplayObjectsRef.current.get(member.id);
 					if (display) display.position.set(member.x, member.y);
 					updateToken(member.id, { x: member.x, y: member.y });
-					if (broadcast && onBroadcastDrag) {
+					if (broadcast && !onBroadcastDragBatch && onBroadcastDrag) {
 						onBroadcastDrag(member.id, member.x, member.y);
 					}
+				}
+				if (broadcast && onBroadcastDragBatch) {
+					onBroadcastDragBatch(
+						moved.map((m) => ({ tokenId: m.id, x: m.x, y: m.y })),
+					);
 				}
 				paintAurasRef.current();
 				return;
@@ -2474,6 +2497,7 @@ export function VTTCanvas({
 				const liveTokens = useVTTStore.getState().tokens;
 				const currentWalls = useVTTStore.getState().walls;
 				let wasBlocked = false;
+				const finalMoves: DragMove[] = [];
 				for (const member of moved) {
 					const orig = group.members.find((m) => m.id === member.id);
 					const token = liveTokens.find((item) => item.id === member.id);
@@ -2523,9 +2547,18 @@ export function VTTCanvas({
 							);
 						}
 					}
-					if (onBroadcastDrag) {
+					if (!onBroadcastDragBatch && onBroadcastDrag) {
 						onBroadcastDrag(member.id, finalPos.x, finalPos.y);
 					}
+					finalMoves.push({
+						tokenId: member.id,
+						x: finalPos.x,
+						y: finalPos.y,
+					});
+				}
+				// A posição final de todo o grupo sai numa mensagem só.
+				if (onBroadcastDragBatch && finalMoves.length > 0) {
+					onBroadcastDragBatch(finalMoves);
 				}
 				if (wasBlocked) {
 					showToast("info", {
@@ -2640,6 +2673,7 @@ export function VTTCanvas({
 		updateToken,
 		onUpdateToken,
 		onBroadcastDrag,
+		onBroadcastDragBatch,
 		onBroadcastCursor,
 		onBroadcastPing,
 		onBroadcastFog,

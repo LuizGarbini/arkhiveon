@@ -36,6 +36,11 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
+import {
+	controllableMoves,
+	type DragMove,
+	readDragBatch,
+} from "@/lib/vtt/drag-broadcast";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { subscribeMoves } from "@/lib/vtt/move-sync";
 import {
@@ -64,6 +69,7 @@ import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
+import { remoteTokenPatch } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
@@ -84,7 +90,7 @@ import type {
 	VTTToken,
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
-import { useVTTStore } from "@/lib/vtt/vtt-store";
+import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls } from "@/lib/vtt/wall-sync";
 
 function readCampaignCharacters() {
@@ -592,43 +598,15 @@ function VTTSession() {
 					} else if (payload.eventType === "UPDATE") {
 						const row =
 							payload.new as Database["public"]["Tables"]["vtt_tokens"]["Row"];
-						const isBeingDraggedLocally =
-							useVTTStore.getState().draggedTokenId === row.id;
-
-						if (isBeingDraggedLocally) {
-							// Prevent position rubberbanding during active local drag
-							updateToken(row.id, {
-								sizeCells: Number(row.size_cells),
-								rotation: Number(row.rotation || 0),
-								hpCurrent: row.hp_current,
-								hpMax: row.hp_max,
-								tempHp: row.temp_hp ?? 0,
-								elevation: Number(row.elevation || 0),
-								conditions: (row.conditions as unknown as string[]) || [],
-								auras: (row.auras as unknown as VTTAura[]) || [],
-								visionRange: Number(row.vision_range || 0),
-								isLocked: row.is_locked,
-								isHidden: row.is_hidden,
-								layer: row.layer as VTTLayer,
-							});
-						} else {
-							updateToken(row.id, {
-								x: Number(row.x),
-								y: Number(row.y),
-								sizeCells: Number(row.size_cells),
-								rotation: Number(row.rotation || 0),
-								hpCurrent: row.hp_current,
-								hpMax: row.hp_max,
-								tempHp: row.temp_hp ?? 0,
-								elevation: Number(row.elevation || 0),
-								conditions: (row.conditions as unknown as string[]) || [],
-								auras: (row.auras as unknown as VTTAura[]) || [],
-								visionRange: Number(row.vision_range || 0),
-								isLocked: row.is_locked,
-								isHidden: row.is_hidden,
-								layer: row.layer as VTTLayer,
-							});
-						}
+						// A atualização do banco é a verdade final. O token sob o ponteiro
+						// local (sozinho ou em grupo) não é tocado: o ponteiro manda.
+						updateToken(
+							row.id,
+							remoteTokenPatch(
+								row,
+								isTokenDragged(useVTTStore.getState(), row.id),
+							),
+						);
 					} else if (payload.eventType === "DELETE") {
 						const oldRow = payload.old as { id?: string };
 						if (oldRow?.id) {
@@ -812,6 +790,21 @@ function VTTSession() {
 					const data = payload.payload;
 					if (data?.tokenId && data.x !== undefined && data.y !== undefined) {
 						setTokenTargetPosition(data.tokenId, data.x, data.y);
+					}
+				},
+			)
+			.on(
+				"broadcast",
+				{ event: "token_drag_batch" },
+				(payload: { payload: unknown }) => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					const moves = readDragBatch(payload.payload);
+					if (moves.length > 0) {
+						useVTTStore.getState().setTokenTargetPositions(moves);
 					}
 				},
 			)
@@ -1035,6 +1028,28 @@ function VTTSession() {
 				type: "broadcast",
 				event: "token_drag",
 				payload: { tokenId, x, y, userId: user.id },
+			});
+		},
+		[user, canManageTokens, characterOwners],
+	);
+
+	// Um tick do arrasto vira UMA mensagem com todos os tokens do grupo.
+	const handleBroadcastDragBatch = useCallback(
+		(moves: DragMove[]) => {
+			if (!roomChannelRef.current || !user) return;
+			const tokens = useVTTStore.getState().tokens;
+			const mine = controllableMoves(moves, (id) => {
+				const token = tokens.find((t) => t.id === id);
+				return (
+					!!token &&
+					canControlVTTToken(token, user.id, canManageTokens, characterOwners)
+				);
+			});
+			if (mine.length === 0) return;
+			roomChannelRef.current.send({
+				type: "broadcast",
+				event: "token_drag_batch",
+				payload: { moves: mine, userId: user.id },
 			});
 		},
 		[user, canManageTokens, characterOwners],
@@ -1551,7 +1566,7 @@ function VTTSession() {
 			) {
 				// A completed write must not rewind a newer pointer gesture.
 				const acceptedUpdates = { ...pendingUpdates };
-				if (useVTTStore.getState().draggedTokenId === tokenId) {
+				if (isTokenDragged(useVTTStore.getState(), tokenId)) {
 					delete acceptedUpdates.x;
 					delete acceptedUpdates.y;
 				}
@@ -1736,6 +1751,7 @@ function VTTSession() {
 					scene={currentActiveScene}
 					onUpdateToken={handleUpdateToken}
 					onBroadcastDrag={handleBroadcastDrag}
+					onBroadcastDragBatch={handleBroadcastDragBatch}
 					onBroadcastCursor={handleBroadcastCursor}
 					onBroadcastRuler={handleBroadcastRuler}
 					onBroadcastPing={handleBroadcastPing}
