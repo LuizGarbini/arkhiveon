@@ -70,7 +70,8 @@ describe("token pose", () => {
 
 describe("visible tokens", () => {
 	it("keeps the same set while a drag stays inside vision", () => {
-		const hero = token({ characterId: "sheet" });
+		// Olha para o leste (90°): o goblin a leste fica no cone antes e depois.
+		const hero = token({ characterId: "sheet", rotation: 90 });
 		const npc = token({ id: "goblin", name: "Goblin", x: 100, y: 0 });
 		const near = [hero, npc];
 		const stillNear = [{ ...hero, x: 40 }, npc];

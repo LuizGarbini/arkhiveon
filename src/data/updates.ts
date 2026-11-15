@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.92-vtt-visao-cone",
+		version: "1.6.92",
+		date: "15/11/2026",
+		title: "Visão em cone, que só abre ao mover de verdade",
+		description:
+			"No modo Exploração, o personagem agora enxerga em cone de 120° para onde está olhando, mais 1 casa em volta de si; as paredes continuam bloqueando a vista e o que o cone já viu fica na memória do mapa. Ele passa a olhar para onde andou na última vez que se moveu, e o dono ou o mestre também pode girá-lo no menu do token. Uma pequena seta no token mostra a direção. Arrastar o personagem não revela mais o mapa: a visão só muda quando você solta o token (soltar no mesmo lugar não revela nada), e enquanto arrasta um fantasma do token aparece sobre a névoa para você ver onde está soltando.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.91-vtt-luz-visao-escuro",
 		version: "1.6.91",
 		date: "15/11/2026",

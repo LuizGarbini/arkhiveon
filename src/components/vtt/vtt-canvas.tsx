@@ -126,11 +126,14 @@ import type {
 	VTTToken,
 } from "@/lib/vtt/types";
 import {
+	facingFromMove,
 	flattenPolygon,
+	freezeDragged,
 	isSeenByAny,
+	isVisionToken,
 	resolveTokenVisionCells,
+	sourcePolygons,
 	toLightLevel,
-	visibilityPolygon,
 	visionKey,
 	visionSources,
 } from "@/lib/vtt/vision";
@@ -274,6 +277,47 @@ interface VTTCanvasProps {
 const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
 
 /**
+ * Fantasma do token arrastado, acima da névoa. Com a visão congelada até soltar,
+ * o token pode passar por área escura: quem arrasta precisa ver onde vai soltar.
+ */
+function destroyChildren(layer: Container | null) {
+	if (!layer) return;
+	for (const child of layer.removeChildren()) child.destroy({ children: true });
+}
+
+function syncDragGhost(
+	layer: Container,
+	token: { id: string; name: string; sizeCells: number },
+	x: number,
+	y: number,
+	gridSize: number,
+) {
+	let ghost = layer.getChildByLabel(token.id) as Container | null;
+	if (!ghost) {
+		ghost = new Container();
+		ghost.label = token.id;
+		const radius = (token.sizeCells * gridSize) / 2;
+		const disc = new Graphics();
+		disc.circle(0, 0, radius);
+		disc.fill({ color: 0x18181b, alpha: 0.9 });
+		disc.stroke({ width: 2, color: 0xfafafa, alpha: 0.9 });
+		ghost.addChild(disc);
+		const initials = new Text({
+			text: token.name.slice(0, 2).toUpperCase(),
+			style: new TextStyle({
+				fill: 0xa855f7,
+				fontSize: Math.max(10, radius * 0.7),
+				fontWeight: "700",
+			}),
+		});
+		initials.anchor.set(0.5);
+		ghost.addChild(initials);
+		layer.addChild(ghost);
+	}
+	ghost.position.set(x, y);
+}
+
+/**
  * Só em localhost/dev (ferramenta de teste, como `window.__vtt_store__`): conta
  * quantas vezes a textura da névoa foi refeita. `pnpm check:fog-drag` usa isso
  * para garantir que arrastar um token não refaz a névoa.
@@ -313,6 +357,7 @@ export function VTTCanvas({
 	const gmTokensLayerRef = useRef<Container | null>(null);
 	const fogExplorationLayerRef = useRef<Graphics | null>(null);
 	const visionMaskRef = useRef<Graphics | null>(null);
+	const dragGhostLayerRef = useRef<Container | null>(null);
 	const penumbraMaskRef = useRef<Graphics | null>(null);
 	const fogOfWarLayerRef = useRef<Container | null>(null);
 	const fogSpriteRef = useRef<Sprite | null>(null);
@@ -541,13 +586,24 @@ export function VTTCanvas({
 		[sheetVisionStamp],
 	);
 	const visionCell = scene?.gridSize || 70;
-	const visionList = useMemo(
-		() =>
-			visionSources(tokens, visionCell, (token) =>
-				resolveTokenVisionCells(token, sheetVision, sceneLight),
-			),
-		[tokens, visionCell, sheetVision, sceneLight],
-	);
+	// A visão só muda quando o movimento TERMINA: enquanto o token é arrastado, a
+	// visão fica onde ele estava antes (arrastar sem soltar não revela o mapa).
+	const draggedForVision = useVTTStore((s) => s.draggedTokenIds);
+	const standingRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+	const visionList = useMemo(() => {
+		const standing = freezeDragged(
+			tokens,
+			new Set(draggedForVision),
+			standingRef.current,
+		);
+		standingRef.current = standing;
+		return visionSources(
+			tokens,
+			visionCell,
+			(token) => resolveTokenVisionCells(token, sheetVision, sceneLight),
+			(token) => standing.get(token.id) ?? token,
+		);
+	}, [tokens, visionCell, sheetVision, sceneLight, draggedForVision]);
 	const visionListRef = useRef(visionList);
 	visionListRef.current = visionList;
 	const wallsRef = useRef(walls);
@@ -633,6 +689,12 @@ export function VTTCanvas({
 			fogOfWarLayer.addChild(fogSprite);
 			fogOfWarLayerRef.current = fogOfWarLayer;
 			world.addChild(fogOfWarLayer);
+
+			// Fantasma do token arrastado (acima da névoa).
+			const dragGhostLayer = new Container();
+			dragGhostLayer.eventMode = "none";
+			dragGhostLayerRef.current = dragGhostLayer;
+			world.addChild(dragGhostLayer);
 
 			// Máscara da visão (recorta a névoa opaca). Fica no mundo para herdar zoom
 			// e pan, mas não desenha nada por si só.
@@ -1109,6 +1171,19 @@ export function VTTCanvas({
 			});
 			tokenContainer.addChild(ring);
 
+			// Seta de direção: para onde o personagem olha (o cone de visão aponta
+			// para lá). Só aparece com a névoa de exploração ligada.
+			if (scene.fogEnabled && scene.fogExploration && isVisionToken(token)) {
+				const arrow = new Graphics();
+				const tip = tokenRadius + 9 * tokenScale;
+				const base = tokenRadius + 1.5 * tokenScale;
+				const half = 5 * tokenScale;
+				arrow.poly([0, -tip, -half, -base, half, -base]);
+				arrow.fill({ color: ringStyle.color, alpha: 0.9 });
+				arrow.rotation = ((token.rotation || 0) * Math.PI) / 180;
+				tokenContainer.addChild(arrow);
+			}
+
 			// Disco/anel de efeitos ao redor do token (vazado no centro para nunca
 			// cobrir o retrato do personagem, escalando proporcionalmente ao tokenRadius).
 			if (hasStatusRow) {
@@ -1516,9 +1591,10 @@ export function VTTCanvas({
 			return;
 		}
 
+		// Cada fonte vira o cone voltado para onde olha + a casa ao redor.
 		const polygons = visionListRef.current.map((source) => ({
 			id: source.id,
-			points: visibilityPolygon(source, source.range, wallsRef.current),
+			parts: sourcePolygons(source, wallsRef.current),
 		}));
 
 		// Memória do grupo: o que cada um vê fica marcado. Só quem controla o token
@@ -1533,7 +1609,7 @@ export function VTTCanvas({
 		}
 		const live = useVTTStore.getState();
 		for (const polygon of polygons) {
-			const fresh = useExploredStore.getState().mark(sceneId, [polygon.points]);
+			const fresh = useExploredStore.getState().mark(sceneId, polygon.parts);
 			if (fresh.length === 0) continue;
 			const token = live.tokens.find((item) => item.id === polygon.id);
 			if (
@@ -1568,10 +1644,12 @@ export function VTTCanvas({
 			}
 		}
 		for (const polygon of polygons) {
-			const flat = flattenPolygon(polygon.points);
-			if (flat.length < 6) continue;
-			mask.poly(flat, true);
-			penumbraMask.poly(flat, true);
+			for (const part of polygon.parts) {
+				const flat = flattenPolygon(part);
+				if (flat.length < 6) continue;
+				mask.poly(flat, true);
+				penumbraMask.poly(flat, true);
+			}
 		}
 		mask.fill(0xffffff);
 		penumbraMask.fill(0xffffff);
@@ -2236,6 +2314,7 @@ export function VTTCanvas({
 					marqueeRef.current = null;
 					hideMarquee(marqueeElRef.current);
 					setDraggedTokenIds([]);
+					destroyChildren(dragGhostLayerRef.current);
 				}
 			}
 			if (isDraggingViewportRef.current) {
@@ -2416,9 +2495,25 @@ export function VTTCanvas({
 				);
 				const broadcast = dragBroadcastDue(now, lastBroadcastTimeRef.current);
 				if (broadcast) lastBroadcastTimeRef.current = now;
+				const ghostLayer = dragGhostLayerRef.current;
+				const ghostsOn =
+					!isGM && scene.fogEnabled && scene.fogExploration && ghostLayer;
 				for (const member of moved) {
 					const display = tokenDisplayObjectsRef.current.get(member.id);
 					if (display) display.position.set(member.x, member.y);
+					if (ghostsOn) {
+						const dragged = useVTTStore
+							.getState()
+							.tokens.find((item) => item.id === member.id);
+						if (dragged)
+							syncDragGhost(
+								ghostLayer,
+								dragged,
+								member.x,
+								member.y,
+								scene.gridSize || 70,
+							);
+					}
 					updateToken(member.id, { x: member.x, y: member.y });
 					if (broadcast && !onBroadcastDragBatch && onBroadcastDrag) {
 						onBroadcastDrag(member.id, member.x, member.y);
@@ -2665,12 +2760,16 @@ export function VTTCanvas({
 					}
 					const display = tokenDisplayObjectsRef.current.get(member.id);
 					if (display) display.position.set(finalPos.x, finalPos.y);
-					updateToken(member.id, { x: finalPos.x, y: finalPos.y });
+					// Mover de verdade também vira o token para onde ele andou (é para
+					// lá que o cone de visão aponta). Soltar no mesmo lugar não vira.
+					const facing = facingFromMove({ x: orig.x, y: orig.y }, finalPos);
+					const committed =
+						facing === null
+							? { x: finalPos.x, y: finalPos.y }
+							: { x: finalPos.x, y: finalPos.y, rotation: facing };
+					updateToken(member.id, committed);
 					if (onUpdateToken) {
-						const saved = onUpdateToken(member.id, {
-							x: finalPos.x,
-							y: finalPos.y,
-						});
+						const saved = onUpdateToken(member.id, committed);
 						// Histórico: aparece na hora; se o servidor recusar a posição
 						// (o token volta), a linha é retirada.
 						const authorId = userIdRef.current;
@@ -2712,6 +2811,7 @@ export function VTTCanvas({
 				draggingTokenIdRef.current = null;
 				dragGroupRef.current = null;
 				setDraggedTokenIds([]);
+				destroyChildren(dragGhostLayerRef.current);
 			}
 
 			if (isDraggingViewportRef.current) {

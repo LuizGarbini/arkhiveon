@@ -50,7 +50,15 @@ describe("visionSources", () => {
 			[token({ characterId: "c", visionRange: 4 })],
 			70,
 		);
-		expect(s).toEqual({ id: "t", x: 100, y: 200, range: 280 });
+		expect(s).toEqual({
+			id: "t",
+			x: 100,
+			y: 200,
+			range: 280,
+			facing: 0,
+			cone: 120,
+			near: 70,
+		});
 	});
 
 	it("sem alcance usa o padrão", () => {
@@ -83,11 +91,14 @@ describe("visionKey · só muda quando a visão muda", () => {
 		expect(b).toBe(a);
 	});
 
-	it("girar, mudar PV ou condição de qualquer token NÃO muda a assinatura", () => {
+	it("mudar PV ou condição de qualquer token NÃO muda a assinatura", () => {
 		const a = key([pc, mob]);
-		expect(
-			key([{ ...pc, rotation: 90, hpCurrent: 3, conditions: ["caido"] }, mob]),
-		).toBe(a);
+		expect(key([{ ...pc, hpCurrent: 3, conditions: ["caido"] }, mob])).toBe(a);
+	});
+
+	it("girar quem enxerga MUDA a assinatura (o cone aponta para outro lado); girar um monstro não", () => {
+		expect(key([{ ...pc, rotation: 90 }, mob])).not.toBe(key([pc, mob]));
+		expect(key([pc, { ...mob, rotation: 135 }])).toBe(key([pc, mob]));
 	});
 
 	it("mover quem enxerga muda", () => {
@@ -341,7 +352,15 @@ describe("isSeenByAny · alcance e paredes", () => {
 
 describe("visibleTokenIds · monstros atrás de parede somem para o jogador", () => {
 	const scene = { gridSize: 70, fogEnabled: true, fogExploration: true };
-	const pc = token({ id: "pc", characterId: "c", x: 0, y: 0, visionRange: 6 });
+	// Olha para o leste (90°): os goblins do teste ficam a leste.
+	const pc = token({
+		id: "pc",
+		characterId: "c",
+		x: 0,
+		y: 0,
+		visionRange: 6,
+		rotation: 90,
+	});
 	const near = token({ id: "near", x: 140, y: 0 });
 	const far = token({ id: "far", x: 900, y: 0 });
 	const tokens = [pc, near, far];
