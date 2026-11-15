@@ -9,7 +9,10 @@ import {
 /**
  * How a token is drawn. Position and the remote interpolation target are
  * omitted on purpose: those change on every pointer move, and rebuilding the
- * sprite for them fights the live drag.
+ * sprite for them fights the live drag. A direção (`rotation`) também fica de
+ * fora: cada seta que muda de direção a muda, e reconstruir TODOS os tokens por
+ * isso causava o "stuttering" ao alternar cima/baixo. A seta de direção é
+ * girada direto no objeto (veja `facingRadians`).
  */
 export function tokenAppearanceKey(token: VTTToken): string {
 	return [
@@ -19,7 +22,6 @@ export function tokenAppearanceKey(token: VTTToken): string {
 		token.avatarUrl ?? "",
 		token.layer,
 		token.sizeCells,
-		token.rotation,
 		token.elevation,
 		token.hpCurrent ?? "",
 		token.hpMax ?? "",
@@ -34,6 +36,11 @@ export function tokenAppearanceKey(token: VTTToken): string {
 			.map((aura) => `${aura.radius}:${aura.color}:${aura.opacity ?? ""}`)
 			.join(","),
 	].join("|");
+}
+
+/** Ângulo (rad) da seta de direção do token: 0° aponta para cima. */
+export function facingRadians(token: Pick<VTTToken, "rotation">): number {
+	return ((token.rotation || 0) * Math.PI) / 180;
 }
 
 export function tokensAppearanceKey(tokens: readonly VTTToken[]): string {

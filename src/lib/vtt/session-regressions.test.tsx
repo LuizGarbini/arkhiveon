@@ -273,6 +273,97 @@ it("does not rewind the token while another drag is active", async () => {
 	expect(useVTTStore.getState().tokens[0].x).toBe(200);
 });
 
+it("a resposta de um passo não volta o token quando há um passo mais novo esperando na fila", async () => {
+	await open();
+	let first: Promise<void>;
+	let second: Promise<void>;
+	act(() => {
+		first = canvas().onUpdateToken("token", { x: 100, y: 0 });
+	});
+	act(() => {
+		useVTTStore.getState().updateToken("token", { x: 100, y: 0 });
+		// o passo seguinte chega com o primeiro ainda em voo: espera na fila
+		second = canvas().onUpdateToken("token", { x: 200, y: 0 });
+		useVTTStore.getState().updateToken("token", { x: 200, y: 0 });
+	});
+	expect(mock.writes).toHaveLength(1);
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await first;
+	});
+	expect(useVTTStore.getState().tokens[0].x).toBe(200);
+	// a última posição sempre sai: a segunda gravação leva o passo mais novo
+	await waitFor(() => expect(mock.writes).toHaveLength(2));
+	await act(async () => {
+		mock.writes[1]({ data: { id: "token" }, error: null });
+		await second;
+	});
+	expect(useVTTStore.getState().tokens[0].x).toBe(200);
+});
+
+it("passos rápidos viram poucas gravações, e a última posição é a gravada", async () => {
+	await open();
+	const results: Promise<void>[] = [];
+	act(() => {
+		for (let i = 1; i <= 8; i++) {
+			results.push(canvas().onUpdateToken("token", { x: i * 10, y: 0 }));
+			useVTTStore.getState().updateToken("token", { x: i * 10, y: 0 });
+		}
+	});
+	// uma em voo (o primeiro passo); os outros 7 esperam, fundidos
+	expect(mock.writes).toHaveLength(1);
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await results[0];
+	});
+	await waitFor(() => expect(mock.writes).toHaveLength(2));
+	await act(async () => {
+		mock.writes[1]({ data: { id: "token" }, error: null });
+		await Promise.all(results);
+	});
+	expect(mock.writes).toHaveLength(2);
+	expect(useVTTStore.getState().tokens[0].x).toBe(80);
+});
+
+it("o passo gravado larga o alvo de interpolação velho (devolver do histórico)", async () => {
+	await open();
+	act(() => {
+		useVTTStore.getState().updateToken("token", { targetX: 500, targetY: 500 });
+	});
+	let pending: Promise<void>;
+	act(() => {
+		pending = canvas().onUpdateToken("token", { x: 100, y: 100 });
+	});
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await pending;
+	});
+	const token = useVTTStore.getState().tokens[0];
+	expect(token).toMatchObject({ x: 100, y: 100 });
+	expect(token.targetX).toBeUndefined();
+	expect(token.targetY).toBeUndefined();
+});
+
+it("a posição já igual na mesa também larga o alvo velho quando a gravação confirma", async () => {
+	await open();
+	act(() => {
+		useVTTStore
+			.getState()
+			.updateToken("token", { x: 100, y: 100, targetX: 500, targetY: 500 });
+	});
+	let pending: Promise<void>;
+	act(() => {
+		pending = canvas().onUpdateToken("token", { x: 100, y: 100 });
+	});
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await pending;
+	});
+	const token = useVTTStore.getState().tokens[0];
+	expect(token.targetX).toBeUndefined();
+	expect(token.targetY).toBeUndefined();
+});
+
 function canvas() {
 	if (!mock.canvas) throw new Error("Canvas not mounted");
 	return mock.canvas;

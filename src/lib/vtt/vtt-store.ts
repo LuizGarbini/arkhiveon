@@ -189,6 +189,10 @@ interface VTTState {
 	setTokens: (tokens: VTTToken[]) => void;
 	addToken: (token: VTTToken) => void;
 	updateToken: (tokenId: string, updates: Partial<VTTToken>) => void;
+	/** Vários tokens de uma vez (seta/arrasto em grupo): uma única mudança na store. */
+	updateTokens: (
+		batch: readonly { tokenId: string; updates: Partial<VTTToken> }[],
+	) => void;
 	setTokenTargetPosition: (
 		tokenId: string,
 		targetX: number,
@@ -290,6 +294,26 @@ export function isTokenDragged(
 	return (
 		state.draggedTokenId === tokenId || state.draggedTokenIds.includes(tokenId)
 	);
+}
+
+function applyTokenUpdate(
+	state: { draggedTokenId: string | null; draggedTokenIds: readonly string[] },
+	token: VTTToken,
+	updates: Partial<VTTToken>,
+): VTTToken {
+	const next: VTTToken = { ...token, ...updates };
+	// A local drag's x/y is where the token is. An old interpolation
+	// target would pull the sprite back the other way on the next frame.
+	if (
+		isTokenDragged(state, token.id) &&
+		(updates.x !== undefined || updates.y !== undefined) &&
+		updates.targetX === undefined &&
+		updates.targetY === undefined
+	) {
+		delete next.targetX;
+		delete next.targetY;
+	}
+	return next;
 }
 
 const emptySceneContents = () => ({
@@ -596,23 +620,27 @@ export const useVTTStore = create<VTTState>((set) => ({
 		),
 	updateToken: (tokenId, updates) =>
 		set((state) => ({
-			tokens: state.tokens.map((t) => {
-				if (t.id !== tokenId) return t;
-				const next: VTTToken = { ...t, ...updates };
-				// A local drag's x/y is where the token is. An old interpolation
-				// target would pull the sprite back the other way on the next frame.
-				if (
-					isTokenDragged(state, tokenId) &&
-					(updates.x !== undefined || updates.y !== undefined) &&
-					updates.targetX === undefined &&
-					updates.targetY === undefined
-				) {
-					delete next.targetX;
-					delete next.targetY;
-				}
-				return next;
-			}),
+			tokens: state.tokens.map((t) =>
+				t.id === tokenId ? applyTokenUpdate(state, t, updates) : t,
+			),
 		})),
+	updateTokens: (batch) =>
+		set((state) => {
+			if (batch.length === 0) return state;
+			const byId = new Map<string, Partial<VTTToken>>();
+			for (const item of batch) {
+				byId.set(item.tokenId, {
+					...byId.get(item.tokenId),
+					...item.updates,
+				});
+			}
+			return {
+				tokens: state.tokens.map((t) => {
+					const updates = byId.get(t.id);
+					return updates ? applyTokenUpdate(state, t, updates) : t;
+				}),
+			};
+		}),
 	setTokenTargetPosition: (tokenId, targetX, targetY) =>
 		set((state) => {
 			// The pointer owns this token until pointerup. A drag broadcast

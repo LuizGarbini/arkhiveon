@@ -176,3 +176,83 @@ describe("VTT scene lifecycle", () => {
 		window.matchMedia = original;
 	});
 });
+
+describe("updateTokens · lote numa única mudança da store", () => {
+	const make = (id: string, x: number): VTTToken => ({
+		...token,
+		id,
+		x,
+		sceneId: "a",
+	});
+
+	it("aplica todos os tokens do grupo com UMA mudança (e não uma por token)", () => {
+		useVTTStore.getState().setScenes([scene("a")]);
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore
+			.getState()
+			.setTokens(["p0", "p1", "p2"].map((id, i) => make(id, i * 70)));
+		let changes = 0;
+		const unsub = useVTTStore.subscribe(() => {
+			changes++;
+		});
+		useVTTStore.getState().updateTokens([
+			{ tokenId: "p0", updates: { y: 70, rotation: 180 } },
+			{ tokenId: "p1", updates: { y: 70, rotation: 180 } },
+			{ tokenId: "p2", updates: { y: 70, rotation: 180 } },
+		]);
+		unsub();
+		expect(changes).toBe(1);
+		expect(useVTTStore.getState().tokens.map((t) => [t.y, t.rotation])).toEqual(
+			[
+				[70, 180],
+				[70, 180],
+				[70, 180],
+			],
+		);
+	});
+
+	it("lote vazio não gera mudança e id desconhecido é ignorado", () => {
+		useVTTStore.getState().setScenes([scene("a")]);
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore.getState().setTokens([make("p0", 0)]);
+		const before = useVTTStore.getState().tokens;
+		useVTTStore.getState().updateTokens([]);
+		expect(useVTTStore.getState().tokens).toBe(before);
+		useVTTStore
+			.getState()
+			.updateTokens([{ tokenId: "ghost", updates: { x: 9 } }]);
+		expect(useVTTStore.getState().tokens[0]?.x).toBe(0);
+	});
+
+	it("posição local nova limpa o alvo de interpolação velho (alvo undefined)", () => {
+		useVTTStore.getState().setScenes([scene("a")]);
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore
+			.getState()
+			.setTokens([{ ...make("p0", 0), targetX: 0, targetY: 0 }]);
+		useVTTStore.getState().updateTokens([
+			{
+				tokenId: "p0",
+				updates: { x: 70, targetX: undefined, targetY: undefined },
+			},
+		]);
+		const t = useVTTStore.getState().tokens[0] as VTTToken;
+		expect(t.targetX).toBeUndefined();
+		expect(t.targetY).toBeUndefined();
+		expect(t.x).toBe(70);
+	});
+
+	it("o token arrastado perde o alvo velho, como no updateToken", () => {
+		useVTTStore.getState().setScenes([scene("a")]);
+		useVTTStore.getState().setActiveSceneId("a");
+		useVTTStore
+			.getState()
+			.setTokens([{ ...make("p0", 0), targetX: 5, targetY: 5 }]);
+		useVTTStore.getState().setDraggedTokenIds(["p0"]);
+		useVTTStore
+			.getState()
+			.updateTokens([{ tokenId: "p0", updates: { x: 70 } }]);
+		const t = useVTTStore.getState().tokens[0] as VTTToken;
+		expect(t.targetX).toBeUndefined();
+	});
+});

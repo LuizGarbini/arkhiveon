@@ -25,6 +25,7 @@ import {
 	summarizeConditions,
 	tokenRingStyle,
 } from "@/lib/vtt/conditions";
+import { devCount, devExposeTokenPos } from "@/lib/vtt/dev-probe";
 import {
 	cursorBroadcastDue,
 	type DragMove,
@@ -87,6 +88,14 @@ import {
 } from "@/lib/vtt/status-icon-texture";
 import { createStatusLongPress } from "@/lib/vtt/status-long-press";
 import {
+	prefersReducedMotion,
+	type StepTween,
+	sampleStepTween,
+	startStepTween,
+	stepTweenDuration,
+	tweenTargets,
+} from "@/lib/vtt/step-tween";
+import {
 	spellTemplateIdAtPoint,
 	type VTTSpellTemplate,
 } from "@/lib/vtt/template-math";
@@ -95,6 +104,7 @@ import {
 	shouldDeleteSelectedTemplate,
 } from "@/lib/vtt/template-permissions";
 import {
+	facingRadians,
 	tokenPose,
 	tokensAppearanceKey,
 	visibleTokenIds,
@@ -133,6 +143,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
+import { useSettledValue } from "@/lib/vtt/use-settled-value";
 import {
 	facingFromMove,
 	flattenPolygon,
@@ -294,6 +305,9 @@ interface VTTCanvasProps {
 	onPersistFog?: (paths: VTTFogPath[]) => void;
 }
 
+/** Quanto a visão espera sem mudar antes de ser recalculada (rajada de setas). */
+const VISION_SETTLE_MS = 120;
+
 const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
 
 /**
@@ -413,6 +427,10 @@ export function VTTCanvas({
 
 	// Display containers map for direct 60fps WebGL interpolation without React state thrashing
 	const tokenDisplayObjectsRef = useRef<Map<string, Container>>(new Map());
+	// Passo de seta em andamento (desliza em ~100 ms) e a seta de direção de cada
+	// token: a direção gira direto no objeto, sem reconstruir os tokens.
+	const stepTweensRef = useRef<Map<string, StepTween>>(new Map());
+	const facingArrowsRef = useRef<Map<string, Graphics>>(new Map());
 	const paintAurasRef = useRef<() => void>(() => {});
 	const auraPoseRef = useRef("");
 	// Anel da vez: um Graphics no token ativo. Não entra no ticker.
@@ -570,6 +588,7 @@ export function VTTCanvas({
 	const lastBroadcastTimeRef = useRef(0);
 	const lastCursorBroadcastRef = useRef(0);
 
+	devCount("canvasRender");
 	const viewport = useVTTStore((s) => s.viewport);
 	const setViewport = useVTTStore((s) => s.setViewport);
 	const activeTool = useVTTStore((s) => s.activeTool);
@@ -586,6 +605,7 @@ export function VTTCanvas({
 	const setSelectedTokenIds = useVTTStore((s) => s.setSelectedTokenIds);
 	const setActiveTokenIdForMenu = useVTTStore((s) => s.setActiveTokenIdForMenu);
 	const updateToken = useVTTStore((s) => s.updateToken);
+	const updateTokens = useVTTStore((s) => s.updateTokens);
 	const setActiveMeasurement = useVTTStore((s) => s.setActiveMeasurement);
 	const setDraggedTokenIds = useVTTStore((s) => s.setDraggedTokenIds);
 	const toggleSelectTokenId = useVTTStore((s) => s.toggleSelectTokenId);
@@ -901,14 +921,32 @@ export function VTTCanvas({
 						state.draggedTokenId,
 						state.draggedTokenIds,
 					);
-					if (pose.mode === "drag") continue;
+					const arrow = facingArrowsRef.current.get(t.id);
+					if (arrow) {
+						const facing = facingRadians(t);
+						if (arrow.rotation !== facing) arrow.rotation = facing;
+					}
+					if (pose.mode === "drag") {
+						stepTweensRef.current.delete(t.id);
+						continue;
+					}
 					if (pose.mode === "place") {
+						const tween = stepTweensRef.current.get(t.id);
+						if (tween && tweenTargets(tween, pose)) {
+							const sample = sampleStepTween(tween, performance.now());
+							displayObj.position.set(sample.x, sample.y);
+							if (sample.done) stepTweensRef.current.delete(t.id);
+							moved = true;
+							continue;
+						}
+						if (tween) stepTweensRef.current.delete(t.id);
 						if (displayObj.x !== pose.x || displayObj.y !== pose.y) {
 							displayObj.position.set(pose.x, pose.y);
 							moved = true;
 						}
 						continue;
 					}
+					stepTweensRef.current.delete(t.id);
 					const dx = pose.x - displayObj.x;
 					const dy = pose.y - displayObj.y;
 					if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
@@ -924,6 +962,10 @@ export function VTTCanvas({
 			};
 
 			app.ticker.add(tickerCallback);
+			devExposeTokenPos((id) => {
+				const display = tokenDisplayObjectsRef.current.get(id);
+				return display ? { x: display.x, y: display.y } : null;
+			});
 			setRendererReady(true);
 		}
 
@@ -1128,9 +1170,12 @@ export function VTTCanvas({
 		// closed over from render would be from the last time the drawing changed.
 		const liveTokens = useVTTStore.getState().tokens;
 
+		devCount("tokenRebuild");
 		tokensLayer.removeChildren();
 		gmTokensLayer.removeChildren();
 		tokenDisplayObjectsRef.current.clear();
+		facingArrowsRef.current.clear();
+		stepTweensRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
 		const foreground = cssVarColor("--foreground", 0xfafafa);
@@ -1266,7 +1311,8 @@ export function VTTCanvas({
 				const half = 5 * tokenScale;
 				arrow.poly([0, -tip, -half, -base, half, -base]);
 				arrow.fill({ color: ringStyle.color, alpha: 0.9 });
-				arrow.rotation = ((token.rotation || 0) * Math.PI) / 180;
+				arrow.rotation = facingRadians(token);
+				facingArrowsRef.current.set(token.id, arrow);
 				tokenContainer.addChild(arrow);
 			}
 
@@ -1657,13 +1703,18 @@ export function VTTCanvas({
 	// É vetor (barato) e só refaz quando QUEM ENXERGA muda ou as paredes mudam
 	// (visionSig / blockers), não quando qualquer token da mesa se mexe.
 	const visionSig = visionKey(visionList);
+	// Rajada de passos: o recálculo caro (polígonos, máscaras, exploração) espera o
+	// movimento terminar (~um passo de seta) e roda UMA vez com a visão MAIS RECENTE
+	// (o efeito lê a lista na hora), em vez de rodar a cada passo.
+	const deferredVisionSig = useSettledValue(visionSig, VISION_SETTLE_MS);
 	const sceneId = scene?.id ?? null;
 	const exploredVersion = useExploredStore((s) => s.version);
 	const showPlayerExploration = useVTTStore((s) => s.showPlayerExploration);
 	const showAllVisionCones = useVTTStore((s) => s.showAllVisionCones);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig, walls e exploredVersion são as dependências; o efeito lê a lista e a grade na hora (ref/store).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: deferredVisionSig, walls e exploredVersion são as dependências; o efeito lê a lista e a grade na hora (ref/store).
 	useEffect(() => {
 		if (!rendererReady) return;
+		devCount("visionRun");
 		const layer = fogExplorationLayerRef.current;
 		const fogLayer = fogOfWarLayerRef.current;
 		const mask = visionMaskRef.current;
@@ -1788,7 +1839,7 @@ export function VTTCanvas({
 		fogWidth,
 		fogHeight,
 		visionCell,
-		visionSig,
+		deferredVisionSig,
 		blockers,
 		exploredVersion,
 		showPlayerExploration,
@@ -2126,19 +2177,28 @@ export function VTTCanvas({
 	// caminho para os dois jeitos de mover, para as regras não divergirem.
 	// `commitUnchanged`: o arrasto sempre confirma (os outros precisam ver o token
 	// voltar quando foi barrado); a seta barrada não grava nem registra nada.
+	// `animate`: a seta desliza o token (~100 ms) em vez de teletransportar; o
+	// arrasto solta no ponto final como sempre.
+	// Toda a mudança na store sai numa só chamada (um render por toque, qualquer
+	// que seja o tamanho do grupo).
 	const commitTokenMoves = (
 		moves: readonly {
 			id: string;
 			from: { x: number; y: number };
 			to: { x: number; y: number };
 		}[],
-		options: { commitUnchanged: boolean },
+		options: { commitUnchanged: boolean; animate?: boolean },
 	): { wasBlocked: boolean } => {
 		if (!scene) return { wasBlocked: false };
 		const live = useVTTStore.getState();
 		const blockers = movementBlockingWalls(live.walls);
 		let wasBlocked = false;
-		const finalMoves: DragMove[] = [];
+		const plan: {
+			token: VTTToken;
+			finalPos: { x: number; y: number };
+			from: { x: number; y: number };
+			committed: Partial<VTTToken>;
+		}[] = [];
 		for (const move of moves) {
 			const token = live.tokens.find((item) => item.id === move.id);
 			if (!token) continue;
@@ -2152,17 +2212,49 @@ export function VTTCanvas({
 			)
 				continue;
 			const display = tokenDisplayObjectsRef.current.get(move.id);
-			if (display) display.position.set(finalPos.x, finalPos.y);
+			if (display) {
+				// O passo parte de ONDE O DESENHO ESTÁ (meio do passo anterior), então
+				// alternar cima/baixo rápido não pula nem volta ao local antigo.
+				const tween = options.animate
+					? startStepTween(
+							{ x: display.x, y: display.y },
+							finalPos,
+							performance.now(),
+							stepTweenDuration(prefersReducedMotion()),
+						)
+					: null;
+				if (tween) stepTweensRef.current.set(move.id, tween);
+				else {
+					stepTweensRef.current.delete(move.id);
+					display.position.set(finalPos.x, finalPos.y);
+				}
+			}
 			// Mover de verdade também vira o token para onde ele andou (é para lá
 			// que o cone de visão aponta). Ficar no mesmo lugar não vira.
 			const facing = facingFromMove(move.from, finalPos);
-			const committed =
-				facing === null
-					? { x: finalPos.x, y: finalPos.y }
-					: { x: finalPos.x, y: finalPos.y, rotation: facing };
-			updateToken(move.id, committed);
+			plan.push({
+				token,
+				finalPos,
+				from: move.from,
+				committed:
+					facing === null
+						? { x: finalPos.x, y: finalPos.y }
+						: { x: finalPos.x, y: finalPos.y, rotation: facing },
+			});
+		}
+		// A posição local é a verdade deste passo: um alvo de interpolação velho
+		// (de quando outro usuário moveu o token) puxaria o desenho de volta.
+		updateTokens(
+			plan.map((entry) => ({
+				tokenId: entry.token.id,
+				updates: { ...entry.committed, targetX: undefined, targetY: undefined },
+			})),
+		);
+		const finalMoves: DragMove[] = [];
+		for (const entry of plan) {
+			const { token, finalPos, committed } = entry;
 			if (onUpdateToken) {
-				const saved = onUpdateToken(move.id, committed);
+				const saved = onUpdateToken(token.id, committed);
 				// Histórico: aparece na hora; se o servidor recusar a posição
 				// (o token volta), a linha é retirada.
 				const authorId = userIdRef.current;
@@ -2170,9 +2262,9 @@ export function VTTCanvas({
 					recordMove(
 						{
 							sceneId: scene.id,
-							tokenId: move.id,
+							tokenId: token.id,
 							tokenName: token.name,
-							from: { x: move.from.x, y: move.from.y },
+							from: { x: entry.from.x, y: entry.from.y },
 							to: { x: finalPos.x, y: finalPos.y },
 							authorId,
 							authorName: authorNameRef.current,
@@ -2182,9 +2274,9 @@ export function VTTCanvas({
 				}
 			}
 			if (!onBroadcastDragBatch && onBroadcastDrag) {
-				onBroadcastDrag(move.id, finalPos.x, finalPos.y);
+				onBroadcastDrag(token.id, finalPos.x, finalPos.y);
 			}
-			finalMoves.push({ tokenId: move.id, x: finalPos.x, y: finalPos.y });
+			finalMoves.push({ tokenId: token.id, x: finalPos.x, y: finalPos.y });
 		}
 		// A posição final de todo o grupo sai numa mensagem só.
 		if (onBroadcastDragBatch && finalMoves.length > 0) {
@@ -2312,7 +2404,7 @@ export function VTTCanvas({
 							gridSize: scene.gridSize,
 							origin: gridOrigin,
 						}),
-						{ commitUnchanged: false },
+						{ commitUnchanged: false, animate: true },
 					);
 					paintAurasRef.current();
 					return;

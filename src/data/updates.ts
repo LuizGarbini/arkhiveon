@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.120-vtt-setas-sem-travar",
+		version: "1.6.120",
+		date: "15/11/2026",
+		title: "Setas do teclado sem travar nem voltar para trás",
+		description:
+			"Alternar cima e baixo (ou direita e esquerda) rápido com as setas fazia o token travar, pular e até voltar para o lugar antigo. Agora o passo desliza em uma fração de segundo (e some se o sistema pede menos movimento), um passo novo continua de onde o token está, e rajadas de setas não reconstroem mais todos os tokens da mesa nem refazem a visão a cada toque. Por trás: o que você mandou gravar sai em ordem, uma gravação por token de cada vez, e a última posição sempre é gravada; o eco da própria gravação não puxa mais o token para trás. O histórico de movimentos continua com uma linha por movimento, e o arrasto com o mouse segue igual.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.102-vtt-setas-do-teclado",
 		version: "1.6.102",
 		date: "15/11/2026",

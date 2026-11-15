@@ -40,6 +40,7 @@ import {
 	tokenHpInsert,
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
+import { devExposeWritesBusy } from "@/lib/vtt/dev-probe";
 import {
 	controllableMoves,
 	type DragMove,
@@ -82,12 +83,17 @@ import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
-import { remoteTokenPatch } from "@/lib/vtt/token-remote";
+import { remoteTokenPatch, tokenPatchIsNoop } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
 	requirePlaceContext,
 } from "@/lib/vtt/token-spawn";
+import {
+	createTokenWriteQueue,
+	isMoveOnlyUpdate,
+	type TokenWriteQueue,
+} from "@/lib/vtt/token-write-queue";
 import type {
 	VTTAura,
 	VTTFogPath,
@@ -242,6 +248,20 @@ function VTTSession() {
 	const scenePublishFlightRef = useRef(singleFlight<void>());
 	const tokenRequestRef = useRef(0);
 	const tokenMutationRef = useRef(new Map<string, number>());
+	// Posição/direção dos tokens grava por esta fila (uma gravação em voo por token,
+	// passos rápidos fundidos, a última sempre enviada): veja token-write-queue.ts.
+	const tokenMoveQueueRef = useRef<TokenWriteQueue | null>(null);
+	const writeTokenUpdatesRef = useRef<
+		(tokenId: string, updates: Partial<VTTToken>) => Promise<boolean>
+	>(async () => false);
+	if (!tokenMoveQueueRef.current) {
+		const queue = createTokenWriteQueue({
+			send: (tokenId, updates) =>
+				writeTokenUpdatesRef.current(tokenId, updates),
+		});
+		tokenMoveQueueRef.current = queue;
+		devExposeWritesBusy(queue.busyCount);
+	}
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [isJournalOpen, setIsJournalOpen] = useState(false);
@@ -640,13 +660,24 @@ function VTTSession() {
 							payload.new as Database["public"]["Tables"]["vtt_tokens"]["Row"];
 						// A atualização do banco é a verdade final. O token sob o ponteiro
 						// local (sozinho ou em grupo) não é tocado: o ponteiro manda.
-						updateToken(
-							row.id,
-							remoteTokenPatch(
-								row,
-								isTokenDragged(useVTTStore.getState(), row.id),
-							),
+						// O eco da MINHA gravação (posição que eu enviei) chega com atraso
+						// e velho demais num passo rápido: não reaplica a posição. E se a
+						// linha não muda nada na mesa, nem mexe na store (sem render à toa).
+						const patch = remoteTokenPatch(
+							row,
+							isTokenDragged(useVTTStore.getState(), row.id),
+							tokenMoveQueueRef.current?.ownsPosition(
+								row.id,
+								Number(row.x),
+								Number(row.y),
+							) ?? false,
 						);
+						const local = useVTTStore
+							.getState()
+							.tokens.find((token) => token.id === row.id);
+						if (!local || !tokenPatchIsNoop(local, patch)) {
+							updateToken(row.id, patch);
+						}
 					} else if (payload.eventType === "DELETE") {
 						const oldRow = payload.old as { id?: string };
 						if (oldRow?.id) {
@@ -1590,7 +1621,7 @@ function VTTSession() {
 		}
 	};
 
-	const handleUpdateToken = async (
+	const writeTokenUpdates = async (
 		tokenId: string,
 		updates: Partial<VTTToken>,
 	): Promise<boolean> => {
@@ -1692,13 +1723,43 @@ function VTTSession() {
 				tokenMutationRef.current.get(tokenId) === mutationId &&
 				useVTTStore.getState().activeSceneId === activeSceneId
 			) {
-				// A completed write must not rewind a newer pointer gesture.
+				// A completed write must not rewind a newer pointer gesture, nor a
+				// newer step still waiting in the move queue (a seta já andou mais).
 				const acceptedUpdates = { ...pendingUpdates };
-				if (isTokenDragged(useVTTStore.getState(), tokenId)) {
+				if (
+					isTokenDragged(useVTTStore.getState(), tokenId) ||
+					tokenMoveQueueRef.current?.hasPending(tokenId)
+				) {
 					delete acceptedUpdates.x;
 					delete acceptedUpdates.y;
+					delete acceptedUpdates.rotation;
 				}
-				updateToken(tokenId, acceptedUpdates);
+				// A mesa já tem o que foi gravado (o passo é aplicado antes): só mexe
+				// na store se algo realmente difere (evita um render por gravação).
+				const current = useVTTStore
+					.getState()
+					.tokens.find((token) => token.id === tokenId);
+				// Posição aceita aqui (ex.: "devolver" do histórico) também larga o alvo
+				// de interpolação velho: o eco do próprio passo não o corrige mais.
+				const placesToken =
+					acceptedUpdates.x !== undefined || acceptedUpdates.y !== undefined;
+				const staleTarget =
+					placesToken &&
+					(current?.targetX !== undefined || current?.targetY !== undefined);
+				const differs =
+					staleTarget ||
+					Object.entries(acceptedUpdates).some(
+						([key, value]) =>
+							value !== undefined && current?.[key as keyof VTTToken] !== value,
+					);
+				if (differs) {
+					updateToken(
+						tokenId,
+						placesToken
+							? { ...acceptedUpdates, targetX: undefined, targetY: undefined }
+							: acceptedUpdates,
+					);
+				}
 			}
 			return true;
 		} catch {
@@ -1721,6 +1782,20 @@ function VTTSession() {
 			if (activeSceneId) await fetchTokens(activeSceneId);
 			return false;
 		}
+	};
+
+	writeTokenUpdatesRef.current = writeTokenUpdates;
+	// Posição/direção passam pela fila (serializa e funde os passos rápidos); o
+	// resto (HP, status, tamanho...) grava direto, como sempre.
+	const handleUpdateToken = (
+		tokenId: string,
+		updates: Partial<VTTToken>,
+	): Promise<boolean> => {
+		const queue = tokenMoveQueueRef.current;
+		if (queue && isMoveOnlyUpdate(updates)) {
+			return queue.enqueue(tokenId, updates);
+		}
+		return writeTokenUpdates(tokenId, updates);
 	};
 
 	const handleDeleteToken = async (tokenId: string): Promise<boolean> => {

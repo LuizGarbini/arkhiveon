@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { tokenAppearanceKey, tokenPose, visibleTokenIds } from "./token-motion";
+import {
+	facingRadians,
+	tokenAppearanceKey,
+	tokenPose,
+	visibleTokenIds,
+} from "./token-motion";
 import type { VTTToken } from "./types";
 
 const token = (patch: Partial<VTTToken> = {}): VTTToken => ({
@@ -32,6 +37,21 @@ describe("token appearance", () => {
 		const resting = token();
 		const dragged = token({ x: 400, y: 12, targetX: 80, targetY: 90 });
 		expect(tokenAppearanceKey(dragged)).toBe(tokenAppearanceKey(resting));
+	});
+
+	it("ignora a direção: virar o token não reconstrói os tokens da mesa", () => {
+		for (const rotation of [0, 90, 180, 270]) {
+			expect(tokenAppearanceKey(token({ rotation }))).toBe(
+				tokenAppearanceKey(token({ rotation: 0 })),
+			);
+		}
+	});
+
+	it("a seta de direção gira pelo ângulo do token (0° aponta para cima)", () => {
+		expect(facingRadians({ rotation: 0 })).toBe(0);
+		expect(facingRadians({ rotation: 90 })).toBeCloseTo(Math.PI / 2);
+		expect(facingRadians({ rotation: 180 })).toBeCloseTo(Math.PI);
+		expect(facingRadians({ rotation: Number.NaN })).toBe(0);
 	});
 
 	it("changes when the drawing changes", () => {

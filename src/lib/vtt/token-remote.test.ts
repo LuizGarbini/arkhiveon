@@ -9,7 +9,7 @@ import {
 	dragBroadcastDue,
 } from "./drag-broadcast";
 import { tokenPose } from "./token-motion";
-import { remoteTokenPatch } from "./token-remote";
+import { remoteTokenPatch, tokenPatchIsNoop } from "./token-remote";
 import type { VTTToken } from "./types";
 import { isTokenDragged, useVTTStore } from "./vtt-store";
 
@@ -84,6 +84,24 @@ describe("remoteTokenPatch · o que chega de outro usuário", () => {
 		expect(patch).not.toHaveProperty("targetX");
 		expect(patch).not.toHaveProperty("targetY");
 		expect(patch.hpCurrent).toBe(10);
+	});
+
+	it("eco da MINHA gravação: não mexe em posição, alvo nem direção (o resto vale)", () => {
+		const patch = remoteTokenPatch(
+			row({ x: 100, y: 200, rotation: 180, hp_current: 7 }),
+			false,
+			true,
+		);
+		for (const k of ["x", "y", "targetX", "targetY", "rotation"]) {
+			expect(patch).not.toHaveProperty(k);
+		}
+		expect(patch.hpCurrent).toBe(7);
+	});
+
+	it("sem ser eco meu, a direção do banco vale", () => {
+		expect(
+			remoteTokenPatch(row({ rotation: 270 }), false, false),
+		).toMatchObject({ rotation: 270 });
 	});
 
 	it("converte números que vêm como texto e temp_hp nulo vira 0", () => {
@@ -306,5 +324,43 @@ describe("orçamento de eventos do Realtime (plano gratuito: 100/s, envio + entr
 		const ms = cursorBroadcastIntervalMs(3);
 		expect(cursorBroadcastDue(ms - 1, 0, 3)).toBe(false);
 		expect(cursorBroadcastDue(ms, 0, 3)).toBe(true);
+	});
+});
+
+describe("tokenPatchIsNoop · eco que não muda nada", () => {
+	const local: VTTToken = { ...base, hpCurrent: 10, hpMax: 10, tempHp: 0 };
+
+	it("o eco do meu passo, com tudo igual, não mexe na store", () => {
+		const patch = remoteTokenPatch(
+			row({ x: local.x, y: local.y, hp_current: 10, hp_max: 10, temp_hp: 0 }),
+			false,
+			true,
+		);
+		expect(tokenPatchIsNoop(local, patch)).toBe(true);
+	});
+
+	it("arrays iguais em conteúdo (conditions/auras) contam como iguais", () => {
+		const withStatus: VTTToken = {
+			...local,
+			conditions: ["caido"],
+			auras: [{ radius: 2, color: "#fff" } as VTTToken["auras"][number]],
+		};
+		expect(
+			tokenPatchIsNoop(withStatus, {
+				conditions: ["caido"],
+				auras: [{ radius: 2, color: "#fff" } as VTTToken["auras"][number]],
+			}),
+		).toBe(true);
+	});
+
+	it("qualquer diferença real é aplicada", () => {
+		expect(tokenPatchIsNoop(local, { hpCurrent: 9 })).toBe(false);
+		expect(tokenPatchIsNoop(local, { conditions: ["caido"] })).toBe(false);
+		expect(tokenPatchIsNoop(local, { x: local.x + 70 })).toBe(false);
+		expect(tokenPatchIsNoop(local, { targetX: 5 })).toBe(false);
+	});
+
+	it("patch vazio é no-op", () => {
+		expect(tokenPatchIsNoop(local, {})).toBe(true);
 	});
 });
