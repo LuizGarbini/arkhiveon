@@ -28,7 +28,7 @@ export interface ExploredSyncDeps {
 }
 
 export type ExploredBroadcast = (
-	event: "explored_cells" | "explored_reset",
+	event: "explored_cells" | "explored_reset" | "explored_cleared",
 	payload: Record<string, unknown>,
 ) => void;
 
@@ -196,11 +196,60 @@ export function createExploredSync(deps: ExploredSyncDeps) {
 		}
 	}
 
+	/**
+	 * Mestre: escurece de novo estas células (apaga da memória do grupo). Avisa os
+	 * outros na hora e grava no banco em blocos; se o banco recusar, avisa.
+	 */
+	async function unexplore(
+		sceneId: string,
+		meta: ExploredMeta,
+		cells: readonly number[],
+	): Promise<{ ok: true } | { ok: false; message: string }> {
+		if (cells.length === 0) return { ok: true };
+		// Cancela o que estava na fila para essas células: senão um envio atrasado
+		// as marcaria de novo no banco.
+		const queued = pending.get(sceneId);
+		if (queued && sameExploredMeta(queued.meta, meta)) {
+			for (const cell of cells) queued.cells.delete(cell);
+		}
+		for (let i = 0; i < cells.length; i += CHUNK) {
+			const chunk = cells.slice(i, i + CHUNK);
+			broadcast?.("explored_cleared", { sceneId, cells: chunk });
+			try {
+				const { error } = await deps.rpc("unexplore_scene_cells", {
+					p_scene_id: sceneId,
+					p_cell_px: meta.cell,
+					p_cols: meta.cols,
+					p_rows: meta.rows,
+					p_cells: chunk,
+				});
+				if (error) {
+					return {
+						ok: false,
+						message: isForbidden(error)
+							? "Só o mestre ou co-mestre pode escurecer o mapa."
+							: isMissingFunction(error)
+								? "Escurecer o mapa ainda não está disponível no servidor."
+								: "Não foi possível salvar. O mapa volta a mostrar o que estava ao recarregar.",
+					};
+				}
+			} catch {
+				return {
+					ok: false,
+					message:
+						"Não foi possível salvar. O mapa volta a mostrar o que estava ao recarregar.",
+				};
+			}
+		}
+		return { ok: true };
+	}
+
 	return {
 		track,
 		flush,
 		load,
 		reset,
+		unexplore,
 		bind(next: ExploredBroadcast | null) {
 			broadcast = next;
 		},
@@ -242,6 +291,14 @@ export const exploredSync = createExploredSync({
 				});
 			case "explore_scene_cells":
 				return client.rpc("explore_scene_cells", {
+					p_scene_id: String(args.p_scene_id),
+					p_cell_px: Number(args.p_cell_px),
+					p_cols: Number(args.p_cols),
+					p_rows: Number(args.p_rows),
+					p_cells: args.p_cells as number[],
+				});
+			case "unexplore_scene_cells":
+				return client.rpc("unexplore_scene_cells", {
 					p_scene_id: String(args.p_scene_id),
 					p_cell_px: Number(args.p_cell_px),
 					p_cols: Number(args.p_cols),

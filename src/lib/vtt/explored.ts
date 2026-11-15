@@ -1,3 +1,4 @@
+import type { VTTFogPath } from "./types";
 import { pointInPolygon, type VisionPoint } from "./vision";
 
 /**
@@ -214,4 +215,118 @@ export function decodeBits(
 	} catch {
 		return null;
 	}
+}
+
+/** Apaga células da memória (o mestre escureceu). Devolve quantas estavam marcadas. */
+export function clearIndexes(
+	grid: ExploredGrid,
+	indexes: readonly number[],
+): number {
+	const total = grid.cols * grid.rows;
+	let cleared = 0;
+	for (const index of indexes) {
+		if (!Number.isInteger(index) || index < 0 || index >= total) continue;
+		const byte = index >> 3;
+		const mask = 1 << (index & 7);
+		const current = grid.bits[byte] ?? 0;
+		if (!(current & mask)) continue;
+		grid.bits[byte] = current & ~mask;
+		cleared++;
+	}
+	return cleared;
+}
+
+function distanceToSegment(
+	p: VisionPoint,
+	a: VisionPoint,
+	b: VisionPoint,
+): number {
+	const dx = b.x - a.x;
+	const dy = b.y - a.y;
+	const len2 = dx * dx + dy * dy;
+	const t =
+		len2 === 0
+			? 0
+			: Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+	return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/**
+ * Células cujo centro está dentro de uma forma da névoa (pincel, retângulo ou
+ * círculo): o que o mestre cobriu. Só olha a caixa da forma, não o mapa todo.
+ */
+export function fogPathCells(
+	grid: ExploredGrid,
+	path: Pick<
+		VTTFogPath,
+		| "type"
+		| "points"
+		| "brushRadius"
+		| "x"
+		| "y"
+		| "width"
+		| "height"
+		| "radius"
+	>,
+): number[] {
+	let minX: number;
+	let minY: number;
+	let maxX: number;
+	let maxY: number;
+	let inside: (p: VisionPoint) => boolean;
+
+	if (path.type === "rect") {
+		const x = path.x ?? 0;
+		const y = path.y ?? 0;
+		const w = path.width ?? 0;
+		const h = path.height ?? 0;
+		if (!(w > 0 && h > 0)) return [];
+		[minX, minY, maxX, maxY] = [x, y, x + w, y + h];
+		inside = (p) => p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h;
+	} else if (path.type === "circle") {
+		const x = path.x ?? 0;
+		const y = path.y ?? 0;
+		const r = path.radius ?? 0;
+		if (!(r > 0)) return [];
+		[minX, minY, maxX, maxY] = [x - r, y - r, x + r, y + r];
+		inside = (p) => Math.hypot(p.x - x, p.y - y) <= r;
+	} else {
+		const points = path.points ?? [];
+		const r = path.brushRadius ?? 0;
+		if (points.length === 0 || !(r > 0)) return [];
+		minX = Math.min(...points.map((p) => p.x)) - r;
+		minY = Math.min(...points.map((p) => p.y)) - r;
+		maxX = Math.max(...points.map((p) => p.x)) + r;
+		maxY = Math.max(...points.map((p) => p.y)) + r;
+		inside = (p) => {
+			if (points.length === 1) {
+				const only = points[0] as VisionPoint;
+				return Math.hypot(p.x - only.x, p.y - only.y) <= r;
+			}
+			for (let i = 1; i < points.length; i++) {
+				if (
+					distanceToSegment(
+						p,
+						points[i - 1] as VisionPoint,
+						points[i] as VisionPoint,
+					) <= r
+				)
+					return true;
+			}
+			return false;
+		};
+	}
+
+	const c0 = Math.max(0, Math.floor(minX / grid.cell));
+	const c1 = Math.min(grid.cols - 1, Math.floor(maxX / grid.cell));
+	const r0 = Math.max(0, Math.floor(minY / grid.cell));
+	const r1 = Math.min(grid.rows - 1, Math.floor(maxY / grid.cell));
+	const cells: number[] = [];
+	for (let r = r0; r <= r1; r++) {
+		for (let c = c0; c <= c1; c++) {
+			const center = { x: (c + 0.5) * grid.cell, y: (r + 0.5) * grid.cell };
+			if (inside(center)) cells.push(r * grid.cols + c);
+		}
+	}
+	return cells;
 }

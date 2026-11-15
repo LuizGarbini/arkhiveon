@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+	clearIndexes,
 	createExploredGrid,
 	type ExploredGrid,
 	type ExploredMeta,
@@ -26,6 +27,8 @@ interface ExploredState {
 	applyRemote: (sceneId: string, indexes: readonly number[]) => void;
 	/** Bits vindos do banco: juntam-se ao que já foi marcado nesta tela. */
 	mergeServer: (sceneId: string, meta: ExploredMeta, bits: Uint8Array) => void;
+	/** O mestre escureceu estas células de novo (volta a ser desconhecido). */
+	unmark: (sceneId: string, indexes: readonly number[]) => number;
 	/** O mestre esqueceu o mapa. */
 	clear: (sceneId: string) => void;
 }
@@ -65,6 +68,14 @@ export const useExploredStore = create<ExploredState>((set, get) => ({
 		const { sceneId: current, grid } = get();
 		if (current !== sceneId || !grid || !sameExploredMeta(grid, meta)) return;
 		if (mergeBits(grid, bits)) set((s) => ({ version: s.version + 1 }));
+	},
+
+	unmark: (sceneId, indexes) => {
+		const { sceneId: current, grid } = get();
+		if (current !== sceneId || !grid) return 0;
+		const cleared = clearIndexes(grid, indexes);
+		if (cleared > 0) set((s) => ({ version: s.version + 1 }));
+		return cleared;
 	},
 
 	clear: (sceneId) => {

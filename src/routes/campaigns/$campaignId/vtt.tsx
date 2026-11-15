@@ -856,6 +856,21 @@ function VTTSession() {
 			)
 			.on(
 				"broadcast",
+				{ event: "explored_cleared" },
+				(payload: { payload: unknown }) => {
+					if (
+						cancelled ||
+						useVTTStore.getState().activeSceneId !== activeSceneId
+					)
+						return;
+					const data = readExploredCells(payload.payload);
+					if (data && data.sceneId === activeSceneId) {
+						useExploredStore.getState().unmark(data.sceneId, data.cells);
+					}
+				},
+			)
+			.on(
+				"broadcast",
 				{ event: "explored_reset" },
 				(payload: { payload: unknown }) => {
 					if (cancelled) return;
@@ -1255,6 +1270,12 @@ function VTTSession() {
 				});
 			}
 			void handlePersistFog(updatedPaths);
+			// Cobrir o mapa todo também apaga o que o grupo já tinha explorado.
+			const live = useVTTStore.getState();
+			const scene = live.scenes.find((item) => item.id === live.activeSceneId);
+			if (mode === "all_hidden" && scene?.fogExploration) {
+				void exploredSync.reset(scene.id);
+			}
 		},
 		[clearFog, handlePersistFog],
 	);

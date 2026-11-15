@@ -1866,6 +1866,16 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			unexplore_scene_cells: {
+				Args: {
+					p_scene_id: string;
+					p_cell_px: number;
+					p_cols: number;
+					p_rows: number;
+					p_cells: number[];
+				};
+				Returns: undefined;
+			};
 			reset_scene_explored: {
 				Args: { p_scene_id: string };
 				Returns: undefined;

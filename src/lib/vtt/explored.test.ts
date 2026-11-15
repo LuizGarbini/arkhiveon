@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+	clearIndexes,
 	createExploredGrid,
 	decodeBits,
 	encodeBits,
 	exploredMeta,
 	exploredRuns,
+	fogPathCells,
 	isExplored,
 	MAX_EXPLORED_CELLS,
 	markIndexes,
@@ -223,5 +225,152 @@ describe("exploredRuns", () => {
 		const g = grid(4000, 3000);
 		markPolygon(g, visibilityPolygon({ x: 2000, y: 1500 }, 800, []));
 		expect(exploredRuns(g).length).toBeLessThan(200);
+	});
+});
+
+describe("clearIndexes", () => {
+	it("apaga só as células pedidas e conta as que estavam marcadas", () => {
+		const g = createExploredGrid({ cell: 35, cols: 40, rows: 30 });
+		markIndexes(g, [1, 2, 3, 100]);
+		expect(clearIndexes(g, [2, 100, 7])).toBe(2); // o 7 nunca esteve marcado
+		expect(isExplored(g, 1) && isExplored(g, 3)).toBe(true);
+		expect(isExplored(g, 2) || isExplored(g, 100)).toBe(false);
+	});
+
+	it("ignora índice fora do mapa, negativo, fracionário e NaN", () => {
+		const g = createExploredGrid({ cell: 35, cols: 8, rows: 8 });
+		markIndexes(g, [0]);
+		expect(clearIndexes(g, [5000, -1, 1.5, Number.NaN])).toBe(0);
+		expect(isExplored(g, 0)).toBe(true);
+	});
+
+	it("não mexe nos bits vizinhos do mesmo byte", () => {
+		const g = createExploredGrid({ cell: 35, cols: 8, rows: 8 });
+		markIndexes(g, [0, 1, 2, 3, 4, 5, 6, 7]);
+		clearIndexes(g, [3]);
+		expect(g.bits[0]).toBe(0b11110111);
+	});
+});
+
+describe("fogPathCells · o que a forma da névoa cobre", () => {
+	const grid = () => createExploredGrid(exploredMeta(1400, 900, 70)); // célula de 35 px
+	const centerOf = (g: ReturnType<typeof grid>, i: number) => ({
+		x: (i % g.cols) * g.cell + g.cell / 2,
+		y: Math.floor(i / g.cols) * g.cell + g.cell / 2,
+	});
+
+	it("círculo: só células com o centro dentro do raio", () => {
+		const g = grid();
+		const cells = fogPathCells(g, {
+			type: "circle",
+			x: 490,
+			y: 455,
+			radius: 70,
+		});
+		expect(cells.length).toBeGreaterThan(10);
+		for (const i of cells) {
+			const c = centerOf(g, i);
+			expect(Math.hypot(c.x - 490, c.y - 455)).toBeLessThanOrEqual(70);
+		}
+		const area = (cells.length * 35 * 35) / (Math.PI * 70 * 70);
+		expect(area).toBeGreaterThan(0.85);
+		expect(area).toBeLessThan(1.15);
+	});
+
+	it("retângulo: as células cujo centro cai dentro", () => {
+		const g = grid();
+		const cells = fogPathCells(g, {
+			type: "rect",
+			x: 70,
+			y: 70,
+			width: 70,
+			height: 70,
+		});
+		expect(cells.sort((a, b) => a - b)).toEqual([
+			2 * g.cols + 2,
+			2 * g.cols + 3,
+			3 * g.cols + 2,
+			3 * g.cols + 3,
+		]);
+	});
+
+	it("pincel com vários pontos: a faixa em volta do traço", () => {
+		const g = grid();
+		const cells = fogPathCells(g, {
+			type: "brush",
+			brushRadius: 20,
+			points: [
+				{ x: 100, y: 100 },
+				{ x: 300, y: 100 },
+			],
+		});
+		for (const i of cells) {
+			const c = centerOf(g, i);
+			expect(c.x).toBeGreaterThanOrEqual(80);
+			expect(c.x).toBeLessThanOrEqual(320);
+			expect(Math.abs(c.y - 100)).toBeLessThanOrEqual(20);
+		}
+		// faixa de 40 px de altura em torno de y=100: só a linha de células de y≈87,5 (7 colunas)
+		expect(cells).toHaveLength(7);
+	});
+
+	it("pincel com um traço de vários trechos cobre TODOS os trechos (traço em L)", () => {
+		const g = grid();
+		const cells = fogPathCells(g, {
+			type: "brush",
+			brushRadius: 20,
+			points: [
+				{ x: 100, y: 100 },
+				{ x: 300, y: 100 },
+				{ x: 300, y: 300 },
+			],
+		});
+		const has = (x: number, y: number) =>
+			cells.includes(Math.floor(y / 35) * g.cols + Math.floor(x / 35));
+		expect(has(150, 90)).toBe(true); // 1º trecho
+		expect(has(300, 250)).toBe(true); // 2º trecho (o que só o 1º segmento não pega)
+		expect(has(150, 250)).toBe(false); // dentro do L, longe do traço
+	});
+
+	it("pincel com um ponto só é um círculo", () => {
+		const g = grid();
+		const one = fogPathCells(g, {
+			type: "brush",
+			brushRadius: 40,
+			points: [{ x: 200, y: 200 }],
+		});
+		const circle = fogPathCells(g, {
+			type: "circle",
+			x: 200,
+			y: 200,
+			radius: 40,
+		});
+		expect(one).toEqual(circle);
+	});
+
+	it("forma que sai do mapa só devolve células dentro dele", () => {
+		const g = grid();
+		const cells = fogPathCells(g, { type: "circle", x: 5, y: 5, radius: 100 });
+		for (const i of cells) expect(i).toBeLessThan(g.cols * g.rows);
+		expect(cells.length).toBeGreaterThan(0);
+		expect(
+			fogPathCells(g, { type: "circle", x: 9000, y: 9000, radius: 50 }),
+		).toEqual([]);
+	});
+
+	it("forma vazia ou inválida: nada", () => {
+		const g = grid();
+		expect(
+			fogPathCells(g, { type: "circle", x: 10, y: 10, radius: 0 }),
+		).toEqual([]);
+		expect(
+			fogPathCells(g, { type: "rect", x: 10, y: 10, width: 0, height: 50 }),
+		).toEqual([]);
+		expect(
+			fogPathCells(g, { type: "brush", brushRadius: 20, points: [] }),
+		).toEqual([]);
+		expect(
+			fogPathCells(g, { type: "brush", points: [{ x: 1, y: 1 }] }),
+		).toEqual([]);
 	});
 });

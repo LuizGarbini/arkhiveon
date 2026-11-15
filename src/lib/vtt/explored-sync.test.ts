@@ -360,3 +360,125 @@ describe("store da exploração", () => {
 		expect(store().grid?.bits.every((b) => b === 0)).toBe(true);
 	});
 });
+
+describe("escurecer de novo (mestre)", () => {
+	it("avisa os outros e manda o banco apagar as células, com o tamanho da grade", async () => {
+		const { sync, calls, sent } = setup();
+		const result = await sync.unexplore("s1", meta, [4, 5, 6]);
+		expect(result).toEqual({ ok: true });
+		expect(sent).toEqual([
+			{
+				event: "explored_cleared",
+				payload: { sceneId: "s1", cells: [4, 5, 6] },
+			},
+		]);
+		expect(calls).toEqual([
+			{
+				name: "unexplore_scene_cells",
+				args: {
+					p_scene_id: "s1",
+					p_cell_px: 35,
+					p_cols: 40,
+					p_rows: 30,
+					p_cells: [4, 5, 6],
+				},
+			},
+		]);
+	});
+
+	it("nada a apagar: não chama o banco nem avisa", async () => {
+		const { sync, rpc, sent } = setup();
+		expect(await sync.unexplore("s1", meta, [])).toEqual({ ok: true });
+		expect(rpc).not.toHaveBeenCalled();
+		expect(sent).toHaveLength(0);
+	});
+
+	it("divide em blocos de 1500", async () => {
+		const { sync, calls } = setup();
+		await sync.unexplore(
+			"s1",
+			meta,
+			Array.from({ length: 3200 }, (_, i) => i),
+		);
+		expect(calls.map((c) => (c.args.p_cells as number[]).length)).toEqual([
+			1500, 1500, 200,
+		]);
+	});
+
+	it("tira da fila de gravação as células apagadas (senão um envio atrasado as marcaria de novo)", async () => {
+		const { sync, calls } = setup();
+		sync.track("s1", meta, [1, 2, 3, 4]);
+		await sync.unexplore("s1", meta, [2, 3]);
+		await sync.flush();
+		const explored = calls.filter((c) => c.name === "explore_scene_cells");
+		expect(explored).toHaveLength(1);
+		expect(explored[0]?.args.p_cells).toEqual([1, 4]);
+	});
+
+	it("a fila de outra cena não é mexida", async () => {
+		const { sync, calls } = setup();
+		sync.track("outra", meta, [2, 3]);
+		await sync.unexplore("s1", meta, [2, 3]);
+		await sync.flush();
+		const explored = calls.filter((c) => c.name === "explore_scene_cells");
+		expect(explored[0]?.args.p_cells).toEqual([2, 3]);
+	});
+
+	it("sem permissão, função ausente e falha de rede têm mensagens claras", async () => {
+		const forbidden = setup(async () => ({
+			data: null,
+			error: { code: "42501" },
+		}));
+		const a = await forbidden.sync.unexplore("s1", meta, [1]);
+		expect(!a.ok && a.message).toMatch(/mestre ou co-mestre/);
+		const missing = setup(async () => ({
+			data: null,
+			error: { code: "PGRST202" },
+		}));
+		const b = await missing.sync.unexplore("s1", meta, [1]);
+		expect(!b.ok && b.message).toMatch(/ainda não está disponível/);
+		const down = setup(async () => {
+			throw new Error("offline");
+		});
+		const c = await down.sync.unexplore("s1", meta, [1]);
+		expect(!c.ok && c.message).toMatch(/Não foi possível salvar/);
+	});
+
+	it("falhou num bloco: para e avisa (não segue mandando os outros)", async () => {
+		let n = 0;
+		const { sync, rpc } = setup(async () =>
+			++n === 1 ? { data: null, error: { code: "XX000" } } : ok,
+		);
+		const result = await sync.unexplore(
+			"s1",
+			meta,
+			Array.from({ length: 3200 }, (_, i) => i),
+		);
+		expect(result.ok).toBe(false);
+		expect(rpc).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("store · unmark", () => {
+	it("apaga as células, sobe a versão só se algo mudou", () => {
+		useExploredStore.getState().ensure("s1", meta);
+		useExploredStore.getState().applyRemote("s1", [1, 2, 3]);
+		const v = useExploredStore.getState().version;
+		expect(useExploredStore.getState().unmark("s1", [2, 3, 9])).toBe(2);
+		expect(useExploredStore.getState().version).toBe(v + 1);
+		expect(useExploredStore.getState().unmark("s1", [2, 3])).toBe(0);
+		expect(useExploredStore.getState().version).toBe(v + 1);
+		const grid = useExploredStore.getState().grid;
+		expect(grid && isExplored(grid, 1)).toBe(true);
+		expect(grid && isExplored(grid, 2)).toBe(false);
+	});
+
+	it("outra cena ou sem grade: não faz nada", () => {
+		expect(useExploredStore.getState().unmark("s1", [1])).toBe(0);
+		useExploredStore.getState().ensure("s1", meta);
+		useExploredStore.getState().applyRemote("s1", [1]);
+		expect(useExploredStore.getState().unmark("s2", [1])).toBe(0);
+		const grid = useExploredStore.getState().grid;
+		expect(grid && isExplored(grid, 1)).toBe(true);
+	});
+});

@@ -31,6 +31,7 @@ import {
 	dragBroadcastDue,
 } from "@/lib/vtt/drag-broadcast";
 import { exploredMeta, exploredRuns } from "@/lib/vtt/explored";
+import { uncoverExploredUnder } from "@/lib/vtt/explored-fog";
 import { useExploredStore } from "@/lib/vtt/explored-store";
 import { exploredSync } from "@/lib/vtt/explored-sync";
 import {
@@ -2818,6 +2819,9 @@ export function VTTCanvas({
 
 				if (newFogPath) {
 					addFogPath(newFogPath);
+					// Cobrir (ocultar) também apaga a memória de exploração debaixo do
+					// traço: senão a área já explorada "furava" a névoa e não escurecia.
+					if (scene?.fogExploration) uncoverExploredUnder(newFogPath, scene);
 					if (onBroadcastFog) {
 						onBroadcastFog(newFogPath);
 					}
