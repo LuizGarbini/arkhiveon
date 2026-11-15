@@ -29,6 +29,9 @@
 		"check:windows": "node scripts/check-windows.cjs",
 		"check:token-keys": "node scripts/check-token-keys.cjs",
 		"check:setas-perf": "node scripts/check-setas-perf.cjs",
+		"check:stuck-keys": "node scripts/check-stuck-keys.cjs",
+		"check:ruler-pin": "node scripts/check-ruler-pin.cjs",
+		"check:pings": "node scripts/check-pings.cjs",
 		"check:fog-hide": "node scripts/check-fog-hide.cjs",
 		"check:light-zones": "node scripts/check-light-zones.cjs",
 		"impeccable:detect": "impeccable detect src/components/vtt/vtt-ai-chat.tsx src/components/vtt/sheet-batch-review.tsx src/components/ai-mesa/shell-ai-chat.tsx src/lib/ai-mesa/sheet-batch.ts"

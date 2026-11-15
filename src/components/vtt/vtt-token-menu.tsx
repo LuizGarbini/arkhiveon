@@ -6,6 +6,7 @@ import {
 	Maximize2,
 	Minus,
 	Plus,
+	RotateCcw,
 	RotateCw,
 	ScrollText,
 	ShieldAlert,
@@ -256,8 +257,8 @@ export function VTTTokenMenu({
 		void onUpdateToken(token.id, { sizeCells: size });
 	};
 
-	const handleRotate = () => {
-		const nextRot = ((token.rotation || 0) + 45) % 360;
+	const handleRotate = (delta = 45) => {
+		const nextRot = ((((token.rotation || 0) + delta) % 360) + 360) % 360;
 		void onUpdateToken(token.id, { rotation: nextRot });
 	};
 
@@ -571,7 +572,23 @@ export function VTTTokenMenu({
 								render={
 									<button
 										type="button"
-										onClick={handleRotate}
+										onClick={() => handleRotate(-45)}
+										className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+										aria-label="Girar Token para a esquerda (45º)"
+									/>
+								}
+							>
+								<RotateCcw className="h-3.5 w-3.5" />
+							</TooltipTrigger>
+							<TooltipContent>Girar para a esquerda (45º) · Q</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={() => handleRotate(45)}
 										className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
 										aria-label="Girar Token (45º)"
 									/>
@@ -579,7 +596,7 @@ export function VTTTokenMenu({
 							>
 								<RotateCw className="h-3.5 w-3.5" />
 							</TooltipTrigger>
-							<TooltipContent>Girar Token (45º)</TooltipContent>
+							<TooltipContent>Girar Token (45º) · E</TooltipContent>
 						</Tooltip>
 
 						{isGM && (

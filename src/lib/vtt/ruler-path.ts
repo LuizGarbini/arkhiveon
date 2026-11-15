@@ -188,6 +188,29 @@ export function rulerPin(
 	return rulerFrom(waypoints, null, ctx, true);
 }
 
+/**
+ * Congela a medição como está (ao trocar de ferramenta): a ponta ao vivo vira o
+ * último ponto e o caminho fica fixado, sem esticar atrás do cursor. Assim a régua
+ * continua no mapa para arrastar o token ao longo dela. Sem nenhum trecho medido
+ * (só o clique inicial), não há o que manter e ela some. A distância já inclui a
+ * ponta ao vivo, então não é preciso refazer a conta.
+ */
+export function rulerFreeze(
+	measurement: VTTRulerMeasurement | null,
+): VTTRulerMeasurement | null {
+	if (!measurement) return null;
+	if (measurement.pinned) return measurement;
+	const waypoints = rulerWaypoints(measurement);
+	const end = { x: measurement.currentX, y: measurement.currentY };
+	const last = waypoints[waypoints.length - 1];
+	const closed =
+		last && last.x === end.x && last.y === end.y
+			? [...waypoints]
+			: [...waypoints, end];
+	if (closed.length < 2) return null;
+	return { ...measurement, waypoints: closed, pinned: true };
+}
+
 /** Refaz as contas com outra regra/escala mantendo os mesmos pontos. */
 export function rulerRemeasure(
 	measurement: VTTRulerMeasurement | null,

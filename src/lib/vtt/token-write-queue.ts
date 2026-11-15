@@ -1,19 +1,25 @@
 /**
- * Fila de gravação da POSIÇÃO dos tokens (seta do teclado, arrasto, "devolver").
+ * Fila de gravação da POSIÇÃO e da DIREÇÃO dos tokens (seta do teclado, giro Q/E,
+ * arrasto, "devolver" do histórico).
  *
  * Antes cada passo era uma requisição própria, todas em voo ao mesmo tempo: elas
  * podiam chegar ao banco FORA DE ORDEM (a posição final gravada era uma antiga) e
  * cada uma gerava um eco do Realtime com a posição velha, que puxava o token de
  * volta. Agora, por token:
  *  - no máximo UMA gravação em voo (a próxima só sai quando a anterior termina);
- *  - o que chega durante o voo ou antes do intervalo mínimo é FUNDIDO (vale a
- *    posição mais recente) e sai numa única gravação;
+ *  - o que chega durante o voo ou antes do intervalo mínimo é FUNDIDO (vale o mais
+ *    recente de cada campo) e sai numa única gravação;
  *  - a primeira gravação sai na hora; a ÚLTIMA nunca se perde (sempre há uma
- *    gravação pendente até a posição final ser enviada);
+ *    gravação pendente até o estado final ser enviado);
  *  - falha: o que estava em voo e o que esperava voltam `false` juntos e a fila do
  *    token esvazia (quem chamou restaura o estado do servidor).
  * Cada promessa devolvida resolve com o resultado da gravação que levou o
  * movimento dela (movimentos fundidos compartilham o resultado).
+ *
+ * Eco: cada gravação guarda o ESTADO COMPLETO (x, y, rotation) que a mesa terá
+ * quando ela chegar ao banco. `isStaleEcho` só reconhece como eco velho uma linha
+ * do Realtime cujo estado inteiro é um que ESTE cliente enviou e que já foi
+ * ultrapassado; uma mudança de outro usuário (qualquer campo diferente) nunca bate.
  */
 export interface MoveUpdates {
 	x?: number;
@@ -21,33 +27,61 @@ export interface MoveUpdates {
 	rotation?: number;
 }
 
+/** O estado de posição/direção de um token numa gravação. */
+export interface TokenPoseState {
+	x: number;
+	y: number;
+	rotation: number;
+}
+
 export interface TokenWriteQueueOptions {
 	send: (tokenId: string, updates: MoveUpdates) => Promise<boolean>;
 	minIntervalMs?: number;
 	now?: () => number;
 	setTimer?: (fn: () => void, ms: number) => unknown;
-	/** Por quanto tempo uma posição enviada ainda conta como "minha" (para o eco). */
+	/** Por quanto tempo um estado enviado ainda conta como "meu" (para o eco). */
 	ownTtlMs?: number;
 }
 
 export interface TokenWriteQueue {
-	enqueue: (tokenId: string, updates: MoveUpdates) => Promise<boolean>;
+	/**
+	 * `expected`: o estado completo do token depois desta atualização (a mesa já o
+	 * tem, ou terá quando a gravação confirmar). Sem ele o eco dela não é reconhecido.
+	 */
+	enqueue: (
+		tokenId: string,
+		updates: MoveUpdates,
+		expected?: TokenPoseState,
+	) => Promise<boolean>;
 	/** Há gravação esperando para sair (o que a mesa mostra já é mais novo que ela). */
 	hasPending: (tokenId: string) => boolean;
 	/** Há gravação em voo ou esperando. */
 	isBusy: (tokenId: string) => boolean;
 	/** Quantos tokens têm gravação em voo ou esperando (para sondas e testes). */
 	busyCount: () => number;
-	/** Esta posição foi enviada por MIM há pouco? (eco do Realtime do meu próprio passo) */
-	ownsPosition: (tokenId: string, x: number, y: number) => boolean;
+	/**
+	 * Esta linha do Realtime é o eco VELHO de uma gravação minha? Só vale quando o
+	 * estado inteiro é um que eu enviei e (há gravação mais nova esperando ou ele não
+	 * é o último que enviei). O eco do último estado enviado, com a fila vazia, é
+	 * aplicado normalmente (corrige qualquer divergência e não muda nada se igual).
+	 */
+	isStaleEcho: (tokenId: string, state: TokenPoseState) => boolean;
 }
 
-interface TokenState {
-	pending: { updates: MoveUpdates; waiters: ((ok: boolean) => void)[] } | null;
+interface Sent extends TokenPoseState {
+	at: number;
+}
+
+interface TokenQueueState {
+	pending: {
+		updates: MoveUpdates;
+		expected: TokenPoseState | null;
+		waiters: ((ok: boolean) => void)[];
+	} | null;
 	inFlight: { waiters: ((ok: boolean) => void)[] } | null;
 	lastStart: number;
 	timer: unknown;
-	sent: { x: number; y: number; at: number }[];
+	sent: Sent[];
 }
 
 export const TOKEN_WRITE_MIN_INTERVAL_MS = 120;
@@ -57,14 +91,17 @@ const MOVE_KEYS = new Set(["x", "y", "rotation"]);
 
 /** Só posição/direção? Esses vão pela fila; o resto (HP, status...) grava direto. */
 export function isMoveOnlyUpdate(updates: Record<string, unknown>): boolean {
-	let hasPosition = false;
+	let hasMove = false;
 	for (const [key, value] of Object.entries(updates)) {
 		if (value === undefined) continue;
 		if (!MOVE_KEYS.has(key)) return false;
-		if (key === "x" || key === "y") hasPosition = true;
+		hasMove = true;
 	}
-	return hasPosition;
+	return hasMove;
 }
+
+const sameState = (a: TokenPoseState, b: TokenPoseState) =>
+	a.x === b.x && a.y === b.y && a.rotation === b.rotation;
 
 export function createTokenWriteQueue(
 	options: TokenWriteQueueOptions,
@@ -74,9 +111,9 @@ export function createTokenWriteQueue(
 	const setTimer =
 		options.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
 	const ownTtl = options.ownTtlMs ?? OWN_TTL_MS;
-	const states = new Map<string, TokenState>();
+	const states = new Map<string, TokenQueueState>();
 
-	const stateOf = (tokenId: string): TokenState => {
+	const stateOf = (tokenId: string): TokenQueueState => {
 		let state = states.get(tokenId);
 		if (!state) {
 			state = {
@@ -106,9 +143,8 @@ export function createTokenWriteQueue(
 		state.pending = null;
 		state.inFlight = { waiters: batch.waiters };
 		state.lastStart = now();
-		const { x, y } = batch.updates;
-		if (x !== undefined && y !== undefined) {
-			state.sent.push({ x, y, at: state.lastStart });
+		if (batch.expected) {
+			state.sent.push({ ...batch.expected, at: state.lastStart });
 			if (state.sent.length > MAX_SENT) state.sent.shift();
 		}
 		const finish = (ok: boolean) => {
@@ -134,14 +170,19 @@ export function createTokenWriteQueue(
 	};
 
 	return {
-		enqueue(tokenId, updates) {
+		enqueue(tokenId, updates, expected) {
 			const state = stateOf(tokenId);
 			return new Promise<boolean>((resolve) => {
 				if (state.pending) {
 					state.pending.updates = { ...state.pending.updates, ...updates };
+					state.pending.expected = expected ?? null;
 					state.pending.waiters.push(resolve);
 				} else {
-					state.pending = { updates: { ...updates }, waiters: [resolve] };
+					state.pending = {
+						updates: { ...updates },
+						expected: expected ?? null,
+						waiters: [resolve],
+					};
 				}
 				pump(tokenId);
 			});
@@ -158,13 +199,20 @@ export function createTokenWriteQueue(
 			}
 			return busy;
 		},
-		ownsPosition(tokenId, x, y) {
+		isStaleEcho(tokenId, echo) {
 			const state = states.get(tokenId);
 			if (!state) return false;
 			const cutoff = now() - ownTtl;
-			return state.sent.some(
-				(item) => item.at >= cutoff && item.x === x && item.y === y,
-			);
+			let latestMatch = -1;
+			for (let i = state.sent.length - 1; i >= 0; i--) {
+				const item = state.sent[i] as Sent;
+				if (item.at >= cutoff && sameState(item, echo)) {
+					latestMatch = i;
+					break;
+				}
+			}
+			if (latestMatch < 0) return false;
+			return latestMatch < state.sent.length - 1 || Boolean(state.pending);
 		},
 	};
 }

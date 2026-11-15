@@ -251,6 +251,7 @@ describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
 		for (const name of [
 			"Abrir ficha na mesa",
 			"Girar Token (45º)",
+			"Girar Token para a esquerda (45º)",
 			"Ocultar dos Jogadores",
 			"Mover para Camada do Mestre (GM Layer)",
 			"Travar no Lugar",
@@ -259,6 +260,33 @@ describe("VTTTokenMenu — Tooltip do DS no lugar de title nativo", () => {
 		}
 		const rotate = screen.getByRole("button", { name: "Girar Token (45º)" });
 		expect(rotate.getAttribute("data-slot")).toBe("tooltip-trigger");
+	});
+
+	it("gira para a direita e para a esquerda de 45° em 45°, dando a volta em 360°", () => {
+		const right = setup({ rotation: 315 });
+		fireEvent.click(screen.getByRole("button", { name: "Girar Token (45º)" }));
+		expect(right.onUpdateToken).toHaveBeenCalledWith("tok-1", { rotation: 0 });
+		cleanup();
+		const left = setup({ rotation: 0 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Girar Token para a esquerda (45º)" }),
+		);
+		expect(left.onUpdateToken).toHaveBeenCalledWith("tok-1", { rotation: 315 });
+		cleanup();
+		const mid = setup({ rotation: 90 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Girar Token para a esquerda (45º)" }),
+		);
+		expect(mid.onUpdateToken).toHaveBeenCalledWith("tok-1", { rotation: 45 });
+	});
+
+	it("o giro só muda o ângulo: não mexe na posição", () => {
+		const { onUpdateToken } = setup({ rotation: 0 });
+		fireEvent.click(screen.getByRole("button", { name: "Girar Token (45º)" }));
+		const patch = (
+			onUpdateToken.mock.calls as unknown as [string, Record<string, unknown>][]
+		)[0]?.[1];
+		expect(Object.keys(patch ?? {})).toEqual(["rotation"]);
 	});
 
 	it("Remover da mesa pede confirmação e só então apaga o token", async () => {

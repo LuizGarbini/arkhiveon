@@ -1,3 +1,4 @@
+import { normalizePingKind, type PingKind, pingTtl } from "./ping-kinds";
 import type { VTTPingEvent } from "./types";
 
 /** Tempo em que o anel ainda é desenhado. No instante do TTL ele sai. */
@@ -16,6 +17,8 @@ export interface PingInput {
 	userName: string;
 	color: string;
 	timestamp: number;
+	kind?: PingKind;
+	tokenId?: string;
 }
 
 export interface PingAdmission {
@@ -77,6 +80,8 @@ export function incomingPing(
 				userName?: unknown;
 				color?: unknown;
 				timestamp?: unknown;
+				kind?: unknown;
+				tokenId?: unknown;
 		  }
 		| null
 		| undefined,
@@ -104,6 +109,15 @@ export function incomingPing(
 	};
 	if (typeof payload.id === "string" && payload.id.length > 0)
 		ping.id = payload.id;
+	// Sem tipo (broadcast antigo) fica sem `kind`: vale o ping comum. Tipo
+	// desconhecido também vira ping comum.
+	if (payload.kind !== undefined) ping.kind = normalizePingKind(payload.kind);
+	if (
+		typeof payload.tokenId === "string" &&
+		payload.tokenId.length > 0 &&
+		payload.tokenId.length <= 80
+	)
+		ping.tokenId = payload.tokenId;
 	return ping;
 }
 
@@ -128,7 +142,8 @@ export function expirePings(
 ): { state: PingQueueState; removedIds: string[] } {
 	const removedIds: string[] = [];
 	for (const ping of state.pings) {
-		if (!pingVisual(ping.timestamp, now).alive) removedIds.push(ping.id);
+		if (!pingVisual(ping.timestamp, now, pingTtl(ping.kind)).alive)
+			removedIds.push(ping.id);
 	}
 	if (removedIds.length === 0) return { state, removedIds };
 	const drop = new Set(removedIds);
@@ -181,7 +196,7 @@ export function admitPing(
 	createId: PingIdFactory = defaultPingId,
 ): { state: PingQueueState; ping: ActivePing | null } {
 	const base = expirePings(state, now).state;
-	if (!pingVisual(input.timestamp, now).alive)
+	if (!pingVisual(input.timestamp, now, pingTtl(input.kind)).alive)
 		return { state: base, ping: null };
 
 	const provided =
@@ -213,6 +228,8 @@ export function admitPing(
 		color: input.color,
 		timestamp: input.timestamp,
 	};
+	if (input.kind !== undefined) ping.kind = input.kind;
+	if (input.tokenId !== undefined) ping.tokenId = input.tokenId;
 	const kept =
 		base.pings.length >= PING_MAX_ACTIVE
 			? base.pings.slice(base.pings.length - (PING_MAX_ACTIVE - 1))
@@ -267,7 +284,8 @@ export function createPingAnimationLoop(deps: {
 			if (pings.length > stats.maxActive) stats.maxActive = pings.length;
 			const removed: string[] = [];
 			for (const ping of pings) {
-				if (!pingVisual(ping.timestamp, now).alive) removed.push(ping.id);
+				if (!pingVisual(ping.timestamp, now, pingTtl(ping.kind)).alive)
+					removed.push(ping.id);
 			}
 			if (removed.length > 0) deps.removeIds(removed);
 			const remaining = deps.getPings();

@@ -27,6 +27,8 @@ const mock = vi.hoisted(() => ({
 	},
 	ownersFail: false,
 	writes: [] as Array<(value: unknown) => void>,
+	patches: [] as unknown[],
+	tokenChanges: [] as Array<(payload: unknown) => void>,
 	canvas: null as null | {
 		onUpdateToken: (id: string, updates: Partial<VTTToken>) => Promise<void>;
 		characterOwners: unknown[];
@@ -155,6 +157,7 @@ vi.mock("@/lib/supabase", () => ({
 						throw new Error("publicação passou pelo UPDATE direto");
 					}
 					writing = true;
+					if (table === "vtt_tokens") mock.patches.push(patch);
 					return query;
 				},
 				single: () =>
@@ -190,7 +193,15 @@ vi.mock("@/lib/supabase", () => ({
 		},
 		channel: () => {
 			const channel = {
-				on: () => channel,
+				on: (
+					type: string,
+					filter: { table?: string },
+					callback: (payload: unknown) => void,
+				) => {
+					if (type === "postgres_changes" && filter?.table === "vtt_tokens")
+						mock.tokenChanges.push(callback);
+					return channel;
+				},
 				subscribe: () => channel,
 				unsubscribe: vi.fn(),
 				untrack: vi.fn(),
@@ -210,6 +221,8 @@ beforeEach(() => {
 	mock.role = "viewer";
 	mock.ownersFail = false;
 	mock.writes = [];
+	mock.patches = [];
+	mock.tokenChanges = [];
 	mock.rpc.mockClear().mockResolvedValue({ data: "scene-b", error: null });
 	mock.toasts = [];
 	mock.sceneBar = null;
@@ -362,6 +375,129 @@ it("a posição já igual na mesa também larga o alvo velho quando a gravação
 	const token = useVTTStore.getState().tokens[0];
 	expect(token.targetX).toBeUndefined();
 	expect(token.targetY).toBeUndefined();
+});
+
+const row = (over: Record<string, unknown> = {}) => ({
+	id: "token",
+	scene_id: "scene-a",
+	character_id: "character",
+	npc_id: null,
+	name: "Hero",
+	avatar_url: null,
+	layer: "token",
+	x: 0,
+	y: 0,
+	size_cells: 1,
+	rotation: 0,
+	hp_current: 12,
+	hp_max: null,
+	temp_hp: 0,
+	elevation: 0,
+	conditions: [],
+	auras: [],
+	vision_range: 6,
+	is_locked: false,
+	is_hidden: false,
+	controlled_by: [],
+	created_at: "",
+	updated_at: "",
+	...over,
+});
+function echo(over: Record<string, unknown>) {
+	const handler = mock.tokenChanges[mock.tokenChanges.length - 1];
+	if (!handler) throw new Error("sem canal de tokens");
+	act(() => handler({ eventType: "UPDATE", new: row(over), old: {} }));
+}
+
+it("giro só de rotation passa pela fila: gira rápido várias vezes e a ÚLTIMA rotação é a gravada", async () => {
+	await open();
+	const results: Promise<void>[] = [];
+	act(() => {
+		for (const rotation of [45, 90, 135, 180, 225]) {
+			useVTTStore.getState().updateToken("token", { rotation });
+			results.push(canvas().onUpdateToken("token", { rotation }));
+		}
+	});
+	expect(mock.writes).toHaveLength(1);
+	expect(mock.patches[0]).toEqual({ rotation: 45 });
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await results[0];
+	});
+	await waitFor(() => expect(mock.writes).toHaveLength(2));
+	expect(mock.patches[1]).toEqual({ rotation: 225 });
+	await act(async () => {
+		mock.writes[1]({ data: { id: "token" }, error: null });
+		await Promise.all(results);
+	});
+	expect(useVTTStore.getState().tokens[0].rotation).toBe(225);
+});
+
+it("o eco VELHO da minha gravação não volta o token, mas a rotação isolada de OUTRO usuário é aplicada", async () => {
+	await open();
+	let first: Promise<void>;
+	act(() => {
+		useVTTStore.getState().updateToken("token", { x: 70, y: 0 });
+		first = canvas().onUpdateToken("token", { x: 70, y: 0 });
+	});
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await first;
+	});
+	// já andei mais um passo (o anterior foi enviado; este espera na fila)
+	act(() => {
+		useVTTStore.getState().updateToken("token", { x: 140, y: 0 });
+		void canvas().onUpdateToken("token", { x: 140, y: 0 });
+	});
+	// eco velho do passo 1 (x=70): ignorado
+	echo({ x: 70, y: 0 });
+	expect(useVTTStore.getState().tokens[0].x).toBe(140);
+	// OUTRO usuário gira o token: mesma posição que eu enviei antes (70,0), rotação
+	// nova. Estado inteiro que eu nunca enviei -> tem que ser aplicado.
+	echo({ x: 70, y: 0, rotation: 90 });
+	expect(useVTTStore.getState().tokens[0]).toMatchObject({
+		x: 70,
+		y: 0,
+		rotation: 90,
+	});
+});
+
+it("giro pelo painel (a mesa só gira quando a gravação confirma): o eco velho dele também é reconhecido", async () => {
+	await open();
+	act(() => {
+		void canvas().onUpdateToken("token", { rotation: 90 });
+		void canvas().onUpdateToken("token", { rotation: 180 });
+	});
+	// 90 foi enviado, 180 espera: o eco de 90 é velho e não pode mexer na mesa
+	echo({ x: 0, y: 0, rotation: 90 });
+	expect(useVTTStore.getState().tokens[0].rotation).toBe(0);
+});
+
+it("mudança de OUTRO usuário em outro token ou em posição nunca enviada por mim é aplicada", async () => {
+	await open();
+	act(() => {
+		useVTTStore.getState().updateToken("token", { x: 70, y: 0 });
+		void canvas().onUpdateToken("token", { x: 70, y: 0 });
+	});
+	echo({ x: 350, y: 70 });
+	expect(useVTTStore.getState().tokens[0]).toMatchObject({ x: 350, y: 70 });
+});
+
+it("o eco do ÚLTIMO estado que enviei, com a fila vazia, é aplicado (corrige divergência)", async () => {
+	await open();
+	let first: Promise<void>;
+	act(() => {
+		useVTTStore.getState().updateToken("token", { x: 70, y: 0 });
+		first = canvas().onUpdateToken("token", { x: 70, y: 0 });
+	});
+	await act(async () => {
+		mock.writes[0]({ data: { id: "token" }, error: null });
+		await first;
+	});
+	// outro usuário mexeu no meio e a mesa ficou em (350,70); o banco ficou em (70,0)
+	act(() => useVTTStore.getState().updateToken("token", { x: 350, y: 70 }));
+	echo({ x: 70, y: 0 });
+	expect(useVTTStore.getState().tokens[0]).toMatchObject({ x: 70, y: 0 });
 });
 
 function canvas() {

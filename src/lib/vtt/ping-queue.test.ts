@@ -365,3 +365,92 @@ describe("ping audio throttle", () => {
 		expect(shouldPlayPingSound(0, PING_THROTTLE_MS)).toBe(true);
 	});
 });
+
+describe("pings com tipo", () => {
+	it("o tipo e o personagem-alvo passam da entrada para o ping aceito", () => {
+		const result = admit(
+			emptyPingQueue(),
+			sample("ada", { timestamp: 1_000, kind: "highlight", tokenId: "tok-1" }),
+			1_000,
+		);
+		expect(result.ping?.kind).toBe("highlight");
+		expect(result.ping?.tokenId).toBe("tok-1");
+		expect(result.state.pings[0]?.kind).toBe("highlight");
+	});
+
+	it("ping sem tipo continua sem tipo (compatível com o broadcast antigo)", () => {
+		const result = admit(
+			emptyPingQueue(),
+			sample("ada", { timestamp: 1_000 }),
+			1_000,
+		);
+		expect(result.ping && "kind" in result.ping).toBe(false);
+		expect(result.ping && "tokenId" in result.ping).toBe(false);
+	});
+
+	it("cada tipo vive o seu tempo: o destaque passa dos 3 s do ping comum", () => {
+		let state = emptyPingQueue();
+		state = admit(
+			state,
+			sample("ada", { timestamp: 0, kind: "attention" }),
+			0,
+		).state;
+		state = admit(
+			state,
+			sample("bia", { timestamp: 0, kind: "highlight", tokenId: "t" }),
+			0,
+		).state;
+		const at3100 = expirePings(state, 3_100);
+		expect(at3100.state.pings.map((p) => p.userId)).toEqual(["bia"]);
+		expect(at3100.removedIds).toHaveLength(1);
+		const at4600 = expirePings(at3100.state, 4_600);
+		expect(at4600.state.pings).toEqual([]);
+	});
+
+	it("um destaque que chega com 3,5 s de atraso ainda vale; um comum com o mesmo atraso não", () => {
+		const late = admit(
+			emptyPingQueue(),
+			sample("ada", { timestamp: 0, kind: "highlight", tokenId: "t" }),
+			3_500,
+		);
+		expect(late.ping).not.toBeNull();
+		const lateCommon = admit(
+			emptyPingQueue(),
+			sample("ada", { timestamp: 0 }),
+			3_500,
+		);
+		expect(lateCommon.ping).toBeNull();
+	});
+});
+
+describe("incomingPing com tipo", () => {
+	const base = { x: 1, y: 2, userId: "u", timestamp: 5 };
+
+	it("lê o tipo e o alvo", () => {
+		expect(incomingPing({ ...base, kind: "danger" })?.kind).toBe("danger");
+		const hi = incomingPing({ ...base, kind: "highlight", tokenId: "t-9" });
+		expect(hi?.kind).toBe("highlight");
+		expect(hi?.tokenId).toBe("t-9");
+	});
+
+	it("sem tipo no evento (versão antiga): fica sem tipo", () => {
+		const ping = incomingPing(base);
+		expect(ping && "kind" in ping).toBe(false);
+	});
+
+	it("tipo desconhecido ou malicioso vira ping comum", () => {
+		for (const kind of ["nuke", "", 42, null, {}, "__proto__"]) {
+			expect(incomingPing({ ...base, kind })?.kind).toBe("attention");
+		}
+	});
+
+	it("alvo que não é texto, vazio ou gigante é ignorado", () => {
+		for (const tokenId of [7, "", null, {}, "x".repeat(81)]) {
+			const ping = incomingPing({ ...base, kind: "highlight", tokenId });
+			expect(ping && "tokenId" in ping).toBe(false);
+		}
+		expect(
+			incomingPing({ ...base, tokenId: "x".repeat(80) })?.tokenId,
+		).toHaveLength(80);
+	});
+});

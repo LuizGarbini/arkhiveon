@@ -46,7 +46,8 @@ describe("isMoveOnlyUpdate", () => {
 		expect(isMoveOnlyUpdate({ x: 1, y: 2, rotation: 90 })).toBe(true);
 		expect(isMoveOnlyUpdate({ x: 1, y: 2, targetX: undefined })).toBe(true);
 		expect(isMoveOnlyUpdate({ x: 1, hpCurrent: 3 })).toBe(false);
-		expect(isMoveOnlyUpdate({ rotation: 90 })).toBe(false);
+		expect(isMoveOnlyUpdate({ rotation: 90 })).toBe(true);
+		expect(isMoveOnlyUpdate({ rotation: 90, hpCurrent: 3 })).toBe(false);
 		expect(isMoveOnlyUpdate({ hpCurrent: 3 })).toBe(false);
 		expect(isMoveOnlyUpdate({})).toBe(false);
 	});
@@ -175,42 +176,77 @@ describe("createTokenWriteQueue", () => {
 		expect(queue.isBusy("a")).toBe(false);
 	});
 
-	describe("eco do próprio passo", () => {
-		it("reconhece as posições que EU enviei (e só elas)", () => {
-			void ctx.queue.enqueue("a", { x: 70, y: 140 });
-			expect(ctx.queue.ownsPosition("a", 70, 140)).toBe(true);
-			expect(ctx.queue.ownsPosition("a", 70, 70)).toBe(false);
-			expect(ctx.queue.ownsPosition("b", 70, 140)).toBe(false);
-		});
+	describe("eco do próprio passo (estado completo x, y, rotation)", () => {
+		const st = (x: number, y = 0, rotation = 0) => ({ x, y, rotation });
 
-		it("posições fundidas e nunca enviadas não contam como minhas", async () => {
-			void ctx.queue.enqueue("a", { x: 1, y: 0 });
-			void ctx.queue.enqueue("a", { x: 2, y: 0 });
-			void ctx.queue.enqueue("a", { x: 3, y: 0 });
-			expect(ctx.queue.ownsPosition("a", 2, 0)).toBe(false);
+		it("o eco de um estado que EU enviei e já foi ultrapassado é velho; o do último, com a fila vazia, não", async () => {
+			void ctx.queue.enqueue("a", { x: 1, y: 0 }, st(1));
 			ctx.calls[0]?.resolve(true);
 			await ctx.flush();
 			await ctx.advance(150);
-			expect(ctx.queue.ownsPosition("a", 3, 0)).toBe(true);
-			expect(ctx.queue.ownsPosition("a", 2, 0)).toBe(false);
+			void ctx.queue.enqueue("a", { x: 2, y: 0 }, st(2));
+			ctx.calls[1]?.resolve(true);
+			await ctx.flush();
+			expect(ctx.queue.isStaleEcho("a", st(1))).toBe(true);
+			// o último enviado, com a fila vazia: é aplicado (corrige divergência)
+			expect(ctx.queue.isStaleEcho("a", st(2))).toBe(false);
 		});
 
-		it("o eco atrasado de uma posição minha antiga ainda é reconhecido", async () => {
-			void ctx.queue.enqueue("a", { x: 1, y: 0 });
+		it("com gravação mais nova esperando, até o eco do último enviado é velho", () => {
+			void ctx.queue.enqueue("a", { x: 1, y: 0 }, st(1));
+			void ctx.queue.enqueue("a", { x: 2, y: 0 }, st(2));
+			expect(ctx.queue.hasPending("a")).toBe(true);
+			expect(ctx.queue.isStaleEcho("a", st(1))).toBe(true);
+		});
+
+		it("estado que NUNCA enviei (outro usuário) não é eco meu: nem posição, nem rotação isolada", async () => {
+			void ctx.queue.enqueue("a", { x: 70, y: 140 }, st(70, 140, 0));
+			void ctx.queue.enqueue("a", { x: 70, y: 210 }, st(70, 210, 0));
+			// outro usuário só GIROU o token: x,y iguais a uma posição minha, rotação nova
+			expect(ctx.queue.isStaleEcho("a", st(70, 140, 90))).toBe(false);
+			// outro usuário moveu para uma posição que nunca enviei
+			expect(ctx.queue.isStaleEcho("a", st(70, 70, 0))).toBe(false);
+			// o mesmo estado, em outro token
+			expect(ctx.queue.isStaleEcho("b", st(70, 140, 0))).toBe(false);
+		});
+
+		it("giro só de rotation entra na fila e o estado esperado inclui a posição atual", async () => {
+			void ctx.queue.enqueue("a", { rotation: 90 }, st(70, 70, 90));
+			expect(ctx.calls[0]?.updates).toEqual({ rotation: 90 });
+			void ctx.queue.enqueue("a", { rotation: 135 }, st(70, 70, 135));
 			ctx.calls[0]?.resolve(true);
 			await ctx.flush();
 			await ctx.advance(150);
-			void ctx.queue.enqueue("a", { x: 2, y: 0 });
-			expect(ctx.queue.ownsPosition("a", 1, 0)).toBe(true);
-			expect(ctx.queue.ownsPosition("a", 2, 0)).toBe(true);
+			expect(ctx.calls[1]?.updates).toEqual({ rotation: 135 });
+			expect(ctx.queue.isStaleEcho("a", st(70, 70, 90))).toBe(true);
 		});
 
-		it("depois do prazo, a posição deixa de ser considerada minha", async () => {
-			void ctx.queue.enqueue("a", { x: 1, y: 0 });
+		it("estados fundidos e nunca enviados não contam como meus", async () => {
+			void ctx.queue.enqueue("a", { x: 1, y: 0 }, st(1));
+			void ctx.queue.enqueue("a", { x: 2, y: 0 }, st(2));
+			void ctx.queue.enqueue("a", { x: 3, y: 0 }, st(3));
 			ctx.calls[0]?.resolve(true);
+			await ctx.flush();
+			await ctx.advance(150);
+			expect(ctx.queue.isStaleEcho("a", st(2))).toBe(false);
+			expect(ctx.queue.isStaleEcho("a", st(1))).toBe(true);
+		});
+
+		it("sem o estado esperado, nada é reconhecido como eco", () => {
+			void ctx.queue.enqueue("a", { x: 1, y: 0 });
+			expect(ctx.queue.isStaleEcho("a", st(1))).toBe(false);
+		});
+
+		it("depois do prazo, o estado deixa de ser considerado meu", async () => {
+			void ctx.queue.enqueue("a", { x: 1, y: 0 }, st(1));
+			ctx.calls[0]?.resolve(true);
+			await ctx.flush();
+			await ctx.advance(150);
+			void ctx.queue.enqueue("a", { x: 2, y: 0 }, st(2));
+			ctx.calls[1]?.resolve(true);
 			await ctx.flush();
 			await ctx.advance(16000);
-			expect(ctx.queue.ownsPosition("a", 1, 0)).toBe(false);
+			expect(ctx.queue.isStaleEcho("a", st(1))).toBe(false);
 		});
 	});
 
