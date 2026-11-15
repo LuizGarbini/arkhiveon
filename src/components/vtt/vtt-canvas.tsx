@@ -122,6 +122,7 @@ import type {
 	VTTScene,
 	VTTToken,
 } from "@/lib/vtt/types";
+import { visionKey, visionSources } from "@/lib/vtt/vision";
 import {
 	clearLabels,
 	drawMoveArrow,
@@ -256,6 +257,20 @@ interface VTTCanvasProps {
 }
 
 const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
+
+/**
+ * Só em localhost/dev (ferramenta de teste, como `window.__vtt_store__`): conta
+ * quantas vezes a textura da névoa foi refeita. `pnpm check:fog-drag` usa isso
+ * para garantir que arrastar um token não refaz a névoa.
+ */
+function countFogRender() {
+	if (typeof window === "undefined") return;
+	const host = window.location.hostname;
+	if (!import.meta.env.DEV && host !== "localhost" && host !== "127.0.0.1")
+		return;
+	const w = window as unknown as { __fog_renders__?: number };
+	w.__fog_renders__ = (w.__fog_renders__ ?? 0) + 1;
+}
 
 export function VTTCanvas({
 	scene,
@@ -1365,27 +1380,24 @@ export function VTTCanvas({
 		};
 	}, [rendererReady]);
 
-	// 5. Render WebGL Fog of War Layer (with cutting masks and dynamic Exploration Penumbra)
+	// 5a. Textura da névoa pintada. Depende só da cena e das pinturas: mover um
+	// token NÃO pode refazê-la (era um redesenho de até 4096×4096 a cada
+	// movimento do mouse, o que travava a mesa com a névoa ligada).
+	const hasScene = scene != null;
+	const sceneFogEnabled = scene?.fogEnabled ?? false;
+	const sceneFogExploration = scene?.fogExploration ?? false;
+	const fogWidth = (scene?.width || 4000) * (scene?.mapScale || 1);
+	const fogHeight = (scene?.height || 4000) * (scene?.mapScale || 1);
 	useEffect(() => {
-		if (!rendererReady) return;
-		if (!fogOfWarLayerRef.current || !fogExplorationLayerRef.current || !scene)
-			return;
+		if (!rendererReady || !hasScene) return;
 		const fogLayer = fogOfWarLayerRef.current;
-		const explorationLayer = fogExplorationLayerRef.current;
-
-		explorationLayer.clear();
-
-		if (!scene.fogEnabled) {
+		if (!fogLayer) return;
+		if (!sceneFogEnabled) {
 			fogLayer.visible = false;
-			explorationLayer.visible = false;
 			return;
 		}
-
 		fogLayer.visible = true;
-
-		const width = (scene.width || 4000) * (scene.mapScale || 1);
-		const height = (scene.height || 4000) * (scene.mapScale || 1);
-		const gridSize = scene.gridSize || 70;
+		countFogRender();
 
 		// Véu do mestre: quase preto, ainda dá para ver o mapa por baixo.
 		// Jogador: névoa opaca. A textura é só a cobertura (branco = névoa).
@@ -1393,10 +1405,10 @@ export function VTTCanvas({
 		const fogAlpha = isGM ? GM_FOG_ALPHA : 1;
 		const sprite = fogSpriteRef.current;
 		const app = appRef.current;
-		if (sprite && app && width > 0 && height > 0) {
-			const fit = Math.min(1, 4096 / Math.max(width, height));
-			const texW = Math.max(1, Math.ceil(width * fit));
-			const texH = Math.max(1, Math.ceil(height * fit));
+		if (sprite && app && fogWidth > 0 && fogHeight > 0) {
+			const fit = Math.min(1, 4096 / Math.max(fogWidth, fogHeight));
+			const texW = Math.max(1, Math.ceil(fogWidth * fit));
+			const texH = Math.max(1, Math.ceil(fogHeight * fit));
 			let texture = fogTextureRef.current;
 			if (!texture || texture.width !== texW || texture.height !== texH) {
 				sprite.texture = Texture.EMPTY;
@@ -1405,8 +1417,8 @@ export function VTTCanvas({
 				fogTextureRef.current = texture;
 			}
 			const composite = buildFogComposite({
-				width,
-				height,
+				width: fogWidth,
+				height: fogHeight,
 				paths: fogPaths,
 			});
 			composite.scale.set(fit);
@@ -1417,39 +1429,59 @@ export function VTTCanvas({
 			});
 			composite.destroy({ children: true });
 			sprite.texture = texture;
-			sprite.width = width;
-			sprite.height = height;
+			sprite.width = fogWidth;
+			sprite.height = fogHeight;
 			sprite.tint = fogColor;
 			sprite.alpha = fogAlpha;
 		}
+	}, [
+		rendererReady,
+		hasScene,
+		sceneFogEnabled,
+		fogWidth,
+		fogHeight,
+		fogPaths,
+		isGM,
+	]);
 
-		// 5.3 Exploration Mode (Penumbra):
-		// Explored areas are covered by twilight/penumbra, cut open by active player token vision
-		if (!isGM && scene.fogExploration) {
-			explorationLayer.visible = true;
-
-			// Base Penumbra overlay over the map
-			explorationLayer.rect(0, 0, width, height);
-			explorationLayer.fill({ color: 0x090a0f, alpha: 0.55 });
-
-			// Cut out active vision circles around player-controlled tokens
-			const playerTokens = tokens.filter(
-				(t) =>
-					t.layer === "token" &&
-					!t.isHidden &&
-					(t.characterId || t.controlledBy?.length > 0),
-			);
-
-			for (const pt of playerTokens) {
-				const vRange = (pt.visionRange || 6) * gridSize;
-				explorationLayer.beginPath();
-				explorationLayer.circle(pt.x, pt.y, vRange);
-				explorationLayer.cut();
-			}
-		} else {
-			explorationLayer.visible = false;
+	// 5b. Penumbra do modo Exploração: um recorte em volta de cada token de
+	// jogador. É vetor (barato) e só refaz quando QUEM ENXERGA muda, não quando
+	// qualquer token da mesa se mexe.
+	const visionCell = scene?.gridSize || 70;
+	const visionList = useMemo(
+		() => visionSources(tokens, visionCell),
+		[tokens, visionCell],
+	);
+	const visionSig = visionKey(visionList);
+	const visionListRef = useRef(visionList);
+	visionListRef.current = visionList;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: visionSig é a dependência; o efeito lê a lista na hora pelo ref.
+	useEffect(() => {
+		if (!rendererReady) return;
+		const layer = fogExplorationLayerRef.current;
+		if (!layer) return;
+		layer.clear();
+		if (!sceneFogEnabled || isGM || !sceneFogExploration) {
+			layer.visible = false;
+			return;
 		}
-	}, [scene, fogPaths, tokens, isGM, rendererReady]);
+		layer.visible = true;
+		layer.rect(0, 0, fogWidth, fogHeight);
+		layer.fill({ color: 0x090a0f, alpha: 0.55 });
+		for (const source of visionListRef.current) {
+			layer.beginPath();
+			layer.circle(source.x, source.y, source.range);
+			layer.cut();
+		}
+	}, [
+		rendererReady,
+		sceneFogEnabled,
+		sceneFogExploration,
+		isGM,
+		fogWidth,
+		fogHeight,
+		visionSig,
+	]);
 
 	// 6. Render Remote Multiplayer Cursors
 	useEffect(() => {
