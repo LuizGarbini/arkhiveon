@@ -30,6 +30,24 @@ export function isMissingMovesTable(error: DbError): boolean {
 
 let loadRequest = 0;
 
+/**
+ * Quando cada linha terminou de gravar. Uma carga que começou ANTES disso pode
+ * voltar sem a linha (leu o banco antes do insert); essa linha não pode sumir.
+ */
+const savedAt = new Map<string, number>();
+
+function noteSaved(id: string): void {
+	const now = Date.now();
+	savedAt.set(id, now);
+	for (const [key, at] of savedAt) {
+		if (now - at > 120_000) savedAt.delete(key);
+	}
+	useMoveStore.getState().markSaved(id);
+}
+
+/** Linhas trazidas por carga (as mais novas da cena). */
+const MOVES_PAGE = 1000;
+
 /** Só mestre e co-mestre veem o histórico (a RLS também nega aos demais). */
 function viewerIsStaff(): boolean {
 	const { isGM, isCoGM } = useVTTStore.getState();
@@ -50,6 +68,7 @@ export async function loadMoves(sceneId: string): Promise<void> {
 		return;
 	}
 	store.setStatus("loading");
+	const startedAt = Date.now();
 	let data: unknown[] | null = null;
 	let error: DbError = null;
 	try {
@@ -57,8 +76,10 @@ export async function loadMoves(sceneId: string): Promise<void> {
 			.from("vtt_token_moves")
 			.select("*")
 			.eq("scene_id", sceneId)
-			.order("created_at", { ascending: true })
-			.limit(1000);
+			// As 1000 mais NOVAS: em ordem crescente o corte pegava as mais velhas
+			// e o movimento novo sumia ao recarregar.
+			.order("created_at", { ascending: false })
+			.limit(MOVES_PAGE);
 		data = result.data;
 		error = result.error;
 	} catch {
@@ -79,11 +100,19 @@ export async function loadMoves(sceneId: string): Promise<void> {
 	}
 	const loaded = (data ?? [])
 		.map(mapMoveRow)
-		.filter((move): move is TokenMove => move !== null);
+		.filter((move): move is TokenMove => move !== null)
+		.reverse();
 	const loadedIds = new Set(loaded.map((move) => move.id));
-	// Mantém o que acabou de ser anotado e ainda não voltou do banco.
+	// Só continua na tela o que o banco ainda não devolveu porque está sendo
+	// gravado ou porque a gravação falhou. O resto que não voltou foi apagado
+	// por outro mestre (ou a tabela foi limpa): não pode ficar como fantasma.
+	const keep = new Set([...now.unsavedIds, ...now.failedIds]);
+	for (const [id, at] of savedAt) {
+		if (at >= startedAt) keep.add(id);
+	}
 	const pending = now.moves.filter(
-		(move) => move.sceneId === sceneId && !loadedIds.has(move.id),
+		(move) =>
+			move.sceneId === sceneId && !loadedIds.has(move.id) && keep.has(move.id),
 	);
 	now.setMoves([
 		...now.moves.filter((move) => move.sceneId !== sceneId),
@@ -105,21 +134,29 @@ export function subscribeMoves(sceneId: string): () => void {
 		.on(
 			"postgres_changes",
 			{
-				event: "*",
+				event: "INSERT",
 				schema: "public",
 				table: "vtt_token_moves",
 				filter: `scene_id=eq.${sceneId}`,
 			},
 			(payload) => {
 				if (stopped) return;
+				const move = mapMoveRow(payload.new);
+				if (move) useMoveStore.getState().pushMove(move);
+			},
+		)
+		// O Realtime não entrega DELETE com filtro por coluna (a linha apagada só
+		// traz o id): sem filtro, e só mexe no que já está na tela.
+		.on(
+			"postgres_changes",
+			{ event: "DELETE", schema: "public", table: "vtt_token_moves" },
+			(payload) => {
+				if (stopped) return;
+				const id = (payload.old as { id?: string } | null)?.id;
+				if (!id) return;
 				const store = useMoveStore.getState();
-				if (payload.eventType === "INSERT") {
-					const move = mapMoveRow(payload.new);
-					if (move) store.pushMove(move);
-				} else if (payload.eventType === "DELETE") {
-					const id = (payload.old as { id?: string } | null)?.id;
-					if (id) store.setMoves(store.moves.filter((move) => move.id !== id));
-				}
+				if (store.moves.some((move) => move.id === id))
+					store.setMoves(store.moves.filter((move) => move.id !== id));
 			},
 		)
 		.subscribe((status) => {
@@ -169,6 +206,9 @@ export function recordMove(
 	const vtt = useVTTStore.getState();
 	const scene = vtt.scenes.find((item) => item.id === input.sceneId);
 	if (!scene) return null;
+	const distance = moveDistance(input.from, input.to, scene, vtt.diagonalRule);
+	// Encaixar o token no centro da mesma casa não é andar: sem linha de 0 m.
+	if (!(distance > 0)) return null;
 	const combat = useCombatStore.getState();
 	const move: TokenMove = {
 		id: crypto.randomUUID(),
@@ -177,7 +217,7 @@ export function recordMove(
 		tokenName: input.tokenName,
 		from: input.from,
 		to: input.to,
-		distance: moveDistance(input.from, input.to, scene, vtt.diagonalRule),
+		distance,
 		unit: scene.gridScaleUnit,
 		round:
 			combat.status === "ready" && combat.round !== null ? combat.round : null,
@@ -186,15 +226,18 @@ export function recordMove(
 		authorName: input.authorName,
 		createdAt: new Date().toISOString(),
 	};
-	if (viewerIsStaff()) useMoveStore.getState().pushMove(move);
+	const store = useMoveStore.getState();
+	if (viewerIsStaff()) store.pushMove(move);
+	store.markUnsaved(move.id);
 	void (async () => {
 		// Gravação do token recusada: o token voltou, então não houve movimento.
 		const ok = confirmed
 			? await Promise.resolve(confirmed).catch(() => false)
 			: true;
 		if (ok === false) {
-			const store = useMoveStore.getState();
-			store.setMoves(store.moves.filter((item) => item.id !== move.id));
+			const current = useMoveStore.getState();
+			current.setMoves(current.moves.filter((item) => item.id !== move.id));
+			current.markSaved(move.id);
 			return;
 		}
 		await saveMove(move);
@@ -202,11 +245,28 @@ export function recordMove(
 	return move;
 }
 
+/** Esperas entre as tentativas de gravar (rede instável, queda breve). */
+const SAVE_RETRY_DELAYS_MS = [600, 2500];
+
+/** Erro do Postgres que não adianta repetir: permissão, regra ou formato. */
+function isPermanentSaveError(error: NonNullable<DbError>): boolean {
+	return /^(42|22|23)/.test(error.code ?? "");
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function saveMove(move: TokenMove): Promise<void> {
-	if (useMoveStore.getState().status === "missing") return;
+	const store = () => useMoveStore.getState();
+	if (store().status === "missing") {
+		noteSaved(move.id);
+		return;
+	}
 	const client = getSupabase();
-	if (!client) return;
-	const { error } = await client.from("vtt_token_moves").insert({
+	if (!client) {
+		store().markFailed(move.id);
+		return;
+	}
+	const row = {
 		id: move.id,
 		scene_id: move.sceneId,
 		token_id: move.tokenId,
@@ -221,10 +281,33 @@ async function saveMove(move: TokenMove): Promise<void> {
 		kind: move.kind,
 		author_id: move.authorId,
 		author_name: move.authorName?.slice(0, 120) ?? null,
-		created_at: move.createdAt,
-	});
-	if (error && isMissingMovesTable(error))
-		useMoveStore.getState().setStatus("missing");
+		// Sem created_at: a hora vale a do servidor. A do computador de cada
+		// pessoa difere (relógio errado) e embaralhava a ordem do histórico.
+	};
+	for (let attempt = 0; ; attempt += 1) {
+		let error: DbError;
+		try {
+			error = (await client.from("vtt_token_moves").insert(row)).error;
+		} catch (thrown) {
+			error = { message: thrown instanceof Error ? thrown.message : "rede" };
+		}
+		// 23505: o id já está no banco, uma tentativa anterior chegou.
+		if (!error || error.code === "23505") {
+			noteSaved(move.id);
+			return;
+		}
+		if (isMissingMovesTable(error)) {
+			store().setStatus("missing");
+			noteSaved(move.id);
+			return;
+		}
+		const wait = SAVE_RETRY_DELAYS_MS[attempt];
+		if (isPermanentSaveError(error) || wait === undefined) {
+			store().markFailed(move.id);
+			return;
+		}
+		await sleep(wait);
+	}
 }
 
 /** Apaga o histórico da cena (ou de um token). Devolve se o banco aceitou. */

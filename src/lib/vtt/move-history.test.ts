@@ -108,6 +108,61 @@ describe("lista do histórico", () => {
 		expect(log.map((m) => m.id)).toEqual([a.id, b.id]);
 	});
 
+	// Causa do histórico fora de ordem: a hora era comparada como TEXTO
+	// (localeCompare). A linha do cliente vem como "…00.123Z" e a do banco como
+	// "…00.123456+00:00" ou "…00+00:00" (sem fração quando cai no segundo exato).
+	it("ordena pela hora real, mesmo com formatos diferentes de texto", () => {
+		const noSegundoExato = move({ createdAt: "2026-11-15T21:00:00+00:00" });
+		const meioSegundoDepois = move({
+			createdAt: "2026-11-15T21:00:00.5+00:00",
+		});
+		const doCliente = move({ createdAt: "2026-11-15T21:00:00.123Z" });
+		const doBanco = move({ createdAt: "2026-11-15T21:00:00.123456+00:00" });
+		const log = [meioSegundoDepois, doBanco, noSegundoExato, doCliente].reduce<
+			TokenMove[]
+		>((acc, item) => addMove(acc, item), []);
+		expect(log.map((m) => m.id)).toEqual([
+			noSegundoExato.id,
+			doCliente.id,
+			doBanco.id,
+			meioSegundoDepois.id,
+		]);
+		expect(movesForScene(log, "s1").map((m) => m.id)).toEqual([
+			meioSegundoDepois.id,
+			doBanco.id,
+			doCliente.id,
+			noSegundoExato.id,
+		]);
+	});
+
+	it("movimentos na mesma hora mantêm a ordem em que foram anotados", () => {
+		const at0 = "2026-11-15T21:00:00.000Z";
+		const a = move({ createdAt: at0 });
+		const b = move({ createdAt: at0 });
+		const c = move({ createdAt: at0 });
+		const log = [a, b, c].reduce<TokenMove[]>(
+			(acc, item) => addMove(acc, item),
+			[],
+		);
+		expect(log.map((m) => m.id)).toEqual([a.id, b.id, c.id]);
+		// Do mais novo para o mais velho: o último anotado aparece primeiro.
+		expect(movesForScene(log, "s1").map((m) => m.id)).toEqual([
+			c.id,
+			b.id,
+			a.id,
+		]);
+	});
+
+	it("a linha que volta do banco substitui a anotada na tela (hora do servidor)", () => {
+		const local = move({ createdAt: "2026-11-15T21:00:10.000Z" });
+		const doBanco = { ...local, createdAt: "2026-11-15T21:00:02.000Z" };
+		const outra = move({ createdAt: "2026-11-15T21:00:05.000Z" });
+		const log = addMove(addMove([], local), outra);
+		const next = addMove(log, doBanco);
+		expect(next.map((m) => m.id)).toEqual([doBanco.id, outra.id]);
+		expect(next[0].createdAt).toBe(doBanco.createdAt);
+	});
+
 	it("filtra por cena e por token, do mais novo para o mais velho", () => {
 		const a = move({ tokenId: "t1" });
 		const b = move({ tokenId: "t2", tokenName: "Elara" });
