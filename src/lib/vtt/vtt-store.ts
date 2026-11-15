@@ -26,6 +26,7 @@ import type {
 	VTTToken,
 } from "./types";
 import type { LightLevel } from "./vision";
+import { loadWallSnapPref, saveWallSnapPref } from "./wall-edit";
 import {
 	applyWallOp,
 	type VTTWall,
@@ -286,10 +287,13 @@ interface VTTState {
 	wallDraft: WallPoint[];
 	/** O que a ferramenta desenha agora: parede ou porta. */
 	wallKind: WallKind;
+	/** Encaixar a parede nos cantos da grade (padrão desligado; Shift inverte). */
+	wallSnapGrid: boolean;
 	wallUndo: WallOp[];
 	wallRedo: WallOp[];
 	setWalls: (walls: VTTWall[]) => void;
 	setWallKind: (kind: WallKind) => void;
+	setWallSnapGrid: (snap: boolean) => void;
 	setWallsStatus: (status: VTTWallsStatus) => void;
 	applyWallOpLocal: (op: WallOp) => void;
 	setSelectedWallIds: (ids: string[]) => void;
@@ -424,6 +428,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	selectedWallIds: [],
 	wallDraft: [],
 	wallKind: "wall",
+	wallSnapGrid: loadWallSnapPref(),
 	wallUndo: [],
 	wallRedo: [],
 
@@ -959,6 +964,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setWalls: (walls) => set({ walls }),
 	setWallKind: (wallKind) => set({ wallKind }),
+	setWallSnapGrid: (wallSnapGrid) => {
+		saveWallSnapPref(wallSnapGrid);
+		set({ wallSnapGrid });
+	},
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),
 	applyWallOpLocal: (op) =>
 		set((state) => {

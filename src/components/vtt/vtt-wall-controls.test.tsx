@@ -45,6 +45,9 @@ beforeEach(() => {
 		wallKind: "wall",
 		walls: [plain("a"), plain("b"), door("d"), windowWall("w")],
 		selectedWallIds: [],
+		wallSnapGrid: false,
+		scenes: [{ id: "s", gridType: "square" } as never],
+		activeSceneId: "s",
 	});
 });
 
@@ -75,6 +78,33 @@ describe("painel da ferramenta Parede", () => {
 		).toBe("true");
 		fireEvent.click(screen.getByRole("button", { name: "Parede" }));
 		expect(useVTTStore.getState().wallKind).toBe("wall");
+	});
+
+	it("Encaixar na grade: desligado por padrão, com estado visível, e alterna na hora", () => {
+		render(<VTTWallControls />);
+		const toggle = screen.getByRole("button", { name: "Encaixar na grade" });
+		expect(toggle.getAttribute("aria-pressed")).toBe("false");
+		fireEvent.click(toggle);
+		expect(useVTTStore.getState().wallSnapGrid).toBe(true);
+		expect(
+			screen
+				.getByRole("button", { name: "Encaixar na grade" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		fireEvent.click(screen.getByRole("button", { name: "Encaixar na grade" }));
+		expect(useVTTStore.getState().wallSnapGrid).toBe(false);
+	});
+
+	it("Encaixar na grade fica indisponível em grade hex (não há cantos)", () => {
+		useVTTStore.setState({
+			scenes: [{ id: "s", gridType: "hex-pointy" } as never],
+		});
+		render(<VTTWallControls />);
+		const toggle = screen.getByRole("button", {
+			name: "Encaixar na grade",
+		}) as HTMLButtonElement;
+		expect(toggle.disabled).toBe(true);
+		expect(toggle.getAttribute("aria-pressed")).toBe("false");
 	});
 
 	it("sem seleção não há ações de conversão", () => {
