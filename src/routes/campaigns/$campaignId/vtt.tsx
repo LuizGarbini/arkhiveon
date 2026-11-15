@@ -76,6 +76,7 @@ import {
 	publishScene,
 } from "@/lib/vtt/persist-publication";
 import { acceptIncomingPing } from "@/lib/vtt/ping-receive";
+import { readPresenceUsers, readRemoteCursor } from "@/lib/vtt/presence-input";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import { applyRemoteRuler } from "@/lib/vtt/ruler-gesture";
 import {
@@ -110,7 +111,6 @@ import type {
 	VTTGridType,
 	VTTLayer,
 	VTTPingEvent,
-	VTTPresenceUser,
 	VTTRemoteMeasurement,
 	VTTRulerMeasurement,
 	VTTScene,
@@ -161,6 +161,7 @@ function VTTSession() {
 	const setRemoteMeasurement = useVTTStore((s) => s.setRemoteMeasurement);
 	const addPing = useVTTStore((s) => s.addPing);
 	const userColor = useVTTStore((s) => s.userColor);
+	const userColorChosen = useVTTStore((s) => s.userColorChosen);
 	const setFogPaths = useVTTStore((s) => s.setFogPaths);
 	const addFogPath = useVTTStore((s) => s.addFogPath);
 	const setFogState = useVTTStore((s) => s.setFogState);
@@ -811,10 +812,6 @@ function VTTSession() {
 		};
 	}, [activeSceneId]);
 
-	const userColorRef = useRef(userColor);
-	useEffect(() => {
-		userColorRef.current = userColor;
-	}, [userColor]);
 	const templateRoleRef = useRef({
 		ownerId: null as string | null,
 		memberships: [] as { userId: string; role: string }[],
@@ -888,31 +885,16 @@ function VTTSession() {
 		roomChannel
 			.on("presence", { event: "sync" }, () => {
 				if (cancelled) return;
-				const state = roomChannel.presenceState();
-				const users: VTTPresenceUser[] = [];
-				for (const [key, presences] of Object.entries(state)) {
-					const latest = presences[0] as
-						| {
-								userId?: string;
-								userName?: string;
-								avatarUrl?: string | null;
-								color?: string;
-								isGM?: boolean;
-								isCoGM?: boolean;
-								onlineAt?: number;
-						  }
-						| undefined;
-					if (latest) {
-						users.push({
-							userId: latest.userId || key,
-							userName: latest.userName || "Aventureiro",
-							avatarUrl: latest.avatarUrl || null,
-							color: latest.color || "#38bdf8",
-							isGM: !!latest.isGM,
-							isCoGM: !!latest.isCoGM,
-							onlineAt: latest.onlineAt || Date.now(),
-						});
-					}
+				const users = readPresenceUsers(roomChannel.presenceState());
+				// Cor automática igual à de quem chegou antes: cede para uma livre.
+				const self = users.find((item) => item.userId === user.id);
+				if (self) {
+					useVTTStore
+						.getState()
+						.reconcileUserColor(
+							{ userId: user.id, onlineAt: self.onlineAt },
+							users,
+						);
 				}
 				setOnlineUsers(users);
 			})
@@ -1009,31 +991,19 @@ function VTTSession() {
 			.on(
 				"broadcast",
 				{ event: "cursor_move" },
-				(payload: {
-					payload: {
-						userId?: string;
-						userName?: string;
-						color?: string;
-						x?: number;
-						y?: number;
-					};
-				}) => {
+				(payload: { payload: unknown }) => {
 					if (
 						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
+						useVTTStore.getState().activeSceneId !== activeSceneId ||
+						// Preferência local: sem o ponteiro com nome dos outros.
+						!useVTTStore.getState().showRemoteCursors
 					)
 						return;
-					const data = payload.payload;
-					if (data?.userId && data.x !== undefined && data.y !== undefined) {
-						setRemoteCursor({
-							userId: data.userId,
-							userName: data.userName || "Jogador",
-							color: data.color || "#38bdf8",
-							x: data.x,
-							y: data.y,
-							timestamp: Date.now(),
-						});
-					}
+					const cursor = readRemoteCursor(
+						payload.payload,
+						useVTTStore.getState().onlineUsers,
+					);
+					if (cursor) setRemoteCursor(cursor);
 				},
 			)
 			.on(
@@ -1166,11 +1136,14 @@ function VTTSession() {
 			.subscribe(async (status: string) => {
 				if (cancelled) return;
 				if (status === "SUBSCRIBED") {
+					// A cor padrão sai do id (ou da escolha salva), não de um sorteio.
+					useVTTStore.getState().initUserColor(user.id);
 					await roomChannel.track({
 						userId: user.id,
 						userName: currentUserName,
 						avatarUrl: user.user_metadata?.avatar_url || null,
-						color: userColorRef.current,
+						color: useVTTStore.getState().userColor,
+						colorChosen: useVTTStore.getState().userColorChosen,
 						isGM,
 						isCoGM,
 						onlineAt: Date.now(),
@@ -1217,11 +1190,12 @@ function VTTSession() {
 			userName: currentUserName,
 			avatarUrl: user.user_metadata?.avatar_url || null,
 			color: userColor,
+			colorChosen: userColorChosen,
 			isGM,
 			isCoGM,
 			onlineAt: Date.now(),
 		});
-	}, [userColor, user, isGM, isCoGM]);
+	}, [userColor, userColorChosen, user, isGM, isCoGM]);
 
 	// Broadcast Helper Handlers
 	const handleBroadcastDrag = useCallback(

@@ -29,6 +29,8 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 
 const EMPTY_TEXT =
 	"Ninguém moveu um token ainda. Os movimentos aparecem aqui, com o ponto de onde saiu e para onde foi.";
+const UNSAVED_TEXT =
+	"Alguns movimentos não foram salvos no servidor e valem só nesta tela. Recarregar a página pode fazê-los sumir.";
 const SESSION_ONLY_TEXT =
 	"O histórico está valendo só nesta sessão do navegador. Ele passa a ficar salvo quando o banco receber a atualização.";
 
@@ -146,6 +148,7 @@ function MovePanelContent({ onUpdateToken }: PanelProps) {
 	const moves = useMoveStore((s) => s.moves);
 	const focusedMoveId = useMoveStore((s) => s.focusedMoveId);
 	const filterTokenId = useMoveStore((s) => s.filterTokenId);
+	const failedIds = useMoveStore((s) => s.failedIds);
 	const [confirmClear, setConfirmClear] = useState(false);
 	const [clearing, setClearing] = useState(false);
 	const [clearError, setClearError] = useState(false);
@@ -160,6 +163,10 @@ function MovePanelContent({ onUpdateToken }: PanelProps) {
 		[moves, sceneId, filterTokenId],
 	);
 	const groups = useMemo(() => groupByRound(visible), [visible]);
+	const hasUnsaved = useMemo(
+		() => sceneMoves.some((move) => failedIds.includes(move.id)),
+		[sceneMoves, failedIds],
+	);
 	const totals = useMemo(() => distanceByToken(sceneMoves), [sceneMoves]);
 	const avatars = useMemo(
 		() => new Map(tokens.map((token) => [token.id, token.avatarUrl ?? null])),
@@ -249,6 +256,11 @@ function MovePanelContent({ onUpdateToken }: PanelProps) {
 				<p className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
 					{SESSION_ONLY_TEXT}
 				</p>
+			)}
+			{hasUnsaved && (
+				<output className="block rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+					{UNSAVED_TEXT}
+				</output>
 			)}
 			{status === "loading" && (
 				<output

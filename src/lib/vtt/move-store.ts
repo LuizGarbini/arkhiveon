@@ -16,10 +16,17 @@ interface MoveState {
 	focusedMoveId: string | null;
 	/** Mostra só um token; `null` = todos. */
 	filterTokenId: string | null;
+	/** Anotados nesta tela e ainda sem resposta do banco. */
+	unsavedIds: string[];
+	/** O banco recusou (ou a rede falhou de vez): valem só nesta tela. */
+	failedIds: string[];
 	setMoves: (moves: TokenMove[]) => void;
 	pushMove: (move: TokenMove) => void;
 	removeMoves: (sceneId: string, tokenId?: string | null) => void;
 	setStatus: (status: MoveLogStatus) => void;
+	markUnsaved: (id: string) => void;
+	markSaved: (id: string) => void;
+	markFailed: (id: string) => void;
 	setPanelOpen: (open: boolean) => void;
 	togglePanel: () => void;
 	focusMove: (id: string | null) => void;
@@ -33,6 +40,8 @@ export const useMoveStore = create<MoveState>((set) => ({
 	panelOpen: false,
 	focusedMoveId: null,
 	filterTokenId: null,
+	unsavedIds: [],
+	failedIds: [],
 	setMoves: (moves) => set({ moves }),
 	pushMove: (move) => set((state) => ({ moves: addMove(state.moves, move) })),
 	removeMoves: (sceneId, tokenId) =>
@@ -45,6 +54,24 @@ export const useMoveStore = create<MoveState>((set) => ({
 			focusedMoveId: null,
 		})),
 	setStatus: (status) => set({ status }),
+	markUnsaved: (id) =>
+		set((state) => ({
+			unsavedIds: state.unsavedIds.includes(id)
+				? state.unsavedIds
+				: [...state.unsavedIds, id],
+		})),
+	markSaved: (id) =>
+		set((state) => ({
+			unsavedIds: state.unsavedIds.filter((item) => item !== id),
+			failedIds: state.failedIds.filter((item) => item !== id),
+		})),
+	markFailed: (id) =>
+		set((state) => ({
+			unsavedIds: state.unsavedIds.filter((item) => item !== id),
+			failedIds: state.failedIds.includes(id)
+				? state.failedIds
+				: [...state.failedIds, id],
+		})),
 	setPanelOpen: (panelOpen) => set({ panelOpen }),
 	togglePanel: () =>
 		set((state) => ({
@@ -60,5 +87,7 @@ export const useMoveStore = create<MoveState>((set) => ({
 			panelOpen: false,
 			focusedMoveId: null,
 			filterTokenId: null,
+			unsavedIds: [],
+			failedIds: [],
 		}),
 }));

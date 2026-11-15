@@ -1,4 +1,4 @@
-import { AppWindow, BrickWall, DoorOpen, Trash2 } from "lucide-react";
+import { AppWindow, BrickWall, DoorOpen, Grid3x3, Trash2 } from "lucide-react";
 import {
 	Kbd,
 	segmentClass,
@@ -56,6 +56,13 @@ export function VTTWallControls() {
 	const setActiveTool = useVTTStore((s) => s.setActiveTool);
 	const walls = useVTTStore((s) => s.walls);
 	const selectedIds = useVTTStore((s) => s.selectedWallIds);
+	const snapGrid = useVTTStore((s) => s.wallSnapGrid);
+	const setSnapGrid = useVTTStore((s) => s.setWallSnapGrid);
+	const squareGrid = useVTTStore(
+		(s) => s.scenes.find((scene) => scene.id === s.activeSceneId)?.gridType,
+	);
+	// Só a grade quadrada tem cantos para encaixar (hex e "sem grade" são livres).
+	const canSnap = squareGrid === "square";
 
 	if (!isGM || activeTool !== "wall") return null;
 
@@ -68,9 +75,14 @@ export function VTTWallControls() {
 			closeLabel="Fechar ferramenta de paredes"
 			onClose={() => setActiveTool("select")}
 			wrapOnPhone
+			compactLabel
 			footer={
 				<p className="pointer-events-none flex flex-wrap items-center justify-center gap-x-3 gap-y-1 self-center rounded-full border border-border/70 bg-card/90 px-3 py-1 text-[11px] text-muted-foreground backdrop-blur-md">
 					<span>Clique marca um ponto</span>
+					<span className="flex items-center gap-1 [@media(hover:none)]:hidden">
+						Arraste move · <Kbd>Shift</Kbd> grade · <Kbd>Alt</Kbd> sem ímã ·{" "}
+						<Kbd>←↑↓→</Kbd> 1 px
+					</span>
 					<span className="flex items-center gap-1 [@media(hover:none)]:hidden">
 						<Kbd>Duplo clique</Kbd> ou <Kbd>Enter</Kbd> termina
 					</span>
@@ -97,6 +109,24 @@ export function VTTWallControls() {
 					</button>
 				))}
 			</VTTSegmented>
+			<button
+				type="button"
+				aria-pressed={canSnap && snapGrid}
+				disabled={!canSnap}
+				title={
+					canSnap
+						? "Encaixa as pontas nos cantos da grade. Segurar Shift inverte na hora"
+						: "Só a grade quadrada tem cantos para encaixar"
+				}
+				onClick={() => setSnapGrid(!snapGrid)}
+				className={cn(
+					segmentClass(canSnap && snapGrid),
+					"select-none disabled:pointer-events-none disabled:opacity-40",
+				)}
+			>
+				<Grid3x3 aria-hidden className="size-4" />
+				Encaixar na grade
+			</button>
 			{selected.length > 0 ? (
 				<>
 					<VTTOptionsDivider className="max-sm:hidden" />

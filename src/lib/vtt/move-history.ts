@@ -93,13 +93,36 @@ export function pointLabel(
 	return cell ? cellLabel(cell.col, cell.row) : null;
 }
 
-/** Acrescenta o movimento em ordem de hora; o mesmo id nunca entra duas vezes. */
+/**
+ * Hora da linha em milissegundos. A hora vem em formatos diferentes: do cliente
+ * ("…00.123Z") e do banco ("…00.123456+00:00", ou "…00+00:00" sem fração), então
+ * comparar como texto embaralha a ordem; compara-se o instante.
+ */
+function moveTime(move: TokenMove): number {
+	const time = Date.parse(move.createdAt);
+	if (Number.isNaN(time)) return 0;
+	// O banco guarda microssegundos; o Date só chega a milissegundos.
+	const micros = /\.\d{3}(\d+)/.exec(move.createdAt)?.[1];
+	return micros ? time + Number(`0.${micros}`) : time;
+}
+
+/** Em ordem de hora; na mesma hora, vale a ordem em que foram anotados. */
+function byTime(log: readonly TokenMove[]): TokenMove[] {
+	return log.slice().sort((a, b) => moveTime(a) - moveTime(b));
+}
+
+/**
+ * Acrescenta o movimento em ordem de hora. O mesmo id nunca entra duas vezes:
+ * se já existe, a versão nova (a que voltou do banco, com a hora do servidor)
+ * substitui a anotada na tela.
+ */
 export function addMove(
 	log: readonly TokenMove[],
 	move: TokenMove,
 ): TokenMove[] {
-	if (log.some((item) => item.id === move.id)) return [...log];
-	return [...log, move].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+	const index = log.findIndex((item) => item.id === move.id);
+	if (index === -1) return byTime([...log, move]);
+	return byTime([...log.slice(0, index), move, ...log.slice(index + 1)]);
 }
 
 /** Movimentos de uma cena, os mais novos primeiro, com filtro opcional. */
@@ -109,13 +132,12 @@ export function movesForScene(
 	tokenId?: string | null,
 ): TokenMove[] {
 	if (!sceneId) return [];
-	return log
-		.filter(
+	return byTime(
+		log.filter(
 			(move) =>
 				move.sceneId === sceneId && (!tokenId || move.tokenId === tokenId),
-		)
-		.slice()
-		.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+		),
+	).reverse();
 }
 
 export interface RoundGroup {

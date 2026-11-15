@@ -150,6 +150,8 @@ export interface VTTPresenceUser {
 	userName: string;
 	avatarUrl?: string | null;
 	color: string;
+	/** Escolheu a cor à mão (a automática cede a ela). */
+	colorChosen?: boolean;
 	isGM: boolean;
 	/** Declarado pelo cliente na presença. O receptor não lê papel do payload. */
 	isCoGM?: boolean;

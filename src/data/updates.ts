@@ -11,12 +11,30 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.120-vtt-setas-sem-travar",
-		version: "1.6.120",
+		id: "v1.6.132-vtt-setas-sem-travar",
+		version: "1.6.132",
 		date: "15/11/2026",
 		title: "Setas do teclado sem travar nem voltar para trás",
 		description:
 			"Alternar cima e baixo (ou direita e esquerda) rápido com as setas fazia o token travar, pular e até voltar para o lugar antigo. Agora o passo desliza em uma fração de segundo (e some se o sistema pede menos movimento), um passo novo continua de onde o token está, e rajadas de setas não reconstroem mais todos os tokens da mesa nem refazem a visão a cada toque. Por trás: o que você mandou gravar sai em ordem, uma gravação por token de cada vez, e a última posição sempre é gravada; o eco da própria gravação não puxa mais o token para trás. O histórico de movimentos continua com uma linha por movimento, e o arrasto com o mouse segue igual.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.131-vtt-cursores-e-historico",
+		version: "1.6.131",
+		date: "15/11/2026",
+		title: "Cursores bonitos, cada um na sua cor, e histórico que fica salvo",
+		description:
+			"O cursor dos outros integrantes ganhou ponteiro com contorno e sombra e uma etiqueta com o nome na cor da pessoa (texto sempre legível), que desliza suave e acompanha o zoom. Cada um tem agora uma cor própria por padrão (antes era sorteada e várias pessoas ficavam iguais), e quem chega depois cede se alguém já usa a mesma. Pelo botão da cor, ao lado do avatar, você escolhe a cor do seu cursor, ping e régua entre 12 opções, uma cor livre, ou volta para a automática; a escolha fica salva neste navegador e todos veem. Um novo interruptor, ao lado dela, oculta os cursores com nome dos outros só para você (é uma preferência sua, salva neste navegador): pings, réguas, moldes e tokens arrastados continuam aparecendo, e o seu cursor segue sendo enviado. No histórico de movimentos, a tabela do banco finalmente existe em produção, então as linhas ficam salvas e outros mestres veem tudo em tempo real. Também foram corrigidos: recarregar com mais de 1000 linhas mostrava só as mais antigas, a ordem usava o relógio de cada computador, encaixar o token no centro da mesma casa virava uma linha de 0 m, linhas apagadas por outro mestre continuavam na tela e falha ao gravar não avisava.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.130-vtt-paredes-livres",
+		version: "1.6.130",
+		date: "15/11/2026",
+		title: "Paredes livres da grade, com ímã nas pontas, e dá para arrastar",
+		description:
+			"Na ferramenta Parede o traço agora segue o ponteiro com precisão de pixel do mapa, sem prender na grade (as coordenadas são guardadas com até 2 casas decimais). O painel ganhou o interruptor Encaixar na grade, desligado por padrão e lembrado neste navegador; segurar Shift inverte na hora (ligado vira livre, desligado encaixa). Perto da ponta de outra parede (uns 10 px de tela, qualquer zoom) o ponto gruda exatamente nela, com um anel discreto no encaixe, para as paredes se unirem sem fresta e a visão não vazar; Alt desliga o ímã (e, na ferramenta Parede, Alt+clique não vira ping). Também dá para arrastar o que já foi desenhado: arrastar o corpo de uma parede move todas as selecionadas juntas (porta e janela mantêm tipo e estado, e o ícone acompanha o meio do vão); arrastar um vértice (os quadradinhos das selecionadas) move só aquela ponta, junto com as paredes que dividem exatamente o mesmo ponto. A prévia aparece ao vivo, a gravação é uma só ao soltar (com volta e aviso se o servidor recusar), Esc cancela o arrasto e um clique sem arrastar só seleciona. Ctrl/⌘+Z e Shift+Ctrl+Z desfazem e refazem os movimentos. Com paredes selecionadas, as setas empurram 1 px (Shift: 10 px, Alt: uma casa) e um lote de toques vira uma gravação só. A visão dos jogadores recalcula com a geometria nova.",
 		bullets: [],
 	},
 	{

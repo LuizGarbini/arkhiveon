@@ -1,4 +1,17 @@
 import { create } from "zustand";
+import {
+	CURSOR_PALETTE,
+	DEFAULT_CURSOR_COLOR,
+	mustYieldColor,
+	normalizeCursorColor,
+	pickCursorColor,
+} from "./cursor-color";
+import {
+	readChosenCursorColor,
+	readShowRemoteCursors,
+	writeChosenCursorColor,
+	writeShowRemoteCursors,
+} from "./cursor-prefs";
 import type { LightPoint, LightToolMode, VTTLightZone } from "./light-zones";
 import { DEFAULT_PING_KIND, type PingKind } from "./ping-kinds";
 import {
@@ -26,6 +39,7 @@ import type {
 	VTTToken,
 } from "./types";
 import type { LightLevel } from "./vision";
+import { loadWallSnapPref, saveWallSnapPref } from "./wall-edit";
 import {
 	applyWallOp,
 	type VTTWall,
@@ -86,17 +100,8 @@ function isPhoneViewport(): boolean {
 
 export type { VTTRulerMeasurement } from "./types";
 
-// Default vibrant palette for player colors
-export const VTT_PLAYER_COLORS = [
-	"#38bdf8", // Sky Blue
-	"#a855f7", // Purple
-	"#22c55e", // Emerald Green
-	"#f59e0b", // Amber
-	"#ec4899", // Pink
-	"#f43f5e", // Rose
-	"#06b6d4", // Cyan
-	"#eab308", // Yellow
-];
+/** Paleta de cores de cursor/ping/régua (ver `cursor-color.ts`). */
+export const VTT_PLAYER_COLORS = CURSOR_PALETTE;
 
 interface VTTState {
 	// Scenes
@@ -161,6 +166,10 @@ interface VTTState {
 	remoteCursors: Record<string, VTTRemoteCursor>;
 	remoteMeasurements: Record<string, VTTRemoteMeasurement>;
 	userColor: string;
+	/** A pessoa escolheu a cor (salva neste navegador); senão é a automática. */
+	userColorChosen: boolean;
+	/** Preferência local: mostrar o cursor com nome dos outros integrantes. */
+	showRemoteCursors: boolean;
 
 	// Overlays & Ephemeral Events
 	activeMeasurement: VTTRulerMeasurement | null;
@@ -252,6 +261,29 @@ interface VTTState {
 		measurement: VTTRemoteMeasurement | null,
 	) => void;
 	setUserColor: (color: string) => void;
+	/** Define a cor padrão: a escolhida antes ou a do id, fugindo das ocupadas. */
+	initUserColor: (
+		userId: string,
+		others?: readonly { color: string }[],
+	) => void;
+	/** A pessoa escolhe a cor; fica salva por conta neste navegador. */
+	chooseUserColor: (userId: string, color: string) => void;
+	/** Volta para a cor automática (apaga a escolha salva). */
+	resetUserColor: (
+		userId: string,
+		others?: readonly { color: string }[],
+	) => void;
+	/** Cor automática igual à de quem chegou antes: cede para uma livre. */
+	reconcileUserColor: (
+		me: { userId: string; onlineAt: number },
+		others: readonly {
+			userId: string;
+			color: string;
+			onlineAt: number;
+			colorChosen?: boolean;
+		}[],
+	) => void;
+	setShowRemoteCursors: (show: boolean) => void;
 
 	setActiveMeasurement: (measurement: VTTRulerMeasurement | null) => void;
 	/** `null` quando o ping foi descartado (throttle, duplicado ou já expirado). */
@@ -290,10 +322,13 @@ interface VTTState {
 	wallDraft: WallPoint[];
 	/** O que a ferramenta desenha agora: parede ou porta. */
 	wallKind: WallKind;
+	/** Encaixar a parede nos cantos da grade (padrão desligado; Shift inverte). */
+	wallSnapGrid: boolean;
 	wallUndo: WallOp[];
 	wallRedo: WallOp[];
 	setWalls: (walls: VTTWall[]) => void;
 	setWallKind: (kind: WallKind) => void;
+	setWallSnapGrid: (snap: boolean) => void;
 	setWallsStatus: (status: VTTWallsStatus) => void;
 	applyWallOpLocal: (op: WallOp) => void;
 	setSelectedWallIds: (ids: string[]) => void;
@@ -424,8 +459,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 	onlineUsers: [],
 	remoteCursors: {},
 	remoteMeasurements: {},
-	userColor:
-		VTT_PLAYER_COLORS[Math.floor(Math.random() * VTT_PLAYER_COLORS.length)],
+	// A cor real sai do id da pessoa em `initUserColor`, quando ela entra na mesa.
+	userColor: DEFAULT_CURSOR_COLOR,
+	userColorChosen: false,
+	showRemoteCursors: readShowRemoteCursors(),
 
 	activeMeasurement: null,
 	activePings: [],
@@ -448,6 +485,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 	selectedWallIds: [],
 	wallDraft: [],
 	wallKind: "wall",
+	wallSnapGrid: loadWallSnapPref(),
 	wallUndo: [],
 	wallRedo: [],
 
@@ -764,12 +802,17 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setOnlineUsers: (users) => set({ onlineUsers: users }),
 	setRemoteCursor: (cursor) =>
-		set((state) => ({
-			remoteCursors: {
-				...state.remoteCursors,
-				[cursor.userId]: cursor,
-			},
-		})),
+		set((state) =>
+			// Com os cursores ocultos nada deles entra na store (nem processa).
+			state.showRemoteCursors
+				? {
+						remoteCursors: {
+							...state.remoteCursors,
+							[cursor.userId]: cursor,
+						},
+					}
+				: state,
+		),
 	removeRemoteCursor: (userId) =>
 		set((state) => {
 			const next = { ...state.remoteCursors };
@@ -790,7 +833,67 @@ export const useVTTStore = create<VTTState>((set) => ({
 				},
 			};
 		}),
-	setUserColor: (color) => set({ userColor: color }),
+	setUserColor: (color) => {
+		const valid = normalizeCursorColor(color);
+		if (valid) set({ userColor: valid });
+	},
+	initUserColor: (userId, others = []) => {
+		const chosen = readChosenCursorColor(userId);
+		if (chosen) {
+			set({ userColor: chosen, userColorChosen: true });
+			return;
+		}
+		set({
+			userColor: pickCursorColor(
+				userId,
+				others.map((other) => other.color),
+			),
+			userColorChosen: false,
+		});
+	},
+	chooseUserColor: (userId, color) => {
+		const valid = normalizeCursorColor(color);
+		if (!valid) return;
+		writeChosenCursorColor(userId, valid);
+		set({ userColor: valid, userColorChosen: true });
+	},
+	resetUserColor: (userId, others = []) => {
+		writeChosenCursorColor(userId, null);
+		set({
+			userColor: pickCursorColor(
+				userId,
+				others.map((other) => other.color),
+			),
+			userColorChosen: false,
+		});
+	},
+	reconcileUserColor: (me, others) =>
+		set((state) => {
+			if (state.userColorChosen) return state;
+			const peers = others.filter((other) => other.userId !== me.userId);
+			if (
+				!mustYieldColor(
+					{ userId: me.userId, color: state.userColor, onlineAt: me.onlineAt },
+					peers.map((peer) => ({ ...peer, chosen: peer.colorChosen })),
+				)
+			)
+				return state;
+			return {
+				userColor: pickCursorColor(
+					me.userId,
+					peers.map((peer) => peer.color),
+				),
+			};
+		}),
+	setShowRemoteCursors: (show) => {
+		writeShowRemoteCursors(show);
+		// Ao ocultar, os cursores já recebidos saem na hora.
+		set(
+			show
+				? { showRemoteCursors: true }
+				: { showRemoteCursors: false, remoteCursors: {} },
+		);
+	},
 
 	setFogState: (fogState) =>
 		set((state) =>
@@ -987,6 +1090,10 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setWalls: (walls) => set({ walls }),
 	setWallKind: (wallKind) => set({ wallKind }),
+	setWallSnapGrid: (wallSnapGrid) => {
+		saveWallSnapPref(wallSnapGrid);
+		set({ wallSnapGrid });
+	},
 	setWallsStatus: (wallsStatus) => set({ wallsStatus }),
 	applyWallOpLocal: (op) =>
 		set((state) => {

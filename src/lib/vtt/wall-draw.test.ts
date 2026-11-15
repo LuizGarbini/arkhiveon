@@ -2,6 +2,7 @@
 import type { Graphics } from "pixi.js";
 import { describe, expect, it, vi } from "vitest";
 import {
+	drawWallMagnet,
 	drawWallPreview,
 	drawWalls,
 	parseHexColor,
@@ -110,5 +111,25 @@ describe("cor da prévia do desenho", () => {
 		}
 		document.body.style.removeProperty(WALL_PREVIEW_TOKEN);
 		getContext.mockRestore();
+	});
+});
+
+describe("anel do ímã", () => {
+	it("sem ponta de encaixe não desenha nada", () => {
+		const { g, raw } = fakeLayer();
+		drawWallMagnet(g, null, 1);
+		expect(raw.circle).not.toHaveBeenCalled();
+	});
+
+	it("tamanho fixo na TELA: o raio no mapa encolhe com o zoom", () => {
+		const a = fakeLayer();
+		drawWallMagnet(a.g, { x: 10, y: 20 }, 1);
+		const b = fakeLayer();
+		drawWallMagnet(b.g, { x: 10, y: 20 }, 2);
+		const r1 = (a.raw.circle.mock.calls[0] as unknown as number[])[2];
+		const r2 = (b.raw.circle.mock.calls[0] as unknown as number[])[2];
+		expect(r1).toBe(9);
+		expect(r2).toBe(4.5);
+		expect(a.raw.circle).toHaveBeenCalledWith(10, 20, 9);
 	});
 });
