@@ -6,9 +6,27 @@ import {
 	render,
 	screen,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountPage } from "@/routes/account";
 import { TablePhotoCard } from "./table-photo-card";
+
+vi.mock("@/components/image-crop-dialog", () => ({
+	ImageCropDialog: ({
+		open,
+		onApply,
+	}: {
+		open: boolean;
+		onApply: (blob: Blob) => void;
+	}) =>
+		open ? (
+			<button
+				type="button"
+				onClick={() => onApply(new Blob(["foto"], { type: "image/webp" }))}
+			>
+				Aplicar recorte
+			</button>
+		) : null,
+}));
 
 const STORAGE = {
 	supabaseUrl: "https://axnektdqoxjhbbfsidfj.supabase.co",
@@ -20,6 +38,11 @@ const R2 =
 
 afterEach(() => {
 	cleanup();
+});
+
+beforeEach(() => {
+	URL.createObjectURL = vi.fn(() => "blob:foto-mesa");
+	URL.revokeObjectURL = vi.fn();
 });
 
 function setup(
@@ -58,10 +81,11 @@ describe("Foto na mesa", () => {
 				}) as HTMLInputElement
 			).checked,
 		).toBe(true);
-		expect(
-			screen.getByRole("radio", { name: "Só iniciais" }).closest("label")
-				?.className,
-		).toContain("min-h-11");
+		const initials = screen
+			.getByRole("radio", { name: "Só iniciais" })
+			.closest("label");
+		expect(initials?.className).toContain("h-11");
+		expect(initials?.className).not.toContain("w-full");
 	});
 
 	it("sem foto do Google, oferece só as iniciais", () => {
@@ -118,9 +142,14 @@ describe("Foto na mesa", () => {
 		);
 		const onSave = vi.fn(async () => null);
 		setup({ onSave, onUpload });
-		const input = screen.getByLabelText("Enviar imagem") as HTMLInputElement;
+		const input = screen.getByLabelText(
+			"Enviar e recortar",
+		) as HTMLInputElement;
 		const file = new File(["foto"], "retrato.png", { type: "image/png" });
 		fireEvent.change(input, { target: { files: [file] } });
+		fireEvent.click(
+			await screen.findByRole("button", { name: "Aplicar recorte" }),
+		);
 		expect(await screen.findByText("Enviando…")).toBeTruthy();
 		expect(input.disabled).toBe(true);
 		expect(onSave).not.toHaveBeenCalled();
@@ -132,6 +161,9 @@ describe("Foto na mesa", () => {
 
 		onUpload.mockRejectedValueOnce(new Error("Sem rede"));
 		fireEvent.change(input, { target: { files: [file] } });
+		fireEvent.click(
+			await screen.findByRole("button", { name: "Aplicar recorte" }),
+		);
 		const alert = await screen.findByRole("alert");
 		expect(alert.textContent).toContain("Sem rede");
 		expect(alert.parentElement).toBe(input.parentElement);
@@ -142,12 +174,17 @@ describe("Foto na mesa", () => {
 		const { onSave, onUpload } = setup({
 			onUpload: vi.fn(async () => "javascript:alert(1)"),
 		});
-		const input = screen.getByLabelText("Enviar imagem") as HTMLInputElement;
+		const input = screen.getByLabelText(
+			"Enviar e recortar",
+		) as HTMLInputElement;
 		fireEvent.change(input, {
 			target: {
 				files: [new File(["x"], "a.png", { type: "image/png" })],
 			},
 		});
+		fireEvent.click(
+			await screen.findByRole("button", { name: "Aplicar recorte" }),
+		);
 		expect((await screen.findByRole("alert")).textContent).toMatch(/mesa/i);
 		expect(onSave).not.toHaveBeenCalled();
 
@@ -164,7 +201,7 @@ describe("Foto na mesa", () => {
 		render(<AccountPage />);
 		expect(screen.getByRole("heading", { name: "Foto na mesa" })).toBeTruthy();
 		expect(screen.getByRole("radio", { name: "Só iniciais" })).toBeTruthy();
-		expect(screen.getByLabelText("Enviar imagem")).toBeTruthy();
+		expect(screen.getByLabelText("Enviar e recortar")).toBeTruthy();
 	});
 
 	it("a foto enviada fica como opção e a do Google continua ao lado", () => {

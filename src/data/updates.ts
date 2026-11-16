@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.141-foto-na-mesa-recorte",
+		version: "1.6.141",
+		date: "15/11/2026",
+		title: "Foto na mesa com recorte e botões no tamanho certo",
+		description:
+			"A escolha da foto na mesa deixou de ser uma faixa de ponta a ponta. Agora são botões do tamanho do texto, ao lado da prévia, e Enviar e recortar abre o enquadramento em círculo antes de subir a imagem.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.140-foto-na-mesa",
 		version: "1.6.140",
 		date: "15/11/2026",

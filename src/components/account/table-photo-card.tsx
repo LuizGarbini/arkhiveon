@@ -1,4 +1,6 @@
+import { ImagePlus } from "lucide-react";
 import { useId, useState } from "react";
+import { ImageCropDialog } from "@/components/image-crop-dialog";
 import {
 	defaultTablePhotoConfig,
 	readRemoteAvatarUrl,
@@ -24,10 +26,10 @@ interface TablePhotoCardProps {
 
 const choiceClass = (selected: boolean) =>
 	cn(
-		"flex min-h-11 w-full cursor-pointer select-none items-center px-3 text-left text-sm font-semibold transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50",
+		"inline-flex h-11 shrink-0 cursor-pointer select-none items-center rounded-full border px-3.5 text-sm font-semibold transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] focus-within:ring-2 focus-within:ring-primary",
 		selected
-			? "bg-primary/15 text-primary"
-			: "bg-background/45 text-foreground [@media(hover:hover)]:hover:bg-accent",
+			? "border-primary/40 bg-primary/15 text-foreground"
+			: "border-border/70 bg-card-elevated text-muted-foreground [@media(hover:hover)]:hover:bg-accent [@media(hover:hover)]:hover:text-foreground",
 	);
 
 export function TablePhotoCard({
@@ -43,6 +45,7 @@ export function TablePhotoCard({
 	const [pending, setPending] = useState<TablePhoto | null>(null);
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [cropSrc, setCropSrc] = useState<string | null>(null);
 	const headingId = useId();
 	const inputId = useId();
 	const errorId = useId();
@@ -66,6 +69,25 @@ export function TablePhotoCard({
 			setPending(null);
 			setError(message);
 		}
+	}
+
+	function closeCrop() {
+		if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
+		setCropSrc(null);
+	}
+
+	function pickFile(file: File) {
+		if (!file.type.startsWith("image/")) {
+			setError("Escolha um arquivo de imagem.");
+			return;
+		}
+		if (file.size > MAX_FILE_BYTES) {
+			setError("Essa imagem passa de 8 MB.");
+			return;
+		}
+		setError(null);
+		if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
+		setCropSrc(URL.createObjectURL(file));
 	}
 
 	async function send(file: File) {
@@ -123,12 +145,11 @@ export function TablePhotoCard({
 			>
 				Foto na mesa
 			</h2>
-			<p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-				É o que os outros veem no canto da mesa. A borda da prévia é a cor do
-				seu cursor.
+			<p className="mt-1 text-[13px] text-muted-foreground">
+				O que os outros veem no canto da mesa.
 			</p>
 
-			<div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+			<div className="mt-4 flex items-center gap-4">
 				<div
 					style={{
 						borderColor: color,
@@ -153,13 +174,12 @@ export function TablePhotoCard({
 					className="flex min-w-0 flex-1 flex-col gap-3"
 					onSubmit={(event) => event.preventDefault()}
 				>
-					<fieldset className="overflow-hidden rounded-xl border border-border/70">
+					<fieldset className="flex flex-wrap gap-2">
 						<legend className="sr-only">Foto na mesa</legend>
 						{resolved.googleUrl ? (
 							<label
 								className={cn(
 									choiceClass(shown.mode === "google"),
-									"border-b border-border/70",
 									uploading && "pointer-events-none opacity-50",
 								)}
 							>
@@ -178,7 +198,6 @@ export function TablePhotoCard({
 							<label
 								className={cn(
 									choiceClass(shown.mode === "custom"),
-									"border-b border-border/70",
 									uploading && "pointer-events-none opacity-50",
 								)}
 							>
@@ -216,11 +235,12 @@ export function TablePhotoCard({
 							htmlFor={inputId}
 							aria-disabled={uploading}
 							className={cn(
-								"inline-flex min-h-11 cursor-pointer select-none items-center rounded-xl bg-primary/15 px-3 text-sm font-semibold text-primary transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-primary/25",
+								"inline-flex h-11 cursor-pointer select-none items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-primary/90",
 								uploading && "pointer-events-none opacity-50",
 							)}
 						>
-							{uploading ? "Enviando…" : "Enviar imagem"}
+							<ImagePlus aria-hidden className="size-4" />
+							{uploading ? "Enviando…" : "Enviar e recortar"}
 						</label>
 						<input
 							id={inputId}
@@ -233,7 +253,7 @@ export function TablePhotoCard({
 							onChange={(event) => {
 								const file = event.target.files?.[0];
 								event.target.value = "";
-								if (file) void send(file);
+								if (file) pickFile(file);
 							}}
 							className="sr-only text-base"
 						/>
@@ -249,6 +269,24 @@ export function TablePhotoCard({
 					</div>
 				</form>
 			</div>
+			<ImageCropDialog
+				open={cropSrc !== null}
+				onOpenChange={(open) => {
+					if (!open) closeCrop();
+				}}
+				imageSrc={cropSrc}
+				title="Recortar foto da mesa"
+				description="Arraste e use o zoom. O círculo é o que os outros vão ver."
+				aspect={1}
+				cropShape="round"
+				busy={uploading}
+				onApply={async (blob) => {
+					const file = new File([blob], "foto-mesa.webp", {
+						type: blob.type || "image/webp",
+					});
+					await send(file);
+				}}
+			/>
 		</section>
 	);
 }
