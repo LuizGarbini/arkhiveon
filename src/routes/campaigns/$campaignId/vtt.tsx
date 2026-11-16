@@ -30,6 +30,7 @@ import { VTTTokenStatusTooltip } from "@/components/vtt/vtt-token-status-tooltip
 import { VTTToolbar } from "@/components/vtt/vtt-toolbar";
 import { VTTWallControls } from "@/components/vtt/vtt-wall-controls";
 import { VTTZoomControls } from "@/components/vtt/vtt-zoom-controls";
+import { resolveTablePhoto } from "@/lib/account/table-photo";
 import { fetchMesaPilotEnabled } from "@/lib/ai-mesa/client";
 import { canUseMesaAssistant } from "@/lib/ai-mesa/gate";
 import { useAuth } from "@/lib/auth";
@@ -1098,7 +1099,7 @@ function VTTSession() {
 					await roomChannel.track({
 						userId: user.id,
 						userName: currentUserName,
-						avatarUrl: user.user_metadata?.avatar_url || null,
+						avatarUrl: resolveTablePhoto(user.user_metadata).url,
 						color: useVTTStore.getState().userColor,
 						colorChosen: useVTTStore.getState().userColorChosen,
 						isGM,
@@ -1145,7 +1146,7 @@ function VTTSession() {
 		void roomChannelRef.current.track({
 			userId: user.id,
 			userName: currentUserName,
-			avatarUrl: user.user_metadata?.avatar_url || null,
+			avatarUrl: resolveTablePhoto(user.user_metadata).url,
 			color: userColor,
 			colorChosen: userColorChosen,
 			isGM,

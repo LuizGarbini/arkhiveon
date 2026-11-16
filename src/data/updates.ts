@@ -20,6 +20,24 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.141-foto-na-mesa-recorte",
+		version: "1.6.141",
+		date: "15/11/2026",
+		title: "Foto na mesa com recorte e botões no tamanho certo",
+		description:
+			"A escolha da foto na mesa deixou de ser uma faixa de ponta a ponta. Agora são botões do tamanho do texto, ao lado da prévia, e Enviar e recortar abre o enquadramento em círculo antes de subir a imagem.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.140-foto-na-mesa",
+		version: "1.6.140",
+		date: "15/11/2026",
+		title: "Escolha a foto que os outros veem na mesa",
+		description:
+			"Em Minha conta, a seção Foto na mesa deixa você escolher o que aparece no canto da mesa: a foto do Google (quando a conta tem uma), uma imagem que você envia, ou só as iniciais. A prévia usa a cor do seu cursor. A escolha fica salva na conta e vale nos outros aparelhos. Quem está na mesa vê a troca ao vivo. O envio redimensiona a imagem neste aparelho antes de subir, o botão fica desabilitado enquanto envia, e se falhar o aviso aparece ao lado dele. Uma foto mandada por outro cliente só entra se for um endereço https do armazenamento deste projeto ou da foto do Google.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.132-vtt-roda-de-ping-ctrl-arrastar",
 		version: "1.6.132",
 		date: "15/11/2026",

@@ -1,9 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
 	AlertTriangle,
-	Dices,
 	GripHorizontal,
-	Maximize2,
 	Minus,
 	Plus,
 	User,
@@ -31,6 +29,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SheetBody } from "@/components/vtt/sheet/sheet-body";
 import type { SheetHp } from "@/components/vtt/sheet/sheet-hp";
+import { D20Glyph, ExpandFrameGlyph } from "@/components/vtt/sheet/sheet-icons";
 import type { SheetRolls } from "@/components/vtt/sheet/sheet-types";
 import { useSheetResources } from "@/components/vtt/sheet/use-sheet-resources";
 import { computeEffectiveStats } from "@/core/rules";
@@ -493,8 +492,7 @@ function FloatingSheet({
 					: { left: shown.x, top: shown.y, width: shown.w, height: shown.h }
 			}
 			className={cn(
-				"fixed flex flex-col overflow-hidden rounded-2xl border border-border/70 text-foreground shadow-2xl",
-				minimized ? "bg-card/95 backdrop-blur-md" : "bg-card-elevated",
+				"fixed flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-card/96 bg-[radial-gradient(ellipse_70%_30%_at_25%_0%,var(--primary-muted),transparent_70%)] backdrop-blur-xl text-foreground shadow-[0_28px_68px_-16px_oklch(0_0_0/0.85),inset_0_1px_0_oklch(1_0_0/0.07)]",
 				isTop ? "z-[41]" : "z-40",
 			)}
 		>
@@ -522,20 +520,23 @@ function FloatingSheet({
 						onPointerMove={onMove}
 						onPointerUp={onEnd}
 						onPointerCancel={onEnd}
-						className="flex min-h-11 shrink-0 cursor-grab touch-none items-center gap-1 border-b border-border/60 pl-3 pr-1 select-none active:cursor-grabbing"
+						className="flex h-9 min-h-9 shrink-0 cursor-grab touch-none items-center gap-1 border-b border-white/[0.06] bg-black/25 pl-3 pr-1.5 select-none active:cursor-grabbing [@media(pointer:coarse)]:min-h-11"
 					>
 						<GripHorizontal
-							className="size-4 shrink-0 text-muted-foreground"
+							className="size-3.5 shrink-0 text-muted-foreground/70"
 							aria-hidden
 						/>
+						<span
+							aria-hidden
+							className="pointer-events-none mx-auto h-1 w-9 rounded-full bg-white/[0.12] transition-colors"
+						/>
 						{/* Padrão Figma: alça + ações; o nome fica no título da identidade. */}
-						<span className="flex-1" />
 						<SheetIconButton
 							label="Minimizar ficha"
 							tooltip="Minimizar (a ficha continua aberta)"
 							onClick={minimize}
 						>
-							<Minus className="h-4 w-4" />
+							<Minus className="t-icon-spring h-3.5 w-3.5" />
 						</SheetIconButton>
 						<CloseSheetButton onClose={close} />
 					</header>
@@ -557,9 +558,9 @@ function FloatingSheet({
 						onPointerMove={onMove}
 						onPointerUp={onEnd}
 						onPointerCancel={onEnd}
-						className="absolute right-0 bottom-0 size-5 cursor-nwse-resize touch-none"
+						className="group absolute right-0 bottom-0 size-5 cursor-nwse-resize touch-none"
 					>
-						<span className="absolute right-1.5 bottom-1.5 size-2 border-r-2 border-b-2 border-muted-foreground/50" />
+						<span className="absolute right-1.5 bottom-1.5 size-2 rounded-br-[2px] border-r-2 border-b-2 border-muted-foreground/40 transition-colors group-hover:border-primary/60" />
 					</div>
 				</>
 			)}
@@ -622,9 +623,9 @@ function MiniSheet({
 		<header
 			data-testid="vtt-sheet-drag-handle"
 			{...dragHandlers}
-			className="flex cursor-grab touch-none items-center gap-2 p-2 select-none active:cursor-grabbing"
+			className="flex cursor-grab touch-none items-center gap-2.5 p-2 select-none active:cursor-grabbing"
 		>
-			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 ring-1 ring-border/70">
+			<span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/[0.12] shadow-xs">
 				{portrait ? (
 					<img
 						src={portrait}
@@ -637,43 +638,54 @@ function MiniSheet({
 				)}
 			</span>
 			<div className="min-w-0 flex-1">
-				<p className="truncate text-sm font-semibold">{name}</p>
+				<p className="truncate font-display text-[13px] font-semibold tracking-tight text-foreground">
+					{name}
+				</p>
 				<div className="mt-1 flex items-center gap-2">
-					<span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+					<span className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/45 p-px ring-1 ring-inset ring-white/[0.07]">
 						<span
 							className={cn(
-								"block h-full rounded-full transition-[width] duration-200",
-								pct <= 25 ? "bg-destructive" : "bg-primary",
+								"block h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+								pct <= 25
+									? "bg-destructive"
+									: "bg-linear-to-r from-primary-dark via-primary to-[oklch(0.74_0.19_295)] shadow-[0_0_8px_var(--primary-glow)]",
 							)}
 							style={{ width: `${pct}%` }}
 						/>
 					</span>
-					<span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+					<span className="shrink-0 font-mono text-[11px] font-medium text-muted-foreground tabular-nums">
 						{showMax ? `${hp.current}/${hp.max}` : hp.current} PV
 					</span>
 				</div>
 			</div>
-			<SheetIconButton
-				label={`Rolar ${dice} (${name})`}
-				tooltip={`Rolar ${dice}`}
-				disabled={rolling}
-				onClick={() =>
-					onStartRoll(tokenId, "Teste livre", 0, dice, {
-						label: "Teste livre",
-						characterId: character?.id ?? null,
-					})
-				}
-			>
-				<Dices className="h-4 w-4" />
-			</SheetIconButton>
-			<SheetIconButton
-				label="Restaurar ficha"
-				tooltip="Restaurar ficha"
-				onClick={onRestore}
-			>
-				<Maximize2 className="h-4 w-4" />
-			</SheetIconButton>
-			<CloseSheetButton onClose={onClose} />
+			<div className="flex shrink-0 items-center gap-0.5">
+				<SheetIconButton
+					label={`Rolar ${dice} (${name})`}
+					tooltip={`Rolar ${dice}`}
+					disabled={rolling}
+					onClick={() =>
+						onStartRoll(tokenId, "Teste livre", 0, dice, {
+							label: "Teste livre",
+							characterId: character?.id ?? null,
+						})
+					}
+					className="size-8 rounded-lg border border-white/[0.06] bg-white/[0.03] [@media(pointer:coarse)]:size-11"
+				>
+					<D20Glyph className="t-icon-spring size-3.5 text-primary/90" />
+				</SheetIconButton>
+				<SheetIconButton
+					label="Restaurar ficha"
+					tooltip="Restaurar ficha"
+					onClick={onRestore}
+					className="size-8 rounded-lg [@media(pointer:coarse)]:size-11"
+				>
+					<ExpandFrameGlyph className="t-icon-spring size-3.5" />
+				</SheetIconButton>
+				<CloseSheetButton
+					onClose={onClose}
+					className="size-8 rounded-lg [@media(pointer:coarse)]:size-11"
+				/>
+			</div>
 		</header>
 	);
 }
@@ -905,12 +917,14 @@ function SheetIconButton({
 	tooltip,
 	disabled,
 	onClick,
+	className,
 	children,
 }: {
 	label: string;
 	tooltip: string;
 	disabled?: boolean;
 	onClick: () => void;
+	className?: string;
 	children: ReactNode;
 }) {
 	return (
@@ -923,7 +937,10 @@ function SheetIconButton({
 						size="icon"
 						disabled={disabled}
 						onClick={onClick}
-						className="size-11 shrink-0 text-muted-foreground"
+						className={cn(
+							"group size-7 shrink-0 rounded-md text-muted-foreground hover:bg-white/[0.06] hover:text-foreground [@media(pointer:coarse)]:size-11",
+							className,
+						)}
 						aria-label={label}
 					/>
 				}
@@ -935,7 +952,13 @@ function SheetIconButton({
 	);
 }
 
-function CloseSheetButton({ onClose }: { onClose: () => void }) {
+function CloseSheetButton({
+	onClose,
+	className,
+}: {
+	onClose: () => void;
+	className?: string;
+}) {
 	return (
 		<Tooltip>
 			<TooltipTrigger
@@ -945,12 +968,15 @@ function CloseSheetButton({ onClose }: { onClose: () => void }) {
 						variant="ghost"
 						size="icon"
 						onClick={onClose}
-						className="size-11 shrink-0 text-muted-foreground"
+						className={cn(
+							"group size-7 shrink-0 rounded-md text-muted-foreground hover:bg-white/[0.06] hover:text-foreground [@media(pointer:coarse)]:size-11",
+							className,
+						)}
 						aria-label="Fechar ficha"
 					/>
 				}
 			>
-				<X className="h-4 w-4" />
+				<X className="h-3.5 w-3.5" />
 			</TooltipTrigger>
 			<TooltipContent>Fechar ficha (Esc)</TooltipContent>
 		</Tooltip>

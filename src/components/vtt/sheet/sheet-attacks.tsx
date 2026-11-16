@@ -1,5 +1,4 @@
-import { Crosshair, Shield, Sparkles, Swords } from "lucide-react";
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	calculateProficiencyBonus,
@@ -22,11 +21,17 @@ import type {
 	SpellSlotsState,
 } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import {
+	ArcaneShieldGlyph,
+	BowTargetGlyph,
+	CrossedBladesGlyph,
+	SpellRuneGlyph,
+} from "./sheet-icons";
 import type { SheetRolls } from "./sheet-types";
 import type { SheetResourceApi } from "./use-sheet-resources";
 
 const pill =
-	"min-h-11 cursor-pointer select-none rounded-xl border px-2.5 text-[14px] font-bold tabular-nums transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
+	"min-h-9 [@media(pointer:coarse)]:min-h-11 cursor-pointer select-none rounded-lg border px-2.5 font-mono text-xs font-semibold tabular-nums shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 function spellLevelTitle(level: number) {
 	return level === 0 ? "Truques" : `Nível ${level}`;
@@ -58,8 +63,10 @@ function levelHint(level: number, slots: SpellSlotsState): string {
 
 function EmptyWeapons({ onOpenEquipment }: { onOpenEquipment: () => void }) {
 	return (
-		<div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/70 bg-background/30 px-5 py-7 text-center">
-			<Swords className="size-6 text-primary" aria-hidden />
+		<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.1] bg-black/25 px-5 py-7 text-center shadow-[inset_0_1px_0_oklch(1_0_0/0.03)]">
+			<span className="flex size-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-primary/85 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)]">
+				<CrossedBladesGlyph className="size-5" />
+			</span>
 			<div>
 				<p className="text-sm font-semibold">Nenhuma arma equipada</p>
 				<p className="mx-auto mt-1 max-w-[16rem] text-xs text-muted-foreground">
@@ -69,10 +76,10 @@ function EmptyWeapons({ onOpenEquipment }: { onOpenEquipment: () => void }) {
 			<Button
 				type="button"
 				variant="outline"
-				className="min-h-11 gap-2"
+				className="group min-h-10 gap-2 rounded-lg border-white/[0.09] bg-linear-to-b from-white/[0.04] to-black/30 text-xs font-medium shadow-[inset_0_1px_0_oklch(1_0_0/0.07)] hover:border-primary/40 hover:bg-primary/10 hover:text-primary [@media(pointer:coarse)]:min-h-11"
 				onClick={onOpenEquipment}
 			>
-				<Shield className="size-4" aria-hidden />
+				<ArcaneShieldGlyph className="t-icon-spring size-3.5" />
 				Abrir equipamento
 			</Button>
 		</div>
@@ -153,21 +160,24 @@ export function AttacksTab({
 					<EmptyWeapons onOpenEquipment={onOpenEquipment} />
 				) : (
 					<div>
-						<ul className="divide-y divide-border/60">
-							{attacks.map(({ attack, ranged }) => (
+						<ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 px-3 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+							{attacks.map(({ attack, ranged }, index) => (
 								<li
 									key={attack.itemId}
-									className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 py-3 first:pt-0"
+									style={
+										{ "--stagger-index": Math.min(index, 7) } as CSSProperties
+									}
+									className="group t-stagger-item grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-2.5 py-2.5"
 								>
-									<span className="flex size-10 items-center justify-center rounded-xl bg-muted/60 text-primary">
+									<span className="flex size-9 items-center justify-center rounded-lg border border-white/[0.08] bg-black/35 text-primary/85 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] transition-colors duration-150 group-hover:border-primary/25">
 										{ranged ? (
-											<Crosshair className="size-[1.125rem]" aria-hidden />
+											<BowTargetGlyph className="t-icon-spring size-4" />
 										) : (
-											<Swords className="size-[1.125rem]" aria-hidden />
+											<CrossedBladesGlyph className="t-icon-spring size-4" />
 										)}
 									</span>
 									<div className="min-w-0">
-										<h4 className="truncate text-[13.5px] font-semibold">
+										<h4 className="truncate text-[13px] font-semibold">
 											{attack.name}
 										</h4>
 										<p className="truncate text-xs text-muted-foreground">
@@ -186,7 +196,7 @@ export function AttacksTab({
 										}
 										className={cn(
 											pill,
-											"min-w-14 border-primary/30 bg-primary/10 text-primary [@media(hover:hover)]:hover:bg-primary/20",
+											"min-w-13 border-primary/35 bg-linear-to-b from-primary/18 to-primary/8 text-primary [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:bg-primary/20",
 										)}
 									>
 										{formatModifier(attack.attackBonus)}
@@ -200,7 +210,7 @@ export function AttacksTab({
 										}
 										className={cn(
 											pill,
-											"min-w-16 border-border/70 bg-background/40 text-[13px] [@media(hover:hover)]:hover:bg-muted/60",
+											"min-w-16 border-white/[0.08] bg-linear-to-b from-white/[0.04] to-black/30 text-foreground [@media(hover:hover)]:hover:border-white/[0.15] [@media(hover:hover)]:hover:bg-white/[0.06]",
 										)}
 									>
 										{attack.formula}
@@ -208,7 +218,7 @@ export function AttacksTab({
 								</li>
 							))}
 						</ul>
-						<p className="mt-2 text-right text-[11.5px] text-muted-foreground">
+						<p className="mt-2 text-right text-[11px] text-muted-foreground/80">
 							acerto e dano vão para o chat da mesa
 						</p>
 					</div>
@@ -216,26 +226,27 @@ export function AttacksTab({
 			</section>
 
 			{hasCasting ? (
-				<section aria-label="Magias" className="space-y-3">
+				<section aria-label="Magias" className="space-y-3.5">
 					{spellAttack !== 0 || spellDc > 0 ? (
-						<dl className="flex items-stretch gap-4">
+						<dl className="flex items-stretch gap-3 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 							<button
 								type="button"
 								disabled={rolls.rolling || spellAttack === 0}
 								aria-label={`Rolar ataque de magia (${formatModifier(spellAttack)})`}
 								onClick={() => rolls.check("Ataque de magia", spellAttack)}
-								className="flex w-[4.75rem] shrink-0 cursor-pointer select-none flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 py-2.5 transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(hover:hover)]:hover:bg-primary/15"
+								className="relative flex w-[4.75rem] shrink-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-lg border border-primary/35 bg-linear-to-b from-primary/16 to-primary/8 py-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:bg-primary/20"
 							>
-								<dd className="font-display text-[1.75rem] leading-none font-semibold tabular-nums">
+								<SpellRuneGlyph className="pointer-events-none absolute -top-2 -right-2 size-12 text-primary/[0.09]" />
+								<dd className="relative font-mono text-[1.5rem] leading-none font-semibold text-foreground tabular-nums">
 									{formatModifier(spellAttack)}
 								</dd>
-								<dt className="mt-1 text-[11px] font-medium text-muted-foreground">
+								<dt className="relative mt-1 text-[10.5px] font-medium text-primary/90">
 									Ataque
 								</dt>
 							</button>
-							<div className="flex min-w-0 flex-1 items-center gap-6">
+							<div className="flex min-w-0 flex-1 items-center gap-6 rounded-lg bg-black/25 px-3.5 py-2 ring-1 ring-white/[0.06]">
 								<div>
-									<dd className="text-[1.0625rem] leading-tight font-semibold tabular-nums">
+									<dd className="font-mono text-[1.05rem] leading-tight font-semibold text-foreground tabular-nums">
 										{spellDc || "—"}
 									</dd>
 									<dt className="mt-0.5 text-[11px] text-muted-foreground">
@@ -253,29 +264,34 @@ export function AttacksTab({
 					) : (
 						spells.map(([level, list]) => {
 							return (
-								<div key={level}>
-									<div className="mt-1 mb-1 flex items-baseline justify-between">
-										<h3 className="text-xs font-semibold text-muted-foreground">
+								<div key={level} className="space-y-1.5">
+									<div className="flex items-baseline justify-between gap-2">
+										<h3 className="text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase">
 											{spellLevelTitle(level)}
 										</h3>
-										<span className="text-[11.5px] text-muted-foreground tabular-nums">
+										<span className="text-[11px] text-muted-foreground/80 tabular-nums">
 											{levelHint(level, slots)}
 										</span>
 									</div>
-									<ul className="divide-y divide-border/50">
-										{list.map((spell) => {
+									<ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 px-3 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+										{list.map((spell, index) => {
 											const target =
 												level > 0 ? pickSlotFor(slots, level) : null;
 											return (
 												<li
 													key={spell.id}
-													className="flex items-center gap-3 py-2.5"
+													style={
+														{
+															"--stagger-index": Math.min(index, 7),
+														} as CSSProperties
+													}
+													className="group t-stagger-item flex items-center gap-3 py-2.5"
 												>
-													<span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-primary">
-														<Sparkles className="size-4" aria-hidden />
+													<span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-black/35 text-primary/85 shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] transition-colors duration-150 group-hover:border-primary/25">
+														<SpellRuneGlyph className="t-icon-spring size-3.5" />
 													</span>
 													<div className="min-w-0 flex-1">
-														<p className="truncate text-[13.5px] font-semibold">
+														<p className="truncate text-[13px] font-semibold">
 															{spell.name}
 														</p>
 														<p className="truncate text-xs text-muted-foreground">
@@ -290,7 +306,7 @@ export function AttacksTab({
 															onClick={() => cast(spell)}
 															className={cn(
 																pill,
-																"border-border/70 bg-background/40 px-3 text-[13px] font-semibold [@media(hover:hover)]:hover:bg-muted/60",
+																"border-white/[0.08] bg-linear-to-b from-white/[0.04] to-black/30 px-3 font-sans text-xs font-medium text-foreground [@media(hover:hover)]:hover:border-primary/40 [@media(hover:hover)]:hover:bg-primary/10 [@media(hover:hover)]:hover:text-primary",
 															)}
 														>
 															Lançar
