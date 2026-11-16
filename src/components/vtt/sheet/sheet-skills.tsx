@@ -26,7 +26,7 @@ function Pips({ level }: { level: "none" | "proficient" | "expertise" }) {
 		return (
 			<span
 				aria-hidden
-				className="size-2 rounded-full border border-muted-foreground/40"
+				className="size-2 rounded-full border border-white/25 bg-black/30"
 			/>
 		);
 	}
@@ -34,11 +34,11 @@ function Pips({ level }: { level: "none" | "proficient" | "expertise" }) {
 		<span
 			role="img"
 			aria-label={level === "expertise" ? "Especialista" : "Proficiente"}
-			className="flex gap-0.5"
+			className="flex items-center gap-0.5"
 		>
-			<i className="size-2 rounded-full bg-primary" />
+			<i className="size-2 rounded-full bg-primary shadow-[0_0_7px_var(--primary-glow)]" />
 			{level === "expertise" ? (
-				<i className="size-2 rounded-full bg-primary" />
+				<i className="size-2 rounded-full bg-primary shadow-[0_0_7px_var(--primary-glow)]" />
 			) : null}
 		</span>
 	);
@@ -96,7 +96,7 @@ export function SkillsTab({
 				</label>
 				<Search
 					aria-hidden
-					className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+					className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground/80"
 				/>
 				<Input
 					id={searchId}
@@ -106,37 +106,40 @@ export function SkillsTab({
 					placeholder="Buscar perícia…"
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
-					className="h-10 pl-9 [@media(pointer:coarse)]:h-11"
+					className="h-9 rounded-lg border-white/[0.08] bg-black/30 pl-9 text-sm shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] placeholder:text-muted-foreground/60 [@media(pointer:coarse)]:h-11"
 				/>
 			</div>
 
 			{rows.length === 0 ? (
-				<div className="flex flex-col items-center gap-2.5 rounded-2xl border border-dashed border-border/70 bg-background/30 px-5 py-8 text-center">
+				<div className="flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-white/[0.1] bg-black/25 px-5 py-8 text-center shadow-[inset_0_1px_0_oklch(1_0_0/0.03)]">
 					<p className="text-sm font-semibold">Nenhuma perícia encontrada</p>
 					<Button
 						type="button"
 						variant="outline"
-						className="min-h-11"
+						className="min-h-10 rounded-lg border-white/[0.09] bg-linear-to-b from-white/[0.04] to-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.07)] [@media(pointer:coarse)]:min-h-11"
 						onClick={() => setQuery("")}
 					>
 						Limpar busca
 					</Button>
 				</div>
 			) : (
-				<ul className="grid gap-x-6 @[44rem]:grid-cols-2">
+				<ul className="grid gap-x-4 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] @[44rem]:grid-cols-2">
 					{rows.map((row) => (
-						<li key={row.id} className="border-b border-border/40">
+						<li
+							key={row.id}
+							className="border-b border-white/[0.05] last:border-b-0"
+						>
 							<button
 								type="button"
 								disabled={rolls.rolling}
 								aria-label={`Rolar ${row.name} (${formatModifier(row.modifier)})`}
 								onClick={() => rolls.check(row.name, row.modifier)}
-								className="grid min-h-10 w-full cursor-pointer select-none grid-cols-[1rem_minmax(0,1fr)_auto_2.75rem] items-center gap-2.5 rounded-lg px-1.5 text-left transition-[background-color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/40 [@media(pointer:coarse)]:min-h-11"
+								className="group grid min-h-9 w-full cursor-pointer select-none grid-cols-[1rem_minmax(0,1fr)_auto_2.75rem] items-center gap-2 rounded-lg px-2 text-left transition-[background-color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-white/[0.05] [@media(pointer:coarse)]:min-h-11"
 							>
 								<Pips level={row.level} />
 								<span
 									className={cn(
-										"truncate text-[13.5px]",
+										"truncate text-[13px]",
 										row.level === "none"
 											? "font-medium text-foreground/80"
 											: "font-semibold text-foreground",
@@ -144,10 +147,17 @@ export function SkillsTab({
 								>
 									{row.name}
 								</span>
-								<span className="text-[11px] text-muted-foreground">
+								<span className="font-mono text-[10px] tracking-[0.06em] text-muted-foreground/80">
 									{row.attributeShort}
 								</span>
-								<span className="text-right text-[0.9375rem] font-semibold tabular-nums">
+								<span
+									className={cn(
+										"text-right font-mono text-[13px] font-semibold tabular-nums transition-colors duration-150",
+										row.level === "none"
+											? "text-foreground/85 group-hover:text-foreground"
+											: "text-primary",
+									)}
+								>
 									{formatModifier(row.modifier)}
 								</span>
 							</button>

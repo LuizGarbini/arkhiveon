@@ -1,4 +1,3 @@
-import { Shield } from "lucide-react";
 import {
 	calculateProficiencyBonus,
 	calculateSavingThrowModifier,
@@ -14,6 +13,7 @@ import { type Character, getAttributeFullName } from "@/lib/store";
 import type { SystemConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import { abilityModifier } from "@/lib/vtt/combat";
+import { ArcaneShieldGlyph } from "./sheet-icons";
 import { SheetResources } from "./sheet-resources";
 import type { SheetRolls } from "./sheet-types";
 import { VisionSection } from "./sheet-vision";
@@ -32,11 +32,14 @@ function splitUnit(value: string): [string, string] {
 /** A CA é o único número com moldura: é o que mais se consulta no combate. */
 function ArmorClass({ value }: { value: number }) {
 	return (
-		<div className="flex w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 py-2.5">
-			<dd className="font-display text-[1.875rem] leading-none font-semibold tabular-nums">
+		<div className="relative flex w-[4.75rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl border border-primary/35 bg-linear-to-b from-primary/20 to-primary/5 py-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.12),0_8px_20px_-8px_var(--primary-glow)]">
+			<ArcaneShieldGlyph className="pointer-events-none absolute -right-2 -bottom-2 size-11 text-primary/20" />
+			<dd className="relative z-10 font-display text-[1.75rem] leading-none font-semibold text-foreground tabular-nums">
 				{value}
 			</dd>
-			<dt className="mt-1 text-[11px] font-medium text-muted-foreground">CA</dt>
+			<dt className="relative z-10 mt-1 text-[10.5px] font-medium text-primary/90">
+				CA
+			</dt>
 		</div>
 	);
 }
@@ -45,8 +48,8 @@ function ArmorClass({ value }: { value: number }) {
 function Vital({ value, label }: { value: string; label: string }) {
 	const [number, unit] = splitUnit(value);
 	return (
-		<div className="min-w-0">
-			<dd className="truncate text-[1.0625rem] leading-tight font-semibold tabular-nums">
+		<div className="min-w-0 rounded-lg bg-black/25 px-2.5 py-1.5 ring-1 ring-white/[0.06] shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] transition-colors hover:bg-white/[0.04] hover:ring-white/[0.12]">
+			<dd className="truncate font-mono text-[1rem] leading-tight font-semibold text-foreground tabular-nums">
 				{number}
 				{unit ? (
 					<span className="ml-0.5 text-xs font-medium text-muted-foreground">
@@ -93,10 +96,10 @@ export function SummaryTab({
 	const attributes = config.attributes;
 
 	return (
-		<div className="space-y-5">
-			<dl className="flex items-stretch gap-4">
+		<div className="space-y-4">
+			<dl className="flex items-stretch gap-3 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]">
 				<ArmorClass value={stats.ac.total} />
-				<div className="grid min-w-0 flex-1 grid-cols-3 content-center gap-x-3 gap-y-3">
+				<div className="grid min-w-0 flex-1 grid-cols-3 content-center gap-2">
 					<Vital
 						value={formatModifier(stats.initiative.total)}
 						label="Iniciativa"
@@ -137,16 +140,16 @@ export function SummaryTab({
 			/>
 
 			<section aria-label="Atributos">
-				<div className="mb-2 flex items-baseline justify-between">
-					<h3 className="text-xs font-semibold text-muted-foreground">
+				<div className="mb-2 flex items-baseline justify-between gap-2">
+					<h3 className="text-xs font-medium text-muted-foreground">
 						Atributos
 					</h3>
-					<span className="text-[11.5px] text-muted-foreground">
+					<span className="text-[11px] text-muted-foreground/80">
 						número rola o teste · escudo, a salvaguarda
 					</span>
 				</div>
 				<div
-					className="grid divide-x divide-border/50 overflow-hidden rounded-2xl border border-border/60 bg-background/30"
+					className="grid divide-x divide-white/[0.07] overflow-hidden rounded-xl border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]"
 					style={{
 						gridTemplateColumns: `repeat(${Math.min(Math.max(attributes.length, 3), 6)}, minmax(0, 1fr))`,
 					}}
@@ -179,14 +182,14 @@ export function SummaryTab({
 									aria-label={`Rolar ${fullName} (${formatModifier(mod)})`}
 									onClick={() => rolls.check(attr.label, mod, fullName)}
 									className={cn(
-										"flex min-h-[4.5rem] cursor-pointer select-none flex-col items-center gap-0.5 px-1 pt-2.5 pb-1.5 text-center transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/40",
+										"group flex min-h-[4.75rem] cursor-pointer select-none flex-col items-center justify-center gap-1 bg-linear-to-b from-white/[0.035] to-transparent px-1 pt-2.5 pb-2 text-center transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:from-primary/[0.14] [@media(hover:hover)]:hover:to-transparent",
 										touch,
 									)}
 								>
-									<span className="text-[10.5px] font-semibold text-muted-foreground">
+									<span className="text-[10.5px] font-medium tracking-wide text-muted-foreground transition-colors group-hover:text-primary/90">
 										{attr.label}
 									</span>
-									<span className="font-display text-[1.375rem] leading-none font-semibold tabular-nums">
+									<span className="font-mono text-[1.25rem] leading-none font-semibold text-foreground tabular-nums">
 										{formatModifier(mod)}
 									</span>
 									<span
@@ -196,10 +199,10 @@ export function SummaryTab({
 												: undefined
 										}
 										className={cn(
-											"text-[11px] tabular-nums",
+											"rounded px-1.5 py-px font-mono text-[10px] tabular-nums",
 											withItems && withItems.delta > 0
-												? "font-semibold text-primary"
-												: "text-muted-foreground",
+												? "bg-primary/15 font-semibold text-primary ring-1 ring-primary/25"
+												: "bg-white/[0.05] text-muted-foreground",
 										)}
 									>
 										{score}
@@ -214,9 +217,11 @@ export function SummaryTab({
 											rolls.check(`Salvaguarda de ${fullName}`, saveMod)
 										}
 										className={cn(
-											"flex min-h-9 cursor-pointer select-none items-center justify-center gap-1 border-t border-border/50 text-[11px] transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-muted/40",
+											"group flex min-h-9 cursor-pointer select-none items-center justify-center gap-1 border-t border-white/[0.06] font-mono text-[11px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)]:hover:bg-white/[0.05]",
 											touch,
-											proficient ? "text-foreground" : "text-muted-foreground",
+											proficient
+												? "bg-primary/12 text-foreground shadow-[inset_0_1px_0_var(--primary-muted)]"
+												: "text-muted-foreground",
 										)}
 									>
 										{proficient ? (
@@ -225,15 +230,15 @@ export function SummaryTab({
 												aria-label="Salvaguarda proficiente"
 												className="flex"
 											>
-												<Shield
-													className="size-3 fill-primary text-primary"
-													aria-hidden
+												<ArcaneShieldGlyph
+													filled
+													className="t-icon-spring size-3.5 text-primary"
 												/>
 											</span>
 										) : (
-											<Shield className="size-3" aria-hidden />
+											<ArcaneShieldGlyph className="t-icon-spring size-3.5 text-muted-foreground/60" />
 										)}
-										<span className="font-semibold tabular-nums">
+										<span className="tabular-nums">
 											{formatModifier(saveMod)}
 										</span>
 									</button>
