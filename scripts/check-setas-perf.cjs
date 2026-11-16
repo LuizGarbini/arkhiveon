@@ -11,6 +11,7 @@
 //    final gravada no banco não for a última pedida (gravação final perdida).
 // Uso: pnpm check:setas-perf   (sai com código 1 se algo quebrar)
 //      SETAS_PERF_CPU=4 pnpm check:setas-perf   (simula CPU 4x mais lenta; só relata)
+//      SETAS_ONLY=<n> roda um cenário; SETAS_VIEWPORT=400x300 diminui o canvas (menos trabalho de GL)
 const { chromium } = require("playwright");
 
 const CELL = 70;
@@ -43,7 +44,8 @@ const ROT = { ArrowUp: 0, ArrowRight: 90, ArrowDown: 180, ArrowLeft: 270 };
 
 async function runScenario(browser, scenario, index) {
 	const random = rng(1000 + index);
-	const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+	const [vw, vh] = (process.env.SETAS_VIEWPORT || "1280x800").split("x").map(Number);
+	const context = await browser.newContext({ viewport: { width: vw, height: vh } });
 	const db = new Map();
 	const writes = [];
 	const inflight = new Map();
