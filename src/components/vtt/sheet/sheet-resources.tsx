@@ -1,4 +1,4 @@
-import { Moon, Skull, Sun } from "lucide-react";
+import { Skull } from "lucide-react";
 import {
 	hasSpellSlots,
 	hitDiceTotal,
@@ -12,6 +12,7 @@ import {
 } from "@/core/rules";
 import type { Character, SpellSlotsState } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { CrescentMoonGlyph, SunburstGlyph } from "./sheet-icons";
 import type { SheetResourceApi } from "./use-sheet-resources";
 
 /** Uma bolinha por espaço: cheia = disponível, vazia = gasto. */
@@ -31,7 +32,7 @@ function Pips({
 	onRestore: () => void;
 }) {
 	return (
-		<fieldset className="m-0 flex min-w-0 flex-wrap justify-end gap-1.5 border-0 p-0">
+		<fieldset className="m-0 flex min-w-0 flex-wrap justify-end border-0 p-1">
 			<legend className="sr-only">{label}</legend>
 			{Array.from({ length: total }, (_, i) => {
 				const available = i < total - used;
@@ -45,11 +46,25 @@ function Pips({
 						aria-pressed={available}
 						// A última bolinha cheia gasta; a primeira vazia devolve.
 						onClick={() => (available ? onSpend() : onRestore())}
-						className={cn(
-							"size-5 cursor-pointer select-none rounded-md border-[1.5px] border-primary/60 transition-[background-color,transform] duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default",
-							available ? "bg-primary" : "bg-transparent",
-						)}
-					/>
+						className="group relative -mx-1.5 -my-2 inline-flex size-11 cursor-pointer select-none items-center justify-center rounded-lg focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
+					>
+						<span
+							aria-hidden
+							className={cn(
+								"relative flex size-5 items-center justify-center rounded-md border transition-[background-color,border-color,box-shadow,transform] duration-200 group-active:scale-[0.9]",
+								available
+									? "border-primary/60 bg-primary/18 shadow-[0_0_12px_-2px_var(--primary-glow),inset_0_1px_0_oklch(1_0_0/0.16)] group-hover:border-primary/85 group-hover:bg-primary/28"
+									: "border-white/[0.08] bg-black/40 opacity-55 group-hover:opacity-80",
+							)}
+						>
+							<span
+								className={cn(
+									"size-2 rounded-[2px] bg-primary transition-all duration-200 ease-[cubic-bezier(0.34,1.45,0.64,1)]",
+									available ? "scale-100 opacity-90" : "scale-0 opacity-0",
+								)}
+							/>
+						</span>
+					</button>
 				);
 			})}
 		</fieldset>
@@ -88,23 +103,21 @@ export function SheetResources({
 	const levels = Object.keys(slots.slots).sort((a, b) => Number(a) - Number(b));
 
 	const stepper =
-		"min-h-9 min-w-9 cursor-pointer select-none rounded-lg border border-border/60 text-base font-semibold transition-transform duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
+		"flex h-8 w-8 cursor-pointer select-none items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent font-mono text-sm font-medium text-muted-foreground transition-colors active:scale-[0.96] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 [@media(hover:hover)]:hover:bg-white/[0.06] [@media(hover:hover)]:hover:text-foreground [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
 	const rest =
-		"flex min-h-10 cursor-pointer select-none items-center justify-center gap-2 text-[13px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted/40 [@media(pointer:coarse)]:min-h-11";
+		"group flex min-h-9 cursor-pointer select-none items-center justify-center gap-1.5 bg-linear-to-b from-white/[0.025] to-transparent text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary [@media(hover:hover)]:hover:bg-white/[0.05] [@media(hover:hover)]:hover:text-foreground [@media(pointer:coarse)]:min-h-11";
 
 	return (
 		<section aria-label="Recursos" className="space-y-2">
-			<div className="flex items-baseline justify-between">
-				<h3 className="text-xs font-semibold text-muted-foreground">
-					Recursos
-				</h3>
+			<div className="flex items-baseline justify-between gap-2">
+				<h3 className="text-xs font-medium text-muted-foreground">Recursos</h3>
 				{showSlots && resources.canEdit ? (
-					<span className="text-[11.5px] text-muted-foreground">
+					<span className="text-[11px] text-muted-foreground/80">
 						toque numa bolinha para gastar ou devolver
 					</span>
 				) : null}
 			</div>
-			<div className="divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60 bg-background/30">
+			<div className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]">
 				{showSlots ? (
 					<div className="space-y-2.5 px-3 py-3">
 						{slots.pact ? (
@@ -153,16 +166,18 @@ export function SheetResources({
 				{diceTotal > 0 ? (
 					<div className="flex items-center justify-between gap-3 px-3 py-2.5">
 						<div>
-							<p className="text-xs text-muted-foreground">Dados de vida</p>
-							<p className="font-display text-xl leading-tight font-semibold tabular-nums">
+							<p className="text-[11px] font-medium text-muted-foreground">
+								Dados de vida
+							</p>
+							<p className="mt-0.5 font-mono text-lg leading-tight font-semibold text-foreground tabular-nums">
 								{diceLeft}
-								<span className="ml-1 font-sans text-[13px] font-normal text-muted-foreground">
+								<span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
 									de {character.hitDice}
 								</span>
 							</p>
 						</div>
 						{resources.canEdit ? (
-							<div className="flex gap-1.5">
+							<div className="inline-flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 								<button
 									type="button"
 									disabled={diceLeft <= 0}
@@ -187,13 +202,13 @@ export function SheetResources({
 				) : null}
 
 				{resources.canEdit ? (
-					<div className="grid grid-cols-2 divide-x divide-border/40">
+					<div className="grid grid-cols-2 divide-x divide-white/[0.06]">
 						<button type="button" onClick={shortRest} className={rest}>
-							<Sun className="size-4 text-muted-foreground" aria-hidden />
+							<SunburstGlyph className="t-icon-spring size-3.5 text-amber-300/80" />
 							Descanso curto
 						</button>
 						<button type="button" onClick={longRest} className={rest}>
-							<Moon className="size-4 text-muted-foreground" aria-hidden />
+							<CrescentMoonGlyph className="t-icon-spring size-3.5 text-primary/85" />
 							Descanso longo
 						</button>
 					</div>
@@ -221,10 +236,10 @@ export function DeathSaves({
 	return (
 		<section
 			aria-label="Salvaguardas contra a morte"
-			className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/35 bg-destructive/10 px-3 py-2.5"
+			className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-2.5"
 		>
-			<span className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-destructive">
-				<Skull className="size-4" aria-hidden />
+			<span className="flex items-center gap-2 whitespace-nowrap text-xs font-medium text-destructive">
+				<Skull className="size-3.5" aria-hidden />
 				Morte
 			</span>
 			<div className="flex gap-4">
@@ -233,7 +248,7 @@ export function DeathSaves({
 						<span className="text-[11px] text-muted-foreground">
 							{kind === "successes" ? "Sucessos" : "Falhas"}
 						</span>
-						<fieldset className="m-0 flex min-w-0 gap-1 border-0 p-0">
+						<fieldset className="m-0 flex min-w-0 border-0 p-1">
 							<legend className="sr-only">
 								{kind === "successes" ? "Sucessos" : "Falhas"}
 							</legend>
@@ -245,18 +260,23 @@ export function DeathSaves({
 									aria-label={`${kind === "successes" ? "Sucesso" : "Falha"} ${i + 1}`}
 									aria-pressed={i < saves[kind]}
 									onClick={() => set(kind, i)}
-									className={cn(
-										"size-6 cursor-pointer select-none rounded-full border-[1.5px] transition-[background-color,transform] duration-150 active:scale-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default",
-										kind === "successes"
-											? "border-primary/70"
-											: "border-destructive/70",
-										i < saves[kind]
-											? kind === "successes"
-												? "bg-primary"
-												: "bg-destructive"
-											: "bg-transparent",
-									)}
-								/>
+									className="group relative -mx-2 -my-2 inline-flex size-11 cursor-pointer select-none items-center justify-center rounded-full focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
+								>
+									<span
+										aria-hidden
+										className={cn(
+											"size-5 rounded-full border-[1.5px] transition-[background-color,border-color,transform] duration-150 group-active:scale-[0.92]",
+											kind === "successes"
+												? "border-primary/60"
+												: "border-destructive/60",
+											i < saves[kind]
+												? kind === "successes"
+													? "border-primary bg-primary/30 shadow-[inset_0_0_0_2px_var(--card)]"
+													: "border-destructive bg-destructive/30 shadow-[inset_0_0_0_2px_var(--card)]"
+												: "bg-transparent",
+										)}
+									/>
+								</button>
 							))}
 						</fieldset>
 					</div>

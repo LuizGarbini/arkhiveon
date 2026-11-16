@@ -1,10 +1,11 @@
-import { type KeyboardEvent, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SheetTab {
 	id: string;
 	label: string;
 	count?: number;
+	icon?: ReactNode;
 }
 
 export function sheetTabId(prefix: string, id: string) {
@@ -55,7 +56,7 @@ export function SheetTabs({
 			role="tablist"
 			aria-label="Seções da ficha"
 			onKeyDown={move}
-			className="-mx-1 flex gap-1 overflow-x-auto border-b border-border/60 px-1"
+			className="flex gap-1 overflow-x-auto rounded-xl border border-white/[0.07] bg-black/30 p-1 shadow-[inset_0_1px_0_oklch(1_0_0/0.03)]"
 		>
 			{tabs.map((tab) => {
 				const active = tab.id === value;
@@ -70,15 +71,28 @@ export function SheetTabs({
 						tabIndex={active ? 0 : -1}
 						onClick={() => onChange(tab.id)}
 						className={cn(
-							"relative flex min-h-11 shrink-0 cursor-pointer select-none items-center gap-1.5 px-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+							"group relative flex min-h-9 [@media(pointer:coarse)]:min-h-11 flex-1 shrink-0 cursor-pointer select-none items-center justify-center gap-1.5 rounded-lg px-2.5 text-[12px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
 							active
-								? "text-foreground after:absolute after:inset-x-2.5 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-primary"
-								: "text-muted-foreground [@media(hover:hover)]:hover:text-foreground",
+								? "bg-linear-to-b from-card-elevated to-card text-foreground shadow-[0_2px_10px_oklch(0_0_0/0.45),inset_0_1px_0_oklch(1_0_0/0.1)] ring-1 ring-primary/35"
+								: "text-muted-foreground [@media(hover:hover)]:hover:bg-white/[0.04] [@media(hover:hover)]:hover:text-foreground",
 						)}
 					>
+						{tab.icon ? (
+							<span
+								aria-hidden
+								className={cn(
+									"transition-colors",
+									active
+										? "text-primary"
+										: "text-muted-foreground/75 group-hover:text-foreground",
+								)}
+							>
+								{tab.icon}
+							</span>
+						) : null}
 						{tab.label}
 						{tab.count ? (
-							<span className="rounded-full bg-muted px-1.5 py-px text-[10.5px] font-semibold tabular-nums">
+							<span className="rounded-md border border-white/[0.08] bg-black/35 px-1.5 py-px font-mono text-[10.5px] font-medium tabular-nums">
 								{tab.count}
 							</span>
 						) : null}
