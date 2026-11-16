@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.132",
+	"version": "1.6.133",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -34,6 +34,7 @@
 		"check:stuck-keys": "node scripts/check-stuck-keys.cjs",
 		"check:ruler-pin": "node scripts/check-ruler-pin.cjs",
 		"check:pings": "node scripts/check-pings.cjs",
+		"check:ping-ctrl": "node scripts/check-ping-ctrl.cjs",
 		"check:fog-hide": "node scripts/check-fog-hide.cjs",
 		"check:light-zones": "node scripts/check-light-zones.cjs",
 		"check:paredes-livres": "node scripts/check-paredes-livres.cjs",

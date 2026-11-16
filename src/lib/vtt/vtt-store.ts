@@ -69,6 +69,11 @@ export interface PingWheelState {
 	worldY: number;
 	kinds: PingKind[];
 	hover: PingKind | null;
+	/**
+	 * A roda existe desde o aperto (o mouse já escolhe o tipo), mas só é desenhada depois de
+	 * um instante ou ao sair do miolo: um Ctrl+clique rápido não pisca a roda.
+	 */
+	visible: boolean;
 }
 
 /** Lista de tipos de ping: canto da lista, as opções e a que está sob o dedo. */
@@ -295,6 +300,7 @@ interface VTTState {
 	pingWheel: PingWheelState | null;
 	openPingWheel: (wheel: PingWheelState) => void;
 	setPingWheelHover: (hover: PingKind | null) => void;
+	revealPingWheel: () => void;
 	closePingWheel: () => void;
 	/** Lista de tipos aberta ao segurar o botão de ping da barra (celular). */
 	pingPicker: PingPickerState | null;
@@ -988,6 +994,12 @@ export const useVTTStore = create<VTTState>((set) => ({
 		),
 	closePingPicker: () =>
 		set((state) => (state.pingPicker ? { pingPicker: null } : state)),
+	revealPingWheel: () =>
+		set((state) =>
+			state.pingWheel && !state.pingWheel.visible
+				? { pingWheel: { ...state.pingWheel, visible: true } }
+				: state,
+		),
 	closePingWheel: () =>
 		set((state) => (state.pingWheel ? { pingWheel: null } : state)),
 	addPing: (ping, now = Date.now()) => {

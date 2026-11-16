@@ -114,12 +114,20 @@ const wheel = (over: Partial<PingWheelState> = {}): PingWheelState => ({
 	worldY: 20,
 	kinds: ["attention", "danger", "going", "help", "highlight"],
 	hover: null,
+	visible: true,
 	...over,
 });
 
 describe("roda de pings", () => {
 	it("não aparece com a roda fechada", () => {
 		expect(render(<VTTPingWheel />).container.textContent).toBe("");
+	});
+
+	it("aberta mas ainda não revelada (Ctrl+clique rápido), não desenha nada: sem piscar", () => {
+		useVTTStore.setState({ pingWheel: wheel({ visible: false }) });
+		const { container } = render(<VTTPingWheel />);
+		expect(container.textContent).toBe("");
+		expect(container.querySelector("[data-ping-wheel]")).toBeNull();
 	});
 
 	it("aparece no ponto onde abriu, com uma opção por tipo, e não intercepta cliques", () => {
@@ -154,7 +162,8 @@ describe("roda de pings", () => {
 	it("sem opção sob o cursor, orienta soltar no centro", () => {
 		useVTTStore.setState({ pingWheel: wheel() });
 		render(<VTTPingWheel />);
-		expect(screen.getByText(/Solte no centro/)).toBeTruthy();
+		expect(screen.getByText(/Arraste até um tipo e solte/)).toBeTruthy();
+		expect(screen.getByText(/Esc cancela/)).toBeTruthy();
 	});
 
 	it("a roda do mestre tem a opção 'Todos aqui'", () => {
@@ -239,6 +248,26 @@ describe("estado dos pings na store", () => {
 		expect(useVTTStore.getState().pingWheel).toBeNull();
 		useVTTStore.getState().setPingWheelHover("help");
 		expect(useVTTStore.getState().pingWheel).toBeNull();
+	});
+
+	it("a roda abre escondida e só aparece ao ser revelada (uma vez, sem refazer o estado à toa)", () => {
+		useVTTStore.getState().openPingWheel(wheel({ visible: false }));
+		expect(useVTTStore.getState().pingWheel?.visible).toBe(false);
+		useVTTStore.getState().revealPingWheel();
+		const shown = useVTTStore.getState().pingWheel;
+		expect(shown?.visible).toBe(true);
+		useVTTStore.getState().revealPingWheel();
+		expect(useVTTStore.getState().pingWheel).toBe(shown);
+		useVTTStore.getState().closePingWheel();
+		useVTTStore.getState().revealPingWheel();
+		expect(useVTTStore.getState().pingWheel).toBeNull();
+	});
+
+	it("escolher a opção sob o cursor não revela a roda sozinho", () => {
+		useVTTStore.getState().openPingWheel(wheel({ visible: false }));
+		useVTTStore.getState().setPingWheelHover("danger");
+		expect(useVTTStore.getState().pingWheel?.hover).toBe("danger");
+		expect(useVTTStore.getState().pingWheel?.visible).toBe(false);
 	});
 
 	it("a lista do celular segue a mesma regra", () => {

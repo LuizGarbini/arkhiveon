@@ -285,7 +285,8 @@ export function VTTToolbar() {
 			{
 				id: "select",
 				label: "Selecionar e mover vários",
-				tooltip: "Selecionar e mover (setas movem os selecionados)",
+				tooltip:
+					"Selecionar e mover (setas movem · Shift+arrastar soma à seleção · Ctrl+arrastar abre a roda de ping)",
 				icon: MousePointer2,
 				shortcut: "V",
 			},

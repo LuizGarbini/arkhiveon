@@ -11,12 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.132-vtt-setas-sem-travar",
-		version: "1.6.132",
+		id: "v1.6.133-vtt-setas-sem-travar",
+		version: "1.6.133",
 		date: "15/11/2026",
 		title: "Setas do teclado sem travar nem voltar para trás",
 		description:
 			"Alternar cima e baixo (ou direita e esquerda) rápido com as setas fazia o token travar, pular e até voltar para o lugar antigo. Agora o passo desliza em uma fração de segundo (e some se o sistema pede menos movimento), um passo novo continua de onde o token está, e rajadas de setas não reconstroem mais todos os tokens da mesa nem refazem a visão a cada toque. Por trás: o que você mandou gravar sai em ordem, uma gravação por token de cada vez, e a última posição sempre é gravada; o eco da própria gravação não puxa mais o token para trás. O histórico de movimentos continua com uma linha por movimento, e o arrasto com o mouse segue igual.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.132-vtt-roda-de-ping-ctrl-arrastar",
+		version: "1.6.132",
+		date: "15/11/2026",
+		title: "Roda de ping: Ctrl + apertar e arrastar, igual no Windows e no Mac",
+		description:
+			"A roda de ping só abria se você apertasse o botão com Ctrl e ficasse parado um instante; quem apertava e já arrastava (o jeito natural com mouse, no Windows) caía na caixa de seleção e a roda não aparecia, enquanto no Mac, onde o trackpad costuma segurar um instante antes de arrastar, funcionava. Agora a roda abre no mesmo momento em que você aperta o botão com Ctrl no mapa vazio, em qualquer sistema: arraste até o tipo e solte para pingar, solte no centro para usar o tipo escolhido, Esc cancela. O desenho da roda aparece um instante depois (ou assim que você arrasta), então um Ctrl+clique rápido continua mandando o ping do tipo escolhido sem piscar a roda. Atenção, muda um atalho: a caixa de seleção que soma à seleção agora é Shift+arrastar (ou Cmd+arrastar no Mac); Ctrl+arrastar abre a roda. Ctrl+clique em um token continua somando à seleção.",
 		bullets: [],
 	},
 	{

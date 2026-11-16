@@ -14,7 +14,7 @@ import { PING_KIND_ICON, PING_KIND_TEXT_CLASS } from "./ping-kind-ui";
  * Painel da ferramenta Ping: escolhe o tipo do próximo ping (atenção, perigo, a
  * caminho, ajuda, destacar personagem e, só para o mestre, "Todos aqui", que leva a
  * câmera de todos). Mostra também os atalhos: Alt + clique usa o tipo escolhido e
- * Ctrl + segurar no mapa abre a roda com todos os tipos.
+ * Ctrl + apertar e arrastar no mapa abre a roda com todos os tipos.
  */
 export function VTTPingControls() {
 	const activeTool = useVTTStore((s) => s.activeTool);
@@ -46,7 +46,7 @@ export function VTTPingControls() {
 						<Kbd>Alt</Kbd> + clique usa o tipo escolhido
 					</span>
 					<span className="flex items-center gap-1 [@media(hover:none)]:hidden">
-						<Kbd>Ctrl</Kbd> segurado no mapa abre a roda
+						<Kbd>Ctrl</Kbd> + apertar e arrastar no mapa abre a roda
 					</span>
 				</p>
 			}
