@@ -157,6 +157,45 @@ describe("seletor da minha cor", () => {
 		expect(input.getAttribute("type")).toBe("color");
 	});
 
+	it("mostra a foto escolhida e não desenha javascript: nem data:", () => {
+		useVTTStore.setState({
+			onlineUsers: [
+				{
+					userId: "ana",
+					userName: "Ana",
+					avatarUrl: "https://lh3.googleusercontent.com/a/foto",
+					color: "#22c55e",
+					isGM: false,
+					onlineAt: 1,
+				},
+				{
+					userId: "bob",
+					userName: "Bob",
+					avatarUrl: "javascript://lh3.googleusercontent.com/a",
+					color: "#db2777",
+					isGM: false,
+					onlineAt: 2,
+				},
+				{
+					userId: "cia",
+					userName: "Cia",
+					avatarUrl: "data:image/svg+xml,<svg/>",
+					color: "#2563eb",
+					isGM: false,
+					onlineAt: 3,
+				},
+			],
+		});
+		render(<VTTPresenceBar />);
+		const ana = screen.getByTitle(/^Ana/);
+		expect(ana.querySelector("img")?.getAttribute("src")).toBe(
+			"https://lh3.googleusercontent.com/a/foto",
+		);
+		expect(screen.getByTitle(/^Bob/).querySelector("img")).toBeNull();
+		expect(screen.getByTitle(/^Bob/).textContent).toContain("BO");
+		expect(screen.getByTitle(/^Cia/).querySelector("img")).toBeNull();
+	});
+
 	it("cor livre só é gravada depois que o arrasto sossega", async () => {
 		render(<VTTPresenceBar />);
 		openPicker();
