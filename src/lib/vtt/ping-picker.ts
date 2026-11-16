@@ -12,7 +12,7 @@ export const PICKER_MOVE_SLOP_PX = 10;
 export const PICKER_ITEM_PX = 48;
 export const PICKER_GAP_PX = 6;
 /** Largura da lista (px) e distância dela até o botão. */
-export const PICKER_WIDTH_PX = 188;
+export const PICKER_WIDTH_PX = 240;
 export const PICKER_OFFSET_PX = 14;
 
 export interface PickerBox {

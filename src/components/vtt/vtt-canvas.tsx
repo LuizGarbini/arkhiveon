@@ -70,6 +70,14 @@ import {
 	type PingKind,
 	pingKindsFor,
 } from "@/lib/vtt/ping-kinds";
+import { syncPingLabels } from "@/lib/vtt/ping-labels";
+import {
+	notePingPaint,
+	notePixiBoot,
+	noteVisionPass,
+} from "@/lib/vtt/ping-latency";
+import type { PingLabelSpec } from "@/lib/vtt/ping-motion";
+import { prefersReducedMotion } from "@/lib/vtt/ping-motion";
 import {
 	type ActivePing,
 	createPingAnimationLoop,
@@ -77,6 +85,11 @@ import {
 } from "@/lib/vtt/ping-queue";
 import { highlightTarget } from "@/lib/vtt/ping-target";
 import { kindAtOffset, WHEEL_DEAD_ZONE_PX } from "@/lib/vtt/ping-wheel";
+import {
+	hideWheelDom,
+	revealWheelDom,
+	showPingWheelFrame,
+} from "@/lib/vtt/ping-wheel-dom";
 import { attachRemoteCursors } from "@/lib/vtt/remote-cursor-layer";
 import {
 	rulerOnKey,
@@ -227,7 +240,12 @@ function paintPings(
 	context: PingPaintContext,
 ) {
 	layer.clear();
-	for (const ping of pings) drawPing(layer, ping, now, context);
+	const labels: PingLabelSpec[] = [];
+	for (const ping of pings) {
+		const label = drawPing(layer, ping, now, context);
+		if (label) labels.push(label);
+	}
+	syncPingLabels(layer, labels);
 }
 
 function paintTokenAuras(
@@ -686,14 +704,13 @@ export function VTTCanvas({
 	visionListRef.current = visionList;
 	const wallsRef = useRef(blockers);
 	wallsRef.current = blockers;
-	const tokenVisibility = useMemo(
-		() =>
-			visibleTokenIds(tokens, isGM, scene, {
-				sources: visionList,
-				walls: blockers,
-			}),
-		[tokens, isGM, scene, visionList, blockers],
-	);
+	const tokenVisibility = useMemo(() => {
+		noteVisionPass();
+		return visibleTokenIds(tokens, isGM, scene, {
+			sources: visionList,
+			walls: blockers,
+		});
+	}, [tokens, isGM, scene, visionList, blockers]);
 	const diagonalRule = useVTTStore((s) => s.diagonalRule);
 	const activeTemplateKind = useVTTStore((s) => s.activeTemplateKind);
 	const previewTemplate = useVTTStore((s) => s.previewTemplate);
@@ -726,6 +743,7 @@ export function VTTCanvas({
 				resolution: window.devicePixelRatio || 1,
 				autoDensity: true,
 			});
+			notePixiBoot();
 
 			if (!isMounted) {
 				app.destroy(true, { children: true });
@@ -903,10 +921,16 @@ export function VTTCanvas({
 					for (const id of ids) removePing(id);
 				},
 				draw: (pings, now) => {
-					paintPings(pingsLayer, pings, now, pingContext);
+					notePingPaint();
+					paintPings(pingsLayer, pings, now, {
+						...pingContext,
+						reducedMotion: prefersReducedMotion(),
+						zoom: useVTTStore.getState().viewport.scale,
+					});
 				},
 				clear: () => {
 					pingsLayer.clear();
+					syncPingLabels(pingsLayer, []);
 				},
 				addTicker: (tick) => {
 					app.ticker.add(tick);
@@ -2241,7 +2265,7 @@ export function VTTCanvas({
 			x,
 			y,
 			userId: userIdRef.current ?? "self",
-			userName: isGM ? "Mestre" : "Jogador",
+			userName: userNameRef.current || (isGM ? "Mestre" : "Jogador"),
 			color: userColor,
 			timestamp: Date.now(),
 			kind,
@@ -2842,8 +2866,10 @@ export function VTTCanvas({
 					timer: null as ReturnType<typeof setTimeout> | null,
 				};
 				hold.timer = setTimeout(() => {
-					if (pingHoldRef.current === hold)
-						useVTTStore.getState().revealPingWheel();
+					if (pingHoldRef.current !== hold) return;
+					const root = document.querySelector<HTMLElement>("[data-ping-wheel]");
+					if (root) revealWheelDom(root);
+					useVTTStore.getState().revealPingWheel();
 				}, WHEEL_REVEAL_MS);
 				pingHoldRef.current = hold;
 				held.openPingWheel({
@@ -2938,22 +2964,24 @@ export function VTTCanvas({
 		const handlePointerMove = (e: PointerEvent) => {
 			const hold = pingHoldRef.current;
 			if (hold) {
-				// Com a roda aberta (desde o aperto) o mouse só escolhe a opção; ela aparece
-				// assim que o mouse sai do miolo, sem esperar o tempo.
+				// A roda aparece neste quadro, assim que o ponteiro sai do miolo.
+				// O destaque troca um atributo; não reconstrói a roda nem o Pixi.
 				const wheel = useVTTStore.getState().pingWheel;
 				if (wheel) {
 					const dx = e.clientX - wheel.x;
 					const dy = e.clientY - wheel.y;
-					const live = useVTTStore.getState();
-					live.setPingWheelHover(kindAtOffset(dx, dy, wheel.kinds));
+					const hover = kindAtOffset(dx, dy, wheel.kinds);
 					if (
 						wheelRevealed(
 							Date.now() - hold.startedAt,
 							Math.hypot(dx, dy),
 							WHEEL_DEAD_ZONE_PX,
 						)
-					)
-						live.revealPingWheel();
+					) {
+						showPingWheelFrame(hover);
+					} else if (wheel.hover !== hover) {
+						useVTTStore.getState().setPingWheelHover(hover);
+					}
 				}
 				return;
 			}
@@ -3314,6 +3342,7 @@ export function VTTCanvas({
 				pingHoldRef.current = null;
 				const live = useVTTStore.getState();
 				const wheel = live.pingWheel;
+				hideWheelDom(document.querySelector<HTMLElement>("[data-ping-wheel]"));
 				live.closePingWheel();
 				if (e.type !== "pointercancel" && wheel) {
 					sendPingRef.current(wheel.hover ?? live.pingKind, {

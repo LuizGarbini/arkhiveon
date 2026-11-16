@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -7,6 +8,8 @@ import {
 	within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { pingFrameStats } from "@/lib/vtt/ping-latency";
+import { showPingWheelFrame } from "@/lib/vtt/ping-wheel-dom";
 import { type PingWheelState, useVTTStore } from "@/lib/vtt/vtt-store";
 import { VTTPingControls } from "./vtt-ping-controls";
 import { VTTPingPicker } from "./vtt-ping-picker";
@@ -123,10 +126,9 @@ describe("roda de pings", () => {
 		expect(render(<VTTPingWheel />).container.textContent).toBe("");
 	});
 
-	it("aberta mas ainda não revelada (Ctrl+clique rápido), não desenha nada: sem piscar", () => {
+	it("aberta mas ainda não revelada não entra no DOM: o Ctrl+clique rápido não pisca", () => {
 		useVTTStore.setState({ pingWheel: wheel({ visible: false }) });
 		const { container } = render(<VTTPingWheel />);
-		expect(container.textContent).toBe("");
 		expect(container.querySelector("[data-ping-wheel]")).toBeNull();
 	});
 
@@ -164,6 +166,52 @@ describe("roda de pings", () => {
 		render(<VTTPingWheel />);
 		expect(screen.getByText(/Arraste até um tipo e solte/)).toBeTruthy();
 		expect(screen.getByText(/Esc cancela/)).toBeTruthy();
+	});
+
+	it("sair do centro mostra a roda neste turno, e o destaque não a reconstrói", () => {
+		render(<VTTPingWheel />);
+		act(() => {
+			useVTTStore
+				.getState()
+				.openPingWheel(wheel({ visible: false, hover: null }));
+		});
+		expect(document.querySelector("[data-ping-wheel]")).toBeNull();
+		const before = pingFrameStats().wheelRenders;
+		let frame = { revealed: false, ms: 0 };
+		act(() => {
+			frame = showPingWheelFrame("danger");
+		});
+		const root = document.querySelector("[data-ping-wheel]") as HTMLElement;
+		const chips = root.querySelectorAll("[data-ping-kind]").length;
+		expect(frame.revealed).toBe(true);
+		expect(frame.ms).toBeLessThan(40);
+		expect(root.dataset.revealed).toBe("true");
+		expect(root.hidden).toBe(false);
+		expect(
+			root
+				.querySelector('[data-ping-kind="danger"]')
+				?.getAttribute("data-active"),
+		).toBe("true");
+		const mid = pingFrameStats().wheelRenders;
+		expect(mid - before).toBeLessThanOrEqual(2);
+		act(() => {
+			showPingWheelFrame("help");
+		});
+		expect(pingFrameStats().wheelRenders).toBe(mid);
+		expect(root.querySelectorAll("[data-ping-kind]").length).toBe(chips);
+		expect(
+			root
+				.querySelector('[data-ping-kind="help"]')
+				?.getAttribute("data-active"),
+		).toBe("true");
+		expect(
+			root
+				.querySelector('[data-ping-kind="danger"]')
+				?.getAttribute("data-active"),
+		).toBe("false");
+		expect(root.querySelector("[data-ping-wheel-label]")?.textContent).toBe(
+			"Ajuda",
+		);
 	});
 
 	it("a roda do mestre tem a opção 'Todos aqui'", () => {

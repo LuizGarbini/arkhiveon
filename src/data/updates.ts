@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.150-vtt-pings-ondas",
+		version: "1.6.150",
+		date: "15/11/2026",
+		title: "Pings em ondas de energia, na cor de quem chamou",
+		description:
+			"O ping no mapa agora é uma onda de energia com brilho médio: um halo no chão, dois ou três anéis, o símbolo com sombra e uma etiqueta com o nome de quem pingou. A cor da pessoa entra na onda (perigo, a caminho, ajuda e o chamado do mestre misturam essa cor com a do tipo; atenção e destacar ficam na cor dela). Atenção ondula devagar, perigo pulsa rápido, a caminho mostra chevrons, ajuda faz um pulso duplo e destacar põe setas em volta do personagem. O ping entra suave e some aos poucos, lê em mapa claro e escuro e cresce junto com o zoom. Quem pediu menos movimento no sistema vê só o aparecer e o sumir, sem onda. A roda do Ctrl acompanha o arrasto no mesmo instante: aparece quando o ponteiro sai do centro, a opção acende sem redesenhar a roda, e soltar mostra o ping na hora. No celular, a lista de tipos ganhou o mesmo acabamento.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.132-vtt-roda-de-ping-ctrl-arrastar",
 		version: "1.6.132",
 		date: "15/11/2026",
