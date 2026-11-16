@@ -11,12 +11,39 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.133-vtt-setas-sem-travar",
-		version: "1.6.133",
+		id: "v1.6.151-vtt-setas-sem-travar",
+		version: "1.6.151",
 		date: "15/11/2026",
 		title: "Setas do teclado sem travar nem voltar para trás",
 		description:
 			"Alternar cima e baixo (ou direita e esquerda) rápido com as setas fazia o token travar, pular e até voltar para o lugar antigo. Agora o passo desliza em uma fração de segundo (e some se o sistema pede menos movimento), um passo novo continua de onde o token está, e rajadas de setas não reconstroem mais todos os tokens da mesa nem refazem a visão a cada toque. Por trás: o que você mandou gravar sai em ordem, uma gravação por token de cada vez, e a última posição sempre é gravada; o eco da própria gravação não puxa mais o token para trás. O histórico de movimentos continua com uma linha por movimento, e o arrasto com o mouse segue igual.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.150-vtt-pings-ondas",
+		version: "1.6.150",
+		date: "15/11/2026",
+		title: "Pings em ondas de energia, na cor de quem chamou",
+		description:
+			"O ping no mapa agora é uma onda de energia com brilho médio: um halo no chão, dois ou três anéis, o símbolo com sombra e uma etiqueta com o nome de quem pingou. A cor da pessoa entra na onda (perigo, a caminho, ajuda e o chamado do mestre misturam essa cor com a do tipo; atenção e destacar ficam na cor dela). Atenção ondula devagar, perigo pulsa rápido, a caminho mostra chevrons, ajuda faz um pulso duplo e destacar põe setas em volta do personagem. O ping entra suave e some aos poucos, lê em mapa claro e escuro e cresce junto com o zoom. Quem pediu menos movimento no sistema vê só o aparecer e o sumir, sem onda. A roda do Ctrl acompanha o arrasto no mesmo instante: aparece quando o ponteiro sai do centro, a opção acende sem redesenhar a roda, e soltar mostra o ping na hora. No celular, a lista de tipos ganhou o mesmo acabamento.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.141-foto-na-mesa-recorte",
+		version: "1.6.141",
+		date: "15/11/2026",
+		title: "Foto na mesa com recorte e botões no tamanho certo",
+		description:
+			"A escolha da foto na mesa deixou de ser uma faixa de ponta a ponta. Agora são botões do tamanho do texto, ao lado da prévia, e Enviar e recortar abre o enquadramento em círculo antes de subir a imagem.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.140-foto-na-mesa",
+		version: "1.6.140",
+		date: "15/11/2026",
+		title: "Escolha a foto que os outros veem na mesa",
+		description:
+			"Em Minha conta, a seção Foto na mesa deixa você escolher o que aparece no canto da mesa: a foto do Google (quando a conta tem uma), uma imagem que você envia, ou só as iniciais. A prévia usa a cor do seu cursor. A escolha fica salva na conta e vale nos outros aparelhos. Quem está na mesa vê a troca ao vivo. O envio redimensiona a imagem neste aparelho antes de subir, o botão fica desabilitado enquanto envia, e se falhar o aviso aparece ao lado dele. Uma foto mandada por outro cliente só entra se for um endereço https do armazenamento deste projeto ou da foto do Google.",
 		bullets: [],
 	},
 	{

@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.133",
+	"version": "1.6.151",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -35,9 +35,11 @@
 		"check:ruler-pin": "node scripts/check-ruler-pin.cjs",
 		"check:pings": "node scripts/check-pings.cjs",
 		"check:ping-ctrl": "node scripts/check-ping-ctrl.cjs",
+		"check:pings-visual": "node scripts/check-pings-visual.cjs",
 		"check:fog-hide": "node scripts/check-fog-hide.cjs",
 		"check:light-zones": "node scripts/check-light-zones.cjs",
 		"check:paredes-livres": "node scripts/check-paredes-livres.cjs",
+		"check:foto-conta": "node scripts/check-foto-conta.cjs",
 		"impeccable:detect": "impeccable detect src/components/vtt/vtt-ai-chat.tsx src/components/vtt/sheet-batch-review.tsx src/components/ai-mesa/shell-ai-chat.tsx src/lib/ai-mesa/sheet-batch.ts"
 	},
 	"dependencies": {

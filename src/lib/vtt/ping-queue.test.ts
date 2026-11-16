@@ -235,7 +235,7 @@ describe("incoming ping", () => {
 });
 
 describe("ping animation loop", () => {
-	it("draws on the ticker and stops calling it when no ping remains", () => {
+	it("draws in the same turn the ping arrives, then on the ticker until it ends", () => {
 		const pings: ActivePing[] = [];
 		const tickers: Array<() => void> = [];
 		let now = 1_000;
@@ -283,16 +283,15 @@ describe("ping animation loop", () => {
 		expect(tickers).toHaveLength(1);
 		expect(loop.stats().adds).toBe(1);
 		expect(loop.stats().maxActive).toBe(1);
+		expect(drawn).toBe(1);
+		const radiusAtStart = loop.stats().lastRadius;
+		expect(radiusAtStart).toBe(20);
 
 		const tick = tickers[0];
 		if (!tick) throw new Error("ticker ausente");
-		tick();
-		const radiusAtStart = loop.stats().lastRadius;
-		expect(drawn).toBe(1);
-		expect(radiusAtStart).toBe(20);
-
 		now = 1_600;
 		tick();
+		expect(drawn).toBe(2);
 		expect(loop.stats().lastRadius).toBeGreaterThan(radiusAtStart);
 		expect(loop.stats().lastAlpha).toBeLessThan(1);
 

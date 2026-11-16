@@ -1,7 +1,10 @@
-import { Heart, ShieldPlus } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+	VitalityHeartGlyph,
+	WardShieldGlyph,
+} from "@/components/vtt/sheet/sheet-icons";
 import { cn } from "@/lib/utils";
 import { visibleHpLabel } from "@/lib/vtt/character-hp";
 import { planHpDelta } from "@/lib/vtt/hp-delta";
@@ -83,58 +86,71 @@ export function VttHpAdjust({
 		}, button);
 	};
 
+	const numberInputClass =
+		"h-11 border-0 bg-transparent px-2.5 pt-4 pb-0.5 font-mono text-[16px] md:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
 	return (
-		<div className="space-y-2" aria-busy={saving}>
+		<div
+			className="space-y-2 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-3 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
+			aria-busy={saving}
+		>
 			<output
 				data-testid="vtt-hp-saving"
 				aria-hidden={saving ? undefined : true}
 				className={cn(
-					"pointer-events-none block h-[18px] overflow-hidden text-xs font-semibold leading-[18px] text-muted-foreground",
+					"pointer-events-none -mt-2 block h-[18px] overflow-hidden text-[11px] font-medium leading-[18px] text-muted-foreground transition-opacity duration-150",
 					saving ? "opacity-100" : "opacity-0",
 				)}
 			>
 				Salvando…
 			</output>
-			<div className="flex items-center justify-between text-xs font-bold">
-				<span className="flex items-center gap-1.5 text-primary">
-					<Heart className="h-3.5 w-3.5" />
+			<div className="flex items-center justify-between gap-1.5 whitespace-nowrap">
+				<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-muted-foreground">
+					<VitalityHeartGlyph className="size-3.5 text-primary/85" />
 					Pontos de vida
 				</span>
-				<div className="flex items-center gap-1.5 font-mono text-foreground tabular-nums">
-					<span>{visibleHpLabel(hpCurrent, hpMax, showMax)}</span>
+				<div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-xs font-semibold text-foreground tabular-nums">
+					<span
+						key={hpCurrent}
+						className="inline-block whitespace-nowrap animate-[t-digit-pop-in_320ms_cubic-bezier(0.34,1.45,0.64,1)_both] motion-reduce:animate-none"
+					>
+						{visibleHpLabel(hpCurrent, hpMax, showMax)}
+					</span>
 					{tempHp > 0 && (
-						<span className="rounded-md border border-cyan-500/30 bg-cyan-500/15 px-1.5 py-0.5 text-[11px] font-bold text-cyan-300">
-							+{tempHp} temp
+						<span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/12 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)]">
+							<WardShieldGlyph className="size-3" />+{tempHp} temp
 						</span>
 					)}
 				</div>
 			</div>
-			<div className="h-2 overflow-hidden rounded-full bg-muted flex">
+			<div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-black/45 p-0.5 ring-1 ring-inset ring-white/[0.07]">
 				<div
 					data-testid="vtt-hp-bar"
-					className="h-full rounded-full bg-primary transition-[width] duration-150"
+					className="h-full rounded-full bg-primary bg-linear-to-r from-primary-dark via-primary to-[oklch(0.74_0.19_295)] shadow-[0_0_10px_var(--primary-glow)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
 					style={{ width: `${ratio * 100}%` }}
 				/>
 				{tempHp > 0 && hpMax > 0 && (
 					<div
 						data-testid="vtt-temp-hp-bar"
-						className="h-full rounded-full bg-cyan-400 transition-[width] duration-150 ml-0.5"
+						className="h-full rounded-full bg-primary/45 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
 						style={{ width: `${Math.min(100, (tempHp / hpMax) * 100)}%` }}
 					/>
 				)}
 			</div>
 			{onChange && (
-				<div className="grid grid-cols-4 gap-1.5">
+				<div className="grid grid-cols-4 divide-x divide-white/[0.09] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 					{[-5, -1, 1, 5].map((delta) => (
 						<Button
 							type="button"
 							key={delta}
-							variant="outline"
+							variant="ghost"
 							size="sm"
 							disabled={saving}
 							className={cn(
-								"min-h-11 font-mono tabular-nums",
-								delta < 0 ? "text-destructive" : "text-primary",
+								"h-9 rounded-none border-0 bg-linear-to-b from-white/[0.03] to-transparent font-mono text-xs font-medium tabular-nums focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary [@media(pointer:coarse)]:min-h-11",
+								delta < 0
+									? "text-destructive/85 hover:bg-destructive/15 hover:text-destructive"
+									: "text-primary/90 hover:bg-primary/15 hover:text-primary",
 							)}
 							onClick={(event) => handleDelta(delta, event.currentTarget)}
 						>
@@ -146,7 +162,7 @@ export function VttHpAdjust({
 
 			{onChangeTempHp && (
 				<form
-					className="flex items-end gap-1.5 pt-1"
+					className="flex items-stretch divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] transition-all focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
 					onSubmit={(event) => {
 						event.preventDefault();
 						if (pendingRef.current) return;
@@ -163,12 +179,12 @@ export function VttHpAdjust({
 						setTempDraft(null);
 					}}
 				>
-					<div className="min-w-0 flex-1 space-y-1">
+					<div className="relative min-w-0 flex-1">
 						<label
 							htmlFor={tempFieldId}
-							className="text-xs font-bold text-cyan-400 flex items-center gap-1"
+							className="pointer-events-none absolute top-1 left-2.5 flex items-center gap-1 text-[10px] font-medium text-muted-foreground"
 						>
-							<ShieldPlus className="h-3.5 w-3.5" />
+							<WardShieldGlyph className="size-3 text-primary/80" />
 							Vida temporária
 						</label>
 						<Input
@@ -183,14 +199,14 @@ export function VttHpAdjust({
 							placeholder="0"
 							value={tempDraft ?? (tempHp > 0 ? String(tempHp) : "")}
 							onChange={(event) => setTempDraft(event.target.value)}
-							className="h-11 text-base tabular-nums border-cyan-500/30 focus-visible:ring-cyan-500"
+							className={numberInputClass}
 						/>
 					</div>
 					<Button
 						type="submit"
-						variant="outline"
+						variant="ghost"
 						disabled={saving}
-						className="h-11 min-h-11 select-none border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 cursor-pointer"
+						className="h-11 min-h-11 shrink-0 select-none rounded-none border-0 bg-white/[0.025] px-3 text-xs font-medium text-foreground hover:bg-primary/12 hover:text-primary focus-visible:z-10"
 					>
 						Definir
 					</Button>
@@ -204,7 +220,7 @@ export function VttHpAdjust({
 								btn.blur();
 								run(() => onChangeTempHp(0), btn);
 							}}
-							className="h-11 min-h-11 select-none text-muted-foreground hover:text-destructive px-2 cursor-pointer"
+							className="h-11 min-h-11 shrink-0 select-none rounded-none border-0 px-2.5 text-xs font-medium text-muted-foreground hover:bg-destructive/12 hover:text-destructive focus-visible:z-10"
 						>
 							Zerar
 						</Button>
@@ -214,7 +230,7 @@ export function VttHpAdjust({
 
 			{(onChange || onChangeHp || onChangeMax) && (
 				<form
-					className="space-y-2 pt-1"
+					className="flex items-stretch divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] transition-all focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
 					onSubmit={(event) => {
 						event.preventDefault();
 						if (pendingRef.current) return;
@@ -263,58 +279,55 @@ export function VttHpAdjust({
 						);
 					}}
 				>
-					<div
-						className={cn(
-							"grid gap-2",
-							showMax && (onChangeMax || onChangeHp)
-								? "grid-cols-2"
-								: "grid-cols-1",
-						)}
-					>
-						<div className="min-w-0 space-y-1">
-							<label htmlFor={currentFieldId} className="text-xs font-bold">
-								PV atual
+					<div className="relative min-w-0 flex-1">
+						<label
+							htmlFor={currentFieldId}
+							className="pointer-events-none absolute top-1 left-2.5 text-[10px] font-medium text-muted-foreground"
+						>
+							PV atual
+						</label>
+						<Input
+							id={currentFieldId}
+							type="number"
+							min={0}
+							inputMode="numeric"
+							spellCheck={false}
+							autoComplete="off"
+							disabled={saving}
+							aria-label="PV atual"
+							value={currentDraft ?? String(hpCurrent)}
+							onChange={(event) => setCurrentDraft(event.target.value)}
+							className={numberInputClass}
+						/>
+					</div>
+					{showMax && (onChangeMax || onChangeHp) ? (
+						<div className="relative min-w-0 flex-1">
+							<label
+								htmlFor={maxFieldId}
+								className="pointer-events-none absolute top-1 left-2.5 text-[10px] font-medium text-muted-foreground"
+							>
+								PV máximo
 							</label>
 							<Input
-								id={currentFieldId}
+								id={maxFieldId}
 								type="number"
-								min={0}
+								min={1}
 								inputMode="numeric"
 								spellCheck={false}
 								autoComplete="off"
 								disabled={saving}
-								aria-label="PV atual"
-								value={currentDraft ?? String(hpCurrent)}
-								onChange={(event) => setCurrentDraft(event.target.value)}
-								className="h-11 text-base tabular-nums"
+								aria-label="PV máximo"
+								value={maxDraft ?? String(hpMax)}
+								onChange={(event) => setMaxDraft(event.target.value)}
+								className={numberInputClass}
 							/>
 						</div>
-						{showMax && (onChangeMax || onChangeHp) ? (
-							<div className="min-w-0 space-y-1">
-								<label htmlFor={maxFieldId} className="text-xs font-bold">
-									PV máximo
-								</label>
-								<Input
-									id={maxFieldId}
-									type="number"
-									min={1}
-									inputMode="numeric"
-									spellCheck={false}
-									autoComplete="off"
-									disabled={saving}
-									aria-label="PV máximo"
-									value={maxDraft ?? String(hpMax)}
-									onChange={(event) => setMaxDraft(event.target.value)}
-									className="h-11 text-base tabular-nums"
-								/>
-							</div>
-						) : null}
-					</div>
+					) : null}
 					<Button
 						type="submit"
-						variant="outline"
+						variant="ghost"
 						disabled={saving}
-						className="h-11 min-h-11 w-full select-none cursor-pointer font-semibold"
+						className="h-11 min-h-11 shrink-0 select-none rounded-none border-0 bg-white/[0.025] px-3 text-xs font-medium text-foreground hover:bg-primary/12 hover:text-primary focus-visible:z-10"
 					>
 						Aplicar
 					</Button>

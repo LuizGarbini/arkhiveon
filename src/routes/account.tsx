@@ -1,14 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BookOpen, Mail, ShieldCheck, User, WandSparkles } from "lucide-react";
+import { TablePhotoCard } from "@/components/account/table-photo-card";
 import { PageHeader } from "@/components/page-header";
+import {
+	persistTablePhoto,
+	tablePresenceName,
+	uploadTablePhoto,
+} from "@/lib/account/table-photo";
 import { useAuth } from "@/lib/auth";
+import { imageStorage } from "@/lib/image-storage";
 import { useRPGStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
+import { pickCursorColor } from "@/lib/vtt/cursor-color";
+import { readChosenCursorColor } from "@/lib/vtt/cursor-prefs";
 
 export const Route = createFileRoute("/account")({
 	component: AccountPage,
 });
 
-function AccountPage() {
+export function AccountPage() {
 	const { user, session } = useAuth();
 	const characters = useRPGStore((state) => state.characters.length);
 	const npcs = useRPGStore((state) => state.npcs.length);
@@ -20,6 +30,10 @@ function AccountPage() {
 			? metadataName
 			: "Aventureiro";
 	const userEmail = user?.email || "Sem e-mail cadastrado";
+	const presenceName = tablePresenceName(user);
+	const cursorColor = user?.id
+		? (readChosenCursorColor(user.id) ?? pickCursorColor(user.id))
+		: pickCursorColor("conta");
 	const createdAt = user?.created_at
 		? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(
 				new Date(user.created_at),
@@ -44,6 +58,13 @@ function AccountPage() {
 
 			<div className="px-6 pb-10 sm:px-8">
 				<div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+					<TablePhotoCard
+						name={presenceName}
+						metadata={user?.user_metadata}
+						color={cursorColor}
+						onSave={(mode, url) => persistTablePhoto(getSupabase(), mode, url)}
+						onUpload={(file) => uploadTablePhoto(file, imageStorage)}
+					/>
 					<div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
 						<section className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm shadow-black/5">
 							<div className="flex items-center gap-4">

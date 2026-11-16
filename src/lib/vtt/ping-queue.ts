@@ -325,6 +325,8 @@ export function createPingAnimationLoop(deps: {
 		} else if (count === 0 && attached) {
 			detach();
 		}
+		// O ping local nasce neste quadro: não espera o próximo tick do Pixi.
+		if (attached && count > 0) tick();
 		publish();
 	};
 

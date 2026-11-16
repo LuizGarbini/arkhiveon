@@ -64,6 +64,53 @@ describe("presença que chega da rede", () => {
 		expect(users.map((u) => u.userId)).toEqual(["k4"]);
 	});
 
+	it("a foto vinda de outro cliente só passa se for https do storage ou do Google", () => {
+		const storage = {
+			supabaseUrl: "https://axnektdqoxjhbbfsidfj.supabase.co",
+			r2PublicUrl: "https://cdn.foto.test",
+		};
+		const google = "https://lh3.googleusercontent.com/a/foto";
+		const mine = "https://cdn.foto.test/user/table-photo/a.webp";
+		const users = readPresenceUsers(
+			{
+				ok: [{ userId: "ok", userName: "Ana", avatarUrl: google }],
+				up: [{ userId: "up", userName: "Bia", avatarUrl: mine }],
+				js: [{ userId: "js", avatarUrl: "javascript:alert(1)" }],
+				disguised: [
+					{
+						userId: "disguised",
+						avatarUrl: "javascript://lh3.googleusercontent.com/a",
+					},
+				],
+				data: [
+					{
+						userId: "data",
+						avatarUrl: 'data:image/svg+xml,<svg onload="alert(1)"/>',
+					},
+				],
+				evil: [{ userId: "evil", avatarUrl: "https://evil.example/a.png" }],
+				http: [
+					{
+						userId: "http",
+						avatarUrl: "http://lh3.googleusercontent.com/a",
+					},
+				],
+			},
+			1,
+			storage,
+		);
+		const byId = Object.fromEntries(
+			users.map((user) => [user.userId, user.avatarUrl]),
+		);
+		expect(byId.ok).toBe(google);
+		expect(byId.up).toBe(mine);
+		expect(byId.js).toBeNull();
+		expect(byId.disguised).toBeNull();
+		expect(byId.data).toBeNull();
+		expect(byId.evil).toBeNull();
+		expect(byId.http).toBeNull();
+	});
+
 	it("limpa o nome: sem controle, curto, com valor padrão", () => {
 		expect(cleanName("  Luiz\u0000\n Garbini ", "x")).toBe("Luiz   Garbini");
 		expect(cleanName("a".repeat(500), "x")).toHaveLength(40);

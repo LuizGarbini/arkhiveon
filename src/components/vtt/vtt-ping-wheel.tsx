@@ -1,8 +1,12 @@
 import { cn } from "@/lib/utils";
-import { pingKindInfo } from "@/lib/vtt/ping-kinds";
+import type { PingKind } from "@/lib/vtt/ping-kinds";
+import { noteWheelRender } from "@/lib/vtt/ping-latency";
 import { chipOffset, WHEEL_RADIUS_PX } from "@/lib/vtt/ping-wheel";
+import { wheelHoverLabel } from "@/lib/vtt/ping-wheel-dom";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { PING_KIND_ICON, PING_KIND_TEXT_CLASS } from "./ping-kind-ui";
+
+const NO_KINDS: readonly PingKind[] = [];
 
 /**
  * Roda de pings que abre em volta do ponto onde você aperta o botão com Ctrl no mapa
@@ -13,41 +17,53 @@ import { PING_KIND_ICON, PING_KIND_TEXT_CLASS } from "./ping-kind-ui";
  * tela (o mesmo se escolhe na ferramenta Ping).
  */
 export function VTTPingWheel() {
-	const wheel = useVTTStore((s) => s.pingWheel);
-	if (!wheel?.visible) return null;
-	const hovered = wheel.hover ? pingKindInfo(wheel.hover) : null;
+	noteWheelRender();
+	const open = useVTTStore((s) => s.pingWheel != null);
+	const x = useVTTStore((s) => s.pingWheel?.x ?? 0);
+	const y = useVTTStore((s) => s.pingWheel?.y ?? 0);
+	const visible = useVTTStore((s) => s.pingWheel?.visible ?? false);
+	const kinds = useVTTStore((s) => s.pingWheel?.kinds ?? NO_KINDS);
+	// Escondida, não entra no DOM: um Ctrl+clique rápido não pode piscar a roda.
+	if (!open || !visible) return null;
+	// O destaque ao vivo não assina o hover: o canvas troca o atributo no DOM.
+	const hover = useVTTStore.getState().pingWheel?.hover ?? null;
 
 	return (
 		<div
 			aria-hidden
 			data-ping-wheel
+			data-revealed={visible ? "true" : "false"}
+			hidden={!visible}
 			className="pointer-events-none fixed z-[70] select-none"
-			style={{ left: wheel.x, top: wheel.y }}
+			style={{
+				left: x,
+				top: y,
+				visibility: visible ? "visible" : "hidden",
+			}}
 		>
-			<div className="animate-in fade-in zoom-in-95 duration-150">
-				<span className="absolute top-0 left-0 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-card shadow-lg" />
+			<div className="motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-150 motion-reduce:animate-in motion-reduce:fade-in motion-reduce:duration-150">
 				<span
-					className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/50 bg-card/40 backdrop-blur-md"
+					className="pointer-events-none absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/70 bg-card/75 shadow-lg backdrop-blur-md"
 					style={{
-						width: WHEEL_RADIUS_PX * 2 + 56,
-						height: WHEEL_RADIUS_PX * 2 + 56,
+						width: WHEEL_RADIUS_PX * 2 + 72,
+						height: WHEEL_RADIUS_PX * 2 + 72,
 					}}
 				/>
-				{wheel.kinds.map((id, index) => {
-					const offset = chipOffset(index, wheel.kinds.length);
+				<span className="pointer-events-none absolute top-0 left-0 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/50 bg-card shadow-md" />
+				{kinds.map((id, index) => {
+					const offset = chipOffset(index, kinds.length);
 					const Icon = PING_KIND_ICON[id];
-					const active = wheel.hover === id;
+					const active = hover === id;
 					return (
 						<span
 							key={id}
 							data-ping-kind={id}
 							data-active={active ? "true" : "false"}
 							className={cn(
-								"absolute flex size-12 items-center justify-center rounded-full border bg-card/95 shadow-lg backdrop-blur-md transition-[transform,background-color,border-color] duration-100 ease-out",
+								"absolute flex size-12 min-h-11 min-w-11 items-center justify-center rounded-full border border-border/70 bg-card/95 shadow-md backdrop-blur-md select-none",
+								"motion-safe:transition-[transform,background-color,border-color] motion-safe:duration-150 motion-safe:ease-out",
+								"data-[active=true]:scale-110 data-[active=true]:border-primary data-[active=true]:bg-primary/20 data-[active=true]:ring-2 data-[active=true]:ring-primary",
 								PING_KIND_TEXT_CLASS[id],
-								active
-									? "scale-110 border-primary bg-primary/20 ring-2 ring-primary"
-									: "border-border/70",
 							)}
 							style={{
 								left: offset.x,
@@ -55,17 +71,16 @@ export function VTTPingWheel() {
 								translate: "-50% -50%",
 							}}
 						>
-							<Icon className="size-5" />
+							<Icon className="pointer-events-none size-5" />
 						</span>
 					);
 				})}
 				<span
-					className="absolute left-0 w-max -translate-x-1/2 rounded-full border border-border/70 bg-card/95 px-3 py-1 text-xs font-semibold text-foreground shadow-lg backdrop-blur-md"
-					style={{ top: WHEEL_RADIUS_PX + 48 }}
+					data-ping-wheel-label
+					className="absolute left-0 w-max max-w-[240px] -translate-x-1/2 truncate rounded-full border border-border/70 bg-card/95 px-3 py-1 text-center text-xs font-semibold text-foreground shadow-lg backdrop-blur-md"
+					style={{ top: WHEEL_RADIUS_PX + 52 }}
 				>
-					{hovered
-						? hovered.label
-						: "Arraste até um tipo e solte · centro usa o escolhido · Esc cancela"}
+					{wheelHoverLabel(hover)}
 				</span>
 			</div>
 		</div>

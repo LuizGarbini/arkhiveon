@@ -1,16 +1,12 @@
 import {
-	Dices,
 	Eye,
 	EyeOff,
 	Lock,
-	Maximize2,
 	Minus,
 	Plus,
 	RotateCcw,
 	RotateCw,
-	ScrollText,
 	ShieldAlert,
-	Star,
 	Trash2,
 	Unlock,
 	X,
@@ -33,6 +29,12 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	ArcaneSparkGlyph,
+	CodexScrollGlyph,
+	D20Glyph,
+	ExpandFrameGlyph,
+} from "@/components/vtt/sheet/sheet-icons";
 import { VttHpAdjust } from "@/components/vtt/vtt-hp-adjust";
 import {
 	tokenRemovalKind,
@@ -301,10 +303,10 @@ export function VTTTokenMenu({
 				top: `${topPos}px`,
 				maxHeight: Math.max(240, window.innerHeight - topPos - BOTTOM_RESERVE),
 			}}
-			className="fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-3 overflow-y-auto overscroll-contain scroll-pb-24 p-4 rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
+			className="fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-2.5 overflow-y-auto overscroll-contain scroll-pb-24 p-3.5 rounded-2xl border border-white/[0.09] bg-card/96 bg-[radial-gradient(ellipse_90%_32%_at_50%_0%,var(--primary-muted),transparent_70%)] backdrop-blur-xl shadow-[0_24px_60px_-12px_oklch(0_0_0/0.8),inset_0_1px_0_oklch(1_0_0/0.07)] select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
 		>
 			{/* Token Header */}
-			<div className="flex items-center justify-between pb-2.5 border-b border-border/70">
+			<div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/[0.07]">
 				<div className="flex items-center gap-2.5 min-w-0">
 					{viewerSrc ? (
 						<Tooltip>
@@ -319,21 +321,21 @@ export function VTTTokenMenu({
 									/>
 								}
 							>
-								<span className="relative flex h-[44px] w-[44px] items-center justify-center overflow-hidden rounded-full border border-primary/40 bg-primary/20">
+								<span className="relative flex h-[44px] w-[44px] items-center justify-center overflow-hidden rounded-full ring-1 ring-white/[0.14] bg-black/40 shadow-sm">
 									<img
 										src={viewerSrc}
 										alt=""
 										className="h-full w-full object-cover"
 									/>
-									<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/50 group-hover:opacity-100 group-focus-visible:bg-black/50 group-focus-visible:opacity-100">
-										<Maximize2 className="h-4 w-4 drop-shadow" aria-hidden />
+									<span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition duration-150 group-hover:bg-black/55 group-hover:opacity-100 group-focus-visible:bg-black/55 group-focus-visible:opacity-100">
+										<ExpandFrameGlyph className="size-4 drop-shadow" />
 									</span>
 								</span>
 							</TooltipTrigger>
 							<TooltipContent>Ver em tela cheia</TooltipContent>
 						</Tooltip>
 					) : (
-						<div className="h-11 w-11 rounded-full border border-primary/40 bg-primary/20 overflow-hidden shrink-0 flex items-center justify-center">
+						<div className="h-11 w-11 rounded-full ring-1 ring-white/[0.14] bg-black/40 overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
 							{token.avatarUrl ? (
 								<img
 									src={token.avatarUrl}
@@ -341,24 +343,24 @@ export function VTTTokenMenu({
 									className="h-full w-full object-cover"
 								/>
 							) : (
-								<span className="font-bold text-xs text-primary">
+								<span className="font-semibold text-xs text-primary">
 									{token.name[0]}
 								</span>
 							)}
 						</div>
 					)}
 					<div className="min-w-0">
-						<h4 className="font-display font-bold text-xs text-foreground truncate">
+						<h4 className="font-display font-semibold text-[13px] tracking-tight text-foreground truncate">
 							{token.name}
 						</h4>
-						<p className="text-[10px] text-muted-foreground">
+						<p className="text-[11px] text-muted-foreground">
 							{token.sizeCells === 1
-								? "Médio (1x1)"
+								? "Médio (1×1)"
 								: token.sizeCells === 2
-									? "Grande (2x2)"
+									? "Grande (2×2)"
 									: token.sizeCells === 3
-										? "Enorme (3x3)"
-										: "Imenso (4x4)"}
+										? "Enorme (3×3)"
+										: "Imenso (4×4)"}
 						</p>
 					</div>
 				</div>
@@ -374,11 +376,11 @@ export function VTTTokenMenu({
 										setShowCharacterSheetId(token.id);
 										setActiveTokenIdForMenu(null);
 									}}
-									className="flex h-11 items-center gap-1.5 rounded-xl border border-border/70 bg-card-elevated px-3 text-xs font-semibold text-foreground transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] cursor-pointer"
+									className="group flex h-9 [@media(pointer:coarse)]:h-11 items-center gap-1.5 rounded-lg border border-white/[0.09] bg-linear-to-b from-white/[0.06] to-white/[0.02] px-2.5 text-xs font-medium text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] transition-all duration-150 hover:border-primary/40 hover:from-primary/15 hover:to-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97] cursor-pointer"
 								/>
 							}
 						>
-							<ScrollText className="h-3.5 w-3.5 text-primary" />
+							<CodexScrollGlyph className="t-icon-spring size-3.5 text-primary/90" />
 							Ficha
 						</TooltipTrigger>
 						<TooltipContent>Abrir ficha na mesa</TooltipContent>
@@ -387,7 +389,7 @@ export function VTTTokenMenu({
 						type="button"
 						aria-label="Fechar menu do token"
 						onClick={() => setActiveTokenIdForMenu(null)}
-						className="h-11 w-11 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+						className="size-9 [@media(pointer:coarse)]:size-11 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors cursor-pointer"
 					>
 						<X className="h-3.5 w-3.5" />
 					</button>
@@ -395,16 +397,29 @@ export function VTTTokenMenu({
 			</div>
 
 			{viewerSrc && (
-				<Button
+				<button
 					type="button"
-					variant="outline"
 					onClick={(event) => openViewer(event.currentTarget)}
 					aria-haspopup="dialog"
-					className="h-[48px] w-full justify-start gap-2 rounded-xl text-xs font-semibold"
+					className="group relative flex h-[48px] w-full items-center justify-between overflow-hidden rounded-xl border border-white/[0.08] bg-black/35 px-3 text-xs font-medium text-foreground/90 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)] transition-all duration-200 hover:border-primary/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.985] cursor-pointer"
 				>
-					<Maximize2 className="h-3.5 w-3.5 text-primary" aria-hidden />
-					Ver imagem em tela cheia
-				</Button>
+					<img
+						src={viewerSrc}
+						alt=""
+						aria-hidden
+						className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-45 blur-[0.5px] transition-transform duration-300 group-hover:scale-105"
+					/>
+					<span
+						aria-hidden
+						className="pointer-events-none absolute inset-0 bg-linear-to-r from-background/90 via-background/65 to-transparent"
+					/>
+					<span className="relative z-10 flex items-center gap-2">
+						<span className="flex size-6 items-center justify-center rounded-md border border-white/[0.1] bg-background/70 text-primary shadow-2xs backdrop-blur-sm">
+							<ExpandFrameGlyph className="t-icon-spring size-3.5" />
+						</span>
+						Ver imagem em tela cheia
+					</span>
+				</button>
 			)}
 			{viewerSrc && (
 				<ImageViewer
@@ -425,9 +440,9 @@ export function VTTTokenMenu({
 			<fieldset
 				disabled={saving}
 				aria-busy={saving}
-				className="min-w-0 space-y-3 disabled:opacity-60"
+				className="min-w-0 space-y-2.5 disabled:opacity-60"
 			>
-				<div className="space-y-3">
+				<div className="space-y-2.5">
 					<VttHpAdjust
 						hpCurrent={hp.current}
 						hpMax={hp.max}
@@ -444,8 +459,8 @@ export function VTTTokenMenu({
 					)}
 
 					{/* Status Conditions */}
-					<div className="space-y-1.5">
-						<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+					<div className="space-y-1.5 pt-2 border-t border-white/[0.06]">
+						<span className="text-[11px] font-medium text-muted-foreground">
 							Condições & Status
 						</span>
 						{missingConditions.length > 0 ? (
@@ -483,7 +498,7 @@ export function VTTTokenMenu({
 								</SelectContent>
 							</SelectRoot>
 						) : null}
-						<div className="flex flex-wrap gap-1">
+						<div className="grid grid-cols-2 gap-1.5">
 							{VTT_CONDITIONS.map((cond) => {
 								const isApplied = (token.conditions || []).includes(cond.id);
 								return (
@@ -494,15 +509,26 @@ export function VTTTokenMenu({
 										aria-pressed={isApplied}
 										onClick={() => handleToggleCondition(cond.id)}
 										className={cn(
-											"flex min-h-11 items-center gap-1 px-2.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
+											"group flex min-h-9 [@media(pointer:coarse)]:min-h-11 items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-all cursor-pointer",
 											// Ícone monocromático: só a borda/fundo levam a cor do status.
 											isApplied
-												? cn(cond.color, "text-foreground")
-												: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground",
+												? cn(
+														cond.color,
+														"text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.08)]",
+													)
+												: "border-white/[0.07] bg-black/25 text-muted-foreground hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-foreground",
 										)}
 									>
-										<StatusIcon name={cond.icon} />
-										<span>{cond.label}</span>
+										<span className="flex min-w-0 items-center gap-1.5">
+											<StatusIcon name={cond.icon} className="shrink-0" />
+											<span className="truncate">{cond.label}</span>
+										</span>
+										{isApplied ? (
+											<span
+												aria-hidden
+												className="size-1.5 shrink-0 rounded-full bg-current shadow-[0_0_6px_currentColor]"
+											/>
+										) : null}
 									</button>
 								);
 							})}
@@ -510,13 +536,13 @@ export function VTTTokenMenu({
 					</div>
 
 					{/* Size & Elevation Controls */}
-					<div className="grid gap-2 pt-1 border-t border-border/70">
+					<div className="grid grid-cols-[1.35fr_1fr] gap-2 pt-2 border-t border-white/[0.06]">
 						{/* Size */}
-						<div className="space-y-1">
-							<span className="text-[9px] font-bold text-muted-foreground uppercase">
+						<div className="space-y-1.5">
+							<span className="text-[11px] font-medium text-muted-foreground">
 								Tamanho
 							</span>
-							<div className="flex items-center gap-1">
+							<div className="flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 								{[1, 2, 3, 4].map((sz) => (
 									<button
 										type="button"
@@ -525,10 +551,10 @@ export function VTTTokenMenu({
 										aria-pressed={token.sizeCells === sz}
 										onClick={() => handleSetSize(sz)}
 										className={cn(
-											"flex-1 min-h-11 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
+											"flex-1 h-9 [@media(pointer:coarse)]:min-h-11 text-[11px] font-mono transition-all cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary",
 											token.sizeCells === sz
-												? "bg-primary text-primary-foreground border-primary"
-												: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+												? "bg-primary/18 text-primary font-semibold shadow-[inset_0_1px_0_var(--primary)]"
+												: "bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground hover:bg-white/[0.05] hover:text-foreground",
 										)}
 									>
 										{sz}x
@@ -538,26 +564,26 @@ export function VTTTokenMenu({
 						</div>
 
 						{/* Elevation / Flight */}
-						<div className="space-y-1">
-							<span className="text-[9px] font-bold text-muted-foreground uppercase">
-								Elevação: {token.elevation || 0}m
+						<div className="space-y-1.5">
+							<span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+								Elevação · {token.elevation || 0}m
 							</span>
-							<div className="flex items-center gap-1">
+							<div className="flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 								<button
 									type="button"
 									onClick={() => handleElevation(-1.5)}
 									aria-label="Diminuir elevação em 1,5 metro"
-									className="flex-1 min-h-11 flex items-center justify-center rounded-lg border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent cursor-pointer"
+									className="flex-1 h-9 [@media(pointer:coarse)]:min-h-11 flex items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary"
 								>
-									<Minus className="h-3 w-3" />
+									<Minus className="h-3.5 w-3.5" />
 								</button>
 								<button
 									type="button"
 									onClick={() => handleElevation(1.5)}
 									aria-label="Aumentar elevação em 1,5 metro"
-									className="flex-1 min-h-11 flex items-center justify-center rounded-lg border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent cursor-pointer"
+									className="flex-1 h-9 [@media(pointer:coarse)]:min-h-11 flex items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary"
 								>
-									<Plus className="h-3 w-3" />
+									<Plus className="h-3.5 w-3.5" />
 								</button>
 							</div>
 						</div>
@@ -565,20 +591,20 @@ export function VTTTokenMenu({
 				</div>
 
 				{/* Quick Actions (Rotate, Hide, Lock) — sticky footer so they stay reachable */}
-				<div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col gap-2 border-t border-border/70 bg-card px-4 pt-2 pb-3">
-					<div className="flex items-center gap-1">
+				<div className="sticky -bottom-3.5 z-10 -mx-3.5 -mb-3.5 flex flex-col gap-2 border-t border-white/[0.07] bg-card/98 backdrop-blur-xl px-3.5 pt-2.5 pb-3">
+					<div className="flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 						<Tooltip>
 							<TooltipTrigger
 								render={
 									<button
 										type="button"
 										onClick={() => handleRotate(-45)}
-										className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+										className="group flex-1 h-9 [@media(pointer:coarse)]:h-11 flex items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary"
 										aria-label="Girar Token para a esquerda (45º)"
 									/>
 								}
 							>
-								<RotateCcw className="h-3.5 w-3.5" />
+								<RotateCcw className="t-icon-spring h-3.5 w-3.5" />
 							</TooltipTrigger>
 							<TooltipContent>Girar para a esquerda (45º) · Q</TooltipContent>
 						</Tooltip>
@@ -589,12 +615,12 @@ export function VTTTokenMenu({
 									<button
 										type="button"
 										onClick={() => handleRotate(45)}
-										className="h-11 w-11 flex items-center justify-center rounded-xl border border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+										className="group flex-1 h-9 [@media(pointer:coarse)]:h-11 flex items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary"
 										aria-label="Girar Token (45º)"
 									/>
 								}
 							>
-								<RotateCw className="h-3.5 w-3.5" />
+								<RotateCw className="t-icon-spring h-3.5 w-3.5" />
 							</TooltipTrigger>
 							<TooltipContent>Girar Token (45º) · E</TooltipContent>
 						</Tooltip>
@@ -610,10 +636,10 @@ export function VTTTokenMenu({
 													onUpdateToken(token.id, { isHidden: !token.isHidden })
 												}
 												className={cn(
-													"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+													"group flex-1 h-9 [@media(pointer:coarse)]:h-11 flex items-center justify-center transition-colors cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary",
 													token.isHidden
-														? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-														: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+														? "bg-amber-500/18 text-amber-300 shadow-[inset_0_1px_0_oklch(0.8_0.15_85/0.4)]"
+														: "bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
 												)}
 												aria-label={
 													token.isHidden
@@ -624,9 +650,9 @@ export function VTTTokenMenu({
 										}
 									>
 										{token.isHidden ? (
-											<EyeOff className="h-3.5 w-3.5" />
+											<EyeOff className="t-icon-spring h-3.5 w-3.5" />
 										) : (
-											<Eye className="h-3.5 w-3.5" />
+											<Eye className="t-icon-spring h-3.5 w-3.5" />
 										)}
 									</TooltipTrigger>
 									<TooltipContent>
@@ -647,10 +673,10 @@ export function VTTTokenMenu({
 													})
 												}
 												className={cn(
-													"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+													"group flex-1 h-9 [@media(pointer:coarse)]:h-11 flex items-center justify-center transition-colors cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary",
 													token.layer === "gm"
-														? "border-purple-500/50 bg-purple-500/30 text-purple-300 shadow-md shadow-purple-500/20"
-														: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+														? "bg-primary/18 text-primary shadow-[inset_0_1px_0_var(--primary)]"
+														: "bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
 												)}
 												aria-label={
 													token.layer === "gm"
@@ -660,7 +686,7 @@ export function VTTTokenMenu({
 											/>
 										}
 									>
-										<ShieldAlert className="h-3.5 w-3.5" />
+										<ShieldAlert className="t-icon-spring h-3.5 w-3.5" />
 									</TooltipTrigger>
 									<TooltipContent>
 										{token.layer === "gm"
@@ -680,10 +706,10 @@ export function VTTTokenMenu({
 											onUpdateToken(token.id, { isLocked: !token.isLocked })
 										}
 										className={cn(
-											"h-11 w-11 flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+											"group flex-1 h-9 [@media(pointer:coarse)]:h-11 flex items-center justify-center transition-colors cursor-pointer focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary",
 											token.isLocked
-												? "border-primary/40 bg-primary/20 text-primary"
-												: "border-border/70 bg-card-elevated text-muted-foreground hover:bg-accent",
+												? "bg-primary/18 text-primary shadow-[inset_0_1px_0_var(--primary)]"
+												: "bg-linear-to-b from-white/[0.03] to-transparent text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
 										)}
 										aria-label={
 											token.isLocked
@@ -694,9 +720,9 @@ export function VTTTokenMenu({
 								}
 							>
 								{token.isLocked ? (
-									<Lock className="h-3.5 w-3.5" />
+									<Lock className="t-icon-spring h-3.5 w-3.5" />
 								) : (
-									<Unlock className="h-3.5 w-3.5" />
+									<Unlock className="t-icon-spring h-3.5 w-3.5" />
 								)}
 							</TooltipTrigger>
 							<TooltipContent>
@@ -707,15 +733,15 @@ export function VTTTokenMenu({
 
 					<Button
 						type="button"
-						variant="destructive"
+						variant="outline"
 						onClick={() => {
 							setRemoveError(null);
 							setRemoveOpen(true);
 						}}
 						aria-label={`Remover ${token.name} da mesa`}
-						className="h-11 w-full gap-1.5 rounded-xl"
+						className="h-9 [@media(pointer:coarse)]:h-11 w-full gap-1.5 rounded-lg border-white/[0.07] bg-black/20 text-xs font-medium text-muted-foreground hover:border-destructive/35 hover:bg-destructive/12 hover:text-destructive"
 					>
-						<Trash2 className="size-4" />
+						<Trash2 className="size-3.5" />
 						Remover da mesa
 					</Button>
 				</div>
@@ -788,11 +814,11 @@ function TokenCharacterResources({
 	return (
 		<div
 			data-testid="token-character-resources"
-			className="space-y-2 pt-1 border-t border-border/70"
+			className="space-y-2 pt-2 border-t border-white/[0.06]"
 		>
 			<div className="flex items-center justify-between">
-				<span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-					<Dices className="h-3.5 w-3.5 text-primary" />
+				<span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+					<D20Glyph className="size-3.5 text-primary/85" />
 					Recursos & Dados Bônus
 				</span>
 				{canEdit && (
@@ -801,7 +827,7 @@ function TokenCharacterResources({
 						variant="ghost"
 						size="sm"
 						onClick={() => setAddOpen(!addOpen)}
-						className="h-8 min-h-8 px-2 text-[11px] font-bold text-primary hover:bg-primary/10 gap-1 cursor-pointer"
+						className="h-7 [@media(pointer:coarse)]:min-h-11 px-2 text-[11px] font-medium text-primary hover:bg-primary/10 gap-1 cursor-pointer"
 					>
 						<Plus className="h-3.5 w-3.5" />
 						Dado
@@ -810,35 +836,32 @@ function TokenCharacterResources({
 			</div>
 
 			{/* Inspiração */}
-			<div className="flex items-center justify-between gap-2 p-2 rounded-xl border border-border/70 bg-card-elevated">
-				<div className="flex items-center gap-2">
-					<Star
+			<div className="group flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+				<div className="flex items-center gap-2 min-w-0">
+					<ArcaneSparkGlyph
+						active={res.inspiration > 0}
 						className={cn(
-							"h-4 w-4",
-							res.inspiration > 0
-								? "fill-amber-400 text-amber-400"
-								: "text-muted-foreground",
+							"t-icon-spring size-4 shrink-0",
+							res.inspiration > 0 ? "text-primary" : "text-muted-foreground",
 						)}
 					/>
-					<div className="flex flex-col">
-						<span className="text-xs font-semibold text-foreground">
+					<div className="flex flex-col min-w-0">
+						<span className="text-xs font-medium text-foreground">
 							Inspiração
 						</span>
-						<span className="text-[10px] text-muted-foreground">
-							{res.inspiration > 0
-								? "Disponível para teste com vantagem"
-								: "Sem inspiração"}
+						<span className="text-[10.5px] text-muted-foreground truncate">
+							{res.inspiration > 0 ? "Disponível" : "Sem inspiração"}
 						</span>
 					</div>
 				</div>
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-1 shrink-0">
 					{canEdit && res.inspiration > 0 && (
 						<Button
 							type="button"
 							variant="outline"
 							size="sm"
 							onClick={handleSpendInspiration}
-							className="h-11 min-h-11 px-3 text-xs font-semibold text-amber-300 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
+							className="h-8 [@media(pointer:coarse)]:min-h-11 px-2.5 text-xs font-medium border-primary/35 bg-primary/12 text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] hover:bg-primary/18 cursor-pointer"
 						>
 							Usar (1)
 						</Button>
@@ -849,13 +872,16 @@ function TokenCharacterResources({
 							variant="ghost"
 							size="icon"
 							onClick={handleAddInspiration}
-							className="h-11 min-h-11 w-11 text-muted-foreground hover:text-foreground cursor-pointer"
+							className="size-8 [@media(pointer:coarse)]:size-11 text-muted-foreground hover:text-foreground cursor-pointer"
 							aria-label="Adicionar inspiração"
 						>
-							<Plus className="h-4 w-4" />
+							<Plus className="h-3.5 w-3.5" />
 						</Button>
 					)}
-					<span className="font-display font-bold text-base text-foreground tabular-nums px-1.5">
+					<span
+						key={res.inspiration}
+						className="min-w-6 text-center font-mono font-semibold text-sm text-foreground tabular-nums animate-[t-digit-pop-in_300ms_cubic-bezier(0.34,1.45,0.64,1)_both] motion-reduce:animate-none"
+					>
 						{res.inspiration}
 					</span>
 				</div>
@@ -863,7 +889,7 @@ function TokenCharacterResources({
 
 			{/* Formulário para adicionar dado bônus */}
 			{addOpen && canEdit && (
-				<div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
+				<div className="p-2.5 rounded-xl border border-primary/25 bg-primary/5 space-y-2">
 					<AddBonusDieForm
 						onCancel={() => setAddOpen(false)}
 						onSubmit={(input) => {
@@ -884,12 +910,13 @@ function TokenCharacterResources({
 							disabled={!canEdit}
 							onClick={() => handleSpendDie(die.id)}
 							aria-label={`Rolar d${die.sides}${die.origin ? ` (${die.origin})` : ""} e gastar 1 — restam ${die.quantity}`}
-							className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/70 bg-card-elevated text-foreground hover:border-primary/40 active:scale-[0.98] transition-all cursor-pointer"
+							className="t-hover-lift group flex min-h-8 [@media(pointer:coarse)]:min-h-11 items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/[0.08] bg-linear-to-b from-white/[0.04] to-black/25 text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] hover:border-primary/40 hover:from-primary/12 hover:to-primary/5 cursor-pointer"
 						>
-							<span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-display text-[10px] font-bold uppercase text-primary">
+							<D20Glyph className="t-icon-spring size-3 text-primary/85" />
+							<span className="rounded border border-primary/25 bg-primary/10 px-1.5 py-px font-mono text-[10.5px] font-semibold text-primary">
 								d{die.sides}
 							</span>
-							<span className="font-display font-bold text-xs tabular-nums">
+							<span className="font-mono font-semibold text-xs tabular-nums">
 								×{die.quantity}
 							</span>
 							{die.origin && (
@@ -907,8 +934,8 @@ function TokenCharacterResources({
 			)}
 
 			{lastRoll && (
-				<p className="text-xs font-semibold tabular-nums text-primary flex items-center gap-1.5">
-					<Dices className="h-3.5 w-3.5" />
+				<p className="text-xs font-mono font-medium tabular-nums text-primary flex items-center gap-1.5">
+					<D20Glyph className="size-3.5" />
 					{lastRoll}
 				</p>
 			)}

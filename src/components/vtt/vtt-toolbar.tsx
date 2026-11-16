@@ -46,6 +46,7 @@ import {
 	pickerBox,
 	pickerIndexAt,
 } from "@/lib/vtt/ping-picker";
+import { paintPickerHover } from "@/lib/vtt/ping-wheel-dom";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
 	hasOpenVttDialog,
@@ -160,9 +161,10 @@ export function VTTToolbar() {
 				box,
 				kinds.length,
 			);
-			useVTTStore
-				.getState()
-				.setPingPickerHover(index >= 0 ? (kinds[index] ?? null) : null);
+			const hover = index >= 0 ? (kinds[index] ?? null) : null;
+			useVTTStore.getState().setPingPickerHover(hover);
+			const picker = document.querySelector<HTMLElement>("[data-ping-picker]");
+			if (picker) paintPickerHover(picker, hover);
 		};
 		const finish = (e: PointerEvent) => {
 			stop();

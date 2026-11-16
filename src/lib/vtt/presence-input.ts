@@ -1,3 +1,7 @@
+import {
+	readRemoteAvatarUrl,
+	type TablePhotoConfig,
+} from "@/lib/account/table-photo";
 import { normalizeCursorColor, pickCursorColor } from "./cursor-color";
 import type { VTTPresenceUser, VTTRemoteCursor } from "./types";
 
@@ -27,6 +31,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function readPresenceUsers(
 	state: Record<string, unknown[]>,
 	now: number = Date.now(),
+	photoConfig?: TablePhotoConfig,
 ): VTTPresenceUser[] {
 	const users: VTTPresenceUser[] = [];
 	for (const [key, presences] of Object.entries(state)) {
@@ -39,10 +44,7 @@ export function readPresenceUsers(
 		users.push({
 			userId,
 			userName: cleanName(latest.userName, "Aventureiro"),
-			avatarUrl:
-				typeof latest.avatarUrl === "string" && latest.avatarUrl
-					? latest.avatarUrl
-					: null,
+			avatarUrl: readRemoteAvatarUrl(latest.avatarUrl, photoConfig),
 			color: normalizeCursorColor(latest.color) ?? pickCursorColor(userId),
 			colorChosen: latest.colorChosen === true,
 			isGM: !!latest.isGM,

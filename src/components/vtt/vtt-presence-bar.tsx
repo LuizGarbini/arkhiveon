@@ -11,6 +11,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { readRemoteAvatarUrl } from "@/lib/account/table-photo";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -106,40 +107,44 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 
 			{/* Connected Avatars Stack */}
 			<div className="flex items-center -space-x-1.5 overflow-hidden py-0.5 max-w-[180px] sm:max-w-[260px]">
-				{onlineUsers.map((u) => (
-					<button
-						type="button"
-						key={u.userId}
-						onClick={() => handleUserClick(u)}
-						title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
-						style={{ borderColor: u.color }}
-						className={cn(
-							"relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 bg-card-elevated transition-transform duration-150 [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:-translate-y-0.5",
-							focusRing,
-						)}
-					>
-						{u.avatarUrl ? (
-							<img
-								src={u.avatarUrl}
-								alt={u.userName}
-								className="h-full w-full object-cover"
-							/>
-						) : (
-							<div
-								style={{ backgroundColor: `${u.color}33`, color: u.color }}
-								className="h-full w-full flex items-center justify-center text-[10px] font-bold"
-							>
-								{u.userName.slice(0, 2).toUpperCase()}
-							</div>
-						)}
+				{onlineUsers.map((u) => {
+					const photo = readRemoteAvatarUrl(u.avatarUrl);
+					return (
+						<button
+							type="button"
+							key={u.userId}
+							onClick={() => handleUserClick(u)}
+							title={`${u.userName} ${u.isGM ? "(Mestre)" : ""}`}
+							style={{ borderColor: u.color }}
+							className={cn(
+								"relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 bg-card-elevated transition-transform duration-150 [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:-translate-y-0.5",
+								focusRing,
+							)}
+						>
+							{photo ? (
+								<img
+									src={photo}
+									alt={u.userName}
+									referrerPolicy="no-referrer"
+									className="h-full w-full object-cover"
+								/>
+							) : (
+								<div
+									style={{ backgroundColor: `${u.color}33`, color: u.color }}
+									className="h-full w-full flex items-center justify-center text-[10px] font-bold"
+								>
+									{u.userName.slice(0, 2).toUpperCase()}
+								</div>
+							)}
 
-						{u.isGM && (
-							<div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-xs">
-								<Crown className="h-2 w-2 fill-black" />
-							</div>
-						)}
-					</button>
-				))}
+							{u.isGM && (
+								<div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-xs">
+									<Crown className="h-2 w-2 fill-black" />
+								</div>
+							)}
+						</button>
+					);
+				})}
 			</div>
 
 			{/* Preferência local: mostrar ou não o ponteiro com nome dos outros.
