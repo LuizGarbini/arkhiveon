@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.132-vtt-roda-de-ping-ctrl-arrastar",
+		version: "1.6.132",
+		date: "15/11/2026",
+		title: "Roda de ping: Ctrl + apertar e arrastar, igual no Windows e no Mac",
+		description:
+			"A roda de ping só abria se você apertasse o botão com Ctrl e ficasse parado um instante; quem apertava e já arrastava (o jeito natural com mouse, no Windows) caía na caixa de seleção e a roda não aparecia, enquanto no Mac, onde o trackpad costuma segurar um instante antes de arrastar, funcionava. Agora a roda abre no mesmo momento em que você aperta o botão com Ctrl no mapa vazio, em qualquer sistema: arraste até o tipo e solte para pingar, solte no centro para usar o tipo escolhido, Esc cancela. O desenho da roda aparece um instante depois (ou assim que você arrasta), então um Ctrl+clique rápido continua mandando o ping do tipo escolhido sem piscar a roda. Atenção, muda um atalho: a caixa de seleção que soma à seleção agora é Shift+arrastar (ou Cmd+arrastar no Mac); Ctrl+arrastar abre a roda. Ctrl+clique em um token continua somando à seleção.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.131-vtt-cursores-e-historico",
 		version: "1.6.131",
 		date: "15/11/2026",

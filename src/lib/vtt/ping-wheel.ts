@@ -8,10 +8,6 @@
 export const WHEEL_RADIUS_PX = 84;
 /** Dentro deste raio (px) nenhuma fatia está sob o cursor. */
 export const WHEEL_DEAD_ZONE_PX = 26;
-/** Segurar o botão por este tempo (ms) com Ctrl abre a roda. */
-export const WHEEL_HOLD_MS = 220;
-/** Mexer o mouse mais que isto (px) antes da roda abrir é arrasto, não roda. */
-export const WHEEL_MOVE_SLOP_PX = 6;
 
 /** Ângulo em graus (0 a 360, 0 = para cima, crescendo no sentido horário). */
 export function wheelAngle(dx: number, dy: number): number {

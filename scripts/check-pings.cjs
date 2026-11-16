@@ -1,7 +1,7 @@
 // Verificação dos pings, com mouse e teclado de verdade:
 //  - Ctrl + segurar no mapa abre a roda (5 tipos; 6 para o mestre); escolher e soltar manda o ping do tipo;
 //  - soltar no miolo manda o tipo escolhido; Ctrl+clique rápido manda o ping do tipo escolhido;
-//  - Ctrl + arrastar rápido continua sendo a caixa de seleção (não abre a roda);
+//  - Shift + arrastar é a caixa de seleção aditiva (Ctrl + arrastar é a roda; ver check:ping-ctrl);
 //  - Destacar põe setas no personagem selecionado ou apontado; sem personagem avisa;
 //  - "Todos aqui" é só do mestre (jogador que tenta vira ping comum) e não mexe na câmera de quem manda;
 //  - o painel da ferramenta Ping escolhe o tipo; segurar o botão de Ping abre a lista e arrastar escolhe.
@@ -99,18 +99,18 @@ async function main() {
 	const quickWheel = await wheel();
 	console.log("3 Ctrl+clique rápido         ", JSON.stringify(quick.map((p) => p.kind)), "roda aberta:", quickWheel !== null);
 
-	// 4) Ctrl + arrastar rápido continua sendo a caixa de seleção (não abre a roda, não pinga)
+	// 4) Shift + arrastar é a caixa de seleção aditiva (o Ctrl + arrastar agora é a roda de pings)
 	await reset();
 	const m1 = at(405, 405), m2 = at(505, 505);
-	await page.keyboard.down("Control");
+	await page.keyboard.down("Shift");
 	await page.mouse.move(m1.x, m1.y);
 	await page.mouse.down();
 	await page.mouse.move(m2.x, m2.y, { steps: 6 });
 	await page.mouse.up();
-	await page.keyboard.up("Control");
+	await page.keyboard.up("Shift");
 	await page.waitForTimeout(500);
 	const marquee = await page.evaluate(() => ({ sel: window.__vtt_store__.getState().selectedTokenIds, pings: window.__vtt_store__.getState().activePings.length }));
-	console.log("4 Ctrl + arrastar            ", JSON.stringify(marquee), "roda:", (await wheel()) !== null);
+	console.log("4 Shift + arrastar           ", JSON.stringify(marquee), "roda:", (await wheel()) !== null);
 
 	// 5) destacar o personagem selecionado pela roda; sem personagem, avisa
 	await reset();
@@ -253,8 +253,8 @@ async function main() {
 	if (!(center2.length === 1 && center2[0].kind === "help")) problems.push(`soltar no miolo com 'ajuda' escolhida deveria mandar ajuda (${JSON.stringify(center2)})`);
 	if (!(quick.length === 1 && quick[0].kind === "going")) problems.push(`Ctrl+clique rápido deveria mandar o ping do tipo escolhido (${JSON.stringify(quick)})`);
 	if (quickWheel !== null) problems.push("Ctrl+clique rápido não deveria abrir a roda");
-	if (!marquee.sel.includes("a")) problems.push(`Ctrl + arrastar deveria continuar sendo a caixa de seleção (selecionou ${JSON.stringify(marquee.sel)})`);
-	if (marquee.pings !== 0) problems.push("Ctrl + arrastar rápido não deveria mandar ping");
+	if (!marquee.sel.includes("a")) problems.push(`Shift + arrastar deveria ser a caixa de seleção (selecionou ${JSON.stringify(marquee.sel)})`);
+	if (marquee.pings !== 0) problems.push("Shift + arrastar não deveria mandar ping");
 	if (!(highlighted.length === 1 && highlighted[0].kind === "highlight" && highlighted[0].tokenId === "a" && highlighted[0].x === 455 && highlighted[0].y === 455)) problems.push(`destacar com 'a' selecionado deveria pôr as setas no 'a' (${JSON.stringify(highlighted)})`);
 	if (noTarget.length !== 0) problems.push("destacar sem personagem não deveria mandar ping");
 	if (warned < 1) problems.push("destacar sem personagem deveria avisar 'Escolha um personagem'");

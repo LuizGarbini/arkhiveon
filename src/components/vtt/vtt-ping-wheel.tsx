@@ -5,14 +5,16 @@ import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { PING_KIND_ICON, PING_KIND_TEXT_CLASS } from "./ping-kind-ui";
 
 /**
- * Roda de pings que abre em volta do cursor com Ctrl + segurar no mapa (como no
- * LoL): um tipo por opção, a escolhida acende, e soltar o botão manda o ping. É só
+ * Roda de pings que abre em volta do ponto onde você aperta o botão com Ctrl no mapa
+ * vazio (como no LoL): um tipo por opção, a escolhida acende, e soltar o botão manda o
+ * ping. Aparece um instante depois do aperto (ou ao arrastar), para o Ctrl+clique
+ * rápido não piscar a roda. É só
  * o desenho: quem segue o mouse e escolhe é o canvas. Decorativa para leitor de
  * tela (o mesmo se escolhe na ferramenta Ping).
  */
 export function VTTPingWheel() {
 	const wheel = useVTTStore((s) => s.pingWheel);
-	if (!wheel) return null;
+	if (!wheel?.visible) return null;
 	const hovered = wheel.hover ? pingKindInfo(wheel.hover) : null;
 
 	return (
@@ -61,7 +63,9 @@ export function VTTPingWheel() {
 					className="absolute left-0 w-max -translate-x-1/2 rounded-full border border-border/70 bg-card/95 px-3 py-1 text-xs font-semibold text-foreground shadow-lg backdrop-blur-md"
 					style={{ top: WHEEL_RADIUS_PX + 48 }}
 				>
-					{hovered ? hovered.label : "Solte no centro para o ping escolhido"}
+					{hovered
+						? hovered.label
+						: "Arraste até um tipo e solte · centro usa o escolhido · Esc cancela"}
 				</span>
 			</div>
 		</div>

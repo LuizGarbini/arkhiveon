@@ -60,6 +60,12 @@ import {
 } from "@/lib/vtt/permissions";
 import { drawPing, type PingPaintContext } from "@/lib/vtt/ping-draw";
 import {
+	isAdditiveMarquee,
+	startsPingWheel,
+	WHEEL_REVEAL_MS,
+	wheelRevealed,
+} from "@/lib/vtt/ping-gesture";
+import {
 	allowedPingKind,
 	type PingKind,
 	pingKindsFor,
@@ -70,11 +76,7 @@ import {
 	publishPingLoopStats,
 } from "@/lib/vtt/ping-queue";
 import { highlightTarget } from "@/lib/vtt/ping-target";
-import {
-	kindAtOffset,
-	WHEEL_HOLD_MS,
-	WHEEL_MOVE_SLOP_PX,
-} from "@/lib/vtt/ping-wheel";
+import { kindAtOffset, WHEEL_DEAD_ZONE_PX } from "@/lib/vtt/ping-wheel";
 import { attachRemoteCursors } from "@/lib/vtt/remote-cursor-layer";
 import {
 	rulerOnKey,
@@ -2254,13 +2256,13 @@ export function VTTCanvas({
 	const lastArrowStepRef = useRef(0);
 	const onBroadcastPingRef = useRef(onBroadcastPing);
 	onBroadcastPingRef.current = onBroadcastPing;
-	// Ctrl + segurar no mapa vazio: espera um instante e abre a roda de pings; se o
-	// mouse andar antes disso é arrasto de seleção, como sempre foi.
+	// Ctrl + apertar no mapa vazio abre a roda de pings NA HORA (igual no Windows e no Mac);
+	// arrastar escolhe o tipo e soltar pinga. A roda só é desenhada um instante depois.
 	const pingHoldRef = useRef<{
 		clientX: number;
 		clientY: number;
 		world: { x: number; y: number };
-		opened: boolean;
+		startedAt: number;
 		timer: ReturnType<typeof setTimeout> | null;
 	} | null>(null);
 
@@ -2813,47 +2815,46 @@ export function VTTCanvas({
 				setActiveTokenIdForMenu(null);
 			}
 
-			// Ctrl + segurar no mapa vazio abre a roda de pings (como no LoL). Antes de
-			// a roda abrir, mexer o mouse é arrasto de seleção, como sempre foi, e um
-			// Ctrl+clique rápido, sem mexer, manda o ping do tipo escolhido.
+			// Ctrl + apertar no mapa vazio abre a roda de pings (como no LoL), já no aperto: não
+			// depende de o mouse ficar parado, então vale igual com mouse no Windows e com
+			// trackpad no Mac. Arrastar escolhe o tipo, soltar pinga; Ctrl+clique rápido, sem
+			// arrastar, manda o ping do tipo escolhido. A caixa de seleção aditiva é Shift/Cmd.
 			if (
-				isLeftClick &&
-				e.ctrlKey &&
-				!e.metaKey &&
-				!e.altKey &&
-				scene &&
-				activeTool === "select" &&
-				!isSpaceHeldRef.current &&
-				!tokenPressRef.current
+				startsPingWheel({
+					button: e.button,
+					ctrlKey: e.ctrlKey,
+					metaKey: e.metaKey,
+					altKey: e.altKey,
+					shiftKey: e.shiftKey,
+					tool: activeTool,
+					spaceHeld: isSpaceHeldRef.current,
+					overControlledToken: Boolean(tokenPressRef.current),
+					hasScene: Boolean(scene),
+				})
 			) {
 				cancelPingHold();
 				const held = useVTTStore.getState();
-				const kinds = pingKindsFor(held.isGM || held.isCoGM).map(
-					(kind) => kind.id,
-				);
 				const hold = {
 					clientX: e.clientX,
 					clientY: e.clientY,
 					world: { x: worldPoint.x, y: worldPoint.y },
-					opened: false,
+					startedAt: Date.now(),
 					timer: null as ReturnType<typeof setTimeout> | null,
 				};
 				hold.timer = setTimeout(() => {
-					if (pingHoldRef.current !== hold) return;
-					hold.opened = true;
-					// A roda cancela a caixa de seleção que o mesmo clique iniciou.
-					marqueeRef.current = null;
-					hideMarquee(marqueeElRef.current);
-					useVTTStore.getState().openPingWheel({
-						x: hold.clientX,
-						y: hold.clientY,
-						worldX: hold.world.x,
-						worldY: hold.world.y,
-						kinds,
-						hover: null,
-					});
-				}, WHEEL_HOLD_MS);
+					if (pingHoldRef.current === hold)
+						useVTTStore.getState().revealPingWheel();
+				}, WHEEL_REVEAL_MS);
 				pingHoldRef.current = hold;
+				held.openPingWheel({
+					x: hold.clientX,
+					y: hold.clientY,
+					worldX: hold.world.x,
+					worldY: hold.world.y,
+					kinds: pingKindsFor(held.isGM || held.isCoGM).map((kind) => kind.id),
+					hover: null,
+					visible: false,
+				});
 			}
 
 			// Drag on empty ground draws a selection box. Shift adds to it.
@@ -2862,7 +2863,8 @@ export function VTTCanvas({
 				activeTool === "select" &&
 				!isSpaceHeldRef.current &&
 				!isAltHeldRef.current &&
-				!tokenPressRef.current
+				!tokenPressRef.current &&
+				!pingHoldRef.current
 			) {
 				const hit = scene
 					? spellTemplateIdAtPoint(
@@ -2880,7 +2882,8 @@ export function VTTCanvas({
 				marqueeRef.current = {
 					startX: e.clientX - rect.left,
 					startY: e.clientY - rect.top,
-					additive,
+					// Shift ou Cmd somam à seleção; o Ctrl agora é a roda de pings.
+					additive: isAdditiveMarquee(e),
 					moved: false,
 				};
 			}
@@ -2935,30 +2938,24 @@ export function VTTCanvas({
 		const handlePointerMove = (e: PointerEvent) => {
 			const hold = pingHoldRef.current;
 			if (hold) {
-				if (hold.opened) {
-					// Com a roda aberta o mouse só escolhe a opção.
-					const wheel = useVTTStore.getState().pingWheel;
-					if (wheel) {
-						useVTTStore
-							.getState()
-							.setPingWheelHover(
-								kindAtOffset(
-									e.clientX - wheel.x,
-									e.clientY - wheel.y,
-									wheel.kinds,
-								),
-							);
-					}
-					return;
+				// Com a roda aberta (desde o aperto) o mouse só escolhe a opção; ela aparece
+				// assim que o mouse sai do miolo, sem esperar o tempo.
+				const wheel = useVTTStore.getState().pingWheel;
+				if (wheel) {
+					const dx = e.clientX - wheel.x;
+					const dy = e.clientY - wheel.y;
+					const live = useVTTStore.getState();
+					live.setPingWheelHover(kindAtOffset(dx, dy, wheel.kinds));
+					if (
+						wheelRevealed(
+							Date.now() - hold.startedAt,
+							Math.hypot(dx, dy),
+							WHEEL_DEAD_ZONE_PX,
+						)
+					)
+						live.revealPingWheel();
 				}
-				if (
-					Math.hypot(e.clientX - hold.clientX, e.clientY - hold.clientY) >
-					WHEEL_MOVE_SLOP_PX
-				) {
-					// Mexeu antes da roda abrir: é arrasto de seleção, não roda.
-					if (hold.timer) clearTimeout(hold.timer);
-					pingHoldRef.current = null;
-				}
+				return;
 			}
 			// Mesmo remédio do clique: se o Alt já foi solto, a variável acompanha.
 			if (isAltHeldRef.current && !e.altKey) isAltHeldRef.current = false;
@@ -3309,8 +3306,8 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
-			// Roda de pings: soltar escolhe a opção sob o cursor (ou o tipo escolhido,
-			// no miolo). Ctrl+clique rápido, sem a roda, manda o ping do tipo escolhido.
+			// Roda de pings: soltar escolhe a opção sob o cursor (ou o tipo escolhido, no miolo,
+			// o que inclui o Ctrl+clique rápido, sem arrastar). Cancelar o toque descarta.
 			const hold = pingHoldRef.current;
 			if (hold) {
 				if (hold.timer) clearTimeout(hold.timer);
@@ -3318,18 +3315,13 @@ export function VTTCanvas({
 				const live = useVTTStore.getState();
 				const wheel = live.pingWheel;
 				live.closePingWheel();
-				if (hold.opened) {
-					if (e.type !== "pointercancel" && wheel) {
-						sendPingRef.current(wheel.hover ?? live.pingKind, {
-							x: wheel.worldX,
-							y: wheel.worldY,
-						});
-					}
-					return;
+				if (e.type !== "pointercancel" && wheel) {
+					sendPingRef.current(wheel.hover ?? live.pingKind, {
+						x: wheel.worldX,
+						y: wheel.worldY,
+					});
 				}
-				if (e.type !== "pointercancel") {
-					sendPingRef.current(live.pingKind, hold.world);
-				}
+				return;
 			}
 			// Luz: soltar fecha o círculo ou retângulo arrastado (cancelar o toque
 			// descarta). A área nova já nasce selecionada para trocar a luz ou apagar.
