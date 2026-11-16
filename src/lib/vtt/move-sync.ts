@@ -245,6 +245,15 @@ export function recordMove(
 	return move;
 }
 
+/**
+ * Movimentos já confirmados que ainda não foram ao banco. Uma rajada de setas
+ * (vários tokens, um passo por toque) não pode abrir um POST por linha: esses
+ * inserts enfileiram na frente da gravação da POSIÇÃO e o token demora segundos
+ * para assentar. Aqui eles saem um lote por vez, no máximo uma requisição em voo.
+ */
+const pendingHistory: TokenMove[] = [];
+let historyDraining = false;
+
 /** Esperas entre as tentativas de gravar (rede instável, queda breve). */
 const SAVE_RETRY_DELAYS_MS = [600, 2500];
 
@@ -255,18 +264,8 @@ function isPermanentSaveError(error: NonNullable<DbError>): boolean {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function saveMove(move: TokenMove): Promise<void> {
-	const store = () => useMoveStore.getState();
-	if (store().status === "missing") {
-		noteSaved(move.id);
-		return;
-	}
-	const client = getSupabase();
-	if (!client) {
-		store().markFailed(move.id);
-		return;
-	}
-	const row = {
+function historyRow(move: TokenMove) {
+	return {
 		id: move.id,
 		scene_id: move.sceneId,
 		token_id: move.tokenId,
@@ -284,30 +283,75 @@ async function saveMove(move: TokenMove): Promise<void> {
 		// Sem created_at: a hora vale a do servidor. A do computador de cada
 		// pessoa difere (relógio errado) e embaralhava a ordem do histórico.
 	};
+}
+
+async function persistHistory(moves: TokenMove[]): Promise<void> {
+	const store = () => useMoveStore.getState();
+	const pending: TokenMove[] = [];
+	for (const move of moves) {
+		if (store().status === "missing") {
+			noteSaved(move.id);
+			continue;
+		}
+		pending.push(move);
+	}
+	if (pending.length === 0) return;
+	const client = getSupabase();
+	if (!client) {
+		for (const move of pending) store().markFailed(move.id);
+		return;
+	}
+	const rows = pending.map(historyRow);
+	const only = rows[0];
+	const payload = rows.length === 1 && only ? only : rows;
 	for (let attempt = 0; ; attempt += 1) {
 		let error: DbError;
 		try {
-			error = (await client.from("vtt_token_moves").insert(row)).error;
+			error = (await client.from("vtt_token_moves").insert(payload)).error;
 		} catch (thrown) {
 			error = { message: thrown instanceof Error ? thrown.message : "rede" };
 		}
 		// 23505: o id já está no banco, uma tentativa anterior chegou.
 		if (!error || error.code === "23505") {
-			noteSaved(move.id);
+			for (const move of pending) noteSaved(move.id);
 			return;
 		}
 		if (isMissingMovesTable(error)) {
 			store().setStatus("missing");
-			noteSaved(move.id);
+			for (const move of pending) noteSaved(move.id);
 			return;
 		}
 		const wait = SAVE_RETRY_DELAYS_MS[attempt];
 		if (isPermanentSaveError(error) || wait === undefined) {
-			store().markFailed(move.id);
+			for (const move of pending) store().markFailed(move.id);
 			return;
 		}
 		await sleep(wait);
 	}
+}
+
+async function drainHistory(): Promise<void> {
+	try {
+		// O próximo movimento do mesmo instante entra neste lote, não num POST novo.
+		await Promise.resolve();
+		while (pendingHistory.length > 0) {
+			const batch = pendingHistory.splice(0, pendingHistory.length);
+			await persistHistory(batch);
+		}
+	} finally {
+		historyDraining = false;
+		if (pendingHistory.length > 0) {
+			historyDraining = true;
+			void drainHistory();
+		}
+	}
+}
+
+async function saveMove(move: TokenMove): Promise<void> {
+	pendingHistory.push(move);
+	if (historyDraining) return;
+	historyDraining = true;
+	void drainHistory();
 }
 
 /** Apaga o histórico da cena (ou de um token). Devolve se o banco aceitou. */

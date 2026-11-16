@@ -14,6 +14,8 @@ const db = vi.hoisted(() => ({
 	lastOrder: null as { column: string; ascending: boolean } | null,
 	lastLimit: null as number | null,
 	deletes: 0,
+	/** Segura o insert no ar para provar que o próximo lote espera. */
+	holdInsert: null as Promise<void> | null,
 	channelHandlers: [] as {
 		event: string;
 		filter?: string;
@@ -45,6 +47,7 @@ vi.mock("@/lib/supabase", () => ({
 		from: () => ({
 			insert: async (row: Record<string, unknown>) => {
 				db.inserts.push(row);
+				if (db.holdInsert) await db.holdInsert;
 				const next = db.insertQueue.length
 					? db.insertQueue.shift()
 					: db.insertError;
@@ -140,6 +143,7 @@ beforeEach(() => {
 	db.selectError = null;
 	db.selectThrows = false;
 	db.deletes = 0;
+	db.holdInsert = null;
 	useMoveStore.getState().reset();
 	useVTTStore.setState({
 		isGM: true,
@@ -210,6 +214,39 @@ describe("anotar movimento", () => {
 		expect(recordMove(input)?.round).toBe(3);
 		useCombatStore.setState({ status: "idle", round: null });
 		expect(recordMove(input)?.round).toBeNull();
+	});
+
+	it("movimentos do mesmo instante saem num insert só e o seguinte espera a resposta", async () => {
+		let release: () => void = () => {};
+		db.holdInsert = new Promise((resolve) => {
+			release = resolve;
+		});
+		recordMove(input);
+		recordMove({
+			...input,
+			tokenId: "t2",
+			tokenName: "Elara",
+			to: at(3, 1),
+		});
+		await flush();
+		expect(db.inserts).toHaveLength(1);
+		expect(db.inserts[0]).toEqual([
+			expect.objectContaining({ token_id: "t1" }),
+			expect.objectContaining({ token_id: "t2" }),
+		]);
+		recordMove({
+			...input,
+			tokenId: "t3",
+			tokenName: "Dante",
+			to: at(5, 1),
+		});
+		await flush();
+		expect(db.inserts).toHaveLength(1);
+		release();
+		db.holdInsert = null;
+		await flush();
+		expect(db.inserts).toHaveLength(2);
+		expect(db.inserts[1]).toMatchObject({ token_id: "t3" });
 	});
 
 	it("jogador grava mas não guarda o histórico na própria tela", async () => {
