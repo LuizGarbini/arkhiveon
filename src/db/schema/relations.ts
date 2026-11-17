@@ -8,7 +8,7 @@ import {
 	worlds,
 } from "./core";
 import { characters, customTemplates } from "./sheets";
-import { vttFogStates, vttScenes, vttTokens } from "./vtt";
+import { vttFogStates, vttSceneFolders, vttScenes, vttTokens } from "./vtt";
 import {
 	factionReputations,
 	factions,
@@ -47,6 +47,7 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
 	activityLog: many(activityLog),
 	imageAssets: many(imageAssets),
 	vttScenes: many(vttScenes),
+	vttSceneFolders: many(vttSceneFolders),
 }));
 
 // 3. Memberships Relations
@@ -203,10 +204,25 @@ export const newsCommentsRelations = relations(newsComments, ({ one }) => ({
 }));
 
 // 18. VTT Scenes Relations
+export const vttSceneFoldersRelations = relations(
+	vttSceneFolders,
+	({ one, many }) => ({
+		campaign: one(campaigns, {
+			fields: [vttSceneFolders.campaignId],
+			references: [campaigns.id],
+		}),
+		scenes: many(vttScenes),
+	}),
+);
+
 export const vttScenesRelations = relations(vttScenes, ({ one, many }) => ({
 	campaign: one(campaigns, {
 		fields: [vttScenes.campaignId],
 		references: [campaigns.id],
+	}),
+	folder: one(vttSceneFolders, {
+		fields: [vttScenes.folderId],
+		references: [vttSceneFolders.id],
 	}),
 	tokens: many(vttTokens),
 	fogState: one(vttFogStates),

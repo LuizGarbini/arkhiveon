@@ -163,6 +163,18 @@ describe("P2a — contrato puro", () => {
 		]);
 	});
 
+	it("a pasta da cena acompanha o remoto sem desfazer o grid confirmado", async () => {
+		const { adapter } = setup();
+		adapter.setRemote(scene);
+		await adapter.update(scene.id, { gridSize: 65 });
+		adapter.setRemote({ ...scene, folderId: "pasta-1", name: "Salão" });
+		const current = adapter.getSceneSnapshot(scene.id);
+		expect(current.base?.folderId).toBe("pasta-1");
+		expect(current.confirmed.gridSize).toBe(65);
+		adapter.setRemote({ ...scene, folderId: null, name: "Salão" });
+		expect(adapter.getSceneSnapshot(scene.id).base?.folderId).toBeNull();
+	});
+
 	it("aceita o bootstrap uma vez e não sobrescreve grid/fog com remotos seguintes", async () => {
 		const { adapter } = setup();
 		adapter.setRemote(scene);

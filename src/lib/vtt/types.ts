@@ -32,8 +32,22 @@ export interface VTTScene {
 	lightLevel?: "bright" | "dim" | "dark";
 	isActive: boolean;
 	orderIndex: number;
+	/**
+	 * Pasta na barra da mesa. Nulo ou ausente: a cena fica na raiz, como todas
+	 * as cenas de antes das pastas.
+	 */
+	folderId?: string | null;
 	createdAt?: string;
 	updatedAt?: string;
+}
+
+/** Agrupamento da barra de cenas. Não guarda cenas; só o nome e a ordem. */
+export interface VTTSceneFolder {
+	id: string;
+	campaignId: string;
+	name: string;
+	orderIndex: number;
+	createdAt?: string;
 }
 
 /** Campos do grid que o painel de ajuste pode gravar; patch parcial. */

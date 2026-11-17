@@ -85,12 +85,20 @@ import {
 	newSceneId,
 	singleFlight,
 } from "@/lib/vtt/scene-create";
+import {
+	folderSaveMessage,
+	moveScene,
+	nextOrderIndex,
+	normalizeFolderName,
+	reconcileFolderName,
+	reconcileSceneFolder,
+} from "@/lib/vtt/scene-folders";
 import { scenePatchFromDb, scenePatchToDb } from "@/lib/vtt/scene-persistence";
 import {
 	createSceneWriter,
 	type SceneSaveClient,
 } from "@/lib/vtt/scene-persistence-writer";
-import { mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
+import { mapFolderRow, mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
@@ -108,8 +116,6 @@ import {
 import type {
 	VTTAura,
 	VTTFogPath,
-	VTTGridScaleUnit,
-	VTTGridType,
 	VTTLayer,
 	VTTPingEvent,
 	VTTRemoteMeasurement,
@@ -119,7 +125,6 @@ import type {
 	VTTToken,
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
-import { toLightLevel } from "@/lib/vtt/vision";
 import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls } from "@/lib/vtt/wall-sync";
 
@@ -256,6 +261,9 @@ function VTTSession() {
 	}, [sceneSession]);
 	const sceneRequestRef = useRef(0);
 	const sceneCreateFlightRef = useRef(singleFlight<void>());
+	// Movimento ou renomear em voo: o eco da rede não desfaz a pasta/nome local.
+	const pendingSceneFoldersRef = useRef(new Map<string, string | null>());
+	const pendingFolderNamesRef = useRef(new Map<string, string>());
 	const scenePublishFlightRef = useRef(singleFlight<void>());
 	const tokenRequestRef = useRef(0);
 	const tokenMutationRef = useRef(new Map<string, number>());
@@ -391,23 +399,53 @@ function VTTSession() {
 		}
 
 		try {
-			const { data, error } = await client
-				.from("vtt_scenes")
-				.select("*")
-				.eq("campaign_id", campaignId)
-				.order("order_index", { ascending: true })
-				.order("created_at", { ascending: true });
+			const [scenesResult, foldersResult] = await Promise.all([
+				client
+					.from("vtt_scenes")
+					.select("*")
+					.eq("campaign_id", campaignId)
+					.order("order_index", { ascending: true })
+					.order("created_at", { ascending: true }),
+				client
+					.from("vtt_scene_folders")
+					.select("*")
+					.eq("campaign_id", campaignId)
+					.order("order_index", { ascending: true })
+					.order("created_at", { ascending: true }),
+			]);
 
-			if (error) throw error;
+			if (scenesResult.error) throw scenesResult.error;
+			if (foldersResult.error) {
+				console.warn(
+					"Pastas de cena indisponíveis:",
+					foldersResult.error.message,
+				);
+			}
 
-			const mapped = (data || []).map(mapSceneRow);
+			const mapped = (scenesResult.data || []).map(mapSceneRow);
+			const folders = foldersResult.error
+				? []
+				: (foldersResult.data || []).map(mapFolderRow);
 
 			if (
 				requestId !== sceneRequestRef.current ||
 				!sceneSession.isReadCurrent(readGeneration)
 			)
 				return;
-			setScenes(mapped.map(sceneSession.acceptRemote));
+			setScenes(
+				mapped.map((scene) =>
+					sceneSession.acceptRemote(
+						reconcileSceneFolder(scene, pendingSceneFoldersRef.current),
+					),
+				),
+			);
+			useVTTStore
+				.getState()
+				.setSceneFolders(
+					folders.map((folder) =>
+						reconcileFolderName(folder, pendingFolderNamesRef.current),
+					),
+				);
 
 			// Automatically select active scene or first scene
 			const active = mapped.find((s) => s.isActive);
@@ -548,62 +586,22 @@ function VTTSession() {
 				},
 				(payload) => {
 					if (cancelled) return;
-					if (payload.eventType === "INSERT") {
+					if (
+						payload.eventType === "INSERT" ||
+						payload.eventType === "UPDATE"
+					) {
 						const row =
 							payload.new as Database["public"]["Tables"]["vtt_scenes"]["Row"];
 						addScene(
-							sceneSession.acceptRemote({
-								id: row.id,
-								campaignId: row.campaign_id,
-								name: row.name,
-								mapImageUrl: row.map_image_url,
-								gridType: row.grid_type as VTTGridType,
-								gridSize: row.grid_size,
-								gridColor: row.grid_color,
-								gridOpacity: row.grid_opacity,
-								gridScaleDistance: row.grid_scale_distance,
-								gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
-								gridOffsetX: row.grid_offset_x ?? 0,
-								gridOffsetY: row.grid_offset_y ?? 0,
-								mapScale: row.map_scale ?? 1,
-								width: row.width,
-								height: row.height,
-								fogEnabled: row.fog_enabled,
-								fogExploration: row.fog_exploration,
-								lightLevel: toLightLevel(row.light_level),
-								isActive: row.is_active,
-								orderIndex: row.order_index,
-							}),
-						);
-					} else if (payload.eventType === "UPDATE") {
-						const row =
-							payload.new as Database["public"]["Tables"]["vtt_scenes"]["Row"];
-						addScene(
-							sceneSession.acceptRemote({
-								id: row.id,
-								campaignId: row.campaign_id,
-								orderIndex: row.order_index,
-								name: row.name,
-								mapImageUrl: row.map_image_url,
-								gridType: row.grid_type as VTTGridType,
-								gridSize: row.grid_size,
-								gridColor: row.grid_color,
-								gridOpacity: row.grid_opacity,
-								gridScaleDistance: row.grid_scale_distance,
-								gridScaleUnit: row.grid_scale_unit as VTTGridScaleUnit,
-								gridOffsetX: row.grid_offset_x ?? 0,
-								gridOffsetY: row.grid_offset_y ?? 0,
-								mapScale: row.map_scale ?? 1,
-								width: row.width,
-								height: row.height,
-								fogEnabled: row.fog_enabled,
-								fogExploration: row.fog_exploration,
-								lightLevel: toLightLevel(row.light_level),
-								isActive: row.is_active,
-							}),
+							sceneSession.acceptRemote(
+								reconcileSceneFolder(
+									mapSceneRow(row),
+									pendingSceneFoldersRef.current,
+								),
+							),
 						);
 
-						if (!row.is_active && !isGM)
+						if (payload.eventType === "UPDATE" && !row.is_active && !isGM)
 							useVTTStore.getState().removeScene(row.id);
 					} else if (payload.eventType === "DELETE" && payload.old.id) {
 						useVTTStore.getState().removeScene(payload.old.id);
@@ -617,6 +615,48 @@ function VTTSession() {
 			client.removeChannel(channel);
 		};
 	}, [campaignId, addScene, isGM, sceneSession]);
+
+	// Pastas da barra. Canal separado: se a tabela ainda não existe, as cenas
+	// continuam ao vivo.
+	useEffect(() => {
+		const client = getSupabase();
+		if (!client || !campaignId) return;
+		let cancelled = false;
+		const channel = client
+			.channel(`vtt-scene-folders:${campaignId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "vtt_scene_folders",
+					filter: `campaign_id=eq.${campaignId}`,
+				},
+				(payload) => {
+					if (cancelled) return;
+					const store = useVTTStore.getState();
+					if (payload.eventType === "DELETE") {
+						const id = payload.old.id;
+						if (typeof id === "string") store.removeSceneFolder(id);
+						return;
+					}
+					const row =
+						payload.new as Database["public"]["Tables"]["vtt_scene_folders"]["Row"];
+					if (!row?.id || row.campaign_id !== campaignId) return;
+					store.upsertSceneFolder(
+						reconcileFolderName(
+							mapFolderRow(row),
+							pendingFolderNamesRef.current,
+						),
+					);
+				},
+			)
+			.subscribe();
+		return () => {
+			cancelled = true;
+			client.removeChannel(channel);
+		};
+	}, [campaignId]);
 
 	// 5. Realtime subscription on vtt_tokens for live token positions & status
 	useEffect(() => {
@@ -1454,32 +1494,154 @@ function VTTSession() {
 		}
 
 		if (data) {
-			const newScene: VTTScene = {
-				id: data.id,
-				campaignId: data.campaign_id,
-				name: data.name,
-				mapImageUrl: data.map_image_url,
-				gridType: data.grid_type as VTTGridType,
-				gridSize: data.grid_size,
-				gridColor: data.grid_color,
-				gridOpacity: data.grid_opacity,
-				gridScaleDistance: data.grid_scale_distance,
-				gridScaleUnit: data.grid_scale_unit as VTTGridScaleUnit,
-				gridOffsetX: data.grid_offset_x ?? 0,
-				gridOffsetY: data.grid_offset_y ?? 0,
-				mapScale: data.map_scale ?? 1,
-				width: data.width,
-				height: data.height,
-				fogEnabled: data.fog_enabled,
-				fogExploration: data.fog_exploration,
-				lightLevel: toLightLevel(data.light_level),
-				isActive: data.is_active,
-				orderIndex: data.order_index,
-				createdAt: data.created_at,
-				updatedAt: data.updated_at,
-			};
+			const newScene = mapSceneRow(data);
 			addScene(newScene);
 			setActiveSceneId(newScene.id);
+		}
+	};
+
+	// Pastas: só o mestre, como criar e excluir cena. O co-mestre vê a mesa
+	// como jogador. A RLS ainda aceita editor, igual a vtt_scenes.
+	const handleCreateFolder = async (input: { id: string; name: string }) => {
+		const client = getSupabase();
+		if (!client || !isGM) {
+			throw new Error(
+				"É necessário estar conectado como mestre para criar uma pasta.",
+			);
+		}
+		const parsed = normalizeFolderName(input.name);
+		if (!parsed.ok) throw new Error(parsed.reason);
+		const orderIndex = nextOrderIndex(useVTTStore.getState().sceneFolders);
+		let { data, error } = await client
+			.from("vtt_scene_folders")
+			.insert({
+				id: input.id,
+				campaign_id: campaignId,
+				name: parsed.name,
+				order_index: orderIndex,
+			})
+			.select()
+			.single();
+		if (isRepeatedCreate(error)) {
+			({ data, error } = await client
+				.from("vtt_scene_folders")
+				.select("*")
+				.eq("campaign_id", campaignId)
+				.eq("id", input.id)
+				.single());
+		}
+		if (error || !data) {
+			throw new Error(
+				folderSaveMessage(
+					error,
+					"Não foi possível criar a pasta. Tente novamente.",
+				),
+			);
+		}
+		useVTTStore.getState().upsertSceneFolder(mapFolderRow(data));
+	};
+
+	const handleRenameFolder = async (folderId: string, name: string) => {
+		const client = getSupabase();
+		if (!client || !isGM) {
+			throw new Error(
+				"É necessário estar conectado como mestre para renomear a pasta.",
+			);
+		}
+		const parsed = normalizeFolderName(name);
+		if (!parsed.ok) throw new Error(parsed.reason);
+		const current = useVTTStore
+			.getState()
+			.sceneFolders.find((folder) => folder.id === folderId);
+		pendingFolderNamesRef.current.set(folderId, parsed.name);
+		if (current) {
+			useVTTStore.getState().upsertSceneFolder({
+				...current,
+				name: parsed.name,
+			});
+		}
+		const { data, error } = await client
+			.from("vtt_scene_folders")
+			.update({ name: parsed.name })
+			.eq("campaign_id", campaignId)
+			.eq("id", folderId)
+			.select()
+			.single();
+		if (error || !data) {
+			if (pendingFolderNamesRef.current.get(folderId) === parsed.name) {
+				pendingFolderNamesRef.current.delete(folderId);
+			}
+			if (current) useVTTStore.getState().upsertSceneFolder(current);
+			throw new Error(
+				folderSaveMessage(error, "Não foi possível renomear a pasta."),
+			);
+		}
+		useVTTStore
+			.getState()
+			.upsertSceneFolder(
+				reconcileFolderName(mapFolderRow(data), pendingFolderNamesRef.current),
+			);
+	};
+
+	const handleDeleteFolder = async (folderId: string) => {
+		const client = getSupabase();
+		if (!client || !isGM) {
+			throw new Error(
+				"É necessário estar conectado como mestre para excluir a pasta.",
+			);
+		}
+		const { data, error } = await client
+			.from("vtt_scene_folders")
+			.delete()
+			.eq("campaign_id", campaignId)
+			.eq("id", folderId)
+			.select("id");
+		if (error || !data?.length) {
+			throw new Error(
+				folderSaveMessage(error, "Não foi possível excluir a pasta."),
+			);
+		}
+		useVTTStore.getState().removeSceneFolder(folderId);
+	};
+
+	const handleMoveSceneToFolder = async (
+		sceneId: string,
+		folderId: string | null,
+	) => {
+		const client = getSupabase();
+		if (!client || !isGM) {
+			throw new Error("É necessário estar conectado como mestre.");
+		}
+		const state = useVTTStore.getState();
+		const original = state.scenes.find((scene) => scene.id === sceneId);
+		if (!original) throw new Error("Cena não encontrada.");
+		const moved = moveScene(
+			state.scenes,
+			sceneId,
+			folderId,
+			state.sceneFolders,
+		);
+		const after = moved.find((scene) => scene.id === sceneId);
+		if (!after || (after.folderId ?? null) !== folderId) {
+			throw new Error("Pasta não encontrada.");
+		}
+		const previous = original.folderId ?? null;
+		pendingSceneFoldersRef.current.set(sceneId, folderId);
+		updateScene(sceneId, { folderId });
+		const { data, error } = await client
+			.from("vtt_scenes")
+			.update({ folder_id: folderId })
+			.eq("campaign_id", campaignId)
+			.eq("id", sceneId)
+			.select("id");
+		if (error || !data?.length) {
+			if (pendingSceneFoldersRef.current.get(sceneId) === folderId) {
+				pendingSceneFoldersRef.current.delete(sceneId);
+			}
+			updateScene(sceneId, { folderId: previous });
+			throw new Error(
+				folderSaveMessage(error, "Não foi possível mover a cena."),
+			);
 		}
 	};
 
@@ -1896,6 +2058,10 @@ function VTTSession() {
 				onCreateScene={handleCreateScene}
 				onActivateScene={handleActivateScene}
 				onDeleteScene={handleDeleteScene}
+				onCreateFolder={handleCreateFolder}
+				onRenameFolder={handleRenameFolder}
+				onDeleteFolder={handleDeleteFolder}
+				onMoveScene={handleMoveSceneToFolder}
 				onFocusPoint={handleFocusPoint}
 				onOpenJournal={() => {
 					useVTTStore.getState().setShowRosterDrawer(false);

@@ -14,7 +14,23 @@ import {
 import { campaigns } from "./core";
 import { characters } from "./sheets";
 
-// 1. VTT Scenes (Cenas e Mapas do Tabuleiro Virtual)
+// 1. Pastas da barra de cenas. A cena sem pasta fica na raiz.
+export const vttSceneFolders = pgTable("vtt_scene_folders", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	campaignId: uuid("campaign_id")
+		.notNull()
+		.references(() => campaigns.id, { onDelete: "cascade" }),
+	name: text("name").notNull(),
+	orderIndex: integer("order_index").notNull().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});
+
+// 2. VTT Scenes (Cenas e Mapas do Tabuleiro Virtual)
 export const vttScenes = pgTable(
 	"vtt_scenes",
 	{
@@ -40,6 +56,9 @@ export const vttScenes = pgTable(
 		lightLevel: text("light_level").notNull().default("bright"),
 		isActive: boolean("is_active").notNull().default(false),
 		orderIndex: integer("order_index").notNull().default(0),
+		folderId: uuid("folder_id").references(() => vttSceneFolders.id, {
+			onDelete: "set null",
+		}),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
@@ -63,7 +82,7 @@ export const vttScenes = pgTable(
 	],
 );
 
-// 2. VTT Tokens (Miniaturas e Tokens no Tabuleiro)
+// 3. VTT Tokens (Miniaturas e Tokens no Tabuleiro)
 export const vttTokens = pgTable("vtt_tokens", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	sceneId: uuid("scene_id")
@@ -98,7 +117,7 @@ export const vttTokens = pgTable("vtt_tokens", {
 		.defaultNow(),
 });
 
-// 3. VTT Fog States (Máscara e Histórico de Névoa de Guerra por Cena)
+// 4. VTT Fog States (Máscara e Histórico de Névoa de Guerra por Cena)
 export const vttFogStates = pgTable("vtt_fog_states", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	sceneId: uuid("scene_id")
