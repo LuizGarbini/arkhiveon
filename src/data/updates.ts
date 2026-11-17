@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.155-vtt-cenas-pastas",
+		version: "1.6.155",
+		date: "17/11/2026",
+		title: "Pastas na barra de cenas",
+		description:
+			"O mestre agrupa as cenas em pastas para a barra não virar uma faixa enorme. A pasta recolhe; dentro dela ficam as cenas, e dá para mover uma cena pelo menu “Mover para pasta”. Cena sem pasta continua na raiz. Quem não organiza a mesa segue vendo só as cenas que já podia ver. Apagar a pasta devolve as cenas para a raiz, sem apagar o mapa.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.154-tipos-item-capa",
 		version: "1.6.154",
 		date: "17/11/2026",
