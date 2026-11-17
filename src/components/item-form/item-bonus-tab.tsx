@@ -67,9 +67,9 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 					))}
 				</Select>
 				<HelpText>
-					Arma, armadura, escudo, anel e amuleto já vão para o lugar certo.
-					Itens maravilhosos (luvas, botas, elmo, capa) precisam de um slot para
-					aparecer no equipamento da ficha.
+					Arma, armadura, escudo, elmo, capa, luvas, botas, anel e amuleto já
+					vão para o lugar certo. Um item maravilhoso sem um desses tipos
+					precisa de um slot para aparecer no equipamento da ficha.
 				</HelpText>
 			</FormSection>
 

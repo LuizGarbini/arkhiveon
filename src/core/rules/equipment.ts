@@ -128,6 +128,10 @@ export function itemSlotOf(
 	if (kind === "ring") return "ring";
 	const type = normalize(item.type);
 	if (type === "amuleto" || type === "amulet") return "neck";
+	if (type === "elmo") return "head";
+	if (type === "capa" || type === "cloak" || type === "cape") return "cloak";
+	if (type === "luvas" || type === "luva") return "hands";
+	if (type === "botas" || type === "bota") return "feet";
 	return undefined;
 }
 
