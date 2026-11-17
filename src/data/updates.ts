@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.153-vtt-iniciais-arrasto",
+		version: "1.6.153",
+		date: "17/11/2026",
+		title: "Iniciais do token não estouram ao arrastar",
+		description:
+			"Ao arrastar um personagem que tem foto, a mesa não cobre mais o retrato com as iniciais enormes. Quem não tem foto continua com as duas letras dentro do disco, parado ou andando, perto ou longe do zoom.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.152-vtt-giro-toque",
 		version: "1.6.152",
 		date: "16/11/2026",
