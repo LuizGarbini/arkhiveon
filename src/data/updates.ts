@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.152-vtt-giro-toque",
+		version: "1.6.152",
+		date: "16/11/2026",
+		title: "Girar o token no celular, arrastando a alça",
+		description:
+			"No celular e no tablet, o token selecionado ganha uma alça na direção para onde ele olha. Arrastar a alça gira o personagem no mesmo lugar, sem andar. Perto de 15° e de 45° ela gruda, para acertar a frente, o lado e a diagonal. Vários tokens selecionados giram juntos. Q e E continuam no teclado, e o painel do token diz isso por escrito.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.151-vtt-setas-sem-travar",
 		version: "1.6.151",
 		date: "15/11/2026",

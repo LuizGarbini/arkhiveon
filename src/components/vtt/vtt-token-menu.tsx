@@ -592,6 +592,9 @@ export function VTTTokenMenu({
 
 				{/* Quick Actions (Rotate, Hide, Lock) — sticky footer so they stay reachable */}
 				<div className="sticky -bottom-3.5 z-10 -mx-3.5 -mb-3.5 flex flex-col gap-2 border-t border-white/[0.07] bg-card/98 backdrop-blur-xl px-3.5 pt-2.5 pb-3">
+					<p className="text-center text-[11px] font-medium leading-4 text-muted-foreground select-none">
+						Arraste a alça no token para girar. No teclado, Q e E.
+					</p>
 					<div className="flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 						<Tooltip>
 							<TooltipTrigger

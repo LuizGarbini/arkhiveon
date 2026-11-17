@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.151",
+	"version": "1.6.152",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -28,6 +28,7 @@
 		"check:doors": "node scripts/check-doors.cjs",
 		"check:windows": "node scripts/check-windows.cjs",
 		"check:token-keys": "node scripts/check-token-keys.cjs",
+		"check:giro-toque": "node scripts/check-giro-toque.cjs",
 		"check:setas-perf": "node scripts/check-setas-perf.cjs",
 		"check:cursores": "node scripts/check-cursores.cjs",
 		"check:historico": "node scripts/check-historico.cjs",

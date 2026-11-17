@@ -1,6 +1,7 @@
 import {
 	Application,
 	Assets,
+	Circle,
 	Container,
 	Graphics,
 	RenderTexture,
@@ -149,7 +150,16 @@ import {
 	tokenPressEndAction,
 	trackTokenPressMove,
 } from "@/lib/vtt/token-press";
-import { planRotation, rotationDelta } from "@/lib/vtt/token-rotate";
+import {
+	planRotation,
+	pointerHitsRotateHandle,
+	pointerHitsRotateHandleWorld,
+	rotateHandleDistance,
+	rotateHandleHitRadius,
+	rotationDelta,
+	rotationFromLocalPointer,
+	steeredRotation,
+} from "@/lib/vtt/token-rotate";
 import {
 	beginRightPress,
 	canSelectTokenLayer,
@@ -479,6 +489,13 @@ export function VTTCanvas({
 	// token: a direção gira direto no objeto, sem reconstruir os tokens.
 	const stepTweensRef = useRef<Map<string, StepTween>>(new Map());
 	const facingArrowsRef = useRef<Map<string, Graphics>>(new Map());
+	// Alça de giro do token selecionado. Gira no ticker, igual à seta de direção.
+	const rotateHandlesRef = useRef<Map<string, Container>>(new Map());
+	const rotateDragRef = useRef<{
+		pointerId: number;
+		grabbedId: string;
+		starts: { id: string; rotation: number }[];
+	} | null>(null);
 	const paintAurasRef = useRef<() => void>(() => {});
 	const auraPoseRef = useRef("");
 	// Anel da vez: um Graphics no token ativo. Não entra no ticker.
@@ -999,9 +1016,11 @@ export function VTTCanvas({
 						state.draggedTokenIds,
 					);
 					const arrow = facingArrowsRef.current.get(t.id);
-					if (arrow) {
+					const handle = rotateHandlesRef.current.get(t.id);
+					if (arrow || handle) {
 						const facing = facingRadians(t);
-						if (arrow.rotation !== facing) arrow.rotation = facing;
+						if (arrow && arrow.rotation !== facing) arrow.rotation = facing;
+						if (handle && handle.rotation !== facing) handle.rotation = facing;
 					}
 					if (pose.mode === "drag") {
 						stepTweensRef.current.delete(t.id);
@@ -1260,6 +1279,7 @@ export function VTTCanvas({
 		gmTokensLayer.removeChildren();
 		tokenDisplayObjectsRef.current.clear();
 		facingArrowsRef.current.clear();
+		rotateHandlesRef.current.clear();
 		stepTweensRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
@@ -1534,6 +1554,49 @@ export function VTTCanvas({
 				tokenContainer.addChild(elevText);
 			}
 
+			// Alça para girar no toque (e no mouse): fica na borda, na direção que o
+			// token olha. Arrastar ela gira; não começa um movimento.
+			const liveForHandle = useVTTStore.getState();
+			if (
+				isSelected &&
+				canControl &&
+				!token.isLocked &&
+				liveForHandle.activeTool === "select" &&
+				canSelectTokenLayer(liveForHandle.activeLayer, token.layer)
+			) {
+				const scale = liveForHandle.viewport.scale;
+				const safeScale = Number.isFinite(scale) && scale > 0.05 ? scale : 1;
+				const dist = rotateHandleDistance(tokenRadius);
+				const knobR = Math.max(10, 12 / safeScale);
+				const hitR = rotateHandleHitRadius(scale);
+				const knobColor = cssVarColor("--primary", foreground);
+				const handle = new Container();
+				handle.eventMode = "static";
+				handle.cursor = "grab";
+				handle.label = "rotate-handle";
+				handle.rotation = facingRadians(token);
+				handle.hitArea = new Circle(0, -dist, hitR);
+				const graphic = new Graphics();
+				graphic.moveTo(0, -tokenRadius);
+				graphic.lineTo(0, -dist);
+				graphic.stroke({
+					width: Math.max(1.5, 2 / safeScale),
+					color: knobColor,
+					alpha: 0.9,
+					cap: "round",
+				});
+				graphic.circle(0, -dist, knobR);
+				graphic.fill({ color: knobColor });
+				graphic.circle(0, -dist, Math.max(3, knobR * 0.35));
+				graphic.fill({ color: foreground });
+				handle.addChild(graphic);
+				handle.on("pointerdown", (ev) => {
+					ev.stopPropagation();
+				});
+				tokenContainer.addChild(handle);
+				rotateHandlesRef.current.set(token.id, handle);
+			}
+
 			// Tooltip do DS com os status (DOM, fora do canvas): só marca qual
 			// token está sob o ponteiro; nada no ticker.
 			if (hasStatusRow) {
@@ -1568,6 +1631,27 @@ export function VTTCanvas({
 				}
 
 				const live = useVTTStore.getState();
+				if (
+					e.button === 0 &&
+					!isSpaceHeldRef.current &&
+					!e.altKey &&
+					live.activeTool === "select" &&
+					!token.isLocked
+				) {
+					const local = e.getLocalPosition(tokenContainer);
+					if (
+						pointerHitsRotateHandle(
+							local.x,
+							local.y,
+							token.rotation ?? 0,
+							tokenRadius,
+							rotateHandleHitRadius(live.viewport.scale),
+						)
+					) {
+						e.stopPropagation();
+						return;
+					}
+				}
 				if (
 					e.button === 0 &&
 					!isSpaceHeldRef.current &&
@@ -1684,6 +1768,8 @@ export function VTTCanvas({
 		user?.id,
 		scene,
 		selectedTokenIds,
+		activeTool,
+		activeLayer,
 		isGM,
 		canManageTokens,
 		setSelectedTokenIds,
@@ -2772,6 +2858,36 @@ export function VTTCanvas({
 				return;
 			}
 
+			// Alça de giro: arrastar gira os selecionados no lugar. Não move.
+			if (isLeftClick && activeTool === "select" && scene) {
+				const movers = keyboardTargets();
+				const tokensNow = useVTTStore.getState().tokens;
+				const grabbed = movers.find((member) => {
+					const token = tokensNow.find((item) => item.id === member.id);
+					return (
+						token &&
+						pointerHitsRotateHandleWorld(
+							token,
+							worldPoint,
+							scene.gridSize || 70,
+							viewport.scale,
+						)
+					);
+				});
+				if (grabbed) {
+					rotateDragRef.current = {
+						pointerId: e.pointerId,
+						grabbedId: grabbed.id,
+						starts: movers.map((member) => ({
+							id: member.id,
+							rotation:
+								tokensNow.find((item) => item.id === member.id)?.rotation ?? 0,
+						})),
+					};
+					return;
+				}
+			}
+
 			// Fog of War Drawing (GM Only)
 			if (activeTool === "fog" && isGM && isLeftClick) {
 				fogStrokeStartRef.current = worldPoint;
@@ -3071,6 +3187,40 @@ export function VTTCanvas({
 		};
 
 		const handlePointerMove = (e: PointerEvent) => {
+			const spinning = rotateDragRef.current;
+			if (spinning && spinning.pointerId === e.pointerId && scene) {
+				const world = screenToWorld(e.clientX, e.clientY);
+				const live = useVTTStore.getState();
+				const grabbed = live.tokens.find(
+					(token) => token.id === spinning.grabbedId,
+				);
+				const start = spinning.starts.find(
+					(item) => item.id === spinning.grabbedId,
+				);
+				if (grabbed && start) {
+					const raw = rotationFromLocalPointer(
+						world.x - grabbed.x,
+						world.y - grabbed.y,
+					);
+					if (raw !== null) {
+						const next = steeredRotation(raw);
+						const turns = planRotation(spinning.starts, next - start.rotation);
+						const changed = turns.some((turn) => {
+							const token = live.tokens.find((item) => item.id === turn.id);
+							return token && (token.rotation ?? 0) !== turn.rotation;
+						});
+						if (changed) {
+							live.updateTokens(
+								turns.map((turn) => ({
+									tokenId: turn.id,
+									updates: { rotation: turn.rotation },
+								})),
+							);
+						}
+					}
+				}
+				return;
+			}
 			const hold = pingHoldRef.current;
 			if (hold) {
 				// A roda aparece neste quadro, assim que o ponteiro sai do miolo.
@@ -3443,6 +3593,19 @@ export function VTTCanvas({
 		};
 
 		const handlePointerUp = (e: PointerEvent) => {
+			const spinning = rotateDragRef.current;
+			if (spinning && spinning.pointerId === e.pointerId) {
+				rotateDragRef.current = null;
+				const live = useVTTStore.getState();
+				for (const start of spinning.starts) {
+					const token = live.tokens.find((item) => item.id === start.id);
+					if (!token) continue;
+					const rotation = token.rotation ?? 0;
+					if (rotation === (start.rotation ?? 0)) continue;
+					void onUpdateTokenRef.current?.(start.id, { rotation });
+				}
+				return;
+			}
 			// Roda de pings: soltar escolhe a opção sob o cursor (ou o tipo escolhido, no miolo,
 			// o que inclui o Ctrl+clique rápido, sem arrastar). Cancelar o toque descarta.
 			const hold = pingHoldRef.current;
