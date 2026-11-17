@@ -11,6 +11,24 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.154-tipos-item-capa",
+		version: "1.6.154",
+		date: "17/11/2026",
+		title: "Capa e os outros tipos voltam no cadastro do item",
+		description:
+			"O seletor de categoria do item passa a oferecer todos os tipos que o produto já usava: Elmo, Capa, Luvas, Botas e Consumível, além dos que já apareciam. Capa, elmo, luvas e botas vão para o slot certo do equipamento. Um item antigo salvo como “capa” continua válido.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.153-vtt-iniciais-arrasto",
+		version: "1.6.153",
+		date: "17/11/2026",
+		title: "Iniciais do token não estouram ao arrastar",
+		description:
+			"Ao arrastar um personagem que tem foto, a mesa não cobre mais o retrato com as iniciais enormes. Quem não tem foto continua com as duas letras dentro do disco, parado ou andando, perto ou longe do zoom.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.152-vtt-giro-toque",
 		version: "1.6.152",
 		date: "16/11/2026",

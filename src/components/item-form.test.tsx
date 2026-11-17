@@ -8,6 +8,8 @@ import {
 	within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { itemSlotOf } from "@/core/rules/equipment";
+import { ITEM_CATEGORIES } from "@/core/rules/item-mechanics";
 import type { Item } from "@/lib/store";
 import { itemDefaults, useRPGStore } from "@/lib/store";
 
@@ -396,4 +398,83 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(payload.slot).toBeUndefined();
 		expect(payload.abilityBonuses).toBeUndefined();
 	});
+
+	it("o seletor de categoria oferece Capa e cada tipo canônico", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		const category = screen.getByRole("combobox", { name: "Categoria" });
+		await act(async () => {
+			fireEvent.click(category);
+		});
+		const labels = (await screen.findAllByRole("option")).map(
+			(option) => option.textContent,
+		);
+		expect([...ITEM_CATEGORIES]).toEqual([...CANONICAL_ITEM_TYPES]);
+		for (const type of CANONICAL_ITEM_TYPES) {
+			expect(labels).toContain(type);
+		}
+		expect(labels).toContain("Capa");
+	});
+
+	it("Capa é selecionável e grava o tipo Capa", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Manto da Sombra" },
+		});
+		await pick(screen.getByRole("combobox", { name: "Categoria" }), "Capa");
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.type).toBe("Capa");
+	});
+
+	it("tipo capa, elmo, luvas e botas ocupam o slot que o produto já nomeia", () => {
+		expect(itemSlotOf({ type: "Capa" })).toBe("cloak");
+		expect(itemSlotOf({ type: "capa" })).toBe("cloak");
+		expect(itemSlotOf({ type: "Elmo" })).toBe("head");
+		expect(itemSlotOf({ type: "Luvas" })).toBe("hands");
+		expect(itemSlotOf({ type: "Botas" })).toBe("feet");
+	});
+
+	it("item já salvo com tipo capa continua aceito", async () => {
+		const legacy: Item = {
+			...itemDefaults,
+			id: "cloak-1",
+			createdAt: 1,
+			createdBy: "u1",
+			name: "Capa velha",
+			type: "capa",
+			campaignIds: ["camp-1"],
+		};
+		render(<ItemEditButton item={legacy} open onOpenChange={() => {}} />);
+		const category = screen.getByRole("combobox", { name: "Categoria" });
+		expect(category.textContent).toContain("capa");
+		fireEvent.click(screen.getByRole("button", { name: /Salvar alterações/i }));
+		await vi.waitFor(() => expect(updateItem).toHaveBeenCalledTimes(1));
+		const [, patch] = updateItem.mock.calls[0] as [string, Item];
+		expect(patch.type).toBe("capa");
+	});
 });
+
+/** Tipos que o cadastro, os slots e os filtros já nomeiam. Um a menos e o seletor mente. */
+const CANONICAL_ITEM_TYPES = [
+	"Arma",
+	"Armadura",
+	"Escudo",
+	"Elmo",
+	"Capa",
+	"Luvas",
+	"Botas",
+	"Poção",
+	"Consumível",
+	"Munição",
+	"Anel",
+	"Amuleto",
+	"Pergaminho",
+	"Varinha",
+	"Cajado",
+	"Foco Arcano",
+	"Item Maravilhoso",
+	"Utilitário",
+] as const;

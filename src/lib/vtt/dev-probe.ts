@@ -11,6 +11,33 @@ export interface VttProbe {
 	facing?: (id: string) => number | null;
 	/** Quantos tokens ainda têm gravação de posição em voo ou esperando. */
 	writesBusy?: () => number;
+	/** Tamanho das iniciais desenhadas no token e no fantasma do arrasto. */
+	tokenInk?: (id: string) => TokenInk | null;
+}
+
+export interface TokenInkText {
+	text: string;
+	fontSize: number;
+	scaleX: number;
+	localWidth: number;
+	localHeight: number;
+	boundsWidth: number;
+	boundsHeight: number;
+	boundsX: number;
+	boundsY: number;
+}
+
+export interface TokenInk {
+	x: number;
+	y: number;
+	worldScaleX: number;
+	worldScaleY: number;
+	boundsWidth: number;
+	boundsHeight: number;
+	boundsX: number;
+	boundsY: number;
+	texts: TokenInkText[];
+	ghost: TokenInkText[];
 }
 
 function probeHost(): VttProbe | null {
@@ -46,4 +73,10 @@ export function devExposeWritesBusy(read: VttProbe["writesBusy"]): void {
 export function devExposeFacing(read: VttProbe["facing"]): void {
 	const probe = probeHost();
 	if (probe) probe.facing = read;
+}
+
+/** Registra o leitor do tamanho das iniciais do token. */
+export function devExposeTokenInk(read: VttProbe["tokenInk"]): void {
+	const probe = probeHost();
+	if (probe) probe.tokenInk = read;
 }
