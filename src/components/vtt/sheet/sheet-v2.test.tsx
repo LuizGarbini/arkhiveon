@@ -346,12 +346,9 @@ describe("SheetResources · inspiração, destino e dados bônus", () => {
 		fireEvent.click(
 			screen.getByRole("button", { name: "Adicionar um dado bônus" }),
 		);
-		const added = r.save.mock.calls.at(-1)?.[0] as {
-			bonusDice: { sides: number; quantity: number }[];
-		};
-		expect(added.bonusDice).toEqual([
-			expect.objectContaining({ sides: 6, quantity: 1 }),
-		]);
+		expect(r.save).toHaveBeenLastCalledWith({
+			bonusDice: [expect.objectContaining({ sides: 6, quantity: 1 })],
+		});
 	});
 
 	it("em zero o gastar fica desligado e destino não passa do total", () => {

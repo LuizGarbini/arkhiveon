@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.156-vtt-recursos-ficha",
+		version: "1.6.156",
+		date: "17/11/2026",
+		title: "Inspiração, destino e dados bônus na ficha da mesa",
+		description:
+			"No resumo da ficha aberta na mesa, o bloco Recursos ganha Inspiração, Pontos de destino e Dados bônus, ao lado dos dados de vida. Dá para gastar ou somar na hora, sem confirmação, e nenhum deles desce de zero. Quem já podia mexer nos dados de vida mexe nestes. O jogador só altera a própria ficha. A ficha completa continua lendo os mesmos campos.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.155-vtt-cenas-pastas",
 		version: "1.6.155",
 		date: "17/11/2026",
