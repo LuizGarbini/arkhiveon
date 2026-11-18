@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRPGStore } from "@/lib/store";
 import type { Character } from "@/lib/store/types";
 import {
+	canEditCharacterResources,
 	changedResources,
 	saveCharacterResources,
 } from "./character-resources";
@@ -27,6 +28,43 @@ const get = () => useRPGStore.getState().characters[0] as Character;
 
 beforeEach(() => {
 	useRPGStore.setState({ characters: [structuredClone(base)] });
+});
+
+describe("quem pode editar", () => {
+	it("o jogador edita a própria ficha e não a de outro", () => {
+		expect(
+			canEditCharacterResources({
+				isStaff: false,
+				isCampaignEditor: false,
+				userId: "lia",
+				createdBy: "lia",
+			}),
+		).toBe(true);
+		expect(
+			canEditCharacterResources({
+				isStaff: false,
+				isCampaignEditor: false,
+				userId: "lia",
+				createdBy: "dante",
+			}),
+		).toBe(false);
+		expect(
+			canEditCharacterResources({
+				isStaff: true,
+				isCampaignEditor: false,
+				userId: "mestre",
+				createdBy: "lia",
+			}),
+		).toBe(true);
+		expect(
+			canEditCharacterResources({
+				isStaff: false,
+				isCampaignEditor: true,
+				userId: "co",
+				createdBy: "lia",
+			}),
+		).toBe(true);
+	});
 });
 
 describe("changedResources · só o que mudou", () => {
@@ -85,6 +123,45 @@ describe("jogador: função do banco", () => {
 			p_character_id: "c1",
 			p_changes: { inspiration: 2 },
 		});
+	});
+
+	it("destino e dados bônus vão para a função e preservam o resto", async () => {
+		const rpc = vi.fn(async () => ({}));
+		await saveCharacterResources({
+			characterId: "c1",
+			isStaff: false,
+			changes: { fate: 99 },
+			rpc,
+		});
+		expect(get().tableResources?.fate).toBe(3);
+		expect(get().tableResources?.inspiration).toBe(0);
+		expect(get().tableResources?.fateTotal).toBe(3);
+		expect(rpc).toHaveBeenCalledWith({
+			p_character_id: "c1",
+			p_changes: { fate: 3 },
+		});
+
+		const dice = [{ id: "bd-1", sides: 6 as const, quantity: 1, origin: "" }];
+		await saveCharacterResources({
+			characterId: "c1",
+			isStaff: false,
+			changes: { bonusDice: dice },
+			rpc,
+		});
+		expect(get().tableResources?.bonusDice).toEqual(dice);
+		expect(get().tableResources?.fate).toBe(3);
+		expect(rpc).toHaveBeenLastCalledWith({
+			p_character_id: "c1",
+			p_changes: { bonusDice: dice },
+		});
+
+		await saveCharacterResources({
+			characterId: "c1",
+			isStaff: false,
+			changes: { fate: -4 },
+			rpc,
+		});
+		expect(get().tableResources?.fate).toBe(0);
 	});
 
 	it("nada mudou: não chama o servidor", async () => {

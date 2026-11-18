@@ -1,6 +1,8 @@
 import { useCanLinkOnSheet } from "@/components/character-sheet/use-linked-items";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/lib/auth";
 import {
+	canEditCharacterResources,
 	type ResourceChanges,
 	saveCharacterResources,
 } from "@/lib/character-resources";
@@ -29,8 +31,16 @@ export function useSheetResources(
 ): SheetResourceApi {
 	const isStaff = useVTTStore((s) => s.isGM || s.isCoGM);
 	const linkable = useCanLinkOnSheet({ createdBy: character?.createdBy });
+	const { user } = useAuth();
 	const toast = useToast();
-	const canEdit = Boolean(character) && (isStaff || linkable);
+	const canEdit =
+		Boolean(character) &&
+		canEditCharacterResources({
+			isStaff,
+			isCampaignEditor: linkable,
+			userId: user?.id,
+			createdBy: character?.createdBy,
+		});
 	return {
 		canEdit,
 		isStaff,

@@ -2,18 +2,23 @@ import { describe, expect, it } from "vitest";
 import {
 	addBonusDie,
 	BONUS_DIE_ORIGIN_MAX,
+	bonusDiceDetail,
+	bonusDiceTotal,
 	burnFate,
 	burnPool,
+	canGrantBonusDie,
 	DIVINE_TOTAL_DEFAULT,
 	EMPTY_TABLE_RESOURCES,
 	FATE_TOTAL_DEFAULT,
 	FATE_TOTAL_MAX,
 	fatePercent,
+	grantOneBonusDie,
 	mergeTableResources,
 	normalizeTableResources,
 	poolPercent,
 	regainFate,
 	regainPool,
+	removeOneBonusDie,
 	rollDie,
 	setFate,
 	setFateTotal,
@@ -24,6 +29,7 @@ import {
 	spendFate,
 	spendInspiration,
 	spendPool,
+	TABLE_INSPIRATION_MAX,
 } from "./table-resources";
 
 describe("table resources", () => {
@@ -176,6 +182,78 @@ describe("table resources", () => {
 		const second = spendBonusDie(first?.next ?? res, id, () => 1);
 		expect(second?.next.bonusDice).toEqual([]);
 		expect(spendBonusDie(res, "nope")).toBeNull();
+	});
+
+	it("gastar e adicionar um dado bônus não passa de 0 nem do teto do grupo", () => {
+		expect(removeOneBonusDie(EMPTY_TABLE_RESOURCES)).toBe(
+			EMPTY_TABLE_RESOURCES,
+		);
+		expect(bonusDiceTotal(EMPTY_TABLE_RESOURCES)).toBe(0);
+		expect(bonusDiceDetail(EMPTY_TABLE_RESOURCES)).toBe("");
+		expect(canGrantBonusDie(EMPTY_TABLE_RESOURCES)).toBe(true);
+
+		const created = grantOneBonusDie(EMPTY_TABLE_RESOURCES);
+		expect(created.bonusDice[0]).toMatchObject({
+			sides: 6,
+			quantity: 1,
+			origin: "",
+		});
+		expect(bonusDiceTotal(created)).toBe(1);
+		expect(bonusDiceDetail(created)).toBe("d6");
+		expect(
+			bonusDiceDetail(
+				addBonusDie(EMPTY_TABLE_RESOURCES, {
+					sides: 8,
+					quantity: 2,
+					origin: "bênção",
+				}),
+			),
+		).toBe("d8 · bênção");
+
+		const two = grantOneBonusDie(created);
+		expect(two.bonusDice[0]?.quantity).toBe(2);
+		expect(removeOneBonusDie(two).bonusDice[0]?.quantity).toBe(1);
+		expect(removeOneBonusDie(created).bonusDice).toEqual([]);
+
+		const full = addBonusDie(EMPTY_TABLE_RESOURCES, {
+			sides: 6,
+			quantity: 9,
+			origin: "",
+		});
+		expect(canGrantBonusDie(full)).toBe(false);
+		expect(grantOneBonusDie(full)).toBe(full);
+		expect(TABLE_INSPIRATION_MAX).toBe(99);
+	});
+
+	it("com vários grupos, gasta o último e soma no que ainda cabe", () => {
+		const mixed = addBonusDie(
+			addBonusDie(EMPTY_TABLE_RESOURCES, {
+				sides: 6,
+				quantity: 8,
+				origin: "a",
+			}),
+			{ sides: 8, quantity: 1, origin: "bênção" },
+		);
+		expect(bonusDiceTotal(mixed)).toBe(9);
+		expect(bonusDiceDetail(mixed)).toBe("8d6 · 1d8");
+
+		const spent = removeOneBonusDie(mixed);
+		expect(spent.bonusDice).toHaveLength(1);
+		expect(spent.bonusDice[0]).toMatchObject({ sides: 6, quantity: 8 });
+		expect(removeOneBonusDie(spent).bonusDice[0]?.quantity).toBe(7);
+
+		const cappedLast = addBonusDie(
+			addBonusDie(EMPTY_TABLE_RESOURCES, {
+				sides: 6,
+				quantity: 8,
+				origin: "a",
+			}),
+			{ sides: 8, quantity: 9, origin: "b" },
+		);
+		const granted = grantOneBonusDie(cappedLast);
+		expect(granted.bonusDice.map((die) => die.quantity)).toEqual([9, 9]);
+		expect(grantOneBonusDie(granted)).toBe(granted);
+		expect(removeOneBonusDie(cappedLast).bonusDice[1]?.quantity).toBe(8);
 	});
 
 	it("rollDie fica no intervalo do dado", () => {

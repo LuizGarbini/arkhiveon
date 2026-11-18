@@ -21,6 +21,12 @@ export const FATE_TOTAL_MAX = 99;
 export const DIVINE_TOTAL_DEFAULT = 10;
 export const DIVINE_TOTAL_MIN = 0;
 export const DIVINE_TOTAL_MAX = 99;
+/**
+ * Teto da Inspiração gravada pelo jogador na mesa (RPC, 0..99).
+ * A ficha completa não impõe teto; o botão da mesa para aqui para o
+ * valor caber na função do banco.
+ */
+export const TABLE_INSPIRATION_MAX = 99;
 
 /** Contadores "sobra / total" da faixa (Destino e Pontos Divinos). */
 export type PoolKey = "fate" | "divine";
@@ -327,4 +333,74 @@ export function spendBonusDie(
 		.map((d) => (d.id === id ? { ...d, quantity: d.quantity - 1 } : d))
 		.filter((d) => d.quantity > 0);
 	return { next: { ...res, bonusDice }, die, value };
+}
+
+/** Soma das quantidades. 0 quando não há dado. */
+export function bonusDiceTotal(res: TableResources): number {
+	return res.bonusDice.reduce((sum, die) => sum + die.quantity, 0);
+}
+
+/**
+ * Texto curto ao lado do número. Um grupo: "d6" ou "d8 · bênção".
+ * Vários: "2d6 · 1d8". Vazio: "".
+ */
+export function bonusDiceDetail(res: TableResources): string {
+	if (res.bonusDice.length === 0) return "";
+	if (res.bonusDice.length === 1) {
+		const die = res.bonusDice[0];
+		return die.origin ? `d${die.sides} · ${die.origin}` : `d${die.sides}`;
+	}
+	return res.bonusDice.map((die) => `${die.quantity}d${die.sides}`).join(" · ");
+}
+
+/** Dá para somar 1: ou não há dado (cria 1d6) ou algum grupo está abaixo de 9. */
+export function canGrantBonusDie(res: TableResources): boolean {
+	return (
+		res.bonusDice.length === 0 ||
+		res.bonusDice.some((die) => die.quantity < BONUS_DIE_QUANTITY_MAX)
+	);
+}
+
+/**
+ * Tira 1 do último grupo, sem rolar. O grupo some ao chegar em 0.
+ * Sem dados, devolve o mesmo objeto.
+ */
+export function removeOneBonusDie(res: TableResources): TableResources {
+	const last = res.bonusDice.length - 1;
+	if (last < 0) return res;
+	const die = res.bonusDice[last];
+	if (die.quantity <= 1) {
+		return { ...res, bonusDice: res.bonusDice.slice(0, last) };
+	}
+	return {
+		...res,
+		bonusDice: res.bonusDice.map((item, index) =>
+			index === last ? { ...item, quantity: item.quantity - 1 } : item,
+		),
+	};
+}
+
+/**
+ * Soma 1. Sem grupos, cria 1d6. Com grupos, soma no último que ainda
+ * cabe (até 9). Se todos estão no teto, devolve o mesmo objeto.
+ */
+export function grantOneBonusDie(res: TableResources): TableResources {
+	if (res.bonusDice.length === 0) {
+		return addBonusDie(res, { sides: 6, quantity: 1, origin: "" });
+	}
+	let target = -1;
+	for (let index = res.bonusDice.length - 1; index >= 0; index--) {
+		const die = res.bonusDice[index];
+		if (die && die.quantity < BONUS_DIE_QUANTITY_MAX) {
+			target = index;
+			break;
+		}
+	}
+	if (target < 0) return res;
+	return {
+		...res,
+		bonusDice: res.bonusDice.map((die, index) =>
+			index === target ? { ...die, quantity: die.quantity + 1 } : die,
+		),
+	};
 }

@@ -171,17 +171,31 @@ describe("SheetResources · espaços de magia", () => {
 		}
 		expect(screen.queryByRole("button", { name: "Descanso curto" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Descanso longo" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Gastar uma inspiração" }),
+		).toBeNull();
 		expect(r.save).not.toHaveBeenCalled();
 	});
 
-	it("sem espaços e sem dados de vida a seção não aparece", () => {
-		const { container } = render(
+	it("sem espaços e sem dados de vida ainda dá para usar inspiração, destino e dados bônus", () => {
+		const r = api();
+		render(
 			<SheetResources
 				character={character({ hitDice: "", spellSlots: "" })}
-				resources={api()}
+				resources={r}
 			/>,
 		);
-		expect(container.textContent).toBe("");
+		expect(screen.queryByRole("group", { name: "Dados de vida" })).toBeNull();
+		expect(screen.getByRole("group", { name: "Inspiração" })).toBeTruthy();
+		expect(
+			screen.getByRole("group", { name: "Pontos de destino" }),
+		).toBeTruthy();
+		expect(screen.getByRole("group", { name: "Dados bônus" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Descanso curto" })).toBeNull();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Adicionar uma inspiração" }),
+		);
+		expect(r.save).toHaveBeenCalledWith({ inspiration: 1 });
 	});
 });
 
@@ -273,7 +287,173 @@ describe("SheetResources · descansos e dados de vida", () => {
 				resources={api()}
 			/>,
 		);
-		expect(screen.getByText("0")).toBeTruthy();
+		expect(
+			within(screen.getByRole("group", { name: "Dados de vida" })).getByText(
+				"0",
+			),
+		).toBeTruthy();
+	});
+});
+
+describe("SheetResources · inspiração, destino e dados bônus", () => {
+	const mesa = {
+		inspiration: 2,
+		fate: 1,
+		fateTotal: 10,
+		divine: 0,
+		divineTotal: 10,
+		bonusDice: [] as [],
+	};
+
+	it("gastam ou somam na hora, no mesmo bloco, e não descem de zero", () => {
+		const r = api();
+		render(
+			<SheetResources
+				character={character({
+					hitDice: "1d8",
+					hitDiceUsed: 0,
+					tableResources: mesa,
+				})}
+				resources={r}
+			/>,
+		);
+		const recursos = screen.getByRole("region", { name: "Recursos" });
+		expect(
+			within(recursos).getByRole("group", { name: "Dados de vida" }),
+		).toBeTruthy();
+		expect(
+			within(recursos).getByRole("group", { name: "Inspiração" }),
+		).toBeTruthy();
+		expect(
+			within(recursos).getByRole("group", { name: "Pontos de destino" }),
+		).toBeTruthy();
+		expect(
+			within(recursos).getByRole("group", { name: "Dados bônus" }),
+		).toBeTruthy();
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Gastar uma inspiração" }),
+		);
+		expect(r.save).toHaveBeenLastCalledWith({ inspiration: 1 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Adicionar um ponto de destino" }),
+		);
+		expect(r.save).toHaveBeenLastCalledWith({ fate: 2 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Gastar um ponto de destino" }),
+		);
+		expect(r.save).toHaveBeenLastCalledWith({ fate: 0 });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Adicionar um dado bônus" }),
+		);
+		const added = r.save.mock.calls.at(-1)?.[0] as {
+			bonusDice: { sides: number; quantity: number }[];
+		};
+		expect(added.bonusDice).toEqual([
+			expect.objectContaining({ sides: 6, quantity: 1 }),
+		]);
+	});
+
+	it("em zero o gastar fica desligado e destino não passa do total", () => {
+		render(
+			<SheetResources
+				character={character({
+					tableResources: {
+						inspiration: 0,
+						fate: 0,
+						fateTotal: 10,
+						divine: 0,
+						divineTotal: 10,
+						bonusDice: [],
+					},
+				})}
+				resources={api()}
+			/>,
+		);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Gastar uma inspiração",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Gastar um ponto de destino",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Adicionar um ponto de destino",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(false);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Gastar um dado bônus",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		cleanup();
+		render(
+			<SheetResources
+				character={character({
+					tableResources: {
+						inspiration: 1,
+						fate: 10,
+						fateTotal: 10,
+						divine: 0,
+						divineTotal: 10,
+						bonusDice: [],
+					},
+				})}
+				resources={api()}
+			/>,
+		);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Adicionar um ponto de destino",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Gastar um ponto de destino",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(false);
+	});
+
+	it("quem não edita a ficha vê os números e não os botões", () => {
+		const r = api({ canEdit: false });
+		render(
+			<SheetResources
+				character={character({
+					tableResources: {
+						...mesa,
+						bonusDice: [{ id: "d", sides: 6, quantity: 1, origin: "" }],
+					},
+				})}
+				resources={r}
+			/>,
+		);
+		expect(screen.getByRole("group", { name: "Inspiração" })).toBeTruthy();
+		expect(
+			screen.queryByRole("button", { name: "Gastar uma inspiração" }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Adicionar um ponto de destino" }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Gastar um dado bônus" }),
+		).toBeNull();
+		expect(r.save).not.toHaveBeenCalled();
 	});
 });
 

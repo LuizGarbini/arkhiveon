@@ -11,9 +11,89 @@ import {
 	spendSlot,
 } from "@/core/rules";
 import type { Character, SpellSlotsState } from "@/lib/store/types";
+import {
+	bonusDiceDetail,
+	bonusDiceTotal,
+	canGrantBonusDie,
+	grantOneBonusDie,
+	normalizeTableResources,
+	regainFate,
+	removeOneBonusDie,
+	spendFate,
+	TABLE_INSPIRATION_MAX,
+} from "@/lib/table-resources";
 import { cn } from "@/lib/utils";
 import { CrescentMoonGlyph, SunburstGlyph } from "./sheet-icons";
 import type { SheetResourceApi } from "./use-sheet-resources";
+
+const stepper =
+	"flex h-8 w-8 cursor-pointer select-none items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent font-mono text-sm font-medium text-muted-foreground transition-colors active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 [@media(hover:hover)]:hover:bg-white/[0.06] [@media(hover:hover)]:hover:text-foreground [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
+
+/** Uma linha do bloco Recursos: número e − / +, no mesmo ritmo dos dados de vida. */
+function ResourceCount({
+	label,
+	value,
+	detail,
+	canEdit,
+	canSpend,
+	canAdd,
+	onSpend,
+	onAdd,
+	spendLabel,
+	addLabel,
+}: {
+	label: string;
+	value: number;
+	detail?: string;
+	canEdit: boolean;
+	canSpend: boolean;
+	canAdd: boolean;
+	onSpend: () => void;
+	onAdd: () => void;
+	spendLabel: string;
+	addLabel: string;
+}) {
+	return (
+		<fieldset
+			aria-label={label}
+			className="m-0 flex min-w-0 items-center justify-between gap-3 border-0 px-3 py-2.5"
+		>
+			<div className="min-w-0">
+				<p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+				<p className="mt-0.5 font-mono text-lg leading-tight font-semibold text-foreground tabular-nums">
+					{value}
+					{detail ? (
+						<span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
+							{detail}
+						</span>
+					) : null}
+				</p>
+			</div>
+			{canEdit ? (
+				<div className="inline-flex shrink-0 divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+					<button
+						type="button"
+						disabled={!canSpend}
+						aria-label={spendLabel}
+						onClick={onSpend}
+						className={stepper}
+					>
+						−
+					</button>
+					<button
+						type="button"
+						disabled={!canAdd}
+						aria-label={addLabel}
+						onClick={onAdd}
+						className={stepper}
+					>
+						+
+					</button>
+				</div>
+			) : null}
+		</fieldset>
+	);
+}
 
 /** Uma bolinha por espaço: cheia = disponível, vazia = gasto. */
 function Pips({
@@ -72,8 +152,10 @@ function Pips({
 }
 
 /**
- * Recursos do Resumo: espaços de magia (com os de Pacto), dados de vida e os
- * descansos. Só aparece o que a ficha tem.
+ * Recursos do Resumo: espaços de magia (com os de Pacto), dados de vida,
+ * inspiração, pontos de destino, dados bônus e os descansos.
+ * Inspiração, destino e dados bônus aparecem sempre (mesmo em 0) para
+ * poder gastar ou somar. O resto só aparece quando a ficha tem.
  */
 export function SheetResources({
 	character,
@@ -87,7 +169,10 @@ export function SheetResources({
 	const diceTotal = hitDiceTotal(character.hitDice);
 	const diceUsed = Math.min(character.hitDiceUsed ?? 0, diceTotal);
 	const diceLeft = diceTotal - diceUsed;
-	if (!showSlots && diceTotal === 0) return null;
+	const table = normalizeTableResources(character.tableResources);
+	const inspiration = table.inspiration;
+	const diceCount = bonusDiceTotal(table);
+	const diceHint = bonusDiceDetail(table);
 
 	const saveSlots = (next: SpellSlotsState | null) => {
 		if (next) resources.save({ spellSlotsState: next });
@@ -102,8 +187,6 @@ export function SheetResources({
 		});
 	const levels = Object.keys(slots.slots).sort((a, b) => Number(a) - Number(b));
 
-	const stepper =
-		"flex h-8 w-8 cursor-pointer select-none items-center justify-center bg-linear-to-b from-white/[0.03] to-transparent font-mono text-sm font-medium text-muted-foreground transition-colors active:scale-[0.96] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 [@media(hover:hover)]:hover:bg-white/[0.06] [@media(hover:hover)]:hover:text-foreground [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
 	const rest =
 		"group flex min-h-9 cursor-pointer select-none items-center justify-center gap-1.5 bg-linear-to-b from-white/[0.025] to-transparent text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 active:scale-[0.98] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary [@media(hover:hover)]:hover:bg-white/[0.05] [@media(hover:hover)]:hover:text-foreground [@media(pointer:coarse)]:min-h-11";
 
@@ -164,44 +247,88 @@ export function SheetResources({
 				) : null}
 
 				{diceTotal > 0 ? (
-					<div className="flex items-center justify-between gap-3 px-3 py-2.5">
-						<div>
-							<p className="text-[11px] font-medium text-muted-foreground">
-								Dados de vida
-							</p>
-							<p className="mt-0.5 font-mono text-lg leading-tight font-semibold text-foreground tabular-nums">
-								{diceLeft}
-								<span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
-									de {character.hitDice}
-								</span>
-							</p>
-						</div>
-						{resources.canEdit ? (
-							<div className="inline-flex divide-x divide-white/[0.07] overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
-								<button
-									type="button"
-									disabled={diceLeft <= 0}
-									aria-label="Gastar um dado de vida"
-									onClick={() => resources.save({ hitDiceUsed: diceUsed + 1 })}
-									className={stepper}
-								>
-									−
-								</button>
-								<button
-									type="button"
-									disabled={diceUsed <= 0}
-									aria-label="Recuperar um dado de vida"
-									onClick={() => resources.save({ hitDiceUsed: diceUsed - 1 })}
-									className={stepper}
-								>
-									+
-								</button>
-							</div>
-						) : null}
-					</div>
+					<ResourceCount
+						label="Dados de vida"
+						value={diceLeft}
+						detail={`de ${character.hitDice}`}
+						canEdit={resources.canEdit}
+						canSpend={diceLeft > 0}
+						canAdd={diceUsed > 0}
+						spendLabel="Gastar um dado de vida"
+						addLabel="Recuperar um dado de vida"
+						onSpend={() => {
+							if (diceLeft <= 0) return;
+							resources.save({ hitDiceUsed: diceUsed + 1 });
+						}}
+						onAdd={() => {
+							if (diceUsed <= 0) return;
+							resources.save({ hitDiceUsed: diceUsed - 1 });
+						}}
+					/>
 				) : null}
 
-				{resources.canEdit ? (
+				<ResourceCount
+					label="Inspiração"
+					value={inspiration}
+					canEdit={resources.canEdit}
+					canSpend={inspiration > 0}
+					canAdd={resources.isStaff || inspiration < TABLE_INSPIRATION_MAX}
+					spendLabel="Gastar uma inspiração"
+					addLabel="Adicionar uma inspiração"
+					onSpend={() => {
+						const next = Math.max(0, inspiration - 1);
+						if (next === inspiration) return;
+						resources.save({ inspiration: next });
+					}}
+					onAdd={() => {
+						if (!resources.isStaff && inspiration >= TABLE_INSPIRATION_MAX) {
+							return;
+						}
+						resources.save({ inspiration: inspiration + 1 });
+					}}
+				/>
+				<ResourceCount
+					label="Pontos de destino"
+					value={table.fate}
+					detail={`de ${table.fateTotal}`}
+					canEdit={resources.canEdit}
+					canSpend={table.fate > 0}
+					canAdd={table.fate < table.fateTotal}
+					spendLabel="Gastar um ponto de destino"
+					addLabel="Adicionar um ponto de destino"
+					onSpend={() => {
+						const next = spendFate(table).fate;
+						if (next === table.fate) return;
+						resources.save({ fate: next });
+					}}
+					onAdd={() => {
+						const next = regainFate(table).fate;
+						if (next === table.fate) return;
+						resources.save({ fate: next });
+					}}
+				/>
+				<ResourceCount
+					label="Dados bônus"
+					value={diceCount}
+					detail={diceHint || undefined}
+					canEdit={resources.canEdit}
+					canSpend={diceCount > 0}
+					canAdd={canGrantBonusDie(table)}
+					spendLabel="Gastar um dado bônus"
+					addLabel="Adicionar um dado bônus"
+					onSpend={() => {
+						const next = removeOneBonusDie(table);
+						if (next === table) return;
+						resources.save({ bonusDice: next.bonusDice });
+					}}
+					onAdd={() => {
+						const next = grantOneBonusDie(table);
+						if (next === table) return;
+						resources.save({ bonusDice: next.bonusDice });
+					}}
+				/>
+
+				{resources.canEdit && (showSlots || diceTotal > 0) ? (
 					<div className="grid grid-cols-2 divide-x divide-white/[0.06]">
 						<button type="button" onClick={shortRest} className={rest}>
 							<SunburstGlyph className="t-icon-spring size-3.5 text-amber-300/80" />
