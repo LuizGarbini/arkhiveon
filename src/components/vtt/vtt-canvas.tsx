@@ -29,7 +29,9 @@ import {
 import {
 	devCount,
 	devExposeFacing,
+	devExposeTokenInk,
 	devExposeTokenPos,
+	type TokenInkText,
 } from "@/lib/vtt/dev-probe";
 import {
 	cursorBroadcastDue,
@@ -134,6 +136,10 @@ import {
 	canRemoveSpellTemplate,
 	shouldDeleteSelectedTemplate,
 } from "@/lib/vtt/template-permissions";
+import {
+	dragGhostShowsInitials,
+	tokenInitialsFontSize,
+} from "@/lib/vtt/token-initials";
 import {
 	facingRadians,
 	tokenPose,
@@ -373,9 +379,45 @@ function destroyChildren(layer: Container | null) {
 	for (const child of layer.removeChildren()) child.destroy({ children: true });
 }
 
+function inkTexts(root: Container | null): TokenInkText[] {
+	if (!root) return [];
+	const out: TokenInkText[] = [];
+	const walk = (node: Container) => {
+		if (node instanceof Text) {
+			const bounds = node.getBounds();
+			const rawSize = node.style.fontSize;
+			const fontSize =
+				typeof rawSize === "number"
+					? rawSize
+					: Number.parseFloat(String(rawSize));
+			out.push({
+				text: node.text,
+				fontSize,
+				scaleX: node.scale.x,
+				localWidth: node.width,
+				localHeight: node.height,
+				boundsWidth: bounds.width,
+				boundsHeight: bounds.height,
+				boundsX: bounds.x,
+				boundsY: bounds.y,
+			});
+		}
+		for (const child of node.children) {
+			if (child instanceof Container) walk(child);
+		}
+	};
+	walk(root);
+	return out;
+}
+
 function syncDragGhost(
 	layer: Container,
-	token: { id: string; name: string; sizeCells: number },
+	token: {
+		id: string;
+		name: string;
+		sizeCells: number;
+		avatarUrl?: string | null;
+	},
 	x: number,
 	y: number,
 	gridSize: number,
@@ -390,16 +432,22 @@ function syncDragGhost(
 		disc.fill({ color: 0x18181b, alpha: 0.9 });
 		disc.stroke({ width: 2, color: 0xfafafa, alpha: 0.9 });
 		ghost.addChild(disc);
-		const initials = new Text({
-			text: token.name.slice(0, 2).toUpperCase(),
-			style: new TextStyle({
-				fill: 0xa855f7,
-				fontSize: Math.max(10, radius * 0.7),
-				fontWeight: "700",
-			}),
-		});
-		initials.anchor.set(0.5);
-		ghost.addChild(initials);
+		// Sem retrato, as letras usam a mesma fonte do token (unidades do mapa).
+		// Com foto, não desenha iniciais: elas cobriam o rosto durante o arrasto.
+		if (dragGhostShowsInitials(token.avatarUrl)) {
+			const initials = new Text({
+				text: token.name.slice(0, 2).toUpperCase(),
+				resolution: 4,
+				style: new TextStyle({
+					fill: 0xa855f7,
+					fontFamily: "system-ui, sans-serif",
+					fontSize: tokenInitialsFontSize(radius),
+					fontWeight: "bold",
+				}),
+			});
+			initials.anchor.set(0.5);
+			ghost.addChild(initials);
+		}
 		layer.addChild(ghost);
 	}
 	ghost.position.set(x, y);
@@ -1062,6 +1110,24 @@ export function VTTCanvas({
 				const display = tokenDisplayObjectsRef.current.get(id);
 				return display ? { x: display.x, y: display.y } : null;
 			});
+			devExposeTokenInk((id) => {
+				const display = tokenDisplayObjectsRef.current.get(id);
+				if (!display) return null;
+				const bounds = display.getBounds();
+				const ghost = dragGhostLayerRef.current?.getChildByLabel(id) ?? null;
+				return {
+					x: display.x,
+					y: display.y,
+					worldScaleX: display.worldTransform.a,
+					worldScaleY: display.worldTransform.d,
+					boundsWidth: bounds.width,
+					boundsHeight: bounds.height,
+					boundsX: bounds.x,
+					boundsY: bounds.y,
+					texts: inkTexts(display),
+					ghost: ghost instanceof Container ? inkTexts(ghost) : [],
+				};
+			});
 			devExposeFacing((id) => {
 				const arrow = facingArrowsRef.current.get(id);
 				if (!arrow) return null;
@@ -1372,7 +1438,7 @@ export function VTTCanvas({
 							resolution: 4,
 							style: new TextStyle({
 								fontFamily: "system-ui, sans-serif",
-								fontSize: Math.max(4, tokenRadius * 0.7),
+								fontSize: tokenInitialsFontSize(tokenRadius),
 								fontWeight: "bold",
 								fill: "#ffffff",
 							}),
@@ -1387,7 +1453,7 @@ export function VTTCanvas({
 					resolution: 4,
 					style: new TextStyle({
 						fontFamily: "system-ui, sans-serif",
-						fontSize: Math.max(4, tokenRadius * 0.7),
+						fontSize: tokenInitialsFontSize(tokenRadius),
 						fontWeight: "bold",
 						fill: isGMLayer ? "#c084fc" : "#a855f7",
 					}),

@@ -126,6 +126,13 @@ function matchesCategoryFilter(
 			"equipamento",
 			"moeda",
 			"reliquia",
+			"capa",
+			"cloak",
+			"cape",
+			"luvas",
+			"luva",
+			"botas",
+			"bota",
 		],
 	};
 

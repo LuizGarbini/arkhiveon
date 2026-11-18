@@ -21,6 +21,7 @@ import {
 	type PingAdmission,
 } from "./ping-queue";
 import { rulerMeasurementForTool } from "./ruler-gesture";
+import { createFolder, deleteFolder } from "./scene-folders";
 import { withSceneGridDefaults } from "./scene-settings";
 import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
 import type {
@@ -36,6 +37,7 @@ import type {
 	VTTRemoteMeasurement,
 	VTTRulerMeasurement,
 	VTTScene,
+	VTTSceneFolder,
 	VTTToken,
 } from "./types";
 import type { LightLevel } from "./vision";
@@ -111,6 +113,7 @@ export const VTT_PLAYER_COLORS = CURSOR_PALETTE;
 interface VTTState {
 	// Scenes
 	scenes: VTTScene[];
+	sceneFolders: VTTSceneFolder[];
 	activeSceneId: string | null;
 	isLoadingScenes: boolean;
 
@@ -197,6 +200,9 @@ interface VTTState {
 
 	// Actions
 	setScenes: (scenes: VTTScene[]) => void;
+	setSceneFolders: (folders: VTTSceneFolder[]) => void;
+	upsertSceneFolder: (folder: VTTSceneFolder) => void;
+	removeSceneFolder: (folderId: string) => void;
 	setActiveSceneId: (sceneId: string | null) => void;
 	addScene: (scene: VTTScene) => void;
 	updateScene: (sceneId: string, updates: Partial<VTTScene>) => void;
@@ -425,6 +431,7 @@ const emptySceneContents = () => ({
 
 export const useVTTStore = create<VTTState>((set) => ({
 	scenes: [],
+	sceneFolders: [],
 	activeSceneId: null,
 	isLoadingScenes: false,
 
@@ -504,6 +511,19 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	setScenes: (scenes) =>
 		set({ scenes: scenes.map((scene) => withSceneGridDefaults(scene)) }),
+	setSceneFolders: (sceneFolders) => set({ sceneFolders }),
+	upsertSceneFolder: (folder) =>
+		set((state) => ({
+			sceneFolders: createFolder(state.sceneFolders, folder),
+		})),
+	removeSceneFolder: (folderId) =>
+		set((state) => {
+			const next = deleteFolder(state.scenes, state.sceneFolders, folderId);
+			return {
+				sceneFolders: next.folders,
+				scenes: next.scenes === state.scenes ? state.scenes : [...next.scenes],
+			};
+		}),
 	setActiveSceneId: (sceneId) =>
 		set((state) =>
 			state.activeSceneId === sceneId

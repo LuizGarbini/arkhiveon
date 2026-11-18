@@ -25,6 +25,7 @@ const base = {
 	light_level: "bright",
 	is_active: true,
 	order_index: 0,
+	folder_id: null,
 	created_at: "x",
 	updated_at: "x",
 } as unknown as Row;
@@ -39,6 +40,16 @@ describe("luz da cena na leitura do banco", () => {
 			"dark",
 		);
 		expect(mapSceneRow(base).lightLevel).toBe("bright");
+	});
+
+	it("cena sem pasta fica na raiz; a coluna acompanha quando existe", () => {
+		expect(mapSceneRow(base).folderId).toBeNull();
+		expect(mapSceneRow({ ...base, folder_id: "pasta-1" }).folderId).toBe(
+			"pasta-1",
+		);
+		const old = { ...base } as unknown as Record<string, unknown>;
+		delete old.folder_id;
+		expect(mapSceneRow(old as unknown as Row).folderId).toBeNull();
 	});
 
 	it("valor desconhecido ou ausente (linha antiga) é cena clara", () => {

@@ -5,6 +5,7 @@ import type {
 	VTTGridType,
 	VTTLayer,
 	VTTScene,
+	VTTSceneFolder,
 	VTTToken,
 } from "./types";
 import { toLightLevel } from "./vision";
@@ -32,8 +33,21 @@ export function mapSceneRow(
 		lightLevel: toLightLevel(row.light_level),
 		isActive: row.is_active,
 		orderIndex: row.order_index,
+		folderId: row.folder_id ?? null,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
+	};
+}
+
+export function mapFolderRow(
+	row: Database["public"]["Tables"]["vtt_scene_folders"]["Row"],
+): VTTSceneFolder {
+	return {
+		id: row.id,
+		campaignId: row.campaign_id,
+		name: row.name,
+		orderIndex: row.order_index,
+		createdAt: row.created_at,
 	};
 }
 export function mapTokenRow(

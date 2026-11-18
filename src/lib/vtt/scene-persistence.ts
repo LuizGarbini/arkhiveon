@@ -207,6 +207,7 @@ export function createScenePersistence(
 					isActive,
 					orderIndex,
 					updatedAt,
+					folderId,
 				} = scene;
 				record.base = {
 					...record.base,
@@ -218,6 +219,7 @@ export function createScenePersistence(
 					isActive,
 					orderIndex,
 					updatedAt,
+					folderId: folderId ?? null,
 				};
 			}
 			publish(scene.id);

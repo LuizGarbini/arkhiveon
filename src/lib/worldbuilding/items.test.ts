@@ -110,6 +110,13 @@ function matchesCategoryFilter(
 			"equipamento",
 			"moeda",
 			"reliquia",
+			"capa",
+			"cloak",
+			"cape",
+			"luvas",
+			"luva",
+			"botas",
+			"bota",
 		],
 	};
 
@@ -200,6 +207,9 @@ describe("Item Filter Helpers", () => {
 			expect(matchesCategoryFilter("Utilitário", "outro")).toBe(true);
 			expect(matchesCategoryFilter("Ferramenta de Ladrão", "outro")).toBe(true);
 			expect(matchesCategoryFilter("", "outro")).toBe(true);
+			expect(matchesCategoryFilter("Capa", "outro")).toBe(true);
+			expect(matchesCategoryFilter("Luvas", "outro")).toBe(true);
+			expect(matchesCategoryFilter("Botas", "outro")).toBe(true);
 		});
 	});
 });

@@ -1219,9 +1219,45 @@ export type Database = {
 					},
 				];
 			};
+			vtt_scene_folders: {
+				Row: {
+					campaign_id: string;
+					created_at: string;
+					id: string;
+					name: string;
+					order_index: number;
+					updated_at: string;
+				};
+				Insert: {
+					campaign_id: string;
+					created_at?: string;
+					id?: string;
+					name: string;
+					order_index?: number;
+					updated_at?: string;
+				};
+				Update: {
+					campaign_id?: string;
+					created_at?: string;
+					id?: string;
+					name?: string;
+					order_index?: number;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "vtt_scene_folders_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			vtt_scenes: {
 				Row: {
 					campaign_id: string;
+					folder_id: string | null;
 					combat_round: number | null;
 					combat_turn_id: string | null;
 					created_at: string;
@@ -1248,6 +1284,7 @@ export type Database = {
 				};
 				Insert: {
 					campaign_id: string;
+					folder_id?: string | null;
 					combat_round?: number | null;
 					combat_turn_id?: string | null;
 					created_at?: string;
@@ -1274,6 +1311,7 @@ export type Database = {
 				};
 				Update: {
 					campaign_id?: string;
+					folder_id?: string | null;
 					combat_round?: number | null;
 					combat_turn_id?: string | null;
 					created_at?: string;
@@ -1304,6 +1342,13 @@ export type Database = {
 						columns: ["campaign_id"];
 						isOneToOne: false;
 						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "vtt_scenes_folder_id_fkey";
+						columns: ["folder_id"];
+						isOneToOne: false;
+						referencedRelation: "vtt_scene_folders";
 						referencedColumns: ["id"];
 					},
 				];
