@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import {
 	CircleAlert,
 	CircleDot,
+	Ear,
 	Footprints,
 	Gem,
 	Hand,
@@ -9,9 +10,12 @@ import {
 	Layers,
 	Link2,
 	Plus,
+	RectangleHorizontal,
 	Shield,
+	ShieldHalf,
 	Shirt,
 	Sword,
+	Watch,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { FramedImage } from "@/components/framed-image";
@@ -33,16 +37,25 @@ export const SLOT_ICONS: Record<
 	ComponentType<{ className?: string }>
 > = {
 	head: HardHat,
+	earring: Ear,
 	neck: Gem,
 	cloak: Layers,
+	bracers: ShieldHalf,
 	hands: Hand,
+	bracelet: Watch,
+	belt: RectangleHorizontal,
 	ring1: CircleDot,
 	ring2: CircleDot,
+	ring3: CircleDot,
+	ring4: CircleDot,
 	mainHand: Sword,
 	offHand: Shield,
 	armor: Shirt,
 	feet: Footprints,
 };
+
+const slotNameClass =
+	"w-full rounded-md bg-background/80 px-1 py-0.5 text-center text-[10px] font-semibold leading-tight text-balance text-foreground";
 
 /** Foto do item (ou o ícone do slot quando não há imagem). */
 export function ItemThumb({
@@ -238,7 +251,7 @@ export function EquipmentSlotTile({
 									<CircleAlert className="size-3 shrink-0" aria-hidden />
 									{MISSING_NUMBER_SLOT_LABEL}
 								</span>
-								<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+								<span className={cn(slotNameClass, "backdrop-blur-md")}>
 									{EQUIP_SLOT_SHORT_LABELS[slot]}
 								</span>
 							</span>
@@ -278,12 +291,17 @@ export function EquipmentSlotTile({
 								<CircleAlert className="size-3 shrink-0" aria-hidden />
 								{MISSING_NUMBER_SLOT_LABEL}
 							</span>
-							<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+							<span className={cn(slotNameClass, "backdrop-blur-md")}>
 								{EQUIP_SLOT_SHORT_LABELS[slot]}
 							</span>
 						</span>
 					) : missingNumber ? null : (
-						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+						<span
+							className={cn(
+								slotNameClass,
+								"pointer-events-none absolute inset-x-1.5 bottom-1.5 w-auto backdrop-blur-md",
+							)}
+						>
 							{EQUIP_SLOT_SHORT_LABELS[slot]}
 						</span>
 					)}
@@ -291,7 +309,7 @@ export function EquipmentSlotTile({
 			) : (
 				<span className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-1 text-center">
 					<Icon className="size-6 opacity-55" aria-hidden />
-					<span className="text-[11px] leading-tight">
+					<span className="px-0.5 text-center text-[11px] leading-tight text-balance">
 						{EQUIP_SLOT_SHORT_LABELS[slot]}
 					</span>
 					{canEdit ? (

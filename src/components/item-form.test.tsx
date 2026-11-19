@@ -429,6 +429,34 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(payload.type).toBe("Capa");
 	});
 
+	it("o seletor de onde se veste lista os slots novos no Select do DS", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Bônus/ }));
+		const combo = screen.getByRole("combobox", {
+			name: "Onde o item é vestido",
+		});
+		expect(combo.tagName).not.toBe("SELECT");
+		await act(async () => {
+			fireEvent.click(combo);
+		});
+		const labels = (await screen.findAllByRole("option")).map(
+			(option) => option.textContent,
+		);
+		for (const label of [
+			"Brinco",
+			"Bracelete",
+			"Cinto",
+			"Braçadeiras",
+			"Anel",
+		]) {
+			expect(labels).toContain(label);
+		}
+		expect(labels).not.toContain("Anel 3");
+		expect(labels).not.toContain("Anel 4");
+	});
+
 	it("tipo capa, elmo, luvas e botas ocupam o slot que o produto já nomeia", () => {
 		expect(itemSlotOf({ type: "Capa" })).toBe("cloak");
 		expect(itemSlotOf({ type: "capa" })).toBe("cloak");

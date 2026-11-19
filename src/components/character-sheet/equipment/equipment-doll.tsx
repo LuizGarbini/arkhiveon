@@ -13,12 +13,25 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "../view/number-detail";
 import { EquipmentSlotTile } from "./equipment-slot-tile";
 
-const LEFT_SLOTS: EquipSlot[] = ["head", "neck", "cloak", "hands", "ring1"];
+/** Duas colunas de cada lado do retrato. Cabe em 104 px sem cortar o rótulo. */
+const LEFT_SLOTS: EquipSlot[] = [
+	"head",
+	"earring",
+	"neck",
+	"cloak",
+	"bracers",
+	"hands",
+	"bracelet",
+	"ring1",
+];
 const RIGHT_SLOTS: EquipSlot[] = [
 	"mainHand",
 	"offHand",
 	"armor",
+	"belt",
 	"ring2",
+	"ring3",
+	"ring4",
 	"feet",
 ];
 
@@ -149,8 +162,8 @@ export function EquipmentDoll({
 				</div>
 			) : (
 				// Desktop: boneco
-				<div className="relative grid flex-1 grid-cols-[104px_1fr_104px] items-stretch gap-4">
-					<div className="flex flex-col justify-between gap-2">
+				<div className="relative grid flex-1 grid-cols-[220px_minmax(0,1fr)_220px] items-stretch gap-3">
+					<div className="grid grid-cols-2 justify-items-center gap-2">
 						{LEFT_SLOTS.map((slot) => tile(slot, "doll"))}
 					</div>
 					<div className="flex min-w-0 items-center justify-center">
@@ -176,7 +189,7 @@ export function EquipmentDoll({
 							</figcaption>
 						</figure>
 					</div>
-					<div className="flex flex-col justify-between gap-2">
+					<div className="grid grid-cols-2 justify-items-center gap-2">
 						{RIGHT_SLOTS.map((slot) => tile(slot, "doll"))}
 					</div>
 				</div>

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.158-equipamento-slots",
+		version: "1.6.158",
+		date: "19/11/2026",
+		title: "Brinco, bracelete, cinto, braçadeiras e mais dois anéis",
+		description:
+			"O boneco da ficha ganha seis lugares: Brinco, Bracelete, Cinto, Braçadeiras, Anel 3 e Anel 4. No cadastro do item, “Onde se veste” manda o item para o slot certo. Um anel cabe em qualquer um dos quatro anéis. Fichas antigas continuam iguais, sem precisar migrar nada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.157-equipamento-sem-numero",
 		version: "1.6.157",
 		date: "19/11/2026",
