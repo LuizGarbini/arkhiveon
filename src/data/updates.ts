@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.159-bonus-magia",
+		version: "1.6.159",
+		date: "19/11/2026",
+		title: "CD e ataque de magia somam o item equipado",
+		description:
+			"Um item No Corpo com bônus de CD de magia ou ataque de magia entra na conta da ficha, e um chip diz de qual item veio. O número digitado na ficha não muda: o bônus soma à parte e não é gravado no campo manual. A rolagem de ataque de magia na mesa passa a usar o valor já com o bônus dos itens.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.158-equipamento-slots",
 		version: "1.6.158",
 		date: "19/11/2026",

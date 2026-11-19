@@ -774,6 +774,60 @@ describe("AttacksTab · magias", () => {
 		expect(screen.getByText("CD de salvaguarda")).toBeTruthy();
 	});
 
+	it("mostra a CD efetiva, o chip, e rola o ataque já com o item", () => {
+		const item = {
+			id: "flask-atk",
+			name: "Frasco de Sangue",
+			type: "Item Maravilhoso",
+			slot: "neck",
+			requiresAttunement: true,
+			bonuses: [
+				{ id: "dc", target: "spellSaveDc" as const, value: 3 },
+				{ id: "at", target: "spellAttack" as const, value: 2 },
+			],
+		} as Item;
+		const c = character({
+			spellAttackBonus: 6,
+			spellSaveDc: 14,
+			spellsList: [],
+			inventoryList: [
+				{
+					id: "inv-flask-atk",
+					name: item.name,
+					quantity: 1,
+					weightLbs: 0,
+					location: "equipped",
+					slot: "neck",
+					isAttuned: true,
+					campaignItemId: item.id,
+				},
+			],
+		});
+		const map = new Map([[item.id, item]]);
+		const rl = { rolling: false, check: vi.fn(), formula: vi.fn() };
+		render(
+			<AttacksTab
+				character={c}
+				stats={computeEffectiveStats(c, map)}
+				itemsById={map}
+				rolls={rl}
+				resources={api()}
+				onOpenEquipment={vi.fn()}
+			/>,
+		);
+		expect(screen.getByText("17")).toBeTruthy();
+		expect(screen.getByText("CD de magia Frasco de Sangue +3")).toBeTruthy();
+		expect(
+			screen.getByText("Ataque de magia Frasco de Sangue +2"),
+		).toBeTruthy();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Rolar ataque de magia (+8)" }),
+		);
+		expect(rl.check).toHaveBeenCalledWith("Ataque de magia", 8);
+		expect(c.spellAttackBonus).toBe(6);
+		expect(c.spellSaveDc).toBe(14);
+	});
+
 	it("quem não conjura não vê a seção de magias", () => {
 		render1(character({ spellsList: [], spellAttackBonus: 0, spellSaveDc: 0 }));
 		expect(screen.queryByRole("region", { name: "Magias" })).toBeNull();
@@ -1037,6 +1091,92 @@ describe("SummaryTab · origem da capa equipada", () => {
 		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
 		expect(screen.queryByRole("link", { name: "Editar item" })).toBeNull();
 		expect(screen.getByText("28")).toBeTruthy();
+	});
+
+	it("resumo mostra a CD efetiva e o chip do item", () => {
+		const item = {
+			id: "flask",
+			name: "Frasco de Sangue",
+			type: "Item Maravilhoso",
+			slot: "neck",
+			requiresAttunement: true,
+			bonuses: [{ id: "dc", target: "spellSaveDc", value: 3 }],
+		} as Item;
+		const c = character({
+			spellSaveDc: 14,
+			spellAttackBonus: 6,
+			inventoryList: [
+				{
+					id: "inv-flask",
+					name: item.name,
+					quantity: 1,
+					weightLbs: 0,
+					location: "equipped",
+					slot: "neck",
+					isAttuned: true,
+					campaignItemId: item.id,
+				},
+			],
+		});
+		render(
+			<SummaryTab
+				character={c}
+				config={SYSTEM_CONFIG.dnd5e}
+				stats={computeEffectiveStats(c, new Map([[item.id, item]]))}
+				showPassive={false}
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+				resources={api()}
+			/>,
+		);
+		expect(
+			screen.getByText("CD de magia").previousElementSibling?.textContent,
+		).toBe("17");
+		const chip = screen.getByText("CD de magia Frasco de Sangue +3");
+		expect(chip.getAttribute("title")).toBe("CD de magia Frasco de Sangue +3");
+		expect(chip.getAttribute("aria-label")).toBe(
+			"CD de magia Frasco de Sangue +3",
+		);
+		expect(c.spellSaveDc).toBe(14);
+	});
+
+	it("manual 0 com bônus de item mostra a CD do item e o chip", () => {
+		const item = {
+			id: "flask-zero",
+			name: "Frasco de Sangue",
+			type: "Item Maravilhoso",
+			slot: "neck",
+			requiresAttunement: false,
+			bonuses: [{ id: "dc", target: "spellSaveDc", value: 3 }],
+		} as Item;
+		const c = character({
+			spellSaveDc: 0,
+			inventoryList: [
+				{
+					id: "inv-flask-zero",
+					name: item.name,
+					quantity: 1,
+					weightLbs: 0,
+					location: "equipped",
+					slot: "neck",
+					campaignItemId: item.id,
+				},
+			],
+		});
+		render(
+			<SummaryTab
+				character={c}
+				config={SYSTEM_CONFIG.dnd5e}
+				stats={computeEffectiveStats(c, new Map([[item.id, item]]))}
+				showPassive={false}
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+				resources={api()}
+			/>,
+		);
+		expect(
+			screen.getByText("CD de magia").previousElementSibling?.textContent,
+		).toBe("3");
+		expect(screen.getByText("CD de magia Frasco de Sangue +3")).toBeTruthy();
+		expect(c.spellSaveDc).toBe(0);
 	});
 
 	it("a mesma capa na mochila não entra no resumo", () => {

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
 	calculateProficiencyBonus,
 	describeItemEffects,
+	describeSpellOrigin,
 	type EffectiveStats,
 	estimateHealthMax,
 	formatModifier,
@@ -14,6 +15,15 @@ import {
 import type { Character, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { MissingNumberNotice } from "./equipment-slot-tile";
+
+function chipKeys(chips: readonly string[]) {
+	const seen = new Map<string, number>();
+	return chips.map((text) => {
+		const count = (seen.get(text) ?? 0) + 1;
+		seen.set(text, count);
+		return { key: count === 1 ? text : `${text}#${count}`, text };
+	});
+}
 
 function StatCard({
 	label,
@@ -63,16 +73,18 @@ function StatCard({
 				</span>
 			</div>
 			{chips && chips.length > 0 ? (
-				<div className="mt-2 flex flex-wrap gap-1">
-					{chips.map((chip) => (
-						<span
-							key={chip}
-							className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground"
+				<ul className="mt-2 flex min-w-0 flex-wrap gap-1">
+					{chipKeys(chips).map((chip) => (
+						<li
+							key={chip.key}
+							title={chip.text}
+							aria-label={chip.text}
+							className="max-w-full min-w-0 truncate rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground tabular-nums"
 						>
-							{chip}
-						</span>
+							{chip.text}
+						</li>
 					))}
-				</div>
+				</ul>
 			) : null}
 		</div>
 	);
@@ -194,6 +206,26 @@ export function EquipmentSummary({
 					from="+0"
 					chips={stats.saves.parts.map(
 						(p) => `${p.label} ${formatModifier(p.value)}`,
+					)}
+				/>
+			) : null}
+			{stats.spellDc.parts.length > 0 ? (
+				<StatCard
+					label="CD de magia"
+					to={String(stats.spellDc.total)}
+					from={String(stats.spellDc.base)}
+					chips={stats.spellDc.parts.map((part) =>
+						describeSpellOrigin("dc", part),
+					)}
+				/>
+			) : null}
+			{stats.spellAttack.parts.length > 0 ? (
+				<StatCard
+					label="Ataque de magia"
+					to={formatModifier(stats.spellAttack.total)}
+					from={formatModifier(stats.spellAttack.base)}
+					chips={stats.spellAttack.parts.map((part) =>
+						describeSpellOrigin("attack", part),
 					)}
 				/>
 			) : null}

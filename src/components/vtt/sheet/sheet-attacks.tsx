@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
 	calculateProficiencyBonus,
 	DAMAGE_TYPE_LABELS,
+	describeSpellOrigin,
 	type EffectiveStats,
 	formatModifier,
 	getEquippedWeaponAttacks,
@@ -142,9 +143,24 @@ export function AttacksTab({
 		}
 		return [...byLevel.entries()].sort((a, b) => a[0] - b[0]);
 	}, [character.spellsList]);
-	const spellAttack = character.spellAttackBonus ?? 0;
-	const spellDc = character.spellSaveDc ?? 0;
-	const hasCasting = spellAttack !== 0 || spellDc > 0 || spells.length > 0;
+	const spellAttack = stats.spellAttack.total;
+	const spellDc = stats.spellDc.total;
+	const hasSpellAttack =
+		spellAttack !== 0 || stats.spellAttack.parts.length > 0;
+	const hasSpellDc = spellDc > 0 || stats.spellDc.parts.length > 0;
+	const hasCasting = hasSpellAttack || hasSpellDc || spells.length > 0;
+	const spellOriginTexts = [
+		...stats.spellAttack.parts.map((part) =>
+			describeSpellOrigin("attack", part),
+		),
+		...stats.spellDc.parts.map((part) => describeSpellOrigin("dc", part)),
+	];
+	const seenOrigins = new Map<string, number>();
+	const spellOrigins = spellOriginTexts.map((text) => {
+		const count = (seenOrigins.get(text) ?? 0) + 1;
+		seenOrigins.set(text, count);
+		return { key: count === 1 ? text : `${text}#${count}`, text };
+	});
 
 	const cast = (spell: Spell) => {
 		const target = pickSlotFor(slots, spell.level);
@@ -227,7 +243,7 @@ export function AttacksTab({
 
 			{hasCasting ? (
 				<section aria-label="Magias" className="space-y-3.5">
-					{spellAttack !== 0 || spellDc > 0 ? (
+					{hasSpellAttack || hasSpellDc ? (
 						<dl className="flex items-stretch gap-3 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
 							<button
 								type="button"
@@ -247,7 +263,7 @@ export function AttacksTab({
 							<div className="flex min-w-0 flex-1 items-center gap-6 rounded-lg bg-black/25 px-3.5 py-2 ring-1 ring-white/[0.06]">
 								<div>
 									<dd className="font-mono text-[1.05rem] leading-tight font-semibold text-foreground tabular-nums">
-										{spellDc || "—"}
+										{hasSpellDc ? spellDc : "—"}
 									</dd>
 									<dt className="mt-0.5 text-[11px] text-muted-foreground">
 										CD de salvaguarda
@@ -255,6 +271,23 @@ export function AttacksTab({
 								</div>
 							</div>
 						</dl>
+					) : null}
+					{spellOrigins.length > 0 ? (
+						<ul
+							aria-label="Origem do ataque e da CD de magia"
+							className="flex min-w-0 flex-wrap gap-1.5"
+						>
+							{spellOrigins.map((chip) => (
+								<li
+									key={chip.key}
+									title={chip.text}
+									aria-label={chip.text}
+									className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
+								>
+									{chip.text}
+								</li>
+							))}
+						</ul>
 					) : null}
 
 					{spells.length === 0 ? (

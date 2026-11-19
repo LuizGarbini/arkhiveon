@@ -6,6 +6,7 @@ import {
 	characterAttributeScore,
 	computePassivePerception,
 	describeItemEffects,
+	describeSpellOrigin,
 	type EffectiveStats,
 	formatModifier,
 	formatSpeed,
@@ -96,7 +97,7 @@ export function SummaryTab({
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
 	const isDnd = character.system.startsWith("dnd");
-	const spellDc = character.spellSaveDc > 0 ? character.spellSaveDc : 0;
+	const showSpellDc = stats.spellDc.total > 0 || stats.spellDc.parts.length > 0;
 	const attributes = config.attributes;
 	const distanceUnit = speedUnitOf(character, config.speedUnit);
 	const origins = useMemo(() => {
@@ -121,6 +122,9 @@ export function SummaryTab({
 			push(
 				`Desloc. ${part.label} ${formatSpeed(part.value, distanceUnit, sceneUnit, { signed: true })}`,
 			);
+		}
+		for (const part of stats.spellDc.parts) {
+			push(describeSpellOrigin("dc", part));
 		}
 		return chips;
 	}, [stats, distanceUnit, sceneUnit]);
@@ -162,8 +166,8 @@ export function SummaryTab({
 							label="Passiva"
 						/>
 					) : null}
-					{spellDc > 0 ? (
-						<Vital value={String(spellDc)} label="CD de magia" />
+					{showSpellDc ? (
+						<Vital value={String(stats.spellDc.total)} label="CD de magia" />
 					) : null}
 					{isDnd ? (
 						<Vital value={formatModifier(proficiency)} label="Proficiência" />
@@ -175,7 +179,9 @@ export function SummaryTab({
 					{origins.map((chip) => (
 						<li
 							key={chip.key}
-							className="max-w-full truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
+							title={chip.text}
+							aria-label={chip.text}
+							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
 						>
 							{chip.text}
 						</li>

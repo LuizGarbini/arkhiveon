@@ -1,6 +1,7 @@
 import { BookOpen, Sparkles, Trash } from "lucide-react";
 import { useState } from "react";
 import { useWatch } from "react-hook-form";
+import { HelpText } from "@/components/item-form/item-form-controls";
 import { SpellSearchDialog } from "@/components/spell-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FormSection } from "@/components/ui/form-tabs";
@@ -95,6 +96,9 @@ export function MagicFields({
 				>
 					<Input placeholder="Nv1: 4 / Nv2: 3..." {...register("spellSlots")} />
 				</Field>
+				<div className="sm:col-span-3">
+					<HelpText>Bônus de itens equipados somam à parte.</HelpText>
+				</div>
 			</div>
 
 			<div className="space-y-4 border-t border-border/40 pt-4">

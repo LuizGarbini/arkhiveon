@@ -434,7 +434,7 @@ export interface SumStat {
 
 function sumBonuses(
 	linked: readonly LinkedEntry[],
-	target: "speed" | "saves",
+	target: "speed" | "saves" | "spellSaveDc" | "spellAttack",
 ): BonusPart[] {
 	const parts: BonusPart[] = [];
 	for (const l of linked.filter(isLinkActive)) {
@@ -466,6 +466,42 @@ export function computeSavesBonus(linked: readonly LinkedEntry[]): SumStat {
 	return { base: 0, total: parts.reduce((s, p) => s + p.value, 0), parts };
 }
 
+function sumParts(parts: readonly BonusPart[]): number {
+	return parts.reduce((sum, part) => sum + part.value, 0);
+}
+
+/**
+ * CD de magia: o número digitado na ficha é a base. Itens No Corpo (e
+ * sintonizados, se exigirem) somam à parte. Bônus com “Quando?” não entram.
+ */
+export function computeSpellSaveDc(
+	character: { spellSaveDc?: unknown },
+	linked: readonly LinkedEntry[],
+): SumStat {
+	const base = Number(character.spellSaveDc) || 0;
+	const parts = sumBonuses(linked, "spellSaveDc");
+	return { base, total: base + sumParts(parts), parts };
+}
+
+/** Ataque de magia, no mesmo molde da CD: base manual + itens que contam. */
+export function computeSpellAttack(
+	character: { spellAttackBonus?: unknown },
+	linked: readonly LinkedEntry[],
+): SumStat {
+	const base = Number(character.spellAttackBonus) || 0;
+	const parts = sumBonuses(linked, "spellAttack");
+	return { base, total: base + sumParts(parts), parts };
+}
+
+/** "CD de magia Frasco de Sangue +3" / "Ataque de magia Varinha +1". */
+export function describeSpellOrigin(
+	kind: "dc" | "attack",
+	part: BonusPart,
+): string {
+	const label = kind === "dc" ? "CD de magia" : "Ataque de magia";
+	return `${label} ${part.label} ${formatModifier(part.value)}`;
+}
+
 // ── Tudo junto ───────────────────────────────────────────────────────
 
 export interface EffectiveStats {
@@ -478,6 +514,10 @@ export interface EffectiveStats {
 	initiative: CombatStat;
 	speed: SumStat;
 	saves: SumStat;
+	/** CD de magia: base manual da ficha + bônus de itens que contam. */
+	spellDc: SumStat;
+	/** Ataque de magia: base manual da ficha + bônus de itens que contam. */
+	spellAttack: SumStat;
 	/** Acerto e dano que os itens somam em todos os ataques. */
 	weaponBonuses: WeaponItemBonuses;
 	/** Quem a arma de duas mãos deixou sem mão (não soma nos números). */
@@ -486,8 +526,8 @@ export interface EffectiveStats {
 
 /**
  * Números da ficha com os itens equipados: atributos, CA, iniciativa,
- * deslocamento e salvaguardas. Fora do D&D 5e não há vínculo de itens, então
- * tudo volta igual ao valor salvo.
+ * deslocamento, salvaguardas, CD de magia e ataque de magia. Fora do D&D 5e
+ * não há vínculo de itens, então tudo volta igual ao valor salvo.
  */
 export function computeEffectiveStats(
 	character: Character,
@@ -513,6 +553,8 @@ export function computeEffectiveStats(
 		),
 		speed: computeSpeed(character, counting),
 		saves: computeSavesBonus(counting),
+		spellDc: computeSpellSaveDc(character, counting),
+		spellAttack: computeSpellAttack(character, counting),
 		weaponBonuses: computeWeaponItemBonuses(counting),
 		blockedByTwoHanded,
 	};
@@ -532,6 +574,10 @@ export interface EquipmentReport {
 	speed: number;
 	/** Bônus geral de salvaguardas vindo de itens. */
 	savesBonus: number;
+	/** CD de magia já com os itens (a base manual continua na ficha). */
+	spellDc: number;
+	/** Ataque de magia já com os itens (a base manual continua na ficha). */
+	spellAttack: number;
 	attacks: { name: string; hit: number; damage: string; types: string[] }[];
 	/** Um por slot ocupado, na ordem do boneco. */
 	equipped: {
@@ -599,6 +645,8 @@ export function buildEquipmentReport(
 		initiative: stats.initiative.total,
 		speed: stats.speed.total,
 		savesBonus: stats.saves.total,
+		spellDc: stats.spellDc.total,
+		spellAttack: stats.spellAttack.total,
 		attacks,
 		equipped,
 	};
@@ -852,6 +900,8 @@ export function describeItemEffects(item: Item): ItemEffectChip[] {
 		initiative: "Iniciativa",
 		saves: "Salvag.",
 		speed: "Desloc.",
+		spellSaveDc: "CD magia",
+		spellAttack: "Atq. magia",
 	};
 	for (const b of item.bonuses ?? []) {
 		const value = Math.trunc(Number(b.value) || 0);
