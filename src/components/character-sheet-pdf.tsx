@@ -530,8 +530,11 @@ function moduleFields(
 			return [
 				field("Classe conjuradora", character.spellcastingClass),
 				field("Habilidade", character.spellAbility),
-				field("CD", String(character.spellSaveDc)),
-				field("Ataque magico", formatSigned(character.spellAttackBonus)),
+				field("CD", String(report?.spellDc ?? character.spellSaveDc)),
+				field(
+					"Ataque magico",
+					formatSigned(report?.spellAttack ?? character.spellAttackBonus),
+				),
 				field("Magias", character.spells, { full: true }),
 				field("Espacos", character.spellSlots, { full: true }),
 			];

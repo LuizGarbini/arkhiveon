@@ -161,6 +161,8 @@ export const ITEM_BONUS_TARGET_LABELS: Record<ItemBonusTarget, string> = {
 	initiative: "Iniciativa",
 	saves: "Salvaguardas",
 	speed: "Deslocamento",
+	spellSaveDc: "CD de magia",
+	spellAttack: "Ataque de magia",
 };
 
 function normalizeText(value: string | undefined): string {

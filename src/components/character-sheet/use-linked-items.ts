@@ -37,7 +37,8 @@ export function useCanLinkOnSheet(character: Pick<Character, "createdBy">) {
 
 /**
  * Números efetivos da ficha com os itens No Corpo: atributos, CA, iniciativa,
- * deslocamento e salvaguardas (o valor salvo quando nenhum item mexe).
+ * deslocamento, salvaguardas, CD de magia e ataque de magia (o valor salvo
+ * quando nenhum item mexe).
  */
 export function useCombatStats(
 	character: Character,

@@ -10,6 +10,7 @@ import {
 	calculateHitPointPercentage,
 	calculateProficiencyBonus,
 	characterAttributeScore,
+	describeSpellOrigin,
 	explainArmorClass,
 	explainInitiative,
 	formatModifier,
@@ -304,23 +305,33 @@ export function SheetModuleContent({
 
 		return (
 			<div className="space-y-4">
-				<div className="grid gap-3 sm:grid-cols-2">
+				<div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
 					<InfoRow
 						label="Habilidade de Conjuração"
 						value={character.spellAbility || "Não informada"}
 					/>
 					<InfoRow
 						label="CD da Magia"
-						value={character.spellSaveDc ? String(character.spellSaveDc) : "-"}
+						value={
+							combat.spellDc.total > 0 || combat.spellDc.parts.length > 0
+								? String(combat.spellDc.total)
+								: "-"
+						}
+						notes={combat.spellDc.parts.map((part) =>
+							describeSpellOrigin("dc", part),
+						)}
 					/>
 					<InfoRow
 						label="Bônus de Ataque Mágico"
 						value={
 							character.spellAttackBonus !== undefined &&
 							character.spellAttackBonus !== null
-								? formatModifier(character.spellAttackBonus)
+								? formatModifier(combat.spellAttack.total)
 								: "-"
 						}
+						notes={combat.spellAttack.parts.map((part) =>
+							describeSpellOrigin("attack", part),
+						)}
 					/>
 				</div>
 				{customFields.length > 0 && (
