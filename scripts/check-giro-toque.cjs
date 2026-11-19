@@ -4,7 +4,8 @@ const { chromium } = require("playwright");
 
 const GRID = 70;
 const RADIUS = GRID / 2;
-const DIST = RADIUS + Math.max(18, RADIUS * 0.28);
+// Centro da bola no zoom 1, sem disco de status: 21px de tela além do raio.
+const DIST = RADIUS + 21;
 
 function fail(message) {
 	console.error(`FALHOU: ${message}`);

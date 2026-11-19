@@ -158,10 +158,14 @@ import {
 } from "@/lib/vtt/token-press";
 import {
 	planRotation,
-	pointerHitsRotateHandle,
-	pointerHitsRotateHandleWorld,
-	rotateHandleDistance,
-	rotateHandleHitRadius,
+	pointerHitsRotateHandleScreen,
+	ROTATE_HANDLE_GAP_PX,
+	ROTATE_HANDLE_KNOB_PX,
+	ROTATE_HANDLE_OUTLINE_PX,
+	ROTATE_HANDLE_STEM_PX,
+	rotateHandleAnchor,
+	rotateHandleOuterRadius,
+	rotateHandleScreen,
 	rotationDelta,
 	rotationFromLocalPointer,
 	steeredRotation,
@@ -538,7 +542,14 @@ export function VTTCanvas({
 	const stepTweensRef = useRef<Map<string, StepTween>>(new Map());
 	const facingArrowsRef = useRef<Map<string, Graphics>>(new Map());
 	// Alça de giro do token selecionado. Gira no ticker, igual à seta de direção.
+	// Uma só: o primeiro token que o teclado já giraria. O desenho é em px de
+	// tela; o zoom só muda escala, posição e hit (`layoutRotateHandles`).
 	const rotateHandlesRef = useRef<Map<string, Container>>(new Map());
+	const rotateHandleMetaRef = useRef<
+		Map<string, { outer: number; edge: Container }>
+	>(new Map());
+	const rotateScaleSeenRef = useRef<number | null>(null);
+	const layoutRotateHandlesRef = useRef<(scale: number) => void>(() => {});
 	const rotateDragRef = useRef<{
 		pointerId: number;
 		grabbedId: string;
@@ -570,6 +581,16 @@ export function VTTCanvas({
 			tokenDisplayObjectsRef.current,
 			gridSize,
 		);
+	};
+	layoutRotateHandlesRef.current = (scale: number) => {
+		for (const [id, handle] of rotateHandlesRef.current) {
+			const meta = rotateHandleMetaRef.current.get(id);
+			if (!meta) continue;
+			const screen = rotateHandleScreen(meta.outer, scale);
+			handle.scale.set(screen.counterScale);
+			meta.edge.position.set(0, -screen.edgePx);
+			handle.hitArea = new Circle(0, -screen.centerPx, screen.hitTouchPx);
+		}
 	};
 	const paintTurnRingRef = useRef<() => void>(() => {});
 	paintTurnRingRef.current = () => {
@@ -1158,12 +1179,22 @@ export function VTTCanvas({
 		};
 	}, []);
 
-	// 2. Sync Viewport transformations to PixiJS world container
+	// 2. Sync Viewport transformations to PixiJS world container.
+	// A alça é desenhada uma vez em px de tela. O zoom do mundo mudaria o
+	// tamanho dela se a escala e o afastamento da borda não acompanhassem.
+	// Isso é estado do grafo Pixi, não estado derivado do React: este efeito
+	// já empurra o viewport para o mundo, e só aqui a alça é reposicionada —
+	// apenas quando o zoom muda. Pan não mexe nela, e os tokens não são
+	// reconstruídos.
 	useEffect(() => {
 		if (!rendererReady) return;
 		if (!worldContainerRef.current) return;
 		worldContainerRef.current.position.set(viewport.x, viewport.y);
 		worldContainerRef.current.scale.set(viewport.scale);
+		if (rotateScaleSeenRef.current !== viewport.scale) {
+			rotateScaleSeenRef.current = viewport.scale;
+			layoutRotateHandlesRef.current(viewport.scale);
+		}
 	}, [viewport.x, viewport.y, viewport.scale, rendererReady]);
 
 	// Só os campos que desenham mapa e grid: mexer em nome, névoa ou ordem da
@@ -1346,11 +1377,37 @@ export function VTTCanvas({
 		tokenDisplayObjectsRef.current.clear();
 		facingArrowsRef.current.clear();
 		rotateHandlesRef.current.clear();
+		rotateHandleMetaRef.current.clear();
 		stepTweensRef.current.clear();
 
 		const gridSize = scene.gridSize || 70;
 		const foreground = cssVarColor("--foreground", 0xfafafa);
+		const background = cssVarColor("--background", 0x18181b);
 		const hpFill = cssVarColor("--primary", foreground);
+		const liveForHandle = useVTTStore.getState();
+		const rotateAnchorId =
+			liveForHandle.activeTool === "select"
+				? (rotateHandleAnchor(
+						keyboardMovers(
+							selectedTokenIds,
+							liveTokens.map((item) => ({
+								id: item.id,
+								x: item.x,
+								y: item.y,
+								sizeCells: item.sizeCells,
+								isLocked: item.isLocked,
+								canMove:
+									canControlVTTToken(
+										item,
+										user?.id,
+										canManageTokens,
+										characterOwners,
+									) &&
+									canSelectTokenLayer(liveForHandle.activeLayer, item.layer),
+							})),
+						),
+					)?.id ?? null)
+				: null;
 		// Celular/toque: 1 ícone de status maior + "+N" (lido por render, não
 		// por frame).
 		const compactStatus =
@@ -1620,47 +1677,61 @@ export function VTTCanvas({
 				tokenContainer.addChild(elevText);
 			}
 
-			// Alça para girar no toque (e no mouse): fica na borda, na direção que o
-			// token olha. Arrastar ela gira; não começa um movimento.
-			const liveForHandle = useVTTStore.getState();
-			if (
-				isSelected &&
-				canControl &&
-				!token.isLocked &&
-				liveForHandle.activeTool === "select" &&
-				canSelectTokenLayer(liveForHandle.activeLayer, token.layer)
-			) {
-				const scale = liveForHandle.viewport.scale;
-				const safeScale = Number.isFinite(scale) && scale > 0.05 ? scale : 1;
-				const dist = rotateHandleDistance(tokenRadius);
-				const knobR = Math.max(10, 12 / safeScale);
-				const hitR = rotateHandleHitRadius(scale);
-				const knobColor = cssVarColor("--primary", foreground);
+			// Uma alça, no primeiro token que o teclado já giraria. Desenhada em px
+			// de tela; `layoutRotateHandles` acerta escala, posição e hit no zoom.
+			if (token.id === rotateAnchorId) {
+				const outerRadius = rotateHandleOuterRadius(tokenRadius, hasStatusRow);
 				const handle = new Container();
 				handle.eventMode = "static";
 				handle.cursor = "grab";
 				handle.label = "rotate-handle";
 				handle.rotation = facingRadians(token);
-				handle.hitArea = new Circle(0, -dist, hitR);
+				const edge = new Container();
+				edge.eventMode = "none";
+				edge.label = "rotate-edge";
 				const graphic = new Graphics();
-				graphic.moveTo(0, -tokenRadius);
-				graphic.lineTo(0, -dist);
+				graphic.eventMode = "none";
+				graphic.moveTo(0, 0);
+				graphic.lineTo(0, -ROTATE_HANDLE_GAP_PX);
 				graphic.stroke({
-					width: Math.max(1.5, 2 / safeScale),
-					color: knobColor,
-					alpha: 0.9,
+					width: ROTATE_HANDLE_STEM_PX,
+					color: foreground,
+					alpha: 0.75,
 					cap: "round",
 				});
-				graphic.circle(0, -dist, knobR);
-				graphic.fill({ color: knobColor });
-				graphic.circle(0, -dist, Math.max(3, knobR * 0.35));
+				graphic.circle(
+					0,
+					-ROTATE_HANDLE_GAP_PX,
+					ROTATE_HANDLE_KNOB_PX / 2 + ROTATE_HANDLE_OUTLINE_PX,
+				);
+				graphic.fill({ color: background });
+				graphic.circle(0, -ROTATE_HANDLE_GAP_PX, ROTATE_HANDLE_KNOB_PX / 2);
 				graphic.fill({ color: foreground });
-				handle.addChild(graphic);
+				edge.addChild(graphic);
+				handle.addChild(edge);
 				handle.on("pointerdown", (ev) => {
-					ev.stopPropagation();
+					const live = useVTTStore.getState();
+					const current = live.tokens.find((item) => item.id === token.id);
+					const local = ev.getLocalPosition(tokenContainer);
+					if (
+						pointerHitsRotateHandleScreen(
+							local.x,
+							local.y,
+							current?.rotation ?? 0,
+							outerRadius,
+							live.viewport.scale,
+							ev.pointerType,
+						)
+					) {
+						ev.stopPropagation();
+					}
 				});
 				tokenContainer.addChild(handle);
 				rotateHandlesRef.current.set(token.id, handle);
+				rotateHandleMetaRef.current.set(token.id, {
+					outer: outerRadius,
+					edge,
+				});
 			}
 
 			// Tooltip do DS com os status (DOM, fora do canvas): só marca qual
@@ -1705,13 +1776,16 @@ export function VTTCanvas({
 					!token.isLocked
 				) {
 					const local = e.getLocalPosition(tokenContainer);
+					const spinning = live.tokens.find((item) => item.id === token.id);
 					if (
-						pointerHitsRotateHandle(
+						token.id === rotateAnchorId &&
+						pointerHitsRotateHandleScreen(
 							local.x,
 							local.y,
-							token.rotation ?? 0,
-							tokenRadius,
-							rotateHandleHitRadius(live.viewport.scale),
+							spinning?.rotation ?? token.rotation ?? 0,
+							rotateHandleOuterRadius(tokenRadius, hasStatusRow),
+							live.viewport.scale,
+							e.pointerType,
 						)
 					) {
 						e.stopPropagation();
@@ -1823,6 +1897,9 @@ export function VTTCanvas({
 			}
 		}
 		// Containers novos: o anel antigo ficou no container descartado.
+		// A alça acabou de ser desenhada em px de tela; o zoom atual ainda não
+		// passou por este rebuild, então a escala/posição/hit entram aqui.
+		layoutRotateHandlesRef.current(useVTTStore.getState().viewport.scale);
 		auraPoseRef.current = "";
 		paintAurasRef.current();
 		paintTurnRingRef.current();
@@ -2924,33 +3001,42 @@ export function VTTCanvas({
 				return;
 			}
 
-			// Alça de giro: arrastar gira os selecionados no lugar. Não move.
+			// Alça de giro: uma só, no primeiro que o teclado já giraria. Arrastar
+			// gira os selecionados no lugar. Não move.
 			if (isLeftClick && activeTool === "select" && scene) {
 				const movers = keyboardTargets();
+				const anchor = movers[0];
 				const tokensNow = useVTTStore.getState().tokens;
-				const grabbed = movers.find((member) => {
-					const token = tokensNow.find((item) => item.id === member.id);
-					return (
-						token &&
-						pointerHitsRotateHandleWorld(
-							token,
-							worldPoint,
-							scene.gridSize || 70,
+				const token = anchor
+					? tokensNow.find((item) => item.id === anchor.id)
+					: undefined;
+				if (anchor && token) {
+					const grid = scene.gridSize || 70;
+					const radius = (token.sizeCells * grid) / 2;
+					const hasStatus =
+						summarizeConditions(token.conditions).visible.length > 0;
+					if (
+						pointerHitsRotateHandleScreen(
+							worldPoint.x - token.x,
+							worldPoint.y - token.y,
+							token.rotation ?? 0,
+							rotateHandleOuterRadius(radius, hasStatus),
 							viewport.scale,
+							e.pointerType,
 						)
-					);
-				});
-				if (grabbed) {
-					rotateDragRef.current = {
-						pointerId: e.pointerId,
-						grabbedId: grabbed.id,
-						starts: movers.map((member) => ({
-							id: member.id,
-							rotation:
-								tokensNow.find((item) => item.id === member.id)?.rotation ?? 0,
-						})),
-					};
-					return;
+					) {
+						rotateDragRef.current = {
+							pointerId: e.pointerId,
+							grabbedId: anchor.id,
+							starts: movers.map((member) => ({
+								id: member.id,
+								rotation:
+									tokensNow.find((item) => item.id === member.id)?.rotation ??
+									0,
+							})),
+						};
+						return;
+					}
 				}
 			}
 
