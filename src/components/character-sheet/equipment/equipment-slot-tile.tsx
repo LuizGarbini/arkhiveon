@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
 	CircleDot,
 	Footprints,
@@ -78,6 +79,50 @@ export function ItemThumb({
 	);
 }
 
+/** Mesmo texto do picker e da mochila: o item não tem número que a ficha some. */
+export const MISSING_SHEET_NUMBER = "Sem número na ficha";
+
+/** Abre o cadastro do item já na aba Bônus, em modo edição. */
+export function EditItemBonusLink({
+	itemId,
+	className,
+}: {
+	itemId: string;
+	className?: string;
+}) {
+	return (
+		<Link
+			to="/items/$itemId"
+			params={{ itemId }}
+			search={{ edit: true, tab: "bonus" }}
+			onClick={(event) => event.stopPropagation()}
+			className={cn(
+				"inline-flex min-h-11 min-w-11 cursor-pointer select-none items-center justify-center rounded-lg border border-border/70 bg-card/60 px-3 text-[13px] font-semibold text-foreground transition-[transform,border-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:border-primary/50",
+				className,
+			)}
+		>
+			Editar item
+		</Link>
+	);
+}
+
+/** Linha da lista do painel: o item equipado não entra nos números. */
+export function MissingNumberNotice({ item }: { item: Item }) {
+	return (
+		<div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2">
+			<div className="min-w-0 flex-1">
+				<p className="truncate text-[13px] font-semibold text-foreground">
+					{item.name}
+				</p>
+				<p className="text-[11px] text-muted-foreground">
+					{MISSING_SHEET_NUMBER}
+				</p>
+			</div>
+			<EditItemBonusLink itemId={item.id} />
+		</div>
+	);
+}
+
 /**
  * Um slot do boneco. Vazio mostra o "+ Equipar"; ocupado mostra a foto do item
  * com a raridade, o selo de sintonização e um ponto quando o item muda números.
@@ -110,10 +155,11 @@ export function EquipmentSlotTile({
 	const item = linked?.item;
 	const rarity = item ? rarityStyleFor(item.rarity) : null;
 	const hasEffects = item ? describeItemEffects(item).length > 0 : false;
+	const missingNumber = Boolean(item) && !hasEffects;
 	const needsAttunement = Boolean(item?.requiresAttunement);
 	const attuned = linked?.entry.isAttuned === true;
 	const label = item
-		? `${EQUIP_SLOT_LABELS[slot]}: ${item.name}${canEdit ? ". Trocar ou desequipar" : ""}`
+		? `${EQUIP_SLOT_LABELS[slot]}: ${item.name}${missingNumber ? `. ${MISSING_SHEET_NUMBER}` : ""}${canEdit ? ". Trocar ou desequipar" : ""}`
 		: `${EQUIP_SLOT_LABELS[slot]}: vazio${canEdit ? ". Equipar item" : ""}`;
 	const disabled = !canEdit && !item;
 
@@ -152,73 +198,87 @@ export function EquipmentSlotTile({
 	}
 
 	return (
-		<button
-			type="button"
-			aria-label={label}
-			aria-pressed={selected}
-			disabled={disabled}
-			onClick={() => onSelect(slot)}
-			className={cn(
-				"group relative select-none overflow-hidden rounded-2xl border text-left transition-[transform,border-color,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:active:scale-100",
-				sizeClass,
-				item
-					? cn("bg-gradient-to-br to-card/40", rarity?.border, rarity?.glow)
-					: "border-dashed border-border/80 bg-background/30 text-muted-foreground",
-				selected && "ring-2 ring-primary shadow-[0_0_24px_var(--primary-glow)]",
-				canEdit && "[@media(hover:hover)]:hover:border-primary/50",
-			)}
-		>
-			{item ? (
-				<>
-					{imageUrl ? (
-						<FramedImage src={imageUrl} alt="" framing={item} />
-					) : (
-						<span
-							className={cn(
-								"flex h-full w-full items-center justify-center",
-								rarity?.tone,
-							)}
-						>
-							<Icon className="size-1/3" aria-hidden />
+		<div className={cn("relative", sizeClass)}>
+			<button
+				type="button"
+				aria-label={label}
+				aria-pressed={selected}
+				disabled={disabled}
+				onClick={() => onSelect(slot)}
+				className={cn(
+					"group absolute inset-0 select-none overflow-hidden rounded-2xl border text-left transition-[transform,border-color,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:active:scale-100",
+					item
+						? cn("bg-gradient-to-br to-card/40", rarity?.border, rarity?.glow)
+						: "border-dashed border-border/80 bg-background/30 text-muted-foreground",
+					selected &&
+						"ring-2 ring-primary shadow-[0_0_24px_var(--primary-glow)]",
+					canEdit && "[@media(hover:hover)]:hover:border-primary/50",
+				)}
+			>
+				{item ? (
+					<>
+						{imageUrl ? (
+							<FramedImage src={imageUrl} alt="" framing={item} />
+						) : (
+							<span
+								className={cn(
+									"flex h-full w-full items-center justify-center",
+									rarity?.tone,
+								)}
+							>
+								<Icon className="size-1/3" aria-hidden />
+							</span>
+						)}
+						{needsAttunement ? (
+							<span
+								className={cn(
+									"absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full backdrop-blur-md",
+									attuned
+										? "bg-primary/25 text-primary"
+										: "bg-amber-500/25 text-amber-300",
+								)}
+								title={attuned ? "Sintonizado" : "Sem sintonia: não soma"}
+							>
+								<Link2 className="size-3" aria-hidden />
+							</span>
+						) : null}
+						{hasEffects && (needsAttunement ? attuned : true) ? (
+							<span
+								aria-hidden
+								className="absolute top-2 right-2 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400"
+							/>
+						) : null}
+						{missingNumber ? (
+							<span className="pointer-events-none absolute inset-x-1.5 bottom-14 rounded-md border border-border/70 bg-card/80 px-1 py-1 text-center text-[10px] font-semibold leading-tight text-muted-foreground backdrop-blur-md">
+								{MISSING_SHEET_NUMBER}
+							</span>
+						) : (
+							<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+								{EQUIP_SLOT_SHORT_LABELS[slot]}
+							</span>
+						)}
+					</>
+				) : (
+					<span className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-1 text-center">
+						<Icon className="size-6 opacity-55" aria-hidden />
+						<span className="text-[11px] leading-tight">
+							{EQUIP_SLOT_SHORT_LABELS[slot]}
 						</span>
-					)}
-					{needsAttunement ? (
-						<span
-							className={cn(
-								"absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full backdrop-blur-md",
-								attuned
-									? "bg-primary/25 text-primary"
-									: "bg-amber-500/25 text-amber-300",
-							)}
-							title={attuned ? "Sintonizado" : "Sem sintonia: não soma"}
-						>
-							<Link2 className="size-3" aria-hidden />
-						</span>
-					) : null}
-					{hasEffects && (needsAttunement ? attuned : true) ? (
-						<span
-							aria-hidden
-							className="absolute top-2 right-2 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400"
-						/>
-					) : null}
-					<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
-						{EQUIP_SLOT_SHORT_LABELS[slot]}
+						{canEdit ? (
+							<span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
+								<Plus className="size-3" aria-hidden />
+								Equipar
+							</span>
+						) : null}
 					</span>
-				</>
-			) : (
-				<span className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-1 text-center">
-					<Icon className="size-6 opacity-55" aria-hidden />
-					<span className="text-[11px] leading-tight">
-						{EQUIP_SLOT_SHORT_LABELS[slot]}
-					</span>
-					{canEdit ? (
-						<span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
-							<Plus className="size-3" aria-hidden />
-							Equipar
-						</span>
-					) : null}
-				</span>
-			)}
-		</button>
+				)}
+			</button>
+			{missingNumber && item ? (
+				<EditItemBonusLink
+					itemId={item.id}
+					className="absolute inset-x-1.5 bottom-1.5 z-10 px-1.5 text-[11px]"
+				/>
+			) : null}
+		</div>
 	);
 }

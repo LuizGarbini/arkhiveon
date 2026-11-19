@@ -28,7 +28,7 @@ import {
 } from "@/core/rules";
 import type { Character, EquipSlot, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
-import { ItemThumb } from "./equipment-slot-tile";
+import { ItemThumb, MISSING_SHEET_NUMBER } from "./equipment-slot-tile";
 
 interface Candidate {
 	key: string;
@@ -230,7 +230,7 @@ export function EquipmentSlotPicker({
 						<span className="mt-1 flex flex-wrap gap-1">
 							{chips.length === 0 ? (
 								<span className="text-[11px] text-muted-foreground">
-									Sem número na ficha
+									{MISSING_SHEET_NUMBER}
 								</span>
 							) : (
 								chips.slice(0, 4).map((chip) => (

@@ -1066,3 +1066,109 @@ describe("texto dos efeitos", () => {
 		expect(describeItemEffects(shield)).toEqual([{ label: "CA", value: "+2" }]);
 	});
 });
+
+describe("capa vinculada no slot cloak", () => {
+	const dante = {
+		...thalia,
+		characterName: "Dante Diavolo",
+		armorClass: 28,
+		dexterity: 14,
+		initiative: 2,
+		speed: 9,
+	};
+
+	function cloak(bonuses: NonNullable<Item["bonuses"]> | null): Item {
+		const base = make("it-cape", {
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			armor: undefined,
+			abilityBonuses: undefined,
+			bonuses: undefined,
+		});
+		if (bonuses === null) {
+			return {
+				...base,
+				bonuses: null,
+				armor: null,
+				abilityBonuses: null,
+			} as unknown as Item;
+		}
+		return { ...base, bonuses };
+	}
+
+	function sheet(item: Item, location: InventoryItem["location"] = "equipped") {
+		return computeEffectiveStats(
+			{
+				...dante,
+				inventoryList: [
+					entry(
+						item,
+						location,
+						location === "equipped" ? { slot: "cloak" } : {},
+					),
+				],
+			},
+			byId(item),
+		);
+	}
+
+	it("capa equipada no slot cloak com bônus de CA +3 soma na CA da ficha", () => {
+		const item = cloak([{ id: "ac", target: "ac", value: 3 }]);
+		const stats = sheet(item);
+		expect(resolveSlots(stats.linked).bySlot.get("cloak")?.item.name).toBe(
+			"Capa do Vento",
+		);
+		expect(stats.ac.total).toBe(dante.armorClass + 3);
+		expect(stats.ac.source).toBe("items");
+		expect(stats.ac.parts).toContainEqual({
+			kind: "bonus",
+			label: "Capa do Vento",
+			value: 3,
+		});
+	});
+
+	it("capa equipada no slot cloak com bônus de iniciativa soma na iniciativa", () => {
+		const stats = sheet(cloak([{ id: "in", target: "initiative", value: 2 }]));
+		expect(stats.initiative.total).toBe(dante.initiative + 2);
+		expect(stats.initiative.source).toBe("items");
+		expect(stats.initiative.parts).toContainEqual({
+			kind: "bonus",
+			label: "Capa do Vento",
+			value: 2,
+		});
+	});
+
+	it("capa equipada no slot cloak com bônus de deslocamento soma no deslocamento", () => {
+		const stats = sheet(cloak([{ id: "sp", target: "speed", value: 3 }]));
+		expect(stats.speed).toEqual({
+			base: 9,
+			total: 12,
+			parts: [{ label: "Capa do Vento", value: 3 }],
+		});
+	});
+
+	it("capa equipada sem bonuses mantém CA, iniciativa e deslocamento manuais", () => {
+		const stats = sheet(cloak(null));
+		expect(resolveSlots(stats.linked).bySlot.get("cloak")?.item.name).toBe(
+			"Capa do Vento",
+		);
+		expect(stats.ac).toMatchObject({ source: "manual", total: 28, parts: [] });
+		expect(stats.initiative).toMatchObject({ source: "manual", total: 2 });
+		expect(stats.speed).toEqual({ base: 9, total: 9, parts: [] });
+	});
+
+	it("a mesma capa na mochila não soma", () => {
+		const item = cloak([
+			{ id: "ac", target: "ac", value: 3 },
+			{ id: "in", target: "initiative", value: 2 },
+			{ id: "sp", target: "speed", value: 3 },
+		]);
+		const stats = sheet(item, "backpack");
+		expect(resolveSlots(stats.linked).bySlot.has("cloak")).toBe(false);
+		expect(stats.ac).toMatchObject({ source: "manual", total: 28 });
+		expect(stats.initiative.source).toBe("manual");
+		expect(stats.speed.total).toBe(9);
+	});
+});

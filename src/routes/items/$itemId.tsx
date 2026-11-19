@@ -39,15 +39,18 @@ import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
 
 export const Route = createFileRoute("/items/$itemId")({
-	validateSearch: (search: Record<string, unknown>) => ({
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { edit: boolean; tab?: "bonus" } => ({
 		edit: search.edit === true || search.edit === "true",
+		...(search.tab === "bonus" ? { tab: "bonus" as const } : {}),
 	}),
 	component: ItemDetailPage,
 });
 
 function ItemDetailPage() {
 	const { itemId } = Route.useParams();
-	const { edit } = Route.useSearch();
+	const { edit, tab } = Route.useSearch();
 	const navigate = useNavigate();
 	const item = useRPGStore((state) =>
 		state.items.find((entry) => entry.id === itemId),
@@ -62,7 +65,13 @@ function ItemDetailPage() {
 	const isStaff = useIsWorldStaff();
 	const { user } = useAuth();
 	const [isEditing, setIsEditing] = useState(edit || false);
-	const [dialogOpen, setDialogOpen] = useState(false);
+	const openedOnBonus = edit && tab === "bonus";
+	const [preferBonus, setPreferBonus] = useState(openedOnBonus);
+	const [dialogOpen, setDialogOpen] = useState(openedOnBonus);
+	function openItemForm() {
+		setPreferBonus(false);
+		setDialogOpen(true);
+	}
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 
 	const canView =
@@ -110,13 +119,16 @@ function ItemDetailPage() {
 
 	function handleDialogOpenChange(open: boolean) {
 		setDialogOpen(open);
-		if (!open && edit) {
-			void navigate({
-				to: "/items/$itemId",
-				params: { itemId: currentItem.id },
-				search: { edit: false },
-				replace: true,
-			});
+		if (!open) {
+			setPreferBonus(false);
+			if (edit) {
+				void navigate({
+					to: "/items/$itemId",
+					params: { itemId: currentItem.id },
+					search: { edit: false },
+					replace: true,
+				});
+			}
 		}
 	}
 
@@ -235,7 +247,7 @@ function ItemDetailPage() {
 					<DetailSection
 						eyebrow="Resumo"
 						title="Identificação"
-						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						onEdit={isEditing ? openItemForm : undefined}
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<DetailInfo label="Tipo" value={currentItem.type} />
@@ -252,7 +264,7 @@ function ItemDetailPage() {
 					<DetailSection
 						eyebrow="Mecânica"
 						title="Efeitos"
-						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						onEdit={isEditing ? openItemForm : undefined}
 					>
 						<div className="grid gap-3">
 							<DetailText
@@ -267,7 +279,7 @@ function ItemDetailPage() {
 					<DetailSection
 						eyebrow="Descrição"
 						title="Lore"
-						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						onEdit={isEditing ? openItemForm : undefined}
 					>
 						<DetailText value={currentItem.description} />
 					</DetailSection>
@@ -277,7 +289,7 @@ function ItemDetailPage() {
 					<DetailSection
 						eyebrow="Posse"
 						title="Dono & sintonia"
-						onEdit={isEditing ? () => setDialogOpen(true) : undefined}
+						onEdit={isEditing ? openItemForm : undefined}
 					>
 						<div className="grid gap-3">
 							<DetailInfo label="Pertence a" value={currentItem.owner} />
@@ -308,6 +320,7 @@ function ItemDetailPage() {
 						item={currentItem}
 						open={dialogOpen}
 						onOpenChange={handleDialogOpenChange}
+						initialTab={preferBonus ? "bonus" : "identity"}
 						trigger={null}
 					/>
 					<EntityImageDialog

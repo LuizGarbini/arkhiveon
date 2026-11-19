@@ -75,6 +75,8 @@ interface ItemEditButtonProps {
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
 	trigger?: ReactNode;
+	/** Aba aberta ao entrar no cadastro. A ficha manda "bonus" quando falta número. */
+	initialTab?: ItemFormTabId;
 }
 
 export function ItemEditButton({
@@ -82,6 +84,7 @@ export function ItemEditButton({
 	open,
 	onOpenChange,
 	trigger,
+	initialTab,
 }: ItemEditButtonProps) {
 	const { user } = useAuth();
 	const isStaff = useIsWorldStaff();
@@ -91,6 +94,7 @@ export function ItemEditButton({
 			item={item}
 			open={open}
 			onOpenChange={onOpenChange}
+			initialTab={initialTab}
 			trigger={
 				trigger === undefined ? (
 					<Button variant="ghost" size="sm">
@@ -110,6 +114,7 @@ interface ItemFormDialogProps {
 	trigger?: ReactNode;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	initialTab?: ItemFormTabId;
 }
 
 /**
@@ -128,6 +133,7 @@ function ItemFormDialog({
 	trigger,
 	open: openProp,
 	onOpenChange,
+	initialTab = "identity",
 }: ItemFormDialogProps) {
 	const [internalOpen, setInternalOpen] = useState(false);
 	const open = openProp ?? internalOpen;
@@ -139,9 +145,10 @@ function ItemFormDialog({
 			<DialogContent className={DIALOG_LAYOUT} showCloseButton={false}>
 				{open && (
 					<ItemFormContent
-						key={item?.id ?? "new"}
+						key={`${item?.id ?? "new"}:${initialTab}`}
 						item={item}
 						setOpen={setOpen}
+						initialTab={initialTab}
 					/>
 				)}
 			</DialogContent>
@@ -152,6 +159,7 @@ function ItemFormDialog({
 interface ItemFormContentProps {
 	item?: Item;
 	setOpen: (open: boolean) => void;
+	initialTab?: ItemFormTabId;
 }
 
 const TAB_SUBTITLES: Record<ItemFormTabId, string> = {
@@ -161,7 +169,11 @@ const TAB_SUBTITLES: Record<ItemFormTabId, string> = {
 	description: "História, sintonização, publicação e conexões.",
 };
 
-function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
+function ItemFormContent({
+	item,
+	setOpen,
+	initialTab = "identity",
+}: ItemFormContentProps) {
 	const isEdit = Boolean(item);
 	const mode = isEdit ? "edit" : "create";
 	const toast = useToast();
@@ -174,7 +186,7 @@ function ItemFormContent({ item, setOpen }: ItemFormContentProps) {
 	const imageAssets = useImageAssetLookup();
 
 	const initialCampaignIds = activeCampaignId ? [activeCampaignId] : [];
-	const [activeTab, setActiveTab] = useState<ItemFormTabId>("identity");
+	const [activeTab, setActiveTab] = useState<ItemFormTabId>(initialTab);
 	const [showLegacyNotes] = useState(() =>
 		Boolean(item?.stats?.trim() || item?.properties?.trim()),
 	);

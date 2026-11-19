@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.157-equipamento-sem-numero",
+		version: "1.6.157",
+		date: "19/11/2026",
+		title: "Item equipado sem número avisa, e o bônus aparece na conta",
+		description:
+			"Um item No Corpo que só descreve o bônus no texto não mudava a CA, e o slot ficava em silêncio. Agora o slot e o painel Com este equipamento dizem “Sem número na ficha” e abrem o cadastro do item já na aba Bônus. Quando o número está no cadastro, a CA, a iniciativa e o deslocamento sobem, e o Resumo da mesa e o painel mostram de onde veio — por exemplo, Capa do Vento +3. O mesmo item na mochila continua sem somar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.156-vtt-recursos-ficha",
 		version: "1.6.156",
 		date: "17/11/2026",

@@ -32,6 +32,36 @@ const equipOwner = vi.hoisted(() => ({
 vi.mock("@/lib/character-equipment", () => ({
 	saveEquipmentAsOwner: equipOwner.save,
 }));
+vi.mock("@tanstack/react-router", async (orig) => {
+	const actual = await orig<typeof import("@tanstack/react-router")>();
+	return {
+		...actual,
+		Link: ({
+			children,
+			to,
+			params,
+			search,
+			className,
+		}: {
+			children?: import("react").ReactNode;
+			to?: string;
+			params?: { itemId?: string };
+			search?: { edit?: boolean; tab?: string };
+			className?: string;
+		}) => {
+			const path = String(to ?? "").replace("$itemId", params?.itemId ?? "");
+			const query = new URLSearchParams();
+			if (search?.edit) query.set("edit", "true");
+			if (search?.tab) query.set("tab", search.tab);
+			const qs = query.toString();
+			return (
+				<a href={qs ? `${path}?${qs}` : path} className={className}>
+					{children}
+				</a>
+			);
+		},
+	};
+});
 
 import { EquipmentDialog } from "./equipment-dialog";
 
@@ -106,10 +136,14 @@ function setup({
 	role = "owner",
 	inventory,
 	createdBy,
+	items = [],
+	patch = {},
 }: {
 	role?: "owner" | "viewer";
 	inventory: InventoryItem[];
 	createdBy?: string;
+	items?: Item[];
+	patch?: Partial<Character>;
 }) {
 	const character = {
 		...thalia,
@@ -120,13 +154,14 @@ function setup({
 		healthMax: 58,
 		armorClass: 11,
 		characterName: "Thalia",
+		...patch,
 		createdBy: createdBy ?? thalia.createdBy,
 		inventoryList: inventory,
 	} as unknown as Character;
 	useRPGStore.setState({
 		campaigns: [{ id: "camp-1", worldId: "world-1", myRole: role }] as never,
 		activeCampaignId: "camp-1",
-		items: allItems,
+		items: [...allItems, ...items],
 		characters: [character],
 		imageAssets: [],
 		updateCharacter: updateCharacter as never,
@@ -141,6 +176,39 @@ function setup({
 	);
 	return character;
 }
+
+function statCard(label: string): HTMLElement {
+	return screen.getByText(label).closest("div")?.parentElement as HTMLElement;
+}
+
+function vento(bonuses: Item["bonuses"] | null, id = "it-cape"): Item {
+	const base = make(id, {
+		name: "Capa do Vento",
+		type: "Capa",
+		slot: "cloak",
+		requiresAttunement: false,
+		bonuses: undefined,
+		armor: undefined,
+		abilityBonuses: undefined,
+	});
+	if (bonuses === null) {
+		return {
+			...base,
+			bonuses: null,
+			armor: null,
+			abilityBonuses: null,
+		} as unknown as Item;
+	}
+	return { ...base, bonuses };
+}
+
+const dantePatch: Partial<Character> = {
+	characterName: "Dante Diavolo",
+	armorClass: 28,
+	dexterity: 14,
+	initiative: 2,
+	speed: 9,
+};
 
 beforeEach(() => {
 	updateCharacter.mockReset();
@@ -348,6 +416,68 @@ describe("EquipmentDialog", () => {
 			const emptyHead = screen.getByRole("button", { name: /Cabeça: vazio/ });
 			expect((emptyHead as HTMLButtonElement).disabled).toBe(true);
 		});
+	});
+
+	it("painel mostra a origem do bônus e a CA sobe (to diferente de from)", () => {
+		const cape = vento([
+			{ id: "ac", target: "ac", value: 3 },
+			{ id: "in", target: "initiative", value: 2 },
+			{ id: "sp", target: "speed", value: 3 },
+		]);
+		setup({
+			inventory: [entry(cape, "equipped", { slot: "cloak" })],
+			items: [cape],
+			patch: dantePatch,
+		});
+		const ac = statCard("Classe de Armadura");
+		expect(within(ac).getByText("31")).toBeTruthy();
+		expect(within(ac).getByText("28")).toBeTruthy();
+		expect(within(ac).getByText("Capa do Vento +3")).toBeTruthy();
+		const init = statCard("Iniciativa");
+		expect(within(init).getByText("+4")).toBeTruthy();
+		expect(within(init).getByText("+2")).toBeTruthy();
+		expect(within(init).getByText("Capa do Vento +2")).toBeTruthy();
+		const speed = statCard("Desloc.");
+		expect(within(speed).getByText("12m")).toBeTruthy();
+		expect(within(speed).getByText("9m")).toBeTruthy();
+		expect(within(speed).getByText("Capa do Vento +3m")).toBeTruthy();
+	});
+
+	it("capa equipada sem número avisa no slot e na lista do painel", () => {
+		const cape = vento(null, "it-cape-silent");
+		setup({
+			inventory: [entry(cape, "equipped", { slot: "cloak" })],
+			items: [cape],
+			patch: dantePatch,
+		});
+		expect(
+			screen.getAllByText("Sem número na ficha").length,
+		).toBeGreaterThanOrEqual(2);
+		const links = screen.getAllByRole("link", { name: "Editar item" });
+		expect(links.length).toBeGreaterThanOrEqual(2);
+		for (const link of links) {
+			const href = link.getAttribute("href") ?? "";
+			expect(href).toContain(cape.id);
+			expect(href).toContain("edit=true");
+			expect(href).toContain("tab=bonus");
+			expect(link.className).toContain("min-h-11");
+		}
+		const ac = statCard("Classe de Armadura");
+		expect(within(ac).getByText("28")).toBeTruthy();
+		expect(within(ac).queryByText("31")).toBeNull();
+	});
+
+	it("a mesma capa na mochila não soma na CA do painel", () => {
+		const cape = vento([{ id: "ac", target: "ac", value: 3 }], "it-cape-bag");
+		setup({
+			inventory: [entry(cape, "backpack")],
+			items: [cape],
+			patch: dantePatch,
+		});
+		const ac = statCard("Classe de Armadura");
+		expect(within(ac).getByText("28")).toBeTruthy();
+		expect(within(ac).queryByText("31")).toBeNull();
+		expect(within(ac).queryByText("Capa do Vento +3")).toBeNull();
 	});
 
 	it("equipado sem slot aparece à parte, com Desequipar", () => {
