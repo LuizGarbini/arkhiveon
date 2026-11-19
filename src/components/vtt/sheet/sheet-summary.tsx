@@ -62,7 +62,7 @@ function Vital({ value, label }: { value: string; label: string }) {
 					</span>
 				) : null}
 			</dd>
-			<dt className="mt-0.5 truncate text-[11px] text-muted-foreground">
+			<dt className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
 				{label}
 			</dt>
 		</div>
@@ -175,7 +175,10 @@ export function SummaryTab({
 				</div>
 			</dl>
 			{origins.length > 0 ? (
-				<ul aria-label="Origem dos números" className="flex flex-wrap gap-1.5">
+				<ul
+					aria-label="Origem dos números"
+					className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
+				>
 					{origins.map((chip) => (
 						<li
 							key={chip.key}

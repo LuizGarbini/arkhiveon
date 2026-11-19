@@ -236,7 +236,7 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 							return (
 								<div
 									key={bonus.id}
-									className="grid grid-cols-[1fr_5rem_2.75rem] gap-2 sm:grid-cols-[10rem_5rem_1fr_2.75rem]"
+									className="grid grid-cols-[1fr_5rem_2.75rem] gap-2 sm:grid-cols-[12.5rem_5rem_1fr_2.75rem]"
 								>
 									<Select
 										aria-label="Soma em"

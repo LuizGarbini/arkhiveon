@@ -222,7 +222,7 @@ function EquipmentBody({
 
 			<div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
 				{tab === "equipment" ? (
-					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+					<div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
 						<div className="space-y-3">
 							<EquipmentDoll
 								character={character}
@@ -285,7 +285,7 @@ function EquipmentBody({
 								</p>
 							) : null}
 						</div>
-						<aside aria-live="polite" className="min-h-0">
+						<aside aria-live="polite" className="min-h-0 min-w-0">
 							{pickerSlot ? (
 								<EquipmentSlotPicker
 									key={pickerSlot}

@@ -51,27 +51,27 @@ export function InfoRow({
 		return { key: count === 1 ? text : `${text}#${count}`, text };
 	});
 	return (
-		<div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
-			<span className="shrink-0 text-muted-foreground">{label}</span>
-			<span className="flex min-w-0 flex-col items-end gap-1">
+		<div className="min-w-0 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<span className="shrink-0 text-muted-foreground">{label}</span>
 				<span className="font-semibold text-foreground tabular-nums">
 					{value}
 				</span>
-				{originNotes.length > 0 ? (
-					<ul className="flex min-w-0 max-w-full flex-col items-end gap-1">
-						{originNotes.map((note) => (
-							<li
-								key={note.key}
-								title={note.text}
-								aria-label={note.text}
-								className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
-							>
-								{note.text}
-							</li>
-						))}
-					</ul>
-				) : null}
-			</span>
+			</div>
+			{originNotes.length > 0 ? (
+				<ul className="mt-1.5 flex w-full min-w-0 max-w-full flex-col items-start gap-1">
+					{originNotes.map((note) => (
+						<li
+							key={note.key}
+							title={note.text}
+							aria-label={note.text}
+							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
+						>
+							{note.text}
+						</li>
+					))}
+				</ul>
+			) : null}
 		</div>
 	);
 }

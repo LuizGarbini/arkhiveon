@@ -275,7 +275,7 @@ export function AttacksTab({
 					{spellOrigins.length > 0 ? (
 						<ul
 							aria-label="Origem do ataque e da CD de magia"
-							className="flex min-w-0 flex-wrap gap-1.5"
+							className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
 						>
 							{spellOrigins.map((chip) => (
 								<li

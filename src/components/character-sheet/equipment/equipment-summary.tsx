@@ -73,7 +73,7 @@ function StatCard({
 				</span>
 			</div>
 			{chips && chips.length > 0 ? (
-				<ul className="mt-2 flex min-w-0 flex-wrap gap-1">
+				<ul className="mt-2 flex w-full min-w-0 flex-wrap gap-1">
 					{chipKeys(chips).map((chip) => (
 						<li
 							key={chip.key}
@@ -158,7 +158,7 @@ export function EquipmentSummary({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-col gap-3">
+		<div className="flex min-h-0 w-full min-w-0 flex-col gap-3">
 			<p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
 				Com este equipamento
 			</p>
