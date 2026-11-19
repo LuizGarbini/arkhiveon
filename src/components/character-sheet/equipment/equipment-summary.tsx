@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
 	calculateProficiencyBonus,
 	describeItemEffects,
+	describeSpellOrigin,
 	type EffectiveStats,
 	estimateHealthMax,
 	formatModifier,
@@ -13,7 +14,28 @@ import {
 } from "@/core/rules";
 import type { Character, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { OriginChipItem, type OriginChipModel } from "../view/ui-primitives";
 import { MissingNumberNotice } from "./equipment-slot-tile";
+
+type OriginChip = string | OriginChipModel;
+
+function chipKeys(chips: readonly OriginChip[]) {
+	const seen = new Map<string, number>();
+	return chips.map((chip) => {
+		const text = typeof chip === "string" ? chip : chip.text;
+		const label = typeof chip === "string" ? chip : (chip.label ?? chip.text);
+		const count = (seen.get(label) ?? 0) + 1;
+		seen.set(label, count);
+		return {
+			key: count === 1 ? label : `${label}#${count}`,
+			text,
+			label,
+			prefix: typeof chip === "string" ? undefined : chip.prefix,
+			name: typeof chip === "string" ? undefined : chip.name,
+			modifier: typeof chip === "string" ? undefined : chip.modifier,
+		};
+	});
+}
 
 function StatCard({
 	label,
@@ -27,7 +49,7 @@ function StatCard({
 	to: string;
 	/** Sem itens. Só aparece riscado quando é diferente do valor atual. */
 	from?: string;
-	chips?: string[];
+	chips?: readonly OriginChip[];
 	featured?: boolean;
 	className?: string;
 }) {
@@ -63,16 +85,19 @@ function StatCard({
 				</span>
 			</div>
 			{chips && chips.length > 0 ? (
-				<div className="mt-2 flex flex-wrap gap-1">
-					{chips.map((chip) => (
-						<span
-							key={chip}
-							className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground"
-						>
-							{chip}
-						</span>
+				<ul className="mt-2 flex w-full min-w-0 flex-wrap gap-1">
+					{chipKeys(chips).map((chip) => (
+						<OriginChipItem
+							key={chip.key}
+							text={chip.text}
+							label={chip.label}
+							prefix={chip.prefix}
+							name={chip.name}
+							modifier={chip.modifier}
+							className="border-border/60 bg-muted/50 text-[10.5px]"
+						/>
 					))}
-				</div>
+				</ul>
 			) : null}
 		</div>
 	);
@@ -146,7 +171,7 @@ export function EquipmentSummary({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-col gap-3">
+		<div className="flex min-h-0 w-full min-w-0 flex-col gap-3">
 			<p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
 				Com este equipamento
 			</p>
@@ -194,6 +219,26 @@ export function EquipmentSummary({
 					from="+0"
 					chips={stats.saves.parts.map(
 						(p) => `${p.label} ${formatModifier(p.value)}`,
+					)}
+				/>
+			) : null}
+			{stats.spellDc.parts.length > 0 ? (
+				<StatCard
+					label="CD de magia"
+					to={String(stats.spellDc.total)}
+					from={String(stats.spellDc.base)}
+					chips={stats.spellDc.parts.map((part) =>
+						describeSpellOrigin("dc", part),
+					)}
+				/>
+			) : null}
+			{stats.spellAttack.parts.length > 0 ? (
+				<StatCard
+					label="Ataque de magia"
+					to={formatModifier(stats.spellAttack.total)}
+					from={formatModifier(stats.spellAttack.base)}
+					chips={stats.spellAttack.parts.map((part) =>
+						describeSpellOrigin("attack", part),
 					)}
 				/>
 			) : null}

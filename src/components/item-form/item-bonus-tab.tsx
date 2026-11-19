@@ -219,7 +219,7 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 						<Sparkles className="h-5 w-5 text-primary" />
 						<p className="max-w-xs text-[13px] text-muted-foreground">
 							Nenhum bônus ainda. Ex.: +1 na CA, +2 na iniciativa, +1 em
-							salvaguardas, +3 de deslocamento.
+							salvaguardas, +3 na CD de magia.
 						</p>
 						<Button type="button" variant="outline" onClick={add}>
 							<Plus className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 							return (
 								<div
 									key={bonus.id}
-									className="grid grid-cols-[1fr_5rem_2.75rem] gap-2 sm:grid-cols-[10rem_5rem_1fr_2.75rem]"
+									className="grid grid-cols-[1fr_5rem_2.75rem] gap-2 sm:grid-cols-[12.5rem_5rem_1fr_2.75rem]"
 								>
 									<Select
 										aria-label="Soma em"
@@ -281,9 +281,10 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 					</div>
 				)}
 				<HelpText>
-					CA, iniciativa, salvaguardas e deslocamento já somam na ficha. Acerto
-					e dano ficam guardados por enquanto. Com “Quando?” preenchido, o bônus
-					vira só uma nota e não soma.
+					CA, iniciativa, salvaguardas, deslocamento, CD de magia e ataque de
+					magia já somam na ficha. Acerto e dano de arma ficam guardados por
+					enquanto. Com “Quando?” preenchido, o bônus vira só uma nota e não
+					soma.
 				</HelpText>
 			</FormSection>
 		</div>

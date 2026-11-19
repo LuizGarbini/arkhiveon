@@ -1,8 +1,10 @@
 import { type CSSProperties, useMemo } from "react";
+import { OriginChipItem } from "@/components/character-sheet/view/ui-primitives";
 import { Button } from "@/components/ui/button";
 import {
 	calculateProficiencyBonus,
 	DAMAGE_TYPE_LABELS,
+	describeSpellOrigin,
 	type EffectiveStats,
 	formatModifier,
 	getEquippedWeaponAttacks,
@@ -142,9 +144,27 @@ export function AttacksTab({
 		}
 		return [...byLevel.entries()].sort((a, b) => a[0] - b[0]);
 	}, [character.spellsList]);
-	const spellAttack = character.spellAttackBonus ?? 0;
-	const spellDc = character.spellSaveDc ?? 0;
-	const hasCasting = spellAttack !== 0 || spellDc > 0 || spells.length > 0;
+	const spellAttack = stats.spellAttack.total;
+	const spellDc = stats.spellDc.total;
+	const hasSpellAttack =
+		spellAttack !== 0 || stats.spellAttack.parts.length > 0;
+	const hasSpellDc = spellDc > 0 || stats.spellDc.parts.length > 0;
+	const hasCasting = hasSpellAttack || hasSpellDc || spells.length > 0;
+	const spellOriginParts = [
+		...stats.spellAttack.parts.map((part) =>
+			describeSpellOrigin("attack", part),
+		),
+		...stats.spellDc.parts.map((part) => describeSpellOrigin("dc", part)),
+	];
+	const seenOrigins = new Map<string, number>();
+	const spellOrigins = spellOriginParts.map((origin) => {
+		const count = (seenOrigins.get(origin.label) ?? 0) + 1;
+		seenOrigins.set(origin.label, count);
+		return {
+			key: count === 1 ? origin.label : `${origin.label}#${count}`,
+			...origin,
+		};
+	});
 
 	const cast = (spell: Spell) => {
 		const target = pickSlotFor(slots, spell.level);
@@ -227,34 +247,54 @@ export function AttacksTab({
 
 			{hasCasting ? (
 				<section aria-label="Magias" className="space-y-3.5">
-					{spellAttack !== 0 || spellDc > 0 ? (
-						<dl className="flex items-stretch gap-3 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
-							<button
-								type="button"
-								disabled={rolls.rolling || spellAttack === 0}
-								aria-label={`Rolar ataque de magia (${formatModifier(spellAttack)})`}
-								onClick={() => rolls.check("Ataque de magia", spellAttack)}
-								className="relative flex w-[4.75rem] shrink-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-lg border border-primary/35 bg-linear-to-b from-primary/16 to-primary/8 py-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:bg-primary/20"
-							>
-								<SpellRuneGlyph className="pointer-events-none absolute -top-2 -right-2 size-12 text-primary/[0.09]" />
-								<dd className="relative font-mono text-[1.5rem] leading-none font-semibold text-foreground tabular-nums">
-									{formatModifier(spellAttack)}
-								</dd>
-								<dt className="relative mt-1 text-[10.5px] font-medium text-primary/90">
-									Ataque
-								</dt>
-							</button>
-							<div className="flex min-w-0 flex-1 items-center gap-6 rounded-lg bg-black/25 px-3.5 py-2 ring-1 ring-white/[0.06]">
-								<div>
-									<dd className="font-mono text-[1.05rem] leading-tight font-semibold text-foreground tabular-nums">
-										{spellDc || "—"}
+					{hasSpellAttack || hasSpellDc ? (
+						<div className="space-y-1.5">
+							<dl className="flex items-stretch gap-3 rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)]">
+								<button
+									type="button"
+									disabled={rolls.rolling || spellAttack === 0}
+									aria-label={`Rolar ataque de magia (${formatModifier(spellAttack)})`}
+									onClick={() => rolls.check("Ataque de magia", spellAttack)}
+									className="relative flex w-[4.75rem] shrink-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-lg border border-primary/35 bg-linear-to-b from-primary/16 to-primary/8 py-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:bg-primary/20"
+								>
+									<SpellRuneGlyph className="pointer-events-none absolute -top-2 -right-2 size-12 text-primary/[0.09]" />
+									<dd className="relative font-mono text-[1.5rem] leading-none font-semibold text-foreground tabular-nums">
+										{formatModifier(spellAttack)}
 									</dd>
-									<dt className="mt-0.5 text-[11px] text-muted-foreground">
-										CD de salvaguarda
+									<dt className="relative mt-1 text-[10.5px] font-medium text-primary/90">
+										Ataque
 									</dt>
+								</button>
+								<div className="flex min-w-0 flex-1 items-center gap-6 rounded-lg bg-black/25 px-3.5 py-2 ring-1 ring-white/[0.06]">
+									<div>
+										<dd className="font-mono text-[1.05rem] leading-tight font-semibold text-foreground tabular-nums">
+											{hasSpellDc ? spellDc : "—"}
+										</dd>
+										<dt className="mt-0.5 text-[11px] text-muted-foreground">
+											CD de salvaguarda
+										</dt>
+									</div>
 								</div>
-							</div>
-						</dl>
+							</dl>
+							{spellOrigins.length > 0 ? (
+								<ul
+									aria-label="Origem do ataque e da CD de magia"
+									className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
+								>
+									{spellOrigins.map((chip) => (
+										<OriginChipItem
+											key={chip.key}
+											text={chip.text}
+											label={chip.label}
+											prefix={chip.prefix}
+											name={chip.name}
+											modifier={chip.modifier}
+											className="border-border/70 bg-card/60 text-[11px]"
+										/>
+									))}
+								</ul>
+							) : null}
+						</div>
 					) : null}
 
 					{spells.length === 0 ? (

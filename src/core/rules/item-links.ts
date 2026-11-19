@@ -262,6 +262,10 @@ export function describeLinkCandidate(item: Item): string {
 		else if (b.target === "ac") bits.push(`${signed(b.value)} CA`);
 		else if (b.target === "speed") bits.push(`${signed(b.value)} Deslocamento`);
 		else if (b.target === "saves") bits.push(`${signed(b.value)} Salvaguardas`);
+		else if (b.target === "spellSaveDc")
+			bits.push(`${signed(b.value)} CD de magia`);
+		else if (b.target === "spellAttack")
+			bits.push(`${signed(b.value)} Ataque de magia`);
 	}
 	if (item.requiresAttunement) bits.push("sintonização");
 	if (bits.length === 1 && item.stats?.trim()) bits.push(item.stats.trim());

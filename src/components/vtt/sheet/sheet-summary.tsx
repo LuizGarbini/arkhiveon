@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import { MissingNumberNotice } from "@/components/character-sheet/equipment/equipment-slot-tile";
+import { OriginChipItem } from "@/components/character-sheet/view/ui-primitives";
 import {
 	calculateProficiencyBonus,
 	calculateSavingThrowModifier,
 	characterAttributeScore,
 	computePassivePerception,
 	describeItemEffects,
+	describeSpellOrigin,
 	type EffectiveStats,
 	formatModifier,
 	formatSpeed,
@@ -61,7 +63,7 @@ function Vital({ value, label }: { value: string; label: string }) {
 					</span>
 				) : null}
 			</dd>
-			<dt className="mt-0.5 truncate text-[11px] text-muted-foreground">
+			<dt className="mt-0.5 truncate text-[11px] leading-snug whitespace-nowrap text-muted-foreground">
 				{label}
 			</dt>
 		</div>
@@ -96,16 +98,34 @@ export function SummaryTab({
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
 	const isDnd = character.system.startsWith("dnd");
-	const spellDc = character.spellSaveDc > 0 ? character.spellSaveDc : 0;
+	const showSpellDc = stats.spellDc.total > 0 || stats.spellDc.parts.length > 0;
 	const attributes = config.attributes;
 	const distanceUnit = speedUnitOf(character, config.speedUnit);
 	const origins = useMemo(() => {
-		const chips: { key: string; text: string }[] = [];
+		const chips: {
+			key: string;
+			text: string;
+			label: string;
+			prefix?: string;
+			name?: string;
+			modifier?: string;
+		}[] = [];
 		const seen = new Map<string, number>();
-		const push = (text: string) => {
-			const count = (seen.get(text) ?? 0) + 1;
-			seen.set(text, count);
-			chips.push({ key: count === 1 ? text : `${text}#${count}`, text });
+		const push = (
+			text: string,
+			label = text,
+			parts?: { prefix: string; name: string; modifier: string },
+		) => {
+			const count = (seen.get(label) ?? 0) + 1;
+			seen.set(label, count);
+			chips.push({
+				key: count === 1 ? label : `${label}#${count}`,
+				text,
+				label,
+				prefix: parts?.prefix,
+				name: parts?.name,
+				modifier: parts?.modifier,
+			});
 		};
 		if (stats.ac.source === "items") {
 			for (const part of stats.ac.parts) {
@@ -121,6 +141,10 @@ export function SummaryTab({
 			push(
 				`Desloc. ${part.label} ${formatSpeed(part.value, distanceUnit, sceneUnit, { signed: true })}`,
 			);
+		}
+		for (const part of stats.spellDc.parts) {
+			const origin = describeSpellOrigin("dc", part);
+			push(origin.text, origin.label, origin);
 		}
 		return chips;
 	}, [stats, distanceUnit, sceneUnit]);
@@ -162,8 +186,8 @@ export function SummaryTab({
 							label="Passiva"
 						/>
 					) : null}
-					{spellDc > 0 ? (
-						<Vital value={String(spellDc)} label="CD de magia" />
+					{showSpellDc ? (
+						<Vital value={String(stats.spellDc.total)} label="CD magia" />
 					) : null}
 					{isDnd ? (
 						<Vital value={formatModifier(proficiency)} label="Proficiência" />
@@ -171,14 +195,20 @@ export function SummaryTab({
 				</div>
 			</dl>
 			{origins.length > 0 ? (
-				<ul aria-label="Origem dos números" className="flex flex-wrap gap-1.5">
+				<ul
+					aria-label="Origem dos números"
+					className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
+				>
 					{origins.map((chip) => (
-						<li
+						<OriginChipItem
 							key={chip.key}
-							className="max-w-full truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
-						>
-							{chip.text}
-						</li>
+							text={chip.text}
+							label={chip.label}
+							prefix={chip.prefix}
+							name={chip.name}
+							modifier={chip.modifier}
+							className="border-border/70 bg-card/60 text-[11px]"
+						/>
 					))}
 				</ul>
 			) : null}

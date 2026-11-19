@@ -5,6 +5,8 @@
  * visão e ao `facingFromMove`).
  */
 
+import { STATUS_RING_OUTER_FACTOR } from "./conditions";
+
 export const ROTATE_STEP_DEGREES = 45;
 export const ROTATE_FINE_STEP_DEGREES = 15;
 /** O arrasto gruda quando chega perto de um múltiplo de 15° (45° inclusive). */
@@ -135,4 +137,136 @@ export function steeredRotation(degrees: number): number {
 	return gap <= ROTATE_SNAP_MAGNET_DEGREES
 		? normalizeRotation(nearest)
 		: normalizeRotation(degrees);
+}
+
+/**
+ * Alça em pixels de TELA. O canvas desenha a bola e a haste uma vez nestes
+ * tamanhos e o zoom só muda a escala do container. O contrato antigo
+ * (`rotateHandleDistance` / `rotateHandleHitRadius`) continua acima: os testes
+ * de giro cobrem a fórmula do ângulo, e estes números são o desenho novo.
+ */
+export const ROTATE_HANDLE_KNOB_PX = 14;
+export const ROTATE_HANDLE_STEM_PX = 1.5;
+/** Centro da bola, em px de tela, além da borda externa do token. */
+export const ROTATE_HANDLE_GAP_PX = 21;
+/**
+ * Contorno desenhado por fora do disco de 14px, para o miolo medir 14 mesmo
+ * com a borda. Mesma espessura da haste.
+ */
+export const ROTATE_HANDLE_OUTLINE_PX = 1.5;
+/** Raio do alvo no mouse: 16px → 32px de diâmetro. */
+export const ROTATE_HANDLE_HIT_MOUSE_PX = 16;
+/** Raio do alvo no toque: 22px → 44px de diâmetro. */
+export const ROTATE_HANDLE_HIT_TOUCH_PX = 22;
+
+/** Zoom usado na conta. Abaixo de 0,05 (ou inválido) cai para 1, como o hit antigo. */
+export function rotateViewportScale(scale: number): number {
+	return Number.isFinite(scale) && scale > 0.05 ? scale : 1;
+}
+
+export interface RotateHandleScreen {
+	/** `1 / zoom`: px de tela desenhados no filho continuam px de tela. */
+	counterScale: number;
+	/** Borda externa do token, em px de tela. */
+	edgePx: number;
+	/** Centro da bola a partir do centro do token, em px de tela. */
+	centerPx: number;
+	knobPx: number;
+	stemPx: number;
+	gapPx: number;
+	outlinePx: number;
+	hitMousePx: number;
+	hitTouchPx: number;
+}
+
+/** Geometria da alça em px de tela para um raio externo (mapa) e um zoom. */
+export function rotateHandleScreen(
+	outerRadius: number,
+	scale: number,
+): RotateHandleScreen {
+	const safe = rotateViewportScale(scale);
+	const edgePx = Math.max(0, outerRadius) * safe;
+	return {
+		counterScale: 1 / safe,
+		edgePx,
+		centerPx: edgePx + ROTATE_HANDLE_GAP_PX,
+		knobPx: ROTATE_HANDLE_KNOB_PX,
+		stemPx: ROTATE_HANDLE_STEM_PX,
+		gapPx: ROTATE_HANDLE_GAP_PX,
+		outlinePx: ROTATE_HANDLE_OUTLINE_PX,
+		hitMousePx: ROTATE_HANDLE_HIT_MOUSE_PX,
+		hitTouchPx: ROTATE_HANDLE_HIT_TOUCH_PX,
+	};
+}
+
+/** Raio de acerto em px de tela. Só `touch` usa o alvo de 44px; o resto, 32px. */
+export function rotateHandleHitRadiusPx(pointerType: string): number {
+	return pointerType === "touch"
+		? ROTATE_HANDLE_HIT_TOUCH_PX
+		: ROTATE_HANDLE_HIT_MOUSE_PX;
+}
+
+/** Raio de acerto em unidades do mapa. */
+export function rotateHandleHitWorld(
+	scale: number,
+	pointerType: string,
+): number {
+	return rotateHandleHitRadiusPx(pointerType) / rotateViewportScale(scale);
+}
+
+/** Distância do centro do token até o centro da bola, em unidades do mapa. */
+export function rotateHandleCenterWorld(
+	outerRadius: number,
+	scale: number,
+): number {
+	const safe = rotateViewportScale(scale);
+	return rotateHandleScreen(outerRadius, safe).centerPx / safe;
+}
+
+/**
+ * Borda de onde a alça sai. Com disco de status, é a borda do disco; sem ele,
+ * o raio do token. O anel de seleção não entra.
+ */
+export function rotateHandleOuterRadius(
+	tokenRadius: number,
+	hasStatusDisc: boolean,
+): number {
+	if (!(tokenRadius > 0)) return 0;
+	return hasStatusDisc ? tokenRadius * STATUS_RING_OUTER_FACTOR : tokenRadius;
+}
+
+/**
+ * O ponteiro acertou a alça? `localX/Y` são o deslocamento a partir do centro
+ * do token, em unidades do mapa. 0° olha para cima.
+ */
+export function pointerHitsRotateHandleScreen(
+	localX: number,
+	localY: number,
+	rotation: number,
+	outerRadius: number,
+	scale: number,
+	pointerType: string,
+): boolean {
+	if (
+		!Number.isFinite(localX) ||
+		!Number.isFinite(localY) ||
+		!Number.isFinite(rotation) ||
+		!Number.isFinite(outerRadius) ||
+		!Number.isFinite(scale)
+	)
+		return false;
+	if (outerRadius <= 0) return false;
+	const rad = (rotation * Math.PI) / 180;
+	const dist = rotateHandleCenterWorld(outerRadius, scale);
+	const hit = rotateHandleHitWorld(scale, pointerType);
+	const hx = Math.sin(rad) * dist;
+	const hy = -Math.cos(rad) * dist;
+	return Math.hypot(localX - hx, localY - hy) <= hit;
+}
+
+/** A única alça fica no primeiro token que o teclado já giraria. */
+export function rotateHandleAnchor<T extends { id: string }>(
+	movers: readonly T[],
+): T | null {
+	return movers[0] ?? null;
 }
