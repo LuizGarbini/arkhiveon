@@ -135,10 +135,132 @@ describe("slot do item", () => {
 		expect(slotsForItem(wonder)).toEqual([]);
 	});
 
-	it("anel cabe nos dois slots, escudo só na mão secundária", () => {
-		expect(slotsForItem(ringOfAlertness)).toEqual(["ring1", "ring2"]);
+	it("anel cabe nos quatro anéis, escudo só na mão secundária", () => {
+		expect(slotsForItem(ringOfAlertness)).toEqual([
+			"ring1",
+			"ring2",
+			"ring3",
+			"ring4",
+		]);
 		expect(slotsForItem(shield)).toEqual(["offHand"]);
 		expect(slotsForItem(longsword)).toEqual(["mainHand", "offHand"]);
+	});
+
+	it("brinco, bracelete, cinto e braçadeiras vão para o próprio slot", () => {
+		expect(itemSlotOf({ type: "Brinco" })).toBe("earring");
+		expect(itemSlotOf({ type: "earring" })).toBe("earring");
+		expect(itemSlotOf({ type: "Bracelete" })).toBe("bracelet");
+		expect(itemSlotOf({ type: "Cinto" })).toBe("belt");
+		expect(itemSlotOf({ type: "Braçadeiras" })).toBe("bracers");
+		expect(itemSlotOf({ type: "bracadeira" })).toBe("bracers");
+		expect(slotsForItem({ type: "Brinco" })).toEqual(["earring"]);
+		expect(slotsForItem({ type: "Bracelete" })).toEqual(["bracelet"]);
+		expect(slotsForItem({ type: "Cinto" })).toEqual(["belt"]);
+		expect(slotsForItem({ type: "Braçadeiras" })).toEqual(["bracers"]);
+	});
+});
+
+describe("bônus nos slots novos", () => {
+	const earring = make("slot-ear", {
+		name: "Brinco da Persuasão",
+		type: "Brinco",
+		slot: "earring",
+		requiresAttunement: false,
+		abilityBonuses: [{ id: "e", ability: "charisma", mode: "add", value: 2 }],
+	});
+	const bracelet = make("slot-brace", {
+		name: "Bracelete Ágil",
+		type: "Bracelete",
+		slot: "bracelet",
+		requiresAttunement: false,
+		abilityBonuses: [{ id: "b", ability: "dexterity", mode: "add", value: 1 }],
+	});
+	const wornBelt = make("slot-belt", {
+		name: "Cinto do Gigante do Fogo",
+		type: "Cinto",
+		slot: "belt",
+		requiresAttunement: false,
+		abilityBonuses: [{ id: "c", ability: "strength", mode: "add", value: 2 }],
+	});
+	const bracers = make("slot-bracers", {
+		name: "Braçadeiras da Defesa",
+		type: "Braçadeiras",
+		slot: "bracers",
+		requiresAttunement: false,
+		abilityBonuses: [
+			{ id: "d", ability: "constitution", mode: "add", value: 1 },
+		],
+	});
+	const ring3 = make("slot-ring3", {
+		name: "Anel do Terceiro Dedo",
+		type: "Anel",
+		requiresAttunement: false,
+		bonuses: [{ id: "ac", target: "ac", value: 1 }],
+	});
+	const ring4 = make("slot-ring4", {
+		name: "Anel do Quarto Dedo",
+		type: "Anel",
+		requiresAttunement: false,
+		bonuses: [{ id: "sv", target: "saves", value: 1 }],
+	});
+
+	it("soma o que está equipado em brinco, bracelete, cinto, braçadeiras, anel 3 e anel 4", () => {
+		const pieces = [earring, bracelet, wornBelt, bracers, ring3, ring4];
+		const inventory = [
+			entry(earring, "equipped", { slot: "earring" }),
+			entry(bracelet, "equipped", { slot: "bracelet" }),
+			entry(wornBelt, "equipped", { slot: "belt" }),
+			entry(bracers, "equipped", { slot: "bracers" }),
+			entry(ring3, "equipped", { slot: "ring3" }),
+			entry(ring4, "equipped", { slot: "ring4" }),
+		];
+		const stats = computeEffectiveStats(
+			{
+				...thalia,
+				strength: 10,
+				dexterity: 10,
+				constitution: 10,
+				charisma: 10,
+				armorClass: 10,
+				inventoryList: inventory,
+			},
+			byId(...pieces),
+		);
+		const { bySlot } = resolveSlots(stats.linked);
+		expect(bySlot.get("earring")?.item.id).toBe(earring.id);
+		expect(bySlot.get("bracelet")?.item.id).toBe(bracelet.id);
+		expect(bySlot.get("belt")?.item.id).toBe(wornBelt.id);
+		expect(bySlot.get("bracers")?.item.id).toBe(bracers.id);
+		expect(bySlot.get("ring3")?.item.id).toBe(ring3.id);
+		expect(bySlot.get("ring4")?.item.id).toBe(ring4.id);
+		expect(stats.abilities.charisma.total).toBe(12);
+		expect(stats.abilities.dexterity.total).toBe(11);
+		expect(stats.abilities.strength.total).toBe(12);
+		expect(stats.abilities.constitution.total).toBe(11);
+		expect(stats.ac.total).toBe(11);
+		expect(stats.saves.total).toBe(1);
+	});
+
+	it("ficha antiga, sem os slots novos, continua somando o que já vestia", () => {
+		const linked = linkedOf(
+			[gauntlets, amulet],
+			[entry(gauntlets), entry(amulet)],
+		);
+		const { bySlot } = resolveSlots(linked);
+		expect(bySlot.get("hands")?.item.id).toBe(gauntlets.id);
+		expect(bySlot.get("neck")?.item.id).toBe(amulet.id);
+		expect(bySlot.has("earring")).toBe(false);
+		expect(bySlot.has("bracelet")).toBe(false);
+		expect(bySlot.has("belt")).toBe(false);
+		expect(bySlot.has("bracers")).toBe(false);
+		expect(bySlot.has("ring3")).toBe(false);
+		expect(bySlot.has("ring4")).toBe(false);
+		const stats = computeAbilityScores(
+			{ ...thalia, strength: 14, constitution: 14 },
+			linked,
+		);
+		expect(stats.strength.total).toBe(19);
+		expect(stats.constitution.total).toBe(19);
 	});
 });
 
@@ -170,6 +292,26 @@ describe("resolveSlots", () => {
 		expect(bySlot.get("ring1")?.item.id).toBe(ringOfAlertness.id);
 		expect(bySlot.get("ring2")?.item.id).toBe(secondRing.id);
 		expect(unslotted).toEqual([]);
+	});
+
+	it("o terceiro e o quarto anel sem slot gravado ocupam Anel 3 e Anel 4", () => {
+		const third = make("it-ring3", { name: "Anel 3", type: "Anel" });
+		const fourth = make("it-ring4", { name: "Anel 4", type: "Anel" });
+		const fifth = make("it-ring5", { name: "Anel extra", type: "Anel" });
+		const linked = linkedOf(
+			[ringOfAlertness, secondRing, third, fourth, fifth],
+			[
+				entry(ringOfAlertness),
+				entry(secondRing),
+				entry(third),
+				entry(fourth),
+				entry(fifth),
+			],
+		);
+		const { bySlot, unslotted } = resolveSlots(linked);
+		expect(bySlot.get("ring3")?.item.id).toBe(third.id);
+		expect(bySlot.get("ring4")?.item.id).toBe(fourth.id);
+		expect(unslotted.map((l) => l.item.id)).toEqual([fifth.id]);
 	});
 
 	it("o que não cabe em nenhum slot vai para 'unslotted'", () => {
@@ -872,7 +1014,19 @@ describe("slot padrão e ficha sem equipamento", () => {
 				entry(protRing, "equipped", { slot: "ring2" }),
 			],
 		);
-		expect(defaultSlotFor(secondRing, both)).toBe("ring1");
+		expect(defaultSlotFor(secondRing, both)).toBe("ring3");
+		const third = make("it-ring3", { type: "Anel" });
+		const fourth = make("it-ring4", { type: "Anel" });
+		const full = linkedOf(
+			[ringOfAlertness, protRing, third, fourth],
+			[
+				entry(ringOfAlertness, "equipped", { slot: "ring1" }),
+				entry(protRing, "equipped", { slot: "ring2" }),
+				entry(third, "equipped", { slot: "ring3" }),
+				entry(fourth, "equipped", { slot: "ring4" }),
+			],
+		);
+		expect(defaultSlotFor(secondRing, full)).toBe("ring1");
 		expect(
 			defaultSlotFor(make("w", { type: "Item Maravilhoso" }), []),
 		).toBeUndefined();

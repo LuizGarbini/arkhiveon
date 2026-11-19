@@ -47,24 +47,36 @@ export { ABILITY_SHORT_LABELS };
 /** Ordem em que os slots aparecem na ficha. */
 export const EQUIP_SLOTS: readonly EquipSlot[] = [
 	"head",
+	"earring",
 	"neck",
 	"cloak",
+	"armor",
+	"belt",
+	"bracers",
 	"hands",
+	"bracelet",
 	"ring1",
 	"ring2",
+	"ring3",
+	"ring4",
 	"mainHand",
 	"offHand",
-	"armor",
 	"feet",
 ];
 
 export const EQUIP_SLOT_LABELS: Record<EquipSlot, string> = {
 	head: "Cabeça",
+	earring: "Brinco",
 	neck: "Pescoço",
 	cloak: "Capa",
+	bracers: "Braçadeiras",
 	hands: "Mãos",
+	bracelet: "Bracelete",
+	belt: "Cinto",
 	ring1: "Anel 1",
 	ring2: "Anel 2",
+	ring3: "Anel 3",
+	ring4: "Anel 4",
 	mainHand: "Mão principal",
 	offHand: "Mão secundária",
 	armor: "Armadura",
@@ -80,24 +92,32 @@ export const EQUIP_SLOT_SHORT_LABELS: Record<EquipSlot, string> = {
 
 export const ITEM_SLOT_LABELS: Record<ItemSlot, string> = {
 	head: "Cabeça",
+	earring: "Brinco",
 	neck: "Pescoço",
 	cloak: "Capa",
+	armor: "Armadura",
+	belt: "Cinto",
+	bracers: "Braçadeiras",
 	hands: "Mãos (luvas)",
+	bracelet: "Bracelete",
 	ring: "Anel",
+	feet: "Pés",
 	weapon: "Arma (uma mão)",
 	shield: "Escudo",
-	armor: "Armadura",
-	feet: "Pés",
 };
 
 export const ITEM_SLOTS = Object.keys(ITEM_SLOT_LABELS) as ItemSlot[];
 
 const SLOTS_FOR_ITEM_SLOT: Record<ItemSlot, readonly EquipSlot[]> = {
 	head: ["head"],
+	earring: ["earring"],
 	neck: ["neck"],
 	cloak: ["cloak"],
+	bracers: ["bracers"],
 	hands: ["hands"],
-	ring: ["ring1", "ring2"],
+	bracelet: ["bracelet"],
+	belt: ["belt"],
+	ring: ["ring1", "ring2", "ring3", "ring4"],
 	weapon: ["mainHand", "offHand"],
 	shield: ["offHand"],
 	armor: ["armor"],
@@ -132,6 +152,17 @@ export function itemSlotOf(
 	if (type === "capa" || type === "cloak" || type === "cape") return "cloak";
 	if (type === "luvas" || type === "luva") return "hands";
 	if (type === "botas" || type === "bota") return "feet";
+	if (type === "brinco" || type === "earring") return "earring";
+	if (type === "bracelete" || type === "braceletes" || type === "bracelet")
+		return "bracelet";
+	if (type === "cinto" || type === "belt") return "belt";
+	if (
+		type === "bracadeira" ||
+		type === "bracadeiras" ||
+		type === "bracer" ||
+		type === "bracers"
+	)
+		return "bracers";
 	return undefined;
 }
 

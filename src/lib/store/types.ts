@@ -597,7 +597,8 @@ export interface Item extends WorldEntityFields {
 	abilityBonuses?: ItemAbilityBonus[];
 	/**
 	 * Onde o item é vestido. Em branco: deduzido da categoria (arma, armadura,
-	 * escudo, anel, amuleto). Itens "maravilhosos" precisam dizer o slot.
+	 * escudo, anel, amuleto, brinco, bracelete, cinto, braçadeiras). Itens
+	 * "maravilhosos" precisam dizer o slot.
 	 */
 	slot?: ItemSlot;
 	/** De onde o item nasceu no cadastro: em branco ou cópia independente de outro item. */
@@ -681,13 +682,17 @@ export interface ItemBonus {
 
 /**
  * Onde o item é vestido. É a categoria do item (não a posição na ficha):
- * `ring` cabe nos dois slots de anel e `weapon` nas duas mãos.
+ * `ring` cabe em Anel 1, 2, 3 ou 4 e `weapon` nas duas mãos.
  */
 export type ItemSlot =
 	| "head"
+	| "earring"
 	| "neck"
 	| "cloak"
+	| "bracers"
 	| "hands"
+	| "bracelet"
+	| "belt"
 	| "ring"
 	| "weapon"
 	| "shield"
@@ -697,11 +702,17 @@ export type ItemSlot =
 /** Posição física na ficha onde um item vinculado está equipado. */
 export type EquipSlot =
 	| "head"
+	| "earring"
 	| "neck"
 	| "cloak"
+	| "bracers"
 	| "hands"
+	| "bracelet"
+	| "belt"
 	| "ring1"
 	| "ring2"
+	| "ring3"
+	| "ring4"
 	| "mainHand"
 	| "offHand"
 	| "armor"

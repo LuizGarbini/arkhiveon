@@ -68,8 +68,9 @@ export function ItemBonusTab({ form }: { form: ItemFormApi }) {
 				</Select>
 				<HelpText>
 					Arma, armadura, escudo, elmo, capa, luvas, botas, anel e amuleto já
-					vão para o lugar certo. Um item maravilhoso sem um desses tipos
-					precisa de um slot para aparecer no equipamento da ficha.
+					vão para o lugar certo. Escolha Brinco, Bracelete, Cinto ou
+					Braçadeiras para o item aparecer nesse lugar do boneco. Um anel cabe
+					em Anel 1, 2, 3 ou 4.
 				</HelpText>
 			</FormSection>
 

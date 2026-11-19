@@ -218,6 +218,33 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("EquipmentDialog", () => {
+	it("mostra os seis slots novos e um item no brinco", () => {
+		const earring = make("ear", {
+			name: "Brinco de Prata",
+			type: "Item Maravilhoso",
+			slot: "earring",
+			bonuses: [{ id: "b", target: "ac", value: 1 }],
+		});
+		setup({
+			inventory: [entry(earring, "equipped", { slot: "earring" })],
+			items: [earring],
+		});
+		expect(
+			screen.getByRole("button", { name: /Brinco: Brinco de Prata/ }),
+		).toBeTruthy();
+		for (const name of [
+			"Bracelete",
+			"Cinto",
+			"Braçadeiras",
+			"Anel 3",
+			"Anel 4",
+		]) {
+			expect(
+				screen.getByRole("button", { name: new RegExp(`${name}: vazio`) }),
+			).toBeTruthy();
+		}
+	});
+
 	it("mostra os atributos com os itens e o que mudou", () => {
 		setup({
 			inventory: [
