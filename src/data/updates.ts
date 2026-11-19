@@ -11,12 +11,39 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.159-vtt-alca-giro",
-		version: "1.6.159",
+		id: "v1.6.162-vtt-alca-giro",
+		version: "1.6.162",
 		date: "19/11/2026",
 		title: "Uma alça de giro, do mesmo tamanho em qualquer zoom",
 		description:
 			"Na mesa, a alça que gira o token fica do mesmo tamanho quando você aproxima ou afasta o mapa. Com vários tokens selecionados, aparece uma alça só, no primeiro que você pode girar, e arrastar ela gira o grupo. A alça sai da borda do token (e do disco de status, se houver) e não usa mais a cor da barra de vida.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.161-chip-bonus-visivel",
+		version: "1.6.161",
+		date: "19/11/2026",
+		title: "O bônus do chip de magia não corta",
+		description:
+			"No chip de origem, só o nome do item trunca. “CD ·” ou “Ataque ·” e o valor, como “+3”, continuam visíveis. A frase completa segue no título e no leitor de tela.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.160-chip-magia",
+		version: "1.6.160",
+		date: "19/11/2026",
+		title: "Chip de magia mais curto e tile alinhado",
+		description:
+			"O chip do item equipado mostra “CD · Frasco de Sangue +3” ou “Ataque · Varinha +1”. A frase completa continua no título e no leitor de tela. No resumo da mesa, o tile cabe numa linha como Iniciativa e Deslocamento. Na aba Ataques, o chip fica junto do bloco de ataque e CD.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.159-bonus-magia",
+		version: "1.6.159",
+		date: "19/11/2026",
+		title: "CD e ataque de magia somam o item equipado",
+		description:
+			"Um item No Corpo com bônus de CD de magia ou ataque de magia entra na conta da ficha, e um chip diz de qual item veio. O número digitado na ficha não muda: o bônus soma à parte e não é gravado no campo manual. A rolagem de ataque de magia na mesa passa a usar o valor já com o bônus dos itens.",
 		bullets: [],
 	},
 	{

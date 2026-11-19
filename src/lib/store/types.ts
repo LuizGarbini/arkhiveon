@@ -671,7 +671,9 @@ export type ItemBonusTarget =
 	| "ac"
 	| "initiative"
 	| "saves"
-	| "speed";
+	| "speed"
+	| "spellSaveDc"
+	| "spellAttack";
 
 export interface ItemBonus {
 	id: string;

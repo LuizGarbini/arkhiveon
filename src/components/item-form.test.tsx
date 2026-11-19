@@ -429,6 +429,43 @@ describe("ItemForm (cadastro rico)", () => {
 		expect(payload.type).toBe("Capa");
 	});
 
+	it("o seletor Soma em lista CD de magia e ataque de magia e grava o alvo", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Frasco de Sangue" },
+		});
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Bônus/ }));
+		fireEvent.click(screen.getByRole("button", { name: "Adicionar bônus" }));
+		const combo = screen.getByRole("combobox", { name: "Soma em" });
+		expect(combo.tagName).not.toBe("SELECT");
+		await act(async () => {
+			fireEvent.click(combo);
+		});
+		const labels = (await screen.findAllByRole("option")).map(
+			(option) => option.textContent,
+		);
+		expect(labels).toContain("CD de magia");
+		expect(labels).toContain("Ataque de magia");
+		const option = await screen.findByRole("option", { name: "CD de magia" });
+		await act(async () => {
+			fireEvent.mouseMove(option);
+		});
+		await act(async () => {
+			fireEvent.click(option);
+		});
+		fireEvent.change(screen.getByLabelText("Valor"), {
+			target: { value: "+3" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Criar arma/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.bonuses).toEqual([
+			expect.objectContaining({ target: "spellSaveDc", value: 3 }),
+		]);
+	});
+
 	it("o seletor de onde se veste lista os slots novos no Select do DS", async () => {
 		render(<ItemForm />);
 		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));

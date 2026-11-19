@@ -10,6 +10,7 @@ import {
 } from "./combat-stats";
 import {
 	attunedCount,
+	buildEquipmentReport,
 	computeAbilityScores,
 	computeEffectiveStats,
 	computePassivePerception,
@@ -19,6 +20,7 @@ import {
 	defaultSlotFor,
 	describeAbilityBonus,
 	describeItemEffects,
+	describeSpellOrigin,
 	effectiveScores,
 	equipEntryInSlot,
 	equipNewItemInSlot,
@@ -1324,5 +1326,272 @@ describe("capa vinculada no slot cloak", () => {
 		expect(stats.ac).toMatchObject({ source: "manual", total: 28 });
 		expect(stats.initiative.source).toBe("manual");
 		expect(stats.speed.total).toBe(9);
+	});
+});
+
+describe("bônus de CD e ataque de magia", () => {
+	const flask = make("flask", {
+		name: "Frasco de Sangue",
+		type: "Item Maravilhoso",
+		slot: "neck",
+		requiresAttunement: true,
+		bonuses: [{ id: "dc", target: "spellSaveDc", value: 3 }],
+	});
+	const wand = make("wand", {
+		name: "Varinha de Marfim",
+		type: "Item Maravilhoso",
+		slot: "bracelet",
+		requiresAttunement: false,
+		bonuses: [{ id: "at", target: "spellAttack", value: 1 }],
+	});
+	const wardedShield = make("ward", {
+		name: "Escudo Arcano",
+		type: "Escudo",
+		slot: "shield",
+		requiresAttunement: false,
+		armor: { baseAc: 2, dexMode: "none", armorCategory: "shield" },
+		bonuses: [{ id: "sa", target: "spellAttack", value: 2 }],
+	});
+
+	function caster(
+		items: Item[],
+		inventory: InventoryItem[],
+		extra: Partial<typeof thalia> = {},
+	) {
+		return computeEffectiveStats(
+			{
+				...thalia,
+				spellSaveDc: 14,
+				spellAttackBonus: 6,
+				inventoryList: inventory,
+				...extra,
+			},
+			byId(...items),
+		);
+	}
+
+	it("item equipado e sintonizado soma na CD e no ataque", () => {
+		const sheet = {
+			...thalia,
+			spellSaveDc: 14,
+			spellAttackBonus: 6,
+			inventoryList: [
+				entry(flask, "equipped", { slot: "neck" }),
+				entry(wand, "equipped", { slot: "bracelet" }),
+			],
+		};
+		const stats = computeEffectiveStats(sheet, byId(flask, wand));
+		expect(stats.spellDc).toEqual({
+			base: 14,
+			total: 17,
+			parts: [{ label: "Frasco de Sangue", value: 3 }],
+		});
+		expect(stats.spellAttack).toEqual({
+			base: 6,
+			total: 7,
+			parts: [{ label: "Varinha de Marfim", value: 1 }],
+		});
+		expect(sheet.spellSaveDc).toBe(14);
+		expect(sheet.spellAttackBonus).toBe(6);
+	});
+
+	it("exige sintonia e não sintonizado não soma; sintonizado soma", () => {
+		const off = caster(
+			[flask],
+			[entry(flask, "equipped", { slot: "neck", isAttuned: false })],
+		);
+		expect(off.spellDc.total).toBe(14);
+		expect(off.spellDc.parts).toEqual([]);
+		const on = caster(
+			[flask],
+			[entry(flask, "equipped", { slot: "neck", isAttuned: true })],
+		);
+		expect(on.spellDc.total).toBe(17);
+		expect(on.spellDc.parts).toEqual([{ label: "Frasco de Sangue", value: 3 }]);
+	});
+
+	it("bônus com quando preenchido não soma", () => {
+		const conditional = make("cond", {
+			name: "Anel do Eclipse",
+			type: "Anel",
+			requiresAttunement: false,
+			bonuses: [
+				{
+					id: "w",
+					target: "spellSaveDc",
+					value: 5,
+					when: "contra mortos-vivos",
+				},
+				{ id: "ok", target: "spellAttack", value: 1 },
+			],
+		});
+		const stats = caster(
+			[conditional],
+			[entry(conditional, "equipped", { slot: "ring1" })],
+		);
+		expect(stats.spellDc.parts).toEqual([]);
+		expect(stats.spellDc.total).toBe(14);
+		expect(stats.spellAttack.parts).toEqual([
+			{ label: "Anel do Eclipse", value: 1 },
+		]);
+	});
+
+	it("dois itens viram dois chips", () => {
+		const second = make("flask-2", {
+			name: "Frasco de Luz",
+			type: "Item Maravilhoso",
+			slot: "belt",
+			requiresAttunement: false,
+			bonuses: [{ id: "dc2", target: "spellSaveDc", value: 1 }],
+		});
+		const stats = caster(
+			[flask, second],
+			[
+				entry(flask, "equipped", { slot: "neck" }),
+				entry(second, "equipped", { slot: "belt" }),
+			],
+		);
+		expect(stats.spellDc.parts).toEqual([
+			{ label: "Frasco de Sangue", value: 3 },
+			{ label: "Frasco de Luz", value: 1 },
+		]);
+		expect(stats.spellDc.total).toBe(18);
+	});
+
+	it("desequipado e mochila não somam", () => {
+		const bag = caster(
+			[flask],
+			[entry(flask, "backpack", { isAttuned: true })],
+		);
+		expect(bag.spellDc.total).toBe(14);
+		expect(bag.spellDc.parts).toEqual([]);
+		const stowed = caster(
+			[wand],
+			[entry(wand, "equipped", { slot: "bracelet", location: "backpack" })],
+		);
+		expect(stowed.spellAttack.parts).toEqual([]);
+	});
+
+	it("zero é ignorado e negativo soma", () => {
+		const mixed = make("mixed", {
+			name: "Pingente",
+			type: "Amuleto",
+			slot: "neck",
+			requiresAttunement: false,
+			bonuses: [
+				{ id: "z", target: "spellSaveDc", value: 0 },
+				{ id: "n", target: "spellAttack", value: -2 },
+			],
+		});
+		const stats = caster([mixed], [entry(mixed, "equipped", { slot: "neck" })]);
+		expect(stats.spellDc.parts).toEqual([]);
+		expect(stats.spellDc.total).toBe(14);
+		expect(stats.spellAttack).toEqual({
+			base: 6,
+			total: 4,
+			parts: [{ label: "Pingente", value: -2 }],
+		});
+	});
+
+	it("manual 0 mais bônus fica só com o item, e a base da ficha não muda", () => {
+		const sheet = {
+			...thalia,
+			spellSaveDc: 0,
+			spellAttackBonus: 0,
+			inventoryList: [entry(flask, "equipped", { slot: "neck" })],
+		};
+		const stats = computeEffectiveStats(sheet, byId(flask));
+		expect(stats.spellDc).toEqual({
+			base: 0,
+			total: 3,
+			parts: [{ label: "Frasco de Sangue", value: 3 }],
+		});
+		expect(sheet.spellSaveDc).toBe(0);
+		expect(sheet.spellAttackBonus).toBe(0);
+	});
+
+	it("arma de duas mãos tira o bônus de quem ficou sem a mão secundária", () => {
+		const stats = caster(
+			[greatsword, wardedShield, flask],
+			[
+				entry(greatsword, "equipped", { slot: "mainHand" }),
+				entry(wardedShield, "equipped", { slot: "offHand" }),
+				entry(flask, "equipped", { slot: "neck" }),
+			],
+		);
+		expect(stats.blockedByTwoHanded.map((link) => link.item.id)).toEqual([
+			wardedShield.id,
+		]);
+		expect(stats.spellAttack.parts).toEqual([]);
+		expect(stats.spellAttack.total).toBe(6);
+		expect(stats.spellDc.total).toBe(17);
+		const shieldOnly = caster(
+			[wardedShield],
+			[entry(wardedShield, "equipped", { slot: "offHand" })],
+		);
+		expect(shieldOnly.spellAttack.total).toBe(8);
+		expect(shieldOnly.spellAttack.parts).toEqual([
+			{ label: "Escudo Arcano", value: 2 },
+		]);
+	});
+
+	it("fora do D&D 5e o manual vale e não há chip", () => {
+		const stats = caster(
+			[flask],
+			[entry(flask, "equipped", { slot: "neck" })],
+			{ system: "generic" },
+		);
+		expect(stats.spellDc).toEqual({ base: 14, total: 14, parts: [] });
+		expect(stats.spellAttack).toEqual({ base: 6, total: 6, parts: [] });
+	});
+
+	it("o relatório do PDF traz a CD e o ataque já com os itens", () => {
+		const sheet = {
+			...thalia,
+			spellSaveDc: 14,
+			spellAttackBonus: 6,
+			inventoryList: [
+				entry(flask, "equipped", { slot: "neck" }),
+				entry(wand, "equipped", { slot: "bracelet" }),
+			],
+		};
+		const report = buildEquipmentReport(sheet, byId(flask, wand));
+		expect(report?.spellDc).toBe(17);
+		expect(report?.spellAttack).toBe(7);
+		expect(sheet.spellSaveDc).toBe(14);
+		expect(sheet.spellAttackBonus).toBe(6);
+	});
+
+	it("descreve CD magia e ataque de magia no chip e na lista", () => {
+		expect(describeItemEffects(flask)).toEqual([
+			{ label: "CD magia", value: "+3" },
+		]);
+		expect(describeItemEffects(wand)).toEqual([
+			{ label: "Atq. magia", value: "+1" },
+		]);
+		expect(describeLinkCandidate(flask)).toBe(
+			"Item Maravilhoso · +3 CD de magia · sintonização",
+		);
+		expect(describeLinkCandidate(wand)).toBe(
+			"Item Maravilhoso · +1 Ataque de magia",
+		);
+		expect(
+			describeSpellOrigin("dc", { label: "Frasco de Sangue", value: 3 }),
+		).toEqual({
+			text: "CD · Frasco de Sangue +3",
+			label: "CD de magia Frasco de Sangue +3",
+			prefix: "CD ·",
+			name: "Frasco de Sangue",
+			modifier: "+3",
+		});
+		expect(
+			describeSpellOrigin("attack", { label: "Varinha", value: 1 }),
+		).toEqual({
+			text: "Ataque · Varinha +1",
+			label: "Ataque de magia Varinha +1",
+			prefix: "Ataque ·",
+			name: "Varinha",
+			modifier: "+1",
+		});
 	});
 });
