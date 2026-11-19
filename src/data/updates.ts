@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.159-vtt-alca-giro",
+		version: "1.6.159",
+		date: "19/11/2026",
+		title: "Uma alça de giro, do mesmo tamanho em qualquer zoom",
+		description:
+			"Na mesa, a alça que gira o token fica do mesmo tamanho quando você aproxima ou afasta o mapa. Com vários tokens selecionados, aparece uma alça só, no primeiro que você pode girar, e arrastar ela gira o grupo. A alça sai da borda do token (e do disco de status, se houver) e não usa mais a cor da barra de vida.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.158-equipamento-slots",
 		version: "1.6.158",
 		date: "19/11/2026",
