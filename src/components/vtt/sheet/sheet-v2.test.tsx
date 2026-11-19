@@ -40,6 +40,7 @@ vi.mock("@tanstack/react-router", async (orig) => {
 });
 
 import { computeEffectiveStats } from "@/core/rules";
+import { useRPGStore } from "@/lib/store";
 import type { Character, Item, Spell } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { AttacksTab } from "./sheet-attacks";
@@ -930,6 +931,9 @@ describe("SummaryTab · atributos com salvaguarda na mesma coluna", () => {
 });
 
 describe("SummaryTab · origem da capa equipada", () => {
+	afterEach(() => {
+		useRPGStore.setState({ campaigns: [], activeCampaignId: null });
+	});
 	function cape(bonuses: Item["bonuses"] | null, id = "it-cape"): Item {
 		const base = {
 			id,
@@ -991,9 +995,9 @@ describe("SummaryTab · origem da capa equipada", () => {
 				{ id: "sp", target: "speed", value: 3 },
 			]),
 		);
-		expect(screen.getByText("Capa do Vento +3")).toBeTruthy();
-		expect(screen.getByText("Capa do Vento +2")).toBeTruthy();
-		expect(screen.getByText("Capa do Vento +3m")).toBeTruthy();
+		expect(screen.getByText("CA Capa do Vento +3")).toBeTruthy();
+		expect(screen.getByText("Init. Capa do Vento +2")).toBeTruthy();
+		expect(screen.getByText("Desloc. Capa do Vento +3m")).toBeTruthy();
 		expect(screen.getByText("31")).toBeTruthy();
 		expect(
 			screen.getByText("Iniciativa").previousElementSibling?.textContent,
@@ -1004,6 +1008,12 @@ describe("SummaryTab · origem da capa equipada", () => {
 	});
 
 	it("resumo avisa quando a capa equipada não tem número", () => {
+		useRPGStore.setState({
+			campaigns: [
+				{ id: "camp-1", worldId: "world-1", myRole: "owner" },
+			] as never,
+			activeCampaignId: "camp-1",
+		});
 		renderDante(cape(null, "it-cape-silent"));
 		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
 		const link = screen.getByRole("link", { name: "Editar item" });
@@ -1014,6 +1024,19 @@ describe("SummaryTab · origem da capa equipada", () => {
 		expect(link.className).toContain("min-h-11");
 		expect(screen.getByText("28")).toBeTruthy();
 		expect(screen.queryByText("31")).toBeNull();
+	});
+
+	it("resumo esconde Editar item quando a pessoa não gerencia o item", () => {
+		useRPGStore.setState({
+			campaigns: [
+				{ id: "camp-1", worldId: "world-1", myRole: "viewer" },
+			] as never,
+			activeCampaignId: "camp-1",
+		});
+		renderDante(cape(null, "it-cape-silent"));
+		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
+		expect(screen.queryByRole("link", { name: "Editar item" })).toBeNull();
+		expect(screen.getByText("28")).toBeTruthy();
 	});
 
 	it("a mesma capa na mochila não entra no resumo", () => {

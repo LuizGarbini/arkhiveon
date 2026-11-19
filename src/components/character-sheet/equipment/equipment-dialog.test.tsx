@@ -453,8 +453,16 @@ describe("EquipmentDialog", () => {
 		expect(
 			screen.getAllByText("Sem número na ficha").length,
 		).toBeGreaterThanOrEqual(2);
+		const tile = screen.getByRole("button", { name: /Capa: Capa do Vento/ });
+		expect(tile.getAttribute("title")).toBe("Sem número na ficha");
+		expect(
+			within(tile).queryByRole("link", { name: "Editar item" }),
+		).toBeNull();
+		expect(within(tile).getByText("Sem número na ficha").className).toContain(
+			"truncate",
+		);
 		const links = screen.getAllByRole("link", { name: "Editar item" });
-		expect(links.length).toBeGreaterThanOrEqual(2);
+		expect(links).toHaveLength(1);
 		for (const link of links) {
 			const href = link.getAttribute("href") ?? "";
 			expect(href).toContain(cape.id);
@@ -465,6 +473,27 @@ describe("EquipmentDialog", () => {
 		const ac = statCard("Classe de Armadura");
 		expect(within(ac).getByText("28")).toBeTruthy();
 		expect(within(ac).queryByText("31")).toBeNull();
+	});
+
+	it("quem não gerencia o item vê o aviso sem o atalho Editar item", () => {
+		auth.userId = "player-1";
+		const cape = vento(null, "it-cape-silent");
+		setup({
+			role: "viewer",
+			inventory: [entry(cape, "equipped", { slot: "cloak" })],
+			items: [cape],
+			patch: dantePatch,
+			createdBy: "gm-sheet",
+		});
+		expect(screen.getAllByText("Sem número na ficha").length).toBeGreaterThan(
+			0,
+		);
+		expect(screen.queryByRole("link", { name: "Editar item" })).toBeNull();
+		expect(
+			screen
+				.getByRole("button", { name: /Capa: Capa do Vento/ })
+				.getAttribute("title"),
+		).toBe("Sem número na ficha");
 	});
 
 	it("a mesma capa na mochila não soma na CA do painel", () => {

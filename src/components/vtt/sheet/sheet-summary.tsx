@@ -109,17 +109,17 @@ export function SummaryTab({
 		};
 		if (stats.ac.source === "items") {
 			for (const part of stats.ac.parts) {
-				if (part.kind !== "sheet") push(formatStatPart(part));
+				if (part.kind !== "sheet") push(`CA ${formatStatPart(part)}`);
 			}
 		}
 		if (stats.initiative.source === "items") {
 			for (const part of stats.initiative.parts) {
-				if (part.kind !== "sheet") push(formatStatPart(part));
+				if (part.kind !== "sheet") push(`Init. ${formatStatPart(part)}`);
 			}
 		}
 		for (const part of stats.speed.parts) {
 			push(
-				`${part.label} ${formatSpeed(part.value, distanceUnit, sceneUnit, { signed: true })}`,
+				`Desloc. ${part.label} ${formatSpeed(part.value, distanceUnit, sceneUnit, { signed: true })}`,
 			);
 		}
 		return chips;
