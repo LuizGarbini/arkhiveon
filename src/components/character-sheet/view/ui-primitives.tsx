@@ -34,6 +34,14 @@ export function QuickStat({
 	);
 }
 
+const EMPTY_PLACEHOLDERS = new Set([
+	"Não informado",
+	"Não informada",
+	"Não informados",
+	"Sem anotações",
+	"-",
+]);
+
 export function InfoRow({
 	label,
 	value,
@@ -41,10 +49,21 @@ export function InfoRow({
 	label: string;
 	value: string | number;
 }) {
+	const isPlaceholder =
+		typeof value === "string" && EMPTY_PLACEHOLDERS.has(value.trim());
 	return (
-		<div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
+		<div className="flex items-baseline justify-between gap-4 border-b border-border/40 py-2 text-xs last:border-b-0">
 			<span className="text-muted-foreground">{label}</span>
-			<span className="font-semibold text-foreground">{value}</span>
+			<span
+				className={cn(
+					"text-right tabular-nums",
+					isPlaceholder
+						? "text-muted-foreground/70"
+						: "font-medium text-foreground",
+				)}
+			>
+				{value}
+			</span>
 		</div>
 	);
 }
@@ -58,13 +77,17 @@ export function TextBlock({
 	value?: string;
 	children?: ReactNode;
 }) {
+	const isPlaceholder = value ? EMPTY_PLACEHOLDERS.has(value.trim()) : false;
 	return (
-		<div className="rounded-xl border border-border/60 bg-background/40 p-3">
-			<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-				{title}
-			</p>
+		<div className="border-b border-border/40 pb-3 last:border-b-0 last:pb-0">
+			<p className="text-xs font-medium text-muted-foreground">{title}</p>
 			{value ? (
-				<p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground/90 font-medium">
+				<p
+					className={cn(
+						"mt-1 whitespace-pre-wrap text-sm leading-relaxed",
+						isPlaceholder ? "text-muted-foreground/70" : "text-foreground/90",
+					)}
+				>
 					{value}
 				</p>
 			) : (

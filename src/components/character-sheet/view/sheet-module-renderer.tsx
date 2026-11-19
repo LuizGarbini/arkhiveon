@@ -1,4 +1,4 @@
-import { BookOpen, Eye, Heart, Shield, Sparkles, Zap } from "lucide-react";
+import { Eye, Shield, Sparkles, Zap } from "lucide-react";
 import type { ComponentType } from "react";
 import { CharacterInventoryModule } from "@/components/character-inventory-module";
 import { SkillsFieldsReadOnly } from "@/components/character-sheet/fields";
@@ -63,29 +63,30 @@ export function SheetModuleContent({
 
 	if (module.kind === "identity") {
 		return (
-			<div className="grid gap-3">
-				<div className="grid grid-cols-2 gap-3">
+			<div className="space-y-3">
+				<div className="divide-y divide-border/40">
 					<InfoRow label="Nível" value={String(character.level || 1)} />
 					<InfoRow label="XP" value={String(character.xp || 0)} />
+					<InfoRow
+						label="Jogador"
+						value={character.playerName || "Não informado"}
+					/>
+					<InfoRow label="Raça" value={character.race || "Não informada"} />
+					<InfoRow label="Classe" value={character.class || "Não informada"} />
+					<InfoRow
+						label="Antecedente / Origem"
+						value={character.background || "Não informado"}
+					/>
+					<InfoRow
+						label="Alinhamento"
+						value={character.alignment || "Não informado"}
+					/>
 				</div>
-				<InfoRow
-					label="Jogador"
-					value={character.playerName || "Não informado"}
-				/>
-				<InfoRow label="Raça" value={character.race || "Não informada"} />
-				<InfoRow label="Classe" value={character.class || "Não informada"} />
-				<InfoRow
-					label="Antecedente / Origem"
-					value={character.background || "Não informado"}
-				/>
-				<InfoRow
-					label="Alinhamento"
-					value={character.alignment || "Não informado"}
-				/>
-				<TextBlock
-					title="Aparência"
-					value={character.appearance || "Não informada"}
-				/>
+				{character.appearance?.trim() && (
+					<div className="pt-2 border-t border-border/40">
+						<TextBlock title="Aparência" value={character.appearance} />
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -107,7 +108,7 @@ export function SheetModuleContent({
 
 		return (
 			<div
-				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
+				className={`grid gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
 			>
 				{abilities.map((ability) => {
 					const fullName = getAttributeFullName(ability.label);
@@ -115,7 +116,7 @@ export function SheetModuleContent({
 					return (
 						<div
 							key={ability.label}
-							className="rounded-2xl border border-border/70 bg-background/45 p-3 text-center transition-all hover:bg-background/70"
+							className="bg-background/80 px-2 py-3 text-center"
 						>
 							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 								{ability.label}
@@ -144,11 +145,11 @@ export function SheetModuleContent({
 								</p>
 							)}
 							{extra && (
-								<p className="mt-0.5 text-[11px] font-bold text-primary">
-									{extra}
+								<p className="mt-0.5 font-mono text-xs text-muted-foreground tabular-nums">
+									{ability.value}
 								</p>
 							)}
-							<p className="text-[9px] text-muted-foreground/80 truncate">
+							<p className="mt-0.5 text-[10px] text-muted-foreground truncate">
 								{fullName}
 							</p>
 						</div>
@@ -184,30 +185,35 @@ export function SheetModuleContent({
 		);
 
 		return (
-			<div className="grid gap-4">
-				<div className="rounded-2xl border border-border/70 bg-background/45 p-4">
-					<div className="flex items-end justify-between gap-3">
-						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+			<div className="space-y-4">
+				<div className="space-y-2">
+					<div className="flex items-baseline justify-between gap-3">
+						<div className="flex flex-wrap items-baseline gap-2">
+							<span className="text-xs font-medium text-muted-foreground">
 								Pontos de Vida
-							</p>
-							<p className="font-display mt-1 text-4xl font-bold text-rose-400">
-								{character.health}
-								<span className="text-lg text-muted-foreground">
-									/{effectiveHealthMax}
+							</span>
+							{toughBonus > 0 && (
+								<span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+									+{toughBonus} de Robusto
 								</span>
-								{toughBonus > 0 && (
-									<span className="text-[10px] font-bold uppercase tracking-wider text-primary ml-2 bg-primary/10 px-1.5 py-0.5 rounded">
-										+{toughBonus} de Robusto
-									</span>
-								)}
-							</p>
+							)}
+							{character.tempHealth ? (
+								<span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground tabular-nums">
+									+{character.tempHealth} temp
+								</span>
+							) : null}
 						</div>
-						<Heart className="h-5 w-5 text-rose-400" />
+						<p className="font-display text-2xl font-bold tabular-nums text-foreground">
+							{character.health}
+							<span className="text-sm font-normal text-muted-foreground">
+								{" "}
+								/ {effectiveHealthMax}
+							</span>
+						</p>
 					</div>
-					<div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+					<div className="h-1.5 overflow-hidden rounded-full bg-muted">
 						<div
-							className="h-full rounded-full bg-rose-400 transition-all duration-500"
+							className={`h-full rounded-full transition-all duration-300 ${hpPercent <= 25 ? "bg-rose-500" : "bg-primary"}`}
 							style={{ width: `${hpPercent}%` }}
 						/>
 					</div>
@@ -247,11 +253,6 @@ export function SheetModuleContent({
 						/>
 					))}
 				</div>
-				{character.tempHealth ? (
-					<div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-300">
-						HP Temporário: <strong>{character.tempHealth}</strong>
-					</div>
-				) : null}
 				{character.system === "dnd5e" && (
 					<WeaponAttacksSection
 						character={character}
@@ -304,7 +305,7 @@ export function SheetModuleContent({
 
 		return (
 			<div className="space-y-4">
-				<div className="grid gap-3 sm:grid-cols-2">
+				<div className="divide-y divide-border/40">
 					<InfoRow
 						label="Habilidade de Conjuração"
 						value={character.spellAbility || "Não informada"}
@@ -322,31 +323,33 @@ export function SheetModuleContent({
 								: "-"
 						}
 					/>
+					{customFields.map((field) => (
+						<InfoRow
+							key={field.key}
+							label={field.label}
+							value={character.systemFields?.[field.key] || "-"}
+						/>
+					))}
 				</div>
-				{customFields.length > 0 && (
-					<div className="grid gap-3 sm:grid-cols-2">
-						{customFields.map((field) => (
-							<InfoRow
-								key={field.key}
-								label={field.label}
-								value={character.systemFields?.[field.key] || "-"}
-							/>
-						))}
+
+				<div className="pt-3 border-t border-border/40 space-y-3">
+					<div className="flex items-baseline gap-2">
+						<Sparkles className="h-3.5 w-3.5 text-muted-foreground self-center shrink-0" />
+						<h3 className="text-xs font-semibold text-foreground">
+							Grimório de Magias
+						</h3>
+						{spellsList.length > 0 ? (
+							<span className="font-mono text-xs text-muted-foreground tabular-nums">
+								({spellsList.length})
+							</span>
+						) : (
+							<span className="text-xs text-muted-foreground">
+								· Nenhuma registrada
+							</span>
+						)}
 					</div>
-				)}
 
-				<div className="mt-4 pt-4 border-t border-border/40 space-y-4">
-					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-						<Sparkles className="h-4 w-4 text-primary" />
-						Grimório de Magias ({spellsList.length})
-					</h4>
-
-					{spellsList.length === 0 ? (
-						<p className="text-xs text-muted-foreground italic">
-							Nenhuma magia adicionada à ficha ainda. Edite o módulo para
-							adicionar magias do compêndio.
-						</p>
-					) : (
+					{spellsList.length > 0 && (
 						<div className="space-y-4">
 							{sortedLevels.map((lvl) => {
 								const levelSpells = spellsByLevel[lvl];
@@ -379,7 +382,7 @@ export function SheetModuleContent({
 		return (
 			<div className="space-y-4">
 				{customFields.length > 0 && (
-					<div className="grid gap-3 sm:grid-cols-2">
+					<div className="divide-y divide-border/40">
 						{customFields.map((field) => (
 							<InfoRow
 								key={field.key}
@@ -391,15 +394,9 @@ export function SheetModuleContent({
 				)}
 
 				<div className="space-y-3">
-					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-						<BookOpen className="h-4 w-4 text-primary" />
-						Selecionados ({featsList.length})
-					</h4>
-
 					{featsList.length === 0 ? (
-						<p className="text-xs text-muted-foreground italic">
-							Nenhum {featsLabel.toLowerCase()} adicionado à ficha ainda. Edite
-							o módulo para adicionar talentos do compêndio.
+						<p className="text-xs text-muted-foreground">
+							Nenhum {featsLabel.toLowerCase()} selecionado.
 						</p>
 					) : (
 						<div className="grid gap-2">
@@ -415,17 +412,15 @@ export function SheetModuleContent({
 
 	if (module.kind === "inventory") {
 		return (
-			<div className="space-y-6">
+			<div className="space-y-5">
 				<CharacterInventoryModule
 					character={character}
 					onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
 				/>
-				<div className="pt-4 border-t border-border/40">
-					<CharacterTrainingFields
-						character={character}
-						onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
-					/>
-				</div>
+				<CharacterTrainingFields
+					character={character}
+					onUpdateCharacter={(patch) => updateCharacter(character.id, patch)}
+				/>
 			</div>
 		);
 	}

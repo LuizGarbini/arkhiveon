@@ -385,19 +385,19 @@ export function SheetQuickStats({
 				<QuickStat
 					label="PV"
 					value={health}
-					color="text-rose-400"
+					color="text-foreground"
 					compactValue={compact && health.length > 3}
 				/>
 			) : null}
 			<QuickStat
 				label="CA"
 				value={String(combat.ac.total)}
-				color="text-blue-400"
+				color="text-foreground"
 			/>
 			<QuickStat
 				label="INIT"
 				value={formatModifier(combat.initiative.total)}
-				color="text-amber-400"
+				color="text-foreground"
 			/>
 			<QuickStat
 				label="MOV"
@@ -406,7 +406,7 @@ export function SheetQuickStats({
 					speedUnitOf(character, config.speedUnit),
 					sceneUnit,
 				)}
-				color="text-emerald-400"
+				color="text-foreground"
 			/>
 			{showPassive ? (
 				<QuickStat
@@ -414,7 +414,7 @@ export function SheetQuickStats({
 					value={String(
 						computePassivePerception(character, combat.abilities.wisdom.total),
 					)}
-					color="text-purple-400"
+					color="text-foreground"
 				/>
 			) : null}
 		</dl>

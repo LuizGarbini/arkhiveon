@@ -12,6 +12,16 @@ interface CharacterTrainingFieldsProps {
 	onUpdateCharacter: (patch: Partial<Character>) => void;
 }
 
+const TRAINING_CATEGORY_LABELS: Record<
+	NonNullable<TrainingActivity["category"]>,
+	string
+> = {
+	language: "Idioma",
+	skill: "Perícia",
+	tool: "Ofício",
+	custom: "Outro",
+};
+
 export function CharacterTrainingFields({
 	character,
 	onUpdateCharacter,
@@ -96,29 +106,33 @@ export function CharacterTrainingFields({
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="divide-y divide-border/40 border-t border-border/40">
 			{/* Seção 1: Treinamentos & Horas Dedicadas */}
-			<div className="rounded-2xl border border-border/70 bg-card/60 p-5 space-y-4 shadow-sm">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2.5">
-						<div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
-							<Clock className="h-4.5 w-4.5" />
-						</div>
-						<div>
-							<h3 className="font-display text-sm font-bold text-foreground">
-								Treinamentos & Aprendizado (Idiomas / Alquimia)
-							</h3>
-							<p className="text-[11px] text-muted-foreground">
-								Acompanhe as horas praticadas para aprender novos idiomas, ferramentas ou perícias.
-							</p>
-						</div>
+			<section className="space-y-3 py-3.5 first:pt-3.5">
+				<div className="flex items-center justify-between gap-3">
+					<div className="flex flex-wrap items-baseline gap-2">
+						<Clock className="h-3.5 w-3.5 text-muted-foreground self-center shrink-0" />
+						<h3 className="text-xs font-semibold text-foreground">
+							Treinamentos & Ofícios
+						</h3>
+						{trainingList.length > 0 ? (
+							<span className="font-mono text-xs text-muted-foreground tabular-nums">
+								({trainingList.length})
+							</span>
+						) : (
+							!isAddingTraining && (
+								<span className="text-xs text-muted-foreground">
+									· Nenhum em andamento
+								</span>
+							)
+						)}
 					</div>
 					<Button
 						type="button"
-						size="sm"
-						variant="outline"
+						size="xs"
+						variant="ghost"
 						onClick={() => setIsAddingTraining(!isAddingTraining)}
-						className="gap-1.5 text-xs"
+						className="gap-1 text-xs text-muted-foreground hover:text-foreground"
 					>
 						<Plus className="h-3.5 w-3.5" />
 						{isAddingTraining ? "Cancelar" : "Novo Treino"}
@@ -128,14 +142,14 @@ export function CharacterTrainingFields({
 				{isAddingTraining && (
 					<form
 						onSubmit={handleAddTraining}
-						className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-3 animate-in fade-in"
+						className="rounded-xl border border-primary/25 bg-background/60 p-3.5 space-y-3 animate-in fade-in duration-150"
 					>
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 							<div className="sm:col-span-2">
 								<Field>
-									<FieldLabel>Nome do Treino / Atividade</FieldLabel>
+									<FieldLabel>Atividade</FieldLabel>
 									<Input
-										placeholder="Ex: Treino de Abissal, Alquimia, Treinamento com Pantera..."
+										placeholder="Ex: Idioma Abissal, Alquimia, Ferramentas de Ladrão..."
 										value={newTrainTitle}
 										onChange={(e) => setNewTrainTitle(e.target.value)}
 										required
@@ -149,7 +163,11 @@ export function CharacterTrainingFields({
 										value={newTrainCategory}
 										onChange={(e) =>
 											setNewTrainCategory(
-												e.target.value as "language" | "skill" | "tool" | "custom",
+												e.target.value as
+													| "language"
+													| "skill"
+													| "tool"
+													| "custom",
 											)
 										}
 									>
@@ -164,7 +182,7 @@ export function CharacterTrainingFields({
 
 						<div className="grid grid-cols-2 gap-3">
 							<Field>
-								<FieldLabel>Horas Já Investidas</FieldLabel>
+								<FieldLabel>Horas Investidas</FieldLabel>
 								<Input
 									type="number"
 									value={newTrainHours}
@@ -172,7 +190,7 @@ export function CharacterTrainingFields({
 								/>
 							</Field>
 							<Field>
-								<FieldLabel>Meta de Horas</FieldLabel>
+								<FieldLabel>Meta (Horas)</FieldLabel>
 								<Input
 									type="number"
 									value={newTrainTarget}
@@ -189,45 +207,52 @@ export function CharacterTrainingFields({
 					</form>
 				)}
 
-				<div className="space-y-2.5">
-					{trainingList.length === 0 ? (
-						<div className="rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
-							Nenhum treinamento registrado ainda.
-						</div>
-					) : (
-						trainingList.map((item) => {
+				{trainingList.length > 0 && (
+					<ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/60 bg-background/40">
+						{trainingList.map((item) => {
 							const pct = Math.min(
 								100,
-								Math.round((item.hoursInvested / (item.targetHours || 1)) * 100),
+								Math.round(
+									(item.hoursInvested / (item.targetHours || 1)) * 100,
+								),
 							);
 
 							return (
-								<div
+								<li
 									key={item.id}
-									className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 p-3"
+									className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 py-2.5"
 								>
-									<div className="space-y-1 flex-1">
-										<div className="flex items-center justify-between">
-											<span className="font-bold text-xs text-foreground">
-												{item.title}
-											</span>
-											<span className="font-mono text-[11px] text-muted-foreground">
+									<div className="space-y-1.5 flex-1 min-w-0">
+										<div className="flex items-center justify-between gap-2">
+											<div className="flex items-center gap-2 min-w-0">
+												<span className="font-medium text-sm text-foreground truncate">
+													{item.title}
+												</span>
+												<span className="text-xs text-muted-foreground shrink-0">
+													·{" "}
+													{(item.category &&
+														TRAINING_CATEGORY_LABELS[item.category]) ??
+														"Outro"}
+												</span>
+											</div>
+											<span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0">
 												{item.hoursInvested}h / {item.targetHours}h ({pct}%)
 											</span>
 										</div>
-										<div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+										<div className="w-full h-1 bg-muted rounded-full overflow-hidden">
 											<div
-												className="h-full bg-blue-500 rounded-full transition-all"
+												className="h-full bg-primary rounded-full transition-all duration-300"
 												style={{ width: `${pct}%` }}
 											/>
 										</div>
 									</div>
 
-									<div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+									<div className="flex items-center gap-2 sm:gap-1 shrink-0 self-end sm:self-center">
 										<Button
 											type="button"
 											variant="outline"
 											size="xs"
+											className="tabular-nums"
 											onClick={() => handleUpdateHours(item.id, -5)}
 										>
 											-5h
@@ -236,6 +261,7 @@ export function CharacterTrainingFields({
 											type="button"
 											variant="outline"
 											size="xs"
+											className="tabular-nums"
 											onClick={() => handleUpdateHours(item.id, 5)}
 										>
 											+5h
@@ -244,6 +270,7 @@ export function CharacterTrainingFields({
 											type="button"
 											variant="outline"
 											size="xs"
+											className="tabular-nums"
 											onClick={() => handleUpdateHours(item.id, 20)}
 										>
 											+20h
@@ -253,40 +280,44 @@ export function CharacterTrainingFields({
 											variant="ghost"
 											size="icon-xs"
 											onClick={() => handleRemoveTraining(item.id)}
-											className="text-rose-400 hover:text-rose-300"
+											className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
 										>
 											<Trash2 className="h-3.5 w-3.5" />
 										</Button>
 									</div>
-								</div>
+								</li>
 							);
-						})
-					)}
-				</div>
-			</div>
+						})}
+					</ul>
+				)}
+			</section>
 
 			{/* Seção 2: Bônus Temporários & Buffs (Por Dias / Sessões) */}
-			<div className="rounded-2xl border border-border/70 bg-card/60 p-5 space-y-4 shadow-sm">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2.5">
-						<div className="flex h-9 w-9 items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400">
-							<Sparkles className="h-4.5 w-4.5" />
-						</div>
-						<div>
-							<h3 className="font-display text-sm font-bold text-foreground">
-								Bônus Temporários & Buffs Ativos
-							</h3>
-							<p className="text-[11px] text-muted-foreground">
-								Bônus por poções, rituais ou descanso (ex: Resistência a Fogo por 5 Dias).
-							</p>
-						</div>
+			<section className="space-y-3 pt-3.5">
+				<div className="flex items-center justify-between gap-3">
+					<div className="flex flex-wrap items-baseline gap-2">
+						<Sparkles className="h-3.5 w-3.5 text-muted-foreground self-center shrink-0" />
+						<h3 className="text-xs font-semibold text-foreground">
+							Efeitos & Bônus Temporários
+						</h3>
+						{tempBonusesList.length > 0 ? (
+							<span className="font-mono text-xs text-muted-foreground tabular-nums">
+								({tempBonusesList.length})
+							</span>
+						) : (
+							!isAddingBonus && (
+								<span className="text-xs text-muted-foreground">
+									· Nenhum ativo
+								</span>
+							)
+						)}
 					</div>
 					<Button
 						type="button"
-						size="sm"
-						variant="outline"
+						size="xs"
+						variant="ghost"
 						onClick={() => setIsAddingBonus(!isAddingBonus)}
-						className="gap-1.5 text-xs"
+						className="gap-1 text-xs text-muted-foreground hover:text-foreground"
 					>
 						<Plus className="h-3.5 w-3.5" />
 						{isAddingBonus ? "Cancelar" : "Novo Buff"}
@@ -296,14 +327,14 @@ export function CharacterTrainingFields({
 				{isAddingBonus && (
 					<form
 						onSubmit={handleAddBonus}
-						className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 space-y-3 animate-in fade-in"
+						className="rounded-xl border border-primary/25 bg-background/60 p-3.5 space-y-3 animate-in fade-in duration-150"
 					>
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 							<div className="sm:col-span-2">
 								<Field>
-									<FieldLabel>Título do Bônus</FieldLabel>
+									<FieldLabel>Título do Efeito</FieldLabel>
 									<Input
-										placeholder="Ex: Resistência ao Fogo, -1 Margem de Crítico..."
+										placeholder="Ex: Resistência ao Fogo, Bênção do Santuário..."
 										value={newBonusTitle}
 										onChange={(e) => setNewBonusTitle(e.target.value)}
 										required
@@ -317,7 +348,9 @@ export function CharacterTrainingFields({
 										type="number"
 										min={1}
 										value={newBonusDuration}
-										onChange={(e) => setNewBonusDuration(Number(e.target.value))}
+										onChange={(e) =>
+											setNewBonusDuration(Number(e.target.value))
+										}
 									/>
 								</Field>
 							</div>
@@ -341,50 +374,43 @@ export function CharacterTrainingFields({
 					</form>
 				)}
 
-				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					{tempBonusesList.length === 0 ? (
-						<div className="col-span-full rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
-							Nenhum bônus temporário ativo.
-						</div>
-					) : (
-						tempBonusesList.map((bonus) => (
-							<div
+				{tempBonusesList.length > 0 && (
+					<ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/60 bg-background/40">
+						{tempBonusesList.map((bonus) => (
+							<li
 								key={bonus.id}
-								className="flex flex-col justify-between rounded-xl border border-purple-500/30 bg-purple-500/10 p-3 space-y-2"
+								className="flex items-start justify-between gap-3 px-3.5 py-2.5"
 							>
-								<div className="space-y-1">
-									<div className="flex items-center justify-between">
-										<span className="font-bold text-xs text-purple-200 flex items-center gap-1.5">
-											<Sparkles className="h-3.5 w-3.5 text-purple-400" />
+								<div className="space-y-0.5 min-w-0 flex-1">
+									<div className="flex flex-wrap items-baseline gap-2">
+										<span className="font-medium text-sm text-foreground">
 											{bonus.title}
 										</span>
-										<span className="rounded-full bg-purple-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-purple-300">
+										<span className="font-mono text-xs text-primary tabular-nums">
 											{bonus.remainingDaysOrSessions} dia(s)
 										</span>
 									</div>
 									{bonus.description && (
-										<p className="text-xs text-purple-300/80 leading-relaxed">
+										<p className="text-xs text-muted-foreground leading-relaxed">
 											{bonus.description}
 										</p>
 									)}
 								</div>
 
-								<div className="flex items-center justify-end gap-2 pt-1 border-t border-purple-500/20">
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon-xs"
-										onClick={() => handleRemoveBonus(bonus.id)}
-										className="text-rose-400 hover:text-rose-300"
-									>
-										<Trash2 className="h-3.5 w-3.5" />
-									</Button>
-								</div>
-							</div>
-						))
-					)}
-				</div>
-			</div>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon-xs"
+									onClick={() => handleRemoveBonus(bonus.id)}
+									className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 shrink-0"
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+								</Button>
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
 		</div>
 	);
 }

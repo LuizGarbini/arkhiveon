@@ -64,12 +64,17 @@ export function PartyLootDialog({ trigger }: PartyLootDialogProps = {}) {
 					trigger || (
 						<Button
 							type="button"
-							variant="outline"
+							variant="ghost"
 							size="sm"
-							className="gap-2 border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
+							className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
 						>
-							<Package className="h-4 w-4" />
-							Mochila do Grupo ({unclaimedLoot.length})
+							<Package className="h-3.5 w-3.5" />
+							Mochila do Grupo
+							{unclaimedLoot.length > 0 && (
+								<span className="rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary tabular-nums">
+									{unclaimedLoot.length}
+								</span>
+							)}
 						</Button>
 					)
 				}
