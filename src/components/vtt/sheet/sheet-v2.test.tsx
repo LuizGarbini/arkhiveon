@@ -7,7 +7,40 @@ import {
 	within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@tanstack/react-router", async (orig) => {
+	const actual = await orig<typeof import("@tanstack/react-router")>();
+	return {
+		...actual,
+		Link: ({
+			children,
+			to,
+			params,
+			search,
+			className,
+		}: {
+			children?: import("react").ReactNode;
+			to?: string;
+			params?: { itemId?: string };
+			search?: { edit?: boolean; tab?: string };
+			className?: string;
+		}) => {
+			const path = String(to ?? "").replace("$itemId", params?.itemId ?? "");
+			const query = new URLSearchParams();
+			if (search?.edit) query.set("edit", "true");
+			if (search?.tab) query.set("tab", search.tab);
+			const qs = query.toString();
+			return (
+				<a href={qs ? `${path}?${qs}` : path} className={className}>
+					{children}
+				</a>
+			);
+		},
+	};
+});
+
 import { computeEffectiveStats } from "@/core/rules";
+import { useRPGStore } from "@/lib/store";
 import type { Character, Item, Spell } from "@/lib/store/types";
 import { SYSTEM_CONFIG } from "@/lib/systems";
 import { AttacksTab } from "./sheet-attacks";
@@ -894,5 +927,126 @@ describe("SummaryTab · atributos com salvaguarda na mesma coluna", () => {
 		expect(framed("Iniciativa")).toBe(false);
 		expect(framed("CD de magia")).toBe(false);
 		expect(framed("Proficiência")).toBe(false);
+	});
+});
+
+describe("SummaryTab · origem da capa equipada", () => {
+	afterEach(() => {
+		useRPGStore.setState({ campaigns: [], activeCampaignId: null });
+	});
+	function cape(bonuses: Item["bonuses"] | null, id = "it-cape"): Item {
+		const base = {
+			id,
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak" as const,
+			requiresAttunement: false,
+		} as Item;
+		if (bonuses === null) {
+			return {
+				...base,
+				bonuses: null,
+				armor: null,
+				abilityBonuses: null,
+			} as unknown as Item;
+		}
+		return { ...base, bonuses };
+	}
+	function renderDante(
+		item: Item,
+		location: "equipped" | "backpack" = "equipped",
+	) {
+		const c = character({
+			characterName: "Dante Diavolo",
+			armorClass: 28,
+			dexterity: 14,
+			initiative: 2,
+			speed: 9,
+			speedUnit: "m",
+			inventoryList: [
+				{
+					id: "e-cape",
+					name: item.name,
+					quantity: 1,
+					weightLbs: 0,
+					location,
+					...(location === "equipped" ? { slot: "cloak" as const } : {}),
+					campaignItemId: item.id,
+				},
+			],
+		});
+		render(
+			<SummaryTab
+				character={c}
+				config={SYSTEM_CONFIG.dnd5e}
+				stats={computeEffectiveStats(c, new Map([[item.id, item]]))}
+				showPassive={false}
+				rolls={{ rolling: false, check: vi.fn(), formula: vi.fn() }}
+				resources={api()}
+			/>,
+		);
+	}
+
+	it("resumo mostra a origem do bônus (Capa do Vento +3) e os totais com o item", () => {
+		renderDante(
+			cape([
+				{ id: "ac", target: "ac", value: 3 },
+				{ id: "in", target: "initiative", value: 2 },
+				{ id: "sp", target: "speed", value: 3 },
+			]),
+		);
+		expect(screen.getByText("CA Capa do Vento +3")).toBeTruthy();
+		expect(screen.getByText("Init. Capa do Vento +2")).toBeTruthy();
+		expect(screen.getByText("Desloc. Capa do Vento +3m")).toBeTruthy();
+		expect(screen.getByText("31")).toBeTruthy();
+		expect(
+			screen.getByText("Iniciativa").previousElementSibling?.textContent,
+		).toBe("+4");
+		expect(
+			screen.getByText("Desloc.").previousElementSibling?.textContent,
+		).toBe("12m");
+	});
+
+	it("resumo avisa quando a capa equipada não tem número", () => {
+		useRPGStore.setState({
+			campaigns: [
+				{ id: "camp-1", worldId: "world-1", myRole: "owner" },
+			] as never,
+			activeCampaignId: "camp-1",
+		});
+		renderDante(cape(null, "it-cape-silent"));
+		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
+		const link = screen.getByRole("link", { name: "Editar item" });
+		const href = link.getAttribute("href") ?? "";
+		expect(href).toContain("it-cape-silent");
+		expect(href).toContain("edit=true");
+		expect(href).toContain("tab=bonus");
+		expect(link.className).toContain("min-h-11");
+		expect(screen.getByText("28")).toBeTruthy();
+		expect(screen.queryByText("31")).toBeNull();
+	});
+
+	it("resumo esconde Editar item quando a pessoa não gerencia o item", () => {
+		useRPGStore.setState({
+			campaigns: [
+				{ id: "camp-1", worldId: "world-1", myRole: "viewer" },
+			] as never,
+			activeCampaignId: "camp-1",
+		});
+		renderDante(cape(null, "it-cape-silent"));
+		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
+		expect(screen.queryByRole("link", { name: "Editar item" })).toBeNull();
+		expect(screen.getByText("28")).toBeTruthy();
+	});
+
+	it("a mesma capa na mochila não entra no resumo", () => {
+		renderDante(
+			cape([{ id: "ac", target: "ac", value: 3 }], "it-cape-bag"),
+			"backpack",
+		);
+		expect(screen.getByText("28")).toBeTruthy();
+		expect(screen.queryByText("31")).toBeNull();
+		expect(screen.queryByText("Capa do Vento +3")).toBeNull();
+		expect(screen.queryByText("Sem número na ficha")).toBeNull();
 	});
 });

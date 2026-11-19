@@ -1,4 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import {
+	CircleAlert,
 	CircleDot,
 	Footprints,
 	Gem,
@@ -20,8 +22,11 @@ import {
 	EQUIP_SLOT_SHORT_LABELS,
 	type LinkedEntry,
 } from "@/core/rules";
+import { useAuth } from "@/lib/auth";
+import { useActiveCampaignRole } from "@/lib/store";
 import type { EquipSlot, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { canManageOwnItem } from "@/lib/worldbuilding/item-ownership";
 
 export const SLOT_ICONS: Record<
 	EquipSlot,
@@ -78,6 +83,55 @@ export function ItemThumb({
 	);
 }
 
+/** Mesmo texto do picker e da mochila: o item não tem número que a ficha some. */
+export const MISSING_SHEET_NUMBER = "Sem número na ficha";
+/** Cabe inteiro no quadrado do slot. O texto longo fica no title e no aria-label. */
+export const MISSING_NUMBER_SLOT_LABEL = "Sem bônus";
+
+/** Abre o cadastro do item já na aba Bônus, em modo edição. */
+export function EditItemBonusLink({
+	itemId,
+	className,
+}: {
+	itemId: string;
+	className?: string;
+}) {
+	return (
+		<Link
+			to="/items/$itemId"
+			params={{ itemId }}
+			search={{ edit: true, tab: "bonus" }}
+			onClick={(event) => event.stopPropagation()}
+			className={cn(
+				"inline-flex min-h-11 min-w-11 cursor-pointer select-none items-center justify-center rounded-lg border border-border/70 bg-card/60 px-3 text-[13px] font-semibold text-foreground transition-[transform,border-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:border-primary/50",
+				className,
+			)}
+		>
+			Editar item
+		</Link>
+	);
+}
+
+/** Linha da lista do painel e do Resumo: o item equipado não entra nos números. */
+export function MissingNumberNotice({ item }: { item: Item }) {
+	const { user } = useAuth();
+	const role = useActiveCampaignRole();
+	const canManage = canManageOwnItem(item, user?.id, role);
+	return (
+		<div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2">
+			<div className="min-w-0 flex-1">
+				<p className="truncate text-[13px] font-semibold text-foreground">
+					{item.name}
+				</p>
+				<p className="text-[11px] text-muted-foreground">
+					{MISSING_SHEET_NUMBER}
+				</p>
+			</div>
+			{canManage ? <EditItemBonusLink itemId={item.id} /> : null}
+		</div>
+	);
+}
+
 /**
  * Um slot do boneco. Vazio mostra o "+ Equipar"; ocupado mostra a foto do item
  * com a raridade, o selo de sintonização e um ponto quando o item muda números.
@@ -110,10 +164,11 @@ export function EquipmentSlotTile({
 	const item = linked?.item;
 	const rarity = item ? rarityStyleFor(item.rarity) : null;
 	const hasEffects = item ? describeItemEffects(item).length > 0 : false;
+	const missingNumber = Boolean(item) && !hasEffects;
 	const needsAttunement = Boolean(item?.requiresAttunement);
 	const attuned = linked?.entry.isAttuned === true;
 	const label = item
-		? `${EQUIP_SLOT_LABELS[slot]}: ${item.name}${canEdit ? ". Trocar ou desequipar" : ""}`
+		? `${EQUIP_SLOT_LABELS[slot]}: ${item.name}${missingNumber ? `. ${MISSING_SHEET_NUMBER}` : ""}${canEdit ? ". Trocar ou desequipar" : ""}`
 		: `${EQUIP_SLOT_LABELS[slot]}: vazio${canEdit ? ". Equipar item" : ""}`;
 	const disabled = !canEdit && !item;
 
@@ -155,6 +210,7 @@ export function EquipmentSlotTile({
 		<button
 			type="button"
 			aria-label={label}
+			title={missingNumber ? MISSING_SHEET_NUMBER : undefined}
 			aria-pressed={selected}
 			disabled={disabled}
 			onClick={() => onSelect(slot)}
@@ -172,6 +228,21 @@ export function EquipmentSlotTile({
 				<>
 					{imageUrl ? (
 						<FramedImage src={imageUrl} alt="" framing={item} />
+					) : missingNumber ? (
+						<span className={cn("flex h-full w-full flex-col", rarity?.tone)}>
+							<span className="flex min-h-0 flex-1 items-center justify-center">
+								<Icon className="size-8" aria-hidden />
+							</span>
+							<span className="flex flex-col gap-1 px-1.5 pb-1.5">
+								<span className="flex items-center justify-center gap-1 rounded-md border border-border/70 bg-card/80 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md">
+									<CircleAlert className="size-3 shrink-0" aria-hidden />
+									{MISSING_NUMBER_SLOT_LABEL}
+								</span>
+								<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+									{EQUIP_SLOT_SHORT_LABELS[slot]}
+								</span>
+							</span>
+						</span>
 					) : (
 						<span
 							className={cn(
@@ -201,9 +272,21 @@ export function EquipmentSlotTile({
 							className="absolute top-2 right-2 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400"
 						/>
 					) : null}
-					<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
-						{EQUIP_SLOT_SHORT_LABELS[slot]}
-					</span>
+					{missingNumber && imageUrl ? (
+						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col gap-1">
+							<span className="flex items-center justify-center gap-1 rounded-md border border-border/70 bg-card/80 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md">
+								<CircleAlert className="size-3 shrink-0" aria-hidden />
+								{MISSING_NUMBER_SLOT_LABEL}
+							</span>
+							<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+								{EQUIP_SLOT_SHORT_LABELS[slot]}
+							</span>
+						</span>
+					) : missingNumber ? null : (
+						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+							{EQUIP_SLOT_SHORT_LABELS[slot]}
+						</span>
+					)}
 				</>
 			) : (
 				<span className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-1 text-center">

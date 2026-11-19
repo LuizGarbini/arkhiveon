@@ -7,7 +7,7 @@ import {
 	slotsForItem,
 } from "@/core/rules";
 import type { EquipSlot, InventoryItem, Item } from "@/lib/store/types";
-import { ItemThumb } from "./equipment-slot-tile";
+import { ItemThumb, MISSING_SHEET_NUMBER } from "./equipment-slot-tile";
 
 /**
  * Mochila e montaria: o que está guardado. Item com slot tem o botão
@@ -87,7 +87,7 @@ export function EquipmentBackpack({
 									{chips.length === 0 ? (
 										<span className="text-[11px] text-muted-foreground">
 											{slot
-												? "Sem número na ficha"
+												? MISSING_SHEET_NUMBER
 												: "Defina “Onde se veste” no cadastro do item"}
 										</span>
 									) : (

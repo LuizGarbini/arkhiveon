@@ -1,11 +1,15 @@
+import { useMemo } from "react";
+import { MissingNumberNotice } from "@/components/character-sheet/equipment/equipment-slot-tile";
 import {
 	calculateProficiencyBonus,
 	calculateSavingThrowModifier,
 	characterAttributeScore,
 	computePassivePerception,
+	describeItemEffects,
 	type EffectiveStats,
 	formatModifier,
 	formatSpeed,
+	formatStatPart,
 	isWeaponAbilityKey,
 	speedUnitOf,
 } from "@/core/rules";
@@ -94,6 +98,41 @@ export function SummaryTab({
 	const isDnd = character.system.startsWith("dnd");
 	const spellDc = character.spellSaveDc > 0 ? character.spellSaveDc : 0;
 	const attributes = config.attributes;
+	const distanceUnit = speedUnitOf(character, config.speedUnit);
+	const origins = useMemo(() => {
+		const chips: { key: string; text: string }[] = [];
+		const seen = new Map<string, number>();
+		const push = (text: string) => {
+			const count = (seen.get(text) ?? 0) + 1;
+			seen.set(text, count);
+			chips.push({ key: count === 1 ? text : `${text}#${count}`, text });
+		};
+		if (stats.ac.source === "items") {
+			for (const part of stats.ac.parts) {
+				if (part.kind !== "sheet") push(`CA ${formatStatPart(part)}`);
+			}
+		}
+		if (stats.initiative.source === "items") {
+			for (const part of stats.initiative.parts) {
+				if (part.kind !== "sheet") push(`Init. ${formatStatPart(part)}`);
+			}
+		}
+		for (const part of stats.speed.parts) {
+			push(
+				`Desloc. ${part.label} ${formatSpeed(part.value, distanceUnit, sceneUnit, { signed: true })}`,
+			);
+		}
+		return chips;
+	}, [stats, distanceUnit, sceneUnit]);
+	const silentEquipped = useMemo(
+		() =>
+			stats.linked.filter(
+				(link) =>
+					link.entry.location === "equipped" &&
+					describeItemEffects(link.item).length === 0,
+			),
+		[stats.linked],
+	);
 
 	return (
 		<div className="space-y-4">
@@ -131,6 +170,30 @@ export function SummaryTab({
 					) : null}
 				</div>
 			</dl>
+			{origins.length > 0 ? (
+				<ul aria-label="Origem dos números" className="flex flex-wrap gap-1.5">
+					{origins.map((chip) => (
+						<li
+							key={chip.key}
+							className="max-w-full truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
+						>
+							{chip.text}
+						</li>
+					))}
+				</ul>
+			) : null}
+			{silentEquipped.length > 0 ? (
+				<ul
+					aria-label="Itens sem número na ficha"
+					className="flex flex-col gap-2"
+				>
+					{silentEquipped.map((link) => (
+						<li key={link.entry.id}>
+							<MissingNumberNotice item={link.item} />
+						</li>
+					))}
+				</ul>
+			) : null}
 
 			<VisionSection
 				character={character}

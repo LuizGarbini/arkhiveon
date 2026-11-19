@@ -127,6 +127,61 @@ describe("computeArmorClass", () => {
 		expect(ac.total).toBe(15);
 		expect(ac.parts[0]).toMatchObject({ kind: "sheet", value: 13 });
 	});
+	it("capa equipada com bônus de CA +3 soma em cima da CA da ficha", () => {
+		const cloak: Item = {
+			...ringOfAlertness,
+			id: "cloak",
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			bonuses: [{ id: "ac", target: "ac", value: 3 }],
+		};
+		const sheet = { ...thalia, armorClass: 28 };
+		const ac = computeArmorClass(sheet, [
+			linked(cloak, "equipped", { slot: "cloak" }),
+		]);
+		expect(ac.total).toBe(31);
+		expect(ac.source).toBe("items");
+		expect(ac.parts).toContainEqual({
+			kind: "bonus",
+			label: "Capa do Vento",
+			value: 3,
+		});
+	});
+	it("capa sem bonuses não muda a CA manual", () => {
+		const cloak = {
+			...ringOfAlertness,
+			id: "cloak-empty",
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			bonuses: null,
+			armor: null,
+			abilityBonuses: null,
+		} as unknown as Item;
+		const ac = computeArmorClass({ ...thalia, armorClass: 28 }, [
+			linked(cloak, "equipped", { slot: "cloak" }),
+		]);
+		expect(ac).toMatchObject({ source: "manual", total: 28, parts: [] });
+	});
+	it("a mesma capa na mochila não soma na CA", () => {
+		const cloak: Item = {
+			...ringOfAlertness,
+			id: "cloak-pack",
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			bonuses: [{ id: "ac", target: "ac", value: 3 }],
+		};
+		expect(
+			computeArmorClass({ ...thalia, armorClass: 28 }, [
+				linked(cloak, "backpack"),
+			]).source,
+		).toBe("manual");
+	});
 });
 
 describe("computeInitiative", () => {
@@ -163,6 +218,30 @@ describe("computeInitiative", () => {
 		]);
 		expect(init.source).toBe("manual");
 		expect(init.notes[0]).toContain("sintonização");
+	});
+	it("capa equipada com bônus de iniciativa soma e cita o item", () => {
+		const cloak: Item = {
+			...ringOfAlertness,
+			id: "cloak-init",
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			bonuses: [{ id: "in", target: "initiative", value: 2 }],
+		};
+		const sheet = { ...thalia, dexterity: 14, initiative: 2 };
+		const init = computeInitiative(sheet, [
+			linked(cloak, "equipped", { slot: "cloak" }),
+		]);
+		expect(init.total).toBe(4);
+		expect(init.parts).toContainEqual({
+			kind: "bonus",
+			label: "Capa do Vento",
+			value: 2,
+		});
+		expect(computeInitiative(sheet, [linked(cloak, "backpack")]).source).toBe(
+			"manual",
+		);
 	});
 });
 

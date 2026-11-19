@@ -2,27 +2,18 @@ import { Crosshair, Heart } from "lucide-react";
 import { useMemo } from "react";
 import {
 	calculateProficiencyBonus,
+	describeItemEffects,
 	type EffectiveStats,
 	estimateHealthMax,
 	formatModifier,
 	formatSpeed,
+	formatStatPart,
 	getEquippedWeaponAttacks,
 	resolveLinkedInventory,
-	type StatPart,
 } from "@/core/rules";
 import type { Character, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
-
-/** "Brigantina 14", "Destreza +1": o número entra com sinal só quando soma. */
-function partText(part: StatPart): string {
-	const raw =
-		part.kind === "armor" || part.kind === "sheet" || part.kind === "shield"
-			? part.kind === "shield"
-				? `+${part.value}`
-				: String(part.value)
-			: formatModifier(part.value);
-	return `${part.label} ${raw}`;
-}
+import { MissingNumberNotice } from "./equipment-slot-tile";
 
 function StatCard({
 	label,
@@ -144,18 +135,41 @@ export function EquipmentSummary({
 	const speedChips = stats.speed.parts.map(
 		(p) => `${p.label} ${speed(p.value, true)}`,
 	);
+	const silentEquipped = useMemo(
+		() =>
+			stats.linked.filter(
+				(link) =>
+					link.entry.location === "equipped" &&
+					describeItemEffects(link.item).length === 0,
+			),
+		[stats.linked],
+	);
 
 	return (
 		<div className="flex min-h-0 flex-col gap-3">
 			<p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
 				Com este equipamento
 			</p>
+			{silentEquipped.length > 0 ? (
+				<ul
+					aria-label="Itens sem número na ficha"
+					className="flex flex-col gap-2"
+				>
+					{silentEquipped.map((link) => (
+						<li key={link.entry.id}>
+							<MissingNumberNotice item={link.item} />
+						</li>
+					))}
+				</ul>
+			) : null}
 			<StatCard
 				featured
 				label="Classe de Armadura"
 				to={String(stats.ac.total)}
 				from={String(bare.ac.total)}
-				chips={stats.ac.source === "items" ? stats.ac.parts.map(partText) : []}
+				chips={
+					stats.ac.source === "items" ? stats.ac.parts.map(formatStatPart) : []
+				}
 			/>
 			<div className="grid grid-cols-2 gap-3">
 				<StatCard
@@ -164,7 +178,7 @@ export function EquipmentSummary({
 					from={formatModifier(bare.initiative.total)}
 					chips={stats.initiative.parts
 						.filter((p) => p.kind !== "sheet")
-						.map(partText)}
+						.map(formatStatPart)}
 				/>
 				<StatCard
 					label="Desloc."

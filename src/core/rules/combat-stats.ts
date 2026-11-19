@@ -27,6 +27,17 @@ export interface StatPart {
 	value: number;
 }
 
+/** "Capa do Vento +3", "Couro batido 12", "Escudo +2". */
+export function formatStatPart(part: StatPart): string {
+	const raw =
+		part.kind === "shield"
+			? `+${part.value}`
+			: part.kind === "armor" || part.kind === "sheet"
+				? String(part.value)
+				: formatModifier(part.value);
+	return `${part.label} ${raw}`;
+}
+
 export interface CombatStat {
 	total: number;
 	/** "manual" = valor digitado na ficha, sem item que mude o número. */
