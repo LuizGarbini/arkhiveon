@@ -8,6 +8,30 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+function expectSpellChip(
+	label: string,
+	prefix: string,
+	name: string,
+	modifier: string,
+) {
+	const chip = screen.getByRole("listitem", { name: label });
+	expect(chip.getAttribute("title")).toBe(label);
+	expect(chip.getAttribute("aria-label")).toBe(label);
+	expect(chip.className).toContain("flex");
+	expect(chip.className).not.toContain("truncate");
+	const spans = [...chip.querySelectorAll("span")];
+	expect(spans.map((span) => span.textContent)).toEqual([
+		prefix,
+		name,
+		modifier,
+	]);
+	expect(spans[0]?.className).toContain("shrink-0");
+	expect(spans[1]?.className).toContain("min-w-0");
+	expect(spans[1]?.className).toContain("truncate");
+	expect(spans[2]?.className).toContain("shrink-0");
+	expect(spans[2]?.className).not.toContain("truncate");
+}
+
 vi.mock("@tanstack/react-router", async (orig) => {
 	const actual = await orig<typeof import("@tanstack/react-router")>();
 	return {
@@ -816,19 +840,17 @@ describe("AttacksTab · magias", () => {
 			/>,
 		);
 		expect(screen.getByText("17")).toBeTruthy();
-		const dcChip = screen.getByText("CD · Frasco de Sangue +3");
-		expect(dcChip.getAttribute("title")).toBe(
+		expectSpellChip(
 			"CD de magia Frasco de Sangue +3",
+			"CD ·",
+			"Frasco de Sangue",
+			"+3",
 		);
-		expect(dcChip.getAttribute("aria-label")).toBe(
-			"CD de magia Frasco de Sangue +3",
-		);
-		const attackChip = screen.getByText("Ataque · Frasco de Sangue +2");
-		expect(attackChip.getAttribute("title")).toBe(
+		expectSpellChip(
 			"Ataque de magia Frasco de Sangue +2",
-		);
-		expect(attackChip.getAttribute("aria-label")).toBe(
-			"Ataque de magia Frasco de Sangue +2",
+			"Ataque ·",
+			"Frasco de Sangue",
+			"+2",
 		);
 		fireEvent.click(
 			screen.getByRole("button", { name: "Rolar ataque de magia (+8)" }),
@@ -1141,10 +1163,11 @@ describe("SummaryTab · origem da capa equipada", () => {
 		expect(
 			screen.getByText("CD magia").previousElementSibling?.textContent,
 		).toBe("17");
-		const chip = screen.getByText("CD · Frasco de Sangue +3");
-		expect(chip.getAttribute("title")).toBe("CD de magia Frasco de Sangue +3");
-		expect(chip.getAttribute("aria-label")).toBe(
+		expectSpellChip(
 			"CD de magia Frasco de Sangue +3",
+			"CD ·",
+			"Frasco de Sangue",
+			"+3",
 		);
 		expect(c.spellSaveDc).toBe(14);
 	});
@@ -1185,7 +1208,12 @@ describe("SummaryTab · origem da capa equipada", () => {
 		expect(
 			screen.getByText("CD magia").previousElementSibling?.textContent,
 		).toBe("3");
-		expect(screen.getByText("CD · Frasco de Sangue +3")).toBeTruthy();
+		expectSpellChip(
+			"CD de magia Frasco de Sangue +3",
+			"CD ·",
+			"Frasco de Sangue",
+			"+3",
+		);
 		expect(c.spellSaveDc).toBe(0);
 	});
 

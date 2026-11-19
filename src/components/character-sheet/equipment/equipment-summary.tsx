@@ -14,9 +14,10 @@ import {
 } from "@/core/rules";
 import type { Character, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
+import { OriginChipItem, type OriginChipModel } from "../view/ui-primitives";
 import { MissingNumberNotice } from "./equipment-slot-tile";
 
-type OriginChip = string | { text: string; label?: string };
+type OriginChip = string | OriginChipModel;
 
 function chipKeys(chips: readonly OriginChip[]) {
 	const seen = new Map<string, number>();
@@ -25,7 +26,14 @@ function chipKeys(chips: readonly OriginChip[]) {
 		const label = typeof chip === "string" ? chip : (chip.label ?? chip.text);
 		const count = (seen.get(label) ?? 0) + 1;
 		seen.set(label, count);
-		return { key: count === 1 ? label : `${label}#${count}`, text, label };
+		return {
+			key: count === 1 ? label : `${label}#${count}`,
+			text,
+			label,
+			prefix: typeof chip === "string" ? undefined : chip.prefix,
+			name: typeof chip === "string" ? undefined : chip.name,
+			modifier: typeof chip === "string" ? undefined : chip.modifier,
+		};
 	});
 }
 
@@ -79,14 +87,15 @@ function StatCard({
 			{chips && chips.length > 0 ? (
 				<ul className="mt-2 flex w-full min-w-0 flex-wrap gap-1">
 					{chipKeys(chips).map((chip) => (
-						<li
+						<OriginChipItem
 							key={chip.key}
-							title={chip.label}
-							aria-label={chip.label}
-							className="max-w-full min-w-0 truncate rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground tabular-nums"
-						>
-							{chip.text}
-						</li>
+							text={chip.text}
+							label={chip.label}
+							prefix={chip.prefix}
+							name={chip.name}
+							modifier={chip.modifier}
+							className="border-border/60 bg-muted/50 text-[10.5px]"
+						/>
 					))}
 				</ul>
 			) : null}

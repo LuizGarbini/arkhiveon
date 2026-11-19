@@ -494,19 +494,31 @@ export function computeSpellAttack(
 }
 
 /**
- * Chip de origem. `text` é o que aparece ("CD · Frasco de Sangue +3");
- * `label` é a frase completa, para title e aria-label.
+ * Chip de origem. O nome é a única parte que pode truncar;
+ * `prefix` e `modifier` ficam sempre visíveis. `label` é a frase
+ * completa, para title e aria-label.
  */
+export interface SpellOriginChip {
+	text: string;
+	label: string;
+	prefix: string;
+	name: string;
+	modifier: string;
+}
+
 export function describeSpellOrigin(
 	kind: "dc" | "attack",
 	part: BonusPart,
-): { text: string; label: string } {
+): SpellOriginChip {
 	const full = kind === "dc" ? "CD de magia" : "Ataque de magia";
-	const short = kind === "dc" ? "CD" : "Ataque";
+	const prefix = kind === "dc" ? "CD ·" : "Ataque ·";
 	const modifier = formatModifier(part.value);
 	return {
-		text: `${short} · ${part.label} ${modifier}`,
+		text: `${prefix} ${part.label} ${modifier}`,
 		label: `${full} ${part.label} ${modifier}`,
+		prefix,
+		name: part.label,
+		modifier,
 	};
 }
 

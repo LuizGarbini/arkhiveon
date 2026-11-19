@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { MissingNumberNotice } from "@/components/character-sheet/equipment/equipment-slot-tile";
+import { OriginChipItem } from "@/components/character-sheet/view/ui-primitives";
 import {
 	calculateProficiencyBonus,
 	calculateSavingThrowModifier,
@@ -101,15 +102,29 @@ export function SummaryTab({
 	const attributes = config.attributes;
 	const distanceUnit = speedUnitOf(character, config.speedUnit);
 	const origins = useMemo(() => {
-		const chips: { key: string; text: string; label: string }[] = [];
+		const chips: {
+			key: string;
+			text: string;
+			label: string;
+			prefix?: string;
+			name?: string;
+			modifier?: string;
+		}[] = [];
 		const seen = new Map<string, number>();
-		const push = (text: string, label = text) => {
+		const push = (
+			text: string,
+			label = text,
+			parts?: { prefix: string; name: string; modifier: string },
+		) => {
 			const count = (seen.get(label) ?? 0) + 1;
 			seen.set(label, count);
 			chips.push({
 				key: count === 1 ? label : `${label}#${count}`,
 				text,
 				label,
+				prefix: parts?.prefix,
+				name: parts?.name,
+				modifier: parts?.modifier,
 			});
 		};
 		if (stats.ac.source === "items") {
@@ -129,7 +144,7 @@ export function SummaryTab({
 		}
 		for (const part of stats.spellDc.parts) {
 			const origin = describeSpellOrigin("dc", part);
-			push(origin.text, origin.label);
+			push(origin.text, origin.label, origin);
 		}
 		return chips;
 	}, [stats, distanceUnit, sceneUnit]);
@@ -185,14 +200,15 @@ export function SummaryTab({
 					className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
 				>
 					{origins.map((chip) => (
-						<li
+						<OriginChipItem
 							key={chip.key}
-							title={chip.label}
-							aria-label={chip.label}
-							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
-						>
-							{chip.text}
-						</li>
+							text={chip.text}
+							label={chip.label}
+							prefix={chip.prefix}
+							name={chip.name}
+							modifier={chip.modifier}
+							className="border-border/70 bg-card/60 text-[11px]"
+						/>
 					))}
 				</ul>
 			) : null}

@@ -1580,12 +1580,18 @@ describe("bônus de CD e ataque de magia", () => {
 		).toEqual({
 			text: "CD · Frasco de Sangue +3",
 			label: "CD de magia Frasco de Sangue +3",
+			prefix: "CD ·",
+			name: "Frasco de Sangue",
+			modifier: "+3",
 		});
 		expect(
 			describeSpellOrigin("attack", { label: "Varinha", value: 1 }),
 		).toEqual({
 			text: "Ataque · Varinha +1",
 			label: "Ataque de magia Varinha +1",
+			prefix: "Ataque ·",
+			name: "Varinha",
+			modifier: "+1",
 		});
 	});
 });

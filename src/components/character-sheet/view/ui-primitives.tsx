@@ -34,6 +34,49 @@ export function QuickStat({
 	);
 }
 
+export type OriginChipModel = {
+	text: string;
+	label: string;
+	/** Quando os três existem, só o nome trunca. */
+	prefix?: string;
+	name?: string;
+	modifier?: string;
+};
+
+/** Chip de origem. Prefixo e valor não encolhem; o nome do item trunca. */
+export function OriginChipItem({
+	text,
+	label,
+	prefix,
+	name,
+	modifier,
+	className,
+}: OriginChipModel & { className?: string }) {
+	const split =
+		prefix !== undefined && name !== undefined && modifier !== undefined;
+	return (
+		<li
+			title={label}
+			aria-label={label}
+			className={cn(
+				"max-w-full min-w-0 rounded-full border px-2 py-0.5 font-semibold text-muted-foreground tabular-nums",
+				split ? "flex items-baseline gap-1" : "truncate",
+				className,
+			)}
+		>
+			{split ? (
+				<>
+					<span className="shrink-0">{prefix}</span>
+					<span className="min-w-0 truncate">{name}</span>
+					<span className="shrink-0 tabular-nums">{modifier}</span>
+				</>
+			) : (
+				text
+			)}
+		</li>
+	);
+}
+
 export function InfoRow({
 	label,
 	value,
@@ -42,15 +85,22 @@ export function InfoRow({
 	label: string;
 	value: string | number;
 	/** Chips de origem. O texto completo fica no title e no aria-label. */
-	notes?: ReadonlyArray<string | { text: string; label: string }>;
+	notes?: ReadonlyArray<string | OriginChipModel>;
 }) {
 	const seen = new Map<string, number>();
 	const originNotes = (notes ?? []).map((note) => {
 		const text = typeof note === "string" ? note : note.text;
-		const label = typeof note === "string" ? note : note.label;
-		const count = (seen.get(label) ?? 0) + 1;
-		seen.set(label, count);
-		return { key: count === 1 ? label : `${label}#${count}`, text, label };
+		const labelText = typeof note === "string" ? note : note.label;
+		const count = (seen.get(labelText) ?? 0) + 1;
+		seen.set(labelText, count);
+		return {
+			key: count === 1 ? labelText : `${labelText}#${count}`,
+			text,
+			label: labelText,
+			prefix: typeof note === "string" ? undefined : note.prefix,
+			name: typeof note === "string" ? undefined : note.name,
+			modifier: typeof note === "string" ? undefined : note.modifier,
+		};
 	});
 	return (
 		<div className="min-w-0 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
@@ -63,14 +113,15 @@ export function InfoRow({
 			{originNotes.length > 0 ? (
 				<ul className="mt-1.5 flex w-full min-w-0 max-w-full flex-col items-start gap-1">
 					{originNotes.map((note) => (
-						<li
+						<OriginChipItem
 							key={note.key}
-							title={note.label}
-							aria-label={note.label}
-							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
-						>
-							{note.text}
-						</li>
+							text={note.text}
+							label={note.label}
+							prefix={note.prefix}
+							name={note.name}
+							modifier={note.modifier}
+							className="border-border/70 bg-card/60 text-[11px]"
+						/>
 					))}
 				</ul>
 			) : null}

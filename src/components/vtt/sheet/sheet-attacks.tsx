@@ -1,4 +1,5 @@
 import { type CSSProperties, useMemo } from "react";
+import { OriginChipItem } from "@/components/character-sheet/view/ui-primitives";
 import { Button } from "@/components/ui/button";
 import {
 	calculateProficiencyBonus,
@@ -161,8 +162,7 @@ export function AttacksTab({
 		seenOrigins.set(origin.label, count);
 		return {
 			key: count === 1 ? origin.label : `${origin.label}#${count}`,
-			text: origin.text,
-			label: origin.label,
+			...origin,
 		};
 	});
 
@@ -282,14 +282,15 @@ export function AttacksTab({
 									className="flex w-full min-w-0 max-w-full flex-wrap gap-1.5"
 								>
 									{spellOrigins.map((chip) => (
-										<li
+										<OriginChipItem
 											key={chip.key}
-											title={chip.label}
-											aria-label={chip.label}
-											className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
-										>
-											{chip.text}
-										</li>
+											text={chip.text}
+											label={chip.label}
+											prefix={chip.prefix}
+											name={chip.name}
+											modifier={chip.modifier}
+											className="border-border/70 bg-card/60 text-[11px]"
+										/>
 									))}
 								</ul>
 							) : null}

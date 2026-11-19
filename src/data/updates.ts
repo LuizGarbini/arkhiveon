@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.161-chip-bonus-visivel",
+		version: "1.6.161",
+		date: "19/11/2026",
+		title: "O bônus do chip de magia não corta",
+		description:
+			"No chip de origem, só o nome do item trunca. “CD ·” ou “Ataque ·” e o valor, como “+3”, continuam visíveis. A frase completa segue no título e no leitor de tela.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.160-chip-magia",
 		version: "1.6.160",
 		date: "19/11/2026",
