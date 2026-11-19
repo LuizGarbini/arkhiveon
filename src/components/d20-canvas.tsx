@@ -1,8 +1,8 @@
 /**
- * D20Canvas — PROTOTYPE COMPONENT
- * Three.js interactive d20 die for the landing page hero.
- * Supports auto-rotation, hover parallax rotation, click-and-drag rotation with physics inertia,
- * and quick-click to roll the die.
+ * D20Canvas — Interactive 3D Polyhedral Die
+ * Supports auto-rotation, hover parallax, click-and-drag rotation with inertia,
+ * and click-to-roll with 3D numbers engraved on each icosahedron face and
+ * quaternion snap so the rolled face lands facing the camera.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -16,22 +16,19 @@ const FACE_NUMBERS = [
 	20, 1, 19, 2, 18, 3, 17, 4, 16, 5, 15, 6, 14, 7, 13, 8, 12, 9, 11, 10,
 ];
 
-function createD20Geometry() {
-	return new THREE.IcosahedronGeometry(1, 0);
-}
-
 function createD20Material() {
 	return new THREE.MeshPhysicalMaterial({
-		color: new THREE.Color("#18122c"), // Deep metallic purple/gray
-		metalness: 0.92,
-		roughness: 0.22,
+		color: new THREE.Color("#18122c"),
+		metalness: 0.88,
+		roughness: 0.24,
 		clearcoat: 1.0,
-		clearcoatRoughness: 0.08,
+		clearcoatRoughness: 0.1,
 		reflectivity: 1.0,
 		transmission: 0.08,
 		thickness: 0.4,
 		ior: 1.6,
 		envMapIntensity: 1.6,
+		flatShading: true,
 	});
 }
 
@@ -40,8 +37,44 @@ function createWireframeMaterial() {
 		color: new THREE.Color("#b258ff"),
 		wireframe: true,
 		transparent: true,
-		opacity: 0.15,
+		opacity: 0.22,
 	});
+}
+
+function createFaceNumberTexture(num: number): THREE.CanvasTexture {
+	const canvas = document.createElement("canvas");
+	canvas.width = 256;
+	canvas.height = 256;
+	const ctx = canvas.getContext("2d");
+
+	if (ctx) {
+		ctx.clearRect(0, 0, 256, 256);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+
+		const isCrit = num === 20;
+		const isFail = num === 1;
+
+		ctx.shadowColor = isCrit
+			? "rgba(250, 204, 21, 0.85)"
+			: isFail
+				? "rgba(244, 63, 94, 0.85)"
+				: "rgba(192, 132, 252, 0.7)";
+		ctx.shadowBlur = 14;
+
+		ctx.font = "900 96px 'Cinzel', Georgia, serif";
+		ctx.fillStyle = isCrit ? "#fde047" : isFail ? "#fb7185" : "#e9d5ff";
+		ctx.fillText(String(num), 128, 136);
+
+		// Sublinhado tradicional de dados em 6 e 9
+		if (num === 6 || num === 9) {
+			ctx.fillRect(104, 182, 48, 6);
+		}
+	}
+
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.needsUpdate = true;
+	return texture;
 }
 
 export function D20Canvas({ className }: D20CanvasProps) {
@@ -61,7 +94,6 @@ export function D20Canvas({ className }: D20CanvasProps) {
 			const gl = window.WebGLRenderingContext
 				? canvas.getContext("webgl")
 				: null;
-			// Libera o contexto de teste na hora: o Chrome mantém poucos vivos (~16).
 			gl?.getExtension("WEBGL_lose_context")?.loseContext();
 			isWebGLSupported = !!gl;
 		} catch {
@@ -93,18 +125,18 @@ export function D20Canvas({ className }: D20CanvasProps) {
 		mount.appendChild(renderer.domElement);
 
 		// ── Lights ────────────────────────────────────────────────────────────
-		const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+		const ambient = new THREE.AmbientLight(0xffffff, 0.45);
 		scene.add(ambient);
 
-		const key = new THREE.DirectionalLight(0xffffff, 2.5);
+		const key = new THREE.DirectionalLight(0xffffff, 2.6);
 		key.position.set(4, 5, 6);
 		scene.add(key);
 
-		const fill = new THREE.DirectionalLight(0x7e4aff, 1.8);
+		const fill = new THREE.DirectionalLight(0x7e4aff, 1.9);
 		fill.position.set(-4, -2, 2);
 		scene.add(fill);
 
-		const back = new THREE.DirectionalLight(0xa855f7, 1.2);
+		const back = new THREE.DirectionalLight(0xa855f7, 1.3);
 		back.position.set(0, 3, -4);
 		scene.add(back);
 
@@ -112,32 +144,96 @@ export function D20Canvas({ className }: D20CanvasProps) {
 		rim.position.set(0, -3, -2);
 		scene.add(rim);
 
-		// ── Pivot Group (Hover Parallax) ──────────────────────────────────────
+		// ── Pivot Group (Hover Parallax) & Die Group ─────────────────────────
 		const pivot = new THREE.Group();
 		scene.add(pivot);
 
-		// ── Mesh, Wireframe & Inner Glow ──────────────────────────────────────
-		const geo = createD20Geometry();
+		const dieGroup = new THREE.Group();
+		pivot.add(dieGroup);
+
+		// ── Mesh, Wireframe & Engraved Face Numbers ───────────────────────────
+		const geo = new THREE.IcosahedronGeometry(1, 0);
 		const mat = createD20Material();
 		const mesh = new THREE.Mesh(geo, mat);
-		pivot.add(mesh);
+		dieGroup.add(mesh);
 
 		const wireMat = createWireframeMaterial();
 		const wire = new THREE.Mesh(geo.clone(), wireMat);
-		wire.scale.setScalar(1.002);
-		pivot.add(wire);
+		wire.scale.setScalar(1.003);
+		dieGroup.add(wire);
 
-		const innerGeo = new THREE.SphereGeometry(0.8, 32, 32);
+		// Compute each triangular face center + normal and place a number plane on it
+		const posAttr = geo.attributes.position;
+		const faceNormals: THREE.Vector3[] = [];
+		const faceUpVectors: THREE.Vector3[] = [];
+		const labelTextures: THREE.CanvasTexture[] = [];
+		const labelMaterials: THREE.MeshBasicMaterial[] = [];
+		const labelGeometries: THREE.PlaneGeometry[] = [];
+
+		const vA = new THREE.Vector3();
+		const vB = new THREE.Vector3();
+		const vC = new THREE.Vector3();
+
+		for (let f = 0; f < 20; f++) {
+			const i = f * 3;
+			vA.fromBufferAttribute(posAttr, i);
+			vB.fromBufferAttribute(posAttr, i + 1);
+			vC.fromBufferAttribute(posAttr, i + 2);
+
+			const center = new THREE.Vector3()
+				.add(vA)
+				.add(vB)
+				.add(vC)
+				.divideScalar(3);
+			const normal = center.clone().normalize();
+			faceNormals.push(normal);
+
+			// Up vector pointing towards the top vertex of the triangle
+			const upVec = new THREE.Vector3().subVectors(vA, center);
+			upVec.addScaledVector(normal, -upVec.dot(normal)).normalize();
+			faceUpVectors.push(upVec);
+
+			const rightVec = new THREE.Vector3()
+				.crossVectors(upVec, normal)
+				.normalize();
+			const basis = new THREE.Matrix4().makeBasis(rightVec, upVec, normal);
+
+			const num = FACE_NUMBERS[f];
+			const tex = createFaceNumberTexture(num);
+			labelTextures.push(tex);
+
+			const labelMat = new THREE.MeshBasicMaterial({
+				map: tex,
+				transparent: true,
+				depthWrite: false,
+				polygonOffset: true,
+				polygonOffsetFactor: -1,
+			});
+			labelMaterials.push(labelMat);
+
+			const labelGeo = new THREE.PlaneGeometry(0.52, 0.52);
+			labelGeometries.push(labelGeo);
+
+			const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+			labelMesh.position.copy(center).multiplyScalar(1.006);
+			labelMesh.quaternion.setFromRotationMatrix(basis);
+			dieGroup.add(labelMesh);
+		}
+
+		// Orient initial face 20 roughly towards the viewer
+		dieGroup.rotation.set(0.35, -0.45, 0.1);
+
+		const innerGeo = new THREE.SphereGeometry(0.78, 32, 32);
 		const innerMat = new THREE.MeshBasicMaterial({
 			color: new THREE.Color("#9d6eff"),
 			transparent: true,
-			opacity: 0.05,
+			opacity: 0.06,
 		});
 		const innerGlow = new THREE.Mesh(innerGeo, innerMat);
 		pivot.add(innerGlow);
 
 		// ── Particles ─────────────────────────────────────────────────────────
-		const particleCount = 100;
+		const particleCount = 90;
 		const particlePositions = new Float32Array(particleCount * 3);
 		for (let i = 0; i < particleCount; i++) {
 			const theta = Math.random() * Math.PI * 2;
@@ -161,37 +257,66 @@ export function D20Canvas({ className }: D20CanvasProps) {
 		const particles = new THREE.Points(particleGeo, particleMat);
 		pivot.add(particles);
 
-		// ── Interaction state ─────────────────────────────────────────────────
+		// ── Interaction & Roll Physics State ──────────────────────────────────
 		let isDragging = false;
 		let previousPointerPosition = { x: 0, y: 0 };
 		let dragVelocity = { x: 0, y: 0 };
 		let dragStartPos = { x: 0, y: 0 };
 		let dragStartTime = 0;
 
-		// Hover Parallax States
 		const hoverParallax = { x: 0, y: 0 };
 		const targetHoverParallax = { x: 0, y: 0 };
 
 		let isRolling = false;
+		let rollStartTime = 0;
+		const rollDuration = 1250; // ms
 		let rollVelX = 0;
 		let rollVelY = 0;
 		let rollVelZ = 0;
-		const rollDecay = 0.94;
+		const targetQuat = new THREE.Quaternion();
+		let pendingFaceNumber = 20;
+		let rollTimeoutId: number | null = null;
+		let recoilScale = 1;
+
+		const computeTargetQuatForFace = (faceIdx: number) => {
+			const normal = faceNormals[faceIdx];
+			const upVec = faceUpVectors[faceIdx];
+			const rightVec = new THREE.Vector3()
+				.crossVectors(upVec, normal)
+				.normalize();
+			const faceMatrix = new THREE.Matrix4().makeBasis(rightVec, upVec, normal);
+			const faceQuat = new THREE.Quaternion().setFromRotationMatrix(faceMatrix);
+			// Rotate the die so that this face's local frame aligns with camera (+Z, +Y up)
+			return faceQuat.invert();
+		};
 
 		const triggerRoll = () => {
 			if (isRolling) return;
 			isRolling = true;
-			rollVelX = (Math.random() - 0.5) * 18;
-			rollVelY = (Math.random() - 0.5) * 18;
-			rollVelZ = (Math.random() - 0.5) * 8;
+			rollStartTime = performance.now();
+
+			const chosenFaceIndex = Math.floor(Math.random() * 20);
+			pendingFaceNumber = FACE_NUMBERS[chosenFaceIndex];
+			targetQuat.copy(computeTargetQuatForFace(chosenFaceIndex));
+
+			// Energetic multi-axis tumble impulse
+			const dirX = Math.random() > 0.5 ? 1 : -1;
+			const dirY = Math.random() > 0.5 ? 1 : -1;
+			rollVelX = dirX * (0.28 + Math.random() * 0.14);
+			rollVelY = dirY * (0.32 + Math.random() * 0.14);
+			rollVelZ = (Math.random() - 0.5) * 0.22;
+			recoilScale = 1.12;
+
 			setRolling(true);
 
-			setTimeout(() => {
-				const face = FACE_NUMBERS[Math.floor(Math.random() * 20)];
-				setLastFace(face);
+			if (rollTimeoutId !== null) {
+				window.clearTimeout(rollTimeoutId);
+			}
+			rollTimeoutId = window.setTimeout(() => {
+				setLastFace(pendingFaceNumber);
 				setRolling(false);
 				isRolling = false;
-			}, 1500);
+			}, rollDuration);
 		};
 
 		// ── Pointer Handlers ──────────────────────────────────────────────────
@@ -214,15 +339,14 @@ export function D20Canvas({ className }: D20CanvasProps) {
 					x: e.clientX - previousPointerPosition.x,
 					y: e.clientY - previousPointerPosition.y,
 				};
-				mesh.rotation.y += deltaMove.x * 0.007;
-				mesh.rotation.x += deltaMove.y * 0.007;
-				dragVelocity.x = deltaMove.x * 0.007;
-				dragVelocity.y = deltaMove.y * 0.007;
+				dieGroup.rotation.y += deltaMove.x * 0.008;
+				dieGroup.rotation.x += deltaMove.y * 0.008;
+				dragVelocity.x = deltaMove.x * 0.008;
+				dragVelocity.y = deltaMove.y * 0.008;
 				previousPointerPosition = { x: e.clientX, y: e.clientY };
 			} else {
-				// Target hover parallax when simply moving mouse over canvas
-				targetHoverParallax.x = nx * 0.28;
-				targetHoverParallax.y = -ny * 0.22; // Inverted relative to mouse y
+				targetHoverParallax.x = nx * 0.24;
+				targetHoverParallax.y = -ny * 0.18;
 			}
 		};
 
@@ -234,7 +358,7 @@ export function D20Canvas({ className }: D20CanvasProps) {
 				e.clientY - dragStartPos.y,
 			);
 			const dragDuration = performance.now() - dragStartTime;
-			if (dragDistance < 6 && dragDuration < 200) {
+			if (dragDistance < 12 && dragDuration < 350) {
 				triggerRoll();
 			}
 		};
@@ -269,40 +393,47 @@ export function D20Canvas({ className }: D20CanvasProps) {
 		const animate = () => {
 			frameId = requestAnimationFrame(animate);
 
-			// Skip render steps if off-screen to save CPU/GPU resource
 			if (!isVisible) return;
 
 			const t = clock.getElapsedTime();
 
 			if (isRolling) {
-				mesh.rotation.x += rollVelX * 0.01;
-				mesh.rotation.y += rollVelY * 0.01;
-				mesh.rotation.z += rollVelZ * 0.01;
-				rollVelX *= rollDecay;
-				rollVelY *= rollDecay;
-				rollVelZ *= rollDecay;
-				wire.rotation.copy(mesh.rotation);
-			} else if (isDragging) {
-				wire.rotation.copy(mesh.rotation);
-			} else {
-				// Apply drag momentum (inertia)
-				mesh.rotation.y += dragVelocity.x;
-				mesh.rotation.x += dragVelocity.y;
-				dragVelocity.x *= 0.95;
-				dragVelocity.y *= 0.95;
+				const elapsed = performance.now() - rollStartTime;
+				const progress = Math.min(1, elapsed / rollDuration);
 
-				// Idle spin when drag momentum is nearly zero
+				// Fast tumble during first 65%, then smooth magnetic lock onto target face
+				const spinFactor = Math.max(0, 1 - progress * 1.25);
+				dieGroup.rotation.x += rollVelX * spinFactor;
+				dieGroup.rotation.y += rollVelY * spinFactor;
+				dieGroup.rotation.z += rollVelZ * spinFactor;
+
+				if (progress > 0.35) {
+					const lockStrength = Math.min(1, ((progress - 0.35) / 0.65) * 0.24);
+					dieGroup.quaternion.slerp(targetQuat, lockStrength);
+				}
+
+				recoilScale += (1 - recoilScale) * 0.12;
+				dieGroup.scale.setScalar(recoilScale);
+			} else if (!isDragging) {
+				recoilScale += (1 - recoilScale) * 0.15;
+				dieGroup.scale.setScalar(recoilScale);
+
+				dieGroup.rotation.y += dragVelocity.x;
+				dieGroup.rotation.x += dragVelocity.y;
+				dragVelocity.x *= 0.94;
+				dragVelocity.y *= 0.94;
+
+				// Gentle idle rotation only when no face has been rolled yet
 				if (
 					Math.abs(dragVelocity.x) < 0.001 &&
 					Math.abs(dragVelocity.y) < 0.001
 				) {
-					mesh.rotation.y += 0.003;
-					mesh.rotation.x += Math.sin(t * 0.4) * 0.001;
+					dieGroup.rotation.y += 0.0025;
+					dieGroup.rotation.x += Math.sin(t * 0.4) * 0.0008;
 				}
-				wire.rotation.copy(mesh.rotation);
 			}
 
-			// Apply hover parallax to the pivot group
+			// Hover parallax on outer pivot
 			hoverParallax.x += (targetHoverParallax.x - hoverParallax.x) * 0.06;
 			hoverParallax.y += (targetHoverParallax.y - hoverParallax.y) * 0.06;
 			pivot.rotation.y = hoverParallax.x;
@@ -316,7 +447,6 @@ export function D20Canvas({ className }: D20CanvasProps) {
 
 			renderer.render(scene, camera);
 
-			// Reveal canvas smoothly after the very first WebGL frame renders
 			if (!hasRenderedFirstFrame) {
 				hasRenderedFirstFrame = true;
 				setIsReady(true);
@@ -337,6 +467,9 @@ export function D20Canvas({ className }: D20CanvasProps) {
 
 		// ── Cleanup ───────────────────────────────────────────────────────────
 		return () => {
+			if (rollTimeoutId !== null) {
+				window.clearTimeout(rollTimeoutId);
+			}
 			cancelAnimationFrame(frameId);
 			observer.disconnect();
 			window.removeEventListener("resize", onResize);
@@ -345,13 +478,14 @@ export function D20Canvas({ className }: D20CanvasProps) {
 			window.removeEventListener("pointermove", onPointerMove);
 			window.removeEventListener("pointerup", onPointerUp);
 
-			// Dispose geometries
 			geo.dispose();
 			innerGeo.dispose();
 			particleGeo.dispose();
 			wire.geometry.dispose();
+			for (const g of labelGeometries) g.dispose();
+			for (const m of labelMaterials) m.dispose();
+			for (const tx of labelTextures) tx.dispose();
 
-			// Dispose materials
 			mat.dispose();
 			wireMat.dispose();
 			innerMat.dispose();
@@ -367,48 +501,58 @@ export function D20Canvas({ className }: D20CanvasProps) {
 
 	return (
 		<div
-			className={`relative bg-transparent transition-all duration-[1200ms] ease-out ${
-				isReady ? "opacity-100 scale-100" : "opacity-0 scale-[0.88]"
+			className={`relative bg-transparent transition-all duration-700 ease-out ${
+				isReady ? "opacity-100 scale-100" : "opacity-0 scale-[0.92]"
 			} ${className ?? ""}`}
 		>
 			<div
 				ref={mountRef}
-				className="h-full w-full bg-transparent cursor-grab active:cursor-grabbing touch-none select-none"
-				title="Arraste para girar, clique para rolar o d20!"
+				className="h-full w-full bg-transparent cursor-grab active:cursor-grabbing touch-pan-y select-none"
+				title="Arraste para girar · clique para rolar o d20"
 			/>
-			{/* Face result overlay */}
-			{lastFace !== null && (
-				<div
-					className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${rolling ? "opacity-0 scale-75" : "opacity-100 scale-100"}`}
-				>
-					<span
-						className={`font-display text-[80px] font-black leading-none tabular-nums ${
-							lastFace === 20
-								? "text-yellow-400 drop-shadow-[0_0_24px_rgba(250,204,21,0.8)]"
-								: lastFace === 1
-									? "text-rose-500 drop-shadow-[0_0_24px_rgba(239,68,68,0.8)]"
-									: "text-white drop-shadow-[0_0_12px_rgba(178,88,255,0.6)]"
+
+			{/* Discrete result pill at bottom so it doesn't cover the 3D engraved face */}
+			<div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center">
+				{lastFace !== null ? (
+					<div
+						className={`inline-flex items-center gap-2.5 rounded-full border border-border/80 bg-card/85 px-4 py-1.5 backdrop-blur-md shadow-lg transition-all duration-300 ${
+							rolling
+								? "opacity-0 translate-y-2 scale-95"
+								: "opacity-100 translate-y-0 scale-100"
 						}`}
 					>
-						{lastFace}
+						<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+							Resultado
+						</span>
+						<span
+							className={`font-display text-base font-black tabular-nums ${
+								lastFace === 20
+									? "text-amber-300"
+									: lastFace === 1
+										? "text-rose-400"
+										: "text-foreground"
+							}`}
+						>
+							{lastFace}
+						</span>
+						{(lastFace === 20 || lastFace === 1) && (
+							<span
+								className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
+									lastFace === 20 ? "text-amber-300" : "text-rose-400"
+								}`}
+							>
+								{lastFace === 20 ? "· Sucesso Crítico" : "· Falha Crítica"}
+							</span>
+						)}
+					</div>
+				) : (
+					<span className="rounded-full border border-border/50 bg-card/50 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
+						{rolling
+							? "Rolando d20..."
+							: "Clique para rolar · arraste para girar"}
 					</span>
-					<span className="mt-1 text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
-						{lastFace === 20
-							? "✦ Crítico!"
-							: lastFace === 1
-								? "✦ Falha!"
-								: "d20"}
-					</span>
-				</div>
-			)}
-			{/* Hint to click & drag */}
-			{lastFace === null && !rolling && (
-				<div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
-					<span className="animate-pulse text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
-						Arraste para girar · clique para rolar
-					</span>
-				</div>
-			)}
+				)}
+			</div>
 		</div>
 	);
 }

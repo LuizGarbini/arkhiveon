@@ -3,10 +3,16 @@ import { ArrowUpRight, BookOpen, Mail } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 
-type FooterLink = {
-	label: string;
-	href: string;
-};
+type FooterLink =
+	| {
+			label: string;
+			to: "/auth";
+			search: { mode: "login" | "register" };
+	  }
+	| {
+			label: string;
+			to: "/billing" | "/privacy" | "/terms";
+	  };
 
 type FooterLinkGroup = {
 	label: string;
@@ -17,16 +23,16 @@ const footerLinkGroups: FooterLinkGroup[] = [
 	{
 		label: "Conta",
 		links: [
-			{ label: "Entrar", href: "/auth?mode=login" },
-			{ label: "Criar conta", href: "/auth?mode=register" },
-			{ label: "Planos", href: "/billing" },
+			{ label: "Entrar", to: "/auth", search: { mode: "login" } },
+			{ label: "Criar conta", to: "/auth", search: { mode: "register" } },
+			{ label: "Planos", to: "/billing" },
 		],
 	},
 	{
 		label: "Legal",
 		links: [
-			{ label: "Privacidade", href: "/privacy" },
-			{ label: "Termos", href: "/terms" },
+			{ label: "Privacidade", to: "/privacy" },
+			{ label: "Termos", to: "/terms" },
 		],
 	},
 ];
@@ -45,13 +51,35 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 	);
 }
 
+function FooterSpaLink({
+	link,
+	className,
+	children,
+}: {
+	link: FooterLink;
+	className: string;
+	children: ReactNode;
+}) {
+	if (link.to === "/auth") {
+		return (
+			<Link to="/auth" search={link.search} className={className}>
+				{children}
+			</Link>
+		);
+	}
+	return (
+		<Link to={link.to} className={className}>
+			{children}
+		</Link>
+	);
+}
+
 export function EfferdStickyFooter() {
 	const overlayRef = useRef<HTMLDivElement>(null);
 	const interactionRef = useRef<HTMLDivElement>(null);
 	const [isMobile, setIsMobile] = useState(false);
 
 	useEffect(() => {
-		// App defaults to dark mode
 		document.body.classList.add("dark");
 		document.documentElement.style.colorScheme = "dark";
 	}, []);
@@ -132,12 +160,12 @@ export function EfferdStickyFooter() {
 								<ul className="space-y-2">
 									{group.links.map((link) => (
 										<li key={link.label}>
-											<a
-												href={link.href}
+											<FooterSpaLink
+												link={link}
 												className="text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
 											>
 												{link.label}
-											</a>
+											</FooterSpaLink>
 										</li>
 									))}
 								</ul>
@@ -155,7 +183,7 @@ export function EfferdStickyFooter() {
 							target="_blank"
 							rel="noopener noreferrer"
 							aria-label="Discord"
-							className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+							className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
 						>
 							<DiscordIcon className="h-4.5 w-4.5" />
 						</a>
@@ -174,26 +202,26 @@ export function EfferdStickyFooter() {
 
 					{/* Action Buttons */}
 					<div className="flex flex-col gap-3 w-full max-w-xs">
-						<a
-							href="/dashboard"
+						<Link
+							to="/dashboard"
 							className={buttonVariants({
 								className:
-									"h-10 w-full gap-2 px-4 text-[12px] font-black justify-center",
+									"h-11 w-full gap-2 px-4 text-[12px] font-black justify-center",
 							})}
 						>
 							Abrir arquivo
 							<ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-						</a>
-						<a
-							href="/characters"
+						</Link>
+						<Link
+							to="/characters"
 							className={buttonVariants({
 								variant: "outline",
 								className:
-									"h-10 w-full px-4 text-[12px] font-black justify-center",
+									"h-11 w-full px-4 text-[12px] font-black justify-center",
 							})}
 						>
 							Ver personagens
-						</a>
+						</Link>
 					</div>
 
 					<p className="text-[11px] font-semibold text-muted-foreground">
@@ -214,7 +242,7 @@ export function EfferdStickyFooter() {
 					{/* Ambient background glow */}
 					<div
 						aria-hidden="true"
-						className="absolute inset-0 isolate z-0 opacity-70 contain-strict dark:opacity-80"
+						className="pointer-events-none absolute inset-0 isolate z-0 opacity-70 contain-strict dark:opacity-80"
 					>
 						<div className="absolute left-0 top-0 h-[80rem] w-[35rem] -translate-y-[21.875rem] -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,oklch(0.66_0.2_290/0.13)_0,oklch(0.66_0.2_290/0.035)_52%,transparent_80%)]" />
 						<div className="absolute left-0 top-0 h-[80rem] w-[15rem] -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,oklch(0.96_0.01_290/0.07)_0,oklch(0.66_0.2_290/0.025)_82%,transparent_100%)] [translate:5%_-50%]" />
@@ -266,13 +294,13 @@ export function EfferdStickyFooter() {
 										<ul className="mt-3.5 space-y-2">
 											{group.links.map((link) => (
 												<li key={link.label}>
-													<a
-														href={link.href}
+													<FooterSpaLink
+														link={link}
 														className="group inline-flex items-center gap-2 text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
 													>
 														<span className="h-px w-3 bg-border-hover transition-all group-hover:w-5 group-hover:bg-primary" />
 														{link.label}
-													</a>
+													</FooterSpaLink>
 												</li>
 											))}
 										</ul>
@@ -291,7 +319,7 @@ export function EfferdStickyFooter() {
 												target="_blank"
 												rel="noopener noreferrer"
 												aria-label="Discord"
-												className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+												className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/45 text-muted-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
 											>
 												<DiscordIcon className="h-4 w-4" />
 											</a>
@@ -314,24 +342,24 @@ export function EfferdStickyFooter() {
 							{/* Bottom bar: Buttons + Copyright */}
 							<div className="mt-4 flex flex-wrap items-center justify-between gap-4 pb-4">
 								<div className="flex flex-wrap items-center gap-3">
-									<a
-										href="/dashboard"
+									<Link
+										to="/dashboard"
 										className={buttonVariants({
 											className: "h-9.5 gap-2 px-4 text-[12px] font-black",
 										})}
 									>
 										Abrir arquivo
 										<ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-									</a>
-									<a
-										href="/characters"
+									</Link>
+									<Link
+										to="/characters"
 										className={buttonVariants({
 											variant: "outline",
 											className: "h-9.5 px-4 text-[12px] font-black",
 										})}
 									>
 										Ver personagens
-									</a>
+									</Link>
 								</div>
 								<p className="text-[12px] font-semibold text-muted-foreground">
 									&copy; 2026 Arkhiveon. Todos os direitos reservados.
@@ -346,15 +374,15 @@ export function EfferdStickyFooter() {
 					>
 						<div className="mx-auto w-full max-w-[1400px] relative">
 							<svg
-								viewBox="0 0 2400 350"
-								className="h-auto w-full overflow-visible text-white/[0.03]"
+								viewBox="0 0 2800 480"
+								className="h-auto w-full overflow-visible text-foreground/[0.035]"
 								role="img"
 								aria-label="Arkhiveon"
 							>
 								<title>Arkhiveon</title>
 								<text
-									x="1200"
-									y="315"
+									x="1400"
+									y="420"
 									textAnchor="middle"
 									className="fill-current font-display text-[460px] font-black"
 								>
@@ -374,13 +402,13 @@ export function EfferdStickyFooter() {
 								}}
 							>
 								<svg
-									viewBox="0 0 2400 350"
-									className="h-auto w-full overflow-visible text-purple-500/80"
+									viewBox="0 0 2800 480"
+									className="h-auto w-full overflow-visible text-primary/85"
 									role="presentation"
 								>
 									<text
-										x="1200"
-										y="315"
+										x="1400"
+										y="420"
 										textAnchor="middle"
 										className="fill-current font-display text-[460px] font-black"
 									>
