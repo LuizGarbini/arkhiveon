@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.163-ia-botao-assistente",
+		version: "1.6.163",
+		date: "19/11/2026",
+		title: "O assistente da mesa vira uma pílula",
+		description:
+			"O botão flutuante do assistente deixa de ser só o ícone e passa a dizer Assistente. A bordinha branca some do botão, do Enviar e do Tentar de novo.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.158-equipamento-slots",
 		version: "1.6.158",
 		date: "19/11/2026",
