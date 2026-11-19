@@ -85,6 +85,8 @@ export function ItemThumb({
 
 /** Mesmo texto do picker e da mochila: o item não tem número que a ficha some. */
 export const MISSING_SHEET_NUMBER = "Sem número na ficha";
+/** Cabe inteiro no quadrado do slot. O texto longo fica no title e no aria-label. */
+export const MISSING_NUMBER_SLOT_LABEL = "Sem bônus";
 
 /** Abre o cadastro do item já na aba Bônus, em modo edição. */
 export function EditItemBonusLink({
@@ -226,18 +228,29 @@ export function EquipmentSlotTile({
 				<>
 					{imageUrl ? (
 						<FramedImage src={imageUrl} alt="" framing={item} />
+					) : missingNumber ? (
+						<span className={cn("flex h-full w-full flex-col", rarity?.tone)}>
+							<span className="flex min-h-0 flex-1 items-center justify-center">
+								<Icon className="size-8" aria-hidden />
+							</span>
+							<span className="flex flex-col gap-1 px-1.5 pb-1.5">
+								<span className="flex items-center justify-center gap-1 rounded-md border border-border/70 bg-card/80 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md">
+									<CircleAlert className="size-3 shrink-0" aria-hidden />
+									{MISSING_NUMBER_SLOT_LABEL}
+								</span>
+								<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+									{EQUIP_SLOT_SHORT_LABELS[slot]}
+								</span>
+							</span>
+						</span>
 					) : (
 						<span
 							className={cn(
 								"flex h-full w-full items-center justify-center",
 								rarity?.tone,
-								missingNumber && "pb-7",
 							)}
 						>
-							<Icon
-								className={missingNumber ? "size-8" : "size-1/3"}
-								aria-hidden
-							/>
+							<Icon className="size-1/3" aria-hidden />
 						</span>
 					)}
 					{needsAttunement ? (
@@ -259,12 +272,17 @@ export function EquipmentSlotTile({
 							className="absolute top-2 right-2 size-2 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400"
 						/>
 					) : null}
-					{missingNumber ? (
-						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex items-center gap-1 rounded-md border border-border/70 bg-card/80 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md">
-							<CircleAlert className="size-3 shrink-0" aria-hidden />
-							<span className="min-w-0 truncate">{MISSING_SHEET_NUMBER}</span>
+					{missingNumber && imageUrl ? (
+						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col gap-1">
+							<span className="flex items-center justify-center gap-1 rounded-md border border-border/70 bg-card/80 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md">
+								<CircleAlert className="size-3 shrink-0" aria-hidden />
+								{MISSING_NUMBER_SLOT_LABEL}
+							</span>
+							<span className="rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
+								{EQUIP_SLOT_SHORT_LABELS[slot]}
+							</span>
 						</span>
-					) : (
+					) : missingNumber ? null : (
 						<span className="pointer-events-none absolute inset-x-1.5 bottom-1.5 truncate rounded-md bg-background/80 px-1.5 py-0.5 text-center text-[10px] font-semibold tracking-wider text-foreground uppercase backdrop-blur-md">
 							{EQUIP_SLOT_SHORT_LABELS[slot]}
 						</span>

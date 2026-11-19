@@ -450,17 +450,17 @@ describe("EquipmentDialog", () => {
 			items: [cape],
 			patch: dantePatch,
 		});
-		expect(
-			screen.getAllByText("Sem número na ficha").length,
-		).toBeGreaterThanOrEqual(2);
+		expect(screen.getByText("Sem número na ficha")).toBeTruthy();
 		const tile = screen.getByRole("button", { name: /Capa: Capa do Vento/ });
 		expect(tile.getAttribute("title")).toBe("Sem número na ficha");
+		expect(tile.getAttribute("aria-label")).toContain("Sem número na ficha");
+		expect(within(tile).queryByText("Sem número na ficha")).toBeNull();
 		expect(
 			within(tile).queryByRole("link", { name: "Editar item" }),
 		).toBeNull();
-		expect(within(tile).getByText("Sem número na ficha").className).toContain(
-			"truncate",
-		);
+		const badge = within(tile).getByText("Sem bônus");
+		expect(badge.className).not.toContain("truncate");
+		expect(within(tile).getByText("Capa")).toBeTruthy();
 		const links = screen.getAllByRole("link", { name: "Editar item" });
 		expect(links).toHaveLength(1);
 		for (const link of links) {
