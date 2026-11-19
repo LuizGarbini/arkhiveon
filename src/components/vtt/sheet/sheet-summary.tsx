@@ -62,7 +62,7 @@ function Vital({ value, label }: { value: string; label: string }) {
 					</span>
 				) : null}
 			</dd>
-			<dt className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+			<dt className="mt-0.5 truncate text-[11px] leading-snug whitespace-nowrap text-muted-foreground">
 				{label}
 			</dt>
 		</div>
@@ -101,12 +101,16 @@ export function SummaryTab({
 	const attributes = config.attributes;
 	const distanceUnit = speedUnitOf(character, config.speedUnit);
 	const origins = useMemo(() => {
-		const chips: { key: string; text: string }[] = [];
+		const chips: { key: string; text: string; label: string }[] = [];
 		const seen = new Map<string, number>();
-		const push = (text: string) => {
-			const count = (seen.get(text) ?? 0) + 1;
-			seen.set(text, count);
-			chips.push({ key: count === 1 ? text : `${text}#${count}`, text });
+		const push = (text: string, label = text) => {
+			const count = (seen.get(label) ?? 0) + 1;
+			seen.set(label, count);
+			chips.push({
+				key: count === 1 ? label : `${label}#${count}`,
+				text,
+				label,
+			});
 		};
 		if (stats.ac.source === "items") {
 			for (const part of stats.ac.parts) {
@@ -124,7 +128,8 @@ export function SummaryTab({
 			);
 		}
 		for (const part of stats.spellDc.parts) {
-			push(describeSpellOrigin("dc", part));
+			const origin = describeSpellOrigin("dc", part);
+			push(origin.text, origin.label);
 		}
 		return chips;
 	}, [stats, distanceUnit, sceneUnit]);
@@ -167,7 +172,7 @@ export function SummaryTab({
 						/>
 					) : null}
 					{showSpellDc ? (
-						<Vital value={String(stats.spellDc.total)} label="CD de magia" />
+						<Vital value={String(stats.spellDc.total)} label="CD magia" />
 					) : null}
 					{isDnd ? (
 						<Vital value={formatModifier(proficiency)} label="Proficiência" />
@@ -182,8 +187,8 @@ export function SummaryTab({
 					{origins.map((chip) => (
 						<li
 							key={chip.key}
-							title={chip.text}
-							aria-label={chip.text}
+							title={chip.label}
+							aria-label={chip.label}
 							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
 						>
 							{chip.text}

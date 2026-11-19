@@ -816,10 +816,20 @@ describe("AttacksTab · magias", () => {
 			/>,
 		);
 		expect(screen.getByText("17")).toBeTruthy();
-		expect(screen.getByText("CD de magia Frasco de Sangue +3")).toBeTruthy();
-		expect(
-			screen.getByText("Ataque de magia Frasco de Sangue +2"),
-		).toBeTruthy();
+		const dcChip = screen.getByText("CD · Frasco de Sangue +3");
+		expect(dcChip.getAttribute("title")).toBe(
+			"CD de magia Frasco de Sangue +3",
+		);
+		expect(dcChip.getAttribute("aria-label")).toBe(
+			"CD de magia Frasco de Sangue +3",
+		);
+		const attackChip = screen.getByText("Ataque · Frasco de Sangue +2");
+		expect(attackChip.getAttribute("title")).toBe(
+			"Ataque de magia Frasco de Sangue +2",
+		);
+		expect(attackChip.getAttribute("aria-label")).toBe(
+			"Ataque de magia Frasco de Sangue +2",
+		);
 		fireEvent.click(
 			screen.getByRole("button", { name: "Rolar ataque de magia (+8)" }),
 		);
@@ -859,12 +869,12 @@ describe("SummaryTab · painel de combate", () => {
 	it("mostra a proficiência e a CD de magia quando a ficha tem", () => {
 		renderSummary(character({ spellSaveDc: 15 }));
 		expect(value("Proficiência")).toBe("+3");
-		expect(value("CD de magia")).toBe("15");
+		expect(value("CD magia")).toBe("15");
 	});
 
 	it("sem CD de magia na ficha, a célula não aparece", () => {
 		renderSummary(character({ spellSaveDc: 0 }));
-		expect(screen.queryByText("CD de magia")).toBeNull();
+		expect(screen.queryByText("CD magia")).toBeNull();
 	});
 
 	it("recursos aparecem para quem tem dados de vida ou espaços", () => {
@@ -979,7 +989,7 @@ describe("SummaryTab · atributos com salvaguarda na mesma coluna", () => {
 			).className.includes("border");
 		expect(framed("CA")).toBe(true);
 		expect(framed("Iniciativa")).toBe(false);
-		expect(framed("CD de magia")).toBe(false);
+		expect(framed("CD magia")).toBe(false);
 		expect(framed("Proficiência")).toBe(false);
 	});
 });
@@ -1129,9 +1139,9 @@ describe("SummaryTab · origem da capa equipada", () => {
 			/>,
 		);
 		expect(
-			screen.getByText("CD de magia").previousElementSibling?.textContent,
+			screen.getByText("CD magia").previousElementSibling?.textContent,
 		).toBe("17");
-		const chip = screen.getByText("CD de magia Frasco de Sangue +3");
+		const chip = screen.getByText("CD · Frasco de Sangue +3");
 		expect(chip.getAttribute("title")).toBe("CD de magia Frasco de Sangue +3");
 		expect(chip.getAttribute("aria-label")).toBe(
 			"CD de magia Frasco de Sangue +3",
@@ -1173,9 +1183,9 @@ describe("SummaryTab · origem da capa equipada", () => {
 			/>,
 		);
 		expect(
-			screen.getByText("CD de magia").previousElementSibling?.textContent,
+			screen.getByText("CD magia").previousElementSibling?.textContent,
 		).toBe("3");
-		expect(screen.getByText("CD de magia Frasco de Sangue +3")).toBeTruthy();
+		expect(screen.getByText("CD · Frasco de Sangue +3")).toBeTruthy();
 		expect(c.spellSaveDc).toBe(0);
 	});
 

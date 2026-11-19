@@ -16,12 +16,16 @@ import type { Character, Item } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { MissingNumberNotice } from "./equipment-slot-tile";
 
-function chipKeys(chips: readonly string[]) {
+type OriginChip = string | { text: string; label?: string };
+
+function chipKeys(chips: readonly OriginChip[]) {
 	const seen = new Map<string, number>();
-	return chips.map((text) => {
-		const count = (seen.get(text) ?? 0) + 1;
-		seen.set(text, count);
-		return { key: count === 1 ? text : `${text}#${count}`, text };
+	return chips.map((chip) => {
+		const text = typeof chip === "string" ? chip : chip.text;
+		const label = typeof chip === "string" ? chip : (chip.label ?? chip.text);
+		const count = (seen.get(label) ?? 0) + 1;
+		seen.set(label, count);
+		return { key: count === 1 ? label : `${label}#${count}`, text, label };
 	});
 }
 
@@ -37,7 +41,7 @@ function StatCard({
 	to: string;
 	/** Sem itens. Só aparece riscado quando é diferente do valor atual. */
 	from?: string;
-	chips?: string[];
+	chips?: readonly OriginChip[];
 	featured?: boolean;
 	className?: string;
 }) {
@@ -77,8 +81,8 @@ function StatCard({
 					{chipKeys(chips).map((chip) => (
 						<li
 							key={chip.key}
-							title={chip.text}
-							aria-label={chip.text}
+							title={chip.label}
+							aria-label={chip.label}
 							className="max-w-full min-w-0 truncate rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground tabular-nums"
 						>
 							{chip.text}

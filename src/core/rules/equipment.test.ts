@@ -20,6 +20,7 @@ import {
 	defaultSlotFor,
 	describeAbilityBonus,
 	describeItemEffects,
+	describeSpellOrigin,
 	effectiveScores,
 	equipEntryInSlot,
 	equipNewItemInSlot,
@@ -1574,5 +1575,17 @@ describe("bônus de CD e ataque de magia", () => {
 		expect(describeLinkCandidate(wand)).toBe(
 			"Item Maravilhoso · +1 Ataque de magia",
 		);
+		expect(
+			describeSpellOrigin("dc", { label: "Frasco de Sangue", value: 3 }),
+		).toEqual({
+			text: "CD · Frasco de Sangue +3",
+			label: "CD de magia Frasco de Sangue +3",
+		});
+		expect(
+			describeSpellOrigin("attack", { label: "Varinha", value: 1 }),
+		).toEqual({
+			text: "Ataque · Varinha +1",
+			label: "Ataque de magia Varinha +1",
+		});
 	});
 });

@@ -42,13 +42,15 @@ export function InfoRow({
 	label: string;
 	value: string | number;
 	/** Chips de origem. O texto completo fica no title e no aria-label. */
-	notes?: string[];
+	notes?: ReadonlyArray<string | { text: string; label: string }>;
 }) {
 	const seen = new Map<string, number>();
-	const originNotes = (notes ?? []).map((text) => {
-		const count = (seen.get(text) ?? 0) + 1;
-		seen.set(text, count);
-		return { key: count === 1 ? text : `${text}#${count}`, text };
+	const originNotes = (notes ?? []).map((note) => {
+		const text = typeof note === "string" ? note : note.text;
+		const label = typeof note === "string" ? note : note.label;
+		const count = (seen.get(label) ?? 0) + 1;
+		seen.set(label, count);
+		return { key: count === 1 ? label : `${label}#${count}`, text, label };
 	});
 	return (
 		<div className="min-w-0 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
@@ -63,8 +65,8 @@ export function InfoRow({
 					{originNotes.map((note) => (
 						<li
 							key={note.key}
-							title={note.text}
-							aria-label={note.text}
+							title={note.label}
+							aria-label={note.label}
 							className="max-w-full min-w-0 truncate rounded-full border border-border/70 bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums"
 						>
 							{note.text}

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.160-chip-magia",
+		version: "1.6.160",
+		date: "19/11/2026",
+		title: "Chip de magia mais curto e tile alinhado",
+		description:
+			"O chip do item equipado mostra “CD · Frasco de Sangue +3” ou “Ataque · Varinha +1”. A frase completa continua no título e no leitor de tela. No resumo da mesa, o tile cabe numa linha como Iniciativa e Deslocamento. Na aba Ataques, o chip fica junto do bloco de ataque e CD.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.159-bonus-magia",
 		version: "1.6.159",
 		date: "19/11/2026",

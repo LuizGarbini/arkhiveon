@@ -493,13 +493,21 @@ export function computeSpellAttack(
 	return { base, total: base + sumParts(parts), parts };
 }
 
-/** "CD de magia Frasco de Sangue +3" / "Ataque de magia Varinha +1". */
+/**
+ * Chip de origem. `text` é o que aparece ("CD · Frasco de Sangue +3");
+ * `label` é a frase completa, para title e aria-label.
+ */
 export function describeSpellOrigin(
 	kind: "dc" | "attack",
 	part: BonusPart,
-): string {
-	const label = kind === "dc" ? "CD de magia" : "Ataque de magia";
-	return `${label} ${part.label} ${formatModifier(part.value)}`;
+): { text: string; label: string } {
+	const full = kind === "dc" ? "CD de magia" : "Ataque de magia";
+	const short = kind === "dc" ? "CD" : "Ataque";
+	const modifier = formatModifier(part.value);
+	return {
+		text: `${short} · ${part.label} ${modifier}`,
+		label: `${full} ${part.label} ${modifier}`,
+	};
 }
 
 // ── Tudo junto ───────────────────────────────────────────────────────
