@@ -98,9 +98,13 @@ const EMPTY_THREAD = "Pergunte sobre regras, a cena ou a ficha.";
 const DEFAULT_IMAGE_USER_MESSAGE =
 	"Analise a imagem enviada e proponha criar ou atualizar a ficha correspondente.";
 
-/** Hover e foco visíveis, com tokens que já existem. O anel não fica cortado. */
+/**
+ * Hover e foco visíveis, com tokens que já existem.
+ * O anel é box-shadow, então não precisa de overflow-visible — isso solta
+ * a linha clara do botão default para fora do raio e vira uma bordinha branca.
+ */
 const tactileControl =
-	"overflow-visible focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(hover:hover)]:hover:ring-2 [@media(hover:hover)]:hover:ring-primary/40";
+	"focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(hover:hover)]:hover:ring-2 [@media(hover:hover)]:hover:ring-primary/40";
 
 type PanelState =
 	| { kind: "idle" }
@@ -996,7 +1000,8 @@ export function VTTAiChat({
 
 			<Button
 				type="button"
-				size="icon"
+				variant="default"
+				size="lg"
 				aria-label={
 					open ? "Fechar assistente da mesa" : "Abrir assistente da mesa"
 				}
@@ -1006,13 +1011,18 @@ export function VTTAiChat({
 					if (!open) requestAnimationFrame(() => inputRef.current?.focus());
 				}}
 				className={cn(
-					"right-4 bottom-4 z-[70] size-14 rounded-full shadow-2xl",
+					// h-11 vale 2.75rem = 39.9px nesta raiz (14.5px). O toque pede 44px.
+					// w-[140px]: na mesa, .vtt-surface força min-width: 44px e ganha
+					// do min-w utilitário. No celular a pílula sobe — o zoom está no centro.
+					"right-4 bottom-4 z-[70] h-[44px] w-[140px] rounded-full px-4",
+					placement === "absolute" && "max-sm:bottom-24",
 					tactileControl,
 					placement === "fixed" ? "fixed" : "absolute",
 					open && "hidden sm:inline-flex",
 				)}
 			>
 				{open ? <X className="size-5" /> : <Sparkles className="size-5" />}
+				Assistente
 			</Button>
 		</>
 	);

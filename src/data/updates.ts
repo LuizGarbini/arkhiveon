@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.163-ia-botao-assistente",
+		version: "1.6.163",
+		date: "19/11/2026",
+		title: "O assistente da mesa vira uma pílula",
+		description:
+			"O botão flutuante do assistente deixa de ser só o ícone e passa a dizer Assistente. A bordinha branca some do botão, do Enviar e do Tentar de novo.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.162-vtt-alca-giro",
 		version: "1.6.162",
 		date: "19/11/2026",
