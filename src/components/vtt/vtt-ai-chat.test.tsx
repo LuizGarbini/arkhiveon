@@ -225,9 +225,11 @@ describe("VTTAiChat: estados do painel", () => {
 		});
 		expectCompactLoading(status);
 		resolveAsk({ ok: false, code: "unavailable" });
-		expect(
-			await screen.findByRole("button", { name: "Tentar de novo" }),
-		).toBeTruthy();
+		const retry = await screen.findByRole("button", {
+			name: "Tentar de novo",
+		});
+		expect(retry.className).toContain("focus-visible:ring-2");
+		expect(retry.className).not.toContain("overflow-visible");
 		expect(
 			screen.queryByRole("status", { name: "Carregando resposta" }),
 		).toBeNull();
@@ -417,14 +419,30 @@ describe("VTTAiChat: estados visíveis", () => {
 
 	it("Enviar e o botão flutuante têm hover e focus-visible", () => {
 		render(<VTTAiChat campaignId="rise" campaignName="Rise" />);
-		const fab = screen.getByLabelText("Abrir assistente da mesa");
+		const fab = screen.getByRole("button", {
+			name: "Abrir assistente da mesa",
+		});
+		expect(fab.textContent).toContain("Assistente");
+		expect(fab.getAttribute("aria-label")).toBe("Abrir assistente da mesa");
+		expect(fab.className.split(/\s+/)).toContain("h-[44px]");
+		expect(fab.className.split(/\s+/)).toContain("w-[140px]");
+		expect(fab.className.split(/\s+/)).not.toContain("h-10");
+		expect(fab.className.split(/\s+/)).not.toContain("h-11");
+		expect(fab.className).toContain("rounded-full");
+		expect(fab.className).not.toContain("overflow-visible");
 		expect(fab.className).toContain("focus-visible:ring-2");
 		expect(fab.className).toContain("[@media(hover:hover)]:hover:ring-2");
 		fireEvent.click(fab);
+		const openFab = screen.getByRole("button", {
+			name: "Fechar assistente da mesa",
+		});
+		expect(openFab.textContent).toContain("Assistente");
+		expect(openFab.className.split(/\s+/)).toContain("h-[44px]");
 		const send = screen.getByLabelText("Enviar");
 		expect(send.className).toContain("focus-visible:ring-2");
 		expect(send.className).toContain("[@media(hover:hover)]:hover:ring-2");
 		expect(send.className).toContain("focus-visible:ring-ring");
+		expect(send.className).not.toContain("overflow-visible");
 	});
 });
 
