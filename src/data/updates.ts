@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.164-tipos-vestiveis",
+		version: "1.6.164",
+		date: "20/11/2026",
+		title: "Braçadeira, brincos, bracelete e cinto no tipo do item",
+		description:
+			"No cadastro do item, a categoria agora inclui Braçadeira, Brincos, Bracelete e Cinto. Equipado, o item aparece nesse lugar da ficha e da mesa, sem precisar escolher onde se veste.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.162-vtt-alca-giro",
 		version: "1.6.162",
 		date: "19/11/2026",

@@ -152,7 +152,13 @@ export function itemSlotOf(
 	if (type === "capa" || type === "cloak" || type === "cape") return "cloak";
 	if (type === "luvas" || type === "luva") return "hands";
 	if (type === "botas" || type === "bota") return "feet";
-	if (type === "brinco" || type === "earring") return "earring";
+	if (
+		type === "brinco" ||
+		type === "brincos" ||
+		type === "earring" ||
+		type === "earrings"
+	)
+		return "earring";
 	if (type === "bracelete" || type === "braceletes" || type === "bracelet")
 		return "bracelet";
 	if (type === "cinto" || type === "belt") return "belt";

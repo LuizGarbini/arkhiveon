@@ -403,6 +403,7 @@ describe("ItemForm (cadastro rico)", () => {
 		render(<ItemForm />);
 		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
 		const category = screen.getByRole("combobox", { name: "Categoria" });
+		expect(category.tagName).not.toBe("SELECT");
 		await act(async () => {
 			fireEvent.click(category);
 		});
@@ -414,6 +415,19 @@ describe("ItemForm (cadastro rico)", () => {
 			expect(labels).toContain(type);
 		}
 		expect(labels).toContain("Capa");
+	});
+
+	it("Brincos é selecionável e grava o tipo Brincos", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Argolas da Corte" },
+		});
+		await pick(screen.getByRole("combobox", { name: "Categoria" }), "Brincos");
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const payload = addItem.mock.calls[0][0] as unknown as Item;
+		expect(payload.type).toBe("Brincos");
 	});
 
 	it("Capa é selecionável e grava o tipo Capa", async () => {
@@ -531,6 +545,10 @@ const CANONICAL_ITEM_TYPES = [
 	"Capa",
 	"Luvas",
 	"Botas",
+	"Braçadeira",
+	"Brincos",
+	"Bracelete",
+	"Cinto",
 	"Poção",
 	"Consumível",
 	"Munição",
