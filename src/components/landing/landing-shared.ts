@@ -1,4 +1,4 @@
-import { Map, Users, Zap } from "lucide-react";
+import { Globe2, ScrollText, Swords } from "lucide-react";
 
 export const LANDING_VARIANTS = ["A", "B", "C"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
@@ -26,67 +26,74 @@ export type LandingVariantProps = {
 
 export const pillars = [
 	{
-		Icon: Map,
-		eyebrow: "Mesa",
-		title: "Tudo volta para o mesmo lugar.",
+		Icon: Swords,
+		eyebrow: "01 · Mesa Virtual & VTT",
+		title: "Mapa tático, tokens e dados na mesma janela.",
 		description:
-			"Nada de procurar anotação perdida quando a sessão já começou.",
+			"Mova tokens a 60fps, meça alcances com a régua, dispare pings sonoros e projete áreas de magia sem abrir três abas diferentes.",
+		meta: "Sincronização em tempo real · Áudio & Spotify Jam",
 	},
 	{
-		Icon: Zap,
-		eyebrow: "Ritmo",
-		title: "Menos ruído entre uma ideia e outra.",
-		description: "A interface fica quieta para a campanha aparecer primeiro.",
+		Icon: ScrollText,
+		eyebrow: "02 · Fichas & Sistemas",
+		title: "D&D 5e, Ordem Paranormal ou o seu próprio sistema.",
+		description:
+			"Fichas modulares com inventário, grimório de magias, perícias automáticas e exportação para PDF prontas para jogar.",
+		meta: "Modificador automático · Rolagem integrada",
 	},
 	{
-		Icon: Users,
-		eyebrow: "Arquivo",
-		title: "Um mundo cresce sem virar bagunça.",
-		description: "Personagens, lugares e sessões conectados por contexto.",
+		Icon: Globe2,
+		eyebrow: "03 · Mundo & Crônica",
+		title: "Cada NPC, facção e sessão sabe onde pertence.",
+		description:
+			"Construa árvores genealógicas, relacione facções, controle o que é segredo do mestre e consulte a IA da Mesa com contexto real da campanha.",
+		meta: "Visibilidade Mestre/Jogador · IA contextual",
 	},
 ];
 
 export const freePlanFeatures = [
-	"20 registros de campanha",
-	"Personagens e sessões essenciais",
-	"Backup manual do arquivo",
+	"1 Mundo e 1 campanha ativa",
+	"Até 20 registros (personagens, NPCs, locais, itens e lore)",
+	"Fichas completas e acesso ao VTT em tempo real",
+	"Jogadores entram de graça em mesas de um Mestre Pro",
 ];
 
 export const proPlanFeatures = [
-	"Campanhas sem limite prático",
-	"Fichas avançadas e módulos extras",
-	"Organização visual para mesas longas",
+	"Até 5 Mundos e 5 campanhas por Mundo",
+	"Registros ilimitados de personagens, NPCs, itens, locais e lore",
+	"Um único Pro cobre a mesa inteira — seus jogadores não pagam nada",
+	"IA da Mesa contextual, Árvore de Relações e galeria de mapas expandida",
 ];
 
 export const howItWorksSteps = [
 	{
 		step: 1,
-		title: "Crie sua campanha",
+		title: "Crie seu Mundo e abra a campanha",
 		description:
-			"Um arquivo central para a mesa — nome, sistema e contexto em um só lugar.",
-		benefit: "Tudo volta para o mesmo lugar.",
+			"Escolha entre D&D 5e, Ordem Paranormal ou blocos customizados e convide os jogadores por link.",
+		benefit: "Pronto em menos de 1 minuto.",
 	},
 	{
 		step: 2,
-		title: "Conecte personagens, NPCs e sessões",
+		title: "Prepare fichas, mapas e segredos",
 		description:
-			"Cada entidade lembra de onde veio e com quem se cruza na narrativa.",
-		benefit: "Um mundo cresce sem virar bagunça.",
+			"Cadastre NPCs, facções e cenas do VTT decidindo com um clique o que é público e o que é só do Mestre.",
+		benefit: "Zero spoiler acidental.",
 	},
 	{
 		step: 3,
-		title: "Retome de onde parou",
+		title: "Conduza a sessão ao vivo",
 		description:
-			"Recaps, ganchos e notas da última sessão prontos quando a mesa volta.",
-		benefit: "Menos ruído entre uma ideia e outra.",
+			"Abra o VTT, solte a trilha no Spotify Jam e deixe o histórico de sessões registrado para a próxima semana.",
+		benefit: "Tudo salvo para a próxima sessão.",
 	},
 ];
 
 export const longFormPricingCopy = {
-	headline: "Para mesas que não param na sessão 3.",
+	headline: "Comece de graça. Escale quando a campanha pedir.",
 	subline:
-		"Free para testar o fluxo. Pro para campanhas que atravessam meses — com fichas, vínculos e histórico intactos.",
-	freeDescription: "Ideal para one-shots e primeiras campanhas.",
+		"Apenas o Mestre precisa assinar o Pro para desbloquear recursos ilimitados para todos os jogadores convidados da mesa.",
+	freeDescription: "Para testar o fluxo ou rodar uma aventura curta.",
 	proDescription:
-		"Para mestres long-form: mundos grandes, muitas sessões, zero limite na mesa.",
+		"Para mestres de campanhas longas: múltiplos mundos, criações sem teto e toda a mesa coberta.",
 };
