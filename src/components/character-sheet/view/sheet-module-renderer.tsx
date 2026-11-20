@@ -16,6 +16,7 @@ import {
 	formatModifier,
 	initiativeCaption,
 	isWeaponAbilityKey,
+	nextSkillProficiencyLevel,
 	speedUnitOf,
 } from "@/core/rules";
 import type { Character, SheetModuleConfig, Spell } from "@/lib/store";
@@ -161,12 +162,39 @@ export function SheetModuleContent({
 
 	if (module.kind === "skills") {
 		const pb = calculateProficiencyBonus(character.level || 1);
+		const canEdit = activeCampaignRole !== "viewer";
 		return (
 			<SkillsFieldsReadOnly
 				character={character}
 				proficiencyBonus={character.proficiencyBonus || pb}
 				scores={combat.scores}
-				savesBonus={combat.saves.total}
+				savesBonus={combat.saves}
+				onToggleSavingThrow={
+					canEdit
+						? (key) => {
+								const current = character.savingThrowProficiencies ?? {};
+								updateCharacter(character.id, {
+									savingThrowProficiencies: {
+										...current,
+										[key]: !current[key],
+									},
+								});
+							}
+						: undefined
+				}
+				onCycleSkillProficiency={
+					canEdit
+						? (skillId) => {
+								const current = character.skillProficiencies ?? {};
+								updateCharacter(character.id, {
+									skillProficiencies: {
+										...current,
+										[skillId]: nextSkillProficiencyLevel(current[skillId]),
+									},
+								});
+							}
+						: undefined
+				}
 			/>
 		);
 	}

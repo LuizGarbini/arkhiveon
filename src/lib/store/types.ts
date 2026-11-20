@@ -255,7 +255,10 @@ export interface Character {
 	savingThrows: string;
 	savingThrowProficiencies?: Record<string, boolean>;
 	skills: string;
-	skillProficiencies?: Record<string, "none" | "proficient" | "expertise">;
+	skillProficiencies?: Record<
+		string,
+		"none" | "half" | "proficient" | "expertise"
+	>;
 	languages: string;
 	proficiencies: string;
 	spellcastingClass: string;
