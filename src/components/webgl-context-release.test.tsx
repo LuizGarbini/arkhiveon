@@ -21,6 +21,18 @@ function fakeGlFor(canvas: HTMLCanvasElement) {
 	};
 }
 
+/**
+ * Contexto 2D falso (texturas de número do d20): não entra em `contexts`,
+ * pois só contextos WebGL precisam de loseContext.
+ */
+function fake2d() {
+	return {
+		clearRect: vi.fn(),
+		fillText: vi.fn(),
+		fillRect: vi.fn(),
+	};
+}
+
 vi.mock("@/lib/performance-mode", () => ({
 	isLitePerformanceMode: () => false,
 }));
@@ -72,8 +84,8 @@ beforeEach(() => {
 			removeEventListener: vi.fn(),
 		})),
 	);
-	const getContext = function (this: HTMLCanvasElement) {
-		return fakeGlFor(this);
+	const getContext = function (this: HTMLCanvasElement, type: string) {
+		return type === "2d" ? fake2d() : fakeGlFor(this);
 	} as unknown as HTMLCanvasElement["getContext"];
 	vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
 		getContext,
