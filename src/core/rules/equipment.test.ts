@@ -155,10 +155,50 @@ describe("slot do item", () => {
 		expect(itemSlotOf({ type: "Cinto" })).toBe("belt");
 		expect(itemSlotOf({ type: "Braçadeiras" })).toBe("bracers");
 		expect(itemSlotOf({ type: "bracadeira" })).toBe("bracers");
+		expect(itemSlotOf({ type: "Braçadeira" })).toBe("bracers");
+		expect(itemSlotOf({ type: "Brincos" })).toBe("earring");
+		expect(itemSlotOf({ type: "brincos" })).toBe("earring");
 		expect(slotsForItem({ type: "Brinco" })).toEqual(["earring"]);
+		expect(slotsForItem({ type: "Brincos" })).toEqual(["earring"]);
 		expect(slotsForItem({ type: "Bracelete" })).toEqual(["bracelet"]);
 		expect(slotsForItem({ type: "Cinto" })).toEqual(["belt"]);
-		expect(slotsForItem({ type: "Braçadeiras" })).toEqual(["bracers"]);
+		expect(slotsForItem({ type: "Braçadeira" })).toEqual(["bracers"]);
+	});
+
+	it("Braçadeira, Brincos, Bracelete e Cinto equipados ocupam o slot sem escolha manual", () => {
+		const bracers = make("slot-type-bracers", {
+			name: "Braçadeiras da Defesa",
+			type: "Braçadeira",
+			slot: undefined,
+		});
+		const earrings = make("slot-type-earrings", {
+			name: "Argolas da Corte",
+			type: "Brincos",
+			slot: undefined,
+		});
+		const bracelet = make("slot-type-bracelet", {
+			name: "Bracelete Ágil",
+			type: "Bracelete",
+			slot: undefined,
+		});
+		const wornBelt = make("slot-type-belt", {
+			name: "Cinto do Gigante",
+			type: "Cinto",
+			slot: undefined,
+		});
+		const placed = resolveSlots(
+			linkedOf(
+				[bracers, earrings, bracelet, wornBelt],
+				[entry(bracers), entry(earrings), entry(bracelet), entry(wornBelt)],
+			),
+		);
+		expect(placed.bySlot.get("bracers")?.item.name).toBe(
+			"Braçadeiras da Defesa",
+		);
+		expect(placed.bySlot.get("earring")?.item.name).toBe("Argolas da Corte");
+		expect(placed.bySlot.get("bracelet")?.item.name).toBe("Bracelete Ágil");
+		expect(placed.bySlot.get("belt")?.item.name).toBe("Cinto do Gigante");
+		expect(placed.unslotted).toEqual([]);
 	});
 });
 

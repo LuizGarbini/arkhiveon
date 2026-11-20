@@ -597,8 +597,8 @@ export interface Item extends WorldEntityFields {
 	abilityBonuses?: ItemAbilityBonus[];
 	/**
 	 * Onde o item é vestido. Em branco: deduzido da categoria (arma, armadura,
-	 * escudo, anel, amuleto, brinco, bracelete, cinto, braçadeiras). Itens
-	 * "maravilhosos" precisam dizer o slot.
+	 * escudo, anel, amuleto, brinco, brincos, bracelete, cinto, braçadeira).
+	 * Itens "maravilhosos" precisam dizer o slot.
 	 */
 	slot?: ItemSlot;
 	/** De onde o item nasceu no cadastro: em branco ou cópia independente de outro item. */
