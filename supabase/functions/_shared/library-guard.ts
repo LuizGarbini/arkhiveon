@@ -1,6 +1,6 @@
 /**
- * Biblioteca de PDFs (Fatia 1a) — regras puras compartilhadas entre a Edge
- * Function `library-r2` e os testes (vitest). Sem dependências de Deno/S3.
+ * Biblioteca de PDFs (Fatia 1a + capas F2) — regras puras compartilhadas entre
+ * a Edge Function `library-r2` e os testes (vitest). Sem dependências de Deno/S3.
  */
 
 export const LIBRARY_PILOT_TABLE = "campaign_library_pilot_campaigns";
@@ -16,13 +16,43 @@ export const LIBRARY_READ_TTL_SECONDS = 300;
 export const LIBRARY_PENDING_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 export const LIBRARY_TITLE_MAX = 200;
 
+/** Capa WebP: no máximo 150 KB (153600 bytes). */
+export const LIBRARY_THUMB_MAX_BYTES = 150 * 1024;
+export const LIBRARY_THUMB_MIME = "image/webp";
+/** PUT e GET da capa: 10 min. */
+export const LIBRARY_THUMB_TTL_SECONDS = 600;
+/** `request-thumb-reads`: no máximo 60 ids por chamada. */
+export const LIBRARY_THUMB_READ_MAX_IDS = 60;
+
 export type CampaignRole = "owner" | "editor" | "viewer";
 export type LibraryAction =
 	| "request-upload"
 	| "confirm-upload"
 	| "request-read"
 	| "delete"
-	| "rename";
+	| "rename"
+	| "request-thumb-upload"
+	| "confirm-thumb"
+	| "report-thumb-failed"
+	| "request-thumb-reads";
+
+const LIBRARY_ACTIONS: readonly LibraryAction[] = [
+	"request-upload",
+	"confirm-upload",
+	"request-read",
+	"delete",
+	"rename",
+	"request-thumb-upload",
+	"confirm-thumb",
+	"report-thumb-failed",
+	"request-thumb-reads",
+];
+
+/** Leitura aberta a qualquer membro. O resto é gestão (owner/editor). */
+const LIBRARY_READ_ACTIONS = new Set<LibraryAction>([
+	"request-read",
+	"request-thumb-reads",
+]);
 
 const UUID_RE =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -33,11 +63,8 @@ export function isUuid(value: unknown): value is string {
 
 export function isLibraryAction(value: unknown): value is LibraryAction {
 	return (
-		value === "request-upload" ||
-		value === "confirm-upload" ||
-		value === "request-read" ||
-		value === "delete" ||
-		value === "rename"
+		typeof value === "string" &&
+		(LIBRARY_ACTIONS as readonly string[]).includes(value)
 	);
 }
 
@@ -73,6 +100,91 @@ export function buildPendingLibraryKey(
 	return `pending/${campaignId}/${fileId}.pdf`;
 }
 
+/** Chave final da capa. Igual ao CHECK da 0080. */
+export function buildThumbKey(campaignId: string, fileId: string): string {
+	return `library/${campaignId}/${fileId}.thumb.webp`;
+}
+
+/** PUT assinado da capa. O confirm copia para `buildThumbKey`. */
+export function buildPendingThumbKey(
+	campaignId: string,
+	fileId: string,
+): string {
+	return `pending/${campaignId}/${fileId}.thumb.webp`;
+}
+
+export type ThumbSizeValidation =
+	| { ok: true; size: number }
+	| { ok: false; status: 400 | 413; error: string };
+
+/** Inteiro, maior que 0 e no máximo 150 KB. */
+export function validateThumbSize(size: unknown): ThumbSizeValidation {
+	if (typeof size !== "number" || !Number.isInteger(size) || size <= 0) {
+		return { ok: false, status: 400, error: "Tamanho inválido." };
+	}
+	if (size > LIBRARY_THUMB_MAX_BYTES) {
+		return { ok: false, status: 413, error: "Capa acima de 150 KB." };
+	}
+	return { ok: true, size };
+}
+
+const WEBP_RIFF = [0x52, 0x49, 0x46, 0x46] as const; // RIFF
+const WEBP_WEBP = [0x57, 0x45, 0x42, 0x50] as const; // WEBP
+
+/** Bytes 0–3 `RIFF` e 8–11 `WEBP`. O miolo (4–7) é o tamanho do container. */
+export function hasWebpMagic(bytes: Uint8Array): boolean {
+	if (bytes.length < 12) return false;
+	for (let i = 0; i < 4; i++) {
+		if (bytes[i] !== WEBP_RIFF[i]) return false;
+		if (bytes[8 + i] !== WEBP_WEBP[i]) return false;
+	}
+	return true;
+}
+
+export type ThumbReadRequest =
+	| { ok: true; campaignId: string; fileIds: string[] }
+	| { ok: false; status: 400; error: string };
+
+/**
+ * `{ campaignId, fileIds }` — 1..60 UUIDs. Repetidos contam no teto e saem
+ * uma vez só (minúsculos), na ordem do primeiro.
+ */
+export function parseThumbReadRequest(
+	body: Record<string, unknown>,
+): ThumbReadRequest {
+	const campaignId = body.campaignId;
+	if (!isUuid(campaignId)) {
+		return { ok: false, status: 400, error: "Campanha inválida." };
+	}
+	const fileIds = body.fileIds;
+	if (!Array.isArray(fileIds) || fileIds.length === 0) {
+		return { ok: false, status: 400, error: "Lista de capas vazia." };
+	}
+	if (fileIds.length > LIBRARY_THUMB_READ_MAX_IDS) {
+		return {
+			ok: false,
+			status: 400,
+			error: "No máximo 60 capas por pedido.",
+		};
+	}
+	const seen = new Set<string>();
+	const unique: string[] = [];
+	for (const id of fileIds) {
+		if (!isUuid(id)) {
+			return { ok: false, status: 400, error: "Arquivo inválido." };
+		}
+		const key = id.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		unique.push(key);
+	}
+	return {
+		ok: true,
+		campaignId: campaignId.toLowerCase(),
+		fileIds: unique,
+	};
+}
+
 export type UploadValidation =
 	| { ok: true; title: string; size: number }
 	| { ok: false; status: 400 | 413 | 415; error: string };
@@ -100,9 +212,9 @@ export function validateUploadRequest(input: {
 	return { ok: true, title, size };
 }
 
-/** Só `request-read` é aberta a qualquer membro; o resto é owner/editor. */
+/** `request-read` e `request-thumb-reads` são de qualquer membro; o resto é owner/editor. */
 export function actionNeedsManage(action: LibraryAction): boolean {
-	return action !== "request-read";
+	return !LIBRARY_READ_ACTIONS.has(action);
 }
 
 /** Quem pode executar a ação, pelo papel na campanha. */

@@ -1,25 +1,49 @@
 /**
- * library-r2 — Biblioteca de PDFs da campanha (Fatia 1a).
+ * library-r2 — Biblioteca de PDFs da campanha (Fatia 1a + capas F2).
  *
  * Emite links assinados curtos para um bucket R2 privado e separado das
  * imagens. Nunca devolve link público. Toda chamada valida JWT, piloto
  * (`campaign_library_pilot_campaigns`) e papel na campanha.
  *
+ * ORDEM DE DEPLOY (mesmo padrão da 0042):
+ *   1. Migração 0080 já aplicada em produção (thumb_status, thumb_path,
+ *      thumb_updated_at, CHECKs e índice parcial).
+ *   2. Publicar esta função (Luiz).
+ *   3. Fatia F3 — a tela que envia a capa e mostra a miniatura.
+ * Sem a 0080, confirm-thumb não tem coluna onde gravar. Sem esta função,
+ * a F3 não tem link assinado. Esta fatia não cria migração nem mexe em
+ * policy, grant ou RLS.
+ *
  * Ações (POST JSON { action, ... }):
  * - request-upload  (owner/editor) { campaignId, title, size, contentType }
  *     → limpa pendentes > 3h da campanha, cria linha `pending`, devolve
  *       presigned PUT (10 min) com Content-Type e Content-Length assinados,
- *       para a chave TEMPORÁRIA `pending/<campaign>/<id>.pdf` (Fatia 1b).
+ *       para a chave TEMPORÁRIA `pending/<campaign>/<id>.pdf`.
  * - confirm-upload  (owner/editor) { fileId }
  *     → HEAD + Range 0-4 (%PDF-) na chave temporária; ok = copia para a
  *       chave final (`r2_key`), apaga a temporária e marca `ready`;
- *       falha = apaga objeto+linha (422). Um PUT repetido depois do `ready`
- *       só cai em `pending/`, nunca sobrescreve o PDF final.
+ *       falha = apaga objeto+linha (422).
  * - request-read    (qualquer membro, só `ready`) { fileId, ttlSeconds? }
  *     → presigned GET (5 min). `ttlSeconds` menor só com LIBRARY_TEST_MODE=1.
- * - delete          (owner/editor) { fileId } → apaga objeto + linha.
+ * - delete          (owner/editor) { fileId }
+ *     → apaga o PDF, a pending do PDF, a capa final e a pending da capa
+ *       (objeto ausente não falha o delete) e a linha.
  * - rename          (owner/editor, só `ready`) { fileId, title }
- *     → troca só o `title` (NFC, trim, 1–200). Jogador recebe 403.
+ *     → troca só o `title`. Jogador recebe 403.
+ * - request-thumb-upload (owner/editor) { fileId, size }
+ *     → a linha existe, é da campanha e está `ready`. PUT assinado de 10 min
+ *       em `pending/<campaign>/<id>.thumb.webp`, com Content-Type image/webp
+ *       e Content-Length assinados. `size` é o tamanho exato (1..153600).
+ * - confirm-thumb (owner/editor) { fileId }
+ *     → HEAD (≤ 150 KB) + Range 0-11 (RIFF/WEBP) na pending. Ok = copia para
+ *       `library/<campaign>/<id>.thumb.webp`, grava thumb_status ready,
+ *       thumb_path e thumb_updated_at, e apaga a pending. Falha = apaga a
+ *       pending e responde 422; a linha fica como estava.
+ * - report-thumb-failed (owner/editor) { fileId }
+ *     → UPDATE só onde thumb_status = 'pending'. Ready não muda.
+ * - request-thumb-reads (qualquer membro) { campaignId, fileIds }
+ *     → no máximo 60 ids, uma checagem de piloto/papel. Devolve GET assinado
+ *       de 10 min só para PDF ready com capa ready desta campanha.
  *
  * Variáveis (secrets da função; nunca no cliente):
  *   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (padrão Supabase)
@@ -41,26 +65,21 @@ import {
 	type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import {
-	buildLibraryKey,
-	buildPendingLibraryKey,
 	type CampaignRole,
-	canRunLibraryAction,
-	checkUploadedObject,
-	isLibraryAction,
-	isStalePending,
-	isUuid,
 	LIBRARY_FILES_TABLE,
-	LIBRARY_PDF_MIME,
-	LIBRARY_PENDING_MAX_AGE_MS,
 	LIBRARY_PILOT_TABLE,
-	LIBRARY_UPLOAD_TTL_SECONDS,
 	normalizeRole,
 	parseAllowedOrigins,
 	resolveCorsOrigin,
-	resolveReadTtl,
-	validateLibraryTitle,
-	validateUploadRequest,
 } from "../_shared/library-guard.ts";
+import {
+	handleLibraryRequest,
+	type LibraryFileRow,
+	type LibraryHandlerDeps,
+} from "./handler.ts";
+
+const FILE_COLUMNS =
+	"id, campaign_id, r2_key, size_bytes, status, created_at, thumb_status, thumb_path, thumb_updated_at";
 
 const allowedOrigins = parseAllowedOrigins(
 	Deno.env.get("LIBRARY_ALLOWED_ORIGINS"),
@@ -108,15 +127,6 @@ function r2(): { s3: S3Client; bucket: string } {
 	};
 }
 
-interface FileRow {
-	id: string;
-	campaign_id: string;
-	r2_key: string;
-	size_bytes: number;
-	status: "pending" | "ready";
-	created_at: string;
-}
-
 /** Piloto + papel, com o cliente do próprio usuário (RLS). */
 async function campaignAccess(
 	userClient: SupabaseClient,
@@ -147,51 +157,41 @@ async function campaignAccess(
 	return { pilot, role };
 }
 
-async function deleteFile(
-	admin: SupabaseClient,
-	s3: S3Client,
-	bucket: string,
-	row: Pick<FileRow, "id" | "r2_key" | "campaign_id">,
-): Promise<void> {
-	await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: row.r2_key }));
-	// Sobra possível de um PUT repetido; apagar chave inexistente é ok no R2.
-	await s3.send(
-		new DeleteObjectCommand({
-			Bucket: bucket,
-			Key: buildPendingLibraryKey(row.campaign_id, row.id),
-		}),
-	);
-	await admin.from(LIBRARY_FILES_TABLE).delete().eq("id", row.id);
+function toLibraryFileRow(data: unknown): LibraryFileRow | null {
+	if (!data || typeof data !== "object") return null;
+	const row = data as Record<string, unknown>;
+	if (typeof row.id !== "string" || typeof row.campaign_id !== "string") {
+		return null;
+	}
+	const thumbStatus =
+		row.thumb_status === "ready" || row.thumb_status === "failed"
+			? row.thumb_status
+			: "pending";
+	return {
+		id: row.id,
+		campaign_id: row.campaign_id,
+		r2_key: typeof row.r2_key === "string" ? row.r2_key : "",
+		size_bytes:
+			typeof row.size_bytes === "number"
+				? row.size_bytes
+				: Number(row.size_bytes ?? 0),
+		status: row.status === "ready" ? "ready" : "pending",
+		created_at: typeof row.created_at === "string" ? row.created_at : "",
+		thumb_status: thumbStatus,
+		thumb_path: typeof row.thumb_path === "string" ? row.thumb_path : null,
+		thumb_updated_at:
+			typeof row.thumb_updated_at === "string" ? row.thumb_updated_at : null,
+	};
 }
 
-async function cleanupStalePending(
-	admin: SupabaseClient,
-	s3: S3Client,
-	bucket: string,
-	campaignId: string,
-): Promise<number> {
-	const cutoff = new Date(Date.now() - LIBRARY_PENDING_MAX_AGE_MS).toISOString();
-	const { data } = await admin
-		.from(LIBRARY_FILES_TABLE)
-		.select("id, campaign_id, r2_key, created_at")
-		.eq("campaign_id", campaignId)
-		.eq("status", "pending")
-		.lt("created_at", cutoff)
-		.limit(50);
-	let removed = 0;
-	for (const row of (data ?? []) as Pick<
-		FileRow,
-		"id" | "campaign_id" | "r2_key" | "created_at"
-	>[]) {
-		if (!isStalePending(row.created_at, Date.now())) continue;
-		try {
-			await deleteFile(admin, s3, bucket, row);
-			removed++;
-		} catch (error) {
-			console.error("library-r2 cleanup", row.id, String(error));
-		}
+function rowsFrom(data: unknown): LibraryFileRow[] {
+	if (!Array.isArray(data)) return [];
+	const rows: LibraryFileRow[] = [];
+	for (const item of data) {
+		const row = toLibraryFileRow(item);
+		if (row) rows.push(row);
 	}
-	return removed;
+	return rows;
 }
 
 serve(async (req) => {
@@ -210,180 +210,170 @@ serve(async (req) => {
 			global: { headers: { Authorization: authHeader } },
 			auth: { persistSession: false },
 		});
-		const {
-			data: { user },
-			error: authError,
-		} = await userClient.auth.getUser();
-		if (authError || !user) return json(req, { error: "Unauthorized" }, 401);
 
-		const body = (await req.json().catch(() => null)) as Record<
-			string,
-			unknown
-		> | null;
-		if (!body || !isLibraryAction(body.action)) {
-			return json(req, { error: "Ação inválida." }, 400);
-		}
+		let resolved: { id: string } | null | undefined;
+		const getUser = async (): Promise<{ id: string } | null> => {
+			if (resolved !== undefined) return resolved;
+			const {
+				data: { user },
+				error: authError,
+			} = await userClient.auth.getUser();
+			resolved = authError || !user ? null : { id: user.id };
+			return resolved;
+		};
 
-		const admin = createClient(supabaseUrl, serviceKey, {
-			auth: { persistSession: false },
-		});
+		// JWT antes de ler o corpo e antes de qualquer efeito no banco ou no R2.
+		const user = await getUser();
+		if (!user) return json(req, { error: "Unauthorized" }, 401);
 
-		// Descobre a campanha: direto (upload) ou pela linha do arquivo.
-		let campaignId: string;
-		let row: FileRow | null = null;
-		if (body.action === "request-upload") {
-			if (!isUuid(body.campaignId)) return json(req, { error: "Campanha inválida." }, 400);
-			campaignId = body.campaignId;
-		} else {
-			if (!isUuid(body.fileId)) return json(req, { error: "Arquivo inválido." }, 400);
-			const { data } = await admin
-				.from(LIBRARY_FILES_TABLE)
-				.select("id, campaign_id, r2_key, size_bytes, status, created_at")
-				.eq("id", body.fileId)
-				.maybeSingle();
-			// 403 (não 404) para não revelar existência a quem não é membro.
-			if (!data) return json(req, { error: "Forbidden" }, 403);
-			row = data as FileRow;
-			campaignId = row.campaign_id;
-		}
-
-		const { pilot, role } = await campaignAccess(userClient, user.id, campaignId);
-		if (!pilot) return json(req, { error: "Forbidden" }, 403);
-
-		if (!canRunLibraryAction(body.action, role)) {
-			return json(req, { error: "Forbidden" }, 403);
-		}
-
-		// Renomear só mexe no banco: não precisa do R2.
-		if (body.action === "rename") {
-			const file = row as FileRow;
-			if (file.status !== "ready") return json(req, { error: "Forbidden" }, 403);
-			const valid = validateLibraryTitle(body.title);
-			if (!valid.ok) return json(req, { error: valid.error }, valid.status);
-			const { error: updateError } = await admin
-				.from(LIBRARY_FILES_TABLE)
-				.update({ title: valid.title })
-				.eq("id", file.id)
-				.eq("campaign_id", file.campaign_id);
-			if (updateError) throw new Error(updateError.message);
-			return json(req, { fileId: file.id, title: valid.title });
-		}
-
-		const { s3, bucket } = r2();
-
-		switch (body.action) {
-			case "request-upload": {
-				const valid = validateUploadRequest({
-					title: body.title,
-					size: body.size,
-					contentType: body.contentType,
+		let admin: SupabaseClient | null = null;
+		const adminClient = (): SupabaseClient => {
+			const client =
+				admin ??
+				createClient(supabaseUrl, serviceKey, {
+					auth: { persistSession: false },
 				});
-				if (!valid.ok) return json(req, { error: valid.error }, valid.status);
+			admin = client;
+			return client;
+		};
 
-				await cleanupStalePending(admin, s3, bucket, campaignId);
+		let storage: { s3: S3Client; bucket: string } | null = null;
+		const bucketOf = (): { s3: S3Client; bucket: string } => {
+			const current = storage ?? r2();
+			storage = current;
+			return current;
+		};
 
-				const fileId = crypto.randomUUID();
-				const key = buildLibraryKey(campaignId, fileId);
-				const { error: insertError } = await admin.from(LIBRARY_FILES_TABLE).insert({
-					id: fileId,
-					campaign_id: campaignId,
-					r2_key: key,
-					title: valid.title,
-					size_bytes: valid.size,
-					content_type: LIBRARY_PDF_MIME,
-					status: "pending",
-					uploaded_by: user.id,
-				});
-				if (insertError) throw new Error(insertError.message);
-
-				const uploadUrl = await getSignedUrl(
-					s3,
-					new PutObjectCommand({
-						Bucket: bucket,
-						Key: buildPendingLibraryKey(campaignId, fileId),
-						ContentType: LIBRARY_PDF_MIME,
-						ContentLength: valid.size,
-					}),
-					{
-						expiresIn: LIBRARY_UPLOAD_TTL_SECONDS,
-						signableHeaders: new Set(["content-type", "content-length"]),
-					},
+		const deps: LibraryHandlerDeps = {
+			getUser,
+			campaignAccess: (userId, campaignId) =>
+				campaignAccess(userClient, userId, campaignId),
+			getFile: async (fileId) => {
+				const { data, error } = await adminClient()
+					.from(LIBRARY_FILES_TABLE)
+					.select(FILE_COLUMNS)
+					.eq("id", fileId)
+					.maybeSingle();
+				if (error) throw new Error(error.message);
+				return toLibraryFileRow(data);
+			},
+			listFilesByIds: async (fileIds) => {
+				const { data, error } = await adminClient()
+					.from(LIBRARY_FILES_TABLE)
+					.select(FILE_COLUMNS)
+					.in("id", fileIds);
+				if (error) throw new Error(error.message);
+				return rowsFrom(data);
+			},
+			insertFile: async (row) => {
+				const { error } = await adminClient().from(LIBRARY_FILES_TABLE).insert(row);
+				if (error) throw new Error(error.message);
+			},
+			updateFile: async (id, patch, match) => {
+				let query = adminClient()
+					.from(LIBRARY_FILES_TABLE)
+					.update(patch)
+					.eq("id", id);
+				for (const [column, value] of Object.entries(match)) {
+					query = query.eq(column, value);
+				}
+				const { data, error } = await query.select("id");
+				if (error) throw new Error(error.message);
+				return Array.isArray(data) ? data.length : 0;
+			},
+			deleteFileRow: async (id) => {
+				const { error } = await adminClient()
+					.from(LIBRARY_FILES_TABLE)
+					.delete()
+					.eq("id", id);
+				if (error) throw new Error(error.message);
+			},
+			listStalePending: async (campaignId, cutoffIso) => {
+				const { data } = await adminClient()
+					.from(LIBRARY_FILES_TABLE)
+					.select("id, campaign_id, r2_key, created_at")
+					.eq("campaign_id", campaignId)
+					.eq("status", "pending")
+					.lt("created_at", cutoffIso)
+					.limit(50);
+				return rowsFrom(data).map((row) => ({
+					id: row.id,
+					campaign_id: row.campaign_id,
+					r2_key: row.r2_key,
+					created_at: row.created_at,
+				}));
+			},
+			headObject: async (key) => {
+				const { s3, bucket } = bucketOf();
+				const head = await s3.send(
+					new HeadObjectCommand({ Bucket: bucket, Key: key }),
 				);
-				return json(req, {
-					fileId,
-					uploadUrl,
-					expiresIn: LIBRARY_UPLOAD_TTL_SECONDS,
-					headers: {
-						"Content-Type": LIBRARY_PDF_MIME,
-						"Content-Length": String(valid.size),
-					},
-				});
-			}
-
-			case "confirm-upload": {
-				const file = row as FileRow;
-				if (file.status === "ready") return json(req, { fileId: file.id, status: "ready" });
-				let head: { contentLength?: number; contentType?: string };
-				const pendingKey = buildPendingLibraryKey(file.campaign_id, file.id);
-				let first: Uint8Array = new Uint8Array();
-				try {
-					const headRes = await s3.send(
-						new HeadObjectCommand({ Bucket: bucket, Key: pendingKey }),
-					);
-					head = { contentLength: headRes.ContentLength, contentType: headRes.ContentType };
-					const getRes = await s3.send(
-						new GetObjectCommand({ Bucket: bucket, Key: pendingKey, Range: "bytes=0-4" }),
-					);
-					if (getRes.Body) first = await getRes.Body.transformToByteArray();
-				} catch {
-					return json(req, { error: "Arquivo ainda não chegou no armazenamento." }, 409);
-				}
-				const check = checkUploadedObject(Number(file.size_bytes), head, first);
-				if (!check.ok) {
-					await deleteFile(admin, s3, bucket, file);
-					return json(req, { error: check.error }, 422);
-				}
-				// Move pending/ → chave final (cópia server-side no R2).
+				return {
+					contentLength: head.ContentLength,
+					contentType: head.ContentType,
+				};
+			},
+			readObjectRange: async (key, range) => {
+				const { s3, bucket } = bucketOf();
+				const got = await s3.send(
+					new GetObjectCommand({ Bucket: bucket, Key: key, Range: range }),
+				);
+				if (!got.Body) return new Uint8Array();
+				return await got.Body.transformToByteArray();
+			},
+			copyObject: async (sourceKey, destKey, contentType) => {
+				const { s3, bucket } = bucketOf();
 				await s3.send(
 					new CopyObjectCommand({
 						Bucket: bucket,
-						Key: file.r2_key,
-						CopySource: `${bucket}/${pendingKey}`,
-						ContentType: LIBRARY_PDF_MIME,
+						Key: destKey,
+						CopySource: `${bucket}/${sourceKey}`,
+						ContentType: contentType,
 						MetadataDirective: "REPLACE",
 					}),
 				);
-				await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: pendingKey }));
-				await admin
-					.from(LIBRARY_FILES_TABLE)
-					.update({ status: "ready", ready_at: new Date().toISOString() })
-					.eq("id", file.id);
-				return json(req, { fileId: file.id, status: "ready" });
-			}
-
-			case "request-read": {
-				const file = row as FileRow;
-				if (file.status !== "ready") return json(req, { error: "Forbidden" }, 403);
-				const ttl = resolveReadTtl(body.ttlSeconds, testMode);
-				const url = await getSignedUrl(
+			},
+			deleteObject: async (key) => {
+				const { s3, bucket } = bucketOf();
+				await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+			},
+			signPut: async (input) => {
+				const { s3, bucket } = bucketOf();
+				return await getSignedUrl(
+					s3,
+					new PutObjectCommand({
+						Bucket: bucket,
+						Key: input.key,
+						ContentType: input.contentType,
+						ContentLength: input.contentLength,
+					}),
+					{
+						expiresIn: input.expiresIn,
+						signableHeaders: new Set(["content-type", "content-length"]),
+					},
+				);
+			},
+			signGet: async (input) => {
+				const { s3, bucket } = bucketOf();
+				return await getSignedUrl(
 					s3,
 					new GetObjectCommand({
 						Bucket: bucket,
-						Key: file.r2_key,
-						ResponseContentType: LIBRARY_PDF_MIME,
-						ResponseContentDisposition: "inline",
+						Key: input.key,
+						ResponseContentType: input.responseContentType,
+						ResponseContentDisposition: input.responseContentDisposition,
 					}),
-					{ expiresIn: ttl },
+					{ expiresIn: input.expiresIn },
 				);
-				return json(req, { fileId: file.id, url, expiresIn: ttl });
-			}
+			},
+			now: () => new Date(),
+			randomUUID: () => crypto.randomUUID(),
+			testMode,
+		};
 
-			case "delete": {
-				await deleteFile(admin, s3, bucket, row as FileRow);
-				return json(req, { fileId: (row as FileRow).id, deleted: true });
-			}
-		}
-		return json(req, { error: "Ação inválida." }, 400);
+		const body = await req.json().catch(() => null);
+		const result = await handleLibraryRequest(deps, body);
+		return json(req, result.body, result.status);
 	} catch (error) {
 		console.error("library-r2", String(error));
 		return json(req, { error: "Falha na Biblioteca." }, 500);
