@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.165-biblioteca-capas",
+		version: "1.6.165",
+		date: "20/11/2026",
+		title: "Preparação da biblioteca para capas dos PDFs",
+		description:
+			"A biblioteca passa a poder guardar, no servidor, se a capa de cada PDF está pendente, pronta ou falhou. A capa ainda não aparece na tela.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.164-tipos-vestiveis",
 		version: "1.6.164",
 		date: "20/11/2026",
