@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.166-biblioteca-miniatura",
+		version: "1.6.166",
+		date: "21/11/2026",
+		title: "A biblioteca passa a aceitar a capa do PDF",
+		description:
+			"No servidor, a miniatura de um PDF da biblioteca pode ser enviada e lida por quem já abre esse arquivo. A capa ainda não aparece na tela.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.165-biblioteca-capas",
 		version: "1.6.165",
 		date: "20/11/2026",

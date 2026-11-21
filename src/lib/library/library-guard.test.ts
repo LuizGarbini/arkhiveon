@@ -2,19 +2,27 @@ import { describe, expect, it } from "vitest";
 import {
 	buildLibraryKey,
 	buildPendingLibraryKey,
+	buildPendingThumbKey,
+	buildThumbKey,
 	canManageLibrary,
 	canReadLibrary,
 	canRunLibraryAction,
 	checkUploadedObject,
 	hasPdfMagic,
+	hasWebpMagic,
 	isLibraryAction,
 	isStalePending,
 	LIBRARY_MAX_BYTES,
 	LIBRARY_READ_TTL_SECONDS,
+	LIBRARY_THUMB_MAX_BYTES,
+	LIBRARY_THUMB_READ_MAX_IDS,
+	type LibraryAction,
 	parseAllowedOrigins,
+	parseThumbReadRequest,
 	resolveCorsOrigin,
 	resolveReadTtl,
 	validateLibraryTitle,
+	validateThumbSize,
 	validateUploadRequest,
 } from "../../../supabase/functions/_shared/library-guard";
 
@@ -172,5 +180,115 @@ describe("library-guard", () => {
 		expect(validateLibraryTitle("a".repeat(201)).ok).toBe(false);
 		// Conta caractere (como o char_length do banco), não unidade UTF-16.
 		expect(validateLibraryTitle("🐉".repeat(200)).ok).toBe(true);
+	});
+
+	it("magic WebP: RIFF nos bytes 0–3 e WEBP nos bytes 8–11", () => {
+		const webp = new Uint8Array(16);
+		webp.set(new TextEncoder().encode("RIFF"), 0);
+		webp.set(new TextEncoder().encode("WEBP"), 8);
+		expect(hasWebpMagic(webp)).toBe(true);
+
+		const wave = new Uint8Array(12);
+		wave.set(new TextEncoder().encode("RIFF"), 0);
+		wave.set(new TextEncoder().encode("WAVE"), 8);
+		expect(hasWebpMagic(wave)).toBe(false);
+		expect(hasWebpMagic(webp.slice(0, 11))).toBe(false);
+		expect(hasWebpMagic(new Uint8Array())).toBe(false);
+		expect(hasWebpMagic(new TextEncoder().encode("WEBP"))).toBe(false);
+	});
+
+	it("capa: tamanho 0 recusa, 150 KB aceita, 150 KB + 1 recusa", () => {
+		expect(LIBRARY_THUMB_MAX_BYTES).toBe(153600);
+		expect(validateThumbSize(0)).toMatchObject({ ok: false, status: 400 });
+		expect(validateThumbSize(-1)).toMatchObject({ ok: false, status: 400 });
+		expect(validateThumbSize(1.5)).toMatchObject({ ok: false, status: 400 });
+		expect(validateThumbSize("153600")).toMatchObject({
+			ok: false,
+			status: 400,
+		});
+		expect(validateThumbSize(1)).toEqual({ ok: true, size: 1 });
+		expect(validateThumbSize(LIBRARY_THUMB_MAX_BYTES)).toEqual({
+			ok: true,
+			size: 153600,
+		});
+		expect(validateThumbSize(LIBRARY_THUMB_MAX_BYTES + 1)).toMatchObject({
+			ok: false,
+			status: 413,
+		});
+	});
+
+	it("chaves da capa ficam ao lado do PDF, final e pending", () => {
+		const campaign = "20000000-0000-4000-8000-0000000000a1";
+		const file = "30000000-0000-4000-8000-0000000000a1";
+		expect(buildThumbKey(campaign, file)).toBe(
+			`library/${campaign}/${file}.thumb.webp`,
+		);
+		expect(buildPendingThumbKey(campaign, file)).toBe(
+			`pending/${campaign}/${file}.thumb.webp`,
+		);
+		expect(buildThumbKey(campaign, file)).not.toBe(
+			buildLibraryKey(campaign, file),
+		);
+		expect(buildPendingThumbKey(campaign, file)).not.toBe(
+			buildPendingLibraryKey(campaign, file),
+		);
+	});
+
+	it("papéis × ações da capa: mestre e editor gerenciam, jogador só lê", () => {
+		const writes = [
+			"request-thumb-upload",
+			"confirm-thumb",
+			"report-thumb-failed",
+		] as const;
+		for (const action of writes) {
+			expect(isLibraryAction(action)).toBe(true);
+			expect(canRunLibraryAction(action, "owner")).toBe(true);
+			expect(canRunLibraryAction(action, "editor")).toBe(true);
+			expect(canRunLibraryAction(action, "viewer")).toBe(false);
+			expect(canRunLibraryAction(action, null)).toBe(false);
+		}
+		expect(isLibraryAction("request-thumb-reads")).toBe(true);
+		expect(canRunLibraryAction("request-thumb-reads", "owner")).toBe(true);
+		expect(canRunLibraryAction("request-thumb-reads", "editor")).toBe(true);
+		expect(canRunLibraryAction("request-thumb-reads", "viewer")).toBe(true);
+		expect(canRunLibraryAction("request-thumb-reads", null)).toBe(false);
+
+		const all: LibraryAction[] = [
+			"request-upload",
+			"confirm-upload",
+			"request-read",
+			"delete",
+			"rename",
+			...writes,
+			"request-thumb-reads",
+		];
+		for (const action of all) {
+			expect(canRunLibraryAction(action, null)).toBe(false);
+		}
+	});
+
+	it("request-thumb-reads: no máximo 60 ids, dedup, uuid", () => {
+		const campaign = "20000000-0000-4000-8000-0000000000a1";
+		const file = "30000000-0000-4000-8000-0000000000a1";
+		const ids = Array.from(
+			{ length: LIBRARY_THUMB_READ_MAX_IDS + 1 },
+			(_, index) =>
+				`30000000-0000-4000-8000-${(index + 1).toString(16).padStart(12, "0")}`,
+		);
+		expect(
+			parseThumbReadRequest({ campaignId: campaign, fileIds: ids }),
+		).toMatchObject({ ok: false, status: 400 });
+		expect(
+			parseThumbReadRequest({ campaignId: campaign, fileIds: [] }),
+		).toMatchObject({ ok: false, status: 400 });
+		expect(
+			parseThumbReadRequest({ campaignId: campaign, fileIds: ["nao-uuid"] }),
+		).toMatchObject({ ok: false, status: 400 });
+		expect(
+			parseThumbReadRequest({
+				campaignId: campaign,
+				fileIds: [file, file.toUpperCase()],
+			}),
+		).toEqual({ ok: true, campaignId: campaign, fileIds: [file] });
 	});
 });
