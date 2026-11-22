@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.172-vtt-molde-sobre-molde",
+		version: "1.6.172",
+		date: "22/11/2026",
+		title: "Molde de magia por cima de outro molde",
+		description:
+			"Com a ferramenta de moldes, o clique cria um molde novo mesmo em cima de outro, seja do mestre, de um jogador ou o seu. Para selecionar um molde que já está na mesa, use Shift+clique.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.171-vtt-copiar-colar-token",
 		version: "1.6.171",
 		date: "22/11/2026",
