@@ -68,6 +68,7 @@ import { useNotesStore } from "@/lib/vtt/notes-store";
 import { flushAllNotes, loadNotes } from "@/lib/vtt/notes-sync";
 import {
 	canControlVTTToken,
+	canPlaceTokenAsPlayer,
 	tableRole,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
@@ -114,7 +115,10 @@ import { remoteTokenPatch, tokenPatchIsNoop } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
+	placeTokenViaRpc,
+	playerPlaceArgs,
 	requirePlaceContext,
+	TOKEN_PLACE_FAILED,
 } from "@/lib/vtt/token-spawn";
 import {
 	createTokenWriteQueue,
@@ -1821,6 +1825,23 @@ function VTTSession() {
 		tokenData: Partial<VTTToken>,
 	): Promise<string | null> => {
 		const sessionGeneration = sessionGenerationRef.current;
+		// Jogador: só pela RPC da 0081 (cena publicada, ficha/NPC que ele lê;
+		// nome e imagem saem do servidor).
+		const playerScene = scenes.find((s) => s.id === activeSceneId);
+		if (
+			!canManageTokens &&
+			canPlaceTokenAsPlayer(playerScene, activeCampaign?.myRole)
+		) {
+			const client = getSupabase();
+			if (!client || !activeSceneId) throw new Error(TOKEN_PLACE_FAILED);
+			const row = await placeTokenViaRpc(
+				(args) => client.rpc("vtt_place_token", args),
+				playerPlaceArgs(activeSceneId, tokenData),
+			);
+			if (sessionGenerationRef.current !== sessionGeneration) return null;
+			addToken(mapTokenRow(row));
+			return row.id;
+		}
 		const { client, sceneId } = requirePlaceContext({
 			client: getSupabase(),
 			sceneId: activeSceneId,
