@@ -24,6 +24,7 @@ const storage = vi.hoisted(() => ({
 
 vi.mock("@/lib/storage/use-storage-context", () => ({
 	useStorageContext: () => storage.context,
+	useRetryStorage: () => () => {},
 }));
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({

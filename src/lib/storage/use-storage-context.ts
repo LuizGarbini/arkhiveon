@@ -106,3 +106,9 @@ export function useStorageContext(): StorageContext {
 		payerName: null,
 	};
 }
+
+/** Refaz a leitura do plano/cota no clique (sem useEffect). */
+export function useRetryStorage(): () => void {
+	const { reloadPlan } = useAuth();
+	return reloadPlan;
+}

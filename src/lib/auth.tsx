@@ -2,6 +2,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import {
 	createContext,
 	type ReactNode,
+	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
@@ -33,6 +34,8 @@ interface AuthContextValue {
 	planLoading: boolean;
 	/** "error": o plano real não chegou; a UI mostra "—", nunca "Free". */
 	planStatus: PlanStatus;
+	/** Refaz a leitura de user_plans. Chamado no clique, sem useEffect. */
+	reloadPlan: () => void;
 	signIn: (email: string, password: string) => Promise<string | null>;
 	signUp: (
 		name: string,
@@ -67,6 +70,7 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	isPro: false,
 	planLoading: false,
 	planStatus: "ready",
+	reloadPlan: () => {},
 	signIn: async () => "Supabase não está configurado.",
 	signUp: async () => "Supabase não está configurado.",
 	signOut: async () => null,
@@ -211,6 +215,13 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	}, [supabase]);
 
 	useEffect(() => {
+		const isLocalPreview =
+			typeof window !== "undefined" &&
+			(window.location.hostname === "localhost" ||
+				window.location.hostname === "127.0.0.1") &&
+			window.localStorage.getItem("arkhiveon_preview_auth") === "true";
+		if (isLocalPreview) return;
+
 		const userId = session?.user.id;
 		if (!supabase || !userId) {
 			setPlanState({
@@ -288,6 +299,20 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			? "loading"
 			: planState.status;
 
+	const reloadPlan = useCallback(() => {
+		const userId = session?.user.id;
+		if (!supabase || !userId) return;
+		setPlanState((prev) => ({ ...prev, userId, status: "loading" }));
+		void loadCurrentUserPlan(userId)
+			.then((nextPlanData) => {
+				setPlanState({ userId, status: "ready", ...nextPlanData });
+				useRPGStore.getState().setUserPlan(nextPlanData.plan);
+			})
+			.catch(() => {
+				setPlanState((prev) => ({ ...prev, userId, status: "error" }));
+			});
+	}, [session?.user.id, supabase]);
+
 	const value = useMemo<AuthContextValue>(
 		() => ({
 			user: session?.user ?? null,
@@ -299,6 +324,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			isPro: planState.plan === "pro",
 			planLoading: planStatus === "loading",
 			planStatus,
+			reloadPlan,
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = false;
@@ -350,7 +376,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				return error?.message ?? null;
 			},
 		}),
-		[loading, planState, planStatus, session, supabase],
+		[loading, planState, planStatus, reloadPlan, session, supabase],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

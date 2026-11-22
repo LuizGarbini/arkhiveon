@@ -59,6 +59,17 @@ describe("StorageCard", () => {
 		expect(screen.queryByText(/0 MB/)).toBeNull();
 	});
 
+	it("erro: Tentar de novo refaz a leitura no clique", () => {
+		const onRetry = vi.fn();
+		render(
+			<StorageCard context={ready({ status: "error" })} onRetry={onRetry} />,
+		);
+		const button = screen.getByRole("button", { name: "Tentar de novo" });
+		expect(button).toBeTruthy();
+		button.click();
+		expect(onRetry).toHaveBeenCalledTimes(1);
+	});
+
 	it("Free pronto mostra o uso e o limite de 100 MB", () => {
 		render(<StorageCard context={ready()} />);
 		expect(screen.getByText("Free")).toBeTruthy();

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Crown, Sparkles, TriangleAlert, UsersRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	isUsageBad,
@@ -72,33 +73,58 @@ function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
 	);
 }
 
-function ErrorCard({ isCollapsed }: { isCollapsed: boolean }) {
+function ErrorCard({
+	isCollapsed,
+	onRetry,
+	onNavigate,
+}: {
+	isCollapsed: boolean;
+	onRetry?: () => void;
+	onNavigate?: () => void;
+}) {
 	if (isCollapsed) {
 		return (
-			<Link
-				to="/consumo"
-				className={cn(rowBase, "justify-center px-0")}
-				aria-label="Consumo indisponível. Abrir consumo para tentar de novo."
-				data-card
-			>
-				<TriangleAlert aria-hidden className="size-3.5 text-muted-foreground" />
-			</Link>
+			<div className={cn(rowBase, "justify-center px-0")} data-card>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-touch"
+					aria-label="Consumo indisponível. Tentar de novo."
+					onClick={onRetry}
+				>
+					<TriangleAlert
+						aria-hidden
+						className="size-3.5 text-muted-foreground"
+					/>
+				</Button>
+			</div>
 		);
 	}
 	return (
-		<Link
-			to="/consumo"
-			className={rowBase}
-			aria-label="Consumo indisponível. Abrir consumo para tentar de novo."
+		<div
+			className={cn(
+				rowBase,
+				"h-auto min-h-[44px] flex-col items-stretch justify-center gap-1.5 py-2",
+			)}
 			data-card
 		>
-			<span className="text-[12px] font-semibold text-muted-foreground">
-				Consumo
-			</span>
-			<span className="ml-auto text-[12px] text-muted-foreground" aria-hidden>
-				indisponível
-			</span>
-		</Link>
+			<Link
+				to="/consumo"
+				onClick={onNavigate}
+				className="flex min-h-[44px] items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+				aria-label="Consumo indisponível. Abrir consumo."
+			>
+				<span className="text-[12px] font-semibold text-muted-foreground">
+					Consumo
+				</span>
+				<span className="ml-auto text-[12px] text-muted-foreground">
+					indisponível
+				</span>
+			</Link>
+			<Button type="button" variant="outline" size="touch" onClick={onRetry}>
+				Tentar de novo
+			</Button>
+		</div>
 	);
 }
 
@@ -106,18 +132,26 @@ interface StorageCardProps {
 	context: StorageContext;
 	isCollapsed?: boolean;
 	onNavigate?: () => void;
+	onRetry?: () => void;
 }
 
 export function StorageCard({
 	context,
 	isCollapsed = false,
 	onNavigate,
+	onRetry,
 }: StorageCardProps) {
 	if (context.status === "loading") {
 		return <LoadingCard isCollapsed={isCollapsed} />;
 	}
 	if (context.status === "error") {
-		return <ErrorCard isCollapsed={isCollapsed} />;
+		return (
+			<ErrorCard
+				isCollapsed={isCollapsed}
+				onRetry={onRetry}
+				onNavigate={onNavigate}
+			/>
+		);
 	}
 
 	const level = usageLevel(context);

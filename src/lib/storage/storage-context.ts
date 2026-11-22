@@ -61,6 +61,14 @@ export function shortUsage(
 	return `${formatStorageBytes(ctx.usedBytes, "MB").replace(" MB", "")} / 100 MB`;
 }
 
+/** Texto longo do total, para /consumo: "38,4 MB de 100 MB". */
+export function usageOfLimit(
+	ctx: Pick<StorageContext, "usedBytes" | "limitBytes">,
+): string {
+	const unit = ctx.limitBytes >= GB ? "GB" : "MB";
+	return `${formatStorageBytes(ctx.usedBytes, unit)} de ${limitLabel(ctx.limitBytes)}`;
+}
+
 export function usagePercent(usedBytes: number, limitBytes: number): number {
 	if (limitBytes <= 0) return 0;
 	return Math.round((usedBytes / limitBytes) * 100);

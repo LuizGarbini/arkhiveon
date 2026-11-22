@@ -89,6 +89,42 @@ const STATES = {
 		overLimitSince: null,
 		payerName: null,
 	},
+	p80: {
+		status: "ready",
+		label: "free",
+		usedBytes: 81_000_000,
+		limitBytes: FREE,
+		usedPdfs: null,
+		usedImages: null,
+		overLimitSince: null,
+		payerName: null,
+	},
+	guest_near: {
+		status: "ready",
+		label: "guest_pro",
+		usedBytes: 9_600_000_000,
+		limitBytes: PRO,
+		usedPdfs: null,
+		usedImages: null,
+		overLimitSince: null,
+		payerName: "Mestre Ana",
+	},
+	guest_limit: {
+		status: "ready",
+		label: "guest_pro",
+		usedBytes: 10_000_000_000,
+		limitBytes: PRO,
+		usedPdfs: null,
+		usedImages: null,
+		overLimitSince: null,
+		payerName: "Mestre Ana",
+	},
+};
+
+const CARD_LAYOUTS = {
+	p80: ["1440", "390"],
+	guest_near: ["1440", "390"],
+	guest_limit: ["1440", "390"],
 };
 
 const LAYOUTS = [
@@ -103,7 +139,7 @@ function redact(value) {
 		.slice(0, 240);
 }
 
-async function setupContext(context, { storage, collapsed }) {
+async function setupContext(context, { storage, collapsed, recordsCount = 7 }) {
 	await context.routeWebSocket("**/realtime/v1/**", (route) => route.close());
 	await context.route("**/rest/v1/**", (route) =>
 		route.fulfill({
@@ -120,7 +156,7 @@ async function setupContext(context, { storage, collapsed }) {
 		}),
 	);
 	await context.addInitScript(
-		({ storage: previewStorage, collapsed: isCollapsed }) => {
+		({ storage: previewStorage, collapsed: isCollapsed, recordsCount: count }) => {
 			localStorage.setItem("arkhiveon_preview_auth", "true");
 			localStorage.setItem(
 				"arkhiveon_preview_storage",
@@ -149,12 +185,17 @@ async function setupContext(context, { storage, collapsed }) {
 						hasLoadedCampaigns: true,
 						campaignLoadStatus: "ready",
 						activeCampaignId: "demo-tabletop",
+						globalRecordsCount: count,
+						isLoadingRemote: false,
+						isRetryingBase: false,
+						remoteLoadError: null,
+						baseLoadError: null,
 					},
 					version: 0,
 				}),
 			);
 		},
-		{ storage, collapsed },
+		{ storage, collapsed, recordsCount },
 	);
 }
 
@@ -265,10 +306,36 @@ async function clipOf(page, selector, pad = 8) {
 
 	try {
 		for (const [stateName, storage] of Object.entries(STATES)) {
-			for (const layout of LAYOUTS) {
+			const allowed = CARD_LAYOUTS[stateName];
+			const layouts = allowed ? LAYOUTS.filter((l) => allowed.includes(l.id)) : LAYOUTS;
+			for (const layout of layouts) {
 				const key = `${stateName}-${layout.id}`;
 				const { context, page, errors } = await openPage(browser, layout, stateName, storage);
 				const measures = await measure(page);
+				if (stateName === "error" && !layout.collapsed) {
+					const retry = page.getByRole("button", { name: "Tentar de novo" });
+					const retryCount = await retry.count();
+					if (!retryCount) {
+						report.falhas.push(`${key}: sem botão Tentar de novo`);
+					} else {
+						const box = await retry.evaluate((el) => {
+							const r = el.getBoundingClientRect();
+							return {
+								w: Math.round(r.width * 10) / 10,
+								h: Math.round(r.height * 10) / 10,
+								scrollWidth: el.scrollWidth,
+								clientWidth: el.clientWidth,
+							};
+						});
+						measures.retryButton = box;
+						if (box.h < 43.5 || box.w < 43.5) {
+							report.falhas.push(`${key}: botão abaixo de 44px (${box.w}×${box.h})`);
+						}
+						if (box.scrollWidth > box.clientWidth + 1) {
+							report.falhas.push(`${key}: overflow no botão Tentar de novo`);
+						}
+					}
+				}
 				const cardClip = await clipOf(page, "[data-card]", 10);
 				const asideClip = await clipOf(page, "aside", 0);
 				const cardPath = path.join(OUTPUT, `u1-card-${key}.png`);
@@ -301,6 +368,100 @@ async function clipOf(page, selector, pad = 8) {
 				await context.close();
 			}
 		}
+
+		const consumoPages = [
+			{
+				id: "free",
+				storage: STATES.free,
+				recordsCount: 7,
+				expect: ["7 / 20", "38,4 MB de 100 MB"],
+			},
+			{
+				id: "pro",
+				storage: STATES.pro,
+				recordsCount: 42,
+				expect: ["sem limite", "1,3 GB de 10 GB"],
+			},
+		];
+		const consumoLayouts = LAYOUTS.filter((l) => l.id === "1440" || l.id === "390");
+		for (const pageState of consumoPages) {
+			for (const layout of consumoLayouts) {
+				const key = `consumo-${pageState.id}-${layout.id}`;
+				const context = await browser.newContext({
+					viewport: layout.viewport,
+					deviceScaleFactor: 2,
+					isMobile: layout.mobile,
+					hasTouch: layout.mobile,
+					reducedMotion: "reduce",
+				});
+				await setupContext(context, {
+					storage: pageState.storage,
+					collapsed: false,
+					recordsCount: pageState.recordsCount,
+				});
+				const page = await context.newPage();
+				const errors = [];
+				page.on("pageerror", (error) => errors.push(redact(error.message)));
+				await page.goto(`${BASE}/consumo`, {
+					waitUntil: "domcontentloaded",
+					timeout: 90_000,
+				});
+				await page.getByRole("heading", { name: "Consumo" }).waitFor({
+					state: "visible",
+					timeout: 30_000,
+				});
+				await page.evaluate((count) => {
+					const store = window.__rpg_store__;
+					if (store) {
+						store.setState({
+							globalRecordsCount: count,
+							isLoadingRemote: false,
+							hasLoadedCampaigns: true,
+							campaignLoadStatus: "ready",
+							remoteLoadError: null,
+							baseLoadError: null,
+							isRetryingBase: false,
+							activeCampaignId: "demo-tabletop",
+							remoteLoadedCampaignId: "demo-tabletop",
+						});
+					}
+				}, pageState.recordsCount);
+				await page.evaluate(() => document.fonts.ready);
+				await page.waitForTimeout(400);
+				for (const text of pageState.expect) {
+					const found = await page.getByText(text, { exact: true }).count();
+					if (!found) report.falhas.push(`${key}: faltou o texto "${text}"`);
+				}
+				const pageOverflow = await page.evaluate(() => {
+					const main = document.querySelector("main");
+					return {
+						document: document.documentElement.scrollWidth > innerWidth + 1,
+						main: main ? main.scrollWidth > main.clientWidth + 1 : null,
+						blur: [...document.querySelectorAll("main *")].some((el) => {
+							const s = getComputedStyle(el);
+							return (s.backdropFilter && s.backdropFilter !== "none") || /blur/.test(s.filter);
+						}),
+						nativeSelect: [...document.querySelectorAll("main select")].length,
+						text: (document.querySelector("main")?.textContent || "")
+							.replace(/\s+/g, " ")
+							.trim()
+							.slice(0, 200),
+					};
+				});
+				if (pageOverflow.document || pageOverflow.main) {
+					report.falhas.push(`${key}: overflow horizontal`);
+				}
+				if (pageOverflow.blur) report.falhas.push(`${key}: blur na /consumo`);
+				if (pageOverflow.nativeSelect) report.falhas.push(`${key}: select nativo`);
+				if (errors.length) report.falhas.push(`${key}: pageerror ${errors[0]}`);
+				const mainClip = await clipOf(page, "main", 0);
+				const pathName = path.join(OUTPUT, `u1-consumo-${pageState.id}-${layout.id}.png`);
+				if (mainClip) await page.screenshot({ path: pathName, clip: mainClip });
+				else await page.screenshot({ path: pathName, fullPage: true });
+				report.resultados.push({ key, measures: pageOverflow, errors });
+				await context.close();
+			}
+		}
 	} finally {
 		await browser.close();
 	}
@@ -318,7 +479,7 @@ Outros desvios da V2 r2:
 - \`/consumo\` existe como página provisória (o detalhe é a U2).
 - A sidebar recolhida (72px) só aparece no preview local (\`arkhiveon_preview_sidebar=collapsed\`); no app a barra permanece aberta no desktop.
 
-Prova de overflow em \`overflow.json\`: \`scrollWidth <= clientWidth\` em carregando, Free, Pro, perto do limite, no limite, acima (Convidado Pro) e erro; em 1440, 390 e recolhida.
+Prova de overflow em \`overflow.json\`: \`scrollWidth <= clientWidth\` em carregando, Free, Pro, 80% (81%), 96%, Cheio, Convidado Pro (96%, Cheio e acima) e erro com o botão Tentar de novo; em 1440, 390 e recolhida (os estados novos, em 1440 e 390). \`/consumo\` mostra Registros (Free n/20, Pro sem limite) e o total de uso.
 `,
 	);
 

@@ -17,7 +17,10 @@ import {
 } from "lucide-react";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
-import { useStorageContext } from "@/lib/storage/use-storage-context";
+import {
+	useRetryStorage,
+	useStorageContext,
+} from "@/lib/storage/use-storage-context";
 import { useRPGStore } from "@/lib/store";
 import { getFactionsTabConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
@@ -45,6 +48,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
 	const storage = useStorageContext();
+	const retryStorage = useRetryStorage();
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaigns = useRPGStore((s) => s.campaigns);
@@ -155,6 +159,7 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 						context={storage}
 						isCollapsed={isCollapsed}
 						onNavigate={onItemClick}
+						onRetry={retryStorage}
 					/>
 				</div>
 			</div>
