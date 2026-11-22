@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.168-vtt-parede-luz-ao-vivo",
+		version: "1.6.168",
+		date: "22/11/2026",
+		title: "Parede e área de luz somem na hora para todo mundo",
+		description:
+			"Quando o mestre apaga uma parede ou uma área de luz, a mesa dos outros atualiza na hora. Antes, elas continuavam na tela até recarregar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.167-ficha-cabecalho-celular",
 		version: "1.6.167",
 		date: "21/11/2026",

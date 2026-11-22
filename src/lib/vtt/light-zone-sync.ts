@@ -82,6 +82,107 @@ export async function loadLightZones(
 	now.setLightZonesStatus("ready");
 }
 
+/** Só o `id` de um DELETE do Realtime. O resto do payload não é lido. */
+function realtimeDeleteId(old: unknown): string | null {
+	if (!old || typeof old !== "object" || !("id" in old)) return null;
+	const id = (old as { id: unknown }).id;
+	return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
+ * Tira a área `id` só se ela já está na cena atual.
+ * Id ausente, desconhecido ou de outra cena devolve a mesma lista.
+ */
+export function lightZonesAfterRemoteDelete(
+	zones: readonly VTTLightZone[],
+	activeSceneId: string | null,
+	id: string | null,
+): readonly VTTLightZone[] {
+	if (!id || !activeSceneId) return zones;
+	if (!zones.some((zone) => zone.id === id && zone.sceneId === activeSceneId))
+		return zones;
+	return zones.filter(
+		(zone) => !(zone.id === id && zone.sceneId === activeSceneId),
+	);
+}
+
+/**
+ * Aplica o DELETE que o Realtime entregou (só o id). Não grava, não recarrega
+ * e não mexe na store se esse id não é uma área da cena atual.
+ */
+export function applyRemoteLightZoneDelete(id: string | null): boolean {
+	const state = useVTTStore.getState();
+	const next = lightZonesAfterRemoteDelete(
+		state.lightZones,
+		state.activeSceneId,
+		id,
+	);
+	if (next === state.lightZones || !id) return false;
+	useVTTStore.setState({
+		lightZones: [...next],
+		selectedLightZoneId:
+			state.selectedLightZoneId === id ? null : state.selectedLightZoneId,
+	});
+	return true;
+}
+
+/**
+ * Inscrição ao vivo das áreas de luz da cena. Mesma regra das paredes: o
+ * DELETE do Realtime não passa num filtro de coluna, então ele entra sem
+ * filtro e só remove um id que já está na cena aberta.
+ */
+export function subscribeLightZoneChanges(sceneId: string): () => void {
+	const client = getSupabase();
+	if (!client) return () => {};
+	let stopped = false;
+	let sawDrop = false;
+	const isCurrent = () =>
+		!stopped && useVTTStore.getState().activeSceneId === sceneId;
+	const channel = client
+		.channel(`vtt-light-zones-live:${sceneId}`)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "vtt_light_zones",
+				filter: `scene_id=eq.${sceneId}`,
+			},
+			(payload) => {
+				if (!isCurrent() || payload.eventType === "DELETE") return;
+				void loadLightZones(sceneId);
+			},
+		)
+		.on(
+			"postgres_changes",
+			{ event: "DELETE", schema: "public", table: "vtt_light_zones" },
+			(payload) => {
+				if (!isCurrent()) return;
+				applyRemoteLightZoneDelete(realtimeDeleteId(payload.old));
+			},
+		)
+		.subscribe((status) => {
+			if (stopped) return;
+			if (status === "SUBSCRIBED") {
+				if (!sawDrop) return;
+				sawDrop = false;
+				if (useVTTStore.getState().activeSceneId !== sceneId) return;
+				void loadLightZones(sceneId);
+				return;
+			}
+			if (
+				status === "CHANNEL_ERROR" ||
+				status === "TIMED_OUT" ||
+				status === "CLOSED"
+			)
+				sawDrop = true;
+		});
+	return () => {
+		stopped = true;
+		void client.removeChannel(channel);
+	};
+}
+
 const fail = (title: string) =>
 	showToast("error", {
 		title,

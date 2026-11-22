@@ -62,7 +62,10 @@ import {
 	readExploredCells,
 	readExploredReset,
 } from "@/lib/vtt/explored-sync";
-import { loadLightZones } from "@/lib/vtt/light-zone-sync";
+import {
+	loadLightZones,
+	subscribeLightZoneChanges,
+} from "@/lib/vtt/light-zone-sync";
 import { useMoveStore } from "@/lib/vtt/move-store";
 import { subscribeMoves } from "@/lib/vtt/move-sync";
 import { useNotesStore } from "@/lib/vtt/notes-store";
@@ -126,7 +129,7 @@ import type {
 } from "@/lib/vtt/types";
 import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
-import { loadWalls } from "@/lib/vtt/wall-sync";
+import { loadWalls, subscribeWallChanges } from "@/lib/vtt/wall-sync";
 
 function readCampaignCharacters() {
 	if (typeof useRPGStore.getState !== "function") return [];
@@ -787,70 +790,20 @@ function VTTSession() {
 		};
 	}, [activeSceneId, addToken, updateToken, removeToken, setFogState]);
 
-	// 5b. Realtime subscription on vtt_walls for live wall changes
+	// 5b. Paredes ao vivo. Este efeito só abre e fecha o canal (fonte externa):
+	// não deriva estado. INSERT/UPDATE seguem filtrados pela cena. DELETE não
+	// leva filtro de coluna — com a identidade padrão o Realtime manda só o id
+	// e descarta o evento filtrado. O tratamento está em subscribeWallChanges.
 	useEffect(() => {
-		const client = getSupabase();
-		if (!client || !activeSceneId) return;
-		let cancelled = false;
-
-		const channel = client
-			.channel(`vtt-walls-live:${activeSceneId}`)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "vtt_walls",
-					filter: `scene_id=eq.${activeSceneId}`,
-				},
-				() => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					void loadWalls(activeSceneId);
-				},
-			)
-			.subscribe();
-
-		return () => {
-			cancelled = true;
-			void client.removeChannel(channel);
-		};
+		if (!activeSceneId) return;
+		return subscribeWallChanges(activeSceneId);
 	}, [activeSceneId]);
 
-	// 5c. Realtime em vtt_light_zones: áreas de luz criadas, trocadas ou apagadas
+	// 5c. Áreas de luz ao vivo. Mesmo efeito de inscrição: DELETE sem filtro, e
+	// só some o id que já está na cena atual (subscribeLightZoneChanges).
 	useEffect(() => {
-		const client = getSupabase();
-		if (!client || !activeSceneId) return;
-		let cancelled = false;
-
-		const channel = client
-			.channel(`vtt-light-zones-live:${activeSceneId}`)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "vtt_light_zones",
-					filter: `scene_id=eq.${activeSceneId}`,
-				},
-				() => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					void loadLightZones(activeSceneId);
-				},
-			)
-			.subscribe();
-
-		return () => {
-			cancelled = true;
-			void client.removeChannel(channel);
-		};
+		if (!activeSceneId) return;
+		return subscribeLightZoneChanges(activeSceneId);
 	}, [activeSceneId]);
 
 	const templateRoleRef = useRef({
