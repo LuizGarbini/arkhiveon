@@ -1,0 +1,32 @@
+
+ RUN  v3.2.4 /workspace/arkhiveon/r8-work
+
+ ✓ src/lib/vtt/room-channel.test.ts > tópico, config e mensagens > mantém tópico e config de antes 2ms
+ ✓ src/lib/vtt/room-channel.test.ts > tópico, config e mensagens > nome na mesa: nome completo, e-mail, Aventureiro 0ms
+ ✓ src/lib/vtt/room-channel.test.ts > tópico, config e mensagens > presença com os mesmos campos 0ms
+ ✓ src/lib/vtt/room-channel.test.ts > tópico, config e mensagens > payloads enviados não mudaram 0ms
+ ✓ src/lib/vtt/room-channel.test.ts > roteamento de eventos > registra presença e depois os broadcasts, na ordem de antes 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > roteamento de eventos > ignora evento de outra cena e depois do cleanup 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > roteamento de eventos > aplica arraste, exploração e cursor 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > presença > sync publica a lista e leave limpa cursor e régua 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > presença > sync depois do cleanup não faz nada 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > relógio de quem mandou 10 min à frente: vale a chegada (#238) 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > jogador mandando 'Todos aqui' vira ping comum e não puxa câmera 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > 'Todos aqui' do dono leva a câmera; papel do payload não conta 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > 'Atenção' do co-mestre (membership) só puxa fora da tela 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > ping recusado pela fila não toca som 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > admissão de ping > payload inválido é ignorado 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > névoa > lista inteira substitui; caminho único soma 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > névoa > paths tem prioridade sobre path e cena errada é ignorada 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > moldes > molde colocado entra como remoto e limpa a prévia 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > moldes > remoção de jogador não apaga molde do mestre 1ms
+ ✓ src/lib/vtt/room-channel.test.ts > moldes > remoção do dono apaga o molde 0ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > canal da sala: tópico, config, handlers, presença e o que é enviado 42ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > canal da sala: efeito de cada evento recebido na store 30ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > troca de cena e saída: um subscribe por cena e o canal é removido 13ms
+
+ Test Files  2 passed (2)
+      Tests  23 passed (23)
+   Start at  03:38:09
+   Duration  1.68s (transform 805ms, setup 0ms, collect 1.31s, tests 103ms, environment 276ms, prepare 97ms)
+

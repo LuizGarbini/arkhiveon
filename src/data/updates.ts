@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.179-vtt-canal-sala-modulo",
+		version: "1.6.179",
+		date: "22/11/2026",
+		title: "Mesa virtual: canal da sala reorganizado por dentro",
+		description:
+			"O código que liga a mesa ao canal em tempo real (arraste, cursores, réguas, pings, névoa e moldes) saiu da tela da mesa para um módulo próprio, com testes. Nada muda no uso: os mesmos eventos chegam e saem do mesmo jeito.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.175-card-bonus-itens",
 		version: "1.6.175",
 		date: "22/11/2026",
