@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.174-vtt-dano-rapido",
-		version: "1.6.174",
+		id: "v1.6.176-vtt-dano-rapido",
+		version: "1.6.176",
 		date: "22/11/2026",
 		title: "Dano e cura rápidos na ficha da mesa",
 		description:
@@ -21,6 +21,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Moldes de magia: no celular ou no toque, selecione um molde pela ferramenta Selecionar ou tocando nele na lista.",
 			"Editar valores do PV (mestre): a ficha grava primeiro; se ela não salvar, o token não muda e o painel avisa o erro.",
 		],
+	},
+	{
+		id: "v1.6.175-card-bonus-itens",
+		version: "1.6.175",
+		date: "22/11/2026",
+		title: "Card do personagem com o bônus dos itens equipados",
+		description:
+			"A CA e a iniciativa do card de personagem, do grupo no painel da campanha e da matriz do grupo passam a somar os itens equipados (um anel de +5 na iniciativa, um broche de +2 na CA), com a mesma conta da ficha. Sem item que mexa no valor, aparece o que está salvo na ficha.",
+		bullets: [],
 	},
 	{
 		id: "v1.6.173-vtt-ping-relogio",

@@ -49,3 +49,54 @@ export function useCombatStats(
 		[character, byId],
 	);
 }
+
+/** CA, iniciativa e deslocamento que os cards e listas mostram (com os itens). */
+export interface CombatSummary {
+	armorClass: number;
+	initiative: number;
+	speed: number;
+}
+
+/**
+ * Mesma conta da ficha (`computeEffectiveStats`), só com os números que o card
+ * de personagem e as listas do grupo mostram. Sem item que mexa no valor, fica
+ * o que está salvo na ficha.
+ */
+export function effectiveCombatSummary(
+	character: Character,
+	itemsById: ReadonlyMap<string, Item>,
+): CombatSummary {
+	const stats = computeEffectiveStats(character, itemsById);
+	return {
+		armorClass: stats.ac.total,
+		initiative: stats.initiative.total,
+		speed: stats.speed.total,
+	};
+}
+
+/**
+ * Para o card de um personagem. A lista de personagens e o painel mostram só
+ * as fichas da campanha ativa (`loadRemoteState`), e os itens do store são os
+ * do mundo dela: a mesma fonte da ficha.
+ */
+export function useCombatSummary(
+	character: Character | undefined,
+): CombatSummary | null {
+	const { byId } = useCampaignItems();
+	return useMemo(
+		() => (character ? effectiveCombatSummary(character, byId) : null),
+		[character, byId],
+	);
+}
+
+/** Para listas do grupo: um resumo por id de personagem. */
+export function useCombatSummaries(
+	characters: readonly Character[],
+): ReadonlyMap<string, CombatSummary> {
+	const { byId } = useCampaignItems();
+	return useMemo(
+		() =>
+			new Map(characters.map((c) => [c.id, effectiveCombatSummary(c, byId)])),
+		[characters, byId],
+	);
+}

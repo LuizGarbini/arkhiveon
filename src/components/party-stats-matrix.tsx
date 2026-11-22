@@ -1,5 +1,6 @@
 import { Heart, Shield, Sparkles, UserCheck, Zap } from "lucide-react";
 import { useMemo } from "react";
+import { useCombatSummaries } from "@/components/character-sheet/use-linked-items";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { useAuth } from "@/lib/auth";
 import { canViewCharacter } from "@/lib/content-audience";
@@ -18,6 +19,8 @@ export function PartyStatsMatrix() {
 			),
 		[characters, session?.user.id, role],
 	);
+	// CA, iniciativa e deslocamento com os itens equipados, igual à ficha.
+	const combat = useCombatSummaries(party);
 
 	if (party.length === 0) {
 		return null;
@@ -143,21 +146,22 @@ export function PartyStatsMatrix() {
 									<td className="py-3 px-3 text-center">
 										<span className="inline-flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-display text-xs font-bold text-blue-400 tabular-nums">
 											<Shield className="h-3 w-3" />
-											{char.armorClass || 10}
+											{combat.get(char.id)?.armorClass || char.armorClass || 10}
 										</span>
 									</td>
 									<td className="py-3 px-3 text-center">
 										<span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-display text-xs font-bold text-amber-400 tabular-nums font-mono">
 											<Zap className="h-3 w-3" />
 											{formatModifier(
-												typeof char.initiative === "number"
-													? char.initiative
-													: 0,
+												combat.get(char.id)?.initiative ??
+													(typeof char.initiative === "number"
+														? char.initiative
+														: 0),
 											)}
 										</span>
 									</td>
 									<td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground tabular-nums">
-										{char.speed || 9}m
+										{combat.get(char.id)?.speed || char.speed || 9}m
 									</td>
 									<td className="py-3 px-4">
 										{char.tempBonusesList && char.tempBonusesList.length > 0 ? (

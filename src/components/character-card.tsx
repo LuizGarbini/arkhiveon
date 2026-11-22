@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Camera } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { CharacterImageDialog } from "@/components/character-image-dialog";
+import { useCombatSummary } from "@/components/character-sheet/use-linked-items";
 import { FramedImage } from "@/components/framed-image";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { useToast } from "@/components/ui/toast";
@@ -35,6 +36,8 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 	const navigate = useNavigate();
 	const toast = useToast();
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+	// CA e iniciativa com os itens equipados, igual à ficha.
+	const combat = useCombatSummary(character);
 	const isSystemMismatch = Boolean(
 		activeCampaign?.system &&
 			character &&
@@ -210,11 +213,13 @@ export function CharacterCard({ character, isLoading }: CharacterCardProps) {
 						<div className="grid grid-cols-3 gap-1.5 text-center">
 							{[
 								{
-									value: character.armorClass || 10,
+									value: combat?.armorClass || character.armorClass || 10,
 									label: "Defesa (CA)",
 								},
 								{
-									value: formatModifier(character.initiative),
+									value: formatModifier(
+										combat?.initiative ?? character.initiative,
+									),
 									label: "Iniciativa",
 								},
 								{
