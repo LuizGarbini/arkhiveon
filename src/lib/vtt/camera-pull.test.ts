@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cameraAt, cameraCenteredOn, easeOutCubic } from "./camera-pull";
+import {
+	CAMERA_PULL_MS,
+	cameraAt,
+	cameraCenteredOn,
+	easeOutCubic,
+	resolveCameraPull,
+	worldPointOnScreen,
+} from "./camera-pull";
 
 describe("cameraCenteredOn", () => {
 	it("põe o ponto do mapa no centro da tela", () => {
@@ -64,5 +71,77 @@ describe("cameraAt", () => {
 	it("o zoom não muda quando origem e destino têm o mesmo zoom", () => {
 		for (const t of [0, 0.25, 0.5, 0.9, 1])
 			expect(cameraAt(from, to, t).scale).toBe(1);
+	});
+});
+
+describe("worldPointOnScreen", () => {
+	const screen = { width: 1000, height: 800 };
+
+	it("o miolo e as bordas estão na tela", () => {
+		const viewport = { x: 0, y: 0, scale: 1 };
+		expect(worldPointOnScreen({ x: 10, y: 10 }, viewport, screen)).toBe(true);
+		expect(worldPointOnScreen({ x: 0, y: 0 }, viewport, screen)).toBe(true);
+		expect(worldPointOnScreen({ x: 1000, y: 800 }, viewport, screen)).toBe(
+			true,
+		);
+	});
+
+	it("fora do retângulo, ou sem tamanho, não está na tela", () => {
+		expect(
+			worldPointOnScreen({ x: 1000.1, y: 0 }, { x: 0, y: 0, scale: 1 }, screen),
+		).toBe(false);
+		expect(
+			worldPointOnScreen({ x: 10, y: 10 }, { x: -50, y: 0, scale: 1 }, screen),
+		).toBe(false);
+		expect(
+			worldPointOnScreen(
+				{ x: 10, y: 10 },
+				{ x: 0, y: 0, scale: 1 },
+				{
+					width: 0,
+					height: 800,
+				},
+			),
+		).toBe(false);
+	});
+});
+
+describe("resolveCameraPull", () => {
+	const from = { x: 0, y: 0, scale: 2 };
+	const world = { x: 100, y: 40 };
+	const screen = { width: 800, height: 600 };
+	const destination = { x: 200, y: 220, scale: 2 };
+
+	it("com menos movimento, a câmera já está no destino", () => {
+		expect(
+			resolveCameraPull({
+				from,
+				world,
+				screen,
+				elapsedMs: 0,
+				reducedMotion: true,
+			}),
+		).toEqual(destination);
+	});
+
+	it("sem menos movimento, começa onde estava e chega no fim do tempo", () => {
+		expect(
+			resolveCameraPull({
+				from,
+				world,
+				screen,
+				elapsedMs: 0,
+				reducedMotion: false,
+			}),
+		).toEqual(from);
+		expect(
+			resolveCameraPull({
+				from,
+				world,
+				screen,
+				elapsedMs: CAMERA_PULL_MS,
+				reducedMotion: false,
+			}),
+		).toEqual(destination);
 	});
 });

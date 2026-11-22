@@ -38,11 +38,7 @@ import type { Database, Json } from "@/lib/database.types";
 import { useRPGStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { playPingAudio } from "@/lib/vtt/audio";
-import {
-	CAMERA_PULL_MS,
-	cameraAt,
-	cameraCenteredOn,
-} from "@/lib/vtt/camera-pull";
+import { CAMERA_PULL_MS, resolveCameraPull } from "@/lib/vtt/camera-pull";
 import {
 	characterSheetOwnsHp,
 	saveLinkedCharacterHp,
@@ -79,6 +75,7 @@ import {
 	type PublishSceneRpc,
 	publishScene,
 } from "@/lib/vtt/persist-publication";
+import { prefersReducedMotion } from "@/lib/vtt/ping-motion";
 import { acceptIncomingPing } from "@/lib/vtt/ping-receive";
 import { readPresenceUsers, readRemoteCursor } from "@/lib/vtt/presence-input";
 import { useRollStore } from "@/lib/vtt/roll-store";
@@ -130,6 +127,23 @@ import type {
 import { initialSceneViewport } from "@/lib/vtt/viewport";
 import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls, subscribeWallChanges } from "@/lib/vtt/wall-sync";
+
+/** Retângulo visível do mapa. Sem medida, "Atenção" não puxa a câmera. */
+function readVttCanvasScreen(): { width: number; height: number } {
+	if (typeof document === "undefined") return { width: 0, height: 0 };
+	const el = document.querySelector("[data-vtt-canvas]");
+	if (!(el instanceof HTMLElement)) return { width: 0, height: 0 };
+	const rect = el.getBoundingClientRect();
+	return { width: rect.width, height: rect.height };
+}
+
+/** Onde centralizar o ponto: o canvas, se já tiver tamanho; senão a janela. */
+function readPullScreen(): { width: number; height: number } {
+	const canvas = readVttCanvasScreen();
+	if (canvas.width > 0 && canvas.height > 0) return canvas;
+	if (typeof window === "undefined") return { width: 0, height: 0 };
+	return { width: window.innerWidth, height: window.innerHeight };
+}
 
 function readCampaignCharacters() {
 	if (typeof useRPGStore.getState !== "function") return [];
@@ -821,32 +835,57 @@ function VTTSession() {
 		memberships: user?.id ? [{ userId: user.id, role: selfRole }] : [],
 	};
 
-	// "Todos aqui" do mestre: leva a câmera até o ponto com um movimento suave,
-	// mantendo o zoom de quem recebe, e avisa por que a tela andou.
+	// Ping do mestre que leva a câmera: "Todos aqui" sempre, "Atenção" só quando
+	// o ponto está fora da tela. O movimento nasce aqui, no ping recebido.
+	// Com menos movimento, a câmera pula. O zoom de quem recebe fica.
 	const cameraAnimationRef = useRef<number | null>(null);
 	const pullCameraRef = useRef<
-		((world: { x: number; y: number }) => void) | null
+		| ((world: { x: number; y: number }, notice: "focus" | "attention") => void)
+		| null
 	>(null);
-	pullCameraRef.current = (world) => {
+	pullCameraRef.current = (world, notice) => {
 		const from = useVTTStore.getState().viewport;
-		const to = cameraCenteredOn(world, from.scale, {
-			width: window.innerWidth,
-			height: window.innerHeight,
-		});
-		if (cameraAnimationRef.current !== null)
+		const screen = readPullScreen();
+		const reduced = prefersReducedMotion();
+		if (cameraAnimationRef.current !== null) {
 			cancelAnimationFrame(cameraAnimationRef.current);
-		const startedAt = performance.now();
-		const step = (now: number) => {
-			const t = (now - startedAt) / CAMERA_PULL_MS;
-			const camera = cameraAt(from, to, t);
-			useVTTStore.getState().setViewport(camera);
-			cameraAnimationRef.current = t < 1 ? requestAnimationFrame(step) : null;
+			cameraAnimationRef.current = null;
+		}
+		const apply = (elapsedMs: number) => {
+			useVTTStore.getState().setViewport(
+				resolveCameraPull({
+					from,
+					world,
+					screen,
+					elapsedMs,
+					reducedMotion: reduced,
+				}),
+			);
 		};
-		cameraAnimationRef.current = requestAnimationFrame(step);
-		showToast("info", {
-			title: "O mestre levou a câmera",
-			description: "Todos estão olhando para o mesmo ponto do mapa.",
-		});
+		if (reduced) {
+			apply(CAMERA_PULL_MS);
+		} else {
+			const startedAt = performance.now();
+			const step = (now: number) => {
+				const elapsed = now - startedAt;
+				apply(elapsed);
+				cameraAnimationRef.current =
+					elapsed < CAMERA_PULL_MS ? requestAnimationFrame(step) : null;
+			};
+			cameraAnimationRef.current = requestAnimationFrame(step);
+		}
+		showToast(
+			"info",
+			notice === "attention"
+				? {
+						title: "O mestre chamou atenção",
+						description: "A câmera foi até o ponto, que estava fora da tela.",
+					}
+				: {
+						title: "O mestre levou a câmera",
+						description: "Todos estão olhando para o mesmo ponto do mapa.",
+					},
+		);
 	};
 
 	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
@@ -1046,18 +1085,33 @@ function VTTSession() {
 						useVTTStore.getState().activeSceneId !== activeSceneId
 					)
 						return;
-					// Quem pode levar a câmera de todos é conferido aqui, no lado de quem
-					// recebe: jogador que manda "Todos aqui" à força vira ping comum.
-					const received = acceptIncomingPing(payload.payload, {
-						campaignOwnerId: templateRoleRef.current.ownerId,
-						memberships: templateRoleRef.current.memberships,
-						presence: useVTTStore.getState().onlineUsers,
-					});
+					// Quem pode levar a câmera é conferido aqui, no lado de quem recebe.
+					// "Atenção" só puxa se o ponto está fora do canvas agora.
+					// Jogador que manda "Todos aqui" à força vira ping comum.
+					const state = useVTTStore.getState();
+					const received = acceptIncomingPing(
+						payload.payload,
+						{
+							campaignOwnerId: templateRoleRef.current.ownerId,
+							memberships: templateRoleRef.current.memberships,
+							presence: state.onlineUsers,
+						},
+						{
+							viewport: state.viewport,
+							screen: readVttCanvasScreen(),
+							selfUserId: user.id,
+						},
+					);
 					if (!received) return;
 					const accepted = addPing(received.ping);
 					if (!accepted) return;
 					playPingAudio(Date.now(), accepted.kind);
-					if (received.pullTo) pullCameraRef.current?.(received.pullTo);
+					if (received.pullTo) {
+						pullCameraRef.current?.(
+							received.pullTo,
+							received.ping.kind === "focus" ? "focus" : "attention",
+						);
+					}
 				},
 			)
 			.on(
