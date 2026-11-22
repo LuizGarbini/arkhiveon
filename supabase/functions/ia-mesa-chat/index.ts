@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+import type { CoreItem } from "../_shared/combat-core.ts";
 import {
 	type CharacterRow,
 	rowItemIds,
@@ -71,6 +72,8 @@ serve(async (req) => {
 			characters: [] as { id: string; name: string; itemIds: string[] }[],
 		};
 		const rowsById = new Map<string, CharacterRow>();
+		// Itens equipados lidos uma vez no contexto (RLS de quem chama).
+		let itemsById = new Map<string, CoreItem>();
 		let askerId: string | null = null;
 		let contextRole: "gm" | "player" = "gm";
 		let chargedCampaignId: string | null = null;
@@ -129,6 +132,7 @@ serve(async (req) => {
 						clientContext: cleanClientContext(body?.clientContext),
 					});
 					rowsById.clear();
+					itemsById = loaded.itemsById;
 					scope.characters = [];
 					askerId = loaded.asker?.id ?? null;
 					if (loaded.rosterRows && loaded.rosterRows.length > 0) {
@@ -173,7 +177,7 @@ serve(async (req) => {
 						}
 					}
 					return row
-						? { character: summarizeCharacter(row) }
+						? { character: summarizeCharacter(row, itemsById) }
 						: { error: "Personagem não encontrado nesta campanha." };
 				},
 				canEditSheet: async (characterId) => {

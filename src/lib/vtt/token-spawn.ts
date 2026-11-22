@@ -5,6 +5,8 @@ export const TOKEN_PLACE_FAILED =
 	"Não foi possível colocar o token. Tente novamente.";
 export const TOKEN_PLACE_NEEDS_GM =
 	"É necessário estar conectado como mestre para colocar tokens.";
+export const TOKEN_PLACE_DENIED =
+	"Não deu para colocar: só fichas e NPCs que você vê, na cena publicada.";
 
 type TokenInsert = Database["public"]["Tables"]["vtt_tokens"]["Insert"];
 type TokenRow = Database["public"]["Tables"]["vtt_tokens"]["Row"];
@@ -95,4 +97,53 @@ export async function insertVttToken(
 		throw new Error(TOKEN_PLACE_FAILED);
 	}
 	return first.data;
+}
+
+/** Argumentos da RPC `vtt_place_token` (0081). Nome e imagem vêm do servidor. */
+export interface PlaceTokenArgs {
+	p_scene_id: string;
+	p_character_id: string | null;
+	p_npc_id: string | null;
+	p_x: number;
+	p_y: number;
+}
+
+export type PlaceTokenRpc = (
+	args: PlaceTokenArgs,
+) => PromiseLike<{ data: TokenRow | null; error: TokenInsertError | null }>;
+
+/**
+ * Jogador coloca token: só a origem (ficha OU NPC) e a posição vão ao
+ * servidor. Nome, imagem, camada, visibilidade e trava a RPC decide.
+ */
+export function playerPlaceArgs(
+	sceneId: string,
+	tokenData: Pick<Partial<VTTToken>, "characterId" | "npcId" | "x" | "y">,
+): PlaceTokenArgs {
+	const characterId = tokenData.characterId || null;
+	const npcId = tokenData.npcId || null;
+	if ((characterId === null) === (npcId === null)) {
+		throw new Error(TOKEN_PLACE_FAILED);
+	}
+	return {
+		p_scene_id: sceneId,
+		p_character_id: characterId,
+		p_npc_id: npcId,
+		p_x: Math.max(0, tokenData.x ?? 0),
+		p_y: Math.max(0, tokenData.y ?? 0),
+	};
+}
+
+export async function placeTokenViaRpc(
+	rpc: PlaceTokenRpc,
+	args: PlaceTokenArgs,
+): Promise<TokenRow> {
+	const { data, error } = await rpc(args);
+	if (error || !data) {
+		console.error("Erro ao colocar token:", error);
+		throw new Error(
+			error?.code === "42501" ? TOKEN_PLACE_DENIED : TOKEN_PLACE_FAILED,
+		);
+	}
+	return data;
 }

@@ -109,6 +109,9 @@ export const vttTokens = pgTable("vtt_tokens", {
 	isLocked: boolean("is_locked").notNull().default(false),
 	isHidden: boolean("is_hidden").notNull().default(false),
 	controlledBy: jsonb("controlled_by").notNull().default([]),
+	// 0081: quem colocou o token (default auth.uid(); FK auth.users on delete
+	// set null). O jogador coloca só pela RPC `vtt_place_token`.
+	placedBy: uuid("placed_by").default(sql`auth.uid()`),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.defaultNow(),

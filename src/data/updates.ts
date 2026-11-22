@@ -20,6 +20,24 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.178-ia-mesa-bonus-itens",
+		version: "1.6.178",
+		date: "22/11/2026",
+		title: "Assistente da mesa conhece a CA e a iniciativa com os itens",
+		description:
+			"Quando lê uma ficha, o assistente da mesa passa a saber a CA, a iniciativa e o deslocamento já com os itens equipados (um amuleto de +5 na iniciativa, um anel de +2 na CA), com a mesma conta da ficha. Item que você não pode ver não entra na conta.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.177-vtt-jogador-coloca-token",
+		version: "1.6.177",
+		date: "22/11/2026",
+		title: "Jogadores colocam fichas e NPCs na mesa",
+		description:
+			"Na Biblioteca da mesa, o jogador agora tem o botão Colocar nas fichas e na aba NPCs, na cena publicada pelo mestre. Ele só coloca o que já consegue ver: ficha privada e NPC secreto ficam de fora. O nome e a imagem do token vêm da ficha ou do NPC, e o token entra sempre visível, destravado e na camada de tokens. O jogador move e remove o que colocou enquanto o mestre não travar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.175-card-bonus-itens",
 		version: "1.6.175",
 		date: "22/11/2026",
