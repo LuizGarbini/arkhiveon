@@ -1761,9 +1761,10 @@ exports[`canal da sala: tópico, config, handlers, presença e o que é enviado 
       "presence": {
         "key": "mestre",
       },
+      "private": true,
     },
   },
-  "name": "vtt-room:campaign:scene-a",
+  "name": "vtt:campaign:scene-a:u:mestre",
   "on": [
     {
       "event": "sync",
@@ -1814,154 +1815,162 @@ exports[`canal da sala: tópico, config, handlers, presença e o que é enviado 
       "type": "broadcast",
     },
   ],
-  "roomChannels": 1,
-  "sent": [
-    {
-      "event": "token_drag",
-      "payload": {
-        "tokenId": "token",
-        "userId": "mestre",
-        "x": 10,
-        "y": 20,
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "token_drag_batch",
-      "payload": {
-        "moves": [
-          {
-            "tokenId": "token",
-            "x": 30,
-            "y": 40,
-          },
-        ],
-        "userId": "mestre",
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "cursor_move",
-      "payload": {
-        "color": "#db2777",
-        "userId": "mestre",
-        "userName": "Mestra Ana",
-        "x": 5,
-        "y": 6,
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "ruler_move",
-      "payload": {
-        "measurement": {
-          "color": "#db2777",
-          "distance": 1.5,
-          "endX": 70,
-          "endY": 0,
-          "startX": 0,
-          "startY": 0,
-          "unit": "m",
+  "roomChannels": 6,
+  "sentByTopic": {
+    "vtt:campaign:scene-a:gm": [
+      {
+        "event": "ping",
+        "payload": {
+          "color": "#a855f7",
+          "id": "p1",
+          "kind": "attention",
+          "timestamp": "<t>",
           "userId": "mestre",
           "userName": "Mestra Ana",
+          "x": 1,
+          "y": 2,
         },
-        "userId": "mestre",
+        "type": "broadcast",
       },
-      "type": "broadcast",
-    },
-    {
-      "event": "ruler_move",
-      "payload": {
-        "measurement": null,
-        "userId": "mestre",
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "ping",
-      "payload": {
-        "color": "#a855f7",
-        "id": "p1",
-        "kind": "attention",
-        "timestamp": "<t>",
-        "userId": "mestre",
-        "userName": "Mestra Ana",
-        "x": 1,
-        "y": 2,
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "fog_update",
-      "payload": {
-        "path": {
-          "height": 10,
-          "id": "f1",
-          "mode": "reveal",
-          "type": "rect",
-          "width": 10,
-          "x": 0,
-          "y": 0,
-        },
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "template_move",
-      "payload": {
-        "placed": true,
-        "sceneId": "scene-a",
-        "template": {
-          "color": "#fff",
-          "id": "t1",
-          "shape": "circle",
-          "size": 3,
-          "x": 0,
-          "y": 0,
-        },
-        "userId": "mestre",
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "template_move",
-      "payload": {
-        "placed": false,
-        "sceneId": "scene-a",
-        "template": null,
-        "userId": "mestre",
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "template_move",
-      "payload": {
-        "removedIds": [
-          "t1",
-        ],
-        "sceneId": "scene-a",
-        "userId": "mestre",
-      },
-      "type": "broadcast",
-    },
-    {
-      "event": "fog_update",
-      "payload": {
-        "paths": [
-          {
-            "height": 1000,
-            "id": "<id>",
+      {
+        "event": "fog_update",
+        "payload": {
+          "path": {
+            "height": 10,
+            "id": "f1",
             "mode": "reveal",
             "type": "rect",
-            "width": 1000,
+            "width": 10,
             "x": 0,
             "y": 0,
           },
-        ],
+        },
+        "type": "broadcast",
       },
-      "type": "broadcast",
-    },
-  ],
+      {
+        "event": "fog_update",
+        "payload": {
+          "paths": [
+            {
+              "height": 1000,
+              "id": "<id>",
+              "mode": "reveal",
+              "type": "rect",
+              "width": 1000,
+              "x": 0,
+              "y": 0,
+            },
+          ],
+        },
+        "type": "broadcast",
+      },
+    ],
+    "vtt:campaign:scene-a:gmonly": [],
+    "vtt:campaign:scene-a:u:bea": [],
+    "vtt:campaign:scene-a:u:lia": [],
+    "vtt:campaign:scene-a:u:mestre": [
+      {
+        "event": "token_drag",
+        "payload": {
+          "tokenId": "token",
+          "userId": "mestre",
+          "x": 10,
+          "y": 20,
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "token_drag_batch",
+        "payload": {
+          "moves": [
+            {
+              "tokenId": "token",
+              "x": 30,
+              "y": 40,
+            },
+          ],
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "cursor_move",
+        "payload": {
+          "color": "#db2777",
+          "userId": "mestre",
+          "userName": "Mestra Ana",
+          "x": 5,
+          "y": 6,
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "ruler_move",
+        "payload": {
+          "measurement": {
+            "color": "#db2777",
+            "distance": 1.5,
+            "endX": 70,
+            "endY": 0,
+            "startX": 0,
+            "startY": 0,
+            "unit": "m",
+            "userId": "mestre",
+            "userName": "Mestra Ana",
+          },
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "ruler_move",
+        "payload": {
+          "measurement": null,
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "template_move",
+        "payload": {
+          "placed": true,
+          "sceneId": "scene-a",
+          "template": {
+            "color": "#fff",
+            "id": "t1",
+            "shape": "circle",
+            "size": 3,
+            "x": 0,
+            "y": 0,
+          },
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "template_move",
+        "payload": {
+          "placed": false,
+          "sceneId": "scene-a",
+          "template": null,
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+      {
+        "event": "template_move",
+        "payload": {
+          "removedIds": [
+            "t1",
+          ],
+          "sceneId": "scene-a",
+          "userId": "mestre",
+        },
+        "type": "broadcast",
+      },
+    ],
+    "vtt:campaign:scene-a:u:rui": [],
+  },
   "subscribes": 1,
   "tracked": [
     {
@@ -1991,11 +2000,36 @@ exports[`canal da sala: tópico, config, handlers, presença e o que é enviado 
 exports[`troca de cena e saída: um subscribe por cena e o canal é removido 1`] = `
 {
   "removed": [
-    "vtt-room:campaign:scene-a",
+    "vtt:campaign:scene-a:u:mestre",
+    "vtt:campaign:scene-a:gm",
+    "vtt:campaign:scene-a:gmonly",
+    "vtt:campaign:scene-a:u:bea",
+    "vtt:campaign:scene-a:u:lia",
+    "vtt:campaign:scene-a:u:rui",
   ],
   "roomChannelsBefore": [
     [
-      "vtt-room:campaign:scene-a",
+      "vtt:campaign:scene-a:u:mestre",
+      1,
+    ],
+    [
+      "vtt:campaign:scene-a:gm",
+      1,
+    ],
+    [
+      "vtt:campaign:scene-a:gmonly",
+      1,
+    ],
+    [
+      "vtt:campaign:scene-a:u:bea",
+      1,
+    ],
+    [
+      "vtt:campaign:scene-a:u:lia",
+      1,
+    ],
+    [
+      "vtt:campaign:scene-a:u:rui",
       1,
     ],
   ],

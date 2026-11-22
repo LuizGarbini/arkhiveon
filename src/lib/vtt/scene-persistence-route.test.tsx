@@ -90,10 +90,16 @@ function row(id: string) {
 }
 vi.mock("@/lib/supabase", () => ({
 	getSupabase: () => ({
-		rpc: (_name: string, args: unknown) => ({
-			abortSignal: () =>
-				new Promise((resolve) => mock.rpc.push({ args, resolve })),
-		}),
+		realtime: { setAuth: async () => {} },
+		rpc: (_name: string, args: unknown) => {
+			if (_name === "get_campaign_members") {
+				return Promise.resolve({ data: [], error: null });
+			}
+			return {
+				abortSignal: () =>
+					new Promise((resolve) => mock.rpc.push({ args, resolve })),
+			};
+		},
 		from: (table: string) => {
 			let patch: Record<string, unknown> | null = null;
 			const filters: Record<string, string> = {};
@@ -134,8 +140,9 @@ vi.mock("@/lib/supabase", () => ({
 			};
 			return query;
 		},
-		channel: () => {
+		channel: (name?: string) => {
 			const channel = {
+				topic: name,
 				on: () => channel,
 				subscribe: () => channel,
 				track: vi.fn(),

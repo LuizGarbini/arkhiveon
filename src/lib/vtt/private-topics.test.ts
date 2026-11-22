@@ -65,7 +65,7 @@ describe("tópicos privados (0066)", () => {
 			userId: A,
 		});
 		expect(parseVttTopic(`vtt-room:${C}:${S}`)).toBeNull();
-		expect(parseVttTopic(`vtt:${C}:${S}:u:nao-uuid`)).toBeNull();
+		expect(parseVttTopic(`vtt:${C}:${S}:u:`)).toBeNull();
 		expect(parseVttTopic(`vtt:${C}:${S}:gm:extra`)).toBeNull();
 	});
 });

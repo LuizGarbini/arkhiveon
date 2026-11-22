@@ -12,14 +12,11 @@ import {
  * "Todos aqui" leva a câmera sempre, se quem mandou é mestre ou co-mestre.
  * "Atenção" do mestre ou do co-mestre leva só quando o ponto está fora da
  * tela de quem recebe. Os outros tipos, e qualquer ping de jogador, não movem
- * a câmera. O papel que vem escrito no evento nunca é lido: o dono da campanha
- * vence; membership conhecido vence a presença; sem os dois, a presença já
- * sincronizada; sem nada disso, é jogador. Um jogador que mande "Todos aqui"
+ * a câmera. O papel que vem escrito no evento nunca é lido. O remetente é o
+ * usuário do tópico (`u:<id>`); o papel sai só das memberships e do dono
+ * da campanha. A presença (`isGM`/`isCoGM`) é ignorada. Sem membership,
+ * quem mandou é tratado como jogador. Um jogador que mande "Todos aqui"
  * à força vira ping comum.
- *
- * A mesa não guarda a lista de membros da campanha (só o papel de quem está
- * nesta tela). O co-mestre de quem manda continua vindo da presença, que o
- * próprio cliente declara.
  *
  * O relógio de quem mandou não vale aqui: o ping chega com a hora da chegada
  * (`receivedAt`). Com a hora de outro computador, um relógio alguns segundos à

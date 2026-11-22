@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Caracterização do canal da sala (`vtt-room:*`) da rota da mesa.
- *
- * Escrito contra a main ANTES do refactor (R8 do plano 0066). Grava tudo o que
- * a rota faz no Realtime: nome e config do canal, quantos subscribes, os
- * handlers registrados, o que vai no `track`, cada `send` (evento + payload)
- * e o efeito de cada evento recebido na store. O snapshot é a prova de que o
- * refactor não muda tópico, eventos, payloads nem a regra de papel.
+ * Caracterização do canal da sala após o transporte privado (0066):
+ * tópicos `vtt:C:S:u:U` / `gm` / `gmonly`, `private: true`, `setAuth`.
  */
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { ComponentType } from "react";
@@ -30,6 +25,7 @@ const mock = vi.hoisted(() => ({
 		statusCallback: ((status: string) => unknown) | null;
 	}>,
 	removed: [] as string[],
+	setAuthCalls: 0,
 	byChannel: new WeakMap<object, { name: string }>(),
 	canvas: null as null | Record<string, unknown>,
 	fogControls: null as null | Record<string, unknown>,
@@ -140,7 +136,45 @@ const token: VTTToken = {
 
 vi.mock("@/lib/supabase", () => ({
 	getSupabase: () => ({
-		rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+		realtime: {
+			setAuth: async () => {
+				mock.setAuthCalls += 1;
+			},
+		},
+		rpc: vi.fn().mockImplementation(async (fn: string) => {
+			if (fn === "get_campaign_members") {
+				return {
+					data: [
+						{
+							membership_id: "m1",
+							user_id: "mestre",
+							email: "mestre@example.invalid",
+							role: "owner",
+						},
+						{
+							membership_id: "m2",
+							user_id: "lia",
+							email: "lia@example.invalid",
+							role: "viewer",
+						},
+						{
+							membership_id: "m3",
+							user_id: "rui",
+							email: "rui@example.invalid",
+							role: "viewer",
+						},
+						{
+							membership_id: "m4",
+							user_id: "bea",
+							email: "bea@example.invalid",
+							role: "viewer",
+						},
+					],
+					error: null,
+				};
+			}
+			return { data: null, error: null };
+		}),
 		from: (table: string) => {
 			const query = {
 				select: () => query,
@@ -178,6 +212,7 @@ vi.mock("@/lib/supabase", () => ({
 			};
 			mock.channels.push(record);
 			const channel = {
+				topic: name,
 				on: (type: string, filter: { event?: string }, callback: Handler) => {
 					record.on.push({ type, event: filter?.event });
 					record.handlers.set(`${type}:${filter?.event ?? ""}`, callback);
@@ -242,6 +277,7 @@ beforeEach(() => {
 	mock.role = "owner";
 	mock.channels = [];
 	mock.removed = [];
+	mock.setAuthCalls = 0;
 	mock.canvas = null;
 	mock.fogControls = null;
 	useVTTStore.setState(initialVtt, true);
@@ -253,9 +289,11 @@ afterEach(() => {
 });
 
 function room() {
-	const found = mock.channels.filter((c) => c.name.startsWith("vtt-room:"));
+	const found = mock.channels.filter(
+		(c) => c.name === "vtt:campaign:scene-a:u:mestre",
+	);
 	expect(found.length).toBeGreaterThan(0);
-	return found[found.length - 1];
+	return found[0];
 }
 
 /** Datas e ids gerados na hora viram marcadores estáveis. */
@@ -282,9 +320,7 @@ async function openTable() {
 		useVTTStore.getState().setTokens([token]);
 	});
 	await waitFor(() =>
-		expect(mock.channels.some((c) => c.name.startsWith("vtt-room:"))).toBe(
-			true,
-		),
+		expect(mock.channels.some((c) => c.name.startsWith("vtt:"))).toBe(true),
 	);
 	await act(async () => {
 		await room().statusCallback?.("SUBSCRIBED");
@@ -299,10 +335,24 @@ function call(name: string, ...args: unknown[]) {
 
 it("canal da sala: tópico, config, handlers, presença e o que é enviado", async () => {
 	await openTable();
-	const r = room();
-	const roomChannels = mock.channels.filter((c) =>
-		c.name.startsWith("vtt-room:"),
+	expect(mock.setAuthCalls).toBeGreaterThanOrEqual(1);
+	expect(
+		mock.channels
+			.filter((c) => c.name.startsWith("vtt:"))
+			.map((c) => c.name)
+			.sort(),
+	).toEqual(
+		[
+			"vtt:campaign:scene-a:gm",
+			"vtt:campaign:scene-a:gmonly",
+			"vtt:campaign:scene-a:u:bea",
+			"vtt:campaign:scene-a:u:lia",
+			"vtt:campaign:scene-a:u:mestre",
+			"vtt:campaign:scene-a:u:rui",
+		].sort(),
 	);
+	const r = room();
+	const roomChannels = mock.channels.filter((c) => c.name.startsWith("vtt:"));
 
 	await act(async () => {
 		call("onBroadcastDrag", "token", 10, 20);
@@ -360,15 +410,38 @@ it("canal da sala: tópico, config, handlers, presença e o que é enviado", asy
 			subscribes: r.subscribes,
 			on: r.on,
 			tracked: r.tracked,
-			sent: r.sent,
+			sentByTopic: Object.fromEntries(
+				roomChannels.map((c) => [c.name, c.sent]),
+			),
 		}),
 	).toMatchSnapshot();
 });
 
 it("canal da sala: efeito de cada evento recebido na store", async () => {
 	await openTable();
-	const r = room();
+	const roomOf = (name: string) => {
+		const found = mock.channels.find((c) => c.name === name);
+		if (!found) throw new Error(`canal ausente: ${name}`);
+		return found;
+	};
+	const topicFor = (key: string, payload: unknown) => {
+		const event = key.split(":")[1] ?? "";
+		if (event === "fog_update" || event === "explored_reset") {
+			return "vtt:campaign:scene-a:gm";
+		}
+		const userId =
+			payload &&
+			typeof payload === "object" &&
+			"userId" in payload &&
+			typeof (payload as { userId?: unknown }).userId === "string"
+				? (payload as { userId: string }).userId
+				: "lia";
+		return `vtt:campaign:scene-a:u:${userId}`;
+	};
 	const fire = async (key: string, payload: unknown) => {
+		const r = key.startsWith("presence:")
+			? roomOf("vtt:campaign:scene-a:u:lia")
+			: roomOf(topicFor(key, payload));
 		const handler = r.handlers.get(key);
 		expect(handler, key).toBeTypeOf("function");
 		const [type, event] = key.split(":");
@@ -523,7 +596,7 @@ it("canal da sala: efeito de cada evento recebido na store", async () => {
 
 it("troca de cena e saída: um subscribe por cena e o canal é removido", async () => {
 	await openTable();
-	const before = mock.channels.filter((c) => c.name.startsWith("vtt-room:"));
+	const before = mock.channels.filter((c) => c.name.startsWith("vtt:"));
 	await act(async () => {
 		useVTTStore.getState().setUserColor("#ff0000");
 	});
@@ -533,7 +606,7 @@ it("troca de cena e saída: um subscribe por cena e o canal é removido", async 
 		stable({
 			roomChannelsBefore: before.map((c) => [c.name, c.subscribes]),
 			trackedAfterColor: afterColor.tracked,
-			removed: mock.removed.filter((n) => n.startsWith("vtt-room:")),
+			removed: mock.removed.filter((n) => n.startsWith("vtt:")),
 		}),
 	).toMatchSnapshot();
 });

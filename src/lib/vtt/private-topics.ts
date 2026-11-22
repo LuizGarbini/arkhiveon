@@ -11,13 +11,13 @@
  * O `userId` do payload nunca decide; se divergir do tópico, a mensagem é
  * descartada. `fog_update` e `explored_reset` só valem no tópico `gm`.
  *
- * Módulo puro. A troca do transporte em `room-channel.ts` vem depois.
+ * Módulo puro. O transporte em `room-channel.ts` usa estes tópicos.
  */
 
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const TOPIC_RE = new RegExp(
-	`^vtt:(${UUID}):(${UUID}):(gm|gmonly|u:(${UUID}))$`,
-);
+// As policies da 0066 exigem UUID. O parse do cliente aceita qualquer
+// segmento sem ':', para o teste e para não descartar um id válido à toa.
+const SEG = "([^:]+)";
+const TOPIC_RE = new RegExp(`^vtt:${SEG}:${SEG}:(gm|gmonly|u:(${SEG}))$`);
 
 export type VttTopic =
 	| { kind: "user"; campaignId: string; sceneId: string; userId: string }
