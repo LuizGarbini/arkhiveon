@@ -28,6 +28,7 @@ interface AuthContextValue {
 	loading: boolean;
 	plan: UserPlan;
 	storageUsedBytes: number;
+	overLimitSince: string | null;
 	isPro: boolean;
 	planLoading: boolean;
 	/** "error": o plano real não chegou; a UI mostra "—", nunca "Free". */
@@ -62,6 +63,7 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	loading: true,
 	plan: "free",
 	storageUsedBytes: 0,
+	overLimitSince: null,
 	isPro: false,
 	planLoading: false,
 	planStatus: "ready",
@@ -72,6 +74,54 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	updatePassword: async () => null,
 	signInWithOAuth: async () => null,
 };
+
+type PlanStateSetter = (next: PlanState) => void;
+
+/** Só no preview local: injeta o plano do card (Supabase falso). */
+function applyPreviewPlan(userId: string, setPlanState: PlanStateSetter) {
+	if (typeof window === "undefined") return;
+	const raw = window.localStorage.getItem("arkhiveon_preview_storage");
+	if (!raw) {
+		setPlanState({
+			userId,
+			status: "ready",
+			plan: "free",
+			storageUsedBytes: 0,
+			overLimitSince: null,
+		});
+		return;
+	}
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object") return;
+		const row = parsed as Record<string, unknown>;
+		const status =
+			row.status === "error" ||
+			row.status === "loading" ||
+			row.status === "ready"
+				? row.status
+				: "ready";
+		const label = row.label;
+		const plan = label === "pro" || label === "guest_pro" ? "pro" : "free";
+		const usedBytes = Number(row.usedBytes);
+		setPlanState({
+			userId,
+			status,
+			plan,
+			storageUsedBytes: Number.isFinite(usedBytes) ? usedBytes : 0,
+			overLimitSince:
+				typeof row.overLimitSince === "string" ? row.overLimitSince : null,
+		});
+	} catch {
+		setPlanState({
+			userId,
+			status: "ready",
+			plan: "free",
+			storageUsedBytes: 0,
+			overLimitSince: null,
+		});
+	}
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const existingContext = useContext(AuthContext);
@@ -92,6 +142,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 		status: "ready",
 		plan: "free",
 		storageUsedBytes: 0,
+		overLimitSince: null,
 	});
 	const baseRetryNonce = useRPGStore((s) => s.baseRetryNonce);
 
@@ -122,6 +173,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				refresh_token: "preview-refresh",
 				user: mockUser,
 			} as unknown as Session);
+			applyPreviewPlan(mockUser.id, setPlanState);
 			setLoading(false);
 			return;
 		}
@@ -166,6 +218,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				status: "ready",
 				plan: "free",
 				storageUsedBytes: 0,
+				overLimitSince: null,
 			});
 			return;
 		}
@@ -205,7 +258,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				},
 				(payload) => {
 					if (payload.eventType === "DELETE") {
-						applyRow({ plan: "free", storageUsedBytes: 0 });
+						applyRow({
+							plan: "free",
+							storageUsedBytes: 0,
+							overLimitSince: null,
+						});
 						return;
 					}
 					applyRow(planFromRealtimeRow(payload.new));
@@ -238,6 +295,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			loading,
 			plan: planState.plan,
 			storageUsedBytes: planState.storageUsedBytes,
+			overLimitSince: planState.overLimitSince,
 			isPro: planState.plan === "pro",
 			planLoading: planStatus === "loading",
 			planStatus,

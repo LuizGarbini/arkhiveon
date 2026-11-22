@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.184-plano-pro-u1-card",
+		version: "1.6.184",
+		date: "22/11/2026",
+		title: "Card de cota na barra lateral",
+		description:
+			"A barra lateral ganha um card compacto de armazenamento, no lugar do bloco de Registros e Arquivos: ele mostra o plano (Free ou Pro), o uso total e um aviso quando a cota chega perto ou estoura o limite. Enquanto o número não chega, aparece só um esqueleto — nunca Free ou 0 MB. Esta versão ainda usa o mesmo total que a barra já mostrava; o recorte entre PDF e imagens entra depois.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.183-plano-pro-cota-base",
 		version: "1.6.183",
 		date: "22/11/2026",

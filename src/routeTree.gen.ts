@@ -20,6 +20,7 @@ import { Route as FamilyTreeRouteImport } from './routes/family-tree'
 import { Route as ErrorPreviewRouteImport } from './routes/error-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConsumoRouteImport } from './routes/consumo'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ArquivosSecretosRouteImport } from './routes/arquivos-secretos'
@@ -101,6 +102,11 @@ const DesignSystemRoute = DesignSystemRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsumoRoute = ConsumoRouteImport.update({
+  id: '/consumo',
+  path: '/consumo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingRoute = BillingRouteImport.update({
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
+  '/consumo': typeof ConsumoRoute
   '/dashboard': typeof DashboardRoute
   '/design-system': typeof DesignSystemRoute
   '/error-preview': typeof ErrorPreviewRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
+  '/consumo': typeof ConsumoRoute
   '/dashboard': typeof DashboardRoute
   '/design-system': typeof DesignSystemRoute
   '/error-preview': typeof ErrorPreviewRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/arquivos-secretos': typeof ArquivosSecretosRoute
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
+  '/consumo': typeof ConsumoRoute
   '/dashboard': typeof DashboardRoute
   '/design-system': typeof DesignSystemRoute
   '/error-preview': typeof ErrorPreviewRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/arquivos-secretos'
     | '/auth'
     | '/billing'
+    | '/consumo'
     | '/dashboard'
     | '/design-system'
     | '/error-preview'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/arquivos-secretos'
     | '/auth'
     | '/billing'
+    | '/consumo'
     | '/dashboard'
     | '/design-system'
     | '/error-preview'
@@ -448,6 +459,7 @@ export interface FileRouteTypes {
     | '/arquivos-secretos'
     | '/auth'
     | '/billing'
+    | '/consumo'
     | '/dashboard'
     | '/design-system'
     | '/error-preview'
@@ -489,6 +501,7 @@ export interface RootRouteChildren {
   ArquivosSecretosRoute: typeof ArquivosSecretosRoute
   AuthRoute: typeof AuthRoute
   BillingRoute: typeof BillingRoute
+  ConsumoRoute: typeof ConsumoRoute
   DashboardRoute: typeof DashboardRoute
   DesignSystemRoute: typeof DesignSystemRoute
   ErrorPreviewRoute: typeof ErrorPreviewRoute
@@ -601,6 +614,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consumo': {
+      id: '/consumo'
+      path: '/consumo'
+      fullPath: '/consumo'
+      preLoaderRoute: typeof ConsumoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing': {
@@ -801,6 +821,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArquivosSecretosRoute: ArquivosSecretosRoute,
   AuthRoute: AuthRoute,
   BillingRoute: BillingRoute,
+  ConsumoRoute: ConsumoRoute,
   DashboardRoute: DashboardRoute,
   DesignSystemRoute: DesignSystemRoute,
   ErrorPreviewRoute: ErrorPreviewRoute,
