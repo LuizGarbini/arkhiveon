@@ -93,6 +93,107 @@ export async function loadWalls(
 	now.setWallsStatus("ready");
 }
 
+/** Só o `id` de um DELETE do Realtime. O resto do payload não é lido. */
+export function realtimeDeleteId(old: unknown): string | null {
+	if (!old || typeof old !== "object" || !("id" in old)) return null;
+	const id = (old as { id: unknown }).id;
+	return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
+ * Tira a parede `id` só se ela já está na cena atual.
+ * Id ausente, desconhecido ou de outra cena devolve a mesma lista.
+ */
+export function wallsAfterRemoteDelete(
+	walls: readonly VTTWall[],
+	activeSceneId: string | null,
+	id: string | null,
+): readonly VTTWall[] {
+	if (!id || !activeSceneId) return walls;
+	if (!walls.some((wall) => wall.id === id && wall.sceneId === activeSceneId))
+		return walls;
+	return walls.filter(
+		(wall) => !(wall.id === id && wall.sceneId === activeSceneId),
+	);
+}
+
+/**
+ * Aplica o DELETE que o Realtime entregou (só o id). Não grava, não recarrega
+ * e não mexe na store se esse id não é uma parede da cena atual.
+ */
+export function applyRemoteWallDelete(id: string | null): boolean {
+	const state = useVTTStore.getState();
+	const next = wallsAfterRemoteDelete(state.walls, state.activeSceneId, id);
+	if (next === state.walls || !id) return false;
+	pendingMoves.delete(id);
+	useVTTStore.setState({
+		walls: [...next],
+		selectedWallIds: state.selectedWallIds.includes(id)
+			? state.selectedWallIds.filter((wallId) => wallId !== id)
+			: state.selectedWallIds,
+	});
+	return true;
+}
+
+/**
+ * Inscrição ao vivo das paredes da cena.
+ * INSERT e UPDATE continuam filtrados por `scene_id` e recarregam a lista.
+ * DELETE não pode ter filtro: com a identidade padrão o Realtime só manda o
+ * id, o filtro não casa e o evento é descartado. Sem filtro, e só removemos
+ * um id que já está na cena aberta.
+ */
+export function subscribeWallChanges(sceneId: string): () => void {
+	const client = getSupabase();
+	if (!client) return () => {};
+	let stopped = false;
+	let sawDrop = false;
+	const isCurrent = () =>
+		!stopped && useVTTStore.getState().activeSceneId === sceneId;
+	const channel = client
+		.channel(`vtt-walls-live:${sceneId}`)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "vtt_walls",
+				filter: `scene_id=eq.${sceneId}`,
+			},
+			(payload) => {
+				if (!isCurrent() || payload.eventType === "DELETE") return;
+				void loadWalls(sceneId);
+			},
+		)
+		.on(
+			"postgres_changes",
+			{ event: "DELETE", schema: "public", table: "vtt_walls" },
+			(payload) => {
+				if (!isCurrent()) return;
+				applyRemoteWallDelete(realtimeDeleteId(payload.old));
+			},
+		)
+		.subscribe((status) => {
+			if (stopped) return;
+			if (status === "SUBSCRIBED") {
+				if (!sawDrop) return;
+				sawDrop = false;
+				if (useVTTStore.getState().activeSceneId !== sceneId) return;
+				void loadWalls(sceneId);
+				return;
+			}
+			if (
+				status === "CHANNEL_ERROR" ||
+				status === "TIMED_OUT" ||
+				status === "CLOSED"
+			)
+				sawDrop = true;
+		});
+	return () => {
+		stopped = true;
+		void client.removeChannel(channel);
+	};
+}
+
 async function persistNow(op: WallOp): Promise<boolean> {
 	const client = getSupabase();
 	if (!client) return false;
