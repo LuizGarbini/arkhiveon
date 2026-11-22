@@ -4,12 +4,12 @@ import {
 	isEntityImageHidden,
 	resolveEntityImageUrl,
 } from "./entity-images";
-import type { Character, MembershipRole } from "./store";
+import type { MembershipRole } from "./store";
 
 export type { EntityImageSource };
 
 export function resolveCharacterImageUrl(
-	character: Character,
+	character: EntityImageSource,
 	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
 	userId?: string | null,
@@ -18,7 +18,7 @@ export function resolveCharacterImageUrl(
 }
 
 export function isCharacterImageHidden(
-	character: Character,
+	character: EntityImageSource,
 	imageAssets: ImageAssetLookup,
 	role?: MembershipRole,
 	userId?: string | null,
