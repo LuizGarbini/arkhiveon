@@ -55,8 +55,9 @@ export type HpAction = "damage" | "heal" | "set";
 export const BARE_NUMBER_ACTION: HpAction = "set";
 
 /**
- * O que Enter aplica para o texto digitado (e o que a prévia mostra). Shift+Enter
- * sempre cura pelo valor. Sem valor aplicável, `null`.
+ * O que Enter aplica para o texto digitado (e o que a prévia mostra). Sinal
+ * digitado manda; Shift+Enter só cura o número sem sinal. Sem valor aplicável,
+ * `null`.
  */
 export function hpEnterAction(
 	input: HpInput,
