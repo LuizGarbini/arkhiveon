@@ -24,6 +24,7 @@ import { rulerMeasurementForTool } from "./ruler-gesture";
 import { createFolder, deleteFolder } from "./scene-folders";
 import { withSceneGridDefaults } from "./scene-settings";
 import type { VTTSpellTemplate, VTTTemplateKind } from "./template-math";
+import type { CopiedToken } from "./token-clipboard";
 import type {
 	VTTDiagonalRule,
 	VTTFogMode,
@@ -152,6 +153,8 @@ interface VTTState {
 	// Tokens & Fog for current scene
 	tokens: VTTToken[];
 	selectedTokenIds: string[];
+	/** Cópia interna do Ctrl/Cmd+C. Não é a área de transferência do sistema. */
+	tokenClipboard: CopiedToken[] | null;
 	activeTokenIdForMenu: string | null;
 	/** Token com status sob o ponteiro (Tooltip do DS sobre o canvas). */
 	hoveredStatusTokenId: string | null;
@@ -245,6 +248,7 @@ interface VTTState {
 	) => void;
 	removeToken: (tokenId: string) => void;
 	setSelectedTokenIds: (ids: string[]) => void;
+	setTokenClipboard: (clipboard: CopiedToken[] | null) => void;
 	toggleSelectTokenId: (id: string, multiSelect?: boolean) => void;
 	setActiveTokenIdForMenu: (id: string | null) => void;
 	setHoveredStatusTokenId: (id: string | null) => void;
@@ -456,6 +460,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 
 	tokens: [],
 	selectedTokenIds: [],
+	tokenClipboard: null,
 	activeTokenIdForMenu: null,
 	hoveredStatusTokenId: null,
 	draggedTokenId: null,
@@ -788,6 +793,7 @@ export const useVTTStore = create<VTTState>((set) => ({
 					: state.activeTokenIdForMenu,
 		})),
 	setSelectedTokenIds: (ids) => set({ selectedTokenIds: ids }),
+	setTokenClipboard: (tokenClipboard) => set({ tokenClipboard }),
 	toggleSelectTokenId: (id, multiSelect) =>
 		set((state) => {
 			if (multiSelect) {

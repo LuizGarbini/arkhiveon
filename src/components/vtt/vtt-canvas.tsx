@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { useRPGStore } from "@/lib/store";
 import { playPingAudio } from "@/lib/vtt/audio";
 import {
+	characterSheetOwnsHp,
 	readLinkedSheetHp,
 	resolveTokenHp,
 	selectLinkedSheetHpStamp,
@@ -137,6 +138,12 @@ import {
 	shouldDeleteSelectedTemplate,
 } from "@/lib/vtt/template-permissions";
 import { shownTokenAvatarUrl, tokenAvatarMapKey } from "@/lib/vtt/token-avatar";
+import {
+	buildTokenClipboard,
+	type PastedToken,
+	planTokenPaste,
+	tokenClipboardAction,
+} from "@/lib/vtt/token-clipboard";
 import {
 	dragGhostShowsInitials,
 	tokenInitialsFontSize,
@@ -359,6 +366,8 @@ interface VTTCanvasProps {
 		tokenId: string,
 		updates: Partial<VTTToken>,
 	) => Promise<unknown>;
+	/** Cola os tokens já deslocados. A persistência é o insert do spawn. */
+	onPasteTokens?: (spawns: readonly PastedToken[]) => Promise<void>;
 	onBroadcastDrag?: (tokenId: string, x: number, y: number) => void;
 	onBroadcastCursor?: (x: number, y: number) => void;
 	onBroadcastRuler?: (measurement: VTTRulerMeasurement | null) => void;
@@ -481,6 +490,7 @@ export function VTTCanvas({
 	tokenAvatars = EMPTY_TOKEN_AVATARS,
 	onBroadcastDragBatch,
 	onUpdateToken,
+	onPasteTokens,
 	onBroadcastDrag,
 	onBroadcastCursor,
 	onBroadcastRuler,
@@ -709,6 +719,9 @@ export function VTTCanvas({
 	onBroadcastRulerRef.current = onBroadcastRuler;
 	const onUpdateTokenRef = useRef(onUpdateToken);
 	onUpdateTokenRef.current = onUpdateToken;
+	const onPasteTokensRef = useRef(onPasteTokens);
+	onPasteTokensRef.current = onPasteTokens;
+	const pasteQueueRef = useRef(Promise.resolve());
 	// Régua: aperto em andamento (clique vs. arrasto) e o último clique (duplo).
 	const rulerPressRef = useRef<{
 		x: number;
@@ -2757,6 +2770,53 @@ export function VTTCanvas({
 			}
 			if (e.code === "AltLeft" || e.code === "AltRight") {
 				isAltHeldRef.current = true;
+			}
+			const liveKeys = useVTTStore.getState();
+			const clipAction = tokenClipboardAction(e, {
+				canManage: liveKeys.isGM || liveKeys.isCoGM,
+				selectedCount: liveKeys.selectedTokenIds.length,
+				clipboardCount: liveKeys.tokenClipboard?.length ?? 0,
+			});
+			if (clipAction === "copy") {
+				const characters = useRPGStore.getState().characters;
+				const copied = buildTokenClipboard(
+					liveKeys.selectedTokenIds,
+					liveKeys.tokens,
+					(characterId) =>
+						characterSheetOwnsHp(
+							characters.find((character) => character.id === characterId),
+						),
+				);
+				if (copied.length > 0) {
+					e.preventDefault();
+					liveKeys.setTokenClipboard(copied);
+				}
+				return;
+			}
+			if (clipAction === "paste" && scene && onPasteTokensRef.current) {
+				e.preventDefault();
+				const grid = {
+					gridType: scene.gridType,
+					gridSize: scene.gridSize,
+					origin: gridOrigin,
+					bounds: { width: scene.width, height: scene.height },
+				};
+				pasteQueueRef.current = pasteQueueRef.current
+					.then(async () => {
+						const live = useVTTStore.getState();
+						const clip = live.tokenClipboard;
+						if (!clip || clip.length === 0) return;
+						const plan = planTokenPaste(clip, live.tokens, grid);
+						if (plan.spawns.length === 0) return;
+						const paste = onPasteTokensRef.current;
+						if (!paste) return;
+						await paste(plan.spawns);
+						useVTTStore.getState().setTokenClipboard(plan.nextClipboard);
+					})
+					.catch(() => {
+						// Quem grava já mostrou o erro. A área interna fica onde estava.
+					});
+				return;
 			}
 			// Tool shortcuts (V/H/R/G/T/F) live in VTTToolbar; only Escape here.
 			if (typing) return;

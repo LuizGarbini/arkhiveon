@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isVttShortcutBlocked } from "@/lib/vtt/shortcut-guard";
+import { tokenClipboardAction } from "@/lib/vtt/token-clipboard";
 import type { VTTScene } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 
@@ -259,5 +260,108 @@ describe("isVttShortcutBlocked", () => {
 		const el = document.body.firstElementChild;
 		if (!el) throw new Error("sem alvo");
 		expect(isVttShortcutBlocked(ev(el))).toBe(false);
+	});
+});
+
+describe("copiar e colar token não rouba o texto", () => {
+	const staff = { canManage: true, selectedCount: 1, clipboardCount: 1 };
+	const key = (target: EventTarget, init: KeyboardEventInit) => {
+		const event = new KeyboardEvent("keydown", {
+			bubbles: true,
+			cancelable: true,
+			...init,
+		});
+		Object.defineProperty(event, "target", { value: target });
+		return event;
+	};
+	afterEach(() => {
+		window.getSelection()?.removeAllRanges();
+		document.body.innerHTML = "";
+	});
+
+	it.each([
+		["input", () => document.createElement("input")],
+		["textarea", () => document.createElement("textarea")],
+		[
+			"contenteditable",
+			() => {
+				const el = document.createElement("div");
+				el.setAttribute("contenteditable", "true");
+				el.textContent = "nota";
+				return el;
+			},
+		],
+	])("Ctrl+C com foco em %s não copia o token", (_name, create) => {
+		const el = create();
+		document.body.appendChild(el);
+		el.focus();
+		const event = key(el, { key: "c", ctrlKey: true });
+		expect(tokenClipboardAction(event, staff)).toBe("ignore");
+		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it("Ctrl+C com texto selecionado na página não copia o token", () => {
+		const paragraph = document.createElement("p");
+		paragraph.textContent = "nota da ficha";
+		document.body.appendChild(paragraph);
+		const range = document.createRange();
+		range.selectNodeContents(paragraph);
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+		const event = key(document.body, { key: "c", ctrlKey: true });
+		expect(selection?.isCollapsed).toBe(false);
+		expect(tokenClipboardAction(event, staff)).toBe("ignore");
+		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it("jogador não copia nem cola", () => {
+		const player = { canManage: false, selectedCount: 2, clipboardCount: 2 };
+		expect(
+			tokenClipboardAction(
+				key(document.body, { key: "c", ctrlKey: true }),
+				player,
+			),
+		).toBe("ignore");
+		expect(
+			tokenClipboardAction(
+				key(document.body, { key: "v", metaKey: true }),
+				player,
+			),
+		).toBe("ignore");
+	});
+
+	it("co-mestre copia e cola quando a mesa está livre", () => {
+		expect(
+			tokenClipboardAction(key(document.body, { key: "c", metaKey: true }), {
+				canManage: true,
+				selectedCount: 1,
+				clipboardCount: 0,
+			}),
+		).toBe("copy");
+		expect(
+			tokenClipboardAction(key(document.body, { key: "v", ctrlKey: true }), {
+				canManage: true,
+				selectedCount: 0,
+				clipboardCount: 2,
+			}),
+		).toBe("paste");
+	});
+
+	it("Ctrl+C sem token selecionado e Ctrl+V sem cópia não interceptam", () => {
+		expect(
+			tokenClipboardAction(key(document.body, { key: "c", ctrlKey: true }), {
+				canManage: true,
+				selectedCount: 0,
+				clipboardCount: 0,
+			}),
+		).toBe("ignore");
+		expect(
+			tokenClipboardAction(key(document.body, { key: "v", ctrlKey: true }), {
+				canManage: true,
+				selectedCount: 1,
+				clipboardCount: 0,
+			}),
+		).toBe("ignore");
 	});
 });

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.171-vtt-copiar-colar-token",
+		version: "1.6.171",
+		date: "22/11/2026",
+		title: "Copiar e colar tokens na mesa",
+		description:
+			"O mestre e o co-mestre copiam os tokens selecionados com Ctrl+C (ou Cmd+C) e colam com Ctrl+V. A cópia nasce uma casa à direita e abaixo, com o próximo número no nome (Goblin 2, Goblin 3), leva vida, condições e tamanho, e sai sem trava. Colar de novo desloca mais uma casa. O jogador não cola. Copiar um texto num campo, no assistente ou na ficha continua igual.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.170-vtt-token-foto-ficha",
 		version: "1.6.170",
 		date: "22/11/2026",
