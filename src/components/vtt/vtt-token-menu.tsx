@@ -451,7 +451,7 @@ export function VTTTokenMenu({
 						onChange={character || canEdit ? handleUpdateHp : undefined}
 						onChangeMax={canEdit ? handleUpdateMax : undefined}
 						onChangeHp={canEdit ? handleUpdateHpValues : undefined}
-						onChangeTempHp={canEdit ? handleUpdateTempHp : undefined}
+						onChangeTempHp={canManage ? handleUpdateTempHp : undefined}
 					/>
 
 					{character && (

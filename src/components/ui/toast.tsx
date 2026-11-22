@@ -25,6 +25,8 @@ interface Toast {
 	description?: string;
 	variant: ToastVariant;
 	action?: ToastAction;
+	durationMs?: number;
+	noBlur?: boolean;
 	/** Indica que o toast está saindo (animação de dismiss) */
 	dismissing?: boolean;
 }
@@ -34,6 +36,13 @@ interface ToastInput {
 	description?: string;
 	/** Botão opcional no toast (ex.: "Tentar de novo"); fecha o toast ao clicar. */
 	action?: ToastAction;
+	/**
+	 * Fecha sozinho depois disso, mesmo com ação (ex.: "Desfazer" por 10 s). Sem
+	 * isso: 4,5 s, e o toast com ação fica até o usuário agir.
+	 */
+	durationMs?: number;
+	/** Sem o desfoque de fundo (opt-in; o padrão continua como era). */
+	noBlur?: boolean;
 }
 
 interface ToastContextValue {
@@ -105,9 +114,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		(variant: ToastVariant, toast: ToastInput) => {
 			const id = crypto.randomUUID();
 			setToasts((current) => [...current.slice(-3), { id, variant, ...toast }]);
-			// Toast com ação (ex.: "Tentar de novo") fica até o usuário agir ou fechar.
-			if (toast.action) return;
-			const timer = window.setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
+			// Toast com ação (ex.: "Tentar de novo") fica até o usuário agir ou fechar,
+			// a menos que traga a própria duração.
+			if (toast.action && toast.durationMs === undefined) return;
+			const timer = window.setTimeout(
+				() => dismiss(id),
+				toast.durationMs ?? AUTO_DISMISS_MS,
+			);
 			timersRef.current.set(id, timer);
 		},
 		[dismiss],
@@ -150,7 +163,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 						<output
 							key={toast.id}
 							className={cn(
-								"rounded-lg border border-border bg-card-elevated p-3 text-foreground shadow-lg shadow-black/20 backdrop-blur-md",
+								"rounded-lg border border-border bg-card-elevated p-3 text-foreground shadow-lg shadow-black/20",
+								toast.noBlur ? "backdrop-blur-none" : "backdrop-blur-md",
 								"transition-all ease-[cubic-bezier(0.16,1,0.3,1)]",
 								toast.dismissing
 									? "translate-x-2 scale-95 opacity-0"

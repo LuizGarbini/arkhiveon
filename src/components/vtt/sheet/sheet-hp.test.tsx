@@ -6,6 +6,7 @@ import {
 	render,
 	screen,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SheetHp } from "./sheet-hp";
 
@@ -29,23 +30,32 @@ function setup(props: Partial<Props> = {}) {
 const press = (name: string) =>
 	fireEvent.click(screen.getByRole("button", { name }));
 
+const openPanel = () =>
+	fireEvent.click(
+		screen.getByRole("button", { name: /Pontos de vida: .*Abrir dano e cura/ }),
+	);
+
 describe("SheetHp · ajuste rápido", () => {
 	it("tira e cura PV, sem passar do máximo nem de zero", () => {
 		const f = setup();
+		openPanel();
 		press("Tirar 5 PV");
 		expect(f.onChange).toHaveBeenLastCalledWith(15);
 		cleanup();
 		const g = setup({ current: 28 });
+		openPanel();
 		press("Curar 5 PV");
 		expect(g.onChange).toHaveBeenLastCalledWith(30);
 		cleanup();
 		const z = setup({ current: 3 });
+		openPanel();
 		press("Tirar 5 PV");
 		expect(z.onChange).toHaveBeenLastCalledWith(0);
 	});
 
 	it("o dano come a vida temporária antes do PV", () => {
 		const f = setup({ temp: 10 });
+		openPanel();
 		press("Tirar 5 PV");
 		expect(f.onChangeTempHp).toHaveBeenCalledWith(5);
 		expect(f.onChange).not.toHaveBeenCalled();
@@ -53,6 +63,7 @@ describe("SheetHp · ajuste rápido", () => {
 
 	it("dano maior que a temporária zera ela e o resto vai no PV", async () => {
 		const f = setup({ temp: 2 });
+		openPanel();
 		press("Tirar 5 PV");
 		await act(async () => {});
 		expect(f.onChangeTempHp).toHaveBeenCalledWith(0);
@@ -68,14 +79,15 @@ describe("SheetHp · ajuste rápido", () => {
 				}),
 		);
 		setup({ onChange });
+		openPanel();
 		const minus = screen.getByRole("button", { name: "Tirar 1 PV" });
 		fireEvent.click(minus);
 		fireEvent.click(minus);
 		expect(onChange).toHaveBeenCalledTimes(1);
 		expect((minus as HTMLButtonElement).disabled).toBe(true);
-		expect(
-			screen.getByText("Salvando…").getAttribute("aria-hidden"),
-		).toBeNull();
+		const field = screen.getByRole("textbox", { name: /Dano, cura/ });
+		expect((field as HTMLInputElement).readOnly).toBe(true);
+		expect(screen.getAllByText("Salvando…").length).toBeGreaterThan(0);
 		await act(async () => finish());
 		expect((minus as HTMLButtonElement).disabled).toBe(false);
 	});
@@ -113,11 +125,11 @@ describe("SheetHp · ajuste rápido", () => {
 	});
 });
 
-describe("SheetHp · editor ao tocar no número", () => {
-	const open = () =>
-		fireEvent.click(
-			screen.getByRole("button", { name: /Editar pontos de vida/ }),
-		);
+describe("SheetHp · Editar valores no painel", () => {
+	const open = () => {
+		openPanel();
+		fireEvent.click(screen.getByRole("button", { name: "Editar valores" }));
+	};
 	const type = (name: string, value: string) =>
 		fireEvent.change(screen.getByRole("spinbutton", { name }), {
 			target: { value },
@@ -241,5 +253,254 @@ describe("SheetHp · editor ao tocar no número", () => {
 		).toBe("20");
 		expect(f.onChange).not.toHaveBeenCalled();
 		expect(f.onChangeHp).not.toHaveBeenCalled();
+	});
+});
+
+/** PV controlado, como a mesa: a gravação muda as props. */
+function Harness({
+	initial,
+	canTemp = true,
+	onChange,
+	onChangeTempHp,
+}: {
+	initial: { current: number; max: number; temp: number };
+	canTemp?: boolean;
+	onChange: (next: number) => unknown;
+	onChangeTempHp?: (next: number) => unknown;
+}) {
+	const [hp, setHp] = useState(initial);
+	return (
+		<SheetHp
+			current={hp.current}
+			max={hp.max}
+			temp={hp.temp}
+			showMax
+			name="Elara"
+			onChange={async (next) => {
+				const result = await onChange(next);
+				if (result !== false) setHp((prev) => ({ ...prev, current: next }));
+				return result;
+			}}
+			onChangeTempHp={
+				canTemp
+					? async (next) => {
+							await onChangeTempHp?.(next);
+							setHp((prev) => ({ ...prev, temp: next }));
+						}
+					: undefined
+			}
+		/>
+	);
+}
+
+describe("SheetHp · dano rápido (campo)", () => {
+	const field = () =>
+		screen.getByRole("textbox", { name: /Dano, cura/ }) as HTMLInputElement;
+	const typeValue = (value: string) =>
+		fireEvent.change(field(), { target: { value } });
+	const enter = (shiftKey = false) =>
+		fireEvent.keyDown(field(), { key: "Enter", shiftKey });
+
+	it("“15” + Enter define o PV, com prévia “Definir 15”", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 5 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("15");
+		expect(screen.getByText(/Definir 15/)).toBeTruthy();
+		enter();
+		await act(async () => {});
+		expect(onChange).toHaveBeenCalledWith(15);
+	});
+
+	it("“=15” é sinônimo de definir", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("=15");
+		enter();
+		await act(async () => {});
+		expect(onChange).toHaveBeenCalledWith(15);
+	});
+
+	it("mestre: −15 come a temporária e depois o PV", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		const onChangeTempHp = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 5 }}
+				onChange={onChange}
+				onChangeTempHp={onChangeTempHp}
+			/>,
+		);
+		openPanel();
+		typeValue("-15");
+		enter();
+		await act(async () => {});
+		expect(onChangeTempHp).toHaveBeenCalledWith(0);
+		expect(onChange).toHaveBeenCalledWith(17);
+	});
+
+	it("jogador: aviso da temporária e o dano vai direto no PV", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 5 }}
+				canTemp={false}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		expect(screen.getByText(/só o mestre muda/)).toBeTruthy();
+		expect(screen.queryByText("Vida temporária")).toBeNull();
+		typeValue("15");
+		press("Aplicar 15 de dano");
+		await act(async () => {});
+		expect(onChange).toHaveBeenCalledWith(12);
+	});
+
+	it("Shift+Enter e + Curar curam pelo valor", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 10, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("8");
+		enter(true);
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(18);
+		typeValue("5");
+		press("Curar 5");
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(23);
+	});
+
+	it("0 não grava; inválido marca aria-invalid e desliga os botões", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 10, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("0");
+		enter();
+		await act(async () => {});
+		expect(onChange).not.toHaveBeenCalled();
+		typeValue("1d6");
+		expect(field().getAttribute("aria-invalid")).toBe("true");
+		expect(
+			(screen.getByRole("button", { name: "Dano" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+	});
+
+	it("cura no máximo fica desligada", () => {
+		render(
+			<Harness
+				initial={{ current: 32, max: 32, temp: 0 }}
+				onChange={vi.fn()}
+			/>,
+		);
+		openPanel();
+		typeValue("+5");
+		expect(screen.getByText(/Já está no máximo/)).toBeTruthy();
+		expect(
+			(screen.getByRole("button", { name: "Curar" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+	});
+
+	it("Desfazer volta o PV se ninguém mexeu depois", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("-15");
+		enter();
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(12);
+		press("Desfazer");
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(27);
+	});
+
+	it("Desfazer não grava se o PV mudou depois", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("-15");
+		enter();
+		await act(async () => {});
+		press("Tirar 1 PV");
+		await act(async () => {});
+		press("Desfazer");
+		await act(async () => {});
+		// O desfazer vale para o último ajuste (−1): volta a 12.
+		expect(onChange).toHaveBeenLastCalledWith(12);
+		cleanup();
+		const stale = vi.fn().mockResolvedValue(true);
+		const { rerender } = render(
+			<SheetHp current={27} max={32} temp={0} showMax onChange={stale} />,
+		);
+		openPanel();
+		fireEvent.change(field(), { target: { value: "-15" } });
+		enter();
+		await act(async () => {});
+		// Outro cliente mudou o PV para 20 (não é o 12 que o ajuste deixou).
+		rerender(
+			<SheetHp current={20} max={32} temp={0} showMax onChange={stale} />,
+		);
+		press("Desfazer");
+		await act(async () => {});
+		expect(stale).toHaveBeenCalledTimes(1);
+		expect(
+			screen.getByText("O PV mudou depois; nada foi desfeito."),
+		).toBeTruthy();
+	});
+
+	it("falha: o texto fica, aparece Tentar de novo e ele regrava", async () => {
+		const onChange = vi
+			.fn()
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("-15");
+		enter();
+		await act(async () => {});
+		expect(screen.getByRole("alert").textContent).toContain("Não foi salvo");
+		expect(field().value).toBe("-15");
+		press("Tentar de novo");
+		await act(async () => {});
+		expect(onChange).toHaveBeenCalledTimes(2);
+		expect(onChange).toHaveBeenLastCalledWith(12);
 	});
 });

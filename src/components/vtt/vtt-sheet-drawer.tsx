@@ -830,16 +830,21 @@ function SheetContent({
 				max: hp.max,
 				showMax,
 				temp: character?.tempHealth ?? token.tempHp ?? 0,
+				name: character?.characterName || token.name,
 				onChange: (next) => onUpdateToken(token.id, { hpCurrent: next }),
-				onChangeTempHp: (nextTemp) => {
-					const sanitized = Math.max(0, nextTemp);
-					if (character) {
-						void useRPGStore.getState().updateCharacter(character.id, {
-							tempHealth: sanitized,
-						});
-					}
-					return onUpdateToken(token.id, { tempHp: sanitized });
-				},
+				// Vida temporária só para mestre/co-mestre: o jogador não grava
+				// `characters` (RLS 0003), então o dano dele vai direto no PV.
+				onChangeTempHp: canManage
+					? (nextTemp) => {
+							const sanitized = Math.max(0, nextTemp);
+							if (character) {
+								void useRPGStore.getState().updateCharacter(character.id, {
+									tempHealth: sanitized,
+								});
+							}
+							return onUpdateToken(token.id, { tempHp: sanitized });
+						}
+					: undefined,
 				onChangeMax:
 					canManage || (character && !hp.fromSheet)
 						? (nextMax) => {
