@@ -71,6 +71,7 @@ vi.mock("@/lib/store", () => {
 	return {
 		useRPGStore: (selector: (s: typeof state) => unknown) => selector(state),
 		useActiveCampaignRole: () => "viewer",
+		useActiveCampaign: () => null,
 		useIsWorldStaff: () => false,
 		useImageAssetLookup: () => new Map(),
 		formatModifier: (n: number) => (n >= 0 ? `+${n}` : `${n}`),

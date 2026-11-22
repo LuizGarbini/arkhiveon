@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.175-card-bonus-itens",
+		version: "1.6.175",
+		date: "22/11/2026",
+		title: "Card do personagem com o bônus dos itens equipados",
+		description:
+			"A CA e a iniciativa do card de personagem, do grupo no painel da campanha e da matriz do grupo passam a somar os itens equipados (um anel de +5 na iniciativa, um broche de +2 na CA), com a mesma conta da ficha. Sem item que mexa no valor, aparece o que está salvo na ficha.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.173-vtt-ping-relogio",
 		version: "1.6.173",
 		date: "22/11/2026",

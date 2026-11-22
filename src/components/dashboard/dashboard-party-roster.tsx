@@ -9,12 +9,14 @@ import {
 	Users,
 	Zap,
 } from "lucide-react";
+import { useCombatSummaries } from "@/components/character-sheet/use-linked-items";
 import {
 	CARD_IGNORES_AVATAR_HOVER,
 	EntityImageViewer,
 } from "@/components/images/entity-image-viewer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatModifier } from "@/lib/store/helpers";
 import type { Character } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { DashboardSectionUnavailable } from "./dashboard-load-error";
@@ -39,6 +41,8 @@ export function DashboardPartyRoster({
 	isLoading,
 	isUnavailable,
 }: DashboardPartyRosterProps) {
+	// CA, iniciativa e deslocamento com os itens equipados, igual à ficha.
+	const combat = useCombatSummaries(characters);
 	if (isUnavailable) {
 		return (
 			<DashboardSectionUnavailable
@@ -209,25 +213,28 @@ export function DashboardPartyRoster({
 												<Shield className="h-3 w-3 text-primary" />
 												CA:{" "}
 												<strong className="text-foreground tabular-nums">
-													{char.armorClass || 10}
+													{combat.get(char.id)?.armorClass ||
+														char.armorClass ||
+														10}
 												</strong>
 											</span>
 											<span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
 												<Zap className="h-3 w-3 text-amber-400" />
 												Inic:{" "}
 												<strong className="text-foreground font-mono tabular-nums">
-													{typeof char.initiative === "number"
-														? char.initiative >= 0
-															? `+${char.initiative}`
-															: char.initiative
-														: "+0"}
+													{formatModifier(
+														combat.get(char.id)?.initiative ??
+															(typeof char.initiative === "number"
+																? char.initiative
+																: 0),
+													)}
 												</strong>
 											</span>
-											{char.speed && (
+											{(combat.get(char.id)?.speed || char.speed) && (
 												<span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
 													<Footprints className="h-3 w-3 text-sky-400" />
 													<strong className="text-foreground tabular-nums">
-														{char.speed}m
+														{combat.get(char.id)?.speed || char.speed}m
 													</strong>
 												</span>
 											)}
