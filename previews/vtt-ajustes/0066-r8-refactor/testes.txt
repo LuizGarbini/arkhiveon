@@ -1,0 +1,433 @@
+
+> arkhiveon@1.6.179 test /workspace/arkhiveon/r8-work
+> vitest run --configLoader runner
+
+
+ RUN  v3.2.4 /workspace/arkhiveon/r8-work
+
+ ✓ src/lib/library/library-handler.test.ts (18 tests) 14ms
+ ✓ src/lib/vtt/persistence-queue.test.ts (22 tests) 44ms
+ ✓ src/components/ui/button.test.tsx (3 tests) 8ms
+ ✓ src/lib/vtt/vision.test.ts (57 tests) 24ms
+ ✓ src/core/rules/equipment.test.ts (95 tests) 29ms
+ ✓ src/lib/vtt/scene-scale.test.ts (52 tests) 93ms
+ ✓ src/lib/vtt/wall-edit.test.ts (34 tests) 8ms
+ ✓ src/lib/vtt/explored-sync.test.ts (34 tests) 26ms
+ ✓ src/lib/vtt/explored.test.ts (37 tests) 18ms
+ ✓ src/lib/ai-mesa/ia-mesa-chat.logic.test.ts (22 tests) 31ms
+ ✓ src/lib/vtt/light-zone-sync.test.ts (34 tests) 28ms
+ ✓ src/lib/vtt/vision-cone.test.ts (40 tests) 13ms
+ ✓ src/lib/vtt/scene-persistence.test.ts (12 tests) 18ms
+ ✓ src/lib/vtt/ping-queue.test.ts (24 tests) 8ms
+ ✓ src/lib/vtt/wall-sync-move.test.ts (20 tests) 25ms
+ ✓ src/lib/table-resources.test.ts (21 tests) 21ms
+ ✓ src/lib/ai-mesa/proposal.test.ts (30 tests) 22ms
+ ✓ src/lib/ai-mesa/ia-mesa-sheet-batch.test.ts (9 tests) 26ms
+ ✓ src/lib/vtt/move-sync.test.ts (26 tests) 51ms
+ ✓ src/lib/vtt/token-write-queue.test.ts (20 tests) 24ms
+ ✓ src/lib/vtt/wall-sync-doors.test.ts (24 tests) 77ms
+ ✓ src/lib/vtt/light-zones.test.ts (25 tests) 6ms
+ ✓ src/lib/vtt/room-channel.test.ts (20 tests) 22ms
+ ✓ src/core/rules/combat-stats.test.ts (22 tests) 8ms
+ ✓ src/lib/vtt/token-rotate.test.ts (21 tests) 8ms
+ ✓ src/lib/vtt/scene-session.test.ts (11 tests) 22ms
+ ✓ src/lib/library/library-guard.test.ts (16 tests) 7ms
+ ✓ src/lib/vtt/grid-math.test.ts (34 tests) 34ms
+ ✓ src/lib/vtt/ruler-gesture.test.ts (19 tests) 8ms
+ ✓ src/lib/vtt/wall-sync-delete.test.ts (11 tests) 162ms
+ ✓ src/lib/vtt/walls-doors.test.ts (27 tests) 7ms
+ ✓ src/core/rules/ammo.test.ts (17 tests) 6ms
+ ✓ src/lib/vtt/ping-receive.test.ts (28 tests) 5ms
+ ✓ src/lib/ai-mesa/character-patch.test.ts (14 tests) 6ms
+ ✓ src/lib/account/table-photo.test.ts (18 tests) 15ms
+ ✓ src/lib/vtt/persistence-boundary.test.ts (10 tests) 21ms
+ ✓ src/core/rules/item-links.test.ts (23 tests) 8ms
+ ✓ src/core/rules/item-mechanics.test.ts (21 tests) 9ms
+ ✓ src/lib/vtt/ping-draw.test.ts (17 tests) 6ms
+ ✓ src/lib/vtt/token-clipboard.test.ts (13 tests) 10ms
+ ✓ src/lib/vtt/token-step.test.ts (25 tests) 8ms
+ ✓ src/lib/vtt/cursor-color.test.ts (35 tests) 27ms
+ ✓ src/core/rules/rules.test.ts (26 tests) 6ms
+ ✓ src/lib/vtt/light-zone-sync-delete.test.ts (9 tests) 163ms
+ ✓ src/lib/vtt/combat.test.ts (22 tests) 6ms
+ ✓ src/core/rules/weapon-damage.test.ts (13 tests) 6ms
+ ✓ src/lib/worldbuilding/visibility.test.ts (30 tests) 7ms
+ ✓ src/lib/vtt/move-history.test.ts (15 tests) 6ms
+ ✓ src/lib/vtt/scene-folders.test.ts (9 tests) 7ms
+ ✓ src/core/rules/spell-slots.test.ts (31 tests) 8ms
+ ✓ src/lib/vtt/walls-windows.test.ts (16 tests) 9ms
+ ✓ src/lib/ai-mesa/ia-mesa-context.test.ts (4 tests) 5ms
+ ✓ src/lib/image-gallery.test.ts (15 tests) 15ms
+ ✓ src/lib/worldbuilding/items.test.ts (11 tests) 5ms
+ ✓ src/lib/images/image-guard.test.ts (13 tests) 8ms
+ ✓ src/lib/vtt/feed-line.test.ts (16 tests) 12ms
+ ✓ src/lib/character-equipment.test.ts (14 tests) 8ms
+ ✓ src/lib/vtt/vtt-store-cursor.test.ts (14 tests) 9ms
+ ✓ src/lib/vtt/floating-sheet.test.ts (15 tests) 27ms
+ ✓ src/lib/vtt/template-math.test.ts (16 tests) 20ms
+stderr | src/lib/vtt/token-spawn.test.ts > insertVttToken > still surfaces the library error for a non-column failure
+Erro ao criar token: { code: '23503', message: 'foreign key violation' }
+
+ ✓ src/lib/vtt/token-spawn.test.ts (10 tests) 5ms
+ ✓ src/lib/vtt/presence-input.test.ts (12 tests) 7ms
+ ✓ src/lib/vtt/ruler-path.test.ts (16 tests) 16ms
+ ✓ src/lib/library/pdf-font-sizes.test.ts (10 tests) 61ms
+ ✓ src/lib/ai-mesa/ia-mesa-refund.test.ts (6 tests) 26ms
+ ✓ src/lib/vtt/notes.test.ts (27 tests) 21ms
+ ✓ src/lib/vtt/ping-motion.test.ts (13 tests) 6ms
+ ✓ src/lib/images/encoded-image.test.ts (17 tests) 10ms
+ ✓ src/lib/vtt/conditions.test.ts (7 tests) 6ms
+ ✓ src/lib/vtt/permissions.test.ts (8 tests) 4ms
+ ✓ src/lib/vtt/explored-fog.test.ts (8 tests) 6ms
+ ✓ src/lib/vtt/ping-wheel.test.ts (14 tests) 7ms
+ ✓ src/lib/vtt/walls.test.ts (12 tests) 5ms
+ ✓ src/components/character-sheet/character-sheet.test.ts (13 tests) 4ms
+ ✓ src/lib/vtt/token-press.test.ts (10 tests) 3ms
+ ✓ src/lib/vtt/camera-pull.test.ts (12 tests) 4ms
+ ✓ src/lib/images/image-upload.test.ts (9 tests) 5ms
+ ✓ src/lib/vtt/vtt-store-wall-layer.test.ts (9 tests) 5ms
+ ✓ src/lib/billing/stripe-plan.test.ts (9 tests) 5ms
+ ✓ src/lib/vtt/persistence-reconcile.test.ts (8 tests) 3ms
+ ✓ src/lib/vtt/ping-picker.test.ts (12 tests) 9ms
+ ✓ src/lib/vtt/remote-cursor-math.test.ts (13 tests) 12ms
+ ✓ src/lib/vtt/ping-gesture.test.ts (15 tests) 4ms
+ ✓ src/core/rules/units.test.ts (16 tests) 4ms
+ ✓ src/lib/vtt/token-selection.test.ts (9 tests) 4ms
+ ✓ src/lib/vtt/line-of-sight.test.ts (12 tests) 3ms
+ ✓ src/lib/vtt/token-avatar.test.ts (5 tests) 6ms
+ ✓ src/lib/vtt/ping-kinds.test.ts (13 tests) 6ms
+ ✓ src/lib/vtt/map-upload.test.ts (11 tests) 4ms
+ ✓ src/lib/vtt/grid-bar-layout.test.ts (8 tests) 4ms
+ ✓ src/lib/vtt/step-tween.test.ts (9 tests) 5ms
+ ✓ src/components/character-sheet-pdf.test.tsx (4 tests) 637ms
+ ✓ src/lib/vtt/vision-sheet.test.ts (9 tests) 6ms
+ ✓ src/lib/vtt/token-motion.test.ts (8 tests) 4ms
+ ✓ src/lib/vtt/ping-clock-skew.test.ts (5 tests) 3ms
+ ✓ src/lib/library/library-forms.test.ts (8 tests) 9ms
+ ✓ src/lib/chunk-reload.test.ts (9 tests) 4ms
+ ✓ src/lib/vtt/scene-persistence-writer.test.ts (4 tests) 6ms
+ ✓ src/lib/library/library-storage.test.ts (7 tests) 6ms
+ ✓ src/lib/sheet-module-titles.test.ts (6 tests) 5ms
+ ✓ src/lib/vtt/dice.test.ts (9 tests) 6ms
+stderr | src/lib/store/image-library-remove.test.ts > excluir imagem da galeria > apaga a linha e só depois o arquivo
+[zustand persist middleware] Unable to update item 'arkhiveon-storage', the given storage is currently unavailable.
+
+stderr | src/lib/store/image-library-remove.test.ts > excluir imagem da galeria > se o servidor recusar a exclusão, a imagem volta e o arquivo fica
+[zustand persist middleware] Unable to update item 'arkhiveon-storage', the given storage is currently unavailable.
+
+stderr | src/lib/store/image-library-remove.test.ts > excluir imagem da galeria > se o servidor recusar a exclusão, a imagem volta e o arquivo fica
+[zustand persist middleware] Unable to update item 'arkhiveon-storage', the given storage is currently unavailable.
+
+ ✓ src/lib/vtt/vtt-store-light.test.ts (8 tests) 5ms
+stderr | src/lib/store/image-library-remove.test.ts > excluir imagem da galeria > arquivo que uma ficha ainda usa direto não é apagado
+[zustand persist middleware] Unable to update item 'arkhiveon-storage', the given storage is currently unavailable.
+
+stderr | src/lib/store/image-library-remove.test.ts > excluir imagem da galeria > outra imagem da galeria com a mesma URL segura o arquivo
+[zustand persist middleware] Unable to update item 'arkhiveon-storage', the given storage is currently unavailable.
+
+ ✓ src/lib/store/image-library-remove.test.ts (5 tests) 12ms
+ ✓ src/lib/vtt/status-s2.test.ts (8 tests) 10ms
+ ✓ src/lib/image-visibility.test.ts (5 tests) 3ms
+ ✓ src/lib/vtt/map-scale.test.ts (11 tests) 7ms
+ ✓ src/lib/vtt/persist-publication.test.ts (5 tests) 8ms
+ ✓ src/lib/vtt/fog-math.test.ts (3 tests) 5ms
+ ✓ src/components/vtt/sheet/hero-collapse.test.ts (6 tests) 3ms
+ ✓ src/lib/library/upload-queue.test.ts (6 tests) 7ms
+ ✓ src/lib/library/upload-dedupe.test.ts (7 tests) 9ms
+ ✓ src/lib/library/repair-mojibake.test.ts (9 tests) 5ms
+ ✓ src/lib/image-url-usage.test.ts (7 tests) 3ms
+ ✓ src/lib/campaign-bootstrap.test.ts (11 tests) 3ms
+ ✓ src/core/rules/conditions.test.ts (4 tests) 4ms
+ ✓ src/lib/ammo/fire-attack.test.ts (3 tests) 5ms
+ ✓ src/lib/vtt/ping-target.test.ts (9 tests) 3ms
+ ✓ src/lib/store/helpers.test.ts (6 tests) 2ms
+ ✓ src/lib/vtt/scene-create.test.ts (6 tests) 5ms
+ ✓ src/lib/vtt/roll-store.test.ts (3 tests) 6ms
+ ✓ src/lib/ai-mesa/ia-mesa-daily-usage.test.ts (1 test) 3ms
+ ✓ src/lib/vtt/scene-row.test.ts (4 tests) 3ms
+ ✓ src/lib/vtt/scene-bar-scroll.test.ts (5 tests) 2ms
+ ✓ src/lib/image-asset-privacy.test.ts (5 tests) 3ms
+ ✓ src/components/character-sheet/sheet-health.test.ts (7 tests) 3ms
+ ✓ src/lib/worldbuilding/plan-limits.test.ts (5 tests) 4ms
+ ✓ src/core/rules/ability-scores.test.ts (5 tests) 3ms
+ ✓ src/lib/content-audience.test.ts (5 tests) 2ms
+ ✓ src/lib/vtt/audio-ping-tone.test.ts (5 tests) 3ms
+ ✓ src/lib/apk-update.test.ts (5 tests) 2ms
+ ✓ src/lib/vtt/hp-delta.test.ts (7 tests) 3ms
+ ✓ src/lib/worldbuilding/resolve-active-context.test.ts (4 tests) 2ms
+ ✓ src/lib/library/library-search.test.ts (3 tests) 3ms
+ ✓ src/lib/upload-error.test.ts (4 tests) 3ms
+ ✓ src/lib/vtt/wall-sync-load.test.ts (1 test) 2ms
+ ✓ src/lib/worldbuilding/item-ownership.test.ts (4 tests) 3ms
+ ✓ src/lib/legacy-world-naming.test.ts (4 tests) 2ms
+ ✓ src/lib/worldbuilding/shared-world.test.ts (5 tests) 2ms
+ ✓ src/lib/ai-mesa/gate.test.ts (4 tests) 2ms
+ ✓ src/lib/onboarding-validation.test.ts (5 tests) 2ms
+ ✓ src/lib/vtt/scene-delete.test.ts (3 tests) 2ms
+ ✓ src/components/global-error.test.ts (5 tests) 2ms
+ ✓ src/lib/layout-pathname.test.ts (4 tests) 2ms
+ ✓ src/lib/native-oauth.test.ts (4 tests) 2ms
+ ✓ src/lib/vtt/token-initials.test.ts (2 tests) 3ms
+ ✓ src/lib/worldbuilding/selector-stability.test.ts (2 tests) 3ms
+ ✓ src/lib/feature-flags.test.ts (3 tests) 3ms
+ ✓ src/lib/vtt/scene-settings.test.ts (4 tests) 3ms
+ ✓ src/lib/vtt/pure-modules-load.test.ts (6 tests) 24ms
+stderr | src/components/dashboard/dashboard-ui-states.test.tsx > Painel: estados dos números > carregando: skeleton no lugar do número, sem 0 e sem spinner
+In HTML, <div> cannot be a descendant of <p>.
+This will cause a hydration error.
+
+  <Dashboard>
+    <div className="relative m...">
+      <InviteBanner>
+      <DiscordDitherBanner>
+      <DashboardHeader activeCampaign={{id:"camp-qa", ...}} campaignRole="owner" isViewer={false} ...>
+        <header data-dash-section="hero" className="relative o...">
+          <DashboardHeroBackground>
+          <div>
+          <div className="relative z...">
+            <DashboardHeroStatusBand>
+            <div className="grid gap-8...">
+              <div>
+              <div className="grid grid-...">
+                <div className="group t-ho...">
+                  <Link>
+                  <div>
+                  <div className="mt-3">
+>                   <p className="font-display text-3xl sm:text-4xl font-bold leading-none text-white tabular-nums">
+                      <DashboardCount value={0} status="loading" label="personagens">
+                        <Skeleton role="status" aria-label="Carregando..." className="dashboard-...">
+>                         <div
+>                           data-slot="skeleton"
+>                           className="animate-pulse dashboard-skeleton inline-block h-[0.5em] w-[2ch] rounded-sm bg-m..."
+>                           role="status"
+>                           aria-label="Carregando personagens"
+>                         >
+                    ...
+                ...
+      ...
+
+<p> cannot contain a nested <div>.
+See this log for the ancestor stack trace.
+
+ ✓ src/components/vtt/vtt-combat-panel.test.tsx (12 tests) 1256ms
+ ✓ src/components/vtt/vtt-ai-chat.test.tsx (39 tests) 1904ms
+ ✓ src/lib/vtt/session-regressions.test.tsx (20 tests) 1173ms
+ ✓ src/components/vtt/vtt-roster-drawer.test.tsx (21 tests) 2266ms
+   ✓ Mapa da cena em tela cheia (aba Mapa) > mestre: miniatura e item abrem o mapa em tela cheia  370ms
+   ✓ Biblioteca: criar token com imagem (R2 + Biblioteca de imagens) > permite selecionar uma imagem existente da Biblioteca de imagens para o token  309ms
+ ✓ src/lib/store/transfer-campaign-ownership.test.ts (25 tests) 228ms
+ ✓ src/components/vtt/sheet/sheet-v2.test.tsx (53 tests) 2388ms
+ ✓ src/components/dashboard/dashboard-ui-states.test.tsx (61 tests) 5236ms
+   ✓ Painel: estados dos números > carregando: skeleton no lugar do número, sem 0 e sem spinner  509ms
+   ✓ Painel: estados dos números > vazio: mostra 0 real quando a carga terminou sem registros  302ms
+   ✓ Painel: estados dos números > erro: mostra — num botão que abre o Popover do DS por clique, sem navegar  402ms
+ ✓ src/components/campaign-form.test.tsx (19 tests) 5062ms
+   ✓ Nova Campanha pede o mundo > começa com o Select vazio, sem o mundo ativo  305ms
+   ✓ Nova Campanha pede o mundo > createCampaign recebe o worldId escolhido, não o mundo ativo  552ms
+   ✓ Nova Campanha pede o mundo > Criar mundo novo… é o último item, depois do separador  349ms
+   ✓ Nova Campanha pede o mundo > criar mundo novo volta selecionado e o formulário continua aberto  497ms
+   ✓ Nova Campanha pede o mundo > erro ao criar mundo fica no campo  444ms
+   ✓ Nova Campanha pede o mundo > limite de campanhas é do mundo escolhido e aparece no campo  311ms
+   ✓ Mundos > Novo > não abre Nova Campanha sozinho e o toast tem a ação  371ms
+   ✓ Mundos > Novo > a ação do toast abre Nova Campanha com o mundo já escolhido  419ms
+   ✓ Convite usa o Select do design system > sem <select> nativo; Co-Mestre envia role editor  335ms
+ ✓ src/components/vtt/vtt-sheet-drawer.test.tsx (30 tests) 3980ms
+   ✓ VTTSheetDrawer · atributos > ficha antiga (tudo 0) mostra +0 em todos, como a ficha  796ms
+   ✓ VTTSheetDrawer · atributos > ficha nova mostra cada modificador no atributo certo  507ms
+ ✓ src/components/vtt/vtt-token-menu.test.tsx (31 tests) 5002ms
+   ✓ VTTTokenMenu — imagem em tela cheia > o retrato abre o visualizador sem fechar o menu nem salvar o token  414ms
+   ✓ VTTTokenMenu — PV da ficha > o mestre só ajusta PV pelos botões −5/−1/+1/+5  300ms
+   ✓ VTTTokenMenu — Tooltip do DS no lugar de title nativo > Remover da mesa pede confirmação e só então apaga o token  390ms
+ ✓ src/lib/vtt/notes-sync.test.ts (34 tests) 29ms
+ ✓ src/components/vtt/vtt-notes-panel.test.tsx (32 tests) 1802ms
+ ✓ src/components/character-sheet/equipment/equipment-dialog.test.tsx (20 tests) 4755ms
+   ✓ EquipmentDialog > mostra os seis slots novos e um item no brinco  709ms
+   ✓ EquipmentDialog > equipa um item da mochila no slot vazio e grava o slot  489ms
+   ✓ EquipmentDialog > item que só existe na campanha vira entrada vinculada equipada  425ms
+   ✓ EquipmentDialog > trocar o item do slot devolve o antigo para a mochila  396ms
+   ✓ EquipmentDialog > avisa quando já há 3 itens sintonizados  341ms
+   ✓ EquipmentDialog > jogador (quem criou a ficha) > equipa o que já tem, pela função segura e não pela ficha  306ms
+ ✓ src/lib/dashboard-base-load.test.ts (15 tests) 18ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx (3 tests) 107ms
+ ✓ src/components/dashboard.test.tsx (13 tests) 443ms
+ ✓ src/components/vtt/vtt-feed-panel.test.tsx (10 tests) 1049ms
+   ✓ feed da mesa > mensagem vazia não envia, e a sessão nova pede confirmação  366ms
+ ✓ src/components/item-form.test.tsx (17 tests) 10683ms
+   ✓ ItemForm (cadastro rico) > Criar fica desabilitado sem nome e o nome aparece ao vivo na lateral  851ms
+   ✓ ItemForm (cadastro rico) > troca de aba mostra o painel certo e salvar envia a arma  657ms
+   ✓ ItemForm (cadastro rico) > Atributo é um Select com os 6 atributos (sem Acuidade) e salva Carisma  1079ms
+   ✓ ItemForm (cadastro rico) > arma antiga com Acuidade abre como Destreza + chip Acuidade e salva dexterity  473ms
+   ✓ ItemForm (cadastro rico) > dado inválido mostra erro e não salva  437ms
+   ✓ ItemForm (cadastro rico) > categoria Munição abre a aba Efeitos e salva o bloco ammo  767ms
+   ✓ ItemForm (cadastro rico) > condição da munição escolhe da lista oficial D&D, não texto livre  1066ms
+   ✓ ItemForm (cadastro rico) > cadastra onde o item se veste e quais atributos ele altera  1379ms
+   ✓ ItemForm (cadastro rico) > o seletor de categoria oferece Capa e cada tipo canônico  447ms
+   ✓ ItemForm (cadastro rico) > Brincos é selecionável e grava o tipo Brincos  626ms
+   ✓ ItemForm (cadastro rico) > Capa é selecionável e grava o tipo Capa  775ms
+   ✓ ItemForm (cadastro rico) > o seletor Soma em lista CD de magia e ataque de magia e grava o alvo  837ms
+   ✓ ItemForm (cadastro rico) > o seletor de onde se veste lista os slots novos no Select do DS  435ms
+ ✓ src/lib/vtt/token-remote.test.ts (23 tests) 174ms
+ ✓ src/components/character-sheet/view/table-resources-strip.test.tsx (21 tests) 2794ms
+   ✓ TableResourcesStrip > desktop: Popover ajusta inspiração e 'Usar 1 · vantagem' gasta 1  345ms
+   ✓ TableResourcesStrip > queimar pede confirmação no Dialog do DS e tira 1 do total  303ms
+   ✓ TableResourcesStrip > mobile: + Dado abre sheet sem X e adiciona  335ms
+ ✓ src/components/vtt/vtt-walls.test.tsx (20 tests) 694ms
+ ✓ src/lib/store/character-save.test.ts (12 tests) 28ms
+ ✓ src/components/vtt/vtt-grid-settings.test.tsx (24 tests) 2305ms
+   ✓ VTTGridSettings — tamanho da célula > campo numérico grava 25 px com patch só de gridSize  340ms
+ ✓ src/components/vtt/vtt-ping-ui.test.tsx (22 tests) 530ms
+ ✓ src/lib/vtt/scene-persistence-route.test.tsx (7 tests) 2695ms
+   ✓ P2b rota real + grid real + P1 real > ACK A não sobrescreve B/cor; writer captura campaign e envia B só depois  735ms
+   ✓ P2b rota real + grid real + P1 real > RLS zero rows mantém B/erro só A; A→B→A e retry reaproveitam último delta  507ms
+   ✓ P2b rota real + grid real + P1 real > scale aguarda grid e envia uma vez para A mesmo se ativar B antes do ACK  321ms
+   ✓ P2b rota real + grid real + P1 real > resultado perdido exige leitura de cena/geometria e nunca repete fator  375ms
+   ✓ online ACK do enable libera Revelar Tudo e cada efeito ocorre uma vez  345ms
+ ✓ src/lib/vtt/character-hp.test.ts (13 tests) 236ms
+ ✓ src/components/vtt/sheet/sheet-panels.test.tsx (19 tests) 1126ms
+stderr | src/components/vtt/vtt-shortcuts-focus.test.tsx > atalhos do VTT respeitam o foco > painel de grade: digitar no campo Distância por célula não dispara atalho
+Received NaN for the `value` attribute. If this is expected, cast the value to a string.
+
+ ✓ src/components/vtt/vtt-shortcuts-focus.test.tsx (23 tests) 1215ms
+   ✓ atalhos do VTT respeitam o foco > com a tela cheia do mapa aberta, V/R/F/G não disparam  447ms
+ ✓ src/components/vtt/vtt-fog-controls.test.tsx (19 tests) 1536ms
+   ✓ VTTFogControls — Cobrir/Revelar Tudo > Cobrir Tudo com a névoa inativa ativa a névoa, aplica e avisa  323ms
+ ✓ src/lib/vtt/vtt-store.test.ts (16 tests) 9ms
+ ✓ src/components/vtt/sheet-batch-review.test.tsx (7 tests) 385ms
+ ✓ src/components/vtt/vtt-light-controls.test.tsx (19 tests) 1128ms
+ ✓ src/components/vtt/vtt-wall-controls.test.tsx (15 tests) 591ms
+ ✓ src/components/vtt/vtt-sheet-floating.test.tsx (23 tests) 12259ms
+   ✓ Ficha flutuante: atalhos (painel tipo Figma) > foco num botão dentro da ficha: R/V/G/F não disparam  505ms
+   ✓ Ficha no celular (390): Sheet de baixo > abre como Sheet sem X e fecha arrastando para baixo  426ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > dá para minimizar TODAS as fichas (7), e todas continuam abertas  2397ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > nenhum cartão cai em cima de outro, nem sai da tela  2311ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > passando da coluna cheia, segue numa nova coluna à direita  2317ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > o cenário do pedido: minimizar 3 e abrir mais NÃO faz as minimizadas sumirem  596ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > restaurar uma e minimizar de novo usa uma vaga livre (não cai em outra)  1033ms
+   ✓ Ficha flutuante: muitas fichas minimizadas > minimizar FORA de ordem (a 3ª e depois a 1ª) não coloca uma em cima da outra  490ms
+ ✓ src/components/vtt/vtt-move-history-panel.test.tsx (11 tests) 927ms
+   ✓ painel de movimentos > soma quanto cada token andou e o filtro mostra só um  359ms
+ ✓ src/components/sidebar-records.test.tsx (10 tests) 429ms
+ ✓ src/components/transfer-campaign-ownership-dialog.test.tsx (16 tests) 4310ms
+   ✓ Transferir mestre no diálogo da campanha > esconde a ação quando a flag não é exatamente true  445ms
+   ✓ Transferir mestre no diálogo da campanha > o mestre vê a ação só para viewer e editor da mesma campanha  303ms
+   ✓ Transferir mestre no diálogo da campanha > mostra o erro generic sem repetir a ação  309ms
+ ✓ src/lib/character-resources.test.ts (17 tests) 12ms
+ ✓ src/components/vtt/sheet/sheet-hp.test.tsx (19 tests) 2320ms
+   ✓ SheetHp · editor ao tocar no número > aplica PV atual e máximo numa gravação só  351ms
+ ✓ src/components/character-sheet/view/sheet-name-dialog.test.tsx (9 tests) 1129ms
+stderr | src/components/navigation.test.tsx
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/components/vtt/vtt-status-icons.test.tsx
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/components/account/table-photo-card.test.tsx (8 tests) 676ms
+ ✓ src/components/vtt/vtt-presence-bar.test.tsx (11 tests) 1969ms
+   ✓ seletor da minha cor > mostra a paleta com nome, cada amostra com 44 px  554ms
+ ✓ src/components/vtt/vtt-scene-bar.test.tsx (7 tests) 1290ms
+   ✓ barra de cenas em pastas > o mestre vê a pasta e a cena solta, não cada mapa do grupo  302ms
+stderr | src/components/entity-image-picker.test.tsx > EntityImagePicker · upload de item/NPC > nunca salva data-URL no item/NPC
+Upload da imagem não devolveu URL do R2; nada foi salvo.
+
+ ✓ src/components/entity-image-picker.test.tsx (8 tests) 1248ms
+   ✓ EntityImagePicker · aviso de imagem privada > asset privado da galeria mostra o aviso no recorte  616ms
+ ✓ src/components/vtt/vtt-status-icons.test.tsx (10 tests) 847ms
+   ✓ menu do token > Select do DS com SelectItem e ícone; nenhum <option> nativo  689ms
+ ✓ src/components/navigation.test.tsx (7 tests) 939ms
+   ✓ Router navigation loop test > renders Arkhiveon brand logo linking to dashboard in sidebar and header  370ms
+ ✓ src/lib/form-draft.test.ts (8 tests) 9ms
+ ✓ src/lib/ammo/consume-ammo.test.ts (8 tests) 13ms
+ ✓ src/lib/vtt/template-permissions.test.ts (9 tests) 13ms
+ ✓ src/lib/store/character-save-screen.test.tsx (3 tests) 1875ms
+   ✓ Editar módulo com cópia desatualizada (caminho real da tela) > aba B salva Deslocamento 35 e a Corda da aba A continua na mochila  752ms
+   ✓ Editar módulo com cópia desatualizada (caminho real da tela) > offline no Salvar mantém o editor e a segunda tentativa grava o deslocamento  644ms
+   ✓ Editar módulo com cópia desatualizada (caminho real da tela) > RLS no Salvar quiet mostra frase em português e não acende o banner  477ms
+ ✓ src/components/dashboard/dashboard-fullscreen.test.tsx (6 tests) 712ms
+   ✓ tela cheia no painel da campanha (1c-2) > NPCs-chave: avatar abre a imagem, não navega nem propaga, Esc devolve o foco  347ms
+ ✓ src/lib/vtt/review-regressions.test.tsx (7 tests) 922ms
+   ✓ edits the exact token opened from the token panel  341ms
+ ✓ src/components/vtt/sheet/sheet-vision.test.tsx (12 tests) 529ms
+ ✓ src/components/character-sheet/view/weapon-attacks.test.tsx (7 tests) 473ms
+ ✓ src/lib/character-vision.test.ts (14 tests) 11ms
+ ✓ src/components/vtt/vtt-sheet-damage.test.tsx (5 tests) 1039ms
+   ✓ Ficha da mesa · dano da arma > sem chat da mesa rola aqui mesmo e mostra na ficha (1d6+6 = 7 a 12)  347ms
+ ✓ src/components/web-update-banner.test.tsx (10 tests) 302ms
+ ✓ src/components/entity-card-fullscreen.test.tsx (9 tests) 657ms
+ ✓ src/components/vtt/vtt-gm-table-bar.test.tsx (12 tests) 341ms
+ ✓ src/components/images/entity-detail-image-viewer.test.tsx (12 tests) 1600ms
+   ✓ tela cheia no detalhe de 'Item' > quem não edita vê a imagem em tela cheia, sem 'Trocar imagem'  574ms
+ ✓ src/components/vtt/scene-save-status.test.tsx (4 tests) 246ms
+stderr | src/components/webgl-context-release.test.tsx > liberação de contextos WebGL ao desmontar > d20 chama renderer.forceContextLoss no unmount
+THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+
+ ✓ src/components/webgl-context-release.test.tsx (3 tests) 816ms
+   ✓ liberação de contextos WebGL ao desmontar > banner do painel (MeshGradient) chama loseContext no unmount  344ms
+   ✓ liberação de contextos WebGL ao desmontar > banner do Discord (Dithering) chama loseContext no unmount  391ms
+ ✓ src/lib/store.test.ts (5 tests) 5ms
+ ✓ src/components/character-sheet/view/sheet-header.test.tsx (3 tests) 558ms
+   ✓ SheetHeader > guarda Equipamento e Editar layout no menu no celular  321ms
+ ✓ src/components/vtt/vtt-sheet-table-roll.test.tsx (3 tests) 816ms
+   ✓ rolagem da ficha no chat da mesa > com o feed no ar, o servidor rola com rótulo e o dado mostra a mesma face  413ms
+ ✓ src/components/vtt/vtt-token-status-s2.test.tsx (5 tests) 1377ms
+   ✓ Status S2 — salvar otimista > aplica na hora, mostra 'Salvando' e mantém quando o servidor aceita  432ms
+   ✓ Status S2 — salvar otimista > Select do DS adiciona status (só lista os que faltam)  503ms
+ ✓ src/components/character-sheet/faction-images.test.tsx (8 tests) 521ms
+stderr | src/lib/vtt/wall-draw.test.ts
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/lib/vtt/wall-draw.test.ts (7 tests) 108ms
+ ✓ src/components/character-card-item-bonus.test.tsx (6 tests) 92ms
+ ✓ src/components/ui/dialog.test.tsx (7 tests) 561ms
+ ✓ src/lib/images/r2-upload-client.test.ts (3 tests) 14ms
+ ✓ src/components/vtt/vtt-pinned-ruler.test.tsx (10 tests) 249ms
+ ✓ src/components/images/entity-image-viewer.test.tsx (8 tests) 680ms
+ ✓ src/components/vtt/vtt-hp-adjust.test.tsx (3 tests) 348ms
+ ✓ src/components/ui/select.test.tsx (4 tests) 757ms
+   ✓ Select do DS (shadcn/Base UI) > controlado: onChange entrega e.target.value  321ms
+ ✓ src/components/vtt/vtt-template-controls.test.tsx (3 tests) 629ms
+   ✓ lists the spell name and who placed it, and deletes only the chosen template  403ms
+ ✓ src/components/activity-feed-error.test.tsx (6 tests) 232ms
+ ✓ src/components/vtt/vtt-grid-settings-lifecycle.test.tsx (2 tests) 374ms
+stderr | src/components/routes.test.tsx
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/components/faction-avatar.test.tsx (10 tests) 56ms
+ ✓ src/components/ai-mesa/shell-ai-chat.test.tsx (5 tests) 210ms
+ ✓ src/components/routes.test.tsx (4 tests) 362ms
+ ✓ src/lib/spotify.test.ts (7 tests) 9ms
+ ✓ src/components/images/image-lightbox.test.tsx (3 tests) 822ms
+   ✓ ImageLightbox (wrapper do ImageViewer) > mantém data-slot, contador, título no painel e alt  338ms
+ ✓ src/components/images/image-viewer.test.tsx (6 tests) 762ms
+   ✓ ImageViewer > abre com título acessível, alt e imagem em object-contain  327ms
+ ✓ src/components/images/image-visibility-menu.test.tsx (4 tests) 720ms
+   ✓ ImageVisibilityMenuItems > pública: co-mestres e jogadores ficam desligados  317ms
+ ✓ src/lib/campaign-loading.test.ts (3 tests) 6ms
+ ✓ src/components/character-sheet/view/sheet-module-card.test.tsx (3 tests) 199ms
+ ✓ src/components/character-sheet/link-campaign-item-dialog.test.tsx (6 tests) 1776ms
+   ✓ LinkCampaignItemDialog > busca filtra a lista  490ms
+   ✓ LinkCampaignItemDialog > efeito muda com No Corpo × Mochila e com a proficiência  346ms
+ ✓ src/components/vtt/vtt-token-status-tooltip.test.tsx (4 tests) 294ms
+ ✓ src/components/dialogs.test.tsx (1 test) 960ms
+   ✓ SpellSearchDialog State Resets > renders when open and resets states when closed  959ms
+ ✓ src/components/character-sheet/fields/combat-fields.test.tsx (4 tests) 999ms
+   ✓ CombatFields · unidade do deslocamento > trocar para metros muda o rótulo e grava speedUnit na ficha  423ms
+ ✓ src/components/bottom-sheet.test.tsx (3 tests) 336ms
+ ✓ src/components/vtt/sheet/sheet-equipment.test.tsx (1 test) 59ms
+ ✓ src/lib/vtt/use-settled-value.test.ts (3 tests) 21ms
+ ✓ src/components/global-error.render.test.tsx (2 tests) 210ms
+ ✓ src/components/vtt/vtt-toolbar-grid-bar.test.tsx (5 tests) 194ms
+ ✓ src/components/character-sheet/linked-inventory-row.test.tsx (1 test) 254ms
+ ✓ src/components/sidebar-nav.test.tsx (2 tests) 163ms
+ ✓ src/components/library/library-file-row.test.tsx (1 test) 223ms
+ ✓ src/components/character-sheet/view/point-pool-control.test.tsx (1 test) 204ms
+ ✓ src/components/ui/toast.test.tsx (2 tests) 171ms
+ ✓ src/components/discord-dither-banner.layout.test.tsx (2 tests) 149ms
+ ✓ src/components/character-sheet/view/module-editor-dialog.test.tsx (1 test) 671ms
+   ✓ ModuleEditorDialog erro ao salvar > mostra frase em português mesmo quando error.message é técnico  670ms
+
+ Test Files  252 passed (252)
+      Tests  3182 passed (3182)
+   Start at  03:36:49
+   Duration  36.08s (transform 9.39s, setup 0ms, collect 50.79s, tests 120.39s, environment 34.43s, prepare 12.36s)
+
+exit 0
