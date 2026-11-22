@@ -117,7 +117,7 @@ export type Database = {
 					size_bytes: number;
 					status: string;
 					title: string;
-					uploaded_by: string;
+					uploaded_by: string | null;
 				};
 				Insert: {
 					campaign_id: string;
@@ -129,7 +129,7 @@ export type Database = {
 					size_bytes: number;
 					status?: string;
 					title: string;
-					uploaded_by: string;
+					uploaded_by?: string | null;
 				};
 				Update: {
 					campaign_id?: string;
@@ -141,7 +141,7 @@ export type Database = {
 					size_bytes?: number;
 					status?: string;
 					title?: string;
-					uploaded_by?: string;
+					uploaded_by?: string | null;
 				};
 				Relationships: [
 					{
@@ -1067,9 +1067,64 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			storage_objects: {
+				Row: {
+					bucket: string;
+					campaign_id: string | null;
+					created_at: string;
+					id: string;
+					kind: string;
+					owner_id: string;
+					r2_key: string;
+					ready_at: string | null;
+					size_bytes: number;
+					status: string;
+					uploaded_by: string | null;
+				};
+				Insert: {
+					bucket: string;
+					campaign_id?: string | null;
+					created_at?: string;
+					id?: string;
+					kind: string;
+					owner_id: string;
+					r2_key: string;
+					ready_at?: string | null;
+					size_bytes: number;
+					status?: string;
+					uploaded_by?: string | null;
+				};
+				Update: {
+					bucket?: string;
+					campaign_id?: string | null;
+					created_at?: string;
+					id?: string;
+					kind?: string;
+					owner_id?: string;
+					r2_key?: string;
+					ready_at?: string | null;
+					size_bytes?: number;
+					status?: string;
+					uploaded_by?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "storage_objects_campaign_id_fkey";
+						columns: ["campaign_id"];
+						isOneToOne: false;
+						referencedRelation: "campaigns";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			user_plans: {
 				Row: {
 					created_at: string;
+					current_period_end: string | null;
+					over_limit_since: string | null;
+					stripe_customer_id: string | null;
+					stripe_subscription_id: string | null;
+					subscription_status: string | null;
 					last_upload_time: string | null;
 					plan: string;
 					storage_used_bytes: number;
@@ -1078,6 +1133,11 @@ export type Database = {
 				};
 				Insert: {
 					created_at?: string;
+					current_period_end?: string | null;
+					over_limit_since?: string | null;
+					stripe_customer_id?: string | null;
+					stripe_subscription_id?: string | null;
+					subscription_status?: string | null;
 					last_upload_time?: string | null;
 					plan?: string;
 					storage_used_bytes?: number;
@@ -1086,6 +1146,11 @@ export type Database = {
 				};
 				Update: {
 					created_at?: string;
+					current_period_end?: string | null;
+					over_limit_since?: string | null;
+					stripe_customer_id?: string | null;
+					stripe_subscription_id?: string | null;
+					subscription_status?: string | null;
 					last_upload_time?: string | null;
 					plan?: string;
 					storage_used_bytes?: number;
@@ -1990,6 +2055,15 @@ export type Database = {
 					new_owner_id: string;
 					previous_owner_id: string;
 				}[];
+			};
+			my_storage_context: {
+				Args: { p_campaign_id?: string | null };
+				Returns: Json;
+			};
+			storage_limit: { Args: { p_plan: string }; Returns: number };
+			storage_payer: {
+				Args: { p_campaign_id: string };
+				Returns: string | null;
 			};
 			user_campaign_role: { Args: { p_campaign_id: string }; Returns: string };
 			user_scene_campaign_role: {

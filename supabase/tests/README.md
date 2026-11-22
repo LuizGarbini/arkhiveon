@@ -68,7 +68,6 @@ bash scripts/test-0066-local.sh
 
 O script recusa host fora do loopback, falha se o Docker ou a stack local não estiver de pé, roda o SQL (N1–N14, transação em `ROLLBACK`), o WebSocket local (R1–R8, T-iso, T-presence-key) e o ciclo de rollback: tira as policies, prova que o join privado passa a ser negado, reaplica a 0066 e termina com ela aplicada. Contas sintéticas `00000000-…` e e-mails `@example.invalid`. A chave local não é impressa.
 
-
 ## 0081 — jogador coloca token (`vtt_place_token`)
 
 Somente Postgres **local** (127.0.0.1:5432), banco descartável `arkhiveon_0081`. Não usa `supabase link`, `db push` nem projeto remoto. O bootstrap `0081_local_bootstrap.sql` replica do prod só as tabelas e policies envolvidas (characters, npcs, vtt_scenes, vtt_tokens, helpers de papel e o guard do UPDATE).
@@ -78,3 +77,13 @@ bash scripts/test-0081-local.sh
 ```
 
 Roda a parte "antes" (prova o buraco do INSERT direto), aplica a 0081 só no banco local, roda N1–N20 (negações), P1–P6 (o que o jogador consegue), U1–U3/D1–D3 (mexer e remover com trava e `placed_by`), G1–G2 (mestre/co-mestre) e R1 (paridade: o predicado da RPC = o SELECT com RLS, para cada conta × origem). Depois aplica o rollback, confere que o buraco volta, e reaplica. Transações em `ROLLBACK`; contas sintéticas `00000000-…`.
+
+## 0082–0086 — Plano Pro S1a (cota por dono da campanha)
+
+Somente Postgres local descartável, com o schema até a 0081 e sem campanha nenhuma (stack local `arkhiveon` em 127.0.0.1:54322, ou o baseline do `arkhiveon-back-end` num PG17 local). Não usa `supabase link`, `db push` nem projeto remoto.
+
+```bash
+LOCAL_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres bash scripts/test-plano-pro-s1a-local.sh
+```
+
+O script recusa host fora do loopback, aplica 0082–0086 duas vezes (idempotência), roda os testes SQL (`0082_storage_objects_rls`, `0083_storage_rpcs` que cobre 0083 e 0084, `0085_library_uploaded_by_set_null`, `0086_members_view_campaign`, todos em `ROLLBACK`), a corrida da reserva (`0083_reserve_storage.concurrency.mjs`, 10 reservas paralelas, entram exatamente 4) e o ciclo de rollback 0086 → 0082, que confere a volta ao estado da 0081 e reaplica tudo. Contas sintéticas `00000000-…` (A mestre pro, E editor, J jogador, B outra conta, P convite pendente, R convite aceito sem vínculo, X de fora), criadas por `plano_pro_s1a_bootstrap.sql`.

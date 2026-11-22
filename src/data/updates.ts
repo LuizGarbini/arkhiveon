@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.183-plano-pro-cota-base",
+		version: "1.6.183",
+		date: "22/11/2026",
+		title: "Base da cota do Plano Pro (ainda sem efeito no app)",
+		description:
+			"Preparação da cota de armazenamento por dono da campanha: o banco passa a ter o registro de cada arquivo enviado, a reserva de espaço que conta para quem paga a campanha (free 100 MB, Pro 10 GB, capa do PDF incluída) e o aviso de cota estourada. Nada muda para quem usa o app até as próximas etapas ligarem o envio a essa reserva.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.182-vtt-dano-rapido",
 		version: "1.6.182",
 		date: "22/11/2026",
