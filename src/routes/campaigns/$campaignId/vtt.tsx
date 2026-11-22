@@ -109,6 +109,7 @@ import {
 	retainTokenAvatarMap,
 	tokenImageRole,
 } from "@/lib/vtt/token-avatar";
+import type { PastedToken } from "@/lib/vtt/token-clipboard";
 import { remoteTokenPatch, tokenPatchIsNoop } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
@@ -1816,12 +1817,14 @@ function VTTSession() {
 	};
 
 	// Token Management Handlers
-	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
+	const placeToken = async (
+		tokenData: Partial<VTTToken>,
+	): Promise<string | null> => {
 		const sessionGeneration = sessionGenerationRef.current;
 		const { client, sceneId } = requirePlaceContext({
 			client: getSupabase(),
 			sceneId: activeSceneId,
-			isGM,
+			canManage: canManageTokens,
 		});
 
 		const sheetCharacter = tokenData.characterId
@@ -1846,8 +1849,31 @@ function VTTSession() {
 			insertPayload,
 		);
 
-		if (sessionGenerationRef.current === sessionGeneration) {
-			addToken(mapTokenRow(data));
+		if (sessionGenerationRef.current !== sessionGeneration) return null;
+		addToken(mapTokenRow(data));
+		return data.id;
+	};
+
+	const handleSpawnToken = async (tokenData: Partial<VTTToken>) => {
+		await placeToken(tokenData);
+	};
+
+	const handlePasteTokens = async (spawns: readonly PastedToken[]) => {
+		const ids: string[] = [];
+		try {
+			for (const spawn of spawns) {
+				const id = await placeToken(spawn);
+				if (id) ids.push(id);
+			}
+		} catch (error) {
+			setMutationError(
+				error instanceof Error
+					? error.message
+					: "Não foi possível colocar o token. Tente novamente.",
+			);
+			throw error;
+		} finally {
+			if (ids.length > 0) useVTTStore.getState().setSelectedTokenIds(ids);
 		}
 	};
 
@@ -2218,6 +2244,7 @@ function VTTSession() {
 					tokenAvatars={tokenAvatars}
 					scene={currentActiveScene}
 					onUpdateToken={handleUpdateToken}
+					onPasteTokens={handlePasteTokens}
 					onBroadcastDrag={handleBroadcastDrag}
 					onBroadcastDragBatch={handleBroadcastDragBatch}
 					onBroadcastCursor={handleBroadcastCursor}

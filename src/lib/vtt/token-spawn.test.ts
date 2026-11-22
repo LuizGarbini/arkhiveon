@@ -99,20 +99,24 @@ function missingTempHpClient() {
 describe("requirePlaceContext", () => {
 	it("blocks a player, a missing client, and a missing scene", () => {
 		expect(() =>
-			requirePlaceContext({ client: {}, sceneId: SCENE_ID, isGM: false }),
+			requirePlaceContext({ client: {}, sceneId: SCENE_ID, canManage: false }),
 		).toThrow(TOKEN_PLACE_NEEDS_GM);
 		expect(() =>
-			requirePlaceContext({ client: null, sceneId: SCENE_ID, isGM: true }),
+			requirePlaceContext({
+				client: null,
+				sceneId: SCENE_ID,
+				canManage: true,
+			}),
 		).toThrow(TOKEN_PLACE_NEEDS_GM);
 		expect(() =>
-			requirePlaceContext({ client: {}, sceneId: null, isGM: true }),
+			requirePlaceContext({ client: {}, sceneId: null, canManage: true }),
 		).toThrow(TOKEN_PLACE_NEEDS_GM);
 	});
 
-	it("lets the GM place on the active scene", () => {
+	it("lets the GM and the co-GM place on the active scene", () => {
 		const client = {};
 		expect(
-			requirePlaceContext({ client, sceneId: SCENE_ID, isGM: true }),
+			requirePlaceContext({ client, sceneId: SCENE_ID, canManage: true }),
 		).toEqual({ client, sceneId: SCENE_ID });
 	});
 });

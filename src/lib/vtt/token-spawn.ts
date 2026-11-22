@@ -21,9 +21,10 @@ export type TokenInsertFn = (
 export function requirePlaceContext<T>(input: {
 	client: T | null;
 	sceneId: string | null | undefined;
-	isGM: boolean;
+	/** Mestre ou co-mestre. A RLS já deixa o editor inserir. */
+	canManage: boolean;
 }): { client: T; sceneId: string } {
-	if (!input.client || !input.sceneId || !input.isGM) {
+	if (!input.client || !input.sceneId || !input.canManage) {
 		throw new Error(TOKEN_PLACE_NEEDS_GM);
 	}
 	return { client: input.client, sceneId: input.sceneId };
