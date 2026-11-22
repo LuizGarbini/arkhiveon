@@ -4134,6 +4134,7 @@ export function VTTCanvas({
 		<div className="absolute inset-0 h-full w-full">
 			<div
 				ref={containerRef}
+				data-vtt-canvas=""
 				className="absolute inset-0 h-full w-full touch-none select-none overflow-hidden bg-background"
 			/>
 			<div

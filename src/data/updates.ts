@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.169-vtt-ping-atencao-camera",
+		version: "1.6.169",
+		date: "22/11/2026",
+		title: "O ping de atenção do mestre leva a câmera",
+		description:
+			"Quando o mestre ou o co-mestre marca Atenção num ponto que você não está vendo, a sua câmera vai até lá. Se o ponto já está na sua tela, a câmera fica. O ping de um jogador não move a câmera de ninguém. Todos aqui continua levando a câmera sempre. Quem pediu menos movimento no sistema vê a câmera pular, sem animação.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.168-vtt-parede-luz-ao-vivo",
 		version: "1.6.168",
 		date: "22/11/2026",
