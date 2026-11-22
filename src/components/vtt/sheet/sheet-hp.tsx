@@ -701,7 +701,7 @@ export function SheetHp({
 									)
 								}
 								className={cn(
-									"min-h-11 cursor-pointer select-none font-mono text-sm font-medium tabular-nums transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+									"min-h-[44px] cursor-pointer select-none font-mono text-sm font-medium tabular-nums transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
 									step < 0
 										? "text-destructive [@media(hover:hover)]:hover:bg-destructive/15"
 										: "text-primary [@media(hover:hover)]:hover:bg-primary/15",
@@ -948,7 +948,7 @@ export function SheetHp({
 	const triggerLabel = `Pontos de vida: ${visibleHpLabel(current, max, showMax)}. Abrir dano e cura`;
 	const triggerClass = cn(
 		numberClass,
-		"-mx-1.5 inline-flex min-h-9 cursor-pointer [@media(pointer:coarse)]:min-h-11 select-none items-center justify-center rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[4px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-white/[0.05] [@media(hover:hover)]:hover:decoration-muted-foreground/70",
+		"-mx-1.5 inline-flex min-h-9 cursor-pointer [@media(pointer:coarse)]:min-h-[44px] select-none items-center justify-center rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[4px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-white/[0.05] [@media(hover:hover)]:hover:decoration-muted-foreground/70",
 		low ? "text-destructive" : "text-foreground",
 	);
 

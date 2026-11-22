@@ -114,6 +114,9 @@ it("edits the exact token opened from the token panel", () => {
 	);
 	fireEvent.click(screen.getByRole("button", { name: "Abrir ficha na mesa" }));
 	expect(useVTTStore.getState().activeTokenIdForMenu).toBeNull();
+	fireEvent.click(
+		screen.getByRole("button", { name: /Pontos de vida: .*Abrir dano e cura/ }),
+	);
 	fireEvent.click(screen.getByRole("button", { name: "Tirar 1 PV" }));
 	expect(update).toHaveBeenCalledWith("b", { hpCurrent: 9 });
 });
