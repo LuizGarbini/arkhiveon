@@ -22,6 +22,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		],
 	},
 	{
+		id: "v1.6.173-vtt-ping-relogio",
+		version: "1.6.173",
+		date: "22/11/2026",
+		title: "Pings chegam mesmo com o relógio do computador diferente",
+		description:
+			'O ping de outra pessoa podia sumir sem aparecer quando o relógio do seu computador estava alguns segundos à frente do dela, e o "Todos aqui" do mestre não levava a câmera. Agora o ping conta o tempo a partir de quando chega na sua tela.',
+		bullets: [],
+	},
+	{
 		id: "v1.6.172-vtt-molde-sobre-molde",
 		version: "1.6.172",
 		date: "22/11/2026",
