@@ -3,8 +3,11 @@
  * O select lista só as colunas que o resumo e a cena usam.
  */
 
+import type { CoreItem } from "../_shared/combat-core.ts";
 import {
 	type CharacterRow,
+	combatItemsFromRows,
+	equippedItemIds,
 	PATCH_LIMITS,
 	summarizeCharacter,
 	toRoster,
@@ -25,6 +28,8 @@ const CHARACTER_COLUMNS = "id, name, system, data";
 const SCENE_COLUMNS = "id, name, fog_enabled";
 const TOKEN_COLUMNS = "name, layer, x, y, is_hidden, character_id";
 const FOG_COLUMNS = "revealed_paths";
+/** Só o que a conta de CA/iniciativa/deslocamento lê (bônus vivem em `data`). */
+const ITEM_COLUMNS = "id, name, data";
 
 export interface MesaQueryResult {
 	data: unknown;
@@ -33,6 +38,7 @@ export interface MesaQueryResult {
 
 export interface MesaFilter {
 	eq(column: string, value: unknown): MesaFilter;
+	in(column: string, values: readonly unknown[]): MesaFilter;
 	limit(count: number): MesaFilter;
 	maybeSingle(): Promise<MesaQueryResult>;
 	list(): Promise<MesaQueryResult>;
@@ -46,6 +52,7 @@ export interface MesaDb {
 
 interface RawFilter {
 	eq(column: string, value: unknown): RawFilter;
+	in(column: string, values: readonly unknown[]): RawFilter;
 	limit(count: number): RawFilter;
 	maybeSingle(): Promise<MesaQueryResult>;
 	then: PromiseLike<MesaQueryResult>["then"];
@@ -58,6 +65,9 @@ export function mesaDbFromClient(client: {
 	const wrap = (query: RawFilter): MesaFilter => ({
 		eq(column, value) {
 			return wrap(query.eq(column, value));
+		},
+		in(column, values) {
+			return wrap(query.in(column, values));
 		},
 		limit(count) {
 			return wrap(query.limit(count));
@@ -131,6 +141,30 @@ function mapTokens(value: unknown): MesaContextToken[] {
 	return tokens;
 }
 
+/**
+ * Itens equipados das fichas carregadas: UMA query em `items`, com o cliente
+ * de quem chama (RLS decide o que ele lê). Item que ele não lê não volta e,
+ * portanto, não soma. Sem ids, nenhuma query. Erro: mapa vazio (vale a ficha).
+ */
+export async function loadEquippedItems(
+	db: MesaDb,
+	rows: readonly CharacterRow[],
+): Promise<Map<string, CoreItem>> {
+	const ids = equippedItemIds(rows, isCampaignId);
+	if (ids.length === 0) return new Map();
+	try {
+		const { data, error } = await db
+			.from("items")
+			.select(ITEM_COLUMNS)
+			.in("id", ids)
+			.list();
+		if (error) return new Map();
+		return combatItemsFromRows(data);
+	} catch {
+		return new Map();
+	}
+}
+
 export async function loadIaMesaCharacter(
 	db: MesaDb,
 	input: { campaignId: string; characterId: string },
@@ -154,6 +188,8 @@ export async function loadIaMesaContext(
 	context: MesaContextInput;
 	asker: CharacterRow | null;
 	rosterRows: CharacterRow[];
+	/** Itens equipados (só os que quem chama lê), para o resumo da ficha. */
+	itemsById: Map<string, CoreItem>;
 }> {
 	const role = input.role ?? "gm";
 	let asker: CharacterRow | null = null;
@@ -213,6 +249,11 @@ export async function loadIaMesaContext(
 		}
 	}
 
+	const itemsById = await loadEquippedItems(
+		db,
+		asker ? [asker, ...rosterRows] : rosterRows,
+	);
+
 	let sceneName = "Sem cena ativa";
 	let fogEnabled = false;
 	let tokens: MesaContextToken[] = [];
@@ -255,9 +296,12 @@ export async function loadIaMesaContext(
 	return {
 		asker,
 		rosterRows,
+		itemsById,
 		context: {
 			role,
-			sheetText: asker ? JSON.stringify(summarizeCharacter(asker)) : "",
+			sheetText: asker
+				? JSON.stringify(summarizeCharacter(asker, itemsById))
+				: "",
 			sceneName,
 			gmNotes: "",
 			fogEnabled,

@@ -1,0 +1,16 @@
+
+ RUN  v3.2.4 /workspace/arkhiveon/item7-work
+
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > +5 na iniciativa e +2 na CA entram no resumo; o valor salvo fica em fields 3ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > dá o mesmo número que computeEffectiveStats da ficha 1ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > item que o jogador não lê (fora do mapa) não soma nada 0ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > item que exige sintonia sem estar sintonizado, ou ficha de outro sistema, não soma 0ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > só pede os ids No Corpo, sem repetir 0ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: o contexto lê os itens numa query só, com RLS > uma query em items com .in(ids equipados); o que o RLS esconde não soma 2ms
+ ✓ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: o contexto lê os itens numa query só, com RLS > sem item equipado vinculado, nenhuma query em items 0ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  03:13:11
+   Duration  350ms (transform 137ms, setup 0ms, collect 168ms, tests 7ms, environment 0ms, prepare 50ms)
+

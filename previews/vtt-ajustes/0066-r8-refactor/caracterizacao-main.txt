@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /workspace/arkhiveon/r8-work
+
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > canal da sala: tópico, config, handlers, presença e o que é enviado 43ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > canal da sala: efeito de cada evento recebido na store 31ms
+ ✓ src/lib/vtt/room-channel.characterization.test.tsx > troca de cena e saída: um subscribe por cena e o canal é removido 15ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  03:31:29
+   Duration  1.67s (transform 684ms, setup 0ms, collect 1.15s, tests 89ms, environment 250ms, prepare 47ms)
+
