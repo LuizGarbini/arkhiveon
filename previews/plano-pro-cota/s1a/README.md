@@ -21,7 +21,7 @@
 
 - `testes-sql.txt`: saída de `scripts/test-plano-pro-s1a-local.sh`:
   - aplica e reaplica 0082–0086;
-  - 34 casos SQL, 17 deles de negação (conta B, outra campanha, convite pendente, membro removido, anon);
+  - 34 casos SQL, 13 deles de negação (conta B, outra campanha, convite pendente, membro removido, anon);
   - a corrida de 10 reservas paralelas, em que entram exatamente 4;
   - o ciclo de rollback 0086 → 0082, que volta ao estado da 0081 e reaplica tudo.
 - `tsc.txt`, `biome.txt`, `pnpm-test.txt` e `build.txt`: front sem erro, com 251 arquivos e 3163 testes.
