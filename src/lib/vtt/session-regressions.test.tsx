@@ -140,7 +140,13 @@ const token: VTTToken = {
 };
 vi.mock("@/lib/supabase", () => ({
 	getSupabase: () => ({
-		rpc: mock.rpc,
+		realtime: { setAuth: async () => {} },
+		rpc: (fn: string, args: unknown) => {
+			if (fn === "get_campaign_members") {
+				return Promise.resolve({ data: [], error: null });
+			}
+			return mock.rpc(fn, args);
+		},
 		from: (table: string) => {
 			let writing = false;
 			const query = {
@@ -191,8 +197,9 @@ vi.mock("@/lib/supabase", () => ({
 			};
 			return query;
 		},
-		channel: () => {
+		channel: (name?: string) => {
 			const channel = {
+				topic: name,
 				on: (
 					type: string,
 					filter: { table?: string },

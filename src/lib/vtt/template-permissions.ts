@@ -1,8 +1,8 @@
 /**
  * Quem pode apagar um molde de magia na mesa.
  * O dono apaga o seu. Mestre e co-mestre apagam qualquer um.
- * O papel do remetente vem de memberships/presença do receptor, nunca de um
- * campo de papel no payload do broadcast.
+ * O papel do remetente vem dos memberships do receptor, nunca da presença
+ * declarada nem de um campo de papel no payload do broadcast.
  */
 
 export interface TemplateActor {
@@ -47,10 +47,11 @@ export function canRemoveSpellTemplate(
 }
 
 /**
- * Papel do remetente no lado de quem recebe.
- * Membership conhecido vence a presença (a presença é declarada pelo cliente).
- * `campaignOwnerId` reconhece o mestre mesmo sem linha de membership.
- * Sem as duas, usa a presença já sincronizada. Sem nada disso, é jogador.
+ * Papel do remetente no lado de quem recebe: só `memberships` e
+ * `campaignOwnerId` (0066, item 3.3 do plano). A presença é declarada pelo
+ * próprio cliente no `track`, então nunca decide permissão: `source.presence`
+ * fica no tipo só por compatibilidade e é ignorado. Sem membership conhecido
+ * (e sem ser o dono), o remetente é jogador.
  */
 export function resolveSenderTemplateRole(
 	senderUserId: string | null | undefined,
@@ -71,17 +72,6 @@ export function resolveSenderTemplateRole(
 	}
 	if (source.campaignOwnerId && senderUserId === source.campaignOwnerId) {
 		return { userId: senderUserId, isGM: true, isCoGM: false };
-	}
-	const present = source.presence?.find(
-		(entry) => entry.userId === senderUserId,
-	);
-	if (present) {
-		const isGM = present.isGM === true;
-		return {
-			userId: senderUserId,
-			isGM,
-			isCoGM: !isGM && present.isCoGM === true,
-		};
 	}
 	return { userId: senderUserId, isGM: false, isCoGM: false };
 }

@@ -11,12 +11,21 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.180-plano-pro-cota-base",
-		version: "1.6.180",
+		id: "v1.6.183-plano-pro-cota-base",
+		version: "1.6.183",
 		date: "22/11/2026",
 		title: "Base da cota do Plano Pro (ainda sem efeito no app)",
 		description:
 			"Preparação da cota de armazenamento por dono da campanha: o banco passa a ter o registro de cada arquivo enviado, a reserva de espaço que conta para quem paga a campanha (free 100 MB, Pro 10 GB, capa do PDF incluída) e o aviso de cota estourada. Nada muda para quem usa o app até as próximas etapas ligarem o envio a essa reserva.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.181-vtt-canal-privado",
+		version: "1.6.181",
+		date: "22/11/2026",
+		title: "Mesa virtual: canais privados em tempo real",
+		description:
+			"A mesa passa a conversar por canais privados: cada pessoa tem o seu, o mestre fala com todos num canal de mesa, e o que só o mestre e o co-mestre devem ver (névoa, token oculto) não chega no jogador. O nome de quem mandou sai do canal, não do que está escrito na mensagem. Esta versão só entra no ar no mesmo dia em que a regra no servidor (0066) for aplicada.",
 		bullets: [],
 	},
 	{

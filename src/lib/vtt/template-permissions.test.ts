@@ -86,18 +86,48 @@ describe("acceptTemplateRemoval", () => {
 		).toEqual(["other"]);
 	});
 
-	it("lets a co-GM known by the receiver's presence remove someone else's template", () => {
+	it("lets a co-GM known by the receiver's membership (editor) remove someone else's template", () => {
 		expect(
 			acceptTemplateRemoval({
 				templates,
 				requestedIds: ["other"],
 				senderUserId: "co",
 				source: {
-					presence: [{ userId: "co", isGM: false, isCoGM: true }],
+					memberships: [{ userId: "co", role: "editor" }],
+					presence: [{ userId: "co", isGM: false, isCoGM: false }],
 				},
 				claimedRole: { isGM: false, isCoGM: false },
 			}),
 		).toEqual(["other"]);
+	});
+
+	it("treats a presence claiming co-GM with no membership as a player (0066, 3.3)", () => {
+		expect(
+			acceptTemplateRemoval({
+				templates,
+				requestedIds: ["other"],
+				senderUserId: "co",
+				source: {
+					memberships: [{ userId: "mestre", role: "owner" }],
+					presence: [{ userId: "co", isGM: true, isCoGM: true }],
+				},
+				claimedRole: { isGM: true, isCoGM: true },
+			}),
+		).toEqual([]);
+	});
+
+	it("treats a presence claiming co-GM over a viewer membership as a player", () => {
+		expect(
+			acceptTemplateRemoval({
+				templates,
+				requestedIds: ["other"],
+				senderUserId: "lia",
+				source: {
+					memberships: [{ userId: "lia", role: "viewer" }],
+					presence: [{ userId: "lia", isGM: false, isCoGM: true }],
+				},
+			}),
+		).toEqual([]);
 	});
 
 	it("denies a player presence even when the payload claims co-GM", () => {
