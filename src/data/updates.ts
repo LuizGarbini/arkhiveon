@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "22/11/2026",
 		title: "Molde de magia por cima de outro molde",
 		description:
-			"Com a ferramenta de moldes, o clique cria um molde novo mesmo em cima de outro, seja do mestre, de um jogador ou o seu. Para selecionar um molde que já está na mesa, use Shift+clique.",
+			"Com a ferramenta de moldes, o clique cria um molde novo mesmo em cima de outro, seja do mestre, de um jogador ou o seu. Para selecionar um molde que já está na mesa, use Shift+clique; no celular ou no toque, use a ferramenta Selecionar ou toque no molde na lista.",
 		bullets: [],
 	},
 	{
