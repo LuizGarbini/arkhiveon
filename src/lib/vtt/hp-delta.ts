@@ -27,3 +27,19 @@ export function planHpDelta(delta: number, state: HpDeltaState): HpDeltaPlan {
 	}
 	return { current: Math.max(0, current + delta) };
 }
+
+/**
+ * Definir o PV atual num valor (“15” sem sinal ou “=15” no painel de PV). Fica
+ * entre 0 e o máximo (sem máximo, só o piso 0); a vida temporária não muda.
+ * Sem mudança devolve `{}`.
+ */
+export function planHpSet(
+	value: number,
+	state: Pick<HpDeltaState, "current" | "max">,
+): HpDeltaPlan {
+	const { current, max } = state;
+	if (!Number.isFinite(value)) return {};
+	const floored = Math.max(0, Math.trunc(value));
+	const next = max > 0 ? Math.min(max, floored) : floored;
+	return next === current ? {} : { current: next };
+}

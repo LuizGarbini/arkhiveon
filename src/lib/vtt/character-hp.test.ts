@@ -335,4 +335,35 @@ describe("saveLinkedCharacterHp", () => {
 		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
 		expect(useRPGStore.getState().characters[0]?.health).toBe(33);
 	});
+
+	it("quiet: the HP panel shows the failure, so no generic toast", async () => {
+		useRPGStore.setState({
+			characters: [
+				{
+					id: "lyra",
+					system: "dnd5e",
+					health: 33,
+					healthMax: 38,
+				} as Character,
+			],
+		});
+		render(createElement(ToastProvider, null, createElement("div")));
+		let saved = true;
+		await act(async () => {
+			saved = await saveLinkedCharacterHp({
+				characterId: "lyra",
+				current: 28,
+				canEditMax: false,
+				quiet: true,
+				rpc: async () => {
+					throw new Error("Failed to fetch");
+				},
+			});
+		});
+		expect(saved).toBe(false);
+		expect(document.body.textContent).not.toContain(
+			"Não foi possível salvar os PV",
+		);
+		expect(useRPGStore.getState().characters[0]?.health).toBe(33);
+	});
 });

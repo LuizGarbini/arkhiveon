@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planHpDelta } from "./hp-delta";
+import { planHpDelta, planHpSet } from "./hp-delta";
 
 const base = { current: 20, max: 30, temp: 0, canTemp: true };
 
@@ -38,5 +38,27 @@ describe("planHpDelta", () => {
 
 	it("cura não mexe na vida temporária", () => {
 		expect(planHpDelta(1, { ...base, temp: 15 })).toEqual({ current: 21 });
+	});
+});
+
+describe("planHpSet", () => {
+	it("define o PV atual e não mexe na temporária", () => {
+		expect(planHpSet(15, { current: 20, max: 30 })).toEqual({ current: 15 });
+	});
+
+	it("fica entre 0 e o máximo", () => {
+		expect(planHpSet(45, { current: 20, max: 30 })).toEqual({ current: 30 });
+		expect(planHpSet(-4, { current: 20, max: 30 })).toEqual({ current: 0 });
+		expect(planHpSet(0, { current: 20, max: 30 })).toEqual({ current: 0 });
+		expect(planHpSet(30, { current: 20, max: 30 })).toEqual({ current: 30 });
+	});
+
+	it("sem máximo definido, só o piso 0", () => {
+		expect(planHpSet(45, { current: 20, max: 0 })).toEqual({ current: 45 });
+	});
+
+	it("valor igual ou inválido não muda nada", () => {
+		expect(planHpSet(20, { current: 20, max: 30 })).toEqual({});
+		expect(planHpSet(Number.NaN, { current: 20, max: 30 })).toEqual({});
 	});
 });

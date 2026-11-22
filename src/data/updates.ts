@@ -20,6 +20,18 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.182-vtt-dano-rapido",
+		version: "1.6.182",
+		date: "22/11/2026",
+		title: "Dano e cura rápidos na ficha da mesa",
+		description:
+			"Na ficha aberta no VTT, clique (ou toque) no número do PV para abrir o painel de PV: −5, −1, +1 e +5 na hora, e um campo para digitar o valor com − Dano e + Curar. Enter aplica o que o campo indica: −15 é dano, +8 é cura e 15 (ou =15) define o PV. Shift+Enter com um número sem sinal cura. O dano gasta primeiro a vida temporária, que só o mestre e o co-mestre mudam. Cada ajuste pode ser desfeito por 10 segundos.",
+		bullets: [
+			"Moldes de magia: no celular ou no toque, selecione um molde pela ferramenta Selecionar ou tocando nele na lista.",
+			"Editar valores do PV (mestre): a ficha grava primeiro; se ela não salvar, o token não muda e o painel avisa o erro.",
+		],
+	},
+	{
 		id: "v1.6.181-vtt-canal-privado",
 		version: "1.6.181",
 		date: "22/11/2026",

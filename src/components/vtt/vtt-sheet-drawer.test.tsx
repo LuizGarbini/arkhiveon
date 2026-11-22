@@ -230,13 +230,14 @@ describe("VTTSheetDrawer · atributos", () => {
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
 		// o número grande é o da ficha (33 de 38), nunca o do token (1 de 2)
 		const open = screen.getByRole("button", {
-			name: "Editar pontos de vida (33 / 38)",
+			name: "Pontos de vida: 33 / 38. Abrir dano e cura",
 		});
 		expect(open.textContent).toContain("33");
-		expect(screen.getByText("/ 38")).toBeTruthy();
+		expect(screen.getAllByText("/ 38").length).toBeGreaterThan(0);
 		expect(screen.queryByText("/ 2")).toBeNull();
-		// o editor reúne PV atual, máximo e vida temporária
+		// “Editar valores” no painel reúne PV atual, máximo e vida temporária
 		fireEvent.click(open);
+		fireEvent.click(screen.getByRole("button", { name: "Editar valores" }));
 		expect(screen.getByRole("spinbutton", { name: "PV máximo" })).toBeTruthy();
 		expect(screen.getByRole("spinbutton", { name: "PV atual" })).toBeTruthy();
 		expect(
@@ -258,13 +259,18 @@ describe("VTTSheetDrawer · atributos", () => {
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={async () => {}} />);
 		const open = screen.getByRole("button", {
-			name: "Editar pontos de vida (33)",
+			name: "Pontos de vida: 33. Abrir dano e cura",
 		});
 		expect(open.textContent).toContain("33");
 		expect(screen.queryByText("/ 38")).toBeNull();
 		expect(screen.queryByText("38")).toBeNull();
 		fireEvent.click(open);
+		fireEvent.click(screen.getByRole("button", { name: "Editar valores" }));
 		expect(screen.queryByRole("spinbutton", { name: "PV máximo" })).toBeNull();
+		// vida temporária é só do mestre/co-mestre (o jogador não grava a ficha)
+		expect(
+			screen.queryByRole("spinbutton", { name: "Vida temporária" }),
+		).toBeNull();
 		h.vtt.isGM = true;
 	});
 
@@ -288,12 +294,21 @@ describe("VTTSheetDrawer · atributos", () => {
 		];
 		setCharacter({ health: 33, healthMax: 38 });
 		render(<VTTSheetDrawer onUpdateToken={onUpdateToken} />);
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: /Pontos de vida: .*Abrir dano e cura/,
+			}),
+		);
 		const minus = screen.getByRole("button", { name: "Tirar 5 PV" });
 		fireEvent.click(minus);
 		fireEvent.click(minus);
 		expect(onUpdateToken).toHaveBeenCalledTimes(1);
-		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
-		expect(screen.getByText("Salvando…")).toBeTruthy();
+		expect(onUpdateToken).toHaveBeenCalledWith(
+			"tok-1",
+			{ hpCurrent: 28 },
+			{ quiet: true },
+		);
+		expect(screen.getAllByText("Salvando…").length).toBeGreaterThan(0);
 		expect((minus as HTMLButtonElement).disabled).toBe(true);
 		await act(async () => {
 			resolveSave(true);
