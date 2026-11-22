@@ -12,7 +12,7 @@ import {
 	Shield,
 	User,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { FramedImage } from "@/components/framed-image";
 import { EntityImageViewer } from "@/components/images/entity-image-viewer";
 import { CrisImportDialog } from "@/components/ordem/cris-import-dialog";
@@ -38,6 +38,89 @@ import { EquipmentDialog } from "../equipment/equipment-dialog";
 import { useCombatStats } from "../use-linked-items";
 import { TableResourcesStrip } from "./table-resources-strip";
 import { QuickStat } from "./ui-primitives";
+
+function SheetMoreMenu({
+	character,
+	isViewer,
+	isEditingLayout,
+	className,
+	onOpenImageDialog,
+	onOpenTransferDialog,
+	onOpenExportDialog,
+	onToggleEditLayout,
+	onOpenEquipment,
+}: {
+	character: Character;
+	isViewer?: boolean;
+	isEditingLayout?: boolean;
+	className?: string;
+	onOpenImageDialog: () => void;
+	onOpenTransferDialog: () => void;
+	onOpenExportDialog: () => void;
+	onToggleEditLayout: () => void;
+	onOpenEquipment: () => void;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						type="button"
+						variant="outline"
+						size="icon-touch"
+						className={cn("min-h-[44px] min-w-[44px] shrink-0", className)}
+						aria-label="Mais ações da ficha"
+					/>
+				}
+			>
+				<MoreHorizontal className="h-4 w-4" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-56">
+				{character.system === "dnd5e" && (
+					<DropdownMenuItem
+						onClick={onOpenEquipment}
+						className="min-h-[44px] md:hidden"
+					>
+						<Shield />
+						Equipamento
+					</DropdownMenuItem>
+				)}
+				<DropdownMenuItem
+					disabled={isViewer}
+					title={isViewer ? "Sem permissão para editar layout" : undefined}
+					onClick={onToggleEditLayout}
+					className="min-h-[44px] md:hidden"
+				>
+					<Edit />
+					{isEditingLayout ? "Concluir layout" : "Editar layout"}
+				</DropdownMenuItem>
+				{!isViewer && (
+					<DropdownMenuItem
+						onClick={onOpenImageDialog}
+						className="min-h-[44px] md:min-h-9"
+					>
+						<Camera />
+						Alterar imagem
+					</DropdownMenuItem>
+				)}
+				<DropdownMenuItem
+					onClick={onOpenTransferDialog}
+					className="min-h-[44px] md:min-h-9"
+				>
+					<ArrowRightLeft />
+					Transferir
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					onClick={onOpenExportDialog}
+					className="min-h-[44px] md:min-h-9"
+				>
+					<Download />
+					Exportar PDF
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
 
 export interface SheetHeaderProps {
 	character: Character;
@@ -100,9 +183,27 @@ export function SheetHeader({
 					isViewer={isViewer}
 					onOpenImageDialog={onOpenImageDialog}
 					onOpenNameDialog={onOpenNameDialog}
+					nameAction={
+						<SheetMoreMenu
+							character={character}
+							isViewer={isViewer}
+							isEditingLayout={isEditingLayout}
+							className="md:hidden"
+							onOpenEquipment={() => setEquipmentOpen(true)}
+							onOpenImageDialog={onOpenImageDialog}
+							onOpenTransferDialog={onOpenTransferDialog}
+							onOpenExportDialog={onOpenExportDialog}
+							onToggleEditLayout={onToggleEditLayout}
+						/>
+					}
 				/>
 
-				<div className="flex shrink-0 flex-wrap items-center gap-2">
+				<div
+					className={cn(
+						"flex shrink-0 flex-wrap items-center gap-2",
+						character.system !== "ordem" && "max-md:hidden",
+					)}
+				>
 					{character.system === "ordem" && (
 						<>
 							<CrisImportDialog />
@@ -116,23 +217,15 @@ export function SheetHeader({
 						</>
 					)}
 					{character.system === "dnd5e" && (
-						<>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => setEquipmentOpen(true)}
-								className="hidden min-h-[44px] flex-1 gap-2 sm:flex-none md:inline-flex"
-							>
-								<Shield className="h-4 w-4" />
-								Equipamento
-							</Button>
-							<EquipmentDialog
-								character={character}
-								open={equipmentOpen}
-								onOpenChange={setEquipmentOpen}
-								speedUnit={speedUnitOf(character, config.speedUnit)}
-							/>
-						</>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setEquipmentOpen(true)}
+							className="hidden min-h-[44px] flex-1 gap-2 sm:flex-none md:inline-flex"
+						>
+							<Shield className="h-4 w-4" />
+							Equipamento
+						</Button>
 					)}
 					{isViewer ? (
 						<Button
@@ -154,68 +247,28 @@ export function SheetHeader({
 							{isEditingLayout ? "Concluir layout" : "Editar layout"}
 						</Button>
 					)}
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-touch"
-									className="min-h-[44px] min-w-[44px] md:size-9"
-									aria-label="Mais ações da ficha"
-								/>
-							}
-						>
-							<MoreHorizontal className="h-4 w-4" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-56">
-							{character.system === "dnd5e" && (
-								<DropdownMenuItem
-									onClick={() => setEquipmentOpen(true)}
-									className="min-h-[44px] md:hidden"
-								>
-									<Shield />
-									Equipamento
-								</DropdownMenuItem>
-							)}
-							<DropdownMenuItem
-								disabled={isViewer}
-								title={
-									isViewer ? "Sem permissão para editar layout" : undefined
-								}
-								onClick={onToggleEditLayout}
-								className="min-h-[44px] md:hidden"
-							>
-								<Edit />
-								{isEditingLayout ? "Concluir layout" : "Editar layout"}
-							</DropdownMenuItem>
-							{!isViewer && (
-								<DropdownMenuItem
-									onClick={onOpenImageDialog}
-									className="min-h-[44px] md:min-h-9"
-								>
-									<Camera />
-									Alterar imagem
-								</DropdownMenuItem>
-							)}
-							<DropdownMenuItem
-								onClick={onOpenTransferDialog}
-								className="min-h-[44px] md:min-h-9"
-							>
-								<ArrowRightLeft />
-								Transferir
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={onOpenExportDialog}
-								className="min-h-[44px] md:min-h-9"
-							>
-								<Download />
-								Exportar PDF
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<SheetMoreMenu
+						character={character}
+						isViewer={isViewer}
+						isEditingLayout={isEditingLayout}
+						className="max-md:hidden md:size-9"
+						onOpenEquipment={() => setEquipmentOpen(true)}
+						onOpenImageDialog={onOpenImageDialog}
+						onOpenTransferDialog={onOpenTransferDialog}
+						onOpenExportDialog={onOpenExportDialog}
+						onToggleEditLayout={onToggleEditLayout}
+					/>
 				</div>
 			</div>
+
+			{character.system === "dnd5e" && (
+				<EquipmentDialog
+					character={character}
+					open={equipmentOpen}
+					onOpenChange={setEquipmentOpen}
+					speedUnit={speedUnitOf(character, config.speedUnit)}
+				/>
+			)}
 
 			<SheetQuickStats
 				character={character}
@@ -248,6 +301,7 @@ export function SheetIdentity({
 	compact = false,
 	onOpenImageDialog,
 	onOpenNameDialog,
+	nameAction,
 }: {
 	character: Character;
 	config: SystemConfig;
@@ -258,6 +312,8 @@ export function SheetIdentity({
 	compact?: boolean;
 	onOpenImageDialog?: () => void;
 	onOpenNameDialog?: () => void;
+	/** Menu ⋯ na linha do nome, só abaixo de md. */
+	nameAction?: ReactNode;
 }) {
 	const Title = compact ? "h2" : "h1";
 	const summary =
@@ -272,13 +328,15 @@ export function SheetIdentity({
 		<div
 			className={cn(
 				"flex min-w-0 items-center",
-				compact ? "gap-3" : "gap-4 sm:gap-5",
+				compact
+					? "gap-3"
+					: "gap-4 sm:gap-5 max-md:flex-col max-md:items-stretch",
 			)}
 		>
 			<div
 				className={cn(
 					"relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-border/70",
-					compact ? "h-14 w-14" : "h-20 w-20 sm:h-24 sm:w-24",
+					compact ? "h-14 w-14" : "h-20 w-20 max-md:self-start sm:h-24 sm:w-24",
 				)}
 			>
 				{characterImageUrl ? (
@@ -343,10 +401,9 @@ export function SheetIdentity({
 							<Pencil className="h-4 w-4" />
 						</Button>
 					)}
+					{nameAction}
 				</div>
-				<p className="truncate text-sm text-muted-foreground max-md:text-primary">
-					{summary}
-				</p>
+				<p className="truncate text-sm text-muted-foreground">{summary}</p>
 				{character.playerName && (
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
 						Jogador:{" "}
@@ -400,7 +457,7 @@ export function SheetQuickStats({
 						: columns === 4
 							? "grid-cols-4"
 							: "grid-cols-3"
-					: "sm:grid-cols-4",
+					: "sm:grid-cols-4 max-md:grid-cols-4",
 				className,
 			)}
 		>

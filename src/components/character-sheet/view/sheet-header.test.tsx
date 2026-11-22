@@ -72,7 +72,13 @@ describe("SheetHeader", () => {
 		expect(name.className).not.toContain("truncate");
 		expect(name.getAttribute("title")).toBe("Elara Ventoclaro");
 		expect(screen.getByText("Alta-elfa · Mago · Nível 5").className).toContain(
-			"max-md:text-primary",
+			"text-muted-foreground",
+		);
+		expect(
+			screen.getByText("Alta-elfa · Mago · Nível 5").className,
+		).not.toContain("text-primary");
+		expect(header?.querySelector("dl")?.className).toContain(
+			"max-md:grid-cols-4",
 		);
 		expect(screen.getByText("D&D 5ª Edição (2014)").className).toContain(
 			"text-primary",
@@ -95,16 +101,35 @@ describe("SheetHeader", () => {
 		const edit = screen.getByRole("button", { name: "Editar layout" });
 		expect(edit.className).toContain("hidden");
 		expect(edit.className).toContain("md:inline-flex");
+		const name = screen.getByRole("heading", {
+			level: 1,
+			name: "Elara Ventoclaro",
+		});
+		const nameRow = name.parentElement;
+		const moreButtons = screen.getAllByRole("button", {
+			name: "Mais ações da ficha",
+		});
+		const moreOnNameLine = moreButtons.find((button) =>
+			nameRow?.contains(button),
+		);
+		expect(moreOnNameLine).toBeDefined();
+		expect(moreOnNameLine?.className).toContain("md:hidden");
+		expect(moreOnNameLine?.className).toContain("size-[44px]");
 		expect(
-			screen.getByRole("button", { name: "Mais ações da ficha" }).className,
-		).toContain("size-[44px]");
+			nameRow?.contains(
+				screen.getByRole("button", { name: "Renomear personagem" }),
+			),
+		).toBe(true);
 		expect(
 			screen.getByRole("button", { name: "Renomear personagem" }).className,
 		).toContain("size-[44px]");
-
-		fireEvent.click(
-			screen.getByRole("button", { name: "Mais ações da ficha" }),
+		const desktopMore = moreButtons.find(
+			(button) => !nameRow?.contains(button),
 		);
+		expect(desktopMore?.className).toContain("max-md:hidden");
+		expect(desktopMore?.parentElement?.className).toContain("max-md:hidden");
+
+		fireEvent.click(moreOnNameLine as HTMLElement);
 		const menuEquipment = screen.getByRole("menuitem", { name: "Equipamento" });
 		const menuEdit = screen.getByRole("menuitem", { name: "Editar layout" });
 		expect(menuEquipment.className).toContain("min-h-[44px]");

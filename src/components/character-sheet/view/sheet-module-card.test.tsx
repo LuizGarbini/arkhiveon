@@ -30,7 +30,7 @@ describe("SheetModuleCard (cabeçalho uniforme)", () => {
 		expect(heading.className).toContain("font-display");
 		expect(heading.tabIndex).toBe(-1);
 		const region = screen.getByRole("region", { name: "Inventário" });
-		expect(region.id).toBe("ficha-inventory");
+		expect(region.id).toBe("ficha-inventory-80");
 		expect(region.getAttribute("data-module-kind")).toBe("inventory");
 		expect(region.className).toContain("scroll-mt-3");
 		expect(region.className).toContain("max-md:rounded-none");
@@ -41,6 +41,40 @@ describe("SheetModuleCard (cabeçalho uniforme)", () => {
 		expect(edit.className).toContain("h-[44px]");
 		fireEvent.click(edit);
 		expect(onEdit).toHaveBeenCalledTimes(1);
+	});
+
+	it("usa o id do módulo na âncora, mesmo com dois blocos do mesmo kind", () => {
+		const { container } = render(
+			<div>
+				<SheetModuleCard
+					module={{
+						...mod,
+						id: "custom-a",
+						kind: "customText",
+						title: "Notas A",
+					}}
+					canEdit={false}
+					onEdit={() => {}}
+				>
+					<p>a</p>
+				</SheetModuleCard>
+				<SheetModuleCard
+					module={{
+						...mod,
+						id: "custom-b",
+						kind: "customText",
+						title: "Notas B",
+					}}
+					canEdit={false}
+					onEdit={() => {}}
+				>
+					<p>b</p>
+				</SheetModuleCard>
+			</div>,
+		);
+		expect(
+			[...container.querySelectorAll("section")].map((section) => section.id),
+		).toEqual(["ficha-custom-a", "ficha-custom-b"]);
 	});
 
 	it("esconde Editar para quem não pode editar (viewer)", () => {

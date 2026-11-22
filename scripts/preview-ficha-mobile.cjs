@@ -533,6 +533,81 @@ async function saveStrips(page, directory, prefix) {
 	return files;
 }
 
+async function measureHeaderFit(page) {
+	return page.evaluate(() => {
+		const header = document.querySelector("[data-slot=sheet-header]");
+		const name = header?.querySelector("h1") ?? null;
+		const shown = (element) => {
+			if (!element) return null;
+			const style = getComputedStyle(element);
+			if (style.display === "none" || style.visibility === "hidden") return null;
+			const box = element.getBoundingClientRect();
+			if (box.width === 0 || box.height === 0) return null;
+			return {
+				x: box.x,
+				y: box.y,
+				w: box.width,
+				h: box.height,
+			};
+		};
+		const buttons = header ? [...header.querySelectorAll("button")] : [];
+		const rename = shown(
+			buttons.find(
+				(button) => button.getAttribute("aria-label") === "Renomear personagem",
+			),
+		);
+		const more = shown(
+			buttons.find(
+				(button) => button.getAttribute("aria-label") === "Mais ações da ficha",
+			),
+		);
+		const separated =
+			!rename ||
+			!more ||
+			rename.x + rename.w <= more.x ||
+			more.x + more.w <= rename.x ||
+			rename.y + rename.h <= more.y ||
+			more.y + more.h <= rename.y;
+		const column = name?.parentElement?.parentElement ?? null;
+		return {
+			headerScrollWidth: header ? header.scrollWidth : null,
+			headerClientWidth: header ? header.clientWidth : null,
+			headerFits: header ? header.scrollWidth === header.clientWidth : null,
+			nameClientWidth: name ? name.clientWidth : null,
+			nameScrollWidth: name ? name.scrollWidth : null,
+			nameClientHeight: name ? name.clientHeight : null,
+			nameScrollHeight: name ? name.scrollHeight : null,
+			nameFits: name ? name.scrollHeight <= name.clientHeight + 1 : null,
+			nameTitle: name ? name.getAttribute("title") : null,
+			columnWidth: column ? column.getBoundingClientRect().width : null,
+			rename,
+			more,
+			separated,
+		};
+	});
+}
+
+async function measureThreeDigits(page) {
+	return page.evaluate(() => {
+		const cells = [...document.querySelectorAll("[data-slot=sheet-header] dd")];
+		const originals = cells.map((cell) => cell.textContent);
+		for (const cell of cells) cell.textContent = "108";
+		const result = cells.map((cell) => ({
+			w: cell.clientWidth,
+			scroll: cell.scrollWidth,
+			fits: cell.scrollWidth <= cell.clientWidth,
+		}));
+		cells.forEach((cell, index) => {
+			cell.textContent = originals[index];
+		});
+		return {
+			valor: "108",
+			fits: result.every((cell) => cell.fits),
+			cells: result,
+		};
+	});
+}
+
 async function capture(browser, baseUrl, directory) {
 	fs.mkdirSync(directory, { recursive: true });
 	const medidas = { nomeLongo: LONG_NAME, nomeLongoChars: LONG_NAME.length, cenarios: {} };
@@ -568,13 +643,50 @@ async function capture(browser, baseUrl, directory) {
 				path.join(directory, `${viewport.key}-${slug}-menu.png`),
 			);
 			await closeMenu(mobilePage);
+			const fit = await measureHeaderFit(mobilePage);
+			medidas.cabecalho = medidas.cabecalho ?? {};
+			medidas.cabecalho[`${viewport.key}-${slug}`] = fit;
 		}
+		await applySheet(mobilePage, "viewer", SHORT_NAME);
+		await openMenu(mobilePage);
+		await shoot(
+			mobilePage,
+			path.join(directory, `${viewport.key}-jogador-menu.png`),
+		);
+		await closeMenu(mobilePage);
+		medidas.cabecalho[`${viewport.key}-jogador`] = await measureHeaderFit(mobilePage);
 		await applySheet(mobilePage, "owner", SHORT_NAME);
 		medidas.cenarios[viewport.key] = await measure(mobilePage);
+		if (viewport.key === "360x800") {
+			medidas.digitos3 = await measureThreeDigits(mobilePage);
+		}
 	}
 
 	await applySheet(mobilePage, "owner", SHORT_NAME);
 	await mobilePage.setViewportSize({ width: 390, height: 844 });
+	await mobilePage.evaluate(() => {
+		localStorage.setItem("arkhiveon-performance-mode", "off");
+		window.dispatchEvent(new Event("arkhiveon-performance-mode-change"));
+	});
+	await mobilePage.waitForTimeout(150);
+	await shoot(
+		mobilePage,
+		path.join(directory, "390x844-elara-sem-perf-lite.png"),
+	);
+	medidas.semPerfLite = await mobilePage.evaluate(() => {
+		const header = document.querySelector("[data-slot=sheet-header]");
+		const glow = header?.querySelector(".blur-3xl");
+		return {
+			perfLite: document.documentElement.classList.contains("perf-lite"),
+			glowDisplay: glow ? getComputedStyle(glow).display : null,
+			headerShadow: header ? getComputedStyle(header).boxShadow : null,
+		};
+	});
+	await mobilePage.evaluate(() => {
+		localStorage.removeItem("arkhiveon-performance-mode");
+		window.dispatchEvent(new Event("arkhiveon-performance-mode-change"));
+	});
+	await mobilePage.waitForTimeout(100);
 	await mobilePage.evaluate(() => document.body.classList.remove("dark"));
 	await mobilePage.waitForTimeout(100);
 	await mobilePage.locator("[data-slot=sheet-header]").screenshot({

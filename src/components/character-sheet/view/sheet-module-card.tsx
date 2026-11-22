@@ -22,7 +22,7 @@ export function SheetModuleCard({
 	const headingId = `sheet-module-${module.id}`;
 	return (
 		<section
-			id={`ficha-${module.kind}`}
+			id={`ficha-${module.id}`}
 			aria-labelledby={headingId}
 			data-slot="sheet-module"
 			data-module-kind={module.kind}
