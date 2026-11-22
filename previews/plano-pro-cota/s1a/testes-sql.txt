@@ -1,0 +1,49 @@
+== aplica 0082–0086
+== reaplica (idempotência)
+== testes SQL
+PASS 0082 RLS ligada, só policy de SELECT, sem escrita para anon/authenticated
+PASS 0082 checks: tamanho > 0, bucket, kind e r2_key única
+PASS 0082 pagador A vê as 2 linhas que paga
+PASS 0082 quem subiu (J) vê só a própria linha
+PASS 0082 NEGAÇÃO conta B não lê linha de A (vê só a dela)
+PASS 0082 NEGAÇÃO conta B não insere, não atualiza, não apaga, não trunca (nem as próprias linhas)
+PASS 0082 NEGAÇÃO conta sem vínculo não vê nenhuma linha
+PASS 0082 NEGAÇÃO anon sem SELECT
+0082: todos os casos passaram
+PASS 0083 storage_limit: free 100.000.000, pro 10.000.000.000, desconhecido = free
+PASS 0083 reserve/confirm/release só service_role; contexto e pagador sem anon; todas security definer com search_path
+PASS 0083 NEGAÇÃO conta B não executa reserve/confirm/release (permission denied)
+PASS 0083 storage_payer: jogador vê o mestre da própria mesa; outra campanha = null
+PASS 0083 NEGAÇÃO convite pendente não tem pagador (não gasta a cota do mestre)
+PASS 0083 NEGAÇÃO conta B não descobre o pagador da campanha de A
+PASS 0083 CA1 uploads em A1 (jogador) e A2 (mestre) somam no mesmo uso de A (7000)
+PASS 0083 a capa do PDF (thumb) conta na cota
+PASS 0083 upload sem campanha é pago pelo próprio usuário
+PASS 0083 NEGAÇÃO convite pendente, membro removido e conta B não reservam na campanha de A (42501)
+PASS 0083 reserva recusa tamanho 0, tipo inválido e chave repetida
+PASS 0083 CA2 free: 99.999.000 + 2.000 = quota_exceeded (com nome do mestre); + 1.000 cabe; cheio recusa 1 B
+PASS 0083 CA2 pro: mesmo limite exato em 10.000.000.000 (co-mestre debita do mestre)
+PASS 0083 confirm vira ready com o tamanho real; chave inexistente = P0002; release solta e devolve os bytes
+PASS 0084 storage_used_bytes = soma de storage_objects; over_limit_since liga acima do limite e desliga ao caber
+PASS 0084 user_plans sem INSERT/UPDATE/DELETE/TRUNCATE para anon e authenticated
+PASS 0084 NEGAÇÃO conta B não escreve em user_plans (nem a própria linha) e não lê o plano de A
+PASS 0084 policy mantida: jogador da mesa lê o plano do mestre
+PASS 0083 contexto do pagador A: Pro, by_campaign (2 campanhas), top_files e imagens + PDFs = total
+PASS 0083 NEGAÇÃO convidado J na mesa de A: Convidado Pro com total e limite, sem by_campaign, top_files nem dias; fora dela, Free
+PASS 0083 NEGAÇÃO conta B pedindo o contexto da campanha de A recebe só o dela, sem nada de A
+PASS 0083 NEGAÇÃO anon não executa my_storage_context
+0083/0084: todos os casos passaram
+PASS 0085 FK SET NULL: apagar a conta de quem subiu mantém o PDF na campanha (uploaded_by nulo)
+0085: todos os casos passaram
+PASS 0086 ramo corrigido (campaigns.id + pendente); mestre vê A1 e A2, jogador vê A1, convite pendente vê A1
+PASS 0086 NEGAÇÃO conta B não vê as campanhas de A; membro removido com convite aceito, convite recusado e sem vínculo não veem nada
+PASS 0086 rollback aplicado: visibilidade idêntica antes/depois para as 7 contas (ninguém ganha nem perde acesso)
+0086: todos os casos passaram
+== corrida da reserva
+0083 concurrency: 4 reservas / 6 quota_exceeded; soma 100000000 <= 100000000; cache = soma
+== ciclo de rollback (0086 -> 0082) e reaplicação
+NOTICE:  PASS rollback 0086 -> 0082: estado igual ao da 0081
+DO
+0083/0084: todos os casos passaram
+S1a local: tudo passou
+exit 0
