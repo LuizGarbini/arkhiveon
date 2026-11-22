@@ -1,4 +1,4 @@
-﻿## ✨ What was added
+## ✨ What was added
 
 - Clearly describe what was added or implemented in this PR.
 - Be specific and concise with bullet points.
@@ -7,7 +7,7 @@
 
 > **Rule:** Every PR that changes UI, layouts, or user flows **must** include:
 > - **Screenshots** (desktop and mobile when relevant) reflecting the final visual state.
-> - **A short test video / recording** (.mp4 or .webm) demonstrating how interactive features, filters, dialogs, or animations work in practice whenever applicable.
-> - Attach media directly in the GitHub PR description box — **never commit screenshots or videos to the repository** (save local captures in docs/previews/, which is gitignored).
+> - **Video is optional:** record only when it really makes sense (e.g. an interaction screenshots can't show), keep it local in docs/previews/ and do not attach it to the PR.
+> - **Never commit screenshots or videos to the repository** (local captures go in docs/previews/, which is gitignored).
 
-<!-- Drag & drop screenshots and short test videos below showing the final behavior. -->
+<!-- Add screenshots below showing the final behavior. -->
