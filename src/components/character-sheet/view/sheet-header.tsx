@@ -79,9 +79,9 @@ export function SheetHeader({
 	return (
 		<header
 			data-slot="sheet-header"
-			className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-xl shadow-black/5 sm:p-6"
+			className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-xl shadow-black/5 max-md:shadow-none sm:p-6"
 		>
-			<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+			<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl max-md:hidden" />
 
 			<Link
 				to="/characters"
@@ -121,7 +121,7 @@ export function SheetHeader({
 								type="button"
 								variant="outline"
 								onClick={() => setEquipmentOpen(true)}
-								className="min-h-[44px] flex-1 gap-2 sm:flex-none"
+								className="hidden min-h-[44px] flex-1 gap-2 sm:flex-none md:inline-flex"
 							>
 								<Shield className="h-4 w-4" />
 								Equipamento
@@ -139,7 +139,7 @@ export function SheetHeader({
 							type="button"
 							disabled
 							title="Sem permissão para editar layout"
-							className="min-h-[44px] flex-1 gap-2 sm:flex-none"
+							className="hidden min-h-[44px] flex-1 gap-2 sm:flex-none md:inline-flex"
 						>
 							<Edit className="h-4 w-4" />
 							Editar layout
@@ -148,7 +148,7 @@ export function SheetHeader({
 						<Button
 							type="button"
 							onClick={onToggleEditLayout}
-							className="min-h-[44px] flex-1 gap-2 sm:flex-none"
+							className="hidden min-h-[44px] flex-1 gap-2 sm:flex-none md:inline-flex"
 						>
 							<Edit className="h-4 w-4" />
 							{isEditingLayout ? "Concluir layout" : "Editar layout"}
@@ -160,8 +160,8 @@ export function SheetHeader({
 								<Button
 									type="button"
 									variant="outline"
-									size="icon"
-									className="min-h-[44px] min-w-[44px]"
+									size="icon-touch"
+									className="min-h-[44px] min-w-[44px] md:size-9"
 									aria-label="Mais ações da ficha"
 								/>
 							}
@@ -169,6 +169,26 @@ export function SheetHeader({
 							<MoreHorizontal className="h-4 w-4" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
+							{character.system === "dnd5e" && (
+								<DropdownMenuItem
+									onClick={() => setEquipmentOpen(true)}
+									className="min-h-[44px] md:hidden"
+								>
+									<Shield />
+									Equipamento
+								</DropdownMenuItem>
+							)}
+							<DropdownMenuItem
+								disabled={isViewer}
+								title={
+									isViewer ? "Sem permissão para editar layout" : undefined
+								}
+								onClick={onToggleEditLayout}
+								className="min-h-[44px] md:hidden"
+							>
+								<Edit />
+								{isEditingLayout ? "Concluir layout" : "Editar layout"}
+							</DropdownMenuItem>
 							{!isViewer && (
 								<DropdownMenuItem
 									onClick={onOpenImageDialog}
@@ -302,9 +322,10 @@ export function SheetIdentity({
 				)}
 				<div className="flex min-w-0 items-center gap-1">
 					<Title
+						title={character.characterName}
 						className={cn(
-							"truncate font-display font-bold leading-tight tracking-tight text-foreground",
-							compact ? "text-xl" : "text-3xl sm:text-4xl",
+							"font-display font-bold leading-tight tracking-tight text-foreground max-md:line-clamp-2 max-md:break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap",
+							compact ? "text-xl" : "text-3xl max-md:text-xl sm:text-4xl",
 						)}
 					>
 						{character.characterName}
@@ -313,9 +334,9 @@ export function SheetIdentity({
 						<Button
 							type="button"
 							variant="ghost"
-							size="icon"
+							size="icon-touch"
 							onClick={onOpenNameDialog}
-							className="min-h-[44px] min-w-[44px] shrink-0 text-muted-foreground hover:text-foreground"
+							className="min-h-[44px] min-w-[44px] shrink-0 text-muted-foreground hover:text-foreground md:size-9"
 							aria-label="Renomear personagem"
 							title="Renomear personagem"
 						>
@@ -323,7 +344,9 @@ export function SheetIdentity({
 						</Button>
 					)}
 				</div>
-				<p className="truncate text-sm text-muted-foreground">{summary}</p>
+				<p className="truncate text-sm text-muted-foreground max-md:text-primary">
+					{summary}
+				</p>
 				{character.playerName && (
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
 						Jogador:{" "}
@@ -385,19 +408,19 @@ export function SheetQuickStats({
 				<QuickStat
 					label="PV"
 					value={health}
-					color="text-rose-400"
+					color="text-foreground"
 					compactValue={compact && health.length > 3}
 				/>
 			) : null}
 			<QuickStat
 				label="CA"
 				value={String(combat.ac.total)}
-				color="text-blue-400"
+				color="text-foreground"
 			/>
 			<QuickStat
 				label="INIT"
 				value={formatModifier(combat.initiative.total)}
-				color="text-amber-400"
+				color="text-foreground"
 			/>
 			<QuickStat
 				label="MOV"
@@ -406,7 +429,7 @@ export function SheetQuickStats({
 					speedUnitOf(character, config.speedUnit),
 					sceneUnit,
 				)}
-				color="text-emerald-400"
+				color="text-foreground"
 			/>
 			{showPassive ? (
 				<QuickStat
@@ -414,7 +437,7 @@ export function SheetQuickStats({
 					value={String(
 						computePassivePerception(character, combat.abilities.wisdom.total),
 					)}
-					color="text-purple-400"
+					color="text-foreground"
 				/>
 			) : null}
 		</dl>

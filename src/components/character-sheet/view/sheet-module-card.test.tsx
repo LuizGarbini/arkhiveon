@@ -28,10 +28,17 @@ describe("SheetModuleCard (cabeçalho uniforme)", () => {
 			name: "Inventário",
 		});
 		expect(heading.className).toContain("font-display");
-		expect(screen.getByRole("region", { name: "Inventário" })).toBeTruthy();
+		expect(heading.tabIndex).toBe(-1);
+		const region = screen.getByRole("region", { name: "Inventário" });
+		expect(region.id).toBe("ficha-inventory");
+		expect(region.getAttribute("data-module-kind")).toBe("inventory");
+		expect(region.className).toContain("scroll-mt-3");
+		expect(region.className).toContain("max-md:rounded-none");
+		expect(region.className).toContain("max-md:bg-transparent");
 		const edit = screen.getByRole("button", { name: "Editar Inventário" });
 		expect(edit.className).toContain("min-h-[44px]");
 		expect(edit.className).toContain("min-w-[44px]");
+		expect(edit.className).toContain("h-[44px]");
 		fireEvent.click(edit);
 		expect(onEdit).toHaveBeenCalledTimes(1);
 	});

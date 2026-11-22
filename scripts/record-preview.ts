@@ -9,11 +9,14 @@ async function main() {
 	try {
 		const scenario = process.env.VTT_PREVIEW_SCENARIO;
 		const isP2b = ["p2b", "p2b-retry"].includes(scenario ?? "");
-		const scripts = isP2b
-			? ["scripts/test-vtt-p2b.cjs"]
-			: scenario === "dice-button"
-				? ["scripts/test-vtt-dice-button.cjs"]
-				: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
+		const scripts =
+			scenario === "ficha-mobile"
+				? ["scripts/preview-ficha-mobile.cjs"]
+				: isP2b
+					? ["scripts/test-vtt-p2b.cjs"]
+					: scenario === "dice-button"
+						? ["scripts/test-vtt-dice-button.cjs"]
+						: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
 		for (const script of scripts) {
 			await new Promise<void>((resolve, reject) => {
 				const child = spawn(process.execPath, [script], {
@@ -35,12 +38,16 @@ async function main() {
 				);
 			});
 		}
+		const fichaOut =
+			process.env.FICHA_PREVIEW_OUT || "docs/previews/ficha-mobile/f1-cabecalho";
 		console.log(
-			isP2b
-				? "Preview P2b validado: docs/previews/vtt-82-p2b"
-				: scenario === "dice-button"
-					? `Preview de dados validado: ${process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao"}`
-					: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
+			scenario === "ficha-mobile"
+				? `Preview da ficha validado: ${fichaOut}`
+				: isP2b
+					? "Preview P2b validado: docs/previews/vtt-82-p2b"
+					: scenario === "dice-button"
+						? `Preview de dados validado: ${process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao"}`
+						: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
 		);
 	} finally {
 		await new Promise<void>((resolve, reject) =>

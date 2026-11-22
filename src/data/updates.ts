@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.167-ficha-cabecalho-celular",
+		version: "1.6.167",
+		date: "21/11/2026",
+		title: "O nome da ficha cabe no celular",
+		description:
+			"No celular, o nome do personagem quebra em até duas linhas, em vez de ser cortado. Os números do topo (vida, classe de armadura, iniciativa e deslocamento) usam a cor do texto. Equipamento e Editar layout ficam no menu de mais ações. No computador, a ficha continua igual, só com essa cor nos números.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.166-biblioteca-miniatura",
 		version: "1.6.166",
 		date: "21/11/2026",

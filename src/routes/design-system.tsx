@@ -255,6 +255,14 @@ function DesignSystem() {
 							Perigo
 						</Button>
 						<Button disabled>Desabilitado</Button>
+						<Button size="touch">Toque</Button>
+						<Button
+							size="icon-touch"
+							variant="outline"
+							aria-label="Ícone de toque"
+						>
+							<Plus className="h-4 w-4" />
+						</Button>
 					</div>
 					<div className="mt-5 grid gap-3 sm:grid-cols-2">
 						<Input
