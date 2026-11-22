@@ -9,6 +9,7 @@ import {
 	templateReach,
 	templateReachCells,
 	templateReachPoint,
+	templateToolPress,
 	type VTTSpellTemplate,
 } from "./template-math";
 
@@ -178,5 +179,23 @@ describe("spellTemplateIdAtPoint", () => {
 				"outra",
 			),
 		).toBe("Jogador");
+	});
+});
+
+describe("templateToolPress", () => {
+	it("creates on a plain click, even on top of a placed template", () => {
+		expect(templateToolPress("gm-template", false)).toEqual({ kind: "create" });
+		expect(templateToolPress(null, false)).toEqual({ kind: "create" });
+	});
+
+	it("selects the template under the pointer on Shift+click", () => {
+		expect(templateToolPress("player-template", true)).toEqual({
+			kind: "select",
+			templateId: "player-template",
+		});
+	});
+
+	it("creates on Shift+click over empty ground", () => {
+		expect(templateToolPress(null, true)).toEqual({ kind: "create" });
 	});
 });

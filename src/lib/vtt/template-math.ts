@@ -196,6 +196,25 @@ export function listedSpellTemplates(
 	return list;
 }
 
+/**
+ * O que o clique esquerdo faz com a ferramenta de molde ativa. Clique sempre cria
+ * um molde novo, mesmo em cima de outro (próprio ou alheio); Shift+clique em cima
+ * de um molde já colocado só o seleciona.
+ */
+export type TemplateToolPress =
+	| { kind: "select"; templateId: string }
+	| { kind: "create" };
+
+export function templateToolPress(
+	hitTemplateId: string | null,
+	shiftKey: boolean,
+): TemplateToolPress {
+	if (shiftKey && hitTemplateId) {
+		return { kind: "select", templateId: hitTemplateId };
+	}
+	return { kind: "create" };
+}
+
 /** O molde de cima (o último desenhado) que contém o ponto. */
 export function spellTemplateIdAtPoint(
 	templates: readonly VTTSpellTemplate[],

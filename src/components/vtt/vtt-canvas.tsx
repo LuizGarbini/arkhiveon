@@ -131,6 +131,7 @@ import {
 } from "@/lib/vtt/step-tween";
 import {
 	spellTemplateIdAtPoint,
+	templateToolPress,
 	type VTTSpellTemplate,
 } from "@/lib/vtt/template-math";
 import {
@@ -3392,13 +3393,19 @@ export function VTTCanvas({
 			}
 
 			if (activeTool === "template" && isLeftClick && scene) {
-				const hit = spellTemplateIdAtPoint(
-					committedSpellTemplates(),
-					worldPoint,
-					scene.gridSize,
+				// Clique cria um molde novo mesmo em cima de outro; Shift+clique seleciona.
+				const press = templateToolPress(
+					e.shiftKey
+						? spellTemplateIdAtPoint(
+								committedSpellTemplates(),
+								worldPoint,
+								scene.gridSize,
+							)
+						: null,
+					e.shiftKey,
 				);
-				if (hit) {
-					useVTTStore.getState().setSelectedTemplateId(hit);
+				if (press.kind === "select") {
+					useVTTStore.getState().setSelectedTemplateId(press.templateId);
 					templateStartRef.current = null;
 					return;
 				}
