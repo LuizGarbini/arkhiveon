@@ -5,6 +5,7 @@ import {
 	canUndoHp,
 	HP_UNDO_MS,
 	hpEnterAction,
+	hpTargetLabel,
 	parseHpInput,
 	planHpAction,
 } from "./hp-quick";
@@ -132,10 +133,11 @@ describe("hpEnterAction (regra do número sem sinal)", () => {
 		expect(hpEnterAction(parseHpInput("=15"))).toBe("set");
 	});
 
-	it("Shift+Enter sempre cura pelo valor", () => {
+	it("Shift+Enter cura só o número sem sinal; com sinal, o sinal manda", () => {
 		expect(hpEnterAction(parseHpInput("15"), true)).toBe("heal");
-		expect(hpEnterAction(parseHpInput("-15"), true)).toBe("heal");
-		expect(hpEnterAction(parseHpInput("=0"), true)).toBeNull();
+		expect(hpEnterAction(parseHpInput("-15"), true)).toBe("damage");
+		expect(hpEnterAction(parseHpInput("=15"), true)).toBe("set");
+		expect(hpEnterAction(parseHpInput("+8"), true)).toBe("heal");
 	});
 
 	it("vazio, zero e inválido não aplicam nada", () => {
@@ -143,5 +145,18 @@ describe("hpEnterAction (regra do número sem sinal)", () => {
 			expect(hpEnterAction(parseHpInput(raw))).toBeNull();
 			expect(hpEnterAction(parseHpInput(raw), true)).toBeNull();
 		}
+	});
+});
+
+describe("hpTargetLabel", () => {
+	it("quem vê o máximo lê o número", () => {
+		expect(hpTargetLabel(32, 32, true)).toBe("32");
+		expect(hpTargetLabel(20, 32, true)).toBe("20");
+	});
+
+	it("quem não vê o máximo lê “máx” só quando o ajuste chega nele", () => {
+		expect(hpTargetLabel(32, 32, false)).toBe("máx");
+		expect(hpTargetLabel(20, 32, false)).toBe("20");
+		expect(hpTargetLabel(0, 0, false)).toBe("0");
 	});
 });

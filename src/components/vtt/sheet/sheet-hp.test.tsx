@@ -35,29 +35,32 @@ const openPanel = () =>
 		screen.getByRole("button", { name: /Pontos de vida: .*Abrir dano e cura/ }),
 	);
 
+/** O painel rápido grava em modo quieto: o erro fica no painel. */
+const QUIET = { quiet: true };
+
 describe("SheetHp · ajuste rápido", () => {
 	it("tira e cura PV, sem passar do máximo nem de zero", () => {
 		const f = setup();
 		openPanel();
 		press("Tirar 5 PV");
-		expect(f.onChange).toHaveBeenLastCalledWith(15);
+		expect(f.onChange).toHaveBeenLastCalledWith(15, QUIET);
 		cleanup();
 		const g = setup({ current: 28 });
 		openPanel();
 		press("Curar 5 PV");
-		expect(g.onChange).toHaveBeenLastCalledWith(30);
+		expect(g.onChange).toHaveBeenLastCalledWith(30, QUIET);
 		cleanup();
 		const z = setup({ current: 3 });
 		openPanel();
 		press("Tirar 5 PV");
-		expect(z.onChange).toHaveBeenLastCalledWith(0);
+		expect(z.onChange).toHaveBeenLastCalledWith(0, QUIET);
 	});
 
 	it("o dano come a vida temporária antes do PV", () => {
 		const f = setup({ temp: 10 });
 		openPanel();
 		press("Tirar 5 PV");
-		expect(f.onChangeTempHp).toHaveBeenCalledWith(5);
+		expect(f.onChangeTempHp).toHaveBeenCalledWith(5, QUIET);
 		expect(f.onChange).not.toHaveBeenCalled();
 	});
 
@@ -66,8 +69,8 @@ describe("SheetHp · ajuste rápido", () => {
 		openPanel();
 		press("Tirar 5 PV");
 		await act(async () => {});
-		expect(f.onChangeTempHp).toHaveBeenCalledWith(0);
-		expect(f.onChange).toHaveBeenCalledWith(17);
+		expect(f.onChangeTempHp).toHaveBeenCalledWith(0, QUIET);
+		expect(f.onChange).toHaveBeenCalledWith(17, QUIET);
 	});
 
 	it("um ajuste por vez: trava e mostra Salvando até gravar", async () => {
@@ -142,7 +145,7 @@ describe("SheetHp · Editar valores no painel", () => {
 		type("PV máximo", "40");
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChangeHp).toHaveBeenCalledWith({ current: 25, max: 40 });
+		expect(f.onChangeHp).toHaveBeenCalledWith({ current: 25, max: 40 }, QUIET);
 		expect(f.onChange).not.toHaveBeenCalled();
 	});
 
@@ -153,8 +156,8 @@ describe("SheetHp · Editar valores no painel", () => {
 		type("PV máximo", "40");
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChange).toHaveBeenCalledWith(25);
-		expect(f.onChangeMax).toHaveBeenCalledWith(40);
+		expect(f.onChange).toHaveBeenCalledWith(25, QUIET);
+		expect(f.onChangeMax).toHaveBeenCalledWith(40, QUIET);
 	});
 
 	it("só manda o que mudou", async () => {
@@ -163,10 +166,13 @@ describe("SheetHp · Editar valores no painel", () => {
 		type("PV atual", "25");
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChangeHp).toHaveBeenCalledWith({
-			current: 25,
-			max: undefined,
-		});
+		expect(f.onChangeHp).toHaveBeenCalledWith(
+			{
+				current: 25,
+				max: undefined,
+			},
+			QUIET,
+		);
 	});
 
 	it("mudar só o máximo não regrava o PV atual", async () => {
@@ -175,10 +181,13 @@ describe("SheetHp · Editar valores no painel", () => {
 		type("PV máximo", "40");
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChangeHp).toHaveBeenCalledWith({
-			current: undefined,
-			max: 40,
-		});
+		expect(f.onChangeHp).toHaveBeenCalledWith(
+			{
+				current: undefined,
+				max: 40,
+			},
+			QUIET,
+		);
 	});
 
 	it("Aplicar sem mudar nada não grava nada", async () => {
@@ -218,7 +227,7 @@ describe("SheetHp · Editar valores no painel", () => {
 		type("Vida temporária", "8");
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChangeTempHp).toHaveBeenCalledWith(8);
+		expect(f.onChangeTempHp).toHaveBeenCalledWith(8, QUIET);
 	});
 
 	it("Zerar a vida temporária e aplicar", async () => {
@@ -227,7 +236,7 @@ describe("SheetHp · Editar valores no painel", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Zerar" }));
 		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
 		await act(async () => {});
-		expect(f.onChangeTempHp).toHaveBeenCalledWith(0);
+		expect(f.onChangeTempHp).toHaveBeenCalledWith(0, QUIET);
 	});
 
 	it("jogador não edita o máximo", () => {
@@ -260,11 +269,13 @@ describe("SheetHp · Editar valores no painel", () => {
 function Harness({
 	initial,
 	canTemp = true,
+	showMax = true,
 	onChange,
 	onChangeTempHp,
 }: {
 	initial: { current: number; max: number; temp: number };
 	canTemp?: boolean;
+	showMax?: boolean;
 	onChange: (next: number) => unknown;
 	onChangeTempHp?: (next: number) => unknown;
 }) {
@@ -274,7 +285,7 @@ function Harness({
 			current={hp.current}
 			max={hp.max}
 			temp={hp.temp}
-			showMax
+			showMax={showMax}
 			name="Elara"
 			onChange={async (next) => {
 				const result = await onChange(next);
@@ -502,5 +513,94 @@ describe("SheetHp · dano rápido (campo)", () => {
 		await act(async () => {});
 		expect(onChange).toHaveBeenCalledTimes(2);
 		expect(onChange).toHaveBeenLastCalledWith(12);
+	});
+
+	it("prévia de cura: quem vê o máximo lê o número", () => {
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={vi.fn()}
+			/>,
+		);
+		openPanel();
+		typeValue("+8");
+		expect(
+			screen.getByRole("button", { name: "Curar 8" }).textContent,
+		).toContain("→ 32");
+		expect(screen.getAllByText("32").length).toBeGreaterThan(0);
+	});
+
+	it("prévia de cura: quem não vê o máximo lê “→ máx”, sem o valor", () => {
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				showMax={false}
+				onChange={vi.fn()}
+			/>,
+		);
+		openPanel();
+		typeValue("+8");
+		const heal = screen.getByRole("button", { name: "Curar 8" });
+		expect(heal.textContent).toContain("→ máx");
+		expect(heal.textContent).not.toContain("32");
+		expect(document.body.textContent).not.toContain("32");
+	});
+
+	it("o painel rápido grava em modo quieto (o erro fica no painel)", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<SheetHp current={27} max={32} temp={0} showMax onChange={onChange} />,
+		);
+		openPanel();
+		typeValue("-5");
+		enter();
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(22, QUIET);
+	});
+
+	it("“=999” para quem não vê o máximo: prévia “→ máx”, sem o valor", () => {
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				showMax={false}
+				onChange={vi.fn()}
+			/>,
+		);
+		openPanel();
+		typeValue("=999");
+		expect(document.body.textContent).toContain("máx");
+		expect(document.body.textContent).not.toContain("32");
+	});
+
+	it("Shift+Enter com “−15” digitado é dano: o sinal manda", async () => {
+		const onChange = vi.fn().mockResolvedValue(true);
+		render(
+			<Harness
+				initial={{ current: 27, max: 32, temp: 0 }}
+				onChange={onChange}
+			/>,
+		);
+		openPanel();
+		typeValue("-15");
+		enter(true);
+		await act(async () => {});
+		expect(onChange).toHaveBeenLastCalledWith(12);
+	});
+
+	it("Editar valores: falha mostra o erro e mantém o editor aberto", async () => {
+		const onChange = vi.fn().mockResolvedValue(false);
+		render(
+			<SheetHp current={27} max={32} temp={0} showMax onChange={onChange} />,
+		);
+		openPanel();
+		fireEvent.click(screen.getByRole("button", { name: "Editar valores" }));
+		fireEvent.change(screen.getByRole("spinbutton", { name: "PV atual" }), {
+			target: { value: "20" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+		await act(async () => {});
+		expect(onChange).toHaveBeenCalledWith(20, QUIET);
+		expect(screen.getByRole("alert").textContent).toContain("Não foi salvo");
+		expect(screen.getByRole("button", { name: "Aplicar" })).toBeTruthy();
 	});
 });

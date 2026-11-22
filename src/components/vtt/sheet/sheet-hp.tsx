@@ -36,10 +36,10 @@ import {
 	type HpActionPlan,
 	type HpValues,
 	hpEnterAction,
+	hpTargetLabel,
 	parseHpInput,
 	planHpAction,
 } from "@/lib/vtt/hp-quick";
-import { WardShieldGlyph } from "./sheet-icons";
 
 type Save = Promise<unknown> | unknown;
 
@@ -65,6 +65,16 @@ function signedLabel(action: HpAction, amount: number): string {
 	return `= ${amount}`;
 }
 
+/**
+ * Gravação vinda do painel rápido: o painel mostra o próprio erro (com
+ * “Tentar de novo”), então a mesa não repete o aviso no banner global.
+ * O formulário “Editar valores” fecha ao salvar e segue usando o banner.
+ */
+export interface HpSaveOptions {
+	quiet?: boolean;
+}
+const PANEL_SAVE: HpSaveOptions = { quiet: true };
+
 /** Uma gravação que devolve `false` (ex.: `onUpdateToken`) também é falha. */
 async function saveOrThrow(save: () => Save) {
 	const result = await save();
@@ -88,7 +98,7 @@ function Step({
 }: {
 	label: string;
 	from: number;
-	to: number;
+	to: number | string;
 	tone: string;
 }) {
 	return (
@@ -104,9 +114,11 @@ function Step({
 /** “Temp 5 → 0 · PV 27 → 17”, ou “Definir PV 27 → 15”. */
 function HpPreview({
 	plan,
+	max,
 	showMax,
 }: {
 	plan: HpActionPlan;
+	max: number;
 	showMax: boolean;
 }) {
 	if (plan.noop === "max") {
@@ -158,7 +170,7 @@ function HpPreview({
 				<Step
 					label="PV"
 					from={plan.before.current}
-					to={plan.after.current}
+					to={hpTargetLabel(plan.after.current, max, showMax)}
 					tone={tone}
 				/>
 			) : null}
@@ -238,9 +250,10 @@ function PanelBar({
 /**
  * PV da ficha na mesa. Tocar no número abre o painel de PV (Popover no desktop,
  * BottomSheet no celular): −5/−1/+1/+5, um campo de valor com − Dano e + Curar,
- * e “Editar valores” (PV atual, máximo e temporária). No campo, “15” ou “=15”
- * define o PV, “−15” é dano e “+8” é cura; Enter aplica o que o texto diz e
- * Shift+Enter cura. Dano come a vida temporária primeiro só para quem pode
+ * e “Editar valores” (PV atual, máximo e temporária). No campo, o sinal manda:
+ * “−15” é dano, “+8” é cura e “=15” define, com Enter ou Shift+Enter. O número
+ * sem sinal segue `BARE_NUMBER_ACTION` no Enter (ver `hpEnterAction`) e cura
+ * com Shift+Enter. Dano come a vida temporária primeiro só para quem pode
  * gravá-la (`onChangeTempHp`); cura não passa do máximo. Um ajuste por vez, e
  * cada um pode ser desfeito por 10 s se o PV ainda for o que ele deixou.
  */
@@ -261,10 +274,13 @@ export function SheetHp({
 	temp?: number;
 	/** Nome no título do painel (“Pontos de vida · Elara”). */
 	name?: string;
-	onChange?: (next: number) => Save;
-	onChangeMax?: (next: number) => Save;
-	onChangeHp?: (patch: { current?: number; max?: number }) => Save;
-	onChangeTempHp?: (next: number) => Save;
+	onChange?: (next: number, options?: HpSaveOptions) => Save;
+	onChangeMax?: (next: number, options?: HpSaveOptions) => Save;
+	onChangeHp?: (
+		patch: { current?: number; max?: number },
+		options?: HpSaveOptions,
+	) => Save;
+	onChangeTempHp?: (next: number, options?: HpSaveOptions) => Save;
 }) {
 	const ids = useId();
 	const isMobile = useIsMobile();
@@ -274,6 +290,7 @@ export function SheetHp({
 	const [saving, setSaving] = useState<HpAction | "step" | "undo" | null>(null);
 	const [failed, setFailed] = useState<FailedHp | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
+	const [editError, setEditError] = useState(false);
 	const [applied, setApplied] = useState<AppliedHp | null>(null);
 	const [last, setLast] = useState<string | null>(null);
 	const [currentDraft, setCurrentDraft] = useState<string | null>(null);
@@ -321,12 +338,14 @@ export function SheetHp({
 
 	const writeValues = async (to: HpValues, from: HpValues) => {
 		if (onChangeTempHp && to.temp !== from.temp) {
-			await saveOrThrow(() => onChangeTempHp(to.temp));
+			await saveOrThrow(() => onChangeTempHp(to.temp, PANEL_SAVE));
 		}
 		if (to.current !== from.current) {
-			if (onChange) await saveOrThrow(() => onChange(to.current));
+			if (onChange) await saveOrThrow(() => onChange(to.current, PANEL_SAVE));
 			else if (onChangeHp) {
-				await saveOrThrow(() => onChangeHp({ current: to.current }));
+				await saveOrThrow(() =>
+					onChangeHp({ current: to.current }, PANEL_SAVE),
+				);
 			}
 		}
 	};
@@ -439,6 +458,7 @@ export function SheetHp({
 		setRaw("");
 		setFailed(null);
 		setNotice(null);
+		setEditError(false);
 		resetDrafts();
 		// Fechou com o desfazer ainda valendo: ele segue no toast até o fim da janela.
 		const entry = appliedRef.current;
@@ -446,7 +466,7 @@ export function SheetHp({
 		if (entry && left > 500) {
 			showToast("info", {
 				title: `${entry.label} aplicado`,
-				description: `PV ${entry.plan.before.current} → ${entry.plan.after.current}`,
+				description: `PV ${entry.plan.before.current} → ${hpTargetLabel(entry.plan.after.current, max, showMax)}`,
 				action: { label: "Desfazer", onClick: () => undoRef.current() },
 				durationMs: left,
 				noBlur: true,
@@ -482,36 +502,51 @@ export function SheetHp({
 				nextMax > 0 &&
 				nextMax !== max;
 			if (onChangeHp && (hasCurrent || hasMax)) {
-				await onChangeHp({
-					current: hasCurrent ? nextCurrent : undefined,
-					max: hasMax ? (nextMax ?? undefined) : undefined,
-				});
+				await saveOrThrow(() =>
+					onChangeHp(
+						{
+							current: hasCurrent ? nextCurrent : undefined,
+							max: hasMax ? (nextMax ?? undefined) : undefined,
+						},
+						PANEL_SAVE,
+					),
+				);
 			} else {
-				if (hasCurrent && onChange) await onChange(nextCurrent);
+				if (hasCurrent && onChange) {
+					await saveOrThrow(() => onChange(nextCurrent, PANEL_SAVE));
+				}
 				if (hasMax && onChangeMax && nextMax !== null) {
-					await onChangeMax(nextMax);
+					await saveOrThrow(() => onChangeMax(nextMax, PANEL_SAVE));
 				}
 			}
 			if (onChangeTempHp && tempDraft !== null) {
 				const nextTemp = Number.parseInt(tempDraft || "0", 10);
 				if (Number.isFinite(nextTemp) && nextTemp >= 0 && nextTemp !== temp) {
-					await onChangeTempHp(nextTemp);
+					await saveOrThrow(() => onChangeTempHp(nextTemp, PANEL_SAVE));
 				}
 			}
 		};
-		void work()
-			.catch(() => undefined)
-			.finally(() => {
+		setEditError(false);
+		// Fecha só se gravou; se falhar, o editor fica aberto com o rascunho e o
+		// aviso (o banner da mesa não recebe este erro).
+		void work().then(
+			() => {
 				pendingRef.current = false;
 				setSaving(null);
-			});
-		changeOpen(false);
+				changeOpen(false);
+			},
+			() => {
+				pendingRef.current = false;
+				setSaving(null);
+				setEditError(true);
+			},
+		);
 	};
 
 	const numberClass =
 		"font-display text-[2rem] leading-none font-semibold tabular-nums";
 	const slotInputClass =
-		"h-11 border-0 bg-transparent px-2.5 pt-4 pb-0.5 font-mono text-[16px] md:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+		"h-[44px] border-0 bg-transparent px-2.5 pt-4 pb-0.5 font-mono text-[16px] md:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 	const previewId = `${ids}-preview`;
 	const title = name ? `Pontos de vida · ${name}` : "Pontos de vida";
 
@@ -607,12 +642,23 @@ export function SheetHp({
 							type="button"
 							variant="ghost"
 							disabled={busy}
-							className="h-11 min-h-11 shrink-0 rounded-none border-0 px-2.5 text-xs font-medium text-muted-foreground hover:bg-destructive/12 hover:text-destructive focus-visible:z-10"
+							className="h-[44px] min-h-[44px] shrink-0 rounded-none border-0 px-2.5 text-xs font-medium text-muted-foreground hover:bg-destructive/12 hover:text-destructive focus-visible:z-10"
 							onClick={() => setTempDraft("0")}
 						>
 							Zerar
 						</Button>
 					) : null}
+				</div>
+			) : null}
+			{editError ? (
+				<div role="alert" className="flex items-start gap-2 text-xs">
+					<WifiOff
+						aria-hidden
+						className="mt-0.5 size-4 shrink-0 text-destructive"
+					/>
+					<span className="text-foreground">
+						Não foi salvo. Confira a conexão e toque em Aplicar de novo.
+					</span>
 				</div>
 			) : null}
 			<div className="flex gap-2">
@@ -621,8 +667,10 @@ export function SheetHp({
 					variant="ghost"
 					size="touch"
 					className="text-muted-foreground"
+					disabled={busy}
 					onClick={() => {
 						resetDrafts();
+						setEditError(false);
 						setMode("quick");
 					}}
 				>
@@ -633,6 +681,7 @@ export function SheetHp({
 					variant="outline"
 					size="touch"
 					disabled={busy}
+					loading={saving === "set" && mode === "edit"}
 					className="flex-1"
 				>
 					Aplicar
@@ -757,7 +806,7 @@ export function SheetHp({
 						) : parsed.kind === "zero" ? (
 							<span className="text-muted-foreground">0 não muda nada.</span>
 						) : mainPlan ? (
-							<HpPreview plan={mainPlan} showMax={showMax} />
+							<HpPreview plan={mainPlan} max={max} showMax={showMax} />
 						) : (
 							<span className="text-muted-foreground">
 								{isMobile ? (
@@ -803,7 +852,7 @@ export function SheetHp({
 							</span>
 							{damagePlan && !damagePlan.noop ? (
 								<span className="font-mono text-xs tabular-nums opacity-90">
-									→ {damagePlan.after.current}
+									→ {hpTargetLabel(damagePlan.after.current, max, showMax)}
 								</span>
 							) : null}
 						</Button>
@@ -827,7 +876,7 @@ export function SheetHp({
 							</span>
 							{healPlan && !healPlan.noop ? (
 								<span className="font-mono text-xs tabular-nums opacity-90">
-									→ {healPlan.after.current}
+									→ {hpTargetLabel(healPlan.after.current, max, showMax)}
 								</span>
 							) : null}
 						</Button>
@@ -838,13 +887,13 @@ export function SheetHp({
 							variant="outline"
 							size="touch"
 							disabled={busy || Boolean(setPlan.noop)}
-							aria-label={`Definir PV em ${setPlan.after.current}`}
+							aria-label={`Definir PV em ${hpTargetLabel(setPlan.after.current, max, showMax)}`}
 							onClick={() => applyAction("set", amount)}
 							className="mt-2 w-full justify-between"
 						>
 							<span>Definir</span>
 							<span className="font-mono text-xs tabular-nums opacity-90">
-								→ {setPlan.after.current}
+								→ {hpTargetLabel(setPlan.after.current, max, showMax)}
 							</span>
 						</Button>
 					) : null}
@@ -890,7 +939,7 @@ export function SheetHp({
 							</span>{" "}
 							<span className="text-muted-foreground">
 								aplicado · PV {applied.plan.before.current} →{" "}
-								{applied.plan.after.current}
+								{hpTargetLabel(applied.plan.after.current, max, showMax)}
 								{applied.plan.after.temp !== applied.plan.before.temp
 									? ` · Temp ${applied.plan.before.temp} → ${applied.plan.after.temp}`
 									: ""}
@@ -948,7 +997,7 @@ export function SheetHp({
 	const triggerLabel = `Pontos de vida: ${visibleHpLabel(current, max, showMax)}. Abrir dano e cura`;
 	const triggerClass = cn(
 		numberClass,
-		"-mx-1.5 inline-flex min-h-9 cursor-pointer [@media(pointer:coarse)]:min-h-[44px] select-none items-center justify-center rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[4px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-white/[0.05] [@media(hover:hover)]:hover:decoration-muted-foreground/70",
+		"-mx-1.5 inline-flex min-h-9 cursor-pointer [@media(pointer:coarse)]:min-h-[44px] select-none items-center justify-center rounded-lg px-1.5 underline decoration-dotted decoration-1 decoration-muted-foreground/40 underline-offset-[4px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [@media(hover:hover)]:hover:bg-muted [@media(hover:hover)]:hover:decoration-muted-foreground/70",
 		low ? "text-destructive" : "text-foreground",
 	);
 
@@ -956,7 +1005,7 @@ export function SheetHp({
 		<section
 			aria-label="Pontos de vida"
 			aria-busy={busy}
-			className="relative rounded-xl border border-white/[0.07] bg-linear-to-b from-white/[0.025] to-black/25 p-3 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]"
+			className="relative rounded-xl border border-border bg-card p-3"
 		>
 			<output
 				data-testid="vtt-hp-saving"
@@ -1018,8 +1067,8 @@ export function SheetHp({
 					</span>
 				) : null}
 				{temp > 0 ? (
-					<span className="ml-1 inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/12 px-1.5 py-0.5 font-mono text-[11px] font-medium text-primary shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] tabular-nums">
-						<WardShieldGlyph className="size-3" />+{temp} temp
+					<span className="ml-1 inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/12 px-1.5 py-0.5 font-mono text-[11px] font-medium text-primary tabular-nums">
+						<Shield aria-hidden className="size-3" />+{temp} temp
 					</span>
 				) : null}
 				{editable ? (
@@ -1029,14 +1078,12 @@ export function SheetHp({
 				) : null}
 			</div>
 
-			<div className="relative mt-2 flex h-2 gap-0.5 overflow-hidden rounded-full bg-black/45 p-0.5 ring-1 ring-inset ring-white/[0.07]">
+			<div className="relative mt-2 flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted p-0.5 ring-1 ring-inset ring-border">
 				<div
 					data-testid="vtt-hp-bar"
 					className={cn(
 						"h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-						low
-							? "bg-destructive"
-							: "bg-primary bg-linear-to-r from-primary-dark via-primary to-[oklch(0.74_0.19_295)] shadow-[0_0_10px_var(--primary-glow)]",
+						low ? "bg-destructive" : "bg-primary",
 					)}
 					style={{ width: `${ratio * 100}%` }}
 				/>
@@ -1049,15 +1096,15 @@ export function SheetHp({
 				) : null}
 				<span
 					aria-hidden
-					className="pointer-events-none absolute inset-y-0 left-1/4 w-px bg-black/40"
+					className="pointer-events-none absolute inset-y-0 left-1/4 w-px bg-background/60"
 				/>
 				<span
 					aria-hidden
-					className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-black/40"
+					className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-background/60"
 				/>
 				<span
 					aria-hidden
-					className="pointer-events-none absolute inset-y-0 left-3/4 w-px bg-black/40"
+					className="pointer-events-none absolute inset-y-0 left-3/4 w-px bg-background/60"
 				/>
 			</div>
 			{last && !open ? (

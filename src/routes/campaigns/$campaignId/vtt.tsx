@@ -2,6 +2,7 @@ import "@/components/vtt/vtt.css";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Compass, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsMobile } from "@/components/character-sheet/view/number-detail";
 import { Button } from "@/components/ui/button";
 import { showToast } from "@/components/ui/toast";
 import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
@@ -137,6 +138,9 @@ import { isTokenDragged, useVTTStore } from "@/lib/vtt/vtt-store";
 import { loadWalls, subscribeWallChanges } from "@/lib/vtt/wall-sync";
 
 /** Retângulo visível do mapa. Sem medida, "Atenção" não puxa a câmera. */
+/** `quiet`: quem grava mostra o próprio erro (painel de PV); sem banner da mesa. */
+type TokenWriteOptions = { quiet?: boolean };
+
 function readVttCanvasScreen(): { width: number; height: number } {
 	if (typeof document === "undefined") return { width: 0, height: 0 };
 	const el = document.querySelector("[data-vtt-canvas]");
@@ -176,6 +180,8 @@ function VTTSession() {
 	const scenes = useVTTStore((s) => s.scenes);
 	const setScenes = useVTTStore((s) => s.setScenes);
 	const activeSceneId = useVTTStore((s) => s.activeSceneId);
+	const sheetOpenId = useVTTStore((s) => s.showCharacterSheetId);
+	const isMobile = useIsMobile();
 	const setActiveSceneId = useVTTStore((s) => s.setActiveSceneId);
 	const addScene = useVTTStore((s) => s.addScene);
 	const updateScene = useVTTStore((s) => s.updateScene);
@@ -1880,12 +1886,16 @@ function VTTSession() {
 	const writeTokenUpdates = async (
 		tokenId: string,
 		updates: Partial<VTTToken>,
+		options?: TokenWriteOptions,
 	): Promise<boolean> => {
+		// `quiet`: quem chamou (o painel de PV) mostra o próprio erro com
+		// “Tentar de novo”; o banner da mesa não repete nem é limpo por ele.
+		const quiet = options?.quiet === true;
 		if (!canEditToken(tokenId)) {
-			setMutationError("Você não controla este token.");
+			if (!quiet) setMutationError("Você não controla este token.");
 			return false;
 		}
-		setMutationError(null);
+		if (!quiet) setMutationError(null);
 		const sessionGeneration = sessionGenerationRef.current;
 		const mutationId = (tokenMutationRef.current.get(tokenId) || 0) + 1;
 		tokenMutationRef.current.set(tokenId, mutationId);
@@ -1911,6 +1921,7 @@ function VTTSession() {
 					current,
 					max: typeof updates.hpMax === "number" ? updates.hpMax : undefined,
 					canEditMax: canManageTokens,
+					quiet,
 				});
 				const rest = { ...updates };
 				delete rest.hpCurrent;
@@ -2031,7 +2042,7 @@ function VTTSession() {
 			const onlyConditions = Object.keys(pendingUpdates).every(
 				(k) => k === "conditions",
 			);
-			if (!onlyConditions)
+			if (!onlyConditions && !quiet)
 				setMutationError(
 					"Não foi possível salvar o token. Restaurando os dados do servidor.",
 				);
@@ -2046,6 +2057,7 @@ function VTTSession() {
 	const handleUpdateToken = (
 		tokenId: string,
 		updates: Partial<VTTToken>,
+		options?: TokenWriteOptions,
 	): Promise<boolean> => {
 		const queue = tokenMoveQueueRef.current;
 		if (queue && isMoveOnlyUpdate(updates)) {
@@ -2063,7 +2075,7 @@ function VTTSession() {
 				: undefined;
 			return queue.enqueue(tokenId, updates, expected);
 		}
-		return writeTokenUpdates(tokenId, updates);
+		return writeTokenUpdates(tokenId, updates, options);
 	};
 
 	const handleDeleteToken = async (tokenId: string): Promise<boolean> => {
@@ -2100,6 +2112,49 @@ function VTTSession() {
 			return false;
 		}
 	};
+
+	// Aviso da mesa (gravação, cenas, permissões). No celular a ficha é um sheet
+	// modal: o aviso vai para dentro dela (alcançável e fechável) em vez de
+	// ficar por baixo/por cima do sheet. Derivado no render, sem efeito.
+	const tableAlertBody =
+		mutationError || sceneDataError || ownershipError ? (
+			<>
+				<p className="min-w-40 flex-1 text-sm">
+					{mutationError || sceneDataError || ownershipError}
+				</p>
+				{ownershipError && (
+					<Button
+						size="touch"
+						disabled={ownershipLoading}
+						onClick={() => void fetchCharacterOwners()}
+					>
+						Recarregar permissões
+					</Button>
+				)}
+				{sceneDataError && (
+					<Button
+						size="touch"
+						onClick={() => activeSceneId && void fetchTokens(activeSceneId)}
+					>
+						Tentar novamente
+					</Button>
+				)}
+				{(mutationError || sceneDataError) && (
+					<Button
+						aria-label="Fechar aviso da mesa"
+						variant="ghost"
+						size="touch"
+						onClick={() => {
+							setMutationError(null);
+							setSceneDataError(null);
+						}}
+					>
+						Fechar
+					</Button>
+				)}
+			</>
+		) : null;
+	const mobileSheetOpen = isMobile && Boolean(sheetOpenId);
 
 	const currentActiveScene =
 		scenes.find((s) => s.id === activeSceneId && s.campaignId === campaignId) ||
@@ -2138,41 +2193,12 @@ function VTTSession() {
 				/>
 			)}
 
-			{(mutationError || sceneDataError || ownershipError) && (
+			{tableAlertBody && !mobileSheetOpen && (
 				<div
 					role="alert"
 					className="absolute bottom-20 left-1/2 z-[60] flex flex-wrap w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-xl border border-destructive/50 bg-card p-3 shadow-lg"
 				>
-					<p className="min-w-40 flex-1 text-sm">
-						{mutationError || sceneDataError || ownershipError}
-					</p>
-					{ownershipError && (
-						<Button
-							disabled={ownershipLoading}
-							onClick={() => void fetchCharacterOwners()}
-						>
-							Recarregar permissões
-						</Button>
-					)}
-					{sceneDataError && (
-						<Button
-							onClick={() => activeSceneId && void fetchTokens(activeSceneId)}
-						>
-							Tentar novamente
-						</Button>
-					)}
-					{(mutationError || sceneDataError) && (
-						<Button
-							aria-label="Fechar aviso da mesa"
-							variant="ghost"
-							onClick={() => {
-								setMutationError(null);
-								setSceneDataError(null);
-							}}
-						>
-							Fechar
-						</Button>
-					)}
+					{tableAlertBody}
 				</div>
 			)}
 			{/* Left Floating Toolbar */}
@@ -2298,7 +2324,10 @@ function VTTSession() {
 				onRemoveToken={handleDeleteToken}
 			/>
 
-			<VTTSheetDrawer onUpdateToken={handleUpdateToken} />
+			<VTTSheetDrawer
+				onUpdateToken={handleUpdateToken}
+				tableAlert={mobileSheetOpen ? tableAlertBody : null}
+			/>
 
 			<VTTTokenStatusTooltip />
 

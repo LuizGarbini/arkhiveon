@@ -70,8 +70,11 @@ export function hpEnterAction(
 	) {
 		return null;
 	}
+	// Sinal digitado manda (“−15” é sempre dano, “=15” define, “+8” cura);
+	// Shift+Enter só decide o número sem sinal: cura.
+	if (input.kind !== "bare") return input.kind;
 	if (shiftKey) return input.amount > 0 ? "heal" : null;
-	return input.kind === "bare" ? BARE_NUMBER_ACTION : input.kind;
+	return BARE_NUMBER_ACTION;
 }
 
 /** Dica do campo: o que “15” sem sinal faz, na mesma regra de `hpEnterAction`. */
@@ -81,6 +84,21 @@ export function bareNumberHint(): string {
 		: BARE_NUMBER_ACTION === "damage"
 			? "“15” é dano"
 			: "“15” cura";
+}
+
+/**
+ * Número de destino nas prévias e rótulos (“→ 32”). `showMax` é a mesma regra
+ * da ficha e do token (`useSheetHp`: ficha sem vínculo ou mestre/co-mestre).
+ * Quem não vê o máximo daquela ficha lê “máx” quando o ajuste chega nele,
+ * para a prévia não entregar o valor.
+ */
+export function hpTargetLabel(
+	after: number,
+	max: number,
+	showMax: boolean,
+): string {
+	if (!showMax && max > 0 && after >= max) return "máx";
+	return String(after);
 }
 
 export interface HpValues {

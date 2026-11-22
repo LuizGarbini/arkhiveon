@@ -28,7 +28,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SheetBody } from "@/components/vtt/sheet/sheet-body";
-import type { SheetHp } from "@/components/vtt/sheet/sheet-hp";
+import type { HpSaveOptions, SheetHp } from "@/components/vtt/sheet/sheet-hp";
 import { D20Glyph, ExpandFrameGlyph } from "@/components/vtt/sheet/sheet-icons";
 import type { SheetRolls } from "@/components/vtt/sheet/sheet-types";
 import { useSheetResources } from "@/components/vtt/sheet/use-sheet-resources";
@@ -91,7 +91,14 @@ interface VTTSheetDrawerProps {
 	onUpdateToken: (
 		tokenId: string,
 		updates: Partial<VTTToken>,
+		/** `quiet`: o painel de PV mostra o próprio erro; sem o banner da mesa. */
+		options?: HpSaveOptions,
 	) => Promise<unknown>;
+	/**
+	 * Aviso da mesa enquanto a ficha do celular (sheet modal) está aberta: entra
+	 * no topo da ficha para ficar visível, no foco e fechável.
+	 */
+	tableAlert?: ReactNode;
 }
 
 /** Como a rolagem aparece no chat da mesa (cartão com o nome do personagem). */
@@ -127,7 +134,10 @@ interface LastRoll {
  * cabeçalho, redimensionar no canto, posição/tamanho lembrados). Celular:
  * Sheet de baixo do DS, sem X. As rolagens que já existiam continuam iguais.
  */
-export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
+export function VTTSheetDrawer({
+	onUpdateToken,
+	tableAlert,
+}: VTTSheetDrawerProps) {
 	const isMobile = useIsMobile();
 	const openSheetIds = useVTTStore((s) => s.openSheetIds);
 	const topId = useVTTStore((s) => s.showCharacterSheetId);
@@ -264,6 +274,7 @@ export function VTTSheetDrawer({ onUpdateToken }: VTTSheetDrawerProps) {
 			{isMobile ? (
 				<MobileSheet
 					id={topId}
+					tableAlert={tableAlert}
 					onUpdateToken={onUpdateToken}
 					onStartRoll={startRoll}
 					onRollFormula={startFormulaRoll}
@@ -697,7 +708,11 @@ function MobileSheet({
 	onRollFormula,
 	rolling,
 	lastRoll,
-}: Omit<SheetPanelProps, "id"> & { id: string | null }) {
+	tableAlert,
+}: Omit<SheetPanelProps, "id"> & {
+	id: string | null;
+	tableAlert?: ReactNode;
+}) {
 	const { token, character } = useSheetTarget(id);
 	const setShow = useVTTStore((s) => s.setShowCharacterSheetId);
 	const name = character?.characterName || token?.name || "Ficha";
@@ -713,6 +728,14 @@ function MobileSheet({
 			className="max-h-[78dvh] bg-card-elevated backdrop-blur-none"
 			overlayClassName="bg-black/60 backdrop-blur-none"
 		>
+			{tableAlert ? (
+				<div
+					role="alert"
+					className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/50 bg-card p-3"
+				>
+					{tableAlert}
+				</div>
+			) : null}
 			<SheetContent
 				token={token}
 				character={character}
@@ -831,34 +854,46 @@ function SheetContent({
 				showMax,
 				temp: character?.tempHealth ?? token.tempHp ?? 0,
 				name: character?.characterName || token.name,
-				onChange: (next) => onUpdateToken(token.id, { hpCurrent: next }),
+				onChange: (next, options) =>
+					onUpdateToken(token.id, { hpCurrent: next }, options),
 				// Vida temporária só para mestre/co-mestre: o jogador não grava
 				// `characters` (RLS 0003), então o dano dele vai direto no PV.
 				onChangeTempHp: canManage
-					? (nextTemp) => {
+					? async (nextTemp, options) => {
 							const sanitized = Math.max(0, nextTemp);
 							if (character) {
-								void useRPGStore.getState().updateCharacter(character.id, {
-									tempHealth: sanitized,
-								});
+								// Espera a ficha gravar antes do PV: a gravação da ficha mescla
+								// o `data` lido do banco e, em paralelo com a RPC do PV, podia
+								// regravar o PV antigo. Falha aqui vira erro do painel.
+								try {
+									await useRPGStore
+										.getState()
+										.updateCharacter(
+											character.id,
+											{ tempHealth: sanitized },
+											{ quiet: options?.quiet },
+										);
+								} catch {
+									return false;
+								}
 							}
-							return onUpdateToken(token.id, { tempHp: sanitized });
+							return onUpdateToken(token.id, { tempHp: sanitized }, options);
 						}
 					: undefined,
 				onChangeMax:
 					canManage || (character && !hp.fromSheet)
-						? (nextMax) => {
+						? (nextMax, options) => {
 								if (character && isGM) {
 									void useRPGStore.getState().updateCharacter(character.id, {
 										healthMax: nextMax,
 									});
 								}
-								return onUpdateToken(token.id, { hpMax: nextMax });
+								return onUpdateToken(token.id, { hpMax: nextMax }, options);
 							}
 						: undefined,
 				onChangeHp:
 					canManage || (character && !hp.fromSheet)
-						? ({ current, max }) => {
+						? ({ current, max }, options) => {
 								if (character && isGM) {
 									const patch: Partial<Character> = {};
 									if (current !== undefined) patch.health = current;
@@ -873,7 +908,7 @@ function SheetContent({
 								if (current !== undefined) tokenPatch.hpCurrent = current;
 								if (max !== undefined) tokenPatch.hpMax = max;
 								if (Object.keys(tokenPatch).length > 0) {
-									return onUpdateToken(token.id, tokenPatch);
+									return onUpdateToken(token.id, tokenPatch, options);
 								}
 							}
 						: undefined,

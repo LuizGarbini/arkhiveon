@@ -252,6 +252,11 @@ export async function saveLinkedCharacterHp(input: {
 	max?: number;
 	canEditMax: boolean;
 	rpc?: (args: SetCharacterHpArgs) => Promise<SetCharacterHpResult>;
+	/**
+	 * Quem chamou (o painel de PV) já mostra a falha com “Tentar de novo”: sem
+	 * o toast genérico. O aviso de permissão (42501) continua.
+	 */
+	quiet?: boolean;
 }): Promise<boolean> {
 	const existing = useRPGStore
 		.getState()
@@ -295,6 +300,7 @@ export async function saveLinkedCharacterHp(input: {
 				});
 				return;
 			}
+			if (input.quiet) return;
 			showToast("error", {
 				title: "Não foi possível salvar os PV",
 				action: {

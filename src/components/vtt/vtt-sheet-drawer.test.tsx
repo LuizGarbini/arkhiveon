@@ -303,7 +303,11 @@ describe("VTTSheetDrawer · atributos", () => {
 		fireEvent.click(minus);
 		fireEvent.click(minus);
 		expect(onUpdateToken).toHaveBeenCalledTimes(1);
-		expect(onUpdateToken).toHaveBeenCalledWith("tok-1", { hpCurrent: 28 });
+		expect(onUpdateToken).toHaveBeenCalledWith(
+			"tok-1",
+			{ hpCurrent: 28 },
+			{ quiet: true },
+		);
 		expect(screen.getAllByText("Salvando…").length).toBeGreaterThan(0);
 		expect((minus as HTMLButtonElement).disabled).toBe(true);
 		await act(async () => {

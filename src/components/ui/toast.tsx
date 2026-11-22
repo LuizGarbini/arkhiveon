@@ -156,7 +156,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	return (
 		<ToastContext.Provider value={value}>
 			{children}
-			<div className="fixed right-4 top-32 z-200 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">
+			{/* aria-live: um sheet/dialog modal aberto (Base UI) deixa regiões live
+			    fora do aria-hidden, então o toast (e o “Desfazer”) segue acessível
+			    por cima da ficha no celular. */}
+			<div
+				aria-live="polite"
+				className="fixed right-4 top-32 z-200 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2"
+			>
 				{toasts.map((toast) => {
 					const Icon = ICON_BY_VARIANT[toast.variant];
 					return (
