@@ -1,7 +1,7 @@
 import "@/components/vtt/vtt.css";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Compass, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { showToast } from "@/components/ui/toast";
 import { VTTAiChat } from "@/components/vtt/vtt-ai-chat";
@@ -102,6 +102,13 @@ import { mapFolderRow, mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
 import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
+import {
+	buildTokenAvatarMap,
+	EMPTY_AVATAR_ASSETS,
+	EMPTY_AVATAR_SHEETS,
+	retainTokenAvatarMap,
+	tokenImageRole,
+} from "@/lib/vtt/token-avatar";
 import { remoteTokenPatch, tokenPatchIsNoop } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
@@ -172,6 +179,28 @@ function VTTSession() {
 	const addScene = useVTTStore((s) => s.addScene);
 	const updateScene = useVTTStore((s) => s.updateScene);
 	const tokens = useVTTStore((s) => s.tokens);
+	const characters = useRPGStore((s) =>
+		Array.isArray(s.characters) ? s.characters : EMPTY_AVATAR_SHEETS,
+	);
+	const imageAssets = useRPGStore((s) =>
+		Array.isArray(s.imageAssets) ? s.imageAssets : EMPTY_AVATAR_ASSETS,
+	);
+	const imageRole = tokenImageRole(activeCampaign, user?.id);
+	const tokenAvatarCache = useRef<Map<string, string | null>>(new Map());
+	// A foto sai da ficha na hora de desenhar. O mapa só troca de referência
+	// quando a url resolvida muda: arrastar o token não redesenha o Pixi.
+	const tokenAvatars = useMemo(() => {
+		const next = buildTokenAvatarMap(
+			tokens,
+			characters,
+			imageAssets,
+			imageRole,
+			user?.id ?? null,
+		);
+		const kept = retainTokenAvatarMap(tokenAvatarCache.current, next);
+		tokenAvatarCache.current = kept;
+		return kept;
+	}, [tokens, characters, imageAssets, imageRole, user?.id]);
 	const setTokens = useVTTStore((s) => s.setTokens);
 	const addToken = useVTTStore((s) => s.addToken);
 	const updateToken = useVTTStore((s) => s.updateToken);
@@ -2186,6 +2215,7 @@ function VTTSession() {
 			) : currentActiveScene ? (
 				<VTTCanvas
 					characterOwners={characterOwners}
+					tokenAvatars={tokenAvatars}
 					scene={currentActiveScene}
 					onUpdateToken={handleUpdateToken}
 					onBroadcastDrag={handleBroadcastDrag}

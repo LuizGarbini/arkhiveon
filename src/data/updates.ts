@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.170-vtt-token-foto-ficha",
+		version: "1.6.170",
+		date: "22/11/2026",
+		title: "O token mostra a foto atual da ficha",
+		description:
+			"Quando a foto de uma ficha muda, o token ligado a ela passa a mostrar essa foto na hora, para quem enxerga a ficha. Quem não pode ver a foto continua vendo a imagem que o token já tinha.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.169-vtt-ping-atencao-camera",
 		version: "1.6.169",
 		date: "22/11/2026",

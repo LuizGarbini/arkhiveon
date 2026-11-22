@@ -136,6 +136,7 @@ import {
 	canRemoveSpellTemplate,
 	shouldDeleteSelectedTemplate,
 } from "@/lib/vtt/template-permissions";
+import { shownTokenAvatarUrl, tokenAvatarMapKey } from "@/lib/vtt/token-avatar";
 import {
 	dragGhostShowsInitials,
 	tokenInitialsFontSize,
@@ -350,6 +351,8 @@ function auraPoseSignature(
 interface VTTCanvasProps {
 	scene: VTTScene | null;
 	characterOwners?: readonly VTTCharacterOwner[];
+	/** Foto atual da ficha, por token. Sem a entrada, vale o avatar gravado. */
+	tokenAvatars?: ReadonlyMap<string, string | null>;
 	/** Um lote por tick do arrasto, com todos os tokens do grupo. */
 	onBroadcastDragBatch?: (moves: DragMove[]) => void;
 	onUpdateToken?: (
@@ -373,6 +376,7 @@ interface VTTCanvasProps {
 const VISION_SETTLE_MS = 120;
 
 const EMPTY_CHARACTER_OWNERS: readonly VTTCharacterOwner[] = [];
+const EMPTY_TOKEN_AVATARS: ReadonlyMap<string, string | null> = new Map();
 
 /**
  * Fantasma do token arrastado, acima da névoa. Com a visão congelada até soltar,
@@ -474,6 +478,7 @@ function countFogRender() {
 export function VTTCanvas({
 	scene,
 	characterOwners = EMPTY_CHARACTER_OWNERS,
+	tokenAvatars = EMPTY_TOKEN_AVATARS,
 	onBroadcastDragBatch,
 	onUpdateToken,
 	onBroadcastDrag,
@@ -698,6 +703,8 @@ export function VTTCanvas({
 	const rightPressRef = useRef<RightPress | null>(null);
 	const characterOwnersRef = useRef(characterOwners);
 	characterOwnersRef.current = characterOwners;
+	const tokenAvatarsRef = useRef(tokenAvatars);
+	tokenAvatarsRef.current = tokenAvatars;
 	const onBroadcastRulerRef = useRef(onBroadcastRuler);
 	onBroadcastRulerRef.current = onBroadcastRuler;
 	const onUpdateTokenRef = useRef(onUpdateToken);
@@ -757,6 +764,12 @@ export function VTTCanvas({
 	// Position and the remote target stay out of this key so a drag does not
 	// destroy and recreate the sprite on every pointer move.
 	const tokenAppearance = useMemo(() => tokensAppearanceKey(tokens), [tokens]);
+	// Foto da ficha. A string só muda quando a url resolvida muda, então um
+	// arrasto (x/y) não reconstrói o sprite. O mapa em si fica no ref.
+	const tokenAvatarKey = useMemo(
+		() => tokenAvatarMapKey(tokenAvatars),
+		[tokenAvatars],
+	);
 	// Visão dos jogadores: o alcance vem da ficha (se definido) e as paredes
 	// bloqueiam. A lista só é lida pelos efeitos via ref; o que dispara refazer a
 	// névoa é a assinatura (visionSig), não qualquer token da mesa se mexer.
@@ -1351,9 +1364,10 @@ export function VTTCanvas({
 	]);
 
 	// 4. Render Tokens and Auras on the Stage (with exploration visibility & layer isolation)
-	// tokenAppearance e tokenVisibility são a chave de redesenho. x/y e o alvo
-	// remoto ficam de fora: incluí-los destruía o sprite a cada movimento e o
-	// ticker puxava o token de volta para o outro lado.
+	// tokenAppearance, tokenAvatarKey e tokenVisibility são a chave de redesenho.
+	// x/y e o alvo remoto ficam de fora: incluí-los destruía o sprite a cada
+	// movimento e o ticker puxava o token de volta para o outro lado. A foto da
+	// ficha entra só em tokenAvatarKey.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a chave acima é a dependência; o efeito lê os tokens na hora pelo store.
 	useEffect(() => {
 		if (!rendererReady) return;
@@ -1471,9 +1485,10 @@ export function VTTCanvas({
 			bg.fill({ color: isGMLayer ? 0x2e1065 : 0x18181b });
 			tokenContainer.addChild(bg);
 
-			// Load avatar image or initials placeholder
-			if (token.avatarUrl) {
-				Assets.load(token.avatarUrl)
+			// Foto atual da ficha, com o avatar gravado de reserva.
+			const avatarUrl = shownTokenAvatarUrl(token, tokenAvatarsRef.current);
+			if (avatarUrl) {
+				Assets.load(avatarUrl)
 					.then((tex) => {
 						const sprite = new Sprite(tex);
 						sprite.anchor.set(0.5);
@@ -1906,6 +1921,7 @@ export function VTTCanvas({
 	}, [
 		rendererReady,
 		tokenAppearance,
+		tokenAvatarKey,
 		tokenVisibility,
 		characterOwners,
 		user?.id,
@@ -3679,7 +3695,15 @@ export function VTTCanvas({
 						if (dragged)
 							syncDragGhost(
 								ghostLayer,
-								dragged,
+								{
+									id: dragged.id,
+									name: dragged.name,
+									sizeCells: dragged.sizeCells,
+									avatarUrl: shownTokenAvatarUrl(
+										dragged,
+										tokenAvatarsRef.current,
+									),
+								},
 								member.x,
 								member.y,
 								scene.gridSize || 70,
