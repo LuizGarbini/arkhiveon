@@ -17,6 +17,7 @@ import type {
 	WeaponAbility,
 	WeaponPropertyKey,
 } from "@/lib/store/types";
+import { itemCategoryKind } from "../../../supabase/functions/_shared/combat-core";
 import { type DnDConditionKey, dndConditionDef } from "./conditions";
 import {
 	ABILITY_LABELS,
@@ -177,22 +178,8 @@ function normalizeText(value: string | undefined): string {
 		.trim();
 }
 
-/** Decide qual aba mecânica o item usa a partir da categoria (campo `type`). */
-export function itemCategoryKind(type: string | undefined): ItemCategoryKind {
-	const t = normalizeText(type);
-	if (t === "arma" || t === "weapon" || t.startsWith("arma ")) return "weapon";
-	if (
-		t === "armadura" ||
-		t === "escudo" ||
-		t === "armor" ||
-		t === "shield" ||
-		t.startsWith("armadura ")
-	)
-		return "armor";
-	if (t === "municao" || t === "ammo" || t.startsWith("municao "))
-		return "ammo";
-	return "other";
-}
+/** Decide qual aba mecânica o item usa (regra em `_shared/combat-core`). */
+export { itemCategoryKind };
 
 export function emptyWeaponStats(): ItemWeaponStats {
 	return {

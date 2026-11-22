@@ -11,8 +11,8 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.176-vtt-dano-rapido",
-		version: "1.6.176",
+		id: "v1.6.182-vtt-dano-rapido",
+		version: "1.6.182",
 		date: "22/11/2026",
 		title: "Dano e cura rápidos na ficha da mesa",
 		description:
@@ -21,6 +21,42 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 			"Moldes de magia: no celular ou no toque, selecione um molde pela ferramenta Selecionar ou tocando nele na lista.",
 			"Editar valores do PV (mestre): a ficha grava primeiro; se ela não salvar, o token não muda e o painel avisa o erro.",
 		],
+	},
+	{
+		id: "v1.6.181-vtt-canal-privado",
+		version: "1.6.181",
+		date: "22/11/2026",
+		title: "Mesa virtual: canais privados em tempo real",
+		description:
+			"A mesa passa a conversar por canais privados: cada pessoa tem o seu, o mestre fala com todos num canal de mesa, e o que só o mestre e o co-mestre devem ver (névoa, token oculto) não chega no jogador. O nome de quem mandou sai do canal, não do que está escrito na mensagem. Esta versão só entra no ar no mesmo dia em que a regra no servidor (0066) for aplicada.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.179-vtt-canal-sala-modulo",
+		version: "1.6.179",
+		date: "22/11/2026",
+		title: "Mesa virtual: canal da sala reorganizado por dentro",
+		description:
+			"O código que liga a mesa ao canal em tempo real (arraste, cursores, réguas, pings, névoa e moldes) saiu da tela da mesa para um módulo próprio, com testes. Nada muda no uso: os mesmos eventos chegam e saem do mesmo jeito.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.178-ia-mesa-bonus-itens",
+		version: "1.6.178",
+		date: "22/11/2026",
+		title: "Assistente da mesa conhece a CA e a iniciativa com os itens",
+		description:
+			"Quando lê uma ficha, o assistente da mesa passa a saber a CA, a iniciativa e o deslocamento já com os itens equipados (um amuleto de +5 na iniciativa, um anel de +2 na CA), com a mesma conta da ficha. Item que você não pode ver não entra na conta.",
+		bullets: [],
+	},
+	{
+		id: "v1.6.177-vtt-jogador-coloca-token",
+		version: "1.6.177",
+		date: "22/11/2026",
+		title: "Jogadores colocam fichas e NPCs na mesa",
+		description:
+			"Na Biblioteca da mesa, o jogador agora tem o botão Colocar nas fichas e na aba NPCs, na cena publicada pelo mestre. Ele só coloca o que já consegue ver: ficha privada e NPC secreto ficam de fora. O nome e a imagem do token vêm da ficha ou do NPC, e o token entra sempre visível, destravado e na camada de tokens. O jogador move e remove o que colocou enquanto o mestre não travar.",
+		bullets: [],
 	},
 	{
 		id: "v1.6.175-card-bonus-itens",

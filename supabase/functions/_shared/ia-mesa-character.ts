@@ -1,6 +1,7 @@
 /**
  * Assistente da mesa — editar ficha existente (proposta de patch).
- * Sem dependências: roda em Deno (Edge Function) e no Vite (cliente/testes).
+ * Só depende de `combat-core.ts` (puro, sem alias): roda em Deno (Edge
+ * Function) e no Vite (cliente/testes).
  *
  * Regras:
  * - A IA só LÊ fichas da campanha atual (cliente do próprio usuário, RLS) e
@@ -11,6 +12,15 @@
  * - Tudo é saneado e limitado: campos fora da allowlist são descartados.
  * - Multiclasse, troca de classe e outras campanhas ficam fora.
  */
+
+import {
+	type CoreEntry,
+	type CoreItem,
+	computeCombatCore,
+	formatModifier,
+	formatStatPart,
+	type StatPart,
+} from "./combat-core.ts";
 
 export const CHARACTER_PATCH_TOOL = "propose_character_patch" as const;
 export const CHARACTER_CREATE_TOOL = "propose_character_create" as const;
@@ -542,8 +552,234 @@ export function toRoster(rows: CharacterRow[]): CharacterRosterEntry[] {
 		});
 }
 
-/** Ficha resumida (só campos editáveis + inventário) devolvida ao modelo. */
-export function summarizeCharacter(row: CharacterRow): Record<string, unknown> {
+// ---------------------------------------------------------------------------
+// Itens vinculados: CA, iniciativa e deslocamento com o que está equipado.
+// A conta é a mesma da ficha (`combat-core.ts`); aqui só se saneia o JSON.
+// ---------------------------------------------------------------------------
+
+/** Teto de ids no `.in()` de itens: 40 fichas × itens equipados é bem menos. */
+export const EQUIPPED_ITEM_IDS_MAX = 200;
+
+const ITEM_SLOT_VALUES = [
+	"head",
+	"earring",
+	"neck",
+	"cloak",
+	"bracers",
+	"hands",
+	"bracelet",
+	"belt",
+	"ring",
+	"weapon",
+	"shield",
+	"armor",
+	"feet",
+] as const;
+const EQUIP_SLOT_VALUES = [
+	"head",
+	"earring",
+	"neck",
+	"cloak",
+	"bracers",
+	"hands",
+	"bracelet",
+	"belt",
+	"ring1",
+	"ring2",
+	"ring3",
+	"ring4",
+	"mainHand",
+	"offHand",
+	"armor",
+	"feet",
+] as const;
+const DEX_MODES = ["full", "max2", "none"] as const;
+const ARMOR_CATEGORIES = ["light", "medium", "heavy", "shield"] as const;
+const BONUS_TARGETS = [
+	"attack",
+	"damage",
+	"ac",
+	"initiative",
+	"saves",
+	"speed",
+	"spellSaveDc",
+	"spellAttack",
+] as const;
+const ABILITY_BONUS_MODES = ["add", "set"] as const;
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+/** Entradas do inventário só com o que a conta de CA/iniciativa lê. */
+function combatEntriesOf(row: CharacterRow): CoreEntry[] {
+	const inv = dataOf(row).inventoryList;
+	if (!Array.isArray(inv)) return [];
+	return inv.flatMap((raw) => {
+		const e = recordOf(raw);
+		if (!e) return [];
+		const slot = oneOf(EQUIP_SLOT_VALUES, e.slot);
+		return [
+			{
+				location: typeof e.location === "string" ? e.location : undefined,
+				isAttuned: e.isAttuned === true,
+				...(slot ? { slot } : {}),
+				...(isEntityId(e.campaignItemId)
+					? { campaignItemId: e.campaignItemId }
+					: {}),
+			},
+		];
+	});
+}
+
+/**
+ * Ids de Item vinculados a entradas No Corpo das fichas carregadas, sem
+ * repetir. Vão num único `.in("id", …)` em `items`, com o JWT de quem chama.
+ */
+export function equippedItemIds(
+	rows: readonly CharacterRow[],
+	isItemId: (value: unknown) => value is string = isEntityId,
+): string[] {
+	const ids = new Set<string>();
+	for (const row of rows) {
+		for (const e of combatEntriesOf(row)) {
+			if (e.location !== "equipped" || !isItemId(e.campaignItemId)) continue;
+			ids.add(e.campaignItemId);
+			if (ids.size >= EQUIPPED_ITEM_IDS_MAX) return [...ids];
+		}
+	}
+	return [...ids];
+}
+
+function finiteNumber(value: unknown): number | null {
+	const n = typeof value === "number" ? value : Number.NaN;
+	return Number.isFinite(n) ? n : null;
+}
+
+/** Linha de `items` (`id, name, data`) no formato que a conta lê. */
+function combatItemFromRow(raw: unknown): [string, CoreItem] | null {
+	const row = recordOf(raw);
+	if (!row || !isEntityId(row.id)) return null;
+	const data = recordOf(row.data) ?? {};
+	const item: CoreItem = {
+		name:
+			cleanText(data.name, PATCH_LIMITS.name) ||
+			cleanText(row.name, PATCH_LIMITS.name) ||
+			"Item",
+		requiresAttunement: data.requiresAttunement === true,
+	};
+	if (typeof data.type === "string") item.type = data.type.slice(0, 60);
+	const slot = oneOf(ITEM_SLOT_VALUES, data.slot);
+	if (slot) item.slot = slot;
+	const armor = recordOf(data.armor);
+	const baseAc = finiteNumber(armor?.baseAc);
+	const dexMode = oneOf(DEX_MODES, armor?.dexMode);
+	const armorCategory = oneOf(ARMOR_CATEGORIES, armor?.armorCategory);
+	if (baseAc !== null && dexMode && armorCategory)
+		item.armor = { baseAc, dexMode, armorCategory };
+	const weapon = recordOf(data.weapon);
+	if (weapon && Array.isArray(weapon.properties))
+		item.weapon = {
+			properties: weapon.properties.filter(
+				(p): p is string => typeof p === "string",
+			),
+		};
+	if (Array.isArray(data.bonuses))
+		item.bonuses = data.bonuses.flatMap((b) => {
+			const r = recordOf(b);
+			const target = oneOf(BONUS_TARGETS, r?.target);
+			const value = finiteNumber(r?.value);
+			if (!r || !target || value === null) return [];
+			return [
+				{
+					target,
+					value,
+					...(typeof r.when === "string" ? { when: r.when } : {}),
+				},
+			];
+		});
+	if (Array.isArray(data.abilityBonuses))
+		item.abilityBonuses = data.abilityBonuses.flatMap((b) => {
+			const r = recordOf(b);
+			const ability = oneOf(WEAPON_ABILITIES, r?.ability);
+			const mode = oneOf(ABILITY_BONUS_MODES, r?.mode);
+			const value = finiteNumber(r?.value);
+			if (!ability || !mode || value === null) return [];
+			return [{ ability, mode, value }];
+		});
+	return [row.id, item];
+}
+
+/**
+ * Mapa id → Item a partir das linhas que o RLS deixou quem pergunta ler.
+ * Item fora do mapa (não visível, apagado) não soma nada.
+ */
+export function combatItemsFromRows(rows: unknown): Map<string, CoreItem> {
+	const map = new Map<string, CoreItem>();
+	if (!Array.isArray(rows)) return map;
+	for (const raw of rows) {
+		const parsed = combatItemFromRow(raw);
+		if (parsed) map.set(parsed[0], parsed[1]);
+	}
+	return map;
+}
+
+function describeParts(parts: readonly StatPart[]): string {
+	return parts.map(formatStatPart).join(", ");
+}
+
+/**
+ * CA, iniciativa e deslocamento com os itens equipados (mesma conta da
+ * ficha). `null` quando nenhum item muda esses números.
+ */
+export function summarizeEffectiveCombat(
+	row: CharacterRow,
+	itemsById: ReadonlyMap<string, CoreItem>,
+): Record<string, unknown> | null {
+	const data = dataOf(row);
+	const core = computeCombatCore(
+		{ ...data, system: row.system ?? data.system },
+		combatEntriesOf(row),
+		itemsById,
+	);
+	const { ac, initiative, speed } = core;
+	if (
+		ac.source === "manual" &&
+		initiative.source === "manual" &&
+		speed.parts.length === 0
+	)
+		return null;
+	const why: string[] = [];
+	if (ac.source === "items") why.push(`CA: ${describeParts(ac.parts)}`);
+	if (initiative.source === "items")
+		why.push(`Iniciativa: ${describeParts(initiative.parts)}`);
+	if (speed.parts.length > 0)
+		why.push(
+			`Deslocamento: ${speed.base} da ficha, ${speed.parts
+				.map((p) => `${p.label} ${formatModifier(p.value)}`)
+				.join(", ")}`,
+		);
+	const notes = [...ac.notes, ...initiative.notes].slice(0, 6);
+	return {
+		armorClass: ac.total,
+		initiative: initiative.total,
+		speed: speed.total,
+		why,
+		...(notes.length > 0 ? { notes } : {}),
+	};
+}
+
+/**
+ * Ficha resumida (só campos editáveis + inventário) devolvida ao modelo.
+ * `fields` é o valor salvo (base de qualquer patch). Com `itemsById`,
+ * `effective` traz CA, iniciativa e deslocamento já com os itens equipados.
+ */
+export function summarizeCharacter(
+	row: CharacterRow,
+	itemsById?: ReadonlyMap<string, CoreItem>,
+): Record<string, unknown> {
 	const data = dataOf(row);
 	const fields: Record<string, number> = {};
 	for (const key of CHARACTER_NUMERIC_FIELD_KEYS) {
@@ -567,6 +803,7 @@ export function summarizeCharacter(row: CharacterRow): Record<string, unknown> {
 			},
 		];
 	});
+	const effective = itemsById ? summarizeEffectiveCombat(row, itemsById) : null;
 	return {
 		characterId: row.id,
 		name: rowName(row),
@@ -574,6 +811,7 @@ export function summarizeCharacter(row: CharacterRow): Record<string, unknown> {
 		class: cleanText(data.class, PATCH_LIMITS.label),
 		race: cleanText(data.race, PATCH_LIMITS.label),
 		fields,
+		...(effective ? { effective } : {}),
 		inventory,
 	};
 }
@@ -621,7 +859,7 @@ export const CHARACTER_TOOL_DECLARATIONS = [
 	{
 		name: READ_CHARACTER_TOOL,
 		description:
-			"Lê a ficha atual de um personagem DESTA campanha (atributos, PV, CA, inventário com itemId e dados de arma). Use antes de propor alterações.",
+			"Lê a ficha atual de um personagem DESTA campanha (atributos, PV, CA, inventário com itemId e dados de arma). `fields` é o valor salvo na ficha (base de qualquer patch); `effective`, quando vem, é a CA, a iniciativa e o deslocamento já com os itens equipados. Use antes de propor alterações.",
 		parameters: {
 			type: "OBJECT",
 			properties: {

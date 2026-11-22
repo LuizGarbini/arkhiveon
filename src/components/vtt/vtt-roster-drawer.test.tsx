@@ -14,6 +14,7 @@ import { characterDefaults } from "@/lib/store/character-slice";
 import { npcDefaults } from "@/lib/store/npc-slice";
 import type { Campaign } from "@/lib/store/types";
 import {
+	TOKEN_PLACE_DENIED,
 	TOKEN_PLACE_FAILED,
 	TOKEN_PLACE_NEEDS_GM,
 } from "@/lib/vtt/token-spawn";
@@ -508,7 +509,7 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 		expect(spawned.npcId).toBeUndefined();
 	});
 
-	it("jogador não vê a aba NPCs nem o botão Colocar", () => {
+	it("sem papel de jogador (isGM desligado, papel owner) não vê NPCs nem Colocar", () => {
 		seedLibrary();
 		renderDrawer(
 			vi.fn(async () => {}),
@@ -517,6 +518,70 @@ describe("Biblioteca: NPCs e fichas (Rise of Tiamat / busca Dar)", () => {
 		expect(screen.queryByRole("button", { name: "NPCs" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Colocar" })).toBeNull();
 		expect(screen.queryByText(TOKEN_PLACE_NEEDS_GM)).toBeNull();
+	});
+
+	function seedAsPlayer() {
+		seedLibrary();
+		useRPGStore.setState({
+			campaigns: [{ ...campaign, ownerId: "outro-mestre", myRole: "viewer" }],
+		});
+	}
+
+	it("jogador na cena publicada: coloca ficha e NPC; sem Criar, Mapa nem Remover", async () => {
+		seedAsPlayer();
+		const onSpawnToken = renderDrawer(
+			vi.fn(async () => {}),
+			false,
+		);
+		expect(screen.queryByRole("button", { name: "Criar" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Mapa" })).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Fichas" }));
+		fireEvent.click(screen.getByRole("button", { name: "Colocar" }));
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(1));
+		expect(onSpawnToken).toHaveBeenCalledWith(
+			expect.objectContaining({ characterId: "char-lyra", layer: "token" }),
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		expect(screen.queryByRole("button", { name: /Remover/ })).toBeNull();
+		fireEvent.click(screen.getAllByRole("button", { name: "Colocar" })[0]);
+		await waitFor(() => expect(onSpawnToken).toHaveBeenCalledTimes(2));
+		expect(vi.mocked(onSpawnToken).mock.calls[1][0]).toEqual(
+			expect.objectContaining({ npcId: "npc-dargan", sceneId: "scene-1" }),
+		);
+	});
+
+	it("jogador numa cena não publicada não vê Colocar nem a aba NPCs", () => {
+		seedAsPlayer();
+		useVTTStore.setState({ isGM: false, showRosterDrawer: true, tokens: [] });
+		render(
+			<VTTRosterDrawer
+				scene={{ ...scene, isActive: false }}
+				onSpawnToken={vi.fn(async () => {})}
+				onFocusPoint={vi.fn()}
+				onSetSceneMap={onSetSceneMap}
+				onRemoveToken={vi.fn(async () => true)}
+			/>,
+		);
+		expect(screen.queryByRole("button", { name: "NPCs" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Fichas" }));
+		expect(screen.queryByRole("button", { name: "Colocar" })).toBeNull();
+	});
+
+	it("jogador vê a recusa do servidor na biblioteca", async () => {
+		seedAsPlayer();
+		renderDrawer(
+			vi.fn(async () => {
+				throw new Error(TOKEN_PLACE_DENIED);
+			}),
+			false,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+		fireEvent.click(screen.getAllByRole("button", { name: "Colocar" })[0]);
+		expect((await screen.findByRole("alert")).textContent).toBe(
+			TOKEN_PLACE_DENIED,
+		);
 	});
 
 	it("exibe fotos de personagens e NPCs cadastrados na busca da biblioteca", async () => {

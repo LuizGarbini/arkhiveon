@@ -48,17 +48,9 @@ import {
 } from "@/lib/vtt/character-hp";
 import { useCombatStore } from "@/lib/vtt/combat-store";
 import { devExposeWritesBusy } from "@/lib/vtt/dev-probe";
-import {
-	controllableMoves,
-	type DragMove,
-	readDragBatch,
-} from "@/lib/vtt/drag-broadcast";
+import { controllableMoves, type DragMove } from "@/lib/vtt/drag-broadcast";
 import { useExploredStore } from "@/lib/vtt/explored-store";
-import {
-	exploredSync,
-	readExploredCells,
-	readExploredReset,
-} from "@/lib/vtt/explored-sync";
+import { exploredSync } from "@/lib/vtt/explored-sync";
 import {
 	loadLightZones,
 	subscribeLightZoneChanges,
@@ -69,6 +61,7 @@ import { useNotesStore } from "@/lib/vtt/notes-store";
 import { flushAllNotes, loadNotes } from "@/lib/vtt/notes-sync";
 import {
 	canControlVTTToken,
+	canPlaceTokenAsPlayer,
 	tableRole,
 	type VTTCharacterOwner,
 } from "@/lib/vtt/permissions";
@@ -77,10 +70,14 @@ import {
 	publishScene,
 } from "@/lib/vtt/persist-publication";
 import { prefersReducedMotion } from "@/lib/vtt/ping-motion";
-import { acceptIncomingPing } from "@/lib/vtt/ping-receive";
-import { readPresenceUsers, readRemoteCursor } from "@/lib/vtt/presence-input";
 import { useRollStore } from "@/lib/vtt/roll-store";
-import { applyRemoteRuler } from "@/lib/vtt/ruler-gesture";
+import {
+	openPrivateRoom,
+	type RoomTransport,
+	roomDisplayName,
+	roomMessages,
+	roomPresencePayload,
+} from "@/lib/vtt/room-channel";
 import {
 	isRepeatedCreate,
 	newSceneId,
@@ -102,7 +99,6 @@ import {
 import { mapFolderRow, mapSceneRow, mapTokenRow } from "@/lib/vtt/scene-row";
 import { createSceneSession } from "@/lib/vtt/scene-session";
 import type { VTTSpellTemplate } from "@/lib/vtt/template-math";
-import { acceptTemplateRemoval } from "@/lib/vtt/template-permissions";
 import {
 	buildTokenAvatarMap,
 	EMPTY_AVATAR_ASSETS,
@@ -115,7 +111,10 @@ import { remoteTokenPatch, tokenPatchIsNoop } from "@/lib/vtt/token-remote";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
+	placeTokenViaRpc,
+	playerPlaceArgs,
 	requirePlaceContext,
+	TOKEN_PLACE_FAILED,
 } from "@/lib/vtt/token-spawn";
 import {
 	createTokenWriteQueue,
@@ -127,7 +126,6 @@ import type {
 	VTTFogPath,
 	VTTLayer,
 	VTTPingEvent,
-	VTTRemoteMeasurement,
 	VTTRulerMeasurement,
 	VTTScene,
 	VTTSceneSettingsPatch,
@@ -348,9 +346,7 @@ function VTTSession() {
 			useNotesStore.getState().setPanelOpen(false);
 		};
 	}, [campaignId]);
-	const roomChannelRef = useRef<ReturnType<
-		NonNullable<ReturnType<typeof getSupabase>>["channel"]
-	> | null>(null);
+	const roomChannelRef = useRef<RoomTransport | null>(null);
 
 	// Expose stores for dev & preview test tooling on localhost only (stripped on production domains)
 	useEffect(() => {
@@ -924,324 +920,117 @@ function VTTSession() {
 		);
 	};
 
-	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
+	// 6. Canais privados da sala (0066): setAuth, u:<id>, gm, gmonly.
+	// Efeito externo real: assina o Realtime e carrega os memberships da campanha
+	// (lista de tópicos e papel do remetente). Não é estado derivado.
 	useEffect(() => {
 		const client = getSupabase();
 		if (!client || !campaignId || !user || !activeSceneId) return;
 		let cancelled = false;
+		let close: (() => void) | null = null;
 
-		const currentUserName =
-			user.user_metadata?.full_name ||
-			user.email?.split("@")[0] ||
-			"Aventureiro";
+		const currentUserName = roomDisplayName(user);
 
-		const roomChannel = client.channel(
-			`vtt-room:${campaignId}:${activeSceneId}`,
-			{
-				config: {
-					presence: { key: user.id },
-					broadcast: { self: false },
-				},
+		const ctx = {
+			campaignId,
+			sceneId: activeSceneId,
+			selfUserId: user.id,
+			isCancelled: () => cancelled,
+			vtt: useVTTStore.getState,
+			explored: useExploredStore.getState,
+			roleSource: () => templateRoleRef.current,
+			readScreen: readVttCanvasScreen,
+			playPing: playPingAudio,
+			pullCamera: (
+				world: { x: number; y: number },
+				notice: "focus" | "attention",
+			) => pullCameraRef.current?.(world, notice),
+			actions: {
+				setOnlineUsers,
+				setTokenTargetPosition,
+				setRemoteCursor,
+				removeRemoteCursor,
+				setRemoteMeasurement,
+				addPing,
+				addFogPath,
+				setFogPaths,
+				setRemoteTemplate,
 			},
-		);
+		};
 
-		roomChannelRef.current = roomChannel;
-		// A memória de exploração avisa os outros por este canal.
-		exploredSync.bind((event, payload) => {
-			void roomChannel.send({ type: "broadcast", event, payload });
-		});
-
-		roomChannel
-			.on("presence", { event: "sync" }, () => {
-				if (cancelled) return;
-				const users = readPresenceUsers(roomChannel.presenceState());
-				// Cor automática igual à de quem chegou antes: cede para uma livre.
-				const self = users.find((item) => item.userId === user.id);
-				if (self) {
-					useVTTStore
-						.getState()
-						.reconcileUserColor(
-							{ userId: user.id, onlineAt: self.onlineAt },
-							users,
-						);
-				}
-				setOnlineUsers(users);
-			})
-			.on(
-				"presence",
-				{ event: "leave" },
-				({ leftPresences }: { leftPresences: Array<{ userId?: string }> }) => {
-					for (const p of leftPresences || []) {
-						if (p.userId) {
-							removeRemoteCursor(p.userId);
-							const remote = useVTTStore.getState().remoteMeasurements;
-							const next = applyRemoteRuler(remote, {
-								type: "leave",
-								userId: p.userId,
-							});
-							if (next !== remote) setRemoteMeasurement(p.userId, null);
-						}
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "token_drag" },
-				(payload: {
-					payload: { tokenId?: string; x?: number; y?: number };
-				}) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const data = payload.payload;
-					if (data?.tokenId && data.x !== undefined && data.y !== undefined) {
-						setTokenTargetPosition(data.tokenId, data.x, data.y);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "token_drag_batch" },
-				(payload: { payload: unknown }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const moves = readDragBatch(payload.payload);
-					if (moves.length > 0) {
-						useVTTStore.getState().setTokenTargetPositions(moves);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "explored_cells" },
-				(payload: { payload: unknown }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const data = readExploredCells(payload.payload);
-					if (data && data.sceneId === activeSceneId) {
-						useExploredStore.getState().applyRemote(data.sceneId, data.cells);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "explored_cleared" },
-				(payload: { payload: unknown }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const data = readExploredCells(payload.payload);
-					if (data && data.sceneId === activeSceneId) {
-						useExploredStore.getState().unmark(data.sceneId, data.cells);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "explored_reset" },
-				(payload: { payload: unknown }) => {
-					if (cancelled) return;
-					const sceneId = readExploredReset(payload.payload);
-					if (sceneId && sceneId === activeSceneId) {
-						useExploredStore.getState().clear(sceneId);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "cursor_move" },
-				(payload: { payload: unknown }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId ||
-						// Preferência local: sem o ponteiro com nome dos outros.
-						!useVTTStore.getState().showRemoteCursors
-					)
-						return;
-					const cursor = readRemoteCursor(
-						payload.payload,
-						useVTTStore.getState().onlineUsers,
-					);
-					if (cursor) setRemoteCursor(cursor);
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "ruler_move" },
-				(payload: {
-					payload: {
-						userId?: string;
-						measurement?: VTTRemoteMeasurement | null;
-					};
-				}) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const data = payload.payload;
-					if (data?.userId) {
-						const measurement = data.measurement;
-						const remote = useVTTStore.getState().remoteMeasurements;
-						const normalized = measurement
-							? {
-									...measurement,
-									userId: data.userId,
-									userName: measurement.userName || "Jogador",
-									color: measurement.color || "#38bdf8",
-								}
-							: null;
-						const next = applyRemoteRuler(remote, {
-							type: "broadcast",
-							userId: data.userId,
-							measurement: normalized,
-						});
-						if (next !== remote) {
-							setRemoteMeasurement(data.userId, next[data.userId] ?? null);
-						}
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "ping" },
-				(payload: { payload: VTTPingEvent }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					// Quem pode levar a câmera é conferido aqui, no lado de quem recebe.
-					// "Atenção" só puxa se o ponto está fora do canvas agora.
-					// Jogador que manda "Todos aqui" à força vira ping comum.
-					const state = useVTTStore.getState();
-					const received = acceptIncomingPing(
-						payload.payload,
-						{
-							campaignOwnerId: templateRoleRef.current.ownerId,
-							memberships: templateRoleRef.current.memberships,
-							presence: state.onlineUsers,
-						},
-						{
-							viewport: state.viewport,
-							screen: readVttCanvasScreen(),
-							selfUserId: user.id,
-						},
-					);
-					if (!received) return;
-					const accepted = addPing(received.ping);
-					if (!accepted) return;
-					playPingAudio(Date.now(), accepted.kind);
-					if (received.pullTo) {
-						pullCameraRef.current?.(
-							received.pullTo,
-							received.ping.kind === "focus" ? "focus" : "attention",
-						);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "fog_update" },
-				(payload: { payload: { paths?: VTTFogPath[]; path?: VTTFogPath } }) => {
-					if (
-						cancelled ||
-						useVTTStore.getState().activeSceneId !== activeSceneId
-					)
-						return;
-					const data = payload.payload;
-					if (data?.paths) {
-						setFogPaths(data.paths);
-					} else if (data?.path) {
-						addFogPath(data.path);
-					}
-				},
-			)
-			.on(
-				"broadcast",
-				{ event: "template_move" },
-				(payload: {
-					payload: {
-						userId?: string;
-						template?: VTTSpellTemplate | null;
-						sceneId?: string;
-						placed?: boolean;
-						removedIds?: string[];
-					};
-				}) => {
-					const data = payload.payload;
-					if (
-						data?.userId &&
-						data.sceneId === useVTTStore.getState().activeSceneId
-					) {
-						const store = useVTTStore.getState();
-						if (data.removedIds) {
-							const requested = Array.isArray(data.removedIds)
-								? data.removedIds.filter(
-										(id): id is string => typeof id === "string",
-									)
-								: [];
-							const removed = acceptTemplateRemoval({
-								templates: [
-									...store.placedTemplates,
-									...Object.values(store.remoteTemplates),
-								],
-								requestedIds: requested,
-								senderUserId: data.userId,
-								source: {
-									campaignOwnerId: templateRoleRef.current.ownerId,
-									memberships: templateRoleRef.current.memberships,
-									presence: store.onlineUsers,
-								},
-							});
-							if (removed.length > 0) store.removeTemplatesByIds(removed);
-							store.setRemoteTemplatePreview(data.userId, null);
-						} else if (data.placed && data.template) {
-							setRemoteTemplate(data.userId, data.template);
-							store.setRemoteTemplatePreview(data.userId, null);
-						} else
-							store.setRemoteTemplatePreview(
-								data.userId,
-								data.template || null,
-							);
-					}
-				},
-			)
-			.subscribe(async (status: string) => {
-				if (cancelled) return;
-				if (status === "SUBSCRIBED") {
-					// A cor padrão sai do id (ou da escolha salva), não de um sorteio.
-					useVTTStore.getState().initUserColor(user.id);
-					await roomChannel.track({
-						userId: user.id,
-						userName: currentUserName,
-						avatarUrl: resolveTablePhoto(user.user_metadata).url,
-						color: useVTTStore.getState().userColor,
-						colorChosen: useVTTStore.getState().userColorChosen,
-						isGM,
-						isCoGM,
-						onlineAt: Date.now(),
-					});
-				}
+		void (async () => {
+			const { data, error } = await client.rpc("get_campaign_members", {
+				p_campaign_id: campaignId,
 			});
+			if (cancelled) return;
+			if (error) {
+				console.warn(
+					"Não foi possível carregar os membros da mesa para o canal privado.",
+				);
+			}
+			const rows = !error && Array.isArray(data) ? data : [];
+			const members = rows
+				.map((row) => {
+					const record = row as { user_id?: unknown; role?: unknown };
+					if (typeof record.user_id !== "string") return null;
+					return {
+						userId: record.user_id,
+						role: typeof record.role === "string" ? record.role : "viewer",
+					};
+				})
+				.filter((row): row is { userId: string; role: string } => row !== null);
+			if (!members.some((m) => m.userId === user.id)) {
+				members.push({
+					userId: user.id,
+					role: templateRoleRef.current.memberships[0]?.role ?? "viewer",
+				});
+			}
+			templateRoleRef.current = {
+				ownerId: templateRoleRef.current.ownerId,
+				memberships: members,
+			};
+			const opened = await openPrivateRoom({
+				client,
+				campaignId,
+				sceneId: activeSceneId,
+				selfUserId: user.id,
+				memberUserIds: members.map((m) => m.userId),
+				isGmOrCoGm: isGM || isCoGM,
+				ctx,
+				onOwnSubscribed: async (transport) => {
+					if (cancelled) return;
+					useVTTStore.getState().initUserColor(user.id);
+					await transport.track(
+						roomPresencePayload(user.id, {
+							userName: currentUserName,
+							avatarUrl: resolveTablePhoto(user.user_metadata).url,
+							color: useVTTStore.getState().userColor,
+							colorChosen: useVTTStore.getState().userColorChosen,
+							isGM,
+							isCoGM,
+						}),
+					);
+				},
+			});
+			if (cancelled) {
+				opened.close();
+				return;
+			}
+			roomChannelRef.current = opened.transport;
+			close = opened.close;
+			exploredSync.bind((event, payload) => {
+				roomChannelRef.current?.send(roomMessages.explored(event, payload), {
+					isGmOrCoGm: isGM || isCoGM,
+				});
+			});
+		})();
 
 		return () => {
 			cancelled = true;
 			setOnlineUsers([]);
-			// Grava o que falta da exploração antes de largar o canal.
 			void exploredSync.flush();
 			exploredSync.bind(null);
-			client.removeChannel(roomChannel);
+			close?.();
 			roomChannelRef.current = null;
 		};
 	}, [
@@ -1264,21 +1053,16 @@ function VTTSession() {
 	// Update user presence when color changes without tearing down the room channel
 	useEffect(() => {
 		if (!roomChannelRef.current || !user) return;
-		const currentUserName =
-			user.user_metadata?.full_name ||
-			user.email?.split("@")[0] ||
-			"Aventureiro";
-
-		void roomChannelRef.current.track({
-			userId: user.id,
-			userName: currentUserName,
-			avatarUrl: resolveTablePhoto(user.user_metadata).url,
-			color: userColor,
-			colorChosen: userColorChosen,
-			isGM,
-			isCoGM,
-			onlineAt: Date.now(),
-		});
+		void roomChannelRef.current.track(
+			roomPresencePayload(user.id, {
+				userName: roomDisplayName(user),
+				avatarUrl: resolveTablePhoto(user.user_metadata).url,
+				color: userColor,
+				colorChosen: userColorChosen,
+				isGM,
+				isCoGM,
+			}),
+		);
 	}, [userColor, userColorChosen, user, isGM, isCoGM]);
 
 	// Broadcast Helper Handlers
@@ -1291,11 +1075,12 @@ function VTTSession() {
 				!canControlVTTToken(token, user.id, canManageTokens, characterOwners)
 			)
 				return;
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "token_drag",
-				payload: { tokenId, x, y, userId: user.id },
-			});
+			roomChannelRef.current.send(
+				roomMessages.tokenDrag(tokenId, x, y, user.id),
+				{
+					tokenHiddenOrGm: token.isHidden || token.layer === "gm",
+				},
+			);
 		},
 		[user, canManageTokens, characterOwners],
 	);
@@ -1313,11 +1098,25 @@ function VTTSession() {
 				);
 			});
 			if (mine.length === 0) return;
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "token_drag_batch",
-				payload: { moves: mine, userId: user.id },
+			const visible = mine.filter((move) => {
+				const token = tokens.find((item) => item.id === move.tokenId);
+				return !token || !(token.isHidden || token.layer === "gm");
 			});
+			const hidden = mine.filter((move) => {
+				const token = tokens.find((item) => item.id === move.tokenId);
+				return !!token && (token.isHidden || token.layer === "gm");
+			});
+			if (visible.length > 0) {
+				roomChannelRef.current.send(
+					roomMessages.tokenDragBatch(visible, user.id),
+				);
+			}
+			if (hidden.length > 0) {
+				roomChannelRef.current.send(
+					roomMessages.tokenDragBatch(hidden, user.id),
+					{ tokenHiddenOrGm: true },
+				);
+			}
 		},
 		[user, canManageTokens, characterOwners],
 	);
@@ -1325,21 +1124,9 @@ function VTTSession() {
 	const handleBroadcastCursor = useCallback(
 		(x: number, y: number) => {
 			if (!roomChannelRef.current || !user) return;
-			const userName =
-				user.user_metadata?.full_name ||
-				user.email?.split("@")[0] ||
-				"Aventureiro";
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "cursor_move",
-				payload: {
-					userId: user.id,
-					userName,
-					color: userColor,
-					x,
-					y,
-				},
-			});
+			roomChannelRef.current.send(
+				roomMessages.cursor(user.id, roomDisplayName(user), userColor, x, y),
+			);
 		},
 		[user, userColor],
 	);
@@ -1347,25 +1134,14 @@ function VTTSession() {
 	const handleBroadcastRuler = useCallback(
 		(measurement: VTTRulerMeasurement | null) => {
 			if (!roomChannelRef.current || !user) return;
-			const userName =
-				user.user_metadata?.full_name ||
-				user.email?.split("@")[0] ||
-				"Aventureiro";
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "ruler_move",
-				payload: {
-					userId: user.id,
-					measurement: measurement
-						? {
-								...measurement,
-								userId: user.id,
-								userName,
-								color: userColor,
-							}
-						: null,
-				},
-			});
+			roomChannelRef.current.send(
+				roomMessages.ruler(
+					user.id,
+					roomDisplayName(user),
+					userColor,
+					measurement,
+				),
+			);
 		},
 		[user, userColor],
 	);
@@ -1373,36 +1149,29 @@ function VTTSession() {
 	const handleBroadcastPing = useCallback(
 		(ping: VTTPingEvent) => {
 			if (!roomChannelRef.current || !user) return;
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "ping",
-				payload: ping,
+			roomChannelRef.current.send(roomMessages.ping(ping), {
+				pingKind: ping.kind,
+				isGmOrCoGm: canManageTokens,
 			});
 		},
-		[user],
+		[user, canManageTokens],
 	);
 
 	const handleBroadcastFog = useCallback((fogPath: VTTFogPath) => {
 		if (!roomChannelRef.current) return;
-		roomChannelRef.current.send({
-			type: "broadcast",
-			event: "fog_update",
-			payload: { path: fogPath },
-		});
+		roomChannelRef.current.send(roomMessages.fogPath(fogPath));
 	}, []);
 
 	const broadcastTemplateRemoval = useCallback(
 		(ids: string[]) => {
 			if (!roomChannelRef.current || !user || ids.length === 0) return;
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "template_move",
-				payload: {
-					userId: user.id,
-					sceneId: useVTTStore.getState().activeSceneId,
-					removedIds: ids,
-				},
-			});
+			roomChannelRef.current.send(
+				roomMessages.templateRemoval(
+					user.id,
+					useVTTStore.getState().activeSceneId,
+					ids,
+				),
+			);
 		},
 		[user],
 	);
@@ -1410,16 +1179,14 @@ function VTTSession() {
 	const handleBroadcastTemplate = useCallback(
 		(template: VTTSpellTemplate | null, placed = false) => {
 			if (!roomChannelRef.current || !user) return;
-			roomChannelRef.current.send({
-				type: "broadcast",
-				event: "template_move",
-				payload: {
-					userId: user.id,
-					sceneId: useVTTStore.getState().activeSceneId,
+			roomChannelRef.current.send(
+				roomMessages.template(
+					user.id,
+					useVTTStore.getState().activeSceneId,
 					template,
 					placed,
-				},
-			});
+				),
+			);
 		},
 		[user],
 	);
@@ -1455,11 +1222,7 @@ function VTTSession() {
 			clearFog(mode);
 			const updatedPaths = useVTTStore.getState().fogPaths;
 			if (roomChannelRef.current) {
-				void roomChannelRef.current.send({
-					type: "broadcast",
-					event: "fog_update",
-					payload: { paths: updatedPaths },
-				});
+				void roomChannelRef.current.send(roomMessages.fogPaths(updatedPaths));
 			}
 			void handlePersistFog(updatedPaths);
 			// Cobrir o mapa todo também apaga o que o grupo já tinha explorado.
@@ -1827,6 +1590,23 @@ function VTTSession() {
 		tokenData: Partial<VTTToken>,
 	): Promise<string | null> => {
 		const sessionGeneration = sessionGenerationRef.current;
+		// Jogador: só pela RPC da 0081 (cena publicada, ficha/NPC que ele lê;
+		// nome e imagem saem do servidor).
+		const playerScene = scenes.find((s) => s.id === activeSceneId);
+		if (
+			!canManageTokens &&
+			canPlaceTokenAsPlayer(playerScene, activeCampaign?.myRole)
+		) {
+			const client = getSupabase();
+			if (!client || !activeSceneId) throw new Error(TOKEN_PLACE_FAILED);
+			const row = await placeTokenViaRpc(
+				(args) => client.rpc("vtt_place_token", args),
+				playerPlaceArgs(activeSceneId, tokenData),
+			);
+			if (sessionGenerationRef.current !== sessionGeneration) return null;
+			addToken(mapTokenRow(row));
+			return row.id;
+		}
 		const { client, sceneId } = requirePlaceContext({
 			client: getSupabase(),
 			sceneId: activeSceneId,
