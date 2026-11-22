@@ -1430,6 +1430,7 @@ export type Database = {
 					hp_current: number | null;
 					hp_max: number | null;
 					temp_hp: number | null;
+					placed_by: string | null;
 					id: string;
 					is_hidden: boolean;
 					is_locked: boolean;
@@ -1455,6 +1456,7 @@ export type Database = {
 					hp_current?: number | null;
 					hp_max?: number | null;
 					temp_hp?: number | null;
+					placed_by?: string | null;
 					id?: string;
 					is_hidden?: boolean;
 					is_locked?: boolean;
@@ -1480,6 +1482,7 @@ export type Database = {
 					hp_current?: number | null;
 					hp_max?: number | null;
 					temp_hp?: number | null;
+					placed_by?: string | null;
 					id?: string;
 					is_hidden?: boolean;
 					is_locked?: boolean;
@@ -1958,6 +1961,16 @@ export type Database = {
 				Returns: string;
 			};
 			publish_scene: { Args: { p_scene_id: string }; Returns: string };
+			vtt_place_token: {
+				Args: {
+					p_scene_id: string;
+					p_character_id?: string | null;
+					p_npc_id?: string | null;
+					p_x?: number;
+					p_y?: number;
+				};
+				Returns: Database["public"]["Tables"]["vtt_tokens"]["Row"];
+			};
 			scale_scene_geometry: {
 				Args: { p_factor: number; p_scene_id: string };
 				Returns: undefined;

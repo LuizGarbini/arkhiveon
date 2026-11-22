@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	canControlVTTToken,
+	canPlaceTokenAsPlayer,
 	tableRole,
 	tokenImageForViewer,
 } from "./permissions";
@@ -144,5 +145,17 @@ describe("papel na mesa", () => {
 				{ id: "c-1", userId: "player" },
 			]),
 		).toBe(true);
+	});
+});
+
+describe("jogador coloca token (0081)", () => {
+	it("só viewer e só na cena publicada", () => {
+		expect(canPlaceTokenAsPlayer({ isActive: true }, "viewer")).toBe(true);
+		expect(canPlaceTokenAsPlayer({ isActive: false }, "viewer")).toBe(false);
+		expect(canPlaceTokenAsPlayer(null, "viewer")).toBe(false);
+		expect(canPlaceTokenAsPlayer({ isActive: true }, undefined)).toBe(false);
+		// Mestre e co-mestre seguem pelo INSERT direto, não por este caminho.
+		expect(canPlaceTokenAsPlayer({ isActive: true }, "owner")).toBe(false);
+		expect(canPlaceTokenAsPlayer({ isActive: true }, "editor")).toBe(false);
 	});
 });
