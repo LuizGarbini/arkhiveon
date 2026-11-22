@@ -14,6 +14,8 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select set_config('role', 'authenticated', true);
 insert into public.vtt_tokens (scene_id, name, avatar_url, layer, is_hidden, controlled_by)
 values ('30000000-0000-0000-0000-000000000002', 'Qualquer nome', 'https://evil.example.invalid/x.png', 'gm', true, '["00000000-0000-0000-0000-0000000000b1"]');
-select 'ANTES da 0081: B inseriu direto (cena não publicada, camada gm, oculto, imagem própria) — buraco confirmado' as resultado \gset
+update public.vtt_tokens set name = 'Renomeado por B', avatar_url = 'https://evil.example.invalid/y.png', vision_range = 99
+where controlled_by @> '["00000000-0000-0000-0000-0000000000b1"]';
+select 'ANTES da 0081: B inseriu direto (cena não publicada, camada gm, oculto, imagem própria) e depois trocou nome, imagem e visão do token — buracos confirmados' as resultado \gset
 \echo :resultado
 rollback;

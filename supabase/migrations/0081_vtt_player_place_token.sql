@@ -12,7 +12,9 @@
 --   * INSERT direto de jogador (viewer) em vtt_tokens deixa de existir: só a RPC.
 --   * DELETE do jogador passa a respeitar a trava (is_locked = false) e aceita
 --     também o token que ele colocou (placed_by).
---   * `placed_by` não pode ser trocado por jogador (guard do UPDATE).
+--   * Guard do UPDATE do jogador vira lista de permitidos: movimento (x, y,
+--     rotation, elevation) + o que a UI do jogador já grava (size_cells, PV,
+--     temp_hp, conditions). Nome, imagem, auras, visão e placed_by: só mestre.
 --
 -- Padrão das RPCs da mesa: SECURITY DEFINER, `set search_path = ''` (nomes
 -- totalmente qualificados), auth.uid() obrigatório, membro da campanha da cena.
@@ -252,13 +254,34 @@ for delete using (
 	)
 );
 
--- 7. Guard do UPDATE do jogador: mesmo corpo do prod + placed_by.
+-- 7. Guard do UPDATE do jogador: lista do que PODE mudar (o resto fica).
+--
+-- O que o guard do prod liberava ao jogador antes da 0081 (bloqueava só cena,
+-- ficha, NPC, controle, camada, oculto e trava): name, avatar_url, x, y,
+-- rotation, elevation, size_cells, hp_current, hp_max, temp_hp, conditions,
+-- auras, vision_range, created_at, updated_at.
+--
+-- Depois da 0081 o jogador só muda, em token que controla:
+--   * movimento: x, y, rotation, elevation;
+--   * o que a UI do jogador já grava hoje no menu do token e no painel de PV
+--     (e o guard já liberava): size_cells, hp_current, hp_max, temp_hp,
+--     conditions.
+-- Fica bloqueado: name, avatar_url, auras, vision_range, created_at,
+-- placed_by e tudo o que já era bloqueado. Coluna nova também nasce
+-- bloqueada (lista de permitidos, não de proibidos). updated_at é do trigger.
+-- Mestre e co-mestre continuam mudando tudo.
 create or replace function public.vtt_tokens_player_update_guard()
 returns trigger
 language plpgsql
 security definer
 set search_path to 'public'
 as $function$
+declare
+	v_allowed constant text[] := array[
+		'x', 'y', 'rotation', 'elevation',
+		'size_cells', 'hp_current', 'hp_max', 'temp_hp', 'conditions',
+		'updated_at'
+	];
 begin
 	if auth.uid() is null then
 		return new;
@@ -266,16 +289,8 @@ begin
 	if user_scene_campaign_role(old.scene_id) in ('owner', 'editor') then
 		return new;
 	end if;
-	if new.scene_id is distinct from old.scene_id
-		or new.character_id is distinct from old.character_id
-		or new.npc_id is distinct from old.npc_id
-		or new.controlled_by is distinct from old.controlled_by
-		or new.layer is distinct from old.layer
-		or new.is_hidden is distinct from old.is_hidden
-		or new.is_locked is distinct from old.is_locked
-		or new.placed_by is distinct from old.placed_by
-	then
-		raise exception 'Só o mestre pode mudar cena, ficha, controle, camada, visibilidade ou trava do token.'
+	if (to_jsonb(new) - v_allowed) is distinct from (to_jsonb(old) - v_allowed) then
+		raise exception 'Jogador só move, gira e ajusta PV, tamanho e condições do token. Nome, imagem e o resto são do mestre.'
 			using errcode = '42501';
 	end if;
 	return new;

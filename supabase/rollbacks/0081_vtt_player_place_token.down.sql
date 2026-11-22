@@ -1,5 +1,6 @@
 -- Rollback da 0081 (manual; a CLI não aplica sozinho). Volta as policies e o
--- guard ao estado do prod antes da 0081. A coluna placed_by é mantida por
+-- guard do UPDATE ao estado do prod antes da 0081 (lista de proibidos: o
+-- jogador volta a poder trocar nome, imagem, auras e visão do token). A coluna placed_by é mantida por
 -- padrão (dados); descomente a última linha para removê-la.
 begin;
 

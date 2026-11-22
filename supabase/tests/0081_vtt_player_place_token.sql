@@ -247,6 +247,61 @@ begin
 end $$;
 
 ------------------------------------------------------------------------------
+-- T. Guard do UPDATE: o jogador só move/gira e ajusta PV, tamanho, condições
+------------------------------------------------------------------------------
+do $$
+declare v_tok uuid; n int; v_case record;
+begin
+	perform pg_temp.login('00000000-0000-0000-0000-0000000000b1');
+	select id into v_tok from pg_temp.place('30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', null, 700, 700);
+
+	for v_case in
+		select * from (values
+			('T1 nome', $s$name = 'Outro nome'$s$),
+			('T2 imagem', $s$avatar_url = 'https://evil.example.invalid/z.png'$s$),
+			('T3 imagem apagada', $s$avatar_url = null$s$),
+			('T4 visão', $s$vision_range = 60$s$),
+			('T5 auras', $s$auras = '[{"radius":9}]'$s$),
+			('T6 created_at', $s$created_at = now() - interval '1 day'$s$),
+			('T7 camada', $s$layer = 'gm'$s$),
+			('T8 controle', $s$controlled_by = '[]'$s$),
+			('T9 placed_by', $s$placed_by = null$s$)
+		) as t(label, set_clause)
+	loop
+		begin
+			execute format('update public.vtt_tokens set %s where id = %L', v_case.set_clause, v_tok);
+			raise exception 'FALHOU %: B conseguiu', v_case.label;
+		exception when insufficient_privilege or check_violation then
+			raise notice 'OK  negado  % · B não troca (%)', v_case.label, v_case.set_clause;
+		end;
+	end loop;
+
+	update public.vtt_tokens set x = 770, y = 840 where id = v_tok;
+	get diagnostics n = row_count;
+	if n <> 1 then raise exception 'FALHOU T10: B não moveu'; end if;
+	update public.vtt_tokens set rotation = 90 where id = v_tok;
+	update public.vtt_tokens set elevation = 3 where id = v_tok;
+	if (select rotation from public.vtt_tokens where id = v_tok) <> 90 then raise exception 'FALHOU T10: não girou'; end if;
+	raise notice 'OK  passou  T10 B · move (x, y), gira (rotation) e muda elevação';
+	update public.vtt_tokens set hp_current = 5, hp_max = 24, temp_hp = 2, conditions = '["prone"]', size_cells = 2 where id = v_tok;
+	get diagnostics n = row_count;
+	if n <> 1 then raise exception 'FALHOU T11: B não ajustou PV/condição/tamanho'; end if;
+	raise notice 'OK  passou  T11 B · PV, PV temp., condições e tamanho (o que a UI do jogador já grava)';
+	if (select name from public.vtt_tokens where id = v_tok) <> 'Lyra' then raise exception 'FALHOU T12: nome mudou'; end if;
+	raise notice 'OK  passou  T12 nome e imagem seguem os do servidor depois de tudo';
+
+	perform pg_temp.login('00000000-0000-0000-0000-0000000000a1');
+	update public.vtt_tokens set name = 'Lyra (mestre)', avatar_url = 'https://cdn.example.invalid/m.png', vision_range = 12 where id = v_tok;
+	get diagnostics n = row_count;
+	if n <> 1 then raise exception 'FALHOU T13: mestre não trocou nome/imagem'; end if;
+	perform pg_temp.login('00000000-0000-0000-0000-0000000000e1');
+	update public.vtt_tokens set name = 'Lyra (co-mestre)', avatar_url = 'https://cdn.example.invalid/e.png', auras = '[]' where id = v_tok;
+	get diagnostics n = row_count;
+	if n <> 1 then raise exception 'FALHOU T13: co-mestre não trocou nome/imagem'; end if;
+	raise notice 'OK  passou  T13 mestre e co-mestre trocam nome, imagem, visão e auras';
+end $$;
+
+------------------------------------------------------------------------------
 -- R. Paridade: o predicado da RPC = o SELECT com RLS, para cada conta
 ------------------------------------------------------------------------------
 do $$
