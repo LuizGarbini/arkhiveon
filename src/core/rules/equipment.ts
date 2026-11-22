@@ -14,15 +14,31 @@ import type {
 	WeaponAbility,
 } from "@/lib/store/types";
 import {
+	ABILITY_KEYS,
+	ABILITY_SCORE_CAP,
+	type AbilityPart,
+	type AbilityScoreStat,
+	type AbilityScoreStats,
+	type BonusPart,
+	type SlotMap as CoreSlotMap,
+	computeAbilityScores,
+	computeCombatCore,
+	computeSpeed,
+	isTwoHanded,
+	itemSlotOf,
+	resolveSlots,
+	type SumStat,
+	slotsForItem,
+	sumBonuses,
+	validAbilityBonus as validBonus,
+} from "../../../supabase/functions/_shared/combat-core";
+import {
 	type ArmorClassStat,
 	type CombatStat,
-	computeArmorClass,
-	computeInitiative,
 	isLinkActive,
 	type LinkedEntry,
 } from "./combat-stats";
 import {
-	linkKindOf,
 	makeLinkedEntry,
 	resolveLinkedEntries,
 	resolveLinkedInventory,
@@ -37,7 +53,6 @@ import {
 	DAMAGE_TYPE_LABELS,
 	getEquippedWeaponAttacks,
 	type WeaponItemBonuses,
-	weaponAbilityScores,
 } from "./weapon-damage";
 
 export { ABILITY_SHORT_LABELS };
@@ -108,150 +123,9 @@ export const ITEM_SLOT_LABELS: Record<ItemSlot, string> = {
 
 export const ITEM_SLOTS = Object.keys(ITEM_SLOT_LABELS) as ItemSlot[];
 
-const SLOTS_FOR_ITEM_SLOT: Record<ItemSlot, readonly EquipSlot[]> = {
-	head: ["head"],
-	earring: ["earring"],
-	neck: ["neck"],
-	cloak: ["cloak"],
-	bracers: ["bracers"],
-	hands: ["hands"],
-	bracelet: ["bracelet"],
-	belt: ["belt"],
-	ring: ["ring1", "ring2", "ring3", "ring4"],
-	weapon: ["mainHand", "offHand"],
-	shield: ["offHand"],
-	armor: ["armor"],
-	feet: ["feet"],
-};
-
-function normalize(value: string | undefined): string {
-	return (value ?? "")
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.trim();
-}
-
-/** Slot do item: o escolhido no cadastro, ou deduzido da categoria. */
-export function itemSlotOf(
-	item: Pick<Item, "type" | "slot" | "armor">,
-): ItemSlot | undefined {
-	if (item.slot) return item.slot;
-	const kind = linkKindOf(item);
-	if (kind === "weapon") return "weapon";
-	if (kind === "armor") {
-		return item.armor?.armorCategory === "shield" ||
-			normalize(item.type) === "escudo"
-			? "shield"
-			: "armor";
-	}
-	if (kind === "ring") return "ring";
-	const type = normalize(item.type);
-	if (type === "amuleto" || type === "amulet") return "neck";
-	if (type === "elmo") return "head";
-	if (type === "capa" || type === "cloak" || type === "cape") return "cloak";
-	if (type === "luvas" || type === "luva") return "hands";
-	if (type === "botas" || type === "bota") return "feet";
-	if (
-		type === "brinco" ||
-		type === "brincos" ||
-		type === "earring" ||
-		type === "earrings"
-	)
-		return "earring";
-	if (type === "bracelete" || type === "braceletes" || type === "bracelet")
-		return "bracelet";
-	if (type === "cinto" || type === "belt") return "belt";
-	if (
-		type === "bracadeira" ||
-		type === "bracadeiras" ||
-		type === "bracer" ||
-		type === "bracers"
-	)
-		return "bracers";
-	return undefined;
-}
-
-/** Arma de duas mãos: ocupa a mão principal e bloqueia a secundária. */
-export function isTwoHanded(
-	item: Pick<Item, "type" | "slot" | "armor" | "weapon">,
-): boolean {
-	return (
-		itemSlotOf(item) === "weapon" &&
-		Boolean(item.weapon?.properties?.includes("two_handed"))
-	);
-}
-
-/** Posições da ficha onde o item pode ficar (vazio = sem slot definido). */
-export function slotsForItem(
-	item: Pick<Item, "type" | "slot" | "armor" | "weapon">,
-): readonly EquipSlot[] {
-	const slot = itemSlotOf(item);
-	if (!slot) return [];
-	return isTwoHanded(item) ? ["mainHand"] : SLOTS_FOR_ITEM_SLOT[slot];
-}
-
-export interface SlotMap {
-	bySlot: ReadonlyMap<EquipSlot, LinkedEntry>;
-	/** Equipado, mas sem slot que o comporte (item antigo sem categoria). */
-	unslotted: LinkedEntry[];
-	/**
-	 * Mão secundária tomada por uma arma de duas mãos: quem ficou sem lugar por
-	 * isso (escudo, segunda arma) não conta nos números.
-	 */
-	blockedByTwoHanded: LinkedEntry[];
-	/** A arma de duas mãos que bloqueia a mão secundária, se houver. */
-	twoHanded?: LinkedEntry;
-}
-
-/**
- * Encaixa os itens equipados nos slots. Quem tem `entry.slot` válido fica
- * onde está; os demais (fichas antigas) ocupam o primeiro slot livre da sua
- * categoria. Determinístico: a mesma ficha sempre dá o mesmo resultado.
- */
-export function resolveSlots(linked: readonly LinkedEntry[]): SlotMap {
-	const bySlot = new Map<EquipSlot, LinkedEntry>();
-	const pending: LinkedEntry[] = [];
-	const equipped = linked.filter((l) => l.entry.location === "equipped");
-
-	for (const l of equipped) {
-		const allowed = slotsForItem(l.item);
-		const wanted = l.entry.slot;
-		if (wanted && allowed.includes(wanted) && !bySlot.has(wanted)) {
-			bySlot.set(wanted, l);
-		} else {
-			pending.push(l);
-		}
-	}
-	const unslotted: LinkedEntry[] = [];
-	for (const l of pending) {
-		const free = slotsForItem(l.item).find((s) => !bySlot.has(s));
-		if (free) bySlot.set(free, l);
-		else unslotted.push(l);
-	}
-
-	// Arma de duas mãos na principal: a secundária não existe. Quem estava
-	// nela (ficha antiga com escudo + espadão) fica de fora e não soma.
-	const main = bySlot.get("mainHand");
-	const twoHanded = main && isTwoHanded(main.item) ? main : undefined;
-	const blockedByTwoHanded: LinkedEntry[] = [];
-	if (twoHanded) {
-		const off = bySlot.get("offHand");
-		if (off) {
-			bySlot.delete("offHand");
-			unslotted.push(off);
-			blockedByTwoHanded.push(off);
-		}
-		// Quem não coube em nenhum slot e era para a mão secundária também.
-		for (const l of unslotted) {
-			const wantsOffHand = slotsForItem(l.item).includes("offHand");
-			if (wantsOffHand && !blockedByTwoHanded.includes(l)) {
-				blockedByTwoHanded.push(l);
-			}
-		}
-	}
-	return { bySlot, unslotted, blockedByTwoHanded, twoHanded };
-}
+/** Slots do item e o encaixe na ficha: a regra mora em `_shared/combat-core`. */
+export type SlotMap = CoreSlotMap<LinkedEntry>;
+export { isTwoHanded, itemSlotOf, resolveSlots, slotsForItem };
 
 // ── Sintonização ─────────────────────────────────────────────────────
 
@@ -297,14 +171,7 @@ export function setAttunement(
 
 // ── Atributos efetivos ───────────────────────────────────────────────
 
-export const ABILITY_KEYS: readonly WeaponAbility[] = [
-	"strength",
-	"dexterity",
-	"constitution",
-	"intelligence",
-	"wisdom",
-	"charisma",
-];
+export { ABILITY_KEYS };
 
 /** A chave é um dos seis atributos clássicos (os únicos que itens alteram)? */
 export function isWeaponAbilityKey(key: string): key is WeaponAbility {
@@ -320,78 +187,13 @@ export const ABILITY_FULL_LABELS: Record<WeaponAbility, string> = {
 	charisma: "Carisma",
 };
 
-/** Teto do D&D 5e para um atributo. */
-export const ABILITY_SCORE_CAP = 30;
-
-export interface AbilityPart {
-	/** Origem: "Base da ficha" ou o nome do item. */
-	label: string;
-	kind: "base" | "set" | "add";
-	value: number;
-}
-
-export interface AbilityScoreStat {
-	key: WeaponAbility;
-	/** Valor salvo na ficha. */
-	base: number;
-	/** Valor com os itens equipados. */
-	total: number;
-	/** `total - base`. */
-	delta: number;
-	parts: AbilityPart[];
-}
-
-export type AbilityScoreStats = Record<WeaponAbility, AbilityScoreStat>;
-
-function validBonus(b: ItemAbilityBonus): boolean {
-	return (
-		ABILITY_KEYS.includes(b.ability) &&
-		(b.mode === "add" || b.mode === "set") &&
-		Number.isFinite(Number(b.value))
-	);
-}
-
-/**
- * Atributos com os itens: primeiro "fixa em" (vale o maior, e só se passar da
- * base), depois as somas. Só conta item No Corpo e, se exigir, sintonizado.
- */
-export function computeAbilityScores(
-	character: Partial<Record<WeaponAbility, unknown>>,
-	linked: readonly LinkedEntry[],
-): AbilityScoreStats {
-	const base = weaponAbilityScores(character);
-	const counted = linked.filter(isLinkActive);
-	const out = {} as AbilityScoreStats;
-
-	for (const key of ABILITY_KEYS) {
-		const sets: { label: string; value: number }[] = [];
-		const adds: { label: string; value: number }[] = [];
-		for (const l of counted) {
-			for (const b of l.item.abilityBonuses ?? []) {
-				if (!validBonus(b) || b.ability !== key) continue;
-				const value = Math.trunc(Number(b.value));
-				if (b.mode === "set") sets.push({ label: l.item.name, value });
-				else if (value !== 0) adds.push({ label: l.item.name, value });
-			}
-		}
-		const parts: AbilityPart[] = [
-			{ label: "Base da ficha", kind: "base", value: base[key] },
-		];
-		const bestSet = sets.sort((a, b) => b.value - a.value)[0];
-		let running = base[key];
-		if (bestSet && bestSet.value > base[key]) {
-			parts.push({ label: bestSet.label, kind: "set", value: bestSet.value });
-			running = bestSet.value;
-		}
-		for (const a of adds) {
-			parts.push({ label: a.label, kind: "add", value: a.value });
-			running += a.value;
-		}
-		const total = Math.min(ABILITY_SCORE_CAP, Math.max(1, running));
-		out[key] = { key, base: base[key], total, delta: total - base[key], parts };
-	}
-	return out;
-}
+export {
+	ABILITY_SCORE_CAP,
+	type AbilityPart,
+	type AbilityScoreStat,
+	type AbilityScoreStats,
+	computeAbilityScores,
+};
 
 /** Os 6 valores efetivos, no formato que as contas de arma/CA já leem. */
 export function effectiveScores(
@@ -427,44 +229,7 @@ export function computeWeaponItemBonuses(
 
 // ── Deslocamento e salvaguardas ──────────────────────────────────────
 
-export interface BonusPart {
-	label: string;
-	value: number;
-}
-
-export interface SumStat {
-	base: number;
-	total: number;
-	parts: BonusPart[];
-}
-
-function sumBonuses(
-	linked: readonly LinkedEntry[],
-	target: "speed" | "saves" | "spellSaveDc" | "spellAttack",
-): BonusPart[] {
-	const parts: BonusPart[] = [];
-	for (const l of linked.filter(isLinkActive)) {
-		for (const b of l.item.bonuses ?? []) {
-			if (b.target !== target || b.when?.trim()) continue;
-			const value = Math.trunc(Number(b.value) || 0);
-			if (value !== 0) parts.push({ label: l.item.name, value });
-		}
-	}
-	return parts;
-}
-
-export function computeSpeed(
-	character: { speed?: unknown },
-	linked: readonly LinkedEntry[],
-): SumStat {
-	const base = Number(character.speed) || 0;
-	const parts = sumBonuses(linked, "speed");
-	return {
-		base,
-		total: base + parts.reduce((s, p) => s + p.value, 0),
-		parts,
-	};
-}
+export { type BonusPart, computeSpeed, type SumStat };
 
 /** Bônus geral de salvaguardas dos itens (soma em todas elas). */
 export function computeSavesBonus(linked: readonly LinkedEntry[]): SumStat {
@@ -559,25 +324,15 @@ export function computeEffectiveStats(
 	character: Character,
 	itemsById: ReadonlyMap<string, Item>,
 ): EffectiveStats {
-	const linked =
-		character.system === "dnd5e"
-			? resolveLinkedEntries(character.inventoryList, itemsById)
-			: [];
-	// Escudo ou segunda arma com um espadão nas mãos não conta.
-	const { blockedByTwoHanded } = resolveSlots(linked);
-	const counting = linked.filter((l) => !blockedByTwoHanded.includes(l));
-	const abilities = computeAbilityScores(character, counting);
+	const core = computeCombatCore(character, character.inventoryList, itemsById);
+	const { linked, counting, blockedByTwoHanded, abilities } = core;
 	return {
 		linked,
 		abilities,
 		scores: effectiveScores(abilities),
-		ac: computeArmorClass(character, counting, abilities.dexterity.total),
-		initiative: computeInitiative(
-			character,
-			counting,
-			abilities.dexterity.total,
-		),
-		speed: computeSpeed(character, counting),
+		ac: core.ac,
+		initiative: core.initiative,
+		speed: core.speed,
 		saves: computeSavesBonus(counting),
 		spellDc: computeSpellSaveDc(character, counting),
 		spellAttack: computeSpellAttack(character, counting),

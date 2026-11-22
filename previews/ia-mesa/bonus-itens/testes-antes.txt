@@ -1,0 +1,105 @@
+
+ RUN  v3.2.4 /workspace/arkhiveon/item7-work
+
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts (7 tests | 6 failed) 10ms
+   × IA da mesa: bônus dos itens equipados no resumo da ficha > +5 na iniciativa e +2 na CA entram no resumo; o valor salvo fica em fields 3ms
+     → (0 , combatItemsFromRows) is not a function
+   × IA da mesa: bônus dos itens equipados no resumo da ficha > dá o mesmo número que computeEffectiveStats da ficha 0ms
+     → (0 , combatItemsFromRows) is not a function
+   × IA da mesa: bônus dos itens equipados no resumo da ficha > item que o jogador não lê (fora do mapa) não soma nada 0ms
+     → (0 , combatItemsFromRows) is not a function
+   × IA da mesa: bônus dos itens equipados no resumo da ficha > item que exige sintonia sem estar sintonizado, ou ficha de outro sistema, não soma 0ms
+     → (0 , combatItemsFromRows) is not a function
+   × IA da mesa: bônus dos itens equipados no resumo da ficha > só pede os ids No Corpo, sem repetir 0ms
+     → (0 , equippedItemIds) is not a function
+   × IA da mesa: o contexto lê os itens numa query só, com RLS > uma query em items com .in(ids equipados); o que o RLS esconde não soma 4ms
+     → expected [] to have a length of 1 but got +0
+   ✓ IA da mesa: o contexto lê os itens numa query só, com RLS > sem item equipado vinculado, nenhuma query em items 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > +5 na iniciativa e +2 na CA entram no resumo; o valor salvo fica em fields
+TypeError: (0 , combatItemsFromRows) is not a function
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:103:17
+    101| describe("IA da mesa: bônus dos itens equipados no resumo da ficha", (…
+    102|  it("+5 na iniciativa e +2 na CA entram no resumo; o valor salvo fica …
+    103|   const items = combatItemsFromRows([amuletRow, ringRow]);
+       |                 ^
+    104|   const summary = summarizeCharacter(liaRow(), items);
+    105| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > dá o mesmo número que computeEffectiveStats da ficha
+TypeError: (0 , combatItemsFromRows) is not a function
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:121:17
+    119|  it("dá o mesmo número que computeEffectiveStats da ficha", () => {
+    120|   const row = liaRow();
+    121|   const items = combatItemsFromRows([amuletRow, ringRow]);
+       |                 ^
+    122|   const app = computeEffectiveStats(
+    123|    row.data as unknown as Character,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > item que o jogador não lê (fora do mapa) não soma nada
+TypeError: (0 , combatItemsFromRows) is not a function
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:137:22
+    135|  it("item que o jogador não lê (fora do mapa) não soma nada", () => {
+    136|   // O RLS escondeu o Anel: só o Amuleto voltou da query.
+    137|   const onlyAmulet = combatItemsFromRows([amuletRow]);
+       |                      ^
+    138|   const effective = effectiveOf(summarizeCharacter(liaRow(), onlyAmule…
+    139|   expect(effective).toMatchObject({ armorClass: 15, initiative: 7 });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > item que exige sintonia sem estar sintonizado, ou ficha de outro sistema, não soma
+TypeError: (0 , combatItemsFromRows) is not a function
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:149:18
+    147| 
+    148|  it("item que exige sintonia sem estar sintonizado, ou ficha de outro …
+    149|   const attune = combatItemsFromRows([
+       |                  ^
+    150|    { ...ringRow, data: { ...ringRow.data, requiresAttunement: true } },
+    151|   ]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: bônus dos itens equipados no resumo da ficha > só pede os ids No Corpo, sem repetir
+TypeError: (0 , equippedItemIds) is not a function
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:161:10
+    159| 
+    160|  it("só pede os ids No Corpo, sem repetir", () => {
+    161|   expect(equippedItemIds([liaRow(), liaRow()])).toEqual([AMULET, RING]…
+       |          ^
+    162|  });
+    163| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts > IA da mesa: o contexto lê os itens numa query só, com RLS > uma query em items com .in(ids equipados); o que o RLS esconde não soma
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/lib/ai-mesa/ia-mesa-bonus-itens.test.ts:229:21
+    227| 
+    228|   const itemCalls = calls.filter((c) => c.table === "items");
+    229|   expect(itemCalls).toHaveLength(1);
+       |                     ^
+    230|   expect(itemCalls[0].columns).toBe("id, name, data");
+    231|   expect(itemCalls[0].ops).toContainEqual(["in", "id", [AMULET, RING]]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  03:09:18
+   Duration  345ms (transform 132ms, setup 0ms, collect 163ms, tests 10ms, environment 0ms, prepare 53ms)
+
