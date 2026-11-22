@@ -48,6 +48,7 @@ vi.mock("@/lib/character-images", () => ({
 vi.mock("@/lib/store", () => ({
 	useRPGStore: (selector: (s: typeof storeState) => unknown) =>
 		selector(storeState),
+	useActiveCampaign: () => null,
 	useActiveCampaignRole: () => "player",
 	useImageAssetLookup: () => new Map(),
 }));
