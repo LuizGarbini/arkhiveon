@@ -3,8 +3,19 @@
  * Funções puras (sem React/DOM). Sem item que afete o número, vale o valor
  * manual da ficha, igual a antes.
  */
-import type { Character, InventoryItem, Item } from "@/lib/store/types";
-import { calculateAbilityModifier, formatModifier } from "./modifier-engine";
+import type { InventoryItem, Item } from "@/lib/store/types";
+import {
+	type ArmorClassStat,
+	type CombatStat,
+	type CoreLinked,
+	computeArmorClass,
+	computeInitiative,
+	formatStatPart,
+	isLinkActive,
+	type StatPart,
+	type StatPartKind,
+} from "../../../supabase/functions/_shared/combat-core";
+import { formatModifier } from "./modifier-engine";
 import {
 	DAMAGE_TYPE_LABELS,
 	type DamagePart,
@@ -13,234 +24,20 @@ import {
 } from "./weapon-damage";
 
 /** Entrada do inventário vinculada a um Item vivo (já resolvido). */
-export interface LinkedEntry {
-	entry: InventoryItem;
-	item: Item;
-}
+export type LinkedEntry = CoreLinked<InventoryItem, Item>;
 
-export type StatPartKind = "armor" | "dex" | "shield" | "bonus" | "sheet";
-
-export interface StatPart {
-	kind: StatPartKind;
-	/** Origem (nome do item, "Destreza", "Ajuste da ficha"…). */
-	label: string;
-	value: number;
-}
-
-/** "Capa do Vento +3", "Couro batido 12", "Escudo +2". */
-export function formatStatPart(part: StatPart): string {
-	const raw =
-		part.kind === "shield"
-			? `+${part.value}`
-			: part.kind === "armor" || part.kind === "sheet"
-				? String(part.value)
-				: formatModifier(part.value);
-	return `${part.label} ${raw}`;
-}
-
-export interface CombatStat {
-	total: number;
-	/** "manual" = valor digitado na ficha, sem item que mude o número. */
-	source: "manual" | "items";
-	parts: StatPart[];
-	notes: string[];
-}
-
-export interface ArmorClassStat extends CombatStat {
-	armorName?: string;
-	armorBase?: number;
-	dexMode?: NonNullable<Item["armor"]>["dexMode"];
-	/** CA sem armadura (10 + DES), para a nota do detalhe. */
-	unarmored: number;
-	hasShield: boolean;
-}
-
-function dexModOf(
-	character: Pick<Character, "dexterity">,
-	/** Destreza com itens; sem ela vale o valor salvo na ficha. */
-	effectiveDexterity?: number,
-): number {
-	return calculateAbilityModifier(
-		effectiveDexterity ?? (Number(character.dexterity) || 10),
-	);
-}
-
-/** Item No Corpo e, se exigir sintonização, sintonizado. */
-export function isLinkActive({ entry, item }: LinkedEntry): boolean {
-	if (entry.location !== "equipped") return false;
-	return !item.requiresAttunement || entry.isAttuned === true;
-}
-
-function attunementNote(name: string): string {
-	return `${name} exige sintonização: só soma sintonizado.`;
-}
-
-function isShield(item: Item): boolean {
-	return item.armor?.armorCategory === "shield";
-}
-
-function affectsArmorClass(item: Item): boolean {
-	return (
-		Boolean(item.armor) || (item.bonuses ?? []).some((b) => b.target === "ac")
-	);
-}
-
-function affectsInitiative(item: Item): boolean {
-	return (item.bonuses ?? []).some((b) => b.target === "initiative");
-}
-
-export function computeArmorClass(
-	character: Pick<Character, "armorClass" | "dexterity">,
-	linked: LinkedEntry[],
-	effectiveDexterity?: number,
-): ArmorClassStat {
-	const manual = Number(character.armorClass) || 0;
-	const dex = dexModOf(character, effectiveDexterity);
-	// Quanto os itens mexeram no modificador (a CA digitada já conta o da ficha).
-	const dexFromItems = dex - dexModOf(character);
-	const unarmored = 10 + dex;
-	const notes: string[] = [];
-
-	const equipped = linked.filter(
-		(l) => l.entry.location === "equipped" && affectsArmorClass(l.item),
-	);
-	for (const l of equipped) {
-		if (!isLinkActive(l)) notes.push(attunementNote(l.item.name));
-	}
-	const counted = equipped.filter(isLinkActive);
-
-	const armors = counted
-		.filter((l) => l.item.armor && !isShield(l.item))
-		.sort((a, b) => (b.item.armor?.baseAc ?? 0) - (a.item.armor?.baseAc ?? 0));
-	const shields = counted.filter((l) => isShield(l.item));
-	const bonusParts: StatPart[] = [];
-	for (const l of counted) {
-		for (const b of l.item.bonuses ?? []) {
-			if (b.target !== "ac") continue;
-			const value = Math.trunc(Number(b.value) || 0);
-			if (b.when?.trim()) {
-				notes.push(
-					`${l.item.name}: ${formatModifier(value)} na CA ${b.when.trim()} (não soma).`,
-				);
-				continue;
-			}
-			if (value !== 0)
-				bonusParts.push({ kind: "bonus", label: l.item.name, value });
-		}
-	}
-
-	const armor = armors[0];
-	const shield = shields[0];
-	if (!armor && !shield && bonusParts.length === 0 && dexFromItems === 0) {
-		return {
-			total: manual,
-			source: "manual",
-			parts: [],
-			notes,
-			unarmored,
-			hasShield: false,
-		};
-	}
-
-	const parts: StatPart[] = [];
-	let dexMode: ArmorClassStat["dexMode"];
-	if (armor?.item.armor) {
-		const stats = armor.item.armor;
-		dexMode = stats.dexMode;
-		parts.push({ kind: "armor", label: armor.item.name, value: stats.baseAc });
-		if (stats.dexMode !== "none") {
-			const applied = stats.dexMode === "max2" ? Math.min(dex, 2) : dex;
-			parts.push({ kind: "dex", label: "Destreza", value: applied });
-		}
-		if (armors.length > 1)
-			notes.push(
-				`Só uma armadura conta: ${armors
-					.slice(1)
-					.map((a) => a.item.name)
-					.join(", ")} ficou de fora.`,
-			);
-	} else {
-		// Sem armadura vinculada: a base é a CA digitada na ficha.
-		parts.push({ kind: "sheet", label: "CA da ficha", value: manual });
-		if (dexFromItems !== 0)
-			parts.push({
-				kind: "dex",
-				label: "Destreza dos itens",
-				value: dexFromItems,
-			});
-	}
-	if (shield?.item.armor) {
-		parts.push({
-			kind: "shield",
-			label: shield.item.name,
-			value: shield.item.armor.baseAc,
-		});
-		if (shields.length > 1) notes.push("Só um escudo conta.");
-	}
-	parts.push(...bonusParts);
-
-	return {
-		total: parts.reduce((s, p) => s + p.value, 0),
-		source: "items",
-		parts,
-		notes,
-		armorName: armor?.item.name,
-		armorBase: armor?.item.armor?.baseAc,
-		dexMode,
-		unarmored,
-		hasShield: Boolean(shield),
-	};
-}
-
-export function computeInitiative(
-	character: Pick<Character, "initiative" | "dexterity">,
-	linked: LinkedEntry[],
-	effectiveDexterity?: number,
-): CombatStat {
-	const manual = Number(character.initiative) || 0;
-	const baseDex = dexModOf(character);
-	const dex = dexModOf(character, effectiveDexterity);
-	const notes: string[] = [];
-
-	const equipped = linked.filter(
-		(l) => l.entry.location === "equipped" && affectsInitiative(l.item),
-	);
-	for (const l of equipped) {
-		if (!isLinkActive(l)) notes.push(attunementNote(l.item.name));
-	}
-	const bonusParts: StatPart[] = [];
-	for (const l of equipped.filter(isLinkActive)) {
-		for (const b of l.item.bonuses ?? []) {
-			if (b.target !== "initiative") continue;
-			const value = Math.trunc(Number(b.value) || 0);
-			if (b.when?.trim()) {
-				notes.push(
-					`${l.item.name}: ${formatModifier(value)} na iniciativa ${b.when.trim()} (não soma).`,
-				);
-				continue;
-			}
-			if (value !== 0)
-				bonusParts.push({ kind: "bonus", label: l.item.name, value });
-		}
-	}
-
-	if (bonusParts.length === 0 && dex === baseDex) {
-		return { total: manual, source: "manual", parts: [], notes };
-	}
-
-	const parts: StatPart[] = [{ kind: "dex", label: "Destreza", value: dex }];
-	// O ajuste é medido contra a Destreza da ficha, não a dos itens.
-	const adjust = manual - baseDex;
-	if (adjust !== 0)
-		parts.push({ kind: "sheet", label: "Ajuste da ficha", value: adjust });
-	parts.push(...bonusParts);
-	return {
-		total: parts.reduce((s, p) => s + p.value, 0),
-		source: "items",
-		parts,
-		notes,
-	};
-}
+// A conta de CA e iniciativa mora em `_shared/combat-core` (também roda no
+// Deno, na IA da mesa). Aqui ficam o tipo do app e o texto do detalhe.
+export {
+	type ArmorClassStat,
+	type CombatStat,
+	computeArmorClass,
+	computeInitiative,
+	formatStatPart,
+	isLinkActive,
+	type StatPart,
+	type StatPartKind,
+};
 
 // ---------------------------------------------------------------------------
 // "O porquê" em prosa: uma frase com trechos em negrito + blocos da conta.

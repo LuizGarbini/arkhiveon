@@ -3,23 +3,14 @@
  * 100% pure TypeScript functions with zero React or DOM dependencies.
  */
 
-/**
- * Calculates the standard ability modifier based on an attribute score.
- * Formula: floor((score - 10) / 2)
- */
-export function calculateAbilityModifier(score: number): number {
-	if (typeof score !== "number" || Number.isNaN(score)) return 0;
-	return Math.floor((score - 10) / 2);
-}
+// Modificador de atributo e o sinal: a fonte única mora em
+// `_shared/combat-core` (também roda no Deno, na IA da mesa).
+import {
+	calculateAbilityModifier,
+	formatModifier,
+} from "../../../supabase/functions/_shared/combat-core";
 
-/**
- * Formats an integer modifier with an explicit sign (+/-).
- * e.g., 3 -> "+3", 0 -> "+0", -2 -> "-2"
- */
-export function formatModifier(modifier: number): string {
-	if (typeof modifier !== "number" || Number.isNaN(modifier)) return "+0";
-	return modifier >= 0 ? `+${modifier}` : `${modifier}`;
-}
+export { calculateAbilityModifier, formatModifier };
 
 /**
  * Calculates D&D 5e standard proficiency bonus based on character level.
