@@ -16,6 +16,7 @@ const FOG_COLUMNS = "revealed_paths";
 
 type Op =
 	| ["eq", string, unknown]
+	| ["in", string, readonly unknown[]]
 	| ["or", string]
 	| ["limit", number]
 	| ["maybeSingle"]
@@ -38,6 +39,10 @@ function fakeDb(resolve: (call: QueryCall) => unknown) {
 					const chain = {
 						eq(column: string, value: unknown) {
 							call.ops.push(["eq", column, value]);
+							return chain;
+						},
+						in(column: string, values: readonly unknown[]) {
+							call.ops.push(["in", column, values]);
 							return chain;
 						},
 						or(filters: string) {

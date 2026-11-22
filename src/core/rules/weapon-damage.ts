@@ -8,6 +8,7 @@ import type {
 	InventoryWeaponStats,
 	WeaponAbility,
 } from "@/lib/store/types";
+import { baseAbilityScores } from "../../../supabase/functions/_shared/combat-core";
 import { calculateAbilityModifier } from "./modifier-engine";
 
 export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
@@ -118,14 +119,7 @@ export type WeaponAbilityScores = Record<WeaponAbility, number>;
 export function weaponAbilityScores(
 	character: Partial<Record<WeaponAbility, unknown>>,
 ): WeaponAbilityScores {
-	return {
-		strength: Number(character.strength) || 10,
-		dexterity: Number(character.dexterity) || 10,
-		constitution: Number(character.constitution) || 10,
-		intelligence: Number(character.intelligence) || 10,
-		wisdom: Number(character.wisdom) || 10,
-		charisma: Number(character.charisma) || 10,
-	};
+	return baseAbilityScores(character);
 }
 
 const DICE_RE = /^(\d*)d(\d+)$/i;

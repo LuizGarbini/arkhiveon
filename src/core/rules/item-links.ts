@@ -11,6 +11,10 @@ import type {
 	MembershipRole,
 } from "@/lib/store/types";
 import {
+	resolveLinkedEntries as coreResolveLinkedEntries,
+	linkKindOf,
+} from "../../../supabase/functions/_shared/combat-core";
+import {
 	type ArmorClassStat,
 	computeArmorClass,
 	computeInitiative,
@@ -20,7 +24,6 @@ import {
 	ABILITY_SHORT_LABELS,
 	ARMOR_CATEGORY_LABELS,
 	isValidDamageDice,
-	itemCategoryKind,
 } from "./item-mechanics";
 import { calculateProficiencyBonus, formatModifier } from "./modifier-engine";
 import {
@@ -47,36 +50,7 @@ export const LINK_FILTERS: { id: LinkFilter; label: string }[] = [
 
 export type LinkKind = Exclude<LinkFilter, "all"> | "other";
 
-function normalize(value: string | undefined): string {
-	return (value ?? "")
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.trim();
-}
-
-const CONSUMABLE_TYPES = [
-	"pocao",
-	"pocoes",
-	"potion",
-	"pergaminho",
-	"scroll",
-	"consumivel",
-	"consumable",
-	"municao",
-];
-
-export function linkKindOf(item: Pick<Item, "type">): LinkKind {
-	const kind = itemCategoryKind(item.type);
-	if (kind === "weapon") return "weapon";
-	if (kind === "armor") return "armor";
-	if (kind === "ammo") return "consumable";
-	const t = normalize(item.type);
-	if (t === "anel" || t === "aneis" || t === "ring") return "ring";
-	if (CONSUMABLE_TYPES.some((c) => t === c || t.startsWith(`${c} `)))
-		return "consumable";
-	return "other";
-}
+export { linkKindOf };
 
 export function matchesLinkFilter(
 	item: Pick<Item, "type">,
@@ -128,17 +102,12 @@ export function linkStatus(
 }
 
 /** Entradas vinculadas com Item disponível. */
+/** Entradas vinculadas que acham o Item no mapa (regra em `_shared/combat-core`). */
 export function resolveLinkedEntries(
 	inventory: InventoryItem[] | undefined,
 	itemsById: ReadonlyMap<string, Item>,
 ): LinkedEntry[] {
-	const out: LinkedEntry[] = [];
-	for (const entry of inventory ?? []) {
-		if (!entry.campaignItemId) continue;
-		const item = itemsById.get(entry.campaignItemId);
-		if (item) out.push({ entry, item });
-	}
-	return out;
+	return coreResolveLinkedEntries(inventory, itemsById);
 }
 
 /**
