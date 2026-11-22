@@ -343,6 +343,26 @@ function escapeCloses(close: () => void) {
 }
 
 /** PV que a ficha mostra: o da ficha vinculada, senão o do token. */
+/**
+ * Grava PV na ficha e espera. `false` quando a ficha rejeita: quem chama não
+ * grava o token, e o painel de PV mostra o erro (com `quiet`, o painel é quem
+ * avisa; sem `quiet`, o store também mostra o toast e o banner).
+ */
+async function saveSheetHp(
+	characterId: string,
+	patch: Partial<Character>,
+	options?: HpSaveOptions,
+): Promise<boolean> {
+	try {
+		await useRPGStore
+			.getState()
+			.updateCharacter(characterId, patch, { quiet: options?.quiet });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function useSheetHp(token: VTTToken | null, character: Character | null) {
 	const canManage = useVTTStore((s) => s.isGM || s.isCoGM);
 	const linkedId = token?.characterId ?? null;
@@ -882,26 +902,36 @@ function SheetContent({
 					: undefined,
 				onChangeMax:
 					canManage || (character && !hp.fromSheet)
-						? (nextMax, options) => {
+						? async (nextMax, options) => {
+								// Ficha primeiro, token depois: se a ficha falhar, o token não
+								// muda e o painel mostra o erro (mesmo padrão da temporária).
 								if (character && isGM) {
-									void useRPGStore.getState().updateCharacter(character.id, {
-										healthMax: nextMax,
-									});
+									const saved = await saveSheetHp(
+										character.id,
+										{ healthMax: nextMax },
+										options,
+									);
+									if (!saved) return false;
 								}
 								return onUpdateToken(token.id, { hpMax: nextMax }, options);
 							}
 						: undefined,
 				onChangeHp:
 					canManage || (character && !hp.fromSheet)
-						? ({ current, max }, options) => {
+						? async ({ current, max }, options) => {
+								// “Editar valores”: grava a ficha e espera; se falhar, o token
+								// não muda e o formulário fica aberto com o aviso de erro.
 								if (character && isGM) {
 									const patch: Partial<Character> = {};
 									if (current !== undefined) patch.health = current;
 									if (max !== undefined) patch.healthMax = max;
 									if (Object.keys(patch).length > 0) {
-										void useRPGStore
-											.getState()
-											.updateCharacter(character.id, patch);
+										const saved = await saveSheetHp(
+											character.id,
+											patch,
+											options,
+										);
+										if (!saved) return false;
 									}
 								}
 								const tokenPatch: Partial<VTTToken> = {};

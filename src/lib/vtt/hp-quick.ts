@@ -48,9 +48,9 @@ export function parseHpInput(raw: string): HpInput {
 export type HpAction = "damage" | "heal" | "set";
 
 /**
- * A ÚNICA regra do número sem sinal (“15” + Enter), ainda em aberto com o Luiz:
- * hoje define o PV (plano aprovado); se virar dano, troca só esta constante e os
- * testes dela. Prévia, destaque dos botões e dica do campo derivam daqui.
+ * A ÚNICA regra do número sem sinal (“15” + Enter): define o PV, decisão do
+ * Luiz. Prévia, destaque dos botões e dica do campo derivam daqui; mudar a
+ * regra é trocar só esta constante e os testes dela.
  */
 export const BARE_NUMBER_ACTION: HpAction = "set";
 
