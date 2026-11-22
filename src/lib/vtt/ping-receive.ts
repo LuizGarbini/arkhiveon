@@ -20,6 +20,10 @@ import {
  * A mesa não guarda a lista de membros da campanha (só o papel de quem está
  * nesta tela). O co-mestre de quem manda continua vindo da presença, que o
  * próprio cliente declara.
+ *
+ * O relógio de quem mandou não vale aqui: o ping chega com a hora da chegada
+ * (`receivedAt`). Com a hora de outro computador, um relógio alguns segundos à
+ * frente dava o ping como expirado e ele sumia sem aparecer (nem a câmera ia).
  */
 export interface PingReceiverView {
 	viewport: { x: number; y: number; scale: number };
@@ -56,9 +60,11 @@ export function acceptIncomingPing(
 	payload: Parameters<typeof incomingPing>[0],
 	source: TemplateSenderSource,
 	view?: PingReceiverView | null,
+	receivedAt: number = Date.now(),
 ): AcceptedPing | null {
-	const incoming = incomingPing(payload);
-	if (!incoming) return null;
+	const parsed = incomingPing(payload);
+	if (!parsed) return null;
+	const incoming: PingInput = { ...parsed, timestamp: receivedAt };
 	const kind = incoming.kind ?? DEFAULT_PING_KIND;
 	const gmOnly = pingKindInfo(kind).gmOnly;
 	// Perigo, a caminho, ajuda e destacar nunca levam a câmera, nem do mestre.
