@@ -27,10 +27,19 @@ describe("ping do mestre (leva a câmera)", () => {
 		expect(accepted?.pullTo).toEqual({ x: 300, y: 400 });
 	});
 
-	it("co-mestre só pela presença (sem membership) também leva", () => {
+	it("co-mestre só pela presença (sem membership) NÃO leva: presença é declarada (0066, 3.3)", () => {
 		const accepted = acceptIncomingPing(focus({ userId: "co" }), {
 			campaignOwnerId: "mestre",
 			presence: [{ userId: "co", isCoGM: true }],
+		});
+		expect(accepted?.ping.kind).toBe("attention");
+		expect(accepted?.pullTo).toBeNull();
+	});
+
+	it("co-mestre pelo membership (editor) leva", () => {
+		const accepted = acceptIncomingPing(focus({ userId: "co" }), {
+			campaignOwnerId: "mestre",
+			memberships: [{ userId: "co", role: "editor" }],
 		});
 		expect(accepted?.pullTo).not.toBeNull();
 	});
@@ -240,10 +249,11 @@ describe("Atenção do mestre leva a câmera só fora da tela", () => {
 		expect(accepted?.pullTo).toEqual({ x: 300, y: 400 });
 	});
 
-	it("co-mestre só pela presença leva fora da tela e não leva dentro", () => {
+	it("co-mestre pelo membership leva fora da tela e não leva dentro", () => {
 		const source = {
 			campaignOwnerId: "mestre",
-			presence: [{ userId: "co", isCoGM: true }],
+			memberships: [{ userId: "co", role: "editor" }],
+			presence: [{ userId: "co", isCoGM: false }],
 		};
 		expect(
 			acceptIncomingPing(

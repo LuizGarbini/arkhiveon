@@ -53,6 +53,7 @@ function makeCtx(over: Partial<Record<string, unknown>> = {}) {
 		memberships: [{ userId: "co", role: "editor" }],
 	};
 	const ctx = {
+		campaignId: "camp-1",
 		sceneId: "cena-1",
 		selfUserId: "eu",
 		isCancelled: () => cancelled,

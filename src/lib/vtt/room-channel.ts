@@ -1,14 +1,11 @@
 /**
  * Canal da sala do VTT (Realtime Broadcast + Presence), sem React.
  *
- * Tudo o que a rota da mesa faz no canal `vtt-room:<campanha>:<cena>`: nome e
- * config, os handlers de cada evento recebido (com a admissão de ping, névoa,
- * régua, moldes e exploração), o `track` da presença e as mensagens enviadas.
- * A rota só cria o canal, liga este módulo e guarda a referência.
- *
- * Extraído de `routes/campaigns/$campaignId/vtt.tsx` sem mudar tópico,
- * eventos, payloads nem a regra de papel (R8 do plano da 0066). O transporte
- * privado vem em outra PR, em cima deste módulo.
+ * Transporte privado da 0066: a rota abre os canais `vtt:C:S:u:U`, `gm` e
+ * `gmonly` (`private: true`, `setAuth` antes do subscribe). Este módulo liga
+ * os handlers, admite a entrada pelo tópico (remetente e descarte no canal
+ * errado), encaminha a saída (`fog_update`/`explored_reset` no `gm`, arrasto
+ * oculto no `gmonly`) e faz o `track` da presença no canal próprio.
  */
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { DragMove } from "./drag-broadcast";
@@ -16,8 +13,14 @@ import { readDragBatch } from "./drag-broadcast";
 import type { useExploredStore } from "./explored-store";
 import { readExploredCells, readExploredReset } from "./explored-sync";
 import type { PingKind } from "./ping-kinds";
+import { pingKindInfo } from "./ping-kinds";
 import { acceptIncomingPing } from "./ping-receive";
 import { readPresenceUsers, readRemoteCursor } from "./presence-input";
+import {
+	admitInbound,
+	privateChannelOptions,
+	roomTopicsFor,
+} from "./private-topics";
 import { applyRemoteRuler } from "./ruler-gesture";
 import type { VTTSpellTemplate } from "./template-math";
 import {
@@ -180,9 +183,14 @@ export const roomMessages = {
 // ── Eventos recebidos ────────────────────────────────────────────────
 
 export interface RoomInboundContext {
+	campaignId: string;
 	/** Cena deste canal. Evento que chega depois da troca de cena é ignorado. */
 	sceneId: string;
 	selfUserId: string;
+	/** Contador de debug: mensagem descartada pelo canal/tópico. Sem toast. */
+	recordDiscard?: (reason: string) => void;
+	/** Presença de cada tópico `u:<id>`, para a lista online não ser sobrescrita. */
+	presenceByTopic?: Map<string, Record<string, unknown[]>>;
 	/** true depois do cleanup do efeito: nada mais é aplicado. */
 	isCancelled: () => boolean;
 	vtt: () => VTTState;
@@ -217,12 +225,30 @@ function stale(ctx: RoomInboundContext): boolean {
 	return ctx.isCancelled() || ctx.vtt().activeSceneId !== ctx.sceneId;
 }
 
+function mergePresence(
+	bag: Map<string, Record<string, unknown[]>>,
+): Record<string, unknown[]> {
+	const merged: Record<string, unknown[]> = {};
+	for (const state of bag.values()) {
+		for (const [key, metas] of Object.entries(state)) {
+			merged[key] = metas;
+		}
+	}
+	return merged;
+}
+
 export function handlePresenceSync(
 	ctx: RoomInboundContext,
 	presenceState: Record<string, unknown[]>,
+	topic?: string,
 ): void {
 	if (ctx.isCancelled()) return;
-	const users = readPresenceUsers(presenceState);
+	let state = presenceState;
+	if (ctx.presenceByTopic && topic) {
+		ctx.presenceByTopic.set(topic, presenceState);
+		state = mergePresence(ctx.presenceByTopic);
+	}
+	const users = readPresenceUsers(state);
 	// Cor automática igual à de quem chegou antes: cede para uma livre.
 	const self = users.find((item) => item.userId === ctx.selfUserId);
 	if (self) {
@@ -425,17 +451,39 @@ export const roomBroadcastHandlers: {
 	},
 };
 
+function payloadUserId(payload: unknown): unknown {
+	if (payload && typeof payload === "object" && "userId" in payload) {
+		return (payload as { userId?: unknown }).userId;
+	}
+	return undefined;
+}
+
+function withTopicSender(
+	envelope: Envelope,
+	senderUserId: string | null,
+): Envelope {
+	if (senderUserId === null) return envelope;
+	const payload = envelope.payload;
+	if (payload && typeof payload === "object") {
+		return { payload: { ...(payload as object), userId: senderUserId } };
+	}
+	return envelope;
+}
+
 /**
- * Liga todos os handlers no canal, na mesma ordem de antes: presença
- * (sync, leave) e depois os broadcasts de `ROOM_BROADCAST_EVENTS`.
+ * Liga os handlers no canal. Cada broadcast passa por `admitInbound`: o
+ * remetente é o U do tópico; `fog_update` fora do `gm` é descartado.
+ * `topic` é o nome com que o canal foi aberto (o supabase-js pode prefixar
+ * `realtime:` no `channel.topic`).
  */
 export function attachRoomHandlers(
 	channel: RealtimeChannel,
 	ctx: RoomInboundContext,
+	topic: string = (channel as unknown as { topic?: string }).topic ?? "",
 ): RealtimeChannel {
 	channel
 		.on("presence", { event: "sync" }, () =>
-			handlePresenceSync(ctx, channel.presenceState()),
+			handlePresenceSync(ctx, channel.presenceState(), topic),
 		)
 		.on("presence", { event: "leave" }, (payload) =>
 			handlePresenceLeave(
@@ -444,9 +492,138 @@ export function attachRoomHandlers(
 			),
 		);
 	for (const event of ROOM_BROADCAST_EVENTS) {
-		channel.on("broadcast", { event }, (envelope) =>
-			roomBroadcastHandlers[event](ctx, envelope as unknown as Envelope),
-		);
+		channel.on("broadcast", { event }, (envelope) => {
+			const body = envelope as unknown as Envelope;
+			const decision = admitInbound({
+				topic,
+				event,
+				payloadUserId: payloadUserId(body.payload),
+				campaignId: ctx.campaignId,
+				sceneId: ctx.sceneId,
+			});
+			if (!decision.accept) {
+				ctx.recordDiscard?.(decision.reason);
+				return;
+			}
+			roomBroadcastHandlers[event](
+				ctx,
+				withTopicSender(body, decision.senderUserId),
+			);
+		});
 	}
 	return channel;
+}
+
+export type RoomSendHint = {
+	/** Arrasto de token oculto ou da camada `gm` vai no `gmonly`. */
+	tokenHiddenOrGm?: boolean;
+	pingKind?: PingKind;
+	isGmOrCoGm?: boolean;
+};
+
+/** Qual tópico leva cada envio (3.1 do plano). */
+export function routeOutbound(
+	event: RoomBroadcastEvent,
+	hint: RoomSendHint = {},
+): "own" | "gm" | "gmonly" {
+	if (event === "fog_update" || event === "explored_reset") return "gm";
+	if (event === "ping") {
+		const kind = hint.pingKind;
+		if (
+			kind &&
+			(pingKindInfo(kind).gmOnly || (kind === "attention" && hint.isGmOrCoGm))
+		) {
+			return "gm";
+		}
+	}
+	if (
+		(event === "token_drag" || event === "token_drag_batch") &&
+		hint.tokenHiddenOrGm
+	) {
+		return "gmonly";
+	}
+	return "own";
+}
+
+export interface RoomTransport {
+	send: (msg: RoomMessage, hint?: RoomSendHint) => void;
+	track: (payload: ReturnType<typeof roomPresencePayload>) => Promise<unknown>;
+}
+
+export interface RoomRealtimeClient {
+	channel: (
+		name: string,
+		opts?: ReturnType<typeof privateChannelOptions>,
+	) => RealtimeChannel;
+	removeChannel: (channel: RealtimeChannel) => unknown;
+	realtime: { setAuth: (token?: string) => Promise<unknown> };
+}
+
+/**
+ * Abre os canais privados da sala: `setAuth`, próprio, um por membro, `gm`
+ * e (mestre/co-mestre) `gmonly`. Todos com `private: true`.
+ */
+export async function openPrivateRoom(input: {
+	client: RoomRealtimeClient;
+	campaignId: string;
+	sceneId: string;
+	selfUserId: string;
+	memberUserIds: readonly string[];
+	isGmOrCoGm: boolean;
+	ctx: RoomInboundContext;
+	onOwnSubscribed?: (transport: RoomTransport) => void | Promise<void>;
+}): Promise<{ transport: RoomTransport; close: () => void }> {
+	await input.client.realtime.setAuth();
+	input.ctx.presenceByTopic ??= new Map();
+	const topics = roomTopicsFor({
+		campaignId: input.campaignId,
+		sceneId: input.sceneId,
+		selfUserId: input.selfUserId,
+		memberUserIds: input.memberUserIds,
+		isGmOrCoGm: input.isGmOrCoGm,
+	});
+	const channels: RealtimeChannel[] = [];
+	const open = (name: string, withPresence: boolean) => {
+		const channel = input.client.channel(
+			name,
+			privateChannelOptions(withPresence ? input.selfUserId : undefined),
+		);
+		attachRoomHandlers(channel, input.ctx, name);
+		channels.push(channel);
+		return channel;
+	};
+	const own = open(topics.own, true);
+	const gm = open(topics.gm, false);
+	const gmonly = topics.gmonly ? open(topics.gmonly, false) : null;
+	for (const name of topics.others) open(name, false);
+
+	const transport: RoomTransport = {
+		send(msg, hint) {
+			const route = routeOutbound(msg.event, hint);
+			const target = route === "gm" ? gm : route === "gmonly" ? gmonly : own;
+			// Jogador não assina gmonly: não vaza arrasto oculto no canal próprio.
+			if (!target) return;
+			void target.send(msg);
+		},
+		track(payload) {
+			return own.track(payload);
+		},
+	};
+
+	// Subscribe só depois do setAuth. A presença é ligada no próprio.
+	own.subscribe(async (status: string) => {
+		if (status === "SUBSCRIBED") await input.onOwnSubscribed?.(transport);
+	});
+	for (const channel of channels) {
+		if (channel !== own) channel.subscribe();
+	}
+
+	return {
+		transport,
+		close: () => {
+			for (const channel of channels) {
+				input.client.removeChannel(channel);
+			}
+		},
+	};
 }

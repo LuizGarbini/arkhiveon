@@ -71,12 +71,11 @@ import {
 import { prefersReducedMotion } from "@/lib/vtt/ping-motion";
 import { useRollStore } from "@/lib/vtt/roll-store";
 import {
-	attachRoomHandlers,
-	roomChannelOptions,
+	openPrivateRoom,
+	type RoomTransport,
 	roomDisplayName,
 	roomMessages,
 	roomPresencePayload,
-	roomTopic,
 } from "@/lib/vtt/room-channel";
 import {
 	isRepeatedCreate,
@@ -341,9 +340,7 @@ function VTTSession() {
 			useNotesStore.getState().setPanelOpen(false);
 		};
 	}, [campaignId]);
-	const roomChannelRef = useRef<ReturnType<
-		NonNullable<ReturnType<typeof getSupabase>>["channel"]
-	> | null>(null);
+	const roomChannelRef = useRef<RoomTransport | null>(null);
 
 	// Expose stores for dev & preview test tooling on localhost only (stripped on production domains)
 	useEffect(() => {
@@ -917,26 +914,19 @@ function VTTSession() {
 		);
 	};
 
-	// 6. Supabase Realtime Broadcast & Presence Channel (60fps drag, cursors, pings, rulers, fog)
+	// 6. Canais privados da sala (0066): setAuth, u:<id>, gm, gmonly.
+	// Efeito externo real: assina o Realtime e carrega os memberships da campanha
+	// (lista de tópicos e papel do remetente). Não é estado derivado.
 	useEffect(() => {
 		const client = getSupabase();
 		if (!client || !campaignId || !user || !activeSceneId) return;
 		let cancelled = false;
+		let close: (() => void) | null = null;
 
 		const currentUserName = roomDisplayName(user);
 
-		const roomChannel = client.channel(
-			roomTopic(campaignId, activeSceneId),
-			roomChannelOptions(user.id),
-		);
-
-		roomChannelRef.current = roomChannel;
-		// A memória de exploração avisa os outros por este canal.
-		exploredSync.bind((event, payload) => {
-			void roomChannel.send(roomMessages.explored(event, payload));
-		});
-
-		attachRoomHandlers(roomChannel, {
+		const ctx = {
+			campaignId,
 			sceneId: activeSceneId,
 			selfUserId: user.id,
 			isCancelled: () => cancelled,
@@ -945,7 +935,10 @@ function VTTSession() {
 			roleSource: () => templateRoleRef.current,
 			readScreen: readVttCanvasScreen,
 			playPing: playPingAudio,
-			pullCamera: (world, notice) => pullCameraRef.current?.(world, notice),
+			pullCamera: (
+				world: { x: number; y: number },
+				notice: "focus" | "attention",
+			) => pullCameraRef.current?.(world, notice),
 			actions: {
 				setOnlineUsers,
 				setTokenTargetPosition,
@@ -957,31 +950,81 @@ function VTTSession() {
 				setFogPaths,
 				setRemoteTemplate,
 			},
-		}).subscribe(async (status: string) => {
+		};
+
+		void (async () => {
+			const { data, error } = await client.rpc("get_campaign_members", {
+				p_campaign_id: campaignId,
+			});
 			if (cancelled) return;
-			if (status === "SUBSCRIBED") {
-				// A cor padrão sai do id (ou da escolha salva), não de um sorteio.
-				useVTTStore.getState().initUserColor(user.id);
-				await roomChannel.track(
-					roomPresencePayload(user.id, {
-						userName: currentUserName,
-						avatarUrl: resolveTablePhoto(user.user_metadata).url,
-						color: useVTTStore.getState().userColor,
-						colorChosen: useVTTStore.getState().userColorChosen,
-						isGM,
-						isCoGM,
-					}),
+			if (error) {
+				console.warn(
+					"Não foi possível carregar os membros da mesa para o canal privado.",
 				);
 			}
-		});
+			const rows = !error && Array.isArray(data) ? data : [];
+			const members = rows
+				.map((row) => {
+					const record = row as { user_id?: unknown; role?: unknown };
+					if (typeof record.user_id !== "string") return null;
+					return {
+						userId: record.user_id,
+						role: typeof record.role === "string" ? record.role : "viewer",
+					};
+				})
+				.filter((row): row is { userId: string; role: string } => row !== null);
+			if (!members.some((m) => m.userId === user.id)) {
+				members.push({
+					userId: user.id,
+					role: templateRoleRef.current.memberships[0]?.role ?? "viewer",
+				});
+			}
+			templateRoleRef.current = {
+				ownerId: templateRoleRef.current.ownerId,
+				memberships: members,
+			};
+			const opened = await openPrivateRoom({
+				client,
+				campaignId,
+				sceneId: activeSceneId,
+				selfUserId: user.id,
+				memberUserIds: members.map((m) => m.userId),
+				isGmOrCoGm: isGM || isCoGM,
+				ctx,
+				onOwnSubscribed: async (transport) => {
+					if (cancelled) return;
+					useVTTStore.getState().initUserColor(user.id);
+					await transport.track(
+						roomPresencePayload(user.id, {
+							userName: currentUserName,
+							avatarUrl: resolveTablePhoto(user.user_metadata).url,
+							color: useVTTStore.getState().userColor,
+							colorChosen: useVTTStore.getState().userColorChosen,
+							isGM,
+							isCoGM,
+						}),
+					);
+				},
+			});
+			if (cancelled) {
+				opened.close();
+				return;
+			}
+			roomChannelRef.current = opened.transport;
+			close = opened.close;
+			exploredSync.bind((event, payload) => {
+				roomChannelRef.current?.send(roomMessages.explored(event, payload), {
+					isGmOrCoGm: isGM || isCoGM,
+				});
+			});
+		})();
 
 		return () => {
 			cancelled = true;
 			setOnlineUsers([]);
-			// Grava o que falta da exploração antes de largar o canal.
 			void exploredSync.flush();
 			exploredSync.bind(null);
-			client.removeChannel(roomChannel);
+			close?.();
 			roomChannelRef.current = null;
 		};
 	}, [
@@ -1028,6 +1071,9 @@ function VTTSession() {
 				return;
 			roomChannelRef.current.send(
 				roomMessages.tokenDrag(tokenId, x, y, user.id),
+				{
+					tokenHiddenOrGm: token.isHidden || token.layer === "gm",
+				},
 			);
 		},
 		[user, canManageTokens, characterOwners],
@@ -1046,7 +1092,25 @@ function VTTSession() {
 				);
 			});
 			if (mine.length === 0) return;
-			roomChannelRef.current.send(roomMessages.tokenDragBatch(mine, user.id));
+			const visible = mine.filter((move) => {
+				const token = tokens.find((item) => item.id === move.tokenId);
+				return !token || !(token.isHidden || token.layer === "gm");
+			});
+			const hidden = mine.filter((move) => {
+				const token = tokens.find((item) => item.id === move.tokenId);
+				return !!token && (token.isHidden || token.layer === "gm");
+			});
+			if (visible.length > 0) {
+				roomChannelRef.current.send(
+					roomMessages.tokenDragBatch(visible, user.id),
+				);
+			}
+			if (hidden.length > 0) {
+				roomChannelRef.current.send(
+					roomMessages.tokenDragBatch(hidden, user.id),
+					{ tokenHiddenOrGm: true },
+				);
+			}
 		},
 		[user, canManageTokens, characterOwners],
 	);
@@ -1079,9 +1143,12 @@ function VTTSession() {
 	const handleBroadcastPing = useCallback(
 		(ping: VTTPingEvent) => {
 			if (!roomChannelRef.current || !user) return;
-			roomChannelRef.current.send(roomMessages.ping(ping));
+			roomChannelRef.current.send(roomMessages.ping(ping), {
+				pingKind: ping.kind,
+				isGmOrCoGm: canManageTokens,
+			});
 		},
-		[user],
+		[user, canManageTokens],
 	);
 
 	const handleBroadcastFog = useCallback((fogPath: VTTFogPath) => {

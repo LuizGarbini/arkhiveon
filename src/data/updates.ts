@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.181-vtt-canal-privado",
+		version: "1.6.181",
+		date: "22/11/2026",
+		title: "Mesa virtual: canais privados em tempo real",
+		description:
+			"A mesa passa a conversar por canais privados: cada pessoa tem o seu, o mestre fala com todos num canal de mesa, e o que só o mestre e o co-mestre devem ver (névoa, token oculto) não chega no jogador. O nome de quem mandou sai do canal, não do que está escrito na mensagem. Esta versão só entra no ar no mesmo dia em que a regra no servidor (0066) for aplicada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.179-vtt-canal-sala-modulo",
 		version: "1.6.179",
 		date: "22/11/2026",
