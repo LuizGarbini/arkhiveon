@@ -3,7 +3,10 @@ import { tokenHpInsert } from "./character-hp";
 import {
 	buildTokenInsertPayload,
 	insertVttToken,
+	placeTokenViaRpc,
+	playerPlaceArgs,
 	requirePlaceContext,
+	TOKEN_PLACE_DENIED,
 	TOKEN_PLACE_FAILED,
 	TOKEN_PLACE_NEEDS_GM,
 } from "./token-spawn";
@@ -71,6 +74,7 @@ function rowFrom(payload: DatabaseInsert, id: string) {
 		is_locked: payload.is_locked ?? false,
 		is_hidden: payload.is_hidden ?? false,
 		controlled_by: payload.controlled_by ?? [],
+		placed_by: null,
 		created_at: "2026-11-09T00:00:00Z",
 		updated_at: "2026-11-09T00:00:00Z",
 	};
@@ -200,5 +204,53 @@ describe("insertVttToken", () => {
 				};
 			}, payload),
 		).rejects.toThrow(TOKEN_PLACE_FAILED);
+	});
+});
+
+describe("jogador coloca pela RPC vtt_place_token (0081)", () => {
+	it("manda só a origem e a posição; nome e imagem ficam com o servidor", () => {
+		const args = playerPlaceArgs(SCENE_ID, {
+			...dargan,
+			name: "Nome falso",
+			avatarUrl: "https://evil.test/x.png",
+		} as Partial<VTTToken>);
+		expect(args).toEqual({
+			p_scene_id: SCENE_ID,
+			p_character_id: null,
+			p_npc_id: dargan.npcId,
+			p_x: 105,
+			p_y: 175,
+		});
+		expect(JSON.stringify(args)).not.toContain("evil");
+	});
+
+	it("recusa ficha e NPC juntos ou nenhum dos dois", () => {
+		expect(() =>
+			playerPlaceArgs(SCENE_ID, { characterId: "c", npcId: "n" }),
+		).toThrow(TOKEN_PLACE_FAILED);
+		expect(() => playerPlaceArgs(SCENE_ID, {})).toThrow(TOKEN_PLACE_FAILED);
+	});
+
+	it("recusa do servidor (42501) vira a mensagem de acesso", async () => {
+		const rpc = async () => ({
+			data: null,
+			error: { code: "42501", message: "NPC indisponível." },
+		});
+		await expect(
+			placeTokenViaRpc(rpc, playerPlaceArgs(SCENE_ID, dargan)),
+		).rejects.toThrow(TOKEN_PLACE_DENIED);
+	});
+
+	it("devolve a linha criada pelo servidor", async () => {
+		const row = {
+			id: "tok-1",
+			scene_id: SCENE_ID,
+			name: "Dargan (servidor)",
+		} as unknown as Awaited<ReturnType<typeof placeTokenViaRpc>>;
+		const out = await placeTokenViaRpc(
+			async () => ({ data: row, error: null }),
+			playerPlaceArgs(SCENE_ID, dargan),
+		);
+		expect(out.name).toBe("Dargan (servidor)");
 	});
 });

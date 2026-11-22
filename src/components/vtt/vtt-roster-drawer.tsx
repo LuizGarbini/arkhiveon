@@ -39,6 +39,7 @@ import {
 } from "@/lib/vtt/character-hp";
 import { findFreeCell } from "@/lib/vtt/grid-math";
 import { dragHasFiles } from "@/lib/vtt/map-upload";
+import { canPlaceTokenAsPlayer } from "@/lib/vtt/permissions";
 import type { VTTScene, VTTToken } from "@/lib/vtt/types";
 import { useVTTStore } from "@/lib/vtt/vtt-store";
 import { canViewScopedContent } from "@/lib/worldbuilding/visibility";
@@ -143,9 +144,11 @@ export function VTTRosterDrawer({
 		[tokens, isGM, search],
 	);
 	if (!open || !scene) return null;
+	// Mestre coloca direto; jogador só na cena publicada, pela RPC da 0081.
+	const canPlace = isGM || canPlaceTokenAsPlayer(scene, campaign?.myRole);
 
 	async function spawn(id: string, data: Partial<VTTToken>) {
-		if (!scene || !isGM || pending) return;
+		if (!scene || !canPlace || pending) return;
 		setPending(id);
 		setError(null);
 		const { viewport, tokens: sceneTokens } = useVTTStore.getState();
@@ -233,9 +236,9 @@ export function VTTRosterDrawer({
 	const tabs: { id: typeof tab; label: string }[] = [
 		{ id: "scene", label: "Na cena" },
 		{ id: "characters", label: "Fichas" },
+		...(isGM || canPlace ? [{ id: "npcs" as const, label: "NPCs" }] : []),
 		...(isGM
 			? [
-					{ id: "npcs" as const, label: "NPCs" },
 					{ id: "custom" as const, label: "Criar" },
 					{ id: "map" as const, label: "Mapa" },
 				]
@@ -533,7 +536,7 @@ export function VTTRosterDrawer({
 												}
 											/>
 										)}
-										{isGM && (
+										{canPlace && (
 											<Button
 												type="button"
 												disabled={busy}
@@ -565,7 +568,7 @@ export function VTTRosterDrawer({
 						)}
 					</>
 				)}
-				{tab === "npcs" && isGM && (
+				{tab === "npcs" && canPlace && (
 					<>
 						{visibleNpcs.map((npc) => {
 							const placed = tokens.filter((token) => token.npcId === npc.id);
@@ -612,7 +615,7 @@ export function VTTRosterDrawer({
 											</p>
 										)}
 									</div>
-									{placed.length > 0 && (
+									{isGM && placed.length > 0 && (
 										<RemoveFromTableButton
 											label={removeLabel(npc.name, placed.length)}
 											disabled={busy}

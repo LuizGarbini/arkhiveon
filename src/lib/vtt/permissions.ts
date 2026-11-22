@@ -21,6 +21,17 @@ export function tableRole(
 	return { isGM, isCoGM: !isGM && campaign.myRole === "editor" };
 }
 
+/**
+ * Jogador (viewer) coloca token da biblioteca só na cena publicada, e só pela
+ * RPC `vtt_place_token` (0081), que repete a regra de leitura de fichas e NPCs.
+ */
+export function canPlaceTokenAsPlayer(
+	scene: { isActive?: boolean } | null | undefined,
+	role: string | null | undefined,
+): boolean {
+	return role === "viewer" && scene?.isActive === true;
+}
+
 /** `canManage`: mestre ou co-mestre (ver `tableRole`). */
 export function canControlVTTToken(
 	token: Pick<VTTToken, "characterId" | "controlledBy" | "isLocked">,
