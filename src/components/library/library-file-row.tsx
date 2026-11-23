@@ -262,14 +262,17 @@ export const LibraryFileRow = memo(function LibraryFileRow({
 					"group-data-[view=grid]/lib:rounded-xl group-data-[view=grid]/lib:focus-visible:ring-0",
 				)}
 			>
+				{/* Anel inset: content-visibility no <li> corta box-shadow para fora. */}
 				<div
 					className={cn(
 						"relative hidden aspect-[3/4] w-full rounded-xl",
 						"group-data-[view=grid]/lib:block",
-						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-2",
-						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-primary/60",
-						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-offset-2",
-						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-offset-background",
+						"after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-xl after:content-['']",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-inset",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-primary/60",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-offset-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-offset-background",
 					)}
 				>
 					<div
