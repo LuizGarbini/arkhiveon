@@ -95,7 +95,7 @@ describe("StorageCard", () => {
 		expect(screen.getByText("Cheio")).toBeTruthy();
 	});
 
-	it("convidado Pro acima do limite mostra o rótulo inteiro e os dias", () => {
+	it("convidado Pro acima do limite: selo por extenso, estado no ícone e uso sem o total", () => {
 		const since = new Date(Date.now() - 17 * 86_400_000).toISOString();
 		render(
 			<StorageCard
@@ -109,7 +109,56 @@ describe("StorageCard", () => {
 			/>,
 		);
 		expect(screen.getByText("Convidado Pro")).toBeTruthy();
-		expect(screen.getByText(/Acima · 43 dias/)).toBeTruthy();
+		expect(screen.queryByText(/Acima · 43 dias/)).toBeNull();
+		expect(screen.getByLabelText("Acima · 43 dias")).toBeTruthy();
+		expect(screen.getByTitle("Acima · 43 dias")).toBeTruthy();
+		expect(screen.getByText("10,4 GB")).toBeTruthy();
+		expect(screen.queryByText(/10,4 \/ 10 GB/)).toBeNull();
+	});
+
+	it("convidado Pro em 96% e Cheio: estado no ícone e uso sem o total", () => {
+		const { rerender } = render(
+			<StorageCard
+				context={ready({
+					label: "guest_pro",
+					usedBytes: 9_600_000_000,
+					limitBytes: 10_000_000_000,
+					payerName: "Mestre Ana",
+				})}
+			/>,
+		);
+		expect(screen.getByText("Convidado Pro")).toBeTruthy();
+		expect(screen.queryByText("96%")).toBeNull();
+		expect(screen.getByLabelText("96%")).toBeTruthy();
+		expect(screen.getByText("9,6 GB")).toBeTruthy();
+		rerender(
+			<StorageCard
+				context={ready({
+					label: "guest_pro",
+					usedBytes: 10_000_000_000,
+					limitBytes: 10_000_000_000,
+					payerName: "Mestre Ana",
+				})}
+			/>,
+		);
+		expect(screen.queryByText("Cheio")).toBeNull();
+		expect(screen.getByLabelText("Cheio")).toBeTruthy();
+		expect(screen.getByText("10,0 GB")).toBeTruthy();
+	});
+
+	it("convidado Pro abaixo de 95% segue o mock: estado em texto e uso com o total", () => {
+		render(
+			<StorageCard
+				context={ready({
+					label: "guest_pro",
+					usedBytes: 6_100_000_000,
+					limitBytes: 10_000_000_000,
+				})}
+			/>,
+		);
+		expect(screen.getByText("Convidado Pro")).toBeTruthy();
+		expect(screen.getByText("6,1 / 10 GB")).toBeTruthy();
+		expect(screen.queryByLabelText("96%")).toBeNull();
 	});
 
 	it("não usa reticências nem truncate no rótulo, estado ou uso", () => {

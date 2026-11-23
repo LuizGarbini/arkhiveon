@@ -23,22 +23,20 @@ import { cn } from "@/lib/utils";
 const rowBase =
 	"group relative flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/50 [@media(hover:hover)]:hover:bg-muted/50";
 
-/** Só no preview local, para medir opções quando Convidado Pro + estado não cabe em 213px. */
-export type StorageCardFitOption =
-	| "r2"
-	| "a-selo-uso"
-	| "b-icone-uso"
-	| "c-selo-icone";
+/**
+ * Opção B (escolhida pelo Luiz): no Convidado Pro, só em 96%, Cheio e Acima,
+ * o estado vai para o ícone e o uso aparece sem o denominador, para caber
+ * na linha de 213px da V2 r2. Free, Pro e os demais estados seguem o mock.
+ */
+function isGuestProCrowded(ctx: StorageContext): boolean {
+	if (ctx.label !== "guest_pro") return false;
+	const level = usageLevel(ctx);
+	return level === "95" || level === "100" || level === "over";
+}
 
-function previewFitOption(): StorageCardFitOption {
-	if (typeof window === "undefined") return "r2";
-	const host = window.location.hostname;
-	if (host !== "localhost" && host !== "127.0.0.1") return "r2";
-	const raw = window.localStorage.getItem("arkhiveon_preview_card_opt");
-	if (raw === "a-selo-uso" || raw === "b-icone-uso" || raw === "c-selo-icone") {
-		return raw;
-	}
-	return "r2";
+function compactUsage(ctx: StorageContext): string {
+	const unit = ctx.limitBytes >= 1_000_000_000 ? "GB" : "MB";
+	return formatStorageBytes(ctx.usedBytes, unit);
 }
 
 function PlanIcon({
@@ -59,41 +57,14 @@ function PlanIcon({
 }
 
 function consumptionAria(ctx: StorageContext): string {
-	const used = shortUsage(ctx);
+	const used = isGuestProCrowded(ctx) ? compactUsage(ctx) : shortUsage(ctx);
+	const st = statusText(ctx);
 	const guest =
 		ctx.label === "guest_pro" && ctx.payerName
 			? ` do limite do mestre ${ctx.payerName}`
 			: "";
-	return `${planLabel(ctx.label)}: ${used} usados${guest}. Abrir consumo.`;
-}
-
-function badgeText(label: StorageLabel, opt: StorageCardFitOption): string {
-	if (
-		(opt === "a-selo-uso" || opt === "c-selo-icone") &&
-		label === "guest_pro"
-	) {
-		return "Conv. Pro";
-	}
-	return planLabel(label);
-}
-
-function statusDisplay(
-	ctx: StorageContext,
-	opt: StorageCardFitOption,
-): string | null {
-	const st = statusText(ctx);
-	if (!st) return null;
-	if (opt === "b-icone-uso" || opt === "c-selo-icone") return "";
-	if (opt === "a-selo-uso" && st.startsWith("Acima")) return "Acima";
-	return st;
-}
-
-function valueDisplay(ctx: StorageContext, opt: StorageCardFitOption): string {
-	if (opt === "a-selo-uso" || opt === "b-icone-uso") {
-		const unit = ctx.limitBytes >= 1_000_000_000 ? "GB" : "MB";
-		return formatStorageBytes(ctx.usedBytes, unit);
-	}
-	return shortUsage(ctx);
+	const statusBit = st ? ` ${st}.` : "";
+	return `${planLabel(ctx.label)}: ${used} usados${guest}.${statusBit} Abrir consumo.`;
 }
 
 function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
@@ -112,12 +83,12 @@ function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
 		<output
 			className={cn(
 				rowBase,
-				"pointer-events-none flex-col items-stretch justify-center gap-1.5 py-2",
+				"h-[44px] pointer-events-none flex-col items-stretch justify-center gap-1.5 py-2",
 			)}
 			aria-label="Carregando consumo"
 			data-card
 		>
-			<span className="flex items-center">
+			<span className="flex h-5 items-center">
 				<Skeleton className="h-4 w-24" />
 				<Skeleton className="ml-auto h-3 w-16" />
 			</span>
@@ -138,7 +109,7 @@ function ErrorCard({
 			<Link
 				to="/consumo"
 				onClick={onNavigate}
-				className={cn(rowBase, "justify-center px-0")}
+				className={cn(rowBase, "h-[44px] justify-center px-0")}
 				aria-label="Consumo indisponível. Abrir consumo."
 				data-card
 			>
@@ -150,7 +121,7 @@ function ErrorCard({
 		<Link
 			to="/consumo"
 			onClick={onNavigate}
-			className={rowBase}
+			className={cn(rowBase, "h-[44px]")}
 			aria-label="Consumo indisponível. Abrir consumo."
 			data-card
 		>
@@ -186,9 +157,9 @@ export function StorageCard({
 		return <ErrorCard isCollapsed={isCollapsed} onNavigate={onNavigate} />;
 	}
 
-	const opt = previewFitOption();
 	const level = usageLevel(context);
-	const st = statusDisplay(context, opt);
+	const crowded = isGuestProCrowded(context);
+	const st = statusText(context);
 	const bad = isUsageBad(level);
 	const barNow = Math.min(
 		100,
@@ -204,7 +175,7 @@ export function StorageCard({
 			<Link
 				to="/consumo"
 				onClick={onNavigate}
-				className={cn(rowBase, "justify-center px-0")}
+				className={cn(rowBase, "h-[44px] justify-center px-0")}
 				aria-label={consumptionAria(context)}
 				data-card
 				title={consumptionAria(context)}
@@ -240,7 +211,7 @@ export function StorageCard({
 		>
 			<span
 				data-line1
-				className="flex h-[1.25rem] min-w-0 flex-nowrap items-center gap-1.5"
+				className="flex h-5 min-w-0 flex-nowrap items-center gap-1.5 leading-5"
 			>
 				<span
 					data-label
@@ -255,26 +226,27 @@ export function StorageCard({
 						label={context.label}
 						className={cn("size-3", bad && "text-destructive")}
 					/>
-					{badgeText(context.label, opt)}
+					{planLabel(context.label)}
 				</span>
 				{st !== null ? (
 					<span
 						data-status
-						title={statusText(context) ?? undefined}
+						title={st}
+						{...(crowded ? { role: "img" as const, "aria-label": st } : {})}
 						className={cn(
 							"inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-semibold tabular-nums",
 							bad ? "text-destructive" : "text-primary",
 						)}
 					>
 						<TriangleAlert aria-hidden className="size-3" />
-						{st}
+						{crowded ? null : st}
 					</span>
 				) : null}
 				<span
 					data-value
 					className="ml-auto whitespace-nowrap text-[11px] tabular-nums text-muted-foreground"
 				>
-					{valueDisplay(context, opt)}
+					{crowded ? compactUsage(context) : shortUsage(context)}
 				</span>
 			</span>
 			<span

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.186-plano-pro-u1-card-v2r2",
+		version: "1.6.186",
+		date: "22/11/2026",
+		title: "Card de cota no tamanho e na tipografia do mock",
+		description:
+			"O card de armazenamento da barra lateral passa a ter 44px, o selo em 10px e o estado e o uso numa linha só, como no mock aprovado. No Convidado Pro, quando o uso chega a 96%, enche ou passa do limite, o estado aparece só no ícone e o uso vai sem o total, para caber no card. Se o consumo não carregar, o card volta a ser a linha Consumo, indisponível e a seta, sem o botão grande. A barra continua mostrando o uso total.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.184-plano-pro-u1-card",
 		version: "1.6.184",
 		date: "22/11/2026",
