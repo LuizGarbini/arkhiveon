@@ -251,7 +251,7 @@ function FeedComposer({
 							aria-label="Modo da rolagem"
 							value={mode}
 							disabled={rolling}
-							className="h-11 min-h-11 w-[8.5rem] shrink-0"
+							className="h-[44px] min-h-[44px] w-[8.5rem] shrink-0"
 							onChange={(event) => setMode(event.target.value)}
 						>
 							<option value="public">Pública</option>

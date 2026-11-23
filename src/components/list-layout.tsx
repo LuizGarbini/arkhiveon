@@ -241,7 +241,7 @@ function FilterGroupDropdown({
 				<DropdownMenuContent
 					align="start"
 					sideOffset={6}
-					className="w-(--anchor-width) min-w-[220px] max-h-[300px] overflow-y-auto rounded-2xl border border-border/70 bg-card-elevated/95 p-1.5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+					className="w-(--anchor-width) min-w-[220px]"
 				>
 					<DropdownMenuGroup className="space-y-0.5">
 						<DropdownMenuItem

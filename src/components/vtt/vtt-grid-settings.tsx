@@ -563,7 +563,7 @@ function GridEditor({
 									gridType: e.target.value as VTTGridType,
 								})
 							}
-							className="h-11 text-base"
+							className="h-[44px] min-h-[44px] text-base"
 						>
 							<option value="square">Quadrado (Padrão)</option>
 							<option value="hex_pointy">Hexagonal (Pontudo)</option>
@@ -601,7 +601,7 @@ function GridEditor({
 										gridScaleUnit: e.target.value as VTTGridScaleUnit,
 									})
 								}
-								className="h-11 text-base"
+								className="h-[44px] min-h-[44px] text-base"
 							>
 								<option value="m">Metros</option>
 								<option value="ft">Pés</option>

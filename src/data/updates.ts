@@ -20,6 +20,15 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		bullets: [],
 	},
 	{
+		id: "v1.6.190-ds-select-popup-solido",
+		version: "1.6.190",
+		date: "23/11/2026",
+		title: "Menus e seletores com fundo sólido e alvos maiores",
+		description:
+			"Os menus e as listas de opção do app passam a ter fundo sólido, sem o vidro embaçado, e cada opção tem altura mínima de 44 pixels também no computador, para ficar mais fácil de acertar. O campo que abre a lista também passa a ter 44 pixels.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.189-biblioteca-backfill-capas",
 		version: "1.6.189",
 		date: "23/11/2026",

@@ -21,7 +21,7 @@ const SelectRoot = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 
 const triggerClassName =
-	"flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-[16px] text-foreground shadow-xs outline-none transition-colors select-none md:text-sm dark:bg-input/10 focus-visible:border-primary/50 focus-visible:ring-[3px] focus-visible:ring-primary/15 data-popup-open:border-primary/50 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+	"flex h-[44px] min-h-[44px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-[16px] text-foreground shadow-xs outline-none transition-colors select-none md:text-sm dark:bg-input/10 focus-visible:border-primary/50 focus-visible:ring-[3px] focus-visible:ring-primary/15 data-popup-open:border-primary/50 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 function SelectTrigger({
 	className,
@@ -80,7 +80,7 @@ function SelectContent({
 				<SelectPrimitive.Popup
 					data-slot="select-content"
 					className={cn(
-						"t-dropdown max-h-(--available-height) w-(--anchor-width) min-w-32 overflow-x-hidden overflow-y-auto rounded-xl border border-border/70 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/15 ring-1 ring-foreground/10 outline-none md:bg-popover/95 md:backdrop-blur-xl",
+						"t-dropdown max-h-(--available-height) w-(--anchor-width) min-w-32 overflow-x-hidden overflow-y-auto rounded-xl border border-border/70 bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/15 ring-1 ring-foreground/10 outline-none",
 						className,
 					)}
 					{...props}
@@ -101,7 +101,7 @@ function SelectItem({
 		<SelectPrimitive.Item
 			data-slot="select-item"
 			className={cn(
-				"relative flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-lg py-2 pr-8 pl-2.5 text-[15px] outline-hidden select-none transition-colors duration-100 md:min-h-9 md:text-sm data-highlighted:bg-accent data-highlighted:text-accent-foreground data-selected:text-primary data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+				"relative flex min-h-[44px] w-full cursor-pointer items-center gap-2 rounded-lg py-2 pr-8 pl-2.5 text-[15px] outline-hidden select-none transition-colors duration-100 md:text-sm data-highlighted:bg-accent data-highlighted:text-accent-foreground data-selected:text-primary data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 				className,
 			)}
 			{...props}

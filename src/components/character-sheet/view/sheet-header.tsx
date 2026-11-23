@@ -95,25 +95,16 @@ function SheetMoreMenu({
 					{isEditingLayout ? "Concluir layout" : "Editar layout"}
 				</DropdownMenuItem>
 				{!isViewer && (
-					<DropdownMenuItem
-						onClick={onOpenImageDialog}
-						className="min-h-[44px] md:min-h-9"
-					>
+					<DropdownMenuItem onClick={onOpenImageDialog}>
 						<Camera />
 						Alterar imagem
 					</DropdownMenuItem>
 				)}
-				<DropdownMenuItem
-					onClick={onOpenTransferDialog}
-					className="min-h-[44px] md:min-h-9"
-				>
+				<DropdownMenuItem onClick={onOpenTransferDialog}>
 					<ArrowRightLeft />
 					Transferir
 				</DropdownMenuItem>
-				<DropdownMenuItem
-					onClick={onOpenExportDialog}
-					className="min-h-[44px] md:min-h-9"
-				>
+				<DropdownMenuItem onClick={onOpenExportDialog}>
 					<Download />
 					Exportar PDF
 				</DropdownMenuItem>
