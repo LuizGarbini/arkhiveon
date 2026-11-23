@@ -363,7 +363,7 @@ function ImagesRoute() {
 								aria-label="Ordenar imagens"
 								value={sort}
 								onChange={(event) => setSort(event.target.value as GallerySort)}
-								className="h-9 w-44 rounded-xl"
+								className="h-[44px] min-h-[44px] w-44 rounded-xl"
 							>
 								{GALLERY_SORTS.map((item) => (
 									<option key={item.id} value={item.id}>

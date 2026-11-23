@@ -53,7 +53,7 @@ function SizeSelect({
 				const next = event.target.value;
 				onChange(next === ORIGINAL ? undefined : Number(next));
 			}}
-			className="h-11 md:h-10"
+			className="h-[44px] min-h-[44px]"
 		>
 			<option value={ORIGINAL}>{originalLabel}</option>
 			{FONT_SIZE_OPTIONS.map((size) => (
