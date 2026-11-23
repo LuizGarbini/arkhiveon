@@ -1113,7 +1113,7 @@ export function CampaignForm({
 												>
 													<SelectTrigger
 														id={worldSelectId}
-														className="min-h-11 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
+														className="min-h-[44px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
 														aria-invalid={worldError ? true : undefined}
 														aria-describedby={worldDescribedBy}
 													>

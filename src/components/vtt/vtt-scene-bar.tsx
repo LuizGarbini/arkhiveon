@@ -780,7 +780,7 @@ export function VTTSceneBar({
 									onChange={(e) =>
 										setNewGridType(e.target.value as VTTGridType)
 									}
-									className="h-11 text-base"
+									className="h-[44px] min-h-[44px] text-base"
 								>
 									<option value="square">Quadrado (Padrão)</option>
 									<option value="hex_pointy">Hexagonal (Pontudo)</option>
@@ -819,7 +819,7 @@ export function VTTSceneBar({
 									onChange={(e) =>
 										setNewScaleUnit(e.target.value as VTTGridScaleUnit)
 									}
-									className="h-11 text-base"
+									className="h-[44px] min-h-[44px] text-base"
 								>
 									<option value="m">Metros (m)</option>
 									<option value="ft">Pés (ft)</option>

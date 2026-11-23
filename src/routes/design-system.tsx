@@ -228,7 +228,18 @@ function DesignSystem() {
 						}
 					/>
 					<div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 pb-6 sm:px-8">
-						<ListLayout />
+						<ListLayout
+							filterGroups={[
+								{
+									id: "tipo",
+									label: "Tipo",
+									options: Array.from({ length: 24 }, (_, index) => ({
+										value: `tipo-${index + 1}`,
+										label: `Opção ${String(index + 1).padStart(2, "0")}`,
+									})),
+								},
+							]}
+						/>
 						<div className="grid gap-4 md:grid-cols-3">
 							<EntityCard title="Aelyra Moonwhisper" meta="Elfa · Maga" />
 							<EntityCard title="Sessão #14" meta="Ruínas do Vale Cinzento" />
@@ -273,6 +284,18 @@ function DesignSystem() {
 							<option>D&D 5ª Edição</option>
 							<option>Tormenta 20</option>
 							<option>Ordem Paranormal</option>
+						</Select>
+					</div>
+					<div className="mt-5">
+						<Select aria-label="Lista longa" defaultValue="opt-01">
+							{Array.from({ length: 24 }, (_, index) => {
+								const value = `opt-${String(index + 1).padStart(2, "0")}`;
+								return (
+									<option key={value} value={value}>
+										Opção {String(index + 1).padStart(2, "0")}
+									</option>
+								);
+							})}
 						</Select>
 					</div>
 					<div className="mt-5 grid gap-3 sm:grid-cols-2">

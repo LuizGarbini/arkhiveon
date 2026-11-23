@@ -297,7 +297,7 @@ function MovePanelContent({ onUpdateToken }: PanelProps) {
 							<Select
 								aria-label="Filtrar por token"
 								value={filterTokenId ?? ""}
-								className="h-11 min-h-11"
+								className="h-[44px] min-h-[44px]"
 								onChange={(event) =>
 									useMoveStore
 										.getState()

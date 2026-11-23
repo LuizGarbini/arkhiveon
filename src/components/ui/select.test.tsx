@@ -133,8 +133,11 @@ describe("Select do DS (shadcn/Base UI)", () => {
 				<option value="t20">Tormenta 20</option>
 			</Select>,
 		);
+		const trigger = screen.getByRole("combobox", { name: "Sistema" });
+		expect(trigger.className).toContain("min-h-[44px]");
+		expect(trigger.className).not.toContain("h-10");
 		await act(async () => {
-			fireEvent.click(screen.getByRole("combobox", { name: "Sistema" }));
+			fireEvent.click(trigger);
 		});
 		const popup = document.querySelector('[data-slot="select-content"]');
 		expect(popup).toBeTruthy();

@@ -21,7 +21,7 @@ const SelectRoot = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 
 const triggerClassName =
-	"flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-[16px] text-foreground shadow-xs outline-none transition-colors select-none md:text-sm dark:bg-input/10 focus-visible:border-primary/50 focus-visible:ring-[3px] focus-visible:ring-primary/15 data-popup-open:border-primary/50 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+	"flex h-[44px] min-h-[44px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-[16px] text-foreground shadow-xs outline-none transition-colors select-none md:text-sm dark:bg-input/10 focus-visible:border-primary/50 focus-visible:ring-[3px] focus-visible:ring-primary/15 data-popup-open:border-primary/50 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 
 function SelectTrigger({
 	className,

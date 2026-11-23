@@ -445,7 +445,7 @@ export function FeatSearchDialog({
 									<Select
 										value={bookFilter}
 										onChange={(e) => setBookFilter(e.target.value)}
-										className="h-9 text-xs rounded-xl bg-background/50 border-border/60 w-[155px]"
+										className="h-[44px] min-h-[44px] text-xs rounded-xl bg-background/50 border-border/60 w-[155px]"
 									>
 										<option value="all">Todos os Livros</option>
 										<option value="phb">📖 Livro Jogador (PHB)</option>
@@ -460,7 +460,7 @@ export function FeatSearchDialog({
 									<Select
 										value={categoryFilter}
 										onChange={(e) => setCategoryFilter(e.target.value)}
-										className="h-9 text-xs rounded-xl bg-background/50 border-border/60 w-[165px]"
+										className="h-[44px] min-h-[44px] text-xs rounded-xl bg-background/50 border-border/60 w-[165px]"
 									>
 										<option value="all">Todas as Categorias</option>
 										{categoryOptions.map((cat) => (

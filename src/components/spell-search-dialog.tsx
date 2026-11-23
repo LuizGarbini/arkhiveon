@@ -568,7 +568,7 @@ export function SpellSearchDialog({
 									<Select
 										value={String(hbLevel)}
 										onChange={(e) => setHbLevel(Number(e.target.value))}
-										className="h-9 text-xs"
+										className="h-[44px] min-h-[44px] text-xs"
 									>
 										<option value="0">Truque (Círculo 0)</option>
 										<option value="1">1º Círculo</option>
@@ -587,7 +587,7 @@ export function SpellSearchDialog({
 									<Select
 										value={hbSchool}
 										onChange={(e) => setHbSchool(e.target.value)}
-										className="h-9 text-xs"
+										className="h-[44px] min-h-[44px] text-xs"
 									>
 										<option value="">Selecione a Escola...</option>
 										{schoolOptions.map((opt) => (
@@ -706,7 +706,7 @@ export function SpellSearchDialog({
 										<Select
 											value={bookFilter}
 											onChange={(e) => setBookFilter(e.target.value)}
-											className="h-9 text-xs rounded-xl bg-background/50 border-border/60 w-[155px]"
+											className="h-[44px] min-h-[44px] text-xs rounded-xl bg-background/50 border-border/60 w-[155px]"
 										>
 											<option value="all">Todos os Livros</option>
 											<option value="phb">📖 Livro Jogador (PHB)</option>
@@ -720,7 +720,7 @@ export function SpellSearchDialog({
 									<Select
 										value={schoolFilter}
 										onChange={(e) => setSchoolFilter(e.target.value)}
-										className="h-9 text-xs rounded-xl bg-background/50 border-border/60 w-[165px]"
+										className="h-[44px] min-h-[44px] text-xs rounded-xl bg-background/50 border-border/60 w-[165px]"
 									>
 										<option value="all">Todas as Escolas</option>
 										{schoolOptions.map((opt) => (

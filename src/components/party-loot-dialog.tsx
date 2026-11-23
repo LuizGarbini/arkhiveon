@@ -207,7 +207,7 @@ export function PartyLootDialog({ trigger }: PartyLootDialogProps = {}) {
 											aria-label="Atribuir item a um personagem"
 											value={selectedCharId}
 											onChange={(e) => setSelectedCharId(e.target.value)}
-											className="h-[44px] max-w-[180px] md:h-9 md:text-xs"
+											className="h-[44px] min-h-[44px] max-w-[180px] md:text-xs"
 										>
 											<option value="">Atribuir a...</option>
 											{characters.map((c) => (

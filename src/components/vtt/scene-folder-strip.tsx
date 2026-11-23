@@ -429,7 +429,6 @@ function FolderMenuItems({
 	return (
 		<>
 			<DropdownMenuItem
-				className="min-h-11"
 				disabled={disabled || current === null}
 				onClick={() => onMove(null)}
 			>
@@ -441,16 +440,13 @@ function FolderMenuItems({
 				Fora da pasta
 			</DropdownMenuItem>
 			{folders.length === 0 ? (
-				<DropdownMenuItem className="min-h-11" disabled>
-					Crie uma pasta primeiro
-				</DropdownMenuItem>
+				<DropdownMenuItem disabled>Crie uma pasta primeiro</DropdownMenuItem>
 			) : (
 				folders.map((folder) => {
 					const here = current === folder.id;
 					return (
 						<DropdownMenuItem
 							key={folder.id}
-							className="min-h-11"
 							disabled={disabled || here}
 							onClick={() => onMove(folder.id)}
 						>
