@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.189-biblioteca-backfill-capas",
+		version: "1.6.189",
+		date: "23/11/2026",
+		title: "Script para gerar as capas antigas da Biblioteca",
+		description:
+			"Entra um script local que percorre os PDFs já enviados e tenta montar a capa da primeira página. Por padrão ele só mostra o que faria, sem gravar. No computador do Luiz o script aceita PDFs de até 160 MB (ajustável com --max-mb); o envio no navegador continua com o teto de 64 MB no computador e 32 MB no toque. Quem roda é o Luiz, com a sessão dele; o script não usa chave do armazenamento nem a service role.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.188-biblioteca-capa-cliente",
 		version: "1.6.188",
 		date: "22/11/2026",

@@ -1,6 +1,6 @@
 {
 	"name": "arkhiveon",
-	"version": "1.6.188",
+	"version": "1.6.189",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -22,6 +22,7 @@
 		"db:studio": "drizzle-kit studio",
 		"db:check": "drizzle-kit check",
 		"preview:record": "tsx scripts/record-preview.ts",
+		"library-thumbs-backfill": "tsx scripts/library-thumbs-backfill.ts",
 		"check:fog-drag": "node scripts/check-fog-drag.cjs",
 		"check:vision-drag": "node scripts/check-vision-drag.cjs",
 		"check:gm-exploration": "node scripts/check-gm-exploration.cjs",
