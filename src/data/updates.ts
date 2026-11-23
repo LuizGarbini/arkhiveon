@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.188-biblioteca-capa-cliente",
+		version: "1.6.188",
+		date: "22/11/2026",
+		title: "A Biblioteca gera a capa do PDF no envio",
+		description:
+			"Quando você envia um PDF para a Biblioteca, o app tenta montar a capa da primeira página no próprio navegador. Se o arquivo for grande demais, estiver protegido ou a capa falhar, o PDF entra normalmente e a capa fica como indisponível. A tela da lista ainda não muda; a grade entra numa próxima fatia.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.187-fix-ca-armadura-base-zero",
 		version: "1.6.187",
 		date: "22/11/2026",

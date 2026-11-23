@@ -14,6 +14,12 @@ import {
 	validateLibraryTitle,
 } from "../../../supabase/functions/_shared/library-guard";
 import { getSupabase } from "../supabase";
+import type { LibraryThumbStatus } from "./library-thumb";
+import { parseLibraryThumbStatus } from "./library-thumb";
+import {
+	defaultLibraryThumbDeps,
+	tryUploadLibraryThumb,
+} from "./library-thumb-upload";
 import { repairMojibake } from "./repair-mojibake";
 
 export interface LibraryFile {
@@ -21,6 +27,8 @@ export interface LibraryFile {
 	title: string;
 	sizeBytes: number;
 	createdAt: string;
+	/** Presente no select; a tela ainda não usa (F3 sem mudança visual). */
+	thumbStatus?: LibraryThumbStatus;
 }
 
 // As tabelas da 0040 ainda não estão em database.types.ts.
@@ -171,7 +179,7 @@ export async function listLibraryFiles(
 	if (!client) throw new LibraryError(libraryErrorMessage(undefined));
 	const { data, error } = await client
 		.from(LIBRARY_FILES_TABLE)
-		.select("id, title, size_bytes, created_at")
+		.select("id, title, size_bytes, created_at, thumb_status")
 		.eq("campaign_id", campaignId)
 		.eq("status", "ready")
 		.order("created_at", { ascending: false });
@@ -182,25 +190,27 @@ export async function listLibraryFiles(
 			title: string;
 			size_bytes: number;
 			created_at: string;
+			thumb_status?: unknown;
 		}[]
 	).map((row) => ({
 		id: row.id,
 		title: row.title,
 		sizeBytes: Number(row.size_bytes),
 		createdAt: row.created_at,
+		thumbStatus: parseLibraryThumbStatus(row.thumb_status),
 	}));
 }
 
 function putWithProgress(
 	url: string,
-	file: File,
+	body: Blob,
 	headers: Record<string, string>,
 	onProgress: (fraction: number) => void,
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 		xhr.open("PUT", url);
-		// Content-Length é definido pelo navegador (assinado = file.size).
+		// Content-Length é definido pelo navegador (assinado = body.size).
 		for (const [key, value] of Object.entries(headers)) {
 			if (key.toLowerCase() !== "content-length")
 				xhr.setRequestHeader(key, value);
@@ -214,7 +224,7 @@ function putWithProgress(
 				: reject(new LibraryError(libraryErrorMessage(xhr.status)));
 		xhr.onerror = () =>
 			reject(new LibraryError(libraryErrorMessage(undefined)));
-		xhr.send(file);
+		xhr.send(body);
 	});
 }
 
@@ -242,6 +252,14 @@ export async function uploadLibraryPdf(
 		onProgress,
 	);
 	await callLibrary({ action: "confirm-upload", fileId: ticket.fileId });
+	// A capa roda depois: se falhar, o PDF já está pronto e a capa vai a failed.
+	await tryUploadLibraryThumb(
+		ticket.fileId,
+		file,
+		defaultLibraryThumbDeps(callLibrary, (url, blob, headers) =>
+			putWithProgress(url, blob, headers, () => {}),
+		),
+	);
 	return ticket.fileId;
 }
 
@@ -270,7 +288,7 @@ export async function getLibraryFile(
 	if (!client || !isUuid(fileId)) return null;
 	const { data, error } = await client
 		.from(LIBRARY_FILES_TABLE)
-		.select("id, campaign_id, title, size_bytes, created_at")
+		.select("id, campaign_id, title, size_bytes, created_at, thumb_status")
 		.eq("id", fileId)
 		.eq("status", "ready")
 		.maybeSingle();
@@ -282,6 +300,7 @@ export async function getLibraryFile(
 		title: string;
 		size_bytes: number;
 		created_at: string;
+		thumb_status?: unknown;
 	};
 	return {
 		id: row.id,
@@ -289,6 +308,7 @@ export async function getLibraryFile(
 		title: row.title,
 		sizeBytes: Number(row.size_bytes),
 		createdAt: row.created_at,
+		thumbStatus: parseLibraryThumbStatus(row.thumb_status),
 	};
 }
 
