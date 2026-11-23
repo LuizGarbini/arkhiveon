@@ -1,8 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Crown, Sparkles, TriangleAlert, UsersRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+	ChevronRight,
+	Crown,
+	Sparkles,
+	TriangleAlert,
+	UsersRound,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+	formatStorageBytes,
 	isUsageBad,
 	planLabel,
 	type StorageContext,
@@ -16,6 +22,22 @@ import { cn } from "@/lib/utils";
 
 const rowBase =
 	"group relative flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/50 [@media(hover:hover)]:hover:bg-muted/50";
+
+/**
+ * Opção B (escolhida pelo Luiz): no Convidado Pro, só em 96%, Cheio e Acima,
+ * o estado vai para o ícone e o uso aparece sem o denominador, para caber
+ * na linha de 213px da V2 r2. Free, Pro e os demais estados seguem o mock.
+ */
+function isGuestProCrowded(ctx: StorageContext): boolean {
+	if (ctx.label !== "guest_pro") return false;
+	const level = usageLevel(ctx);
+	return level === "95" || level === "100" || level === "over";
+}
+
+function compactUsage(ctx: StorageContext): string {
+	const unit = ctx.limitBytes >= 1_000_000_000 ? "GB" : "MB";
+	return formatStorageBytes(ctx.usedBytes, unit);
+}
 
 function PlanIcon({
 	label,
@@ -35,12 +57,14 @@ function PlanIcon({
 }
 
 function consumptionAria(ctx: StorageContext): string {
-	const used = shortUsage(ctx);
+	const used = isGuestProCrowded(ctx) ? compactUsage(ctx) : shortUsage(ctx);
+	const st = statusText(ctx);
 	const guest =
 		ctx.label === "guest_pro" && ctx.payerName
 			? ` do limite do mestre ${ctx.payerName}`
 			: "";
-	return `${planLabel(ctx.label)}: ${used} usados${guest}. Abrir consumo.`;
+	const statusBit = st ? ` ${st}.` : "";
+	return `${planLabel(ctx.label)}: ${used} usados${guest}.${statusBit} Abrir consumo.`;
 }
 
 function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
@@ -59,12 +83,12 @@ function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
 		<output
 			className={cn(
 				rowBase,
-				"pointer-events-none flex-col items-stretch justify-center gap-1.5 py-2",
+				"h-[44px] pointer-events-none flex-col items-stretch justify-center gap-1.5 py-2",
 			)}
 			aria-label="Carregando consumo"
 			data-card
 		>
-			<span className="flex items-center">
+			<span className="flex h-5 items-center">
 				<Skeleton className="h-4 w-24" />
 				<Skeleton className="ml-auto h-3 w-16" />
 			</span>
@@ -75,56 +99,43 @@ function LoadingCard({ isCollapsed }: { isCollapsed: boolean }) {
 
 function ErrorCard({
 	isCollapsed,
-	onRetry,
 	onNavigate,
 }: {
 	isCollapsed: boolean;
-	onRetry?: () => void;
 	onNavigate?: () => void;
 }) {
 	if (isCollapsed) {
 		return (
-			<div className={cn(rowBase, "justify-center px-0")} data-card>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-touch"
-					aria-label="Consumo indisponível. Tentar de novo."
-					onClick={onRetry}
-				>
-					<TriangleAlert
-						aria-hidden
-						className="size-3.5 text-muted-foreground"
-					/>
-				</Button>
-			</div>
-		);
-	}
-	return (
-		<div
-			className={cn(
-				rowBase,
-				"h-auto min-h-[44px] flex-col items-stretch justify-center gap-1.5 py-2",
-			)}
-			data-card
-		>
 			<Link
 				to="/consumo"
 				onClick={onNavigate}
-				className="flex min-h-[44px] items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+				className={cn(rowBase, "h-[44px] justify-center px-0")}
 				aria-label="Consumo indisponível. Abrir consumo."
+				data-card
 			>
-				<span className="text-[12px] font-semibold text-muted-foreground">
-					Consumo
-				</span>
-				<span className="ml-auto text-[12px] text-muted-foreground">
-					indisponível
-				</span>
+				<ChevronRight aria-hidden className="size-3.5 text-muted-foreground" />
 			</Link>
-			<Button type="button" variant="outline" size="touch" onClick={onRetry}>
-				Tentar de novo
-			</Button>
-		</div>
+		);
+	}
+	return (
+		<Link
+			to="/consumo"
+			onClick={onNavigate}
+			className={cn(rowBase, "h-[44px]")}
+			aria-label="Consumo indisponível. Abrir consumo."
+			data-card
+		>
+			<span className="text-[12px] font-semibold text-muted-foreground">
+				Consumo
+			</span>
+			<span className="ml-auto text-[12px] text-muted-foreground">
+				indisponível
+			</span>
+			<ChevronRight
+				aria-hidden
+				className="size-3.5 shrink-0 text-muted-foreground"
+			/>
+		</Link>
 	);
 }
 
@@ -132,29 +143,22 @@ interface StorageCardProps {
 	context: StorageContext;
 	isCollapsed?: boolean;
 	onNavigate?: () => void;
-	onRetry?: () => void;
 }
 
 export function StorageCard({
 	context,
 	isCollapsed = false,
 	onNavigate,
-	onRetry,
 }: StorageCardProps) {
 	if (context.status === "loading") {
 		return <LoadingCard isCollapsed={isCollapsed} />;
 	}
 	if (context.status === "error") {
-		return (
-			<ErrorCard
-				isCollapsed={isCollapsed}
-				onRetry={onRetry}
-				onNavigate={onNavigate}
-			/>
-		);
+		return <ErrorCard isCollapsed={isCollapsed} onNavigate={onNavigate} />;
 	}
 
 	const level = usageLevel(context);
+	const crowded = isGuestProCrowded(context);
 	const st = statusText(context);
 	const bad = isUsageBad(level);
 	const barNow = Math.min(
@@ -171,7 +175,7 @@ export function StorageCard({
 			<Link
 				to="/consumo"
 				onClick={onNavigate}
-				className={cn(rowBase, "justify-center px-0")}
+				className={cn(rowBase, "h-[44px] justify-center px-0")}
 				aria-label={consumptionAria(context)}
 				data-card
 				title={consumptionAria(context)}
@@ -200,12 +204,15 @@ export function StorageCard({
 			onClick={onNavigate}
 			className={cn(
 				rowBase,
-				"flex-col items-stretch justify-center gap-1.5 py-2",
+				"h-[44px] flex-col items-stretch justify-center gap-1.5 py-2",
 			)}
 			aria-label={consumptionAria(context)}
 			data-card
 		>
-			<span className="flex min-w-0 flex-wrap items-center gap-1.5">
+			<span
+				data-line1
+				className="flex h-5 min-w-0 flex-nowrap items-center gap-1.5 leading-5"
+			>
 				<span
 					data-label
 					className={cn(
@@ -221,23 +228,25 @@ export function StorageCard({
 					/>
 					{planLabel(context.label)}
 				</span>
-				{st ? (
+				{st !== null ? (
 					<span
 						data-status
+						title={st}
+						{...(crowded ? { role: "img" as const, "aria-label": st } : {})}
 						className={cn(
 							"inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-semibold tabular-nums",
 							bad ? "text-destructive" : "text-primary",
 						)}
 					>
 						<TriangleAlert aria-hidden className="size-3" />
-						{st}
+						{crowded ? null : st}
 					</span>
 				) : null}
 				<span
 					data-value
 					className="ml-auto whitespace-nowrap text-[11px] tabular-nums text-muted-foreground"
 				>
-					{shortUsage(context)}
+					{crowded ? compactUsage(context) : shortUsage(context)}
 				</span>
 			</span>
 			<span
