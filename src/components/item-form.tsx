@@ -11,6 +11,7 @@ import {
 	type ItemFormTabId,
 	itemCategoryKind,
 	normalizeItemWeapon,
+	sanitizeArmorStats,
 	tabStatus,
 	validateItemDraft,
 } from "@/core/rules/item-mechanics";
@@ -289,7 +290,7 @@ function ItemFormContent({
 							customProperties: data.weapon.customProperties.filter(Boolean),
 						}
 					: undefined,
-			armor: dataKind === "armor" ? data.armor : undefined,
+			armor: dataKind === "armor" ? sanitizeArmorStats(data.armor) : undefined,
 			ammo: dataKind === "ammo" ? data.ammo : undefined,
 			bonuses: data.bonuses?.length ? data.bonuses : undefined,
 			abilityBonuses: data.abilityBonuses?.length

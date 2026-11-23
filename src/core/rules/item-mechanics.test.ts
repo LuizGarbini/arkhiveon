@@ -7,6 +7,8 @@ import {
 	itemCategoryKind,
 	normalizeItemWeapon,
 	normalizeWeaponAbility,
+	parseArmorBaseAc,
+	sanitizeArmorStats,
 	summarizeItemForSheet,
 	tabStatus,
 	validateItemDraft,
@@ -261,5 +263,37 @@ describe("atributo da arma (6 atributos)", () => {
 	it("arma já válida volta igual (mesma referência)", () => {
 		expect(normalizeItemWeapon(aurora)).toBe(aurora);
 		expect(normalizeItemWeapon(undefined)).toBeUndefined();
+	});
+});
+
+describe("parseArmorBaseAc e sanitizeArmorStats", () => {
+	it("campo vazio, 0 ou inválido vira ausência", () => {
+		expect(parseArmorBaseAc("")).toBeUndefined();
+		expect(parseArmorBaseAc("   ")).toBeUndefined();
+		expect(parseArmorBaseAc("0")).toBeUndefined();
+		expect(parseArmorBaseAc("-1")).toBeUndefined();
+		expect(parseArmorBaseAc("abc")).toBeUndefined();
+		expect(parseArmorBaseAc("11")).toBe(11);
+		expect(parseArmorBaseAc("2")).toBe(2);
+	});
+	it("não deixa baseAc 0 no objeto gravado", () => {
+		expect(
+			sanitizeArmorStats({
+				baseAc: 0,
+				dexMode: "none",
+				armorCategory: "light",
+			}),
+		).toEqual({ dexMode: "none", armorCategory: "light" });
+		expect(
+			sanitizeArmorStats({
+				baseAc: 14,
+				dexMode: "max2",
+				armorCategory: "medium",
+			}),
+		).toEqual({
+			baseAc: 14,
+			dexMode: "max2",
+			armorCategory: "medium",
+		});
 	});
 });

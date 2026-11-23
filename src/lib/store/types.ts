@@ -660,7 +660,8 @@ export interface ItemWeaponStats {
 }
 
 export interface ItemArmorStats {
-	baseAc: number;
+	/** Ausente ou <= 0: a armadura não substitui a CA da ficha. */
+	baseAc?: number;
 	dexMode: "full" | "max2" | "none";
 	armorCategory: "light" | "medium" | "heavy" | "shield";
 }

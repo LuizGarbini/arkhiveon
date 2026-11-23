@@ -9,6 +9,7 @@ import {
 	type ItemDraftErrors,
 	makeExtraDamage,
 	normalizeWeaponAbility,
+	parseArmorBaseAc,
 	WEAPON_ABILITIES,
 	WEAPON_ABILITY_LABELS,
 	WEAPON_PROPERTY_CHIPS,
@@ -425,10 +426,20 @@ export function ItemDefenseTab({ form }: ItemDefenseTabProps) {
 							inputMode="numeric"
 							min={0}
 							className="tabular-nums"
-							value={Number.isFinite(armor.baseAc) ? armor.baseAc : ""}
-							onChange={(e) =>
-								update({ baseAc: Number.parseInt(e.target.value, 10) || 0 })
+							value={
+								armor.baseAc !== undefined && armor.baseAc > 0
+									? armor.baseAc
+									: ""
 							}
+							onChange={(e) => {
+								const baseAc = parseArmorBaseAc(e.target.value);
+								if (baseAc === undefined) {
+									const { baseAc: _omit, ...rest } = armor;
+									setValue("armor", rest, { shouldDirty: true });
+									return;
+								}
+								update({ baseAc });
+							}}
 						/>
 					</Field>
 				</div>

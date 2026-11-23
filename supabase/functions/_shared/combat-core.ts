@@ -81,7 +81,7 @@ export interface CoreItem {
 	slot?: CoreItemSlot;
 	requiresAttunement?: boolean;
 	armor?: {
-		baseAc: number;
+		baseAc?: number;
 		dexMode: CoreDexMode;
 		armorCategory: "light" | "medium" | "heavy" | "shield";
 	};
@@ -495,6 +495,13 @@ function affectsArmorClass(item: CoreItem): boolean {
 	);
 }
 
+/** Só armadura com CA base positiva substitui a CA digitada na ficha. */
+function replacesArmorBase(item: CoreItem): boolean {
+	if (!item.armor || isShield(item)) return false;
+	const base = item.armor.baseAc;
+	return typeof base === "number" && Number.isFinite(base) && base > 0;
+}
+
 function affectsInitiative(item: CoreItem): boolean {
 	return (item.bonuses ?? []).some((b) => b.target === "initiative");
 }
@@ -520,7 +527,7 @@ export function computeArmorClass(
 	const counted = equipped.filter(isLinkActive);
 
 	const armors = counted
-		.filter((l) => l.item.armor && !isShield(l.item))
+		.filter((l) => replacesArmorBase(l.item))
 		.sort((a, b) => (b.item.armor?.baseAc ?? 0) - (a.item.armor?.baseAc ?? 0));
 	const shields = counted.filter((l) => isShield(l.item));
 	const bonusParts: StatPart[] = [];
@@ -557,7 +564,7 @@ export function computeArmorClass(
 	if (armor?.item.armor) {
 		const stats = armor.item.armor;
 		dexMode = stats.dexMode;
-		parts.push({ kind: "armor", label: armor.item.name, value: stats.baseAc });
+		parts.push({ kind: "armor", label: armor.item.name, value: stats.baseAc ?? 0 });
 		if (stats.dexMode !== "none") {
 			const applied = stats.dexMode === "max2" ? Math.min(dex, 2) : dex;
 			parts.push({ kind: "dex", label: "Destreza", value: applied });
@@ -583,7 +590,7 @@ export function computeArmorClass(
 		parts.push({
 			kind: "shield",
 			label: shield.item.name,
-			value: shield.item.armor.baseAc,
+			value: shield.item.armor.baseAc ?? 0,
 		});
 		if (shields.length > 1) notes.push("Só um escudo conta.");
 	}
