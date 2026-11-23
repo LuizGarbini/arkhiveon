@@ -6,7 +6,7 @@ import {
 	Pencil,
 	Trash2,
 } from "lucide-react";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, memo, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -15,6 +15,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	clearDraft,
 	persistDraft,
@@ -25,6 +26,7 @@ import {
 	formatBytes,
 	type LibraryFile,
 } from "@/lib/library/library-storage";
+import { cn } from "@/lib/utils";
 
 const LIBRARY_TITLE_DRAFT_FORM_ID = "library-file-title";
 
@@ -55,6 +57,10 @@ interface LibraryFileRowProps {
 	onDelete: (file: LibraryFile) => void;
 	/** Salva o novo nome. Se rejeitar, a linha mostra um aviso fixo. */
 	onRename: (file: LibraryFile, title: string) => Promise<void>;
+	/** URL assinada da capa (só quando `thumbStatus` é `ready`). */
+	thumbUrl?: string;
+	/** Capa pronta ainda aguardando o lote de URLs. */
+	thumbLoading?: boolean;
 }
 
 type EditState =
@@ -67,13 +73,16 @@ type EditState =
 			error: string | null;
 	  };
 
-export function LibraryFileRow({
+export const LibraryFileRow = memo(function LibraryFileRow({
 	file,
 	canManage,
 	onDelete,
 	onRename,
+	thumbUrl,
+	thumbLoading = false,
 }: LibraryFileRowProps) {
 	const [edit, setEdit] = useState<EditState>({ mode: "view" });
+	const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
 	const errorId = useId();
 	const hintId = useId();
 
@@ -141,7 +150,7 @@ export function LibraryFileRow({
 
 	if (edit.mode === "edit") {
 		return (
-			<li className="px-3 py-3 sm:px-4 sm:py-2">
+			<li className="px-3 py-3 group-data-[view=grid]/lib:px-0 sm:px-4 sm:py-2">
 				<form
 					onSubmit={(event) => void save(event)}
 					className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:gap-3"
@@ -224,21 +233,87 @@ export function LibraryFileRow({
 
 	const size = formatBytes(file.sizeBytes);
 	const date = formatLibraryDate(file.createdAt);
+	const thumbStatus = file.thumbStatus ?? "pending";
+	const imageFailed = brokenUrl === thumbUrl;
+	const showImage = thumbStatus === "ready" && !!thumbUrl && !imageFailed;
+	const showCoverSkeleton =
+		thumbStatus === "ready" && !imageFailed && (thumbLoading || !thumbUrl);
 
 	return (
-		<li className="group flex min-h-14 items-center transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 sm:min-h-12">
+		<li
+			className={cn(
+				"group/item relative min-w-0",
+				"flex min-h-14 items-center transition-colors duration-150",
+				"hover:bg-muted/40 focus-within:bg-muted/40 sm:min-h-12",
+				"group-data-[view=grid]/lib:block group-data-[view=grid]/lib:min-h-0",
+				"group-data-[view=grid]/lib:hover:bg-transparent group-data-[view=grid]/lib:focus-within:bg-transparent",
+				"group-data-[view=grid]/lib:[content-visibility:auto] group-data-[view=grid]/lib:[contain-intrinsic-size:auto_320px]",
+			)}
+		>
 			<Link
 				to="/library/$fileId"
 				params={{ fileId: file.id }}
 				aria-label={`Abrir ${file.title}`}
-				className="flex min-h-14 min-w-0 flex-1 select-none items-center gap-3 py-2 pl-4 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-12"
+				className={cn(
+					"flex min-h-14 min-w-0 flex-1 select-none items-center gap-3 py-2 pl-4 pr-2 outline-none",
+					"focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-12",
+					"group-data-[view=grid]/lib:block group-data-[view=grid]/lib:min-h-0 group-data-[view=grid]/lib:gap-0",
+					"group-data-[view=grid]/lib:py-0 group-data-[view=grid]/lib:pl-0 group-data-[view=grid]/lib:pr-0",
+					"group-data-[view=grid]/lib:rounded-xl group-data-[view=grid]/lib:focus-visible:ring-0",
+				)}
 			>
+				{/* Anel inset: content-visibility no <li> corta box-shadow para fora. */}
+				<div
+					className={cn(
+						"relative hidden aspect-[3/4] w-full rounded-xl",
+						"group-data-[view=grid]/lib:block",
+						"after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-xl after:content-['']",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-inset",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-primary/60",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-offset-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:after:ring-offset-background",
+					)}
+				>
+					<div
+						className={cn(
+							"absolute inset-0 overflow-hidden rounded-xl border border-border/70 bg-muted transition-[border-color] duration-150",
+							"[@media(hover:hover)]:group-hover/item:border-primary/35",
+						)}
+					>
+						{showImage ? (
+							<img
+								src={thumbUrl}
+								alt=""
+								width={400}
+								height={600}
+								loading="lazy"
+								decoding="async"
+								className="absolute inset-0 size-full object-cover object-top"
+								onError={() => setBrokenUrl(thumbUrl ?? null)}
+							/>
+						) : showCoverSkeleton ? (
+							<Skeleton className="absolute inset-0 rounded-none" />
+						) : (
+							<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+								<FileText
+									className="size-8 text-muted-foreground"
+									strokeWidth={1.8}
+									aria-hidden
+								/>
+								<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+									PDF
+								</span>
+							</div>
+						)}
+					</div>
+				</div>
 				<FileText
-					className="h-4 w-4 shrink-0 text-muted-foreground"
+					className="h-4 w-4 shrink-0 text-muted-foreground group-data-[view=grid]/lib:hidden"
 					strokeWidth={1.8}
 					aria-hidden
 				/>
-				<div className="min-w-0 flex-1">
+				<div className="min-w-0 flex-1 group-data-[view=grid]/lib:hidden">
 					<p className="truncate text-[13px] font-medium text-foreground">
 						{file.title}
 					</p>
@@ -246,17 +321,23 @@ export function LibraryFileRow({
 						{size} · {date}
 					</p>
 				</div>
-				<span className="hidden w-20 shrink-0 text-right text-[12px] tabular-nums text-muted-foreground sm:block">
+				<span className="hidden w-20 shrink-0 text-right text-[12px] tabular-nums text-muted-foreground sm:block group-data-[view=grid]/lib:hidden">
 					{size}
 				</span>
-				<span className="hidden w-28 shrink-0 pl-5 text-[12px] tabular-nums text-muted-foreground sm:block">
+				<span className="hidden w-28 shrink-0 pl-5 text-[12px] tabular-nums text-muted-foreground sm:block group-data-[view=grid]/lib:hidden">
 					{date}
 				</span>
+				<p className="mt-2 hidden break-words text-[13px] font-medium leading-snug text-foreground [overflow-wrap:anywhere] group-data-[view=grid]/lib:line-clamp-2">
+					{file.title}
+				</p>
+				<p className="mt-0.5 hidden text-[11px] tabular-nums text-muted-foreground group-data-[view=grid]/lib:block">
+					{size} · {date}
+				</p>
 			</Link>
 			{canManage ? (
 				<>
-					{/* Desktop: ações aparecem no hover/foco da linha. */}
-					<div className="hidden w-20 shrink-0 justify-end gap-1 pr-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 sm:flex">
+					{/* Desktop (lista): ações aparecem no hover/foco da linha. */}
+					<div className="hidden w-20 shrink-0 justify-end gap-1 pr-2 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100 group-focus-within/item:opacity-100 sm:flex group-data-[view=grid]/lib:hidden">
 						<Button
 							variant="ghost"
 							size="icon-sm"
@@ -278,11 +359,11 @@ export function LibraryFileRow({
 							<Trash2 className="h-3.5 w-3.5" />
 						</Button>
 					</div>
-					{/* Celular: menu … de 44×44 px (rem aqui = 14,5 px, por isso o valor fixo). */}
+					{/* Celular (lista): menu … de 44×44 px. */}
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							aria-label={`Ações de ${file.title}`}
-							className="mr-1 flex size-[44px] shrink-0 select-none items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+							className="mr-1 flex size-[44px] shrink-0 select-none items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:hidden group-data-[view=grid]/lib:hidden"
 						>
 							<MoreHorizontal className="h-[18px] w-[18px]" />
 						</DropdownMenuTrigger>
@@ -291,25 +372,60 @@ export function LibraryFileRow({
 							finalFocus={false}
 							className="w-44"
 						>
-							<DropdownMenuItem
-								className="min-h-[44px]"
-								onClick={() => startEdit(false)}
-							>
-								<Pencil />
-								Renomear
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								variant="destructive"
-								className="min-h-[44px]"
-								onClick={() => onDelete(file)}
-							>
-								<Trash2 />
-								Apagar
-							</DropdownMenuItem>
+							<FileActions
+								onRename={() => startEdit(false)}
+								onDelete={() => onDelete(file)}
+							/>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					{/* Grade: … 44px em todos os breakpoints; some só em hover:hover até hover/focus-within. */}
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							aria-label={`Ações de ${file.title}`}
+							className="absolute right-1 top-1 hidden size-[44px] select-none items-center justify-center group-data-[view=grid]/lib:inline-flex [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/item:opacity-100 [@media(hover:hover)]:group-focus-within/item:opacity-100"
+						>
+							<span className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/90 text-muted-foreground">
+								<MoreHorizontal className="h-4 w-4" />
+							</span>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="end"
+							finalFocus={false}
+							className="w-44"
+						>
+							<FileActions
+								onRename={() => startEdit(false)}
+								onDelete={() => onDelete(file)}
+							/>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</>
 			) : null}
 		</li>
+	);
+});
+
+function FileActions({
+	onRename,
+	onDelete,
+}: {
+	onRename: () => void;
+	onDelete: () => void;
+}) {
+	return (
+		<>
+			<DropdownMenuItem className="min-h-[44px]" onClick={onRename}>
+				<Pencil />
+				Renomear
+			</DropdownMenuItem>
+			<DropdownMenuItem
+				variant="destructive"
+				className="min-h-[44px]"
+				onClick={onDelete}
+			>
+				<Trash2 />
+				Apagar
+			</DropdownMenuItem>
+		</>
 	);
 }
