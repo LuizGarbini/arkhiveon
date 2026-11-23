@@ -8,16 +8,21 @@ import {
 	Eye,
 	Flag,
 	Flame,
+	FlameKindling,
 	Gem,
+	Landmark,
 	type LucideIcon,
 	Mountain,
 	Pencil,
 	Plus,
 	ScrollText,
+	Skull,
 	Sparkles,
+	Star,
 	Sun,
 	Sword,
 	Swords,
+	Trophy,
 	WandSparkles,
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
@@ -84,7 +89,7 @@ const PATRON_OPTIONS: IconSelectOption[] = [
 	{
 		value: "Coroa / Soberano Real",
 		label: "Coroa / Soberano Real",
-		Icon: Crown,
+		Icon: Landmark,
 	},
 	{
 		value: "Sindicato / Mestre do Crime",
@@ -104,7 +109,7 @@ const PATRON_OPTIONS: IconSelectOption[] = [
 	{
 		value: "Entidade Infernal / Diabo",
 		label: "Entidade Infernal / Diabo",
-		Icon: Flame,
+		Icon: Skull,
 	},
 	{
 		value: "Ordem Religiosa / Templo",
@@ -115,11 +120,15 @@ const PATRON_OPTIONS: IconSelectOption[] = [
 ];
 
 const LINEAGE_OPTIONS: IconSelectOption[] = [
-	{ value: "Linhagem Dracônica", label: "Linhagem Dracônica", Icon: Flame },
+	{
+		value: "Linhagem Dracônica",
+		label: "Linhagem Dracônica",
+		Icon: FlameKindling,
+	},
 	{
 		value: "Sangue Celestial / Divino",
 		label: "Sangue Celestial / Divino",
-		Icon: Sun,
+		Icon: Star,
 	},
 	{
 		value: "Ancestralidade Titan / Gigante",
@@ -129,7 +138,7 @@ const LINEAGE_OPTIONS: IconSelectOption[] = [
 	{
 		value: "Heróis Lendários da Primeira Era",
 		label: "Heróis Lendários da Primeira Era",
-		Icon: Swords,
+		Icon: Trophy,
 	},
 	{
 		value: "Dinastia de Reis Magos",
@@ -148,31 +157,38 @@ function IconSelect({
 	onChange,
 	ariaLabel,
 	options,
+	placeholder,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	ariaLabel: string;
 	options: readonly IconSelectOption[];
+	placeholder?: string;
 }) {
-	const selected =
-		options.find((option) => option.value === value) ?? options[0];
-	const SelectedIcon = selected.Icon;
+	const selected = options.find((option) => option.value === value);
+	const SelectedIcon = selected?.Icon;
 	return (
 		<SelectRoot
-			value={value}
+			value={selected ? value : null}
 			onValueChange={(next) => onChange(String(next ?? ""))}
 		>
 			<SelectTrigger aria-label={ariaLabel}>
 				<SelectValue>
-					{() => (
-						<span className="flex min-w-0 items-center gap-2">
-							<SelectedIcon
-								className="size-4 text-muted-foreground"
-								aria-hidden
-							/>
-							<span className="truncate">{selected.label}</span>
-						</span>
-					)}
+					{() =>
+						selected && SelectedIcon ? (
+							<span className="flex min-w-0 items-center gap-2">
+								<SelectedIcon
+									className="size-4 text-muted-foreground"
+									aria-hidden
+								/>
+								<span className="truncate">{selected.label}</span>
+							</span>
+						) : (
+							<span className="truncate text-muted-foreground">
+								{placeholder ?? "Selecione"}
+							</span>
+						)
+					}
 				</SelectValue>
 			</SelectTrigger>
 			<SelectContent>
@@ -389,11 +405,12 @@ function FactionFormDialog({
 									<IconSelect
 										ariaLabel="Categoria de Organização"
 										value={selectedKind}
-										onChange={(next) =>
+										onChange={(next) => {
 											setValue("kind", next as FactionFormValues["kind"], {
 												shouldDirty: true,
-											})
-										}
+											});
+											setValue("patronType", "", { shouldDirty: true });
+										}}
 										options={KIND_OPTIONS}
 									/>
 								</Field>
@@ -410,6 +427,7 @@ function FactionFormDialog({
 												setValue("patronType", next, { shouldDirty: true })
 											}
 											options={PATRON_OPTIONS}
+											placeholder="Selecione o tipo de patrono"
 										/>
 									</Field>
 								)}
@@ -426,6 +444,7 @@ function FactionFormDialog({
 												setValue("patronType", next, { shouldDirty: true })
 											}
 											options={LINEAGE_OPTIONS}
+											placeholder="Selecione a origem da linhagem"
 										/>
 									</Field>
 								)}
@@ -466,14 +485,14 @@ function FactionFormDialog({
 
 						{selectedKind === "patron" && (
 							<FormSection title="Benefícios & Deveres do Patrono (Mesa D&D)">
-								<Field label="🎁 Recursos & Favores Concedidos aos Jogadores">
+								<Field label="Recursos & Favores Concedidos aos Jogadores">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Acesso a tomos mágicos, advogados da coroa, biblioteca restrita, financiamento de equipamentos..."
 										{...register("perks")}
 									/>
 								</Field>
-								<Field label="📜 Deveres & Exigências dos Jogadores">
+								<Field label="Deveres & Exigências dos Jogadores">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Dízimo de 10% do tesouro, missões secretas mensais, proteção de relíquias..."
@@ -485,14 +504,14 @@ function FactionFormDialog({
 
 						{selectedKind === "legendary_family" && (
 							<FormSection title="Heranças & Tradições da Família Lendária">
-								<Field label="🎁 Recursos, Bens & Heranças da Linhagem">
+								<Field label="Recursos, Bens & Heranças da Linhagem">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Armas de família, terras ancestrais, imunidade diplomática local..."
 										{...register("perks")}
 									/>
 								</Field>
-								<Field label="📜 Código & Tradições da Família">
+								<Field label="Código & Tradições da Família">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Nunca recusar um desafio de honra, proteger a relíquia do fundador..."
@@ -503,7 +522,7 @@ function FactionFormDialog({
 						)}
 
 						<FormSection title="Agenda, Contatos & História">
-							<Field label="🗝️ Contatos & Informantes Principais">
+							<Field label="Contatos & Informantes Principais">
 								<Input
 									placeholder="Ex: Emissário Sir Tristan, Espiã Nyx..."
 									{...register("contacts")}
