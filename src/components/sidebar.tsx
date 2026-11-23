@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
 	BookOpen,
-	Crown,
 	GitFork,
 	Globe2,
 	House,
@@ -13,21 +12,21 @@ import {
 	Palette,
 	Scroll,
 	ScrollText,
-	Sparkles,
 	User,
 	Users,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/lib/auth";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
+import {
+	useRetryStorage,
+	useStorageContext,
+} from "@/lib/storage/use-storage-context";
 import { useRPGStore } from "@/lib/store";
-import { FREE_CREATION_LIMIT } from "@/lib/store/sync-slice";
 import { getFactionsTabConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
 import { CampaignSwitcher } from "./campaign-switcher";
-import { selectDashboardDataStatus } from "./dashboard/dashboard-count-status";
 import { SidebarNav } from "./sidebar-nav";
+import { StorageCard } from "./storage/storage-card";
 
 const mesaItems = [
 	{ to: "/dashboard", label: "Dashboard", Icon: House, shortcut: "Alt+1" },
@@ -48,40 +47,8 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
-	const { isPro, planLoading, planStatus, storageUsedBytes } = useAuth();
-	// Plano real ainda não chegou (ou falhou): nunca mostra "Free" nem 0 MB.
-	const planUnavailable = planStatus === "error";
-	const planUnknown = planLoading || planUnavailable;
-	const usedCreations = useRPGStore((s) => s.globalRecordsCount);
-	const isLoadingRecords = useRPGStore(
-		(s) => selectDashboardDataStatus(s) === "loading",
-	);
-	const recordsError = useRPGStore(
-		(s) => selectDashboardDataStatus(s) === "error",
-	);
-	const recordsLoading = planLoading || isLoadingRecords;
-
-	const usagePercentage = planUnknown
-		? 0
-		: isPro
-			? 100
-			: Math.min(100, Math.round((usedCreations / FREE_CREATION_LIMIT) * 100));
-
-	const storageLimitBytes = isPro ? 2 * 1024 * 1024 * 1024 : 100 * 1024 * 1024;
-	const storageUsagePercentage = planUnknown
-		? 0
-		: Math.min(100, Math.round((storageUsedBytes / storageLimitBytes) * 100));
-	const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(1);
-	const storageLimitMB = isPro ? "2GB" : "100MB";
-
-	const planLabel = isPro ? "Plano Pro" : "Plano Free";
-	const badgeLabel = planLoading
-		? null
-		: planUnavailable
-			? "—"
-			: isPro
-				? "Pro"
-				: "Free";
+	const storage = useStorageContext();
+	const retryStorage = useRetryStorage();
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaigns = useRPGStore((s) => s.campaigns);
@@ -186,145 +153,14 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 					) : null}
 				</div>
 
-				{/* Footer / Pro Card */}
-				<div className="mt-auto space-y-4 p-4">
-					<div
-						className={`overflow-hidden rounded-2xl border border-primary/20 bg-primary/8 ring-1 ring-primary/10 transition-[height,padding,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-							isCollapsed ? "h-10 p-0" : "h-[200px] p-4"
-						}`}
-						title={isCollapsed ? planLabel : undefined}
-					>
-						<div
-							className={`flex items-center gap-2 transition-[justify-content] duration-300 ${
-								isCollapsed ? "h-full justify-center" : "justify-between"
-							}`}
-						>
-							<div className="flex items-center gap-2 text-[11px] font-bold text-primary">
-								{isPro ? (
-									<Crown className="h-3.5 w-3.5 shrink-0" />
-								) : (
-									<Sparkles className="h-3.5 w-3.5 shrink-0" />
-								)}
-								<span
-									className={`whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-										isCollapsed
-											? "max-w-0 -translate-x-2 opacity-0"
-											: "max-w-24 translate-x-0 opacity-100"
-									}`}
-								>
-									{planLoading ? (
-										<span className="inline-flex items-center gap-1">
-											Plano
-											<Skeleton
-												role="status"
-												aria-label="Carregando plano"
-												className="dashboard-skeleton inline-block h-[0.7em] w-7 align-middle"
-											/>
-										</span>
-									) : planUnavailable ? (
-										<span data-testid="plan-unavailable">
-											<span aria-hidden="true">Plano —</span>
-											<span className="sr-only">Plano indisponível</span>
-										</span>
-									) : (
-										planLabel
-									)}
-								</span>
-							</div>
-							<span
-								className={`rounded-full border border-border/60 bg-background/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-									isCollapsed
-										? "max-w-0 translate-x-2 opacity-0"
-										: "max-w-16 translate-x-0 opacity-100"
-								}`}
-							>
-								{badgeLabel ?? (
-									<Skeleton className="dashboard-skeleton inline-block h-[0.7em] w-5 align-middle" />
-								)}
-							</span>
-						</div>
-
-						<div
-							className={`transition-[max-height,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-								isCollapsed
-									? "max-h-0 translate-y-2 opacity-0"
-									: "max-h-[160px] translate-y-0 opacity-100"
-							}`}
-						>
-							<div className="mt-3">
-								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
-									<span>Registros</span>
-									{recordsLoading ? (
-										<Skeleton
-											role="status"
-											aria-label="Carregando registros"
-											className="dashboard-skeleton h-3 w-10"
-										/>
-									) : recordsError ? (
-										<span data-testid="unavailable-value">
-											<span aria-hidden="true">—</span>
-											<span className="sr-only">Registros indisponíveis</span>
-										</span>
-									) : (
-										<span>
-											{usedCreations} / {isPro ? "∞" : FREE_CREATION_LIMIT}
-										</span>
-									)}
-								</div>
-								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
-									<div
-										className="h-full rounded-full bg-linear-to-r from-primary to-fuchsia-500 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-										style={{ width: `${usagePercentage}%` }}
-									/>
-								</div>
-							</div>
-
-							<div className="mt-3">
-								<div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
-									<span>Arquivos</span>
-									{planLoading ? (
-										<Skeleton
-											role="status"
-											aria-label="Carregando arquivos"
-											className="dashboard-skeleton h-3 w-14"
-										/>
-									) : planUnavailable ? (
-										<span data-testid="storage-unavailable">
-											<span aria-hidden="true">—</span>
-											<span className="sr-only">Arquivos indisponíveis</span>
-										</span>
-									) : (
-										<span>
-											{storageUsedMB}MB / {storageLimitMB}
-										</span>
-									)}
-								</div>
-								<div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70 ring-1 ring-border/60">
-									<div
-										className={`h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-											storageUsagePercentage > 90
-												? "bg-rose-500"
-												: "bg-linear-to-r from-sky-400 to-primary"
-										}`}
-										style={{ width: `${storageUsagePercentage}%` }}
-									/>
-								</div>
-							</div>
-
-							<Link
-								to="/billing"
-								search={{}}
-								className="mt-4 block w-full rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-center text-[11px] font-bold text-primary transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary/20 active:scale-[0.98]"
-								onClick={onItemClick}
-							>
-								{planUnknown
-									? "Ver assinatura"
-									: isPro
-										? "Pro ativo"
-										: "Fazer Upgrade"}
-							</Link>
-						</div>
-					</div>
+				{/* Card compacto de cota (U1). */}
+				<div className={cn("mt-auto", isCollapsed ? "p-2" : "px-3 pb-3")}>
+					<StorageCard
+						context={storage}
+						isCollapsed={isCollapsed}
+						onNavigate={onItemClick}
+						onRetry={retryStorage}
+					/>
 				</div>
 			</div>
 		</aside>

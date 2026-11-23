@@ -314,7 +314,15 @@ function ProtectedLayout() {
 				)}
 			>
 				<Sidebar
-					isOpen={true}
+					isOpen={
+						!(
+							typeof window !== "undefined" &&
+							(window.location.hostname === "localhost" ||
+								window.location.hostname === "127.0.0.1") &&
+							window.localStorage.getItem("arkhiveon_preview_sidebar") ===
+								"collapsed"
+						)
+					}
 					onItemClick={() => {
 						if (window.innerWidth < 768) {
 							setIsSidebarOpen(false);

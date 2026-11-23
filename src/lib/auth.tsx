@@ -2,6 +2,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import {
 	createContext,
 	type ReactNode,
+	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
@@ -28,10 +29,13 @@ interface AuthContextValue {
 	loading: boolean;
 	plan: UserPlan;
 	storageUsedBytes: number;
+	overLimitSince: string | null;
 	isPro: boolean;
 	planLoading: boolean;
 	/** "error": o plano real não chegou; a UI mostra "—", nunca "Free". */
 	planStatus: PlanStatus;
+	/** Refaz a leitura de user_plans. Chamado no clique, sem useEffect. */
+	reloadPlan: () => void;
 	signIn: (email: string, password: string) => Promise<string | null>;
 	signUp: (
 		name: string,
@@ -62,9 +66,11 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	loading: true,
 	plan: "free",
 	storageUsedBytes: 0,
+	overLimitSince: null,
 	isPro: false,
 	planLoading: false,
 	planStatus: "ready",
+	reloadPlan: () => {},
 	signIn: async () => "Supabase não está configurado.",
 	signUp: async () => "Supabase não está configurado.",
 	signOut: async () => null,
@@ -72,6 +78,54 @@ const FALLBACK_AUTH_VALUE: AuthContextValue = {
 	updatePassword: async () => null,
 	signInWithOAuth: async () => null,
 };
+
+type PlanStateSetter = (next: PlanState) => void;
+
+/** Só no preview local: injeta o plano do card (Supabase falso). */
+function applyPreviewPlan(userId: string, setPlanState: PlanStateSetter) {
+	if (typeof window === "undefined") return;
+	const raw = window.localStorage.getItem("arkhiveon_preview_storage");
+	if (!raw) {
+		setPlanState({
+			userId,
+			status: "ready",
+			plan: "free",
+			storageUsedBytes: 0,
+			overLimitSince: null,
+		});
+		return;
+	}
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object") return;
+		const row = parsed as Record<string, unknown>;
+		const status =
+			row.status === "error" ||
+			row.status === "loading" ||
+			row.status === "ready"
+				? row.status
+				: "ready";
+		const label = row.label;
+		const plan = label === "pro" || label === "guest_pro" ? "pro" : "free";
+		const usedBytes = Number(row.usedBytes);
+		setPlanState({
+			userId,
+			status,
+			plan,
+			storageUsedBytes: Number.isFinite(usedBytes) ? usedBytes : 0,
+			overLimitSince:
+				typeof row.overLimitSince === "string" ? row.overLimitSince : null,
+		});
+	} catch {
+		setPlanState({
+			userId,
+			status: "ready",
+			plan: "free",
+			storageUsedBytes: 0,
+			overLimitSince: null,
+		});
+	}
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const existingContext = useContext(AuthContext);
@@ -92,6 +146,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 		status: "ready",
 		plan: "free",
 		storageUsedBytes: 0,
+		overLimitSince: null,
 	});
 	const baseRetryNonce = useRPGStore((s) => s.baseRetryNonce);
 
@@ -122,6 +177,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				refresh_token: "preview-refresh",
 				user: mockUser,
 			} as unknown as Session);
+			applyPreviewPlan(mockUser.id, setPlanState);
 			setLoading(false);
 			return;
 		}
@@ -159,6 +215,13 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 	}, [supabase]);
 
 	useEffect(() => {
+		const isLocalPreview =
+			typeof window !== "undefined" &&
+			(window.location.hostname === "localhost" ||
+				window.location.hostname === "127.0.0.1") &&
+			window.localStorage.getItem("arkhiveon_preview_auth") === "true";
+		if (isLocalPreview) return;
+
 		const userId = session?.user.id;
 		if (!supabase || !userId) {
 			setPlanState({
@@ -166,6 +229,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				status: "ready",
 				plan: "free",
 				storageUsedBytes: 0,
+				overLimitSince: null,
 			});
 			return;
 		}
@@ -205,7 +269,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				},
 				(payload) => {
 					if (payload.eventType === "DELETE") {
-						applyRow({ plan: "free", storageUsedBytes: 0 });
+						applyRow({
+							plan: "free",
+							storageUsedBytes: 0,
+							overLimitSince: null,
+						});
 						return;
 					}
 					applyRow(planFromRealtimeRow(payload.new));
@@ -231,6 +299,20 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			? "loading"
 			: planState.status;
 
+	const reloadPlan = useCallback(() => {
+		const userId = session?.user.id;
+		if (!supabase || !userId) return;
+		setPlanState((prev) => ({ ...prev, userId, status: "loading" }));
+		void loadCurrentUserPlan(userId)
+			.then((nextPlanData) => {
+				setPlanState({ userId, status: "ready", ...nextPlanData });
+				useRPGStore.getState().setUserPlan(nextPlanData.plan);
+			})
+			.catch(() => {
+				setPlanState((prev) => ({ ...prev, userId, status: "error" }));
+			});
+	}, [session?.user.id, supabase]);
+
 	const value = useMemo<AuthContextValue>(
 		() => ({
 			user: session?.user ?? null,
@@ -238,9 +320,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 			loading,
 			plan: planState.plan,
 			storageUsedBytes: planState.storageUsedBytes,
+			overLimitSince: planState.overLimitSince,
 			isPro: planState.plan === "pro",
 			planLoading: planStatus === "loading",
 			planStatus,
+			reloadPlan,
 			signIn: async (email, password) => {
 				if (!supabase) return "Supabase não está configurado.";
 				suppressAutoSignInRef.current = false;
@@ -292,7 +376,7 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 				return error?.message ?? null;
 			},
 		}),
-		[loading, planState, planStatus, session, supabase],
+		[loading, planState, planStatus, reloadPlan, session, supabase],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

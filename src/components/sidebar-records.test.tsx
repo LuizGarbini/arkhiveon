@@ -4,26 +4,45 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { Flag } from "lucide-react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { StorageContext } from "@/lib/storage/storage-context";
 import { useRPGStore } from "@/lib/store";
 import { getFactionsTabConfig } from "@/lib/systems";
 import { Sidebar } from "./sidebar";
 
-const auth = vi.hoisted(() => ({
-	planLoading: false,
-	planStatus: "ready" as "loading" | "ready" | "error",
-	isPro: false,
+const storage = vi.hoisted(() => ({
+	context: {
+		status: "ready",
+		label: "free",
+		usedBytes: 38_400_000,
+		limitBytes: 100_000_000,
+		usedPdfs: null,
+		usedImages: null,
+		overLimitSince: null,
+		payerName: null,
+	} as StorageContext,
 }));
 
-vi.mock("@/lib/auth", () => ({
-	useAuth: () => ({
-		isPro: auth.isPro,
-		planLoading: auth.planLoading,
-		planStatus: auth.planStatus,
-		storageUsedBytes: 0,
-	}),
+vi.mock("@/lib/storage/use-storage-context", () => ({
+	useStorageContext: () => storage.context,
+	useRetryStorage: () => () => {},
 }));
 vi.mock("@tanstack/react-router", () => ({
-	Link: ({ children }: { children?: ReactNode }) => <a href="/">{children}</a>,
+	Link: ({
+		children,
+		to,
+		...props
+	}: {
+		children?: ReactNode;
+		to?: string;
+		className?: string;
+		onClick?: () => void;
+		"aria-label"?: string;
+		title?: string;
+	}) => (
+		<a href={to ?? "/"} {...props}>
+			{children}
+		</a>
+	),
 }));
 vi.mock("./campaign-switcher", () => ({ CampaignSwitcher: () => null }));
 vi.mock("./sidebar-nav", () => ({
@@ -49,137 +68,66 @@ vi.mock("@/lib/library/use-library-pilot", () => ({
 	useLibraryPilot: () => false,
 }));
 
-function renderWith(state: {
-	isLoadingRemote: boolean;
-	hasLoadedCampaigns: boolean;
-	planLoading?: boolean;
-	awaitingMesaData?: boolean;
-	loadError?: string;
-}) {
-	auth.planLoading = state.planLoading ?? false;
-	auth.planStatus = state.planLoading ? "loading" : "ready";
-	auth.isPro = false;
+function baseStore() {
 	useRPGStore.setState({
-		isLoadingRemote: state.isLoadingRemote,
-		hasLoadedCampaigns: state.hasLoadedCampaigns,
-		remoteLoadError: state.loadError ?? null,
+		isLoadingRemote: false,
+		hasLoadedCampaigns: true,
+		remoteLoadError: null,
+		baseLoadError: null,
+		campaignLoadStatus: "ready",
 		activeCampaignId: "camp-1",
-		remoteLoadedCampaignId: state.awaitingMesaData ? null : "camp-1",
+		remoteLoadedCampaignId: "camp-1",
 		globalRecordsCount: 7,
 	});
-	render(<Sidebar isOpen />);
 }
 
-describe("Sidebar: Registros", () => {
+describe("Sidebar: card de cota (U1)", () => {
 	afterEach(cleanup);
 
-	it("mostra skeleton enquanto os dados carregam, sem 0/20", () => {
-		renderWith({ isLoadingRemote: true, hasLoadedCampaigns: true });
+	it("sai o bloco Registros/Arquivos", () => {
+		storage.context = {
+			...storage.context,
+			status: "ready",
+			label: "free",
+			usedBytes: 38_400_000,
+		};
+		baseStore();
+		render(<Sidebar isOpen />);
+		expect(screen.queryByText("Registros")).toBeNull();
+		expect(screen.queryByText("Arquivos")).toBeNull();
+		expect(screen.queryByText("Fazer Upgrade")).toBeNull();
+		expect(screen.getByText("Free")).toBeTruthy();
+		expect(screen.getByText("38,4 / 100 MB")).toBeTruthy();
+	});
+
+	it("plano carregando: esqueleto, nunca Free nem 0 MB", () => {
+		storage.context = { ...storage.context, status: "loading" };
+		baseStore();
+		render(<Sidebar isOpen />);
 		expect(
-			screen.getByRole("status", { name: "Carregando registros" }),
+			screen.getByRole("status", { name: "Carregando consumo" }),
 		).toBeTruthy();
-		expect(screen.queryByText(/7 \//)).toBeNull();
+		expect(screen.queryByText(/Free/i)).toBeNull();
+		expect(screen.queryByText(/0 MB/)).toBeNull();
+		expect(screen.queryByText(/0,0/)).toBeNull();
 	});
 
-	it("mostra skeleton enquanto o plano carrega", () => {
-		renderWith({
-			isLoadingRemote: false,
-			hasLoadedCampaigns: true,
-			planLoading: true,
-		});
-		expect(
-			screen.getByRole("status", { name: "Carregando registros" }),
-		).toBeTruthy();
-	});
-
-	it("após reload, antes da carga começar: skeleton, não 0", () => {
-		renderWith({
-			isLoadingRemote: false,
-			hasLoadedCampaigns: true,
-			awaitingMesaData: true,
-		});
-		expect(
-			screen.getByRole("status", { name: "Carregando registros" }),
-		).toBeTruthy();
-	});
-
-	it("falha na carga: mostra —, sem 0/20 e sem skeleton", () => {
-		renderWith({
-			isLoadingRemote: false,
-			hasLoadedCampaigns: true,
-			awaitingMesaData: true,
-			loadError: "falhou",
-		});
-		expect(screen.getByText("Registros indisponíveis")).toBeTruthy();
-		expect(screen.getByTestId("unavailable-value").textContent).toContain("—");
-		expect(screen.queryByText(/\d+ \/ (20|∞)/)).toBeNull();
-		expect(
-			screen.queryByRole("status", { name: "Carregando registros" }),
-		).toBeNull();
-	});
-
-	it("mostra a contagem quando terminou de carregar", () => {
-		renderWith({ isLoadingRemote: false, hasLoadedCampaigns: true });
-		expect(
-			screen.queryByRole("status", { name: "Carregando registros" }),
-		).toBeNull();
-		expect(screen.getByText("7 / 20")).toBeTruthy();
+	it("plano falhou: Consumo indisponível, nunca Free nem 0 MB", () => {
+		storage.context = { ...storage.context, status: "error" };
+		baseStore();
+		render(<Sidebar isOpen />);
+		expect(screen.getByText("Consumo")).toBeTruthy();
+		expect(screen.getByText("indisponível")).toBeTruthy();
+		expect(screen.queryByText(/Free/i)).toBeNull();
+		expect(screen.queryByText(/0 MB/)).toBeNull();
 	});
 });
 
-describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
+describe("Sidebar: rótulos do mundo", () => {
 	afterEach(cleanup);
 
-	function renderPlan(planStatus: "loading" | "ready" | "error") {
-		auth.planLoading = planStatus === "loading";
-		auth.planStatus = planStatus;
-		auth.isPro = false;
-		useRPGStore.setState({
-			isLoadingRemote: false,
-			hasLoadedCampaigns: true,
-			remoteLoadError: null,
-			baseLoadError: null,
-			campaignLoadStatus: "ready",
-			activeCampaignId: "camp-1",
-			remoteLoadedCampaignId: "camp-1",
-		});
-		render(<Sidebar isOpen />);
-	}
-
-	it("plano falhou (user_plans): —, nunca 'Plano Free' nem 0.0MB", () => {
-		renderPlan("error");
-		expect(screen.queryByText("Plano Free")).toBeNull();
-		expect(screen.queryByText("Free")).toBeNull();
-		expect(screen.queryByText(/0\.0MB/)).toBeNull();
-		expect(screen.queryByText("Fazer Upgrade")).toBeNull();
-		expect(screen.getByText("Plano indisponível")).toBeTruthy();
-		expect(screen.getByText("Arquivos indisponíveis")).toBeTruthy();
-	});
-
-	it("plano carregando: skeleton em Arquivos, sem Free", () => {
-		renderPlan("loading");
-		expect(screen.queryByText("Plano Free")).toBeNull();
-		expect(screen.queryByText(/0\.0MB/)).toBeNull();
-		expect(
-			screen.getByRole("status", { name: "Carregando arquivos" }),
-		).toBeTruthy();
-		// Título "Plano" fica fixo; só o valor vira barra curta.
-		expect(screen.getByText("Plano")).toBeTruthy();
-		expect(
-			screen.getByRole("status", { name: "Carregando plano" }),
-		).toBeTruthy();
-		expect(screen.queryByText("Verificando")).toBeNull();
-	});
-
-	it("plano real chegou: mostra o valor", () => {
-		renderPlan("ready");
-		expect(screen.getByText("Plano Free")).toBeTruthy();
-		expect(screen.getByText(/0\.0MB \/ 100MB/)).toBeTruthy();
-	});
-
 	it("campanhas ainda carregando: rótulo do mundo pendente, sem 'Facções & Ordens'", () => {
-		auth.planStatus = "ready";
-		auth.planLoading = false;
+		storage.context = { ...storage.context, status: "ready", label: "free" };
 		useRPGStore.setState({
 			campaignLoadStatus: "loading",
 			hasLoadedCampaigns: false,
@@ -203,8 +151,7 @@ describe("Sidebar: plano e rótulos do mundo sem valor padrão falso", () => {
 	});
 
 	it("erro 500: item da bandeira entre NPCs e Mural mostra o nome", () => {
-		auth.planStatus = "ready";
-		auth.planLoading = false;
+		storage.context = { ...storage.context, status: "ready", label: "free" };
 		const fallback = getFactionsTabConfig(undefined);
 		expect(fallback.Icon).toBe(Flag);
 		useRPGStore.setState({
