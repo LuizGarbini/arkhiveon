@@ -17,10 +17,7 @@ import {
 } from "lucide-react";
 import { isDesignSystemEnabled } from "@/lib/feature-flags";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
-import {
-	useRetryStorage,
-	useStorageContext,
-} from "@/lib/storage/use-storage-context";
+import { useStorageContext } from "@/lib/storage/use-storage-context";
 import { useRPGStore } from "@/lib/store";
 import { getFactionsTabConfig } from "@/lib/systems";
 import { cn } from "@/lib/utils";
@@ -48,7 +45,6 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 	const isCollapsed = !isOpen;
 	const storage = useStorageContext();
-	const retryStorage = useRetryStorage();
 
 	const activeCampaignId = useRPGStore((s) => s.activeCampaignId);
 	const campaigns = useRPGStore((s) => s.campaigns);
@@ -154,12 +150,11 @@ export function Sidebar({ isOpen, onItemClick }: SidebarProps) {
 				</div>
 
 				{/* Card compacto de cota (U1). */}
-				<div className={cn("mt-auto", isCollapsed ? "p-2" : "px-3 pb-3")}>
+				<div className={cn("mt-auto", isCollapsed ? "p-2" : "px-3 py-2")}>
 					<StorageCard
 						context={storage}
 						isCollapsed={isCollapsed}
 						onNavigate={onItemClick}
-						onRetry={retryStorage}
 					/>
 				</div>
 			</div>

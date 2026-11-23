@@ -55,19 +55,14 @@ describe("StorageCard", () => {
 		render(<StorageCard context={ready({ status: "error" })} />);
 		expect(screen.getByText("Consumo")).toBeTruthy();
 		expect(screen.getByText("indisponível")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
+		expect(
+			screen.getByRole("link", {
+				name: "Consumo indisponível. Abrir consumo.",
+			}),
+		).toBeTruthy();
 		expect(screen.queryByText(/Free/i)).toBeNull();
 		expect(screen.queryByText(/0 MB/)).toBeNull();
-	});
-
-	it("erro: Tentar de novo refaz a leitura no clique", () => {
-		const onRetry = vi.fn();
-		render(
-			<StorageCard context={ready({ status: "error" })} onRetry={onRetry} />,
-		);
-		const button = screen.getByRole("button", { name: "Tentar de novo" });
-		expect(button).toBeTruthy();
-		button.click();
-		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 
 	it("Free pronto mostra o uso e o limite de 100 MB", () => {
@@ -136,7 +131,8 @@ describe("StorageCard", () => {
 			expect(el.className).not.toMatch(/truncate|ellipsis|text-clip/);
 		}
 		const row = container.querySelector("[data-label]")?.parentElement;
-		expect(row?.className).toMatch(/flex-wrap/);
+		expect(row?.className).not.toMatch(/flex-wrap/);
+		expect(row?.className).toMatch(/flex-nowrap/);
 	});
 
 	it("recolhido: só o ícone, alvo 44px, sem texto de plano", () => {

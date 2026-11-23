@@ -18,7 +18,9 @@ async function main() {
 						? ["scripts/test-vtt-dice-button.cjs"]
 						: scenario === "storage-card"
 							? ["scripts/preview-storage-card.cjs"]
-							: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
+							: scenario === "u1-v2r2-fit"
+								? ["scripts/preview-u1-v2r2-fit.cjs"]
+								: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
 		for (const script of scripts) {
 			await new Promise<void>((resolve, reject) => {
 				const child = spawn(process.execPath, [script], {
@@ -51,7 +53,9 @@ async function main() {
 						? `Preview de dados validado: ${process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao"}`
 						: scenario === "storage-card"
 							? `Preview do card de cota validado: ${process.env.STORAGE_CARD_PREVIEW_OUT || "/workspace/arkhiveon/previews/plano-pro-cota/u1-card"}`
-							: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
+							: scenario === "u1-v2r2-fit"
+								? `Medida V2 r2 (Convidado Pro): ${process.env.U1_V2R2_OUT || "/workspace/arkhiveon/previews/plano-pro-cota/u1-card-v2r2"}`
+								: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
 		);
 	} finally {
 		await new Promise<void>((resolve, reject) =>
