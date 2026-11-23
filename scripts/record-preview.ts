@@ -18,8 +18,12 @@ async function main() {
 						? ["scripts/test-vtt-dice-button.cjs"]
 						: scenario === "storage-card"
 							? ["scripts/preview-storage-card.cjs"]
-							: scenario === "fix-ca-armadura"
-								? ["scripts/preview-fix-ca-armadura.cjs"]
+							: scenario === "u1-v2r2-fit"
+								? ["scripts/preview-u1-v2r2-fit.cjs"]
+								: scenario === "u1-v2r2"
+									? ["scripts/preview-u1-v2r2.cjs"]
+									: scenario === "fix-ca-armadura"
+										? ["scripts/preview-fix-ca-armadura.cjs"]
 								: ["scripts/test-vtt.cjs", "scripts/test-vtt-review.cjs"];
 		for (const script of scripts) {
 			await new Promise<void>((resolve, reject) => {
@@ -53,8 +57,12 @@ async function main() {
 						? `Preview de dados validado: ${process.env.VTT_DICE_OUTPUT || "docs/previews/vtt-dados-botao"}`
 						: scenario === "storage-card"
 							? `Preview do card de cota validado: ${process.env.STORAGE_CARD_PREVIEW_OUT || "/workspace/arkhiveon/previews/plano-pro-cota/u1-card"}`
-							: scenario === "fix-ca-armadura"
-								? `Preview do cabeçalho (CA): ${process.env.FIX_CA_PREVIEW_OUT || "/workspace/arkhiveon/previews/ficha/fix-ca-armadura-base-zero"}`
+							: scenario === "u1-v2r2-fit"
+								? `Medida V2 r2 (Convidado Pro): ${process.env.U1_V2R2_OUT || "/workspace/arkhiveon/previews/plano-pro-cota/u1-card-v2r2"}`
+								: scenario === "u1-v2r2"
+									? `Folha V2 r2 opção B: ${process.env.U1_V2R2_OUT || "/workspace/arkhiveon/previews/plano-pro-cota/u1-card-v2r2"}`
+									: scenario === "fix-ca-armadura"
+										? `Preview do cabeçalho (CA): ${process.env.FIX_CA_PREVIEW_OUT || "/workspace/arkhiveon/previews/ficha/fix-ca-armadura-base-zero"}`
 								: "Preview validado: docs/previews/latest-preview.png, latest-preview.webm, vtt-mobile-preview.webm, vtt-review-preview.webm e vtt-review-mobile.webm",
 		);
 	} finally {
