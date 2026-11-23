@@ -11,12 +11,12 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
-		id: "v1.6.191-biblioteca-grade",
-		version: "1.6.191",
+		id: "v1.6.192-biblioteca-grade",
+		version: "1.6.192",
 		date: "23/11/2026",
 		title: "A Biblioteca ganha visão em grade",
 		description:
-			"Na Biblioteca você alterna entre Lista e Grade. Se a campanha já tem alguma capa pronta, a Grade abre por padrão; senão, abre em Lista. A sua escolha fica lembrada neste navegador. Enquanto a capa carrega aparece um esqueleto; se ainda não existir ou tiver falhado, o card mostra o ícone de PDF. A prévia ao passar o mouse na Lista entra numa próxima fatia.",
+			"Na Biblioteca você alterna entre Lista e Grade. Se a campanha já tem alguma capa pronta, a Grade abre por padrão; senão, abre em Lista. A sua escolha fica lembrada neste navegador. O título da capa corta em duas linhas, o anel de foco aparece por fora da capa, o botão de ações e o seletor Lista/Grade têm 44 pixels, e o esqueleto de carregamento já é o da vista que vai abrir — sem um flash da Lista antes da Grade. A prévia ao passar o mouse na Lista entra numa próxima fatia.",
 		bullets: [],
 	},
 	{

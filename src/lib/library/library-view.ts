@@ -60,15 +60,17 @@ export function writeStoredLibraryView(
 }
 
 /**
- * Preferência salva > padrão. Enquanto os arquivos não carregaram e não
- * há escolha salva, permanece Lista (evita flash de Grade vazia).
+ * Preferência salva (lida de forma síncrona do localStorage) > padrão
+ * quando os arquivos já chegaram. Sem preferência e com a lista ainda
+ * carregando, devolve null: a tela não assume Lista nem Grade, para o
+ * skeleton não piscar a vista errada. Sem migração e sem useEffect.
  */
 export function resolveLibraryViewMode(input: {
 	stored: LibraryViewMode | null;
 	filesLoaded: boolean;
 	files: readonly LibraryViewFile[];
-}): LibraryViewMode {
+}): LibraryViewMode | null {
 	if (input.stored) return input.stored;
-	if (!input.filesLoaded) return "list";
+	if (!input.filesLoaded) return null;
 	return defaultLibraryViewMode(input.files);
 }

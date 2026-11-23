@@ -264,37 +264,46 @@ export const LibraryFileRow = memo(function LibraryFileRow({
 			>
 				<div
 					className={cn(
-						"relative hidden aspect-[3/4] w-full overflow-hidden rounded-xl border border-border/70 bg-muted transition-[border-color] duration-150",
-						"[@media(hover:hover)]:group-hover/item:border-primary/35",
+						"relative hidden aspect-[3/4] w-full rounded-xl",
 						"group-data-[view=grid]/lib:block",
-						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-2 group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-primary/60",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-primary/60",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-offset-2",
+						"group-data-[view=grid]/lib:group-has-[:focus-visible]/item:ring-offset-background",
 					)}
 				>
-					{showImage ? (
-						<img
-							src={thumbUrl}
-							alt=""
-							width={400}
-							height={600}
-							loading="lazy"
-							decoding="async"
-							className="absolute inset-0 size-full object-cover object-top"
-							onError={() => setBrokenUrl(thumbUrl ?? null)}
-						/>
-					) : showCoverSkeleton ? (
-						<Skeleton className="absolute inset-0 rounded-none" />
-					) : (
-						<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
-							<FileText
-								className="size-8 text-muted-foreground"
-								strokeWidth={1.8}
-								aria-hidden
+					<div
+						className={cn(
+							"absolute inset-0 overflow-hidden rounded-xl border border-border/70 bg-muted transition-[border-color] duration-150",
+							"[@media(hover:hover)]:group-hover/item:border-primary/35",
+						)}
+					>
+						{showImage ? (
+							<img
+								src={thumbUrl}
+								alt=""
+								width={400}
+								height={600}
+								loading="lazy"
+								decoding="async"
+								className="absolute inset-0 size-full object-cover object-top"
+								onError={() => setBrokenUrl(thumbUrl ?? null)}
 							/>
-							<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-								PDF
-							</span>
-						</div>
-					)}
+						) : showCoverSkeleton ? (
+							<Skeleton className="absolute inset-0 rounded-none" />
+						) : (
+							<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+								<FileText
+									className="size-8 text-muted-foreground"
+									strokeWidth={1.8}
+									aria-hidden
+								/>
+								<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+									PDF
+								</span>
+							</div>
+						)}
+					</div>
 				</div>
 				<FileText
 					className="h-4 w-4 shrink-0 text-muted-foreground group-data-[view=grid]/lib:hidden"
@@ -315,7 +324,7 @@ export const LibraryFileRow = memo(function LibraryFileRow({
 				<span className="hidden w-28 shrink-0 pl-5 text-[12px] tabular-nums text-muted-foreground sm:block group-data-[view=grid]/lib:hidden">
 					{date}
 				</span>
-				<p className="mt-2 hidden line-clamp-2 break-words text-[13px] font-medium leading-snug text-foreground [overflow-wrap:anywhere] group-data-[view=grid]/lib:block">
+				<p className="mt-2 hidden break-words text-[13px] font-medium leading-snug text-foreground [overflow-wrap:anywhere] group-data-[view=grid]/lib:line-clamp-2">
 					{file.title}
 				</p>
 				<p className="mt-0.5 hidden text-[11px] tabular-nums text-muted-foreground group-data-[view=grid]/lib:block">
@@ -366,11 +375,11 @@ export const LibraryFileRow = memo(function LibraryFileRow({
 							/>
 						</DropdownMenuContent>
 					</DropdownMenu>
-					{/* Grade: … no canto da capa (44px no toque; no desktop some até o hover/foco). */}
+					{/* Grade: … 44px em todos os breakpoints; some só em hover:hover até hover/focus-within. */}
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							aria-label={`Ações de ${file.title}`}
-							className="absolute right-1 top-1 hidden size-11 select-none items-center justify-center sm:size-9 group-data-[view=grid]/lib:inline-flex sm:opacity-0 sm:group-hover/item:opacity-100 sm:group-focus-within/item:opacity-100"
+							className="absolute right-1 top-1 hidden size-[44px] select-none items-center justify-center group-data-[view=grid]/lib:inline-flex [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/item:opacity-100 [@media(hover:hover)]:group-focus-within/item:opacity-100"
 						>
 							<span className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/90 text-muted-foreground">
 								<MoreHorizontal className="h-4 w-4" />

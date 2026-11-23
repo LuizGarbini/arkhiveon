@@ -121,4 +121,53 @@ describe("LibraryFileRow capa", () => {
 		expect(img?.getAttribute("decoding")).toBe("async");
 		expect(screen.queryByText("PDF")).toBeNull();
 	});
+
+	function renderGridRow(fileOverride?: Partial<LibraryFile>) {
+		return render(
+			<ul data-view="grid" className="group/lib">
+				<LibraryFileRow
+					file={{ ...ready, ...fileOverride }}
+					canManage
+					onDelete={() => {}}
+					onRename={async () => {}}
+					thumbUrl="https://example.test/cover.webp"
+				/>
+			</ul>,
+		);
+	}
+
+	it("na grade o título usa line-clamp-2 e o menu tem 44px", () => {
+		renderGridRow({
+			title: "vampiro-a-mascara-edicao-de-20o-aniversario-biblioteca-elfica",
+		});
+		const title = screen
+			.getAllByText(
+				"vampiro-a-mascara-edicao-de-20o-aniversario-biblioteca-elfica",
+			)
+			.find((node) => node.className.includes("line-clamp-2"));
+		expect(title?.className).toContain("line-clamp-2");
+		expect(title?.className).not.toContain("group-data-[view=grid]/lib:block");
+		const menu = screen
+			.getAllByRole("button", {
+				name: "Ações de vampiro-a-mascara-edicao-de-20o-aniversario-biblioteca-elfica",
+			})
+			.find((node) =>
+				node.className.includes("[@media(hover:hover)]:opacity-0"),
+			);
+		expect(menu?.className).toContain("size-[44px]");
+		expect(menu?.className).toContain("[@media(hover:hover)]:opacity-0");
+		expect(menu?.className).toContain(
+			"[@media(hover:hover)]:group-focus-within/item:opacity-100",
+		);
+	});
+
+	it("a capa da grade reserva o anel de foco com offset do fundo", () => {
+		renderGridRow();
+		const cover = document.querySelector(
+			"a[aria-label='Abrir Bestiário'] > div",
+		);
+		expect(cover?.className).toContain("ring-offset-background");
+		expect(cover?.className).toContain("ring-offset-2");
+		expect(cover?.className).not.toContain("overflow-hidden");
+	});
 });

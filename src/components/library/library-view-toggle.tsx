@@ -12,7 +12,7 @@ const OPTIONS: {
 ];
 
 interface LibraryViewToggleProps {
-	value: LibraryViewMode;
+	value: LibraryViewMode | null;
 	onChange: (view: LibraryViewMode) => void;
 }
 
@@ -35,7 +35,7 @@ export function LibraryViewToggle({ value, onChange }: LibraryViewToggleProps) {
 						aria-label={item.label}
 						onClick={() => onChange(item.id)}
 						className={cn(
-							"inline-flex h-[44px] w-[44px] shrink-0 select-none items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold transition-[background-color,border-color,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-10 sm:w-auto sm:px-3.5",
+							"inline-flex h-[44px] min-h-[44px] w-[44px] shrink-0 select-none items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold transition-[background-color,border-color,color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:w-auto sm:px-3.5",
 							isOn
 								? "border-primary/35 bg-primary/12 text-primary"
 								: "border-transparent bg-background/55 text-muted-foreground [@media(hover:hover)]:hover:text-foreground",

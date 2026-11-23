@@ -44,7 +44,7 @@ describe("critério de padrão Lista/Grade", () => {
 		expect(defaultLibraryViewMode([{ thumbStatus: "ready" }])).toBe("grid");
 	});
 
-	it("preferência salva prevalece; sem ela, Lista até carregar", () => {
+	it("preferência salva prevalece; sem ela, não assume vista até carregar", () => {
 		const files = [{ thumbStatus: "ready" as const }];
 		expect(
 			resolveLibraryViewMode({
@@ -52,7 +52,7 @@ describe("critério de padrão Lista/Grade", () => {
 				filesLoaded: false,
 				files,
 			}),
-		).toBe("list");
+		).toBeNull();
 		expect(
 			resolveLibraryViewMode({
 				stored: null,

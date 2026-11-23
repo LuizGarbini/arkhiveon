@@ -75,19 +75,41 @@ function LibraryRoute() {
 	const pilot = useLibraryPilot(activeCampaignId);
 	// Fora do piloto: volta pra home da campanha sem mensagem.
 	if (pilot === false) return <Navigate to="/dashboard" replace />;
-	if (pilot === null || !activeCampaignId) return <LibrarySkeleton />;
+	if (pilot === null || !activeCampaignId) {
+		const stored = activeCampaignId
+			? readStoredLibraryView(activeCampaignId)
+			: null;
+		return <LibraryChromeSkeleton view={stored} />;
+	}
 	return <LibraryPage key={activeCampaignId} campaignId={activeCampaignId} />;
 }
 
-function LibrarySkeleton() {
+function LibraryChromeSkeleton({ view }: { view: LibraryViewMode | null }) {
 	return (
 		<div className="px-6 pt-5 sm:px-8 sm:pt-8">
 			<div className="mx-auto w-full max-w-7xl space-y-5">
 				<Skeleton className="h-24 w-full rounded-2xl" />
-				<LibraryListSkeleton />
+				<LibraryViewSkeleton view={view} />
 			</div>
 		</div>
 	);
+}
+
+/** Sem preferência salva, um bloco neutro — não a Lista, que piscava antes da Grade. */
+function LibraryPendingSkeleton() {
+	return (
+		<div className="space-y-3" aria-busy="true">
+			<Skeleton className="h-20 w-full rounded-2xl" />
+			<Skeleton className="h-20 w-full rounded-2xl" />
+			<Skeleton className="h-20 w-full rounded-2xl" />
+		</div>
+	);
+}
+
+function LibraryViewSkeleton({ view }: { view: LibraryViewMode | null }) {
+	if (view === "grid") return <LibraryGridSkeleton />;
+	if (view === "list") return <LibraryListSkeleton />;
+	return <LibraryPendingSkeleton />;
 }
 
 const skeletonRows = [
@@ -473,11 +495,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 					) : null}
 
 					{state.status === "loading" ? (
-						view === "grid" ? (
-							<LibraryGridSkeleton />
-						) : (
-							<LibraryListSkeleton />
-						)
+						<LibraryViewSkeleton view={view} />
 					) : state.status === "error" ? (
 						<div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-border/70 bg-card px-6 py-8 text-center">
 							<p className="text-[13px] font-semibold text-foreground">
