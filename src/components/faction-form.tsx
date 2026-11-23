@@ -1,5 +1,30 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Pencil, Plus } from "lucide-react";
+import {
+	BookOpen,
+	Castle,
+	Church,
+	Compass,
+	Crown,
+	Eye,
+	Flag,
+	Flame,
+	FlameKindling,
+	Gem,
+	Landmark,
+	type LucideIcon,
+	Mountain,
+	Pencil,
+	Plus,
+	ScrollText,
+	Skull,
+	Sparkles,
+	Star,
+	Sun,
+	Sword,
+	Swords,
+	Trophy,
+	WandSparkles,
+} from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type { Faction } from "@/lib/store";
@@ -16,10 +41,176 @@ import {
 } from "./ui/dialog";
 import { Field, FormSection } from "./ui/form-tabs";
 import { Input } from "./ui/input";
+import {
+	SelectContent,
+	SelectItem,
+	SelectRoot,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/toast";
 
-type FactionFormValues = Omit<Faction, "id" | "createdAt" | "updatedAt" | "worldId">;
+type FactionFormValues = Omit<
+	Faction,
+	"id" | "createdAt" | "updatedAt" | "worldId"
+>;
+
+type IconSelectOption = {
+	value: string;
+	label: string;
+	Icon: LucideIcon;
+};
+
+const KIND_OPTIONS: IconSelectOption[] = [
+	{ value: "faction", label: "Facção Política / Liga", Icon: Flag },
+	{ value: "patron", label: "Patrono de Grupo (Group Patron)", Icon: Crown },
+	{
+		value: "legendary_family",
+		label: "Família Lendária / Linhagem Mítica",
+		Icon: Gem,
+	},
+	{ value: "noble_house", label: "Família Nobre / Casa Real", Icon: Castle },
+	{
+		value: "guild_order",
+		label: "Ordem / Guilda de Aventureiros",
+		Icon: Swords,
+	},
+	{ value: "cult_society", label: "Culto / Seita Secreta", Icon: Eye },
+];
+
+const PATRON_OPTIONS: IconSelectOption[] = [
+	{ value: "Dragão Ancião", label: "Dragão Ancião", Icon: Flame },
+	{
+		value: "Ser das Fadas / Arquifada",
+		label: "Ser das Fadas / Arquifada",
+		Icon: Sparkles,
+	},
+	{
+		value: "Coroa / Soberano Real",
+		label: "Coroa / Soberano Real",
+		Icon: Landmark,
+	},
+	{
+		value: "Sindicato / Mestre do Crime",
+		label: "Sindicato / Mestre do Crime",
+		Icon: Sword,
+	},
+	{
+		value: "Academia de Magia / Colegiado",
+		label: "Academia de Magia / Colegiado",
+		Icon: ScrollText,
+	},
+	{
+		value: "Entidade Celestial / Anjo",
+		label: "Entidade Celestial / Anjo",
+		Icon: Sun,
+	},
+	{
+		value: "Entidade Infernal / Diabo",
+		label: "Entidade Infernal / Diabo",
+		Icon: Skull,
+	},
+	{
+		value: "Ordem Religiosa / Templo",
+		label: "Ordem Religiosa / Templo",
+		Icon: Church,
+	},
+	{ value: "Outro Patrono", label: "Outro Patrono", Icon: Compass },
+];
+
+const LINEAGE_OPTIONS: IconSelectOption[] = [
+	{
+		value: "Linhagem Dracônica",
+		label: "Linhagem Dracônica",
+		Icon: FlameKindling,
+	},
+	{
+		value: "Sangue Celestial / Divino",
+		label: "Sangue Celestial / Divino",
+		Icon: Star,
+	},
+	{
+		value: "Ancestralidade Titan / Gigante",
+		label: "Ancestralidade Titan / Gigante",
+		Icon: Mountain,
+	},
+	{
+		value: "Heróis Lendários da Primeira Era",
+		label: "Heróis Lendários da Primeira Era",
+		Icon: Trophy,
+	},
+	{
+		value: "Dinastia de Reis Magos",
+		label: "Dinastia de Reis Magos",
+		Icon: WandSparkles,
+	},
+	{
+		value: "Outra Linhagem Mítica",
+		label: "Outra Linhagem Mítica",
+		Icon: BookOpen,
+	},
+];
+
+function IconSelect({
+	value,
+	onChange,
+	ariaLabel,
+	options,
+	placeholder,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+	ariaLabel: string;
+	options: readonly IconSelectOption[];
+	placeholder?: string;
+}) {
+	const selected = options.find((option) => option.value === value);
+	const SelectedIcon = selected?.Icon;
+	return (
+		<SelectRoot
+			value={selected ? value : null}
+			onValueChange={(next) => onChange(String(next ?? ""))}
+		>
+			<SelectTrigger aria-label={ariaLabel}>
+				<SelectValue>
+					{() =>
+						selected && SelectedIcon ? (
+							<span className="flex min-w-0 items-center gap-2">
+								<SelectedIcon
+									className="size-4 text-muted-foreground"
+									aria-hidden
+								/>
+								<span className="truncate">{selected.label}</span>
+							</span>
+						) : (
+							<span className="truncate text-muted-foreground">
+								{placeholder ?? "Selecione"}
+							</span>
+						)
+					}
+				</SelectValue>
+			</SelectTrigger>
+			<SelectContent>
+				{options.map((option) => {
+					const Icon = option.Icon;
+					return (
+						<SelectItem
+							key={option.value}
+							value={option.value}
+							label={option.label}
+						>
+							<span className="flex min-w-0 items-center gap-2">
+								<Icon className="size-4 text-muted-foreground" aria-hidden />
+								<span className="truncate">{option.label}</span>
+							</span>
+						</SelectItem>
+					);
+				})}
+			</SelectContent>
+		</SelectRoot>
+	);
+}
 
 export function FactionForm() {
 	const isStaff = useIsWorldStaff();
@@ -111,6 +302,7 @@ function FactionFormDialog({
 	const imageUrl = useWatch({ control, name: "imageUrl" });
 	const watchedName = useWatch({ control, name: "name" });
 	const selectedKind = useWatch({ control, name: "kind" }) || "faction";
+	const watchedPatronType = useWatch({ control, name: "patronType" }) ?? "";
 
 	useEffect(() => {
 		if (!open) return;
@@ -159,8 +351,7 @@ function FactionFormDialog({
 			toast.error({
 				title: "Não foi possível criar a facção",
 				description:
-					errorMessage ??
-					"Verifique permissões e conexão, e tente novamente.",
+					errorMessage ?? "Verifique permissões e conexão, e tente novamente.",
 			});
 			return;
 		}
@@ -187,9 +378,7 @@ function FactionFormDialog({
 				>
 					<DialogHeader className="border-b border-border px-6 pt-6 pb-4">
 						<DialogTitle className="font-display text-lg">
-							{isEdit
-								? `Editar: ${faction?.name || "Facção"}`
-								: "Nova facção"}
+							{isEdit ? `Editar: ${faction?.name || "Facção"}` : "Nova facção"}
 						</DialogTitle>
 						<DialogDescription>
 							Organizações, guildas e poderes que moldam o Mundo.
@@ -209,60 +398,58 @@ function FactionFormDialog({
 								size="md"
 							/>
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-								<Field label="Categoria de Organização" className="sm:col-span-2">
-									<select
-										{...register("kind")}
-										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary"
-									>
-										<option value="faction">🚩 Facção Política / Liga</option>
-										<option value="patron">👑 Patrono de Grupo (Group Patron)</option>
-										<option value="legendary_family">⚜️ Família Lendária / Linhagem Mítica</option>
-										<option value="noble_house">🏰 Família Nobre / Casa Real</option>
-										<option value="guild_order">⚔️ Ordem / Guilda de Aventureiros</option>
-										<option value="cult_society">👁️ Culto / Seita Secreta</option>
-									</select>
+								<Field
+									label="Categoria de Organização"
+									className="sm:col-span-2"
+								>
+									<IconSelect
+										ariaLabel="Categoria de Organização"
+										value={selectedKind}
+										onChange={(next) => {
+											setValue("kind", next as FactionFormValues["kind"], {
+												shouldDirty: true,
+											});
+											setValue("patronType", "", { shouldDirty: true });
+										}}
+										options={KIND_OPTIONS}
+									/>
 								</Field>
 
 								{selectedKind === "patron" && (
-									<Field label="Tipo de Patrono (D&D 5e / 2024)" className="sm:col-span-2">
-										<select
-											{...register("patronType")}
-											className="w-full rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-xs font-bold text-amber-200 outline-none focus:border-amber-400"
-										>
-											<option value="Dragão Ancião">🐲 Dragão Ancião</option>
-											<option value="Ser das Fadas / Arquifada">✨ Ser das Fadas / Arquifada</option>
-											<option value="Coroa / Soberano Real">👑 Coroa / Soberano Real</option>
-											<option value="Sindicato / Mestre do Crime">🗡️ Sindicato / Mestre do Crime</option>
-											<option value="Academia de Magia / Colegiado">📜 Academia de Magia / Colegiado</option>
-											<option value="Entidade Celestial / Anjo">⚜️ Entidade Celestial / Anjo</option>
-											<option value="Entidade Infernal / Diabo">🔥 Entidade Infernal / Diabo</option>
-											<option value="Ordem Religiosa / Templo">🛐 Ordem Religiosa / Templo</option>
-											<option value="Outro Patrono">🌌 Outro Patrono</option>
-										</select>
+									<Field
+										label="Tipo de Patrono (D&D 5e / 2024)"
+										className="sm:col-span-2"
+									>
+										<IconSelect
+											ariaLabel="Tipo de Patrono (D&D 5e / 2024)"
+											value={watchedPatronType}
+											onChange={(next) =>
+												setValue("patronType", next, { shouldDirty: true })
+											}
+											options={PATRON_OPTIONS}
+											placeholder="Selecione o tipo de patrono"
+										/>
 									</Field>
 								)}
 
 								{selectedKind === "legendary_family" && (
-									<Field label="Origem da Linhagem / Sangue Ancestral" className="sm:col-span-2">
-										<select
-											{...register("patronType")}
-											className="w-full rounded-lg border border-yellow-500/40 bg-yellow-950/20 px-3 py-2 text-xs font-bold text-yellow-200 outline-none focus:border-yellow-400"
-										>
-											<option value="Linhagem Dracônica">🐲 Linhagem Dracônica</option>
-											<option value="Sangue Celestial / Divino">⚜️ Sangue Celestial / Divino</option>
-											<option value="Ancestralidade Titan / Gigante">🗻 Ancestralidade Titan / Gigante</option>
-											<option value="Heróis Lendários da Primeira Era">⚔️ Heróis Lendários da Primeira Era</option>
-											<option value="Dinastia de Reis Magos">🔮 Dinastia de Reis Magos</option>
-											<option value="Outra Linhagem Mítica">📜 Outra Linhagem Mítica</option>
-										</select>
+									<Field
+										label="Origem da Linhagem / Sangue Ancestral"
+										className="sm:col-span-2"
+									>
+										<IconSelect
+											ariaLabel="Origem da Linhagem / Sangue Ancestral"
+											value={watchedPatronType}
+											onChange={(next) =>
+												setValue("patronType", next, { shouldDirty: true })
+											}
+											options={LINEAGE_OPTIONS}
+											placeholder="Selecione a origem da linhagem"
+										/>
 									</Field>
 								)}
 
-								<Field
-									label="Nome"
-									htmlFor={nameId}
-									className="sm:col-span-2"
-								>
+								<Field label="Nome" htmlFor={nameId} className="sm:col-span-2">
 									<Input
 										id={nameId}
 										placeholder="Ex: Dragão Ignis, Família Pendragon, Harpers..."
@@ -298,14 +485,14 @@ function FactionFormDialog({
 
 						{selectedKind === "patron" && (
 							<FormSection title="Benefícios & Deveres do Patrono (Mesa D&D)">
-								<Field label="🎁 Recursos & Favores Concedidos aos Jogadores">
+								<Field label="Recursos & Favores Concedidos aos Jogadores">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Acesso a tomos mágicos, advogados da coroa, biblioteca restrita, financiamento de equipamentos..."
 										{...register("perks")}
 									/>
 								</Field>
-								<Field label="📜 Deveres & Exigências dos Jogadores">
+								<Field label="Deveres & Exigências dos Jogadores">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Dízimo de 10% do tesouro, missões secretas mensais, proteção de relíquias..."
@@ -317,14 +504,14 @@ function FactionFormDialog({
 
 						{selectedKind === "legendary_family" && (
 							<FormSection title="Heranças & Tradições da Família Lendária">
-								<Field label="🎁 Recursos, Bens & Heranças da Linhagem">
+								<Field label="Recursos, Bens & Heranças da Linhagem">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Armas de família, terras ancestrais, imunidade diplomática local..."
 										{...register("perks")}
 									/>
 								</Field>
-								<Field label="📜 Código & Tradições da Família">
+								<Field label="Código & Tradições da Família">
 									<Textarea
 										rows={3}
 										placeholder="Ex: Nunca recusar um desafio de honra, proteger a relíquia do fundador..."
@@ -335,7 +522,7 @@ function FactionFormDialog({
 						)}
 
 						<FormSection title="Agenda, Contatos & História">
-							<Field label="🗝️ Contatos & Informantes Principais">
+							<Field label="Contatos & Informantes Principais">
 								<Input
 									placeholder="Ex: Emissário Sir Tristan, Espiã Nyx..."
 									{...register("contacts")}

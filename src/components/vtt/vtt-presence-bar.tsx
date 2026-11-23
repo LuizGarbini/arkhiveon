@@ -199,7 +199,7 @@ export function VTTPresenceBar({ onFocusPoint }: VTTPresenceBarProps) {
 				<PopoverContent
 					side="bottom"
 					align="end"
-					className="vtt-dialog w-80 max-w-[calc(100vw-1rem)] p-3 rounded-2xl border border-border/70 bg-card/95 backdrop-blur-xl shadow-2xl gap-3"
+					className="vtt-dialog w-80 max-w-[calc(100vw-1rem)] p-3 rounded-2xl border border-border/70 bg-popover shadow-2xl gap-3"
 				>
 					<div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-bold">
 						<Palette className="h-3.5 w-3.5 text-primary" />

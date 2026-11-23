@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.193-ds-popover-tooltip-faction",
+		version: "1.6.193",
+		date: "23/11/2026",
+		title: "Pop-ups sólidos e seletores de organização com ícones",
+		description:
+			"Os cartões flutuantes e as dicas do app passam a ter fundo sólido, sem o vidro embaçado. No cadastro de organizações, as listas de categoria, patrono e linhagem usam o seletor padrão com ícones, e o botão de filtro Todos (Tipo) das listas fica com 44 pixels.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.192-biblioteca-grade",
 		version: "1.6.192",
 		date: "23/11/2026",
