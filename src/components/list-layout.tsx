@@ -35,6 +35,8 @@ interface ListLayoutProps {
 	onFilterChange?: (filterId: string, value: string) => void;
 	onClearFilters?: () => void;
 	children?: React.ReactNode;
+	/** Conteúdo à direita da busca (ex.: toggle Lista/Grade). */
+	toolbarEnd?: React.ReactNode;
 }
 
 export function ListLayout({
@@ -47,6 +49,7 @@ export function ListLayout({
 	onFilterChange,
 	onClearFilters,
 	children,
+	toolbarEnd,
 }: ListLayoutProps) {
 	const supportsShortcuts = useShortcutViewport();
 	const [isOpen, setIsOpen] = useState(false);
@@ -95,6 +98,8 @@ export function ListLayout({
 						</kbd>
 					)}
 				</div>
+
+				{toolbarEnd}
 
 				{hideFilters ? null : (
 					<button

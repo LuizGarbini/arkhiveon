@@ -3,6 +3,7 @@ import {
 	canManageLibraryRole,
 	checkPdfFile,
 	checkTitleDraft,
+	chunkLibraryThumbReadIds,
 	formatBytes,
 	libraryErrorMessage,
 	titleFromFileName,
@@ -95,5 +96,21 @@ describe("library-storage", () => {
 			ok: false,
 			error: "Use até 200 caracteres.",
 		});
+	});
+});
+
+describe("chunkLibraryThumbReadIds", () => {
+	it("parte em lotes de 60 e aceita lista vazia", () => {
+		expect(chunkLibraryThumbReadIds([])).toEqual([]);
+		expect(chunkLibraryThumbReadIds(["a", "b"], 2)).toEqual([["a", "b"]]);
+		expect(chunkLibraryThumbReadIds(["a", "b", "c"], 2)).toEqual([
+			["a", "b"],
+			["c"],
+		]);
+		const ids = Array.from({ length: 61 }, (_, i) => `id-${i}`);
+		const chunks = chunkLibraryThumbReadIds(ids);
+		expect(chunks).toHaveLength(2);
+		expect(chunks[0]).toHaveLength(60);
+		expect(chunks[1]).toEqual(["id-60"]);
 	});
 });

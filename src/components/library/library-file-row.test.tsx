@@ -51,3 +51,74 @@ describe("LibraryFileRow erro ao renomear", () => {
 		expect(document.body.textContent).not.toContain("duplicate key");
 	});
 });
+
+describe("LibraryFileRow capa", () => {
+	const ready: LibraryFile = {
+		...file,
+		thumbStatus: "ready",
+	};
+
+	it("pending e failed mostram o ícone PDF, não a imagem", () => {
+		const { rerender } = render(
+			<ul>
+				<LibraryFileRow
+					file={{ ...file, thumbStatus: "pending" }}
+					canManage={false}
+					onDelete={() => {}}
+					onRename={async () => {}}
+				/>
+			</ul>,
+		);
+		expect(screen.getByText("PDF")).toBeTruthy();
+		expect(document.querySelector("img")).toBeNull();
+		rerender(
+			<ul>
+				<LibraryFileRow
+					file={{ ...file, thumbStatus: "failed" }}
+					canManage={false}
+					onDelete={() => {}}
+					onRename={async () => {}}
+				/>
+			</ul>,
+		);
+		expect(screen.getByText("PDF")).toBeTruthy();
+		expect(document.querySelector("img")).toBeNull();
+	});
+
+	it("capa pronta sem URL mostra o skeleton", () => {
+		render(
+			<ul>
+				<LibraryFileRow
+					file={ready}
+					canManage={false}
+					onDelete={() => {}}
+					onRename={async () => {}}
+					thumbLoading
+				/>
+			</ul>,
+		);
+		expect(document.querySelector("[data-slot=skeleton]")).toBeTruthy();
+		expect(document.querySelector("img")).toBeNull();
+		expect(screen.queryByText("PDF")).toBeNull();
+	});
+
+	it("capa pronta com URL renderiza imagem lazy", () => {
+		render(
+			<ul>
+				<LibraryFileRow
+					file={ready}
+					canManage={false}
+					onDelete={() => {}}
+					onRename={async () => {}}
+					thumbUrl="https://example.test/cover.webp"
+				/>
+			</ul>,
+		);
+		const img = document.querySelector("img");
+		expect(img).toBeTruthy();
+		expect(img?.getAttribute("src")).toBe("https://example.test/cover.webp");
+		expect(img?.getAttribute("loading")).toBe("lazy");
+		expect(img?.getAttribute("decoding")).toBe("async");
+		expect(screen.queryByText("PDF")).toBeNull();
+	});
+});

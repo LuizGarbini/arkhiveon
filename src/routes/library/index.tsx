@@ -7,9 +7,11 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { LibraryFileRow } from "@/components/library/library-file-row";
+import { LibraryViewToggle } from "@/components/library/library-view-toggle";
 import { UploadQueueList } from "@/components/library/upload-queue-list";
 import { UploadReviewDialog } from "@/components/library/upload-review-dialog";
 import { ListLayout } from "@/components/list-layout";
@@ -36,6 +38,12 @@ import {
 	uploadLibraryPdf,
 } from "@/lib/library/library-storage";
 import {
+	type LibraryViewMode,
+	readStoredLibraryView,
+	resolveLibraryViewMode,
+	writeStoredLibraryView,
+} from "@/lib/library/library-view";
+import {
 	classifyUploads,
 	needsUploadReview,
 	type UploadReview,
@@ -54,6 +62,7 @@ import {
 	type UploadItem,
 } from "@/lib/library/upload-queue";
 import { useLibraryPilot } from "@/lib/library/use-library-pilot";
+import { useLibraryThumbUrls } from "@/lib/library/use-library-thumb-urls";
 import { useRPGStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +76,7 @@ function LibraryRoute() {
 	// Fora do piloto: volta pra home da campanha sem mensagem.
 	if (pilot === false) return <Navigate to="/dashboard" replace />;
 	if (pilot === null || !activeCampaignId) return <LibrarySkeleton />;
-	return <LibraryPage campaignId={activeCampaignId} />;
+	return <LibraryPage key={activeCampaignId} campaignId={activeCampaignId} />;
 }
 
 function LibrarySkeleton() {
@@ -114,6 +123,54 @@ function LibraryListSkeleton() {
 	);
 }
 
+const gridSkeletonCards = [
+	{ key: "g1", title: "72%" },
+	{ key: "g2", title: "58%" },
+	{ key: "g3", title: "80%" },
+	{ key: "g4", title: "45%" },
+	{ key: "g5", title: "64%" },
+	{ key: "g6", title: "70%" },
+	{ key: "g7", title: "52%" },
+	{ key: "g8", title: "76%" },
+	{ key: "g9", title: "40%" },
+	{ key: "g10", title: "61%" },
+];
+
+const LIBRARY_GRID_CLASS =
+	"grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 xl:grid-cols-5";
+
+function LibraryGridSkeleton() {
+	return (
+		<ul className={LIBRARY_GRID_CLASS} aria-busy="true">
+			{gridSkeletonCards.map((card) => (
+				<li key={card.key} className="min-w-0">
+					<Skeleton className="aspect-[3/4] w-full rounded-xl" />
+					<Skeleton
+						className="mt-2 h-3.5 rounded"
+						style={{ width: card.title }}
+					/>
+					<Skeleton className="mt-1.5 h-3 w-1/2 rounded" />
+				</li>
+			))}
+		</ul>
+	);
+}
+
+const NARROW_SEARCH_QUERY = "(max-width: 639px)";
+
+function useNarrowLibrarySearch(): boolean {
+	return useSyncExternalStore(
+		(onChange) => {
+			if (typeof window === "undefined") return () => {};
+			const media = window.matchMedia(NARROW_SEARCH_QUERY);
+			media.addEventListener("change", onChange);
+			return () => media.removeEventListener("change", onChange);
+		},
+		() => window?.matchMedia(NARROW_SEARCH_QUERY)?.matches ?? false,
+		() => false,
+	);
+}
+
 type LoadState =
 	| { status: "loading" }
 	| { status: "error" }
@@ -136,6 +193,8 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	const [query, setQuery] = useState("");
 	const deferredQuery = useDeferredValue(query);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const [viewChoice, setViewChoice] = useState<LibraryViewMode | null>(null);
+	const narrowSearch = useNarrowLibrarySearch();
 
 	const load = useCallback(async () => {
 		setState({ status: "loading" });
@@ -254,7 +313,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	}
 
 	/** Salva o nome e troca só aquela linha (sem recarregar a lista). */
-	async function renameFile(file: LibraryFile, title: string) {
+	const renameFile = useCallback(async (file: LibraryFile, title: string) => {
 		const saved = await renameLibraryFile(file.id, title);
 		setState((prev) =>
 			prev.status === "ready"
@@ -266,7 +325,7 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 					}
 				: prev,
 		);
-	}
+	}, []);
 
 	const isReady = state.status === "ready";
 	const openPicker = () => inputRef.current?.click();
@@ -280,6 +339,24 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 	const visibleFiles = useMemo(
 		() => filterByTitle(files, deferredQuery),
 		[files, deferredQuery],
+	);
+	const storedView = viewChoice ?? readStoredLibraryView(campaignId);
+	const view = resolveLibraryViewMode({
+		stored: storedView,
+		filesLoaded: state.status === "ready",
+		files,
+	});
+	const { urls: thumbUrls, loadingIds: thumbLoadingIds } = useLibraryThumbUrls(
+		campaignId,
+		files,
+	);
+
+	const setView = useCallback(
+		(next: LibraryViewMode) => {
+			writeStoredLibraryView(campaignId, next);
+			setViewChoice(next);
+		},
+		[campaignId],
 	);
 	const count =
 		state.status === "ready"
@@ -387,13 +464,20 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 						<ListLayout
 							searchValue={query}
 							onSearch={setQuery}
-							searchPlaceholder="Buscar PDF pelo nome…"
+							searchPlaceholder={
+								narrowSearch ? "Buscar PDF…" : "Buscar PDF pelo nome…"
+							}
 							hideFilters
+							toolbarEnd={<LibraryViewToggle value={view} onChange={setView} />}
 						/>
 					) : null}
 
 					{state.status === "loading" ? (
-						<LibraryListSkeleton />
+						view === "grid" ? (
+							<LibraryGridSkeleton />
+						) : (
+							<LibraryListSkeleton />
+						)
 					) : state.status === "error" ? (
 						<div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-border/70 bg-card px-6 py-8 text-center">
 							<p className="text-[13px] font-semibold text-foreground">
@@ -432,7 +516,14 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 							onAction={() => setQuery("")}
 						/>
 					) : (
-						<ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
+						<ul
+							data-view={view}
+							className={
+								view === "grid"
+									? cn("group/lib", LIBRARY_GRID_CLASS)
+									: "group/lib divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card"
+							}
+						>
 							{visibleFiles.map((file) => (
 								<LibraryFileRow
 									key={file.id}
@@ -440,6 +531,8 @@ function LibraryPage({ campaignId }: { campaignId: string }) {
 									canManage={canManage}
 									onDelete={setToDelete}
 									onRename={renameFile}
+									thumbUrl={thumbUrls[file.id]}
+									thumbLoading={thumbLoadingIds.has(file.id)}
 								/>
 							))}
 						</ul>
