@@ -40,7 +40,7 @@ function cleanup(
 	if (ptrs.filePtr) pdfiumHeap(pdfium).wasmExports.free(ptrs.filePtr);
 }
 
-async function renderPage1Rgba(
+export async function renderLibraryThumbPage1Rgba(
 	input: RenderThumbInput,
 ): Promise<{ width: number; height: number; rgba: Uint8ClampedArray }> {
 	const pdfium = await init({ wasmBinary: input.wasmBinary });
@@ -103,7 +103,7 @@ export async function renderLibraryThumbWebpFromPdf(
 	if (typeof OffscreenCanvas === "undefined") {
 		throw new Error("Este navegador não renderiza a capa no Worker.");
 	}
-	const { width, height, rgba } = await renderPage1Rgba(input);
+	const { width, height, rgba } = await renderLibraryThumbPage1Rgba(input);
 	const canvas = new OffscreenCanvas(width, height);
 	const ctx = canvas.getContext("2d");
 	if (!ctx) throw new Error("Não foi possível desenhar a capa.");
