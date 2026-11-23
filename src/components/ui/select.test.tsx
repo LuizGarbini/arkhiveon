@@ -125,4 +125,25 @@ describe("Select do DS (shadcn/Base UI)", () => {
 		});
 		expect(onSubmit).toHaveBeenLastCalledWith({ system: "dnd5e" });
 	});
+
+	it("abre um popup sólido, sem blur, com itens de 44px", async () => {
+		render(
+			<Select aria-label="Sistema" value="dnd5e" onChange={() => {}}>
+				<option value="dnd5e">D&D 5e</option>
+				<option value="t20">Tormenta 20</option>
+			</Select>,
+		);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("combobox", { name: "Sistema" }));
+		});
+		const popup = document.querySelector('[data-slot="select-content"]');
+		expect(popup).toBeTruthy();
+		const popupClass = popup?.className ?? "";
+		expect(popupClass).toContain("bg-popover");
+		expect(popupClass).not.toContain("backdrop-blur");
+		expect(popupClass).not.toContain("popover/95");
+		const option = await screen.findByRole("option", { name: "Tormenta 20" });
+		expect(option.className).toContain("min-h-[44px]");
+		expect(option.className).not.toContain("md:min-h-9");
+	});
 });

@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.190-ds-select-popup-solido",
+		version: "1.6.190",
+		date: "23/11/2026",
+		title: "Menus e seletores com fundo sólido e alvos maiores",
+		description:
+			"Os menus e as listas de opção do app passam a ter fundo sólido, sem o vidro embaçado, e cada opção tem altura mínima de 44 pixels também no computador, para ficar mais fácil de acertar.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.188-biblioteca-capa-cliente",
 		version: "1.6.188",
 		date: "22/11/2026",
