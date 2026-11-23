@@ -14,9 +14,9 @@ import { stdin as stdinFd, stdout as stdoutFd } from "node:process";
 import { createInterface } from "node:readline";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../src/lib/database.types";
-import { LIBRARY_THUMB_DESKTOP_MAX_BYTES } from "../src/lib/library/library-thumb";
 import {
 	assertApplyAllowed,
+	BACKFILL_DEFAULT_MAX_MB,
 	type BackfillCampaign,
 	type BackfillDeps,
 	HelpRequested,
@@ -52,6 +52,7 @@ Opções:
   --limit N          processa no máximo N arquivos
   --campaign ID      restringe a uma campanha
   --concurrency N    padrão 2, máximo 4
+  --max-mb N         teto do script em MB (padrão ${BACKFILL_DEFAULT_MAX_MB}; o envio no cliente continua 64/32)
   -h, --help         esta ajuda
 
 Variáveis da sessão (não grave em arquivo):
@@ -143,7 +144,7 @@ async function resolveCredentials(): Promise<{
 }
 
 function loadWasmBinary(): ArrayBuffer {
-	const wasmPath = require.resolve("@embedpdf/pdfium/dist/pdfium.wasm");
+	const wasmPath = require.resolve("@embedpdf/pdfium/pdfium.wasm");
 	const bytes = readFileSync(wasmPath);
 	return bytes.buffer.slice(
 		bytes.byteOffset,
@@ -207,6 +208,7 @@ function createDeps(
 	client: SupabaseClient<Database>,
 	log: (line: string) => void,
 	renderWebp: (pdf: Uint8Array) => Promise<Uint8Array>,
+	sizeLimit: number,
 ): BackfillDeps {
 	return {
 		listCampaigns: () => listCampaignsFromSession(client),
@@ -257,7 +259,7 @@ function createDeps(
 			if (!response.ok) throw new Error("O envio da capa falhou.");
 		},
 		log,
-		sizeLimit: LIBRARY_THUMB_DESKTOP_MAX_BYTES,
+		sizeLimit,
 	};
 }
 
@@ -327,7 +329,7 @@ async function main(): Promise<void> {
 
 	try {
 		await runLibraryThumbsBackfill(
-			createDeps(client, log, renderWebp),
+			createDeps(client, log, renderWebp, options.maxMb * 1024 * 1024),
 			options,
 		);
 	} finally {

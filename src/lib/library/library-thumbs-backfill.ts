@@ -8,7 +8,6 @@ import {
 	LIBRARY_THUMB_MIME,
 } from "../../../supabase/functions/_shared/library-guard";
 import {
-	LIBRARY_THUMB_DESKTOP_MAX_BYTES,
 	type LibraryThumbStatus,
 	parseLibraryThumbStatus,
 	shouldGenerateLibraryThumb,
@@ -17,6 +16,9 @@ import {
 export const BACKFILL_DEFAULT_CONCURRENCY = 2;
 export const BACKFILL_MAX_CONCURRENCY = 4;
 export const BACKFILL_MAX_ATTEMPTS = 3;
+/** Teto padrão só do script. O envio no cliente continua 64/32 MB. */
+export const BACKFILL_DEFAULT_MAX_MB = 160;
+export const BACKFILL_DEFAULT_MAX_BYTES = BACKFILL_DEFAULT_MAX_MB * 1024 * 1024;
 export const PROD_PROJECT_REF = "axnektdqoxjhbbfsidfj";
 
 export type BackfillRole = "owner" | "editor" | "viewer";
@@ -44,6 +46,7 @@ export type BackfillCliOptions = {
 	limit: number | null;
 	campaignId: string | null;
 	concurrency: number;
+	maxMb: number;
 };
 
 export type BackfillInventoryCounts = {
@@ -83,6 +86,7 @@ export type BackfillReport = {
 	ready: number;
 	failed: number;
 	skipped: number;
+	sizeLimit: number;
 };
 
 export type BackfillLogger = (line: string) => void;
@@ -157,6 +161,7 @@ export function parseBackfillArgs(argv: string[]): BackfillCliOptions {
 		limit: null,
 		campaignId: null,
 		concurrency: BACKFILL_DEFAULT_CONCURRENCY,
+		maxMb: BACKFILL_DEFAULT_MAX_MB,
 	};
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
@@ -188,6 +193,13 @@ export function parseBackfillArgs(argv: string[]): BackfillCliOptions {
 				);
 			}
 			options.concurrency = value;
+		} else if (arg === "--max-mb") {
+			const raw = argv[++i];
+			const value = Number(raw);
+			if (!Number.isInteger(value) || value < 1 || value > 1024) {
+				throw new Error("Use --max-mb com um número inteiro entre 1 e 1024.");
+			}
+			options.maxMb = value;
 		} else if (arg === "--help" || arg === "-h") {
 			throw new HelpRequested();
 		} else {
@@ -313,7 +325,7 @@ export function formatBackfillPlan(
 		: "DRY-RUN (não grava)";
 	lines.push(`Modo: ${mode}`);
 	lines.push(
-		`Teto: ${Math.round(options.sizeLimit / (1024 * 1024))} MB (mesmo do cliente no computador).`,
+		`Teto: ${Math.round(options.sizeLimit / (1024 * 1024))} MB (só do script; o envio no navegador continua 64 MB no computador e 32 MB no toque).`,
 	);
 	if (plan.inventory.length === 0) {
 		lines.push("Nenhuma campanha visível com PDF pronto.");
@@ -351,7 +363,7 @@ export function formatBackfillReport(report: BackfillReport): string {
 	const lines = [
 		formatBackfillPlan(report.plan, {
 			apply: !report.dryRun,
-			sizeLimit: LIBRARY_THUMB_DESKTOP_MAX_BYTES,
+			sizeLimit: report.sizeLimit,
 		}),
 	];
 	if (!report.dryRun) {
@@ -498,6 +510,7 @@ export async function runLibraryThumbsBackfill(
 			ready: 0,
 			failed: 0,
 			skipped: 0,
+			sizeLimit: deps.sizeLimit,
 		};
 	}
 	const results = await mapPool(plan.queue, options.concurrency, (file) =>
@@ -513,6 +526,7 @@ export async function runLibraryThumbsBackfill(
 		ready,
 		failed,
 		skipped,
+		sizeLimit: deps.sizeLimit,
 	};
 	deps.log(
 		`Resumo: ${ready} capas prontas, ${failed} falhas, ${skipped} puladas.`,

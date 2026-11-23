@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { LIBRARY_THUMB_DESKTOP_MAX_BYTES } from "./library-thumb";
 import {
 	assertApplyAllowed,
+	BACKFILL_DEFAULT_MAX_BYTES,
+	BACKFILL_DEFAULT_MAX_MB,
 	type BackfillDeps,
 	type BackfillFile,
 	isProdSupabaseUrl,
@@ -36,11 +38,16 @@ describe("parseBackfillArgs", () => {
 			parseBackfillArgs(["--apply", "--retry-failed", "--limit", "5"]).limit,
 		).toBe(5);
 		expect(parseBackfillArgs(["--concurrency", "2"]).concurrency).toBe(2);
+		expect(parseBackfillArgs([]).maxMb).toBe(BACKFILL_DEFAULT_MAX_MB);
+		expect(parseBackfillArgs([]).maxMb).toBe(160);
+		expect(parseBackfillArgs(["--max-mb", "80"]).maxMb).toBe(80);
 	});
 
 	it("recusa opção desconhecida e limite inválido", () => {
 		expect(() => parseBackfillArgs(["--explode"])).toThrow(/desconhecida/);
 		expect(() => parseBackfillArgs(["--limit", "0"])).toThrow(/limit/);
+		expect(() => parseBackfillArgs(["--max-mb", "0"])).toThrow(/max-mb/);
+		expect(() => parseBackfillArgs(["--max-mb", "1.5"])).toThrow(/max-mb/);
 	});
 });
 
@@ -135,6 +142,46 @@ describe("seleção e idempotência", () => {
 		});
 		expect(onlyB.queue).toEqual([]);
 		expect(onlyB.totals.pending).toBe(1);
+	});
+
+	it("com o teto padrão de 160 MB, um PDF de 140 MB entra na fila; 161 MB fica acima do teto", () => {
+		const catalog = [
+			file({ id: "book-140", sizeBytes: 140 * 1024 * 1024 }),
+			file({
+				id: "just-over-64",
+				sizeBytes: LIBRARY_THUMB_DESKTOP_MAX_BYTES + 1,
+			}),
+			file({
+				id: "huge-161",
+				sizeBytes: BACKFILL_DEFAULT_MAX_BYTES + 1,
+			}),
+		];
+		const plan = selectBackfillFiles(catalog, {
+			retryFailed: false,
+			limit: null,
+			campaignId: null,
+			sizeLimit: BACKFILL_DEFAULT_MAX_BYTES,
+		});
+		expect(plan.queue.map((row) => row.id).sort()).toEqual([
+			"book-140",
+			"huge-161",
+			"just-over-64",
+		]);
+		expect(plan.totals.overLimit).toBe(1);
+		expect(plan.totals.queued).toBe(3);
+
+		const tight = selectBackfillFiles(catalog, {
+			retryFailed: false,
+			limit: null,
+			campaignId: null,
+			sizeLimit: 80 * 1024 * 1024,
+		});
+		expect(tight.totals.overLimit).toBe(2);
+		expect(tight.queue.map((row) => row.id).sort()).toEqual([
+			"book-140",
+			"huge-161",
+			"just-over-64",
+		]);
 	});
 });
 
@@ -297,6 +344,7 @@ describe("runLibraryThumbsBackfill (mock da edge)", () => {
 			limit: null,
 			campaignId: null,
 			concurrency: 2,
+			maxMb: BACKFILL_DEFAULT_MAX_MB,
 		});
 		expect(report.dryRun).toBe(true);
 		expect(report.plan.totals.queued).toBe(2);
@@ -317,6 +365,7 @@ describe("runLibraryThumbsBackfill (mock da edge)", () => {
 			limit: null,
 			campaignId: null,
 			concurrency: 2,
+			maxMb: BACKFILL_DEFAULT_MAX_MB,
 		});
 		expect(first.ready).toBe(1);
 		expect(first.failed).toBe(1);
@@ -346,6 +395,7 @@ describe("runLibraryThumbsBackfill (mock da edge)", () => {
 			limit: null,
 			campaignId: null,
 			concurrency: 2,
+			maxMb: BACKFILL_DEFAULT_MAX_MB,
 		});
 		expect(second.plan.totals.queued).toBe(0);
 		expect(second.ready).toBe(0);
@@ -362,6 +412,7 @@ describe("runLibraryThumbsBackfill (mock da edge)", () => {
 			limit: null,
 			campaignId: null,
 			concurrency: 2,
+			maxMb: BACKFILL_DEFAULT_MAX_MB,
 		});
 		expect(report.plan.queue.map((row) => row.id).sort()).toEqual([
 			"big-1",
