@@ -534,6 +534,42 @@ describe("ItemForm (cadastro rico)", () => {
 		const [, patch] = updateItem.mock.calls[0] as [string, Item];
 		expect(patch.type).toBe("capa");
 	});
+
+	it("campo vazio ou 0 da CA base não grava baseAc 0 na armadura", async () => {
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Traje Elegante" },
+		});
+		await pick(screen.getByRole("combobox", { name: "Categoria" }), "Armadura");
+		const nav = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav).getByRole("button", { name: /Defesa/ }));
+		const field = screen.getByLabelText("CA base");
+		fireEvent.change(field, { target: { value: "0" } });
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const zero = addItem.mock.calls[0][0] as unknown as Item;
+		expect(zero.type).toBe("Armadura");
+		expect(zero.armor?.baseAc).toBeUndefined();
+
+		cleanup();
+		addItem.mockClear();
+		render(<ItemForm />);
+		fireEvent.click(screen.getByRole("button", { name: /Novo Item/i }));
+		fireEvent.change(screen.getByLabelText("Nome"), {
+			target: { value: "Traje Simples" },
+		});
+		await pick(screen.getByRole("combobox", { name: "Categoria" }), "Armadura");
+		const nav2 = screen.getByRole("navigation", { name: "Seções do item" });
+		fireEvent.click(within(nav2).getByRole("button", { name: /Defesa/ }));
+		fireEvent.change(screen.getByLabelText("CA base"), {
+			target: { value: "" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Criar item/i }));
+		await vi.waitFor(() => expect(addItem).toHaveBeenCalledTimes(1));
+		const empty = addItem.mock.calls[0][0] as unknown as Item;
+		expect(empty.armor?.baseAc).toBeUndefined();
+	});
 });
 
 /** Tipos que o cadastro, os slots e os filtros já nomeiam. Um a menos e o seletor mente. */

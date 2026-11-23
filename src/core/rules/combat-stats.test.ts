@@ -182,6 +182,83 @@ describe("computeArmorClass", () => {
 			]).source,
 		).toBe("manual");
 	});
+
+	it("armadura com baseAc 0 e dexMode none não substitui a CA da ficha", () => {
+		const traje: Item = {
+			...studdedLeather,
+			id: "traje",
+			name: "Traje Elegante",
+			type: "Armadura",
+			armor: { baseAc: 0, dexMode: "none", armorCategory: "light" },
+		};
+		const ac = computeArmorClass({ armorClass: 18, dexterity: 18 }, [
+			linked(traje),
+		]);
+		expect(ac.total).toBe(18);
+	});
+	it("armadura com baseAc 0 e dexMode full também deixa a CA da ficha em 18", () => {
+		const blusa: Item = {
+			...studdedLeather,
+			id: "blusa",
+			name: "Blusa dos Ventos",
+			type: "Armadura",
+			armor: { baseAc: 0, dexMode: "full", armorCategory: "light" },
+		};
+		const ac = computeArmorClass({ armorClass: 18, dexterity: 18 }, [
+			linked(blusa),
+		]);
+		expect(ac.total).toBe(18);
+	});
+	it("baseAc 0 + escudo e bônus soma em cima da CA da ficha", () => {
+		const traje: Item = {
+			...studdedLeather,
+			id: "traje-bonus",
+			name: "Traje Elegante",
+			type: "Armadura",
+			armor: { baseAc: 0, dexMode: "none", armorCategory: "light" },
+		};
+		const cloak: Item = {
+			...ringOfAlertness,
+			id: "cloak-ac",
+			name: "Capa do Vento",
+			type: "Capa",
+			slot: "cloak",
+			requiresAttunement: false,
+			bonuses: [{ id: "ac", target: "ac", value: 3 }],
+		};
+		const ac = computeArmorClass({ armorClass: 18, dexterity: 18 }, [
+			linked(traje),
+			linked(shield),
+			linked(cloak, "equipped", { slot: "cloak" }),
+		]);
+		expect(ac.total).toBe(23);
+		expect(ac.parts).toContainEqual({
+			kind: "sheet",
+			label: "CA da ficha",
+			value: 18,
+		});
+		expect(ac.parts.some((p) => p.kind === "shield" && p.value === 2)).toBe(
+			true,
+		);
+		expect(ac.parts).toContainEqual({
+			kind: "bonus",
+			label: "Capa do Vento",
+			value: 3,
+		});
+	});
+	it("armadura com baseAc 14 continua substituindo a CA da ficha", () => {
+		const scale: Item = {
+			...studdedLeather,
+			id: "scale-replace",
+			name: "Brunea",
+			armor: { baseAc: 14, dexMode: "max2", armorCategory: "medium" },
+		};
+		const ac = computeArmorClass({ armorClass: 18, dexterity: 18 }, [
+			linked(scale),
+		]);
+		expect(ac.total).toBe(16);
+		expect(ac.parts[0]).toMatchObject({ kind: "armor", value: 14 });
+	});
 });
 
 describe("computeInitiative", () => {

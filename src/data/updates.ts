@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.187-fix-ca-armadura-base-zero",
+		version: "1.6.187",
+		date: "22/11/2026",
+		title: "A CA da ficha não zera com roupa sem proteção",
+		description:
+			"Se uma armadura ou roupa equipada está com a CA base vazia ou em 0, o cabeçalho da ficha volta a mostrar a CA que você digitou. Escudo e bônus de CA continuam somando. Armadura de verdade, com CA base preenchida, segue no lugar da CA digitada.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.186-plano-pro-u1-card-v2r2",
 		version: "1.6.186",
 		date: "22/11/2026",

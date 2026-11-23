@@ -199,6 +199,31 @@ export function emptyArmorStats(isShield = false): ItemArmorStats {
 		: { baseAc: 11, dexMode: "full", armorCategory: "light" };
 }
 
+/** Campo vazio, inválido ou 0 não vira CA base: a armadura não grava baseAc 0. */
+export function parseArmorBaseAc(raw: string): number | undefined {
+	const t = raw.trim();
+	if (t === "") return undefined;
+	const n = Number.parseInt(t, 10);
+	if (!Number.isFinite(n) || n <= 0) return undefined;
+	return n;
+}
+
+/** Tira baseAc 0 ou ausente do objeto que o formulário grava. */
+export function sanitizeArmorStats(
+	armor: ItemArmorStats | undefined,
+): ItemArmorStats | undefined {
+	if (!armor) return undefined;
+	const baseAc =
+		typeof armor.baseAc === "number"
+			? parseArmorBaseAc(String(armor.baseAc))
+			: undefined;
+	if (baseAc === undefined) {
+		const { baseAc: _omit, ...rest } = armor;
+		return rest;
+	}
+	return { ...armor, baseAc };
+}
+
 /** Dado de arma válido: só dados ("1d8", "2d6", "1d4+1d6"), sem número solto. */
 export function isValidDamageDice(value: string | undefined): boolean {
 	const parsed = parseDamageFormula(value ?? "");
