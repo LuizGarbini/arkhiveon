@@ -10,6 +10,7 @@ import {
 	LIBRARY_MAX_BYTES,
 	LIBRARY_PDF_MIME,
 	LIBRARY_PILOT_TABLE,
+	LIBRARY_THUMB_READ_MAX_IDS,
 	LIBRARY_TITLE_MAX,
 	validateLibraryTitle,
 } from "../../../supabase/functions/_shared/library-guard";
@@ -27,7 +28,7 @@ export interface LibraryFile {
 	title: string;
 	sizeBytes: number;
 	createdAt: string;
-	/** Presente no select; a tela ainda não usa (F3 sem mudança visual). */
+	/** Capa: pending/failed mostram o ícone; ready pede URL em lote. */
 	thumbStatus?: LibraryThumbStatus;
 }
 
@@ -199,6 +200,83 @@ export async function listLibraryFiles(
 		createdAt: row.created_at,
 		thumbStatus: parseLibraryThumbStatus(row.thumb_status),
 	}));
+}
+
+export interface LibraryThumbReadResult {
+	urls: Record<string, string>;
+	expiresIn: number;
+}
+
+/** Parte `fileIds` em lotes de no máximo 60 (teto da ação). */
+export function chunkLibraryThumbReadIds(
+	fileIds: readonly string[],
+	size = LIBRARY_THUMB_READ_MAX_IDS,
+): string[][] {
+	const chunks: string[][] = [];
+	for (let i = 0; i < fileIds.length; i += size) {
+		chunks.push(fileIds.slice(i, i + size));
+	}
+	return chunks;
+}
+
+function asThumbUrlMap(value: unknown): Record<string, string> {
+	if (!value || typeof value !== "object") return {};
+	const out: Record<string, string> = {};
+	for (const [id, url] of Object.entries(value as Record<string, unknown>)) {
+		if (typeof url === "string" && url.length > 0) out[id] = url;
+	}
+	return out;
+}
+
+/**
+ * URLs assinadas das capas prontas, em lote (`request-thumb-reads`).
+ * Ids repetidos saem uma vez; lotes rodam em paralelo. Se todos falharem,
+ * lança; lote parcial bem-sucedido é aproveitado.
+ */
+export async function requestLibraryThumbReads(
+	campaignId: string,
+	fileIds: readonly string[],
+): Promise<LibraryThumbReadResult> {
+	const unique: string[] = [];
+	const seen = new Set<string>();
+	for (const id of fileIds) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		unique.push(id);
+	}
+	if (unique.length === 0) return { urls: {}, expiresIn: 0 };
+
+	const batches = chunkLibraryThumbReadIds(unique);
+	const settled = await Promise.allSettled(
+		batches.map((batch) =>
+			callLibrary<{ urls?: unknown; expiresIn?: unknown }>({
+				action: "request-thumb-reads",
+				campaignId,
+				fileIds: batch,
+			}),
+		),
+	);
+
+	const urls: Record<string, string> = {};
+	let expiresIn = 0;
+	let firstError: unknown;
+	for (const item of settled) {
+		if (item.status === "rejected") {
+			if (firstError === undefined) firstError = item.reason;
+			continue;
+		}
+		Object.assign(urls, asThumbUrlMap(item.value.urls));
+		if (
+			typeof item.value.expiresIn === "number" &&
+			item.value.expiresIn > expiresIn
+		) {
+			expiresIn = item.value.expiresIn;
+		}
+	}
+	if (Object.keys(urls).length === 0 && firstError !== undefined) {
+		throw firstError;
+	}
+	return { urls, expiresIn };
 }
 
 function putWithProgress(
