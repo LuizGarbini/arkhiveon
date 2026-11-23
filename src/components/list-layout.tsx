@@ -210,7 +210,7 @@ function FilterGroupDropdown({
 			<DropdownMenu open={open} onOpenChange={setOpen}>
 				<DropdownMenuTrigger
 					className={cn(
-						"flex h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all cursor-pointer select-none text-left outline-none",
+						"flex h-[44px] min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all cursor-pointer select-none text-left outline-none",
 						isGroupActive
 							? "border-primary/50 bg-primary/15 text-primary font-bold ring-1 ring-primary/25 shadow-xs"
 							: "border-border/70 bg-background/80 text-foreground hover:border-border-hover/80 hover:bg-card-elevated/40 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20",
