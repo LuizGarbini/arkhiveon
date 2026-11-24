@@ -46,3 +46,24 @@ describe("showToast", () => {
 		expect(screen.queryByText("A ficha não foi salva.")).toBeNull();
 	});
 });
+
+describe("empilhamento do toast", () => {
+	it("sobe para z-[220] só quando aboveOverlay está ligado", () => {
+		act(() => showToast("error", { title: "Aviso padrão" }));
+		const live = screen.getByText("Aviso padrão").closest("[aria-live]");
+		expect(live?.className).toContain("z-200");
+		expect(live?.className).not.toContain("z-[220]");
+
+		act(() =>
+			showToast("error", {
+				title: "Erro ao excluir campanha",
+				aboveOverlay: true,
+			}),
+		);
+		const elevated = screen
+			.getByText("Erro ao excluir campanha")
+			.closest("[aria-live]");
+		expect(elevated?.className).toContain("z-[220]");
+		expect(elevated?.className).not.toMatch(/(?:^|\s)z-200(?:\s|$)/);
+	});
+});

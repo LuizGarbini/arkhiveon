@@ -189,6 +189,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 				description: "Não foi possível excluir a campanha. Tente de novo.",
 				noBlur: true,
 				closeTouch: true,
+				aboveOverlay: true,
 			});
 		} finally {
 			setIsDeletingCampaign(false);
