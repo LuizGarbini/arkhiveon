@@ -11,6 +11,15 @@ export interface UpdateEntry {
 
 export const CHANGELOG_DATA: UpdateEntry[] = [
 	{
+		id: "v1.6.194-excluir-campanha-owner",
+		version: "1.6.194",
+		date: "24/11/2026",
+		title: "O mestre volta a conseguir excluir a campanha",
+		description:
+			"Se você é o dono, excluir a campanha deixa de falhar em silêncio. Se a exclusão não der certo, aparece um aviso com o motivo, no mesmo estilo do aviso de excluir um Mundo. A correção no banco ainda precisa ser aplicada em produção.",
+		bullets: [],
+	},
+	{
 		id: "v1.6.193-ds-popover-tooltip-faction",
 		version: "1.6.193",
 		date: "23/11/2026",

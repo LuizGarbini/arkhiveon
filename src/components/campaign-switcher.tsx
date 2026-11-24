@@ -175,8 +175,18 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 
 	async function handleDelete() {
 		if (!campaignToDelete) return;
-		await deleteCampaign(campaignToDelete);
-		setCampaignToDelete(null);
+		try {
+			await deleteCampaign(campaignToDelete);
+			setCampaignToDelete(null);
+		} catch (err) {
+			toast.error({
+				title: "Erro ao excluir campanha",
+				description:
+					err instanceof Error
+						? err.message
+						: "Não foi possível excluir a campanha.",
+			});
+		}
 	}
 
 	async function handleDeleteWorld() {
