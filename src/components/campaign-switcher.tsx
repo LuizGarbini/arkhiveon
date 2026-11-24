@@ -140,6 +140,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	>(null);
 	const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
 	const [isDeletingWorld, setIsDeletingWorld] = useState(false);
+	const [isDeletingCampaign, setIsDeletingCampaign] = useState(false);
 	const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
 	const [campaignToEdit, setCampaignToEdit] = useState<Campaign | null>(null);
 	const [campaignEditTab, setCampaignEditTab] = useState<"general" | "members">(
@@ -174,18 +175,23 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 	}
 
 	async function handleDelete() {
-		if (!campaignToDelete) return;
+		if (!campaignToDelete || isDeletingCampaign) return;
+		setIsDeletingCampaign(true);
 		try {
 			await deleteCampaign(campaignToDelete);
 			setCampaignToDelete(null);
 		} catch (err) {
+			const technical =
+				err instanceof Error ? err.message : "erro desconhecido";
+			console.error("Falha ao excluir campanha:", technical);
 			toast.error({
 				title: "Erro ao excluir campanha",
-				description:
-					err instanceof Error
-						? err.message
-						: "Não foi possível excluir a campanha.",
+				description: "Não foi possível excluir a campanha. Tente de novo.",
+				noBlur: true,
+				closeTouch: true,
 			});
+		} finally {
+			setIsDeletingCampaign(false);
 		}
 	}
 
@@ -550,6 +556,7 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 														onClick={(event) => {
 															event.preventDefault();
 															event.stopPropagation();
+															setIsOpen(false);
 															setCampaignToDelete(campaign.id);
 														}}
 														aria-label={`Excluir campanha ${campaign.name}`}
@@ -609,7 +616,11 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 				open={!!campaignToDelete}
 				onOpenChange={(open) => !open && setCampaignToDelete(null)}
 			>
-				<DialogContent>
+				<DialogContent
+					className="z-200"
+					overlayClassName="z-200"
+					closeButtonSize="icon-touch"
+				>
 					<DialogHeader>
 						<DialogTitle>Excluir Campanha?</DialogTitle>
 						<DialogDescription>
@@ -618,10 +629,20 @@ export function CampaignSwitcher({ isCollapsed }: CampaignSwitcherProps) {
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button variant="ghost" onClick={() => setCampaignToDelete(null)}>
+						<Button
+							variant="ghost"
+							size="touch"
+							onClick={() => setCampaignToDelete(null)}
+						>
 							Cancelar
 						</Button>
-						<Button onClick={handleDelete} variant="destructive">
+						<Button
+							onClick={handleDelete}
+							variant="destructive"
+							size="touch"
+							loading={isDeletingCampaign}
+							loadingText="Excluindo..."
+						>
 							Excluir
 						</Button>
 					</DialogFooter>

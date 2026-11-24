@@ -27,6 +27,7 @@ interface Toast {
 	action?: ToastAction;
 	durationMs?: number;
 	noBlur?: boolean;
+	closeTouch?: boolean;
 	/** Indica que o toast está saindo (animação de dismiss) */
 	dismissing?: boolean;
 }
@@ -43,6 +44,8 @@ interface ToastInput {
 	durationMs?: number;
 	/** Sem o desfoque de fundo (opt-in; o padrão continua como era). */
 	noBlur?: boolean;
+	/** Fecha com alvo de 44 px. O padrão continua 24 px nos outros toasts. */
+	closeTouch?: boolean;
 }
 
 interface ToastContextValue {
@@ -214,7 +217,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 								<button
 									type="button"
 									onClick={() => dismiss(toast.id)}
-									className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+									className={cn(
+										"flex shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
+										toast.closeTouch ? "size-[44px]" : "h-6 w-6",
+									)}
 									aria-label="Fechar notificação"
 								>
 									<X className="h-3.5 w-3.5" />

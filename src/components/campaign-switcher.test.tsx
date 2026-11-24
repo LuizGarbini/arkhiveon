@@ -54,6 +54,7 @@ vi.mock("./world-form", () => ({
 import { CampaignSwitcher } from "./campaign-switcher";
 
 const deleteCampaign = vi.fn();
+const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
 function seedStore() {
 	useRPGStore.setState({
@@ -115,6 +116,7 @@ afterEach(() => {
 beforeEach(() => {
 	deleteCampaign.mockReset();
 	toastError.mockReset();
+	consoleError.mockClear();
 	seedStore();
 });
 
@@ -131,7 +133,18 @@ async function openDeleteDialog() {
 }
 
 describe("CampaignSwitcher (excluir campanha)", () => {
-	it("mostra o toast de erro e mantém o diálogo quando a exclusão falha", async () => {
+	it("fecha o menu ao abrir o diálogo de exclusão", async () => {
+		render(<CampaignSwitcher isCollapsed={false} />);
+		await openDeleteDialog();
+		expect(
+			screen.queryByRole("button", { name: "Excluir campanha Mesa A" }),
+		).toBeNull();
+		expect(
+			screen.getByRole("heading", { name: "Excluir Campanha?" }),
+		).toBeTruthy();
+	});
+
+	it("mostra o toast de produto, registra o erro técnico e mantém o diálogo", async () => {
 		deleteCampaign.mockRejectedValueOnce(
 			new Error("transferência de mestre não permitida"),
 		);
@@ -141,13 +154,46 @@ describe("CampaignSwitcher (excluir campanha)", () => {
 		await waitFor(() => {
 			expect(toastError).toHaveBeenCalledWith({
 				title: "Erro ao excluir campanha",
-				description: "transferência de mestre não permitida",
+				description: "Não foi possível excluir a campanha. Tente de novo.",
+				noBlur: true,
+				closeTouch: true,
 			});
 		});
+		expect(consoleError).toHaveBeenCalledWith(
+			"Falha ao excluir campanha:",
+			"transferência de mestre não permitida",
+		);
+		expect(toastError.mock.calls[0][0].description).not.toContain(
+			"transferência de mestre não permitida",
+		);
 		expect(
 			screen.getByRole("heading", { name: "Excluir Campanha?" }),
 		).toBeTruthy();
 		expect(deleteCampaign).toHaveBeenCalledWith("camp-1");
+	});
+
+	it("desativa o Excluir e mostra Excluindo... enquanto a exclusão roda", async () => {
+		let resolveDelete: (() => void) | undefined;
+		deleteCampaign.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveDelete = resolve;
+				}),
+		);
+		render(<CampaignSwitcher isCollapsed={false} />);
+		await openDeleteDialog();
+		fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+		const busy = await screen.findByRole("button", { name: "Excluindo..." });
+		expect((busy as HTMLButtonElement).disabled).toBe(true);
+		expect(
+			screen.getByRole("heading", { name: "Excluir Campanha?" }),
+		).toBeTruthy();
+		resolveDelete?.();
+		await waitFor(() => {
+			expect(
+				screen.queryByRole("heading", { name: "Excluir Campanha?" }),
+			).toBeNull();
+		});
 	});
 
 	it("fecha o diálogo e não mostra toast quando a exclusão passa", async () => {

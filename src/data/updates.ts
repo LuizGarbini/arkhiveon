@@ -16,7 +16,7 @@ export const CHANGELOG_DATA: UpdateEntry[] = [
 		date: "24/11/2026",
 		title: "O mestre volta a conseguir excluir a campanha",
 		description:
-			"Se você é o dono, excluir a campanha deixa de falhar em silêncio. Se a exclusão não der certo, aparece um aviso com o motivo, no mesmo estilo do aviso de excluir um Mundo. A correção no banco ainda precisa ser aplicada em produção.",
+			"Se você é o dono, excluir a campanha volta a funcionar. Se a exclusão não der certo, o aviso diz que não foi possível excluir e pede para tentar de novo, o botão Excluir fica ocupado para não disparar duas vezes, e o diálogo permanece na frente do menu. Os botões Excluir, Cancelar, o X do diálogo e o fechar do aviso têm 44 pixels.",
 		bullets: [],
 	},
 	{

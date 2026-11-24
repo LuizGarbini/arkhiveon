@@ -107,6 +107,7 @@ function DialogContent({
 	showCloseButton = true,
 	showOverlay = true,
 	overlayClassName,
+	closeButtonSize = "icon-sm",
 	...props
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean;
@@ -114,6 +115,8 @@ function DialogContent({
 	showOverlay?: boolean;
 	/** Classes extras do overlay (ex.: sheet da mesa sem blur). */
 	overlayClassName?: string;
+	/** Tamanho do X. O padrão continua `icon-sm`; `icon-touch` é 44 px. */
+	closeButtonSize?: "icon-sm" | "icon-touch";
 }) {
 	return (
 		<DialogPortal>
@@ -134,7 +137,7 @@ function DialogContent({
 							<Button
 								variant="ghost"
 								className="absolute top-4 right-4 text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
-								size="icon-sm"
+								size={closeButtonSize}
 							/>
 						}
 					>
