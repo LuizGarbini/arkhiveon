@@ -27,6 +27,9 @@ interface Toast {
 	action?: ToastAction;
 	durationMs?: number;
 	noBlur?: boolean;
+	closeTouch?: boolean;
+	/** Empilha o viewport em z-[220], já usado no app, acima de overlays em z-200. */
+	aboveOverlay?: boolean;
 	/** Indica que o toast está saindo (animação de dismiss) */
 	dismissing?: boolean;
 }
@@ -43,6 +46,10 @@ interface ToastInput {
 	durationMs?: number;
 	/** Sem o desfoque de fundo (opt-in; o padrão continua como era). */
 	noBlur?: boolean;
+	/** Fecha com alvo de 44 px. O padrão continua 24 px nos outros toasts. */
+	closeTouch?: boolean;
+	/** Empilha este toast em z-[220] (já existe no app), acima de overlays em z-200. */
+	aboveOverlay?: boolean;
 }
 
 interface ToastContextValue {
@@ -161,7 +168,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 			    por cima da ficha no celular. */}
 			<div
 				aria-live="polite"
-				className="fixed right-4 top-32 z-200 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2"
+				className={cn(
+					"fixed right-4 top-32 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2",
+					toasts.some((item) => item.aboveOverlay) ? "z-[220]" : "z-200",
+				)}
 			>
 				{toasts.map((toast) => {
 					const Icon = ICON_BY_VARIANT[toast.variant];
@@ -214,7 +224,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 								<button
 									type="button"
 									onClick={() => dismiss(toast.id)}
-									className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+									className={cn(
+										"flex shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
+										toast.closeTouch ? "size-[44px]" : "h-6 w-6",
+									)}
 									aria-label="Fechar notificação"
 								>
 									<X className="h-3.5 w-3.5" />

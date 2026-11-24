@@ -67,10 +67,15 @@ function Button({
 	);
 	const [stateClass, setStateClass] = useState("");
 	const isFirstRender = useRef(true);
+	const wasLoading = useRef(loading);
 
+	// `children` só é lido na saída do loading; não entra nas deps para não
+	// reanimar o rótulo a cada render.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: children só na saída do loading
 	useEffect(() => {
 		if (isFirstRender.current) {
 			isFirstRender.current = false;
+			wasLoading.current = loading;
 			return;
 		}
 
@@ -84,8 +89,9 @@ function Button({
 				}, 20);
 				return () => clearTimeout(timer2);
 			}, 200);
+			wasLoading.current = loading;
 			return () => clearTimeout(timer1);
-		} else if (!loading) {
+		} else if (!loading && wasLoading.current) {
 			setStateClass("is-exit");
 			const timer1 = setTimeout(() => {
 				setText(children);
@@ -95,8 +101,10 @@ function Button({
 				}, 20);
 				return () => clearTimeout(timer2);
 			}, 200);
+			wasLoading.current = loading;
 			return () => clearTimeout(timer1);
 		}
+		wasLoading.current = loading;
 	}, [loading, loadingText]);
 
 	// Update text instantly when children changes under non-loading state

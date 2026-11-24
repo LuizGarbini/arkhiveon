@@ -944,7 +944,7 @@ export const createCampaignSlice: StateCreator<
 				set({
 					syncError: `Erro ao deletar campanha: ${error.message}`,
 				});
-				return;
+				throw new Error(error.message);
 			}
 		}
 

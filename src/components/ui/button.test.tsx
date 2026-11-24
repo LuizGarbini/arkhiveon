@@ -1,5 +1,8 @@
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
-import { buttonVariants } from "./button";
+import { Button, buttonVariants } from "./button";
 
 const currentSizes = {
 	default:
@@ -72,5 +75,22 @@ describe("buttonVariants", () => {
 			  },
 			}
 		`);
+	});
+});
+
+describe("Button com loadingText", () => {
+	it("mantém o rótulo visível no mount, inclusive no Strict Mode", () => {
+		render(
+			<StrictMode>
+				<Button variant="destructive" loadingText="Excluindo...">
+					Excluir
+				</Button>
+			</StrictMode>,
+		);
+		const button = screen.getByRole("button", { name: "Excluir" });
+		const swap = button.querySelector(".t-text-swap");
+		expect(swap?.textContent).toBe("Excluir");
+		expect(swap?.className).not.toContain("is-exit");
+		expect(swap?.className).not.toContain("is-enter-start");
 	});
 });
