@@ -1,4 +1,4 @@
-import { BookOpen, Eye, Heart, Shield, Sparkles, Zap } from "lucide-react";
+import { Eye, Shield, Sparkles, Zap } from "lucide-react";
 import type { ComponentType } from "react";
 import { CharacterInventoryModule } from "@/components/character-inventory-module";
 import { SkillsFieldsReadOnly } from "@/components/character-sheet/fields";
@@ -14,6 +14,7 @@ import {
 	explainArmorClass,
 	explainInitiative,
 	formatModifier,
+	formatSpeed,
 	initiativeCaption,
 	isWeaponAbilityKey,
 	speedUnitOf,
@@ -25,7 +26,7 @@ import {
 	useActiveCampaignRole,
 	useRPGStore,
 } from "@/lib/store";
-import { getFeatsLabel, type SYSTEM_CONFIG } from "@/lib/systems";
+import type { SYSTEM_CONFIG } from "@/lib/systems";
 import { useCombatStats } from "../use-linked-items";
 import { CombatMetricCard } from "./combat-metric-detail";
 import { SheetConnectionsModule } from "./sheet-connections-module";
@@ -63,30 +64,27 @@ export function SheetModuleContent({
 	}
 
 	if (module.kind === "identity") {
+		const details = [
+			{ label: "Jogador", value: character.playerName },
+			{ label: "Raça", value: character.race },
+			{ label: "Classe", value: character.class },
+			{ label: "Origem", value: character.background },
+			{ label: "Alinhamento", value: character.alignment },
+		];
 		return (
-			<div className="grid gap-3">
-				<div className="grid grid-cols-2 gap-3">
-					<InfoRow label="Nível" value={String(character.level || 1)} />
-					<InfoRow label="XP" value={String(character.xp || 0)} />
+			<div className="space-y-3">
+				<div>
+					<InfoRow label="Nível" value={character.level || 1} />
+					<InfoRow label="XP" value={character.xp || 0} />
+					{details.map(({ label, value }) =>
+						value?.trim() ? (
+							<InfoRow key={label} label={label} value={value} />
+						) : null,
+					)}
 				</div>
-				<InfoRow
-					label="Jogador"
-					value={character.playerName || "Não informado"}
-				/>
-				<InfoRow label="Raça" value={character.race || "Não informada"} />
-				<InfoRow label="Classe" value={character.class || "Não informada"} />
-				<InfoRow
-					label="Antecedente / Origem"
-					value={character.background || "Não informado"}
-				/>
-				<InfoRow
-					label="Alinhamento"
-					value={character.alignment || "Não informado"}
-				/>
-				<TextBlock
-					title="Aparência"
-					value={character.appearance || "Não informada"}
-				/>
+				{character.appearance?.trim() && (
+					<TextBlock title="Aparência" value={character.appearance} />
+				)}
 			</div>
 		);
 	}
@@ -107,23 +105,17 @@ export function SheetModuleContent({
 		});
 
 		return (
-			<div
-				className={`grid gap-3 ${abilities.length >= 8 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"}`}
-			>
+			<div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-px overflow-hidden rounded-lg border border-border/60 bg-border/50">
 				{abilities.map((ability) => {
 					const fullName = getAttributeFullName(ability.label);
 					const extra = getAttributeExtraInfo(ability.value, character.system);
 					return (
 						<div
 							key={ability.label}
-							className="rounded-2xl border border-border/70 bg-background/45 p-3 text-center transition-all hover:bg-background/70"
+							className="min-w-0 bg-card px-2 py-3 text-center"
 						>
-							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-								{ability.label}
-							</p>
-							<p
-								className={`font-display mt-1 text-2xl font-bold tabular-nums ${ability.fromItems > 0 ? "text-emerald-300" : "text-foreground"}`}
-							>
+							<p className="text-xs text-muted-foreground">{fullName}</p>
+							<p className="mt-1 font-display text-2xl font-bold text-foreground tabular-nums">
 								{ability.value}
 							</p>
 							{ability.fromItems !== 0 && (
@@ -132,16 +124,7 @@ export function SheetModuleContent({
 									title="Valor da ficha e quanto os itens equipados mudam"
 								>
 									<span className="line-through">{ability.base}</span>{" "}
-									<span
-										className={
-											ability.fromItems > 0
-												? "text-emerald-300"
-												: "text-rose-300"
-										}
-									>
-										{ability.fromItems > 0 ? "▲" : "▼"}{" "}
-										{Math.abs(ability.fromItems)}
-									</span>
+									<span>{formatModifier(ability.fromItems)} de itens</span>
 								</p>
 							)}
 							{extra && (
@@ -149,9 +132,6 @@ export function SheetModuleContent({
 									{extra}
 								</p>
 							)}
-							<p className="text-[9px] text-muted-foreground/80 truncate">
-								{fullName}
-							</p>
 						</div>
 					);
 				})}
@@ -186,13 +166,13 @@ export function SheetModuleContent({
 
 		return (
 			<div className="grid gap-4">
-				<div className="rounded-2xl border border-border/70 bg-background/45 p-4">
+				<div className="rounded-lg border border-border/60 bg-card p-4">
 					<div className="flex items-end justify-between gap-3">
 						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-								Pontos de Vida
+							<p className="text-xs font-medium text-muted-foreground">
+								Pontos de vida
 							</p>
-							<p className="font-display mt-1 text-4xl font-bold text-rose-400">
+							<p className="mt-1 font-display text-3xl font-bold text-foreground tabular-nums">
 								{character.health}
 								<span className="text-lg text-muted-foreground">
 									/{effectiveHealthMax}
@@ -204,11 +184,13 @@ export function SheetModuleContent({
 								)}
 							</p>
 						</div>
-						<Heart className="h-5 w-5 text-rose-400" />
 					</div>
-					<div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+					<div
+						aria-hidden="true"
+						className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
+					>
 						<div
-							className="h-full rounded-full bg-rose-400 transition-all duration-500"
+							className="h-full rounded-full bg-primary transition-[width] duration-150 motion-reduce:transition-none"
 							style={{ width: `${hpPercent}%` }}
 						/>
 					</div>
@@ -237,7 +219,10 @@ export function SheetModuleContent({
 					<MetricCard
 						Icon={Sparkles}
 						label="Deslocamento"
-						value={`${combat.speed.total}${speedUnitOf(character, config.speedUnit)}`}
+						value={formatSpeed(
+							combat.speed.total,
+							speedUnitOf(character, config.speedUnit),
+						)}
 					/>
 					{customFields.map((field) => (
 						<MetricCard
@@ -249,8 +234,11 @@ export function SheetModuleContent({
 					))}
 				</div>
 				{character.tempHealth ? (
-					<div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-300">
-						HP Temporário: <strong>{character.tempHealth}</strong>
+					<div className="rounded-lg border border-border/60 px-3 py-2 text-sm text-muted-foreground">
+						PV temporários:{" "}
+						<strong className="text-foreground tabular-nums">
+							{character.tempHealth}
+						</strong>
 					</div>
 				) : null}
 				{character.system === "dnd5e" && (
@@ -307,11 +295,15 @@ export function SheetModuleContent({
 			<div className="space-y-4">
 				<div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
 					<InfoRow
-						label="Habilidade de Conjuração"
-						value={character.spellAbility || "Não informada"}
+						label="Atributo de conjuração"
+						value={
+							character.spellAbility
+								? getAttributeFullName(character.spellAbility)
+								: "—"
+						}
 					/>
 					<InfoRow
-						label="CD da Magia"
+						label="CD das magias"
 						value={
 							combat.spellDc.total > 0 || combat.spellDc.parts.length > 0
 								? String(combat.spellDc.total)
@@ -322,7 +314,7 @@ export function SheetModuleContent({
 						)}
 					/>
 					<InfoRow
-						label="Bônus de Ataque Mágico"
+						label="Ataque mágico"
 						value={
 							character.spellAttackBonus !== undefined &&
 							character.spellAttackBonus !== null
@@ -347,28 +339,21 @@ export function SheetModuleContent({
 				)}
 
 				<div className="mt-4 pt-4 border-t border-border/40 space-y-4">
-					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-						<Sparkles className="h-4 w-4 text-primary" />
-						Grimório de Magias ({spellsList.length})
-					</h4>
-
 					{spellsList.length === 0 ? (
-						<p className="text-xs text-muted-foreground italic">
-							Nenhuma magia adicionada à ficha ainda. Edite o módulo para
-							adicionar magias do compêndio.
+						<p className="text-sm text-muted-foreground">
+							Nenhuma magia na ficha.
 						</p>
 					) : (
 						<div className="space-y-4">
 							{sortedLevels.map((lvl) => {
 								const levelSpells = spellsByLevel[lvl];
-								const label =
-									lvl === 0 ? "Truques (Nível 0)" : `${lvl}º Círculo / Nível`;
+								const label = lvl === 0 ? "Truques" : `Nível ${lvl}`;
 								return (
 									<div key={lvl} className="space-y-1.5">
-										<div className="text-[11px] font-bold text-primary uppercase tracking-wider">
-											{label} ({levelSpells.length})
-										</div>
-										<div className="grid gap-1.5">
+										<h3 className="text-sm font-semibold text-foreground">
+											{label}
+										</h3>
+										<div className="space-y-0.5">
 											{levelSpells.map((spell) => (
 												<SpellRow key={spell.id} spell={spell} />
 											))}
@@ -385,7 +370,6 @@ export function SheetModuleContent({
 
 	if (module.kind === "feats") {
 		const featsList = character.featsList || [];
-		const featsLabel = getFeatsLabel(character.system);
 
 		return (
 			<div className="space-y-4">
@@ -401,25 +385,17 @@ export function SheetModuleContent({
 					</div>
 				)}
 
-				<div className="space-y-3">
-					<h4 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-						<BookOpen className="h-4 w-4 text-primary" />
-						Selecionados ({featsList.length})
-					</h4>
-
-					{featsList.length === 0 ? (
-						<p className="text-xs text-muted-foreground italic">
-							Nenhum {featsLabel.toLowerCase()} adicionado à ficha ainda. Edite
-							o módulo para adicionar talentos do compêndio.
-						</p>
-					) : (
-						<div className="grid gap-2">
-							{featsList.map((feat) => (
-								<FeatRow key={feat.id} feat={feat} />
-							))}
-						</div>
-					)}
-				</div>
+				{featsList.length === 0 ? (
+					<p className="text-sm text-muted-foreground">
+						Nenhum registro nesta seção.
+					</p>
+				) : (
+					<div className="space-y-0.5">
+						{featsList.map((feat) => (
+							<FeatRow key={feat.id} feat={feat} />
+						))}
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -477,10 +453,15 @@ export function SheetModuleContent({
 	if (module.kind === "notes") {
 		return (
 			<div className="space-y-3">
-				<TextBlock
-					title="Anotações Gerais"
-					value={character.notes || "Sem anotações"}
-				/>
+				<p
+					className={
+						character.notes?.trim()
+							? "whitespace-pre-wrap text-sm leading-relaxed text-foreground"
+							: "text-sm text-muted-foreground"
+					}
+				>
+					{character.notes?.trim() ? character.notes : "Sem anotações."}
+				</p>
 				{customFields.map((field) => (
 					<TextBlock
 						key={field.key}
@@ -526,7 +507,7 @@ function MetricCard({
 	return (
 		<div className="rounded-2xl border border-border/70 bg-background/45 p-3">
 			<div className="flex items-center justify-between gap-2">
-				<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground truncate">
+				<span className="text-xs font-medium text-muted-foreground truncate">
 					{label}
 				</span>
 				<Icon className="h-4 w-4 text-primary shrink-0" />

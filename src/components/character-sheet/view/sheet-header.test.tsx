@@ -57,7 +57,7 @@ function renderHeader(extra?: Partial<ComponentProps<typeof SheetHeader>>) {
 }
 
 describe("SheetHeader", () => {
-	it("não usa cor crua nos números e não corta o nome", () => {
+	it("mostra o nome completo e identifica os valores de jogo por extenso", () => {
 		renderHeader();
 		const header = document.querySelector("[data-slot=sheet-header]");
 		expect(header).not.toBeNull();
@@ -66,9 +66,8 @@ describe("SheetHeader", () => {
 			level: 1,
 			name: "Elara Ventoclaro",
 		});
-		expect(name.className).toContain("line-clamp-2");
-		expect(name.className).toContain("max-md:text-xl");
-		expect(name.className).toContain("break-words");
+		expect(name.className).not.toMatch(/line-clamp|whitespace-nowrap/);
+		expect(name.className).toContain("[overflow-wrap:anywhere]");
 		expect(name.className).not.toContain("truncate");
 		expect(name.getAttribute("title")).toBe("Elara Ventoclaro");
 		expect(screen.getByText("Alta-elfa · Mago · Nível 5").className).toContain(
@@ -77,20 +76,27 @@ describe("SheetHeader", () => {
 		expect(
 			screen.getByText("Alta-elfa · Mago · Nível 5").className,
 		).not.toContain("text-primary");
-		expect(header?.querySelector("dl")?.className).toContain(
-			"max-md:grid-cols-4",
-		);
-		expect(screen.getByText("D&D 5ª Edição (2014)").className).toContain(
-			"text-primary",
-		);
+		expect(screen.getByText("D&D 5ª Edição (2014)")).toBeDefined();
+		for (const label of [
+			"Pontos de vida",
+			"Armadura (CA)",
+			"Iniciativa",
+			"Deslocamento",
+		]) {
+			expect(screen.getByText(label).tagName).toBe("DT");
+		}
+		expect(screen.getByText("27 / 32").tagName).toBe("DD");
 		for (const value of header?.querySelectorAll("dd") ?? []) {
 			expect(value.className).toContain("text-foreground");
 			expect(value.className).not.toMatch(rawColor);
 		}
-		expect(header?.className).toContain("max-md:shadow-none");
-		expect(header?.querySelector(".blur-3xl")?.className).toContain(
-			"max-md:hidden",
-		);
+	});
+
+	it("omite texto promocional quando raça, classe e nível não foram preenchidos", () => {
+		renderHeader({
+			character: { ...character, race: "", class: "", level: 0 },
+		});
+		expect(screen.queryByText(SYSTEM_CONFIG.dnd5e.tagline)).toBeNull();
 	});
 
 	it("guarda Equipamento e Editar layout no menu no celular", () => {

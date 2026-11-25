@@ -26,13 +26,13 @@ export function SheetModuleCard({
 			aria-labelledby={headingId}
 			data-slot="sheet-module"
 			data-module-kind={module.kind}
-			className="scroll-mt-3 rounded-2xl border border-border/70 bg-card p-5 shadow-xs md:p-6 max-md:rounded-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:bg-transparent max-md:p-0 max-md:pt-4 max-md:shadow-none"
+			className="scroll-mt-4 border-t border-border/70 pt-3 first:border-t-0 first:pt-0 target:border-primary/60"
 		>
-			<header className="mb-4 flex min-h-[44px] items-center justify-between gap-3">
+			<header className="mb-2 flex min-h-[44px] items-center justify-between gap-3">
 				<h2
 					id={headingId}
 					tabIndex={-1}
-					className="min-w-0 truncate font-display text-lg font-bold tracking-tight text-foreground"
+					className="min-w-0 break-words font-display text-xl font-bold tracking-tight text-foreground"
 				>
 					{module.title}
 				</h2>
@@ -43,7 +43,7 @@ export function SheetModuleCard({
 						size="touch"
 						onClick={onEdit}
 						aria-label={`Editar ${module.title}`}
-						className="-mr-2 min-h-[44px] min-w-[44px] shrink-0 gap-1.5 px-3 text-primary hover:bg-primary/10 hover:text-primary md:rounded-[min(var(--radius-md),10px)]"
+						className="-mr-2 min-h-[44px] min-w-[44px] shrink-0 gap-1.5 px-3 text-muted-foreground hover:text-foreground"
 					>
 						<Pencil className="h-3.5 w-3.5" />
 						Editar

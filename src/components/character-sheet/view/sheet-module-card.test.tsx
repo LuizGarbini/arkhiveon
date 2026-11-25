@@ -32,9 +32,6 @@ describe("SheetModuleCard (cabeçalho uniforme)", () => {
 		const region = screen.getByRole("region", { name: "Inventário" });
 		expect(region.id).toBe("ficha-inventory-80");
 		expect(region.getAttribute("data-module-kind")).toBe("inventory");
-		expect(region.className).toContain("scroll-mt-3");
-		expect(region.className).toContain("max-md:rounded-none");
-		expect(region.className).toContain("max-md:bg-transparent");
 		const edit = screen.getByRole("button", { name: "Editar Inventário" });
 		expect(edit.className).toContain("min-h-[44px]");
 		expect(edit.className).toContain("min-w-[44px]");

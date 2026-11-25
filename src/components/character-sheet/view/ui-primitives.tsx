@@ -8,23 +8,41 @@ export function QuickStat({
 	value,
 	color,
 	compactValue = false,
+	page = false,
 }: {
 	label: string;
 	value: string;
 	color: string;
 	/** Valor longo (ex.: `33/38`) na faixa de 4 colunas da ficha na mesa. */
 	compactValue?: boolean;
+	page?: boolean;
 }) {
 	// Célula da faixa de status `<dl>` (2×2 no celular, 4 colunas a partir de sm).
 	return (
-		<div className="min-w-0 bg-background px-2 py-3 text-center sm:py-4">
-			<dt className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+		<div
+			className={cn(
+				"min-w-0",
+				page
+					? "py-3.5 text-left"
+					: "bg-background px-2 py-3 text-center sm:py-4",
+			)}
+		>
+			<dt
+				className={cn(
+					"text-muted-foreground",
+					page
+						? "text-xs font-medium"
+						: "text-[10px] font-bold uppercase tracking-[0.2em]",
+				)}
+			>
 				{label}
 			</dt>
 			<dd
 				className={cn(
-					"mt-1.5 truncate font-display font-bold leading-none tabular-nums",
-					compactValue ? "text-base sm:text-lg" : "text-xl sm:text-2xl",
+					"mt-1.5 font-display font-bold leading-none tabular-nums",
+					page ? "text-xl sm:text-2xl" : "truncate",
+					!page &&
+						(compactValue ? "text-base sm:text-lg" : "text-xl sm:text-2xl"),
 					color,
 				)}
 			>
@@ -103,10 +121,10 @@ export function InfoRow({
 		};
 	});
 	return (
-		<div className="min-w-0 rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs">
-			<div className="flex min-w-0 items-center justify-between gap-2">
-				<span className="shrink-0 text-muted-foreground">{label}</span>
-				<span className="font-semibold text-foreground tabular-nums">
+		<div className="min-w-0 border-b border-border/50 py-2.5 text-sm">
+			<div className="flex min-w-0 items-baseline justify-between gap-x-3 gap-y-1 max-[360px]:flex-wrap">
+				<span className="min-w-0 text-muted-foreground">{label}</span>
+				<span className="min-w-0 text-right font-medium text-foreground tabular-nums [overflow-wrap:anywhere]">
 					{value}
 				</span>
 			</div>
@@ -139,12 +157,10 @@ export function TextBlock({
 	children?: ReactNode;
 }) {
 	return (
-		<div className="rounded-xl border border-border/60 bg-background/40 p-3">
-			<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-				{title}
-			</p>
+		<div className="min-w-0 space-y-1.5">
+			<p className="text-sm font-medium text-muted-foreground">{title}</p>
 			{value ? (
-				<p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground/90 font-medium">
+				<p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]">
 					{value}
 				</p>
 			) : (
@@ -157,29 +173,32 @@ export function TextBlock({
 export function SpellRow({ spell }: { spell: Spell }) {
 	const [expanded, setExpanded] = useState(false);
 	return (
-		<div className="border border-border/40 rounded-lg bg-background/25 overflow-hidden transition-all">
+		<div className="min-w-0 border-b border-border/50">
 			<button
 				type="button"
+				aria-expanded={expanded}
 				onClick={() => setExpanded(!expanded)}
-				className="w-full flex items-center justify-between p-3 text-left hover:bg-background/40 transition-colors cursor-pointer"
+				className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-left transition-colors duration-150 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 			>
 				<div>
 					<span className="font-semibold text-sm text-foreground">
 						{spell.name}
 					</span>
 					{spell.is_homebrew && (
-						<span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">
+						<span className="shrink-0 ml-2 text-xs text-muted-foreground">
 							Homebrew
 						</span>
 					)}
-					<span className="text-[11px] text-muted-foreground ml-2">
-						{spell.school || "Geral"}
-					</span>
+					{spell.school && (
+						<p className="text-xs text-muted-foreground">{spell.school}</p>
+					)}
 				</div>
 				<div className="flex items-center gap-2">
-					<span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">
-						{spell.casting_time || "1 ação"}
-					</span>
+					{spell.casting_time && (
+						<span className="text-right text-xs text-muted-foreground">
+							{spell.casting_time}
+						</span>
+					)}
 					{expanded ? (
 						<ChevronUp className="h-4 w-4 text-muted-foreground" />
 					) : (
@@ -189,7 +208,7 @@ export function SpellRow({ spell }: { spell: Spell }) {
 			</button>
 
 			{expanded && (
-				<div className="p-3 border-t border-border/40 bg-background/10 space-y-3 text-[12px] leading-relaxed">
+				<div className="space-y-3 px-2 pb-3 pt-1 text-sm leading-relaxed">
 					<div className="grid grid-cols-2 gap-2 text-muted-foreground border-b border-border/20 pb-2">
 						<div>
 							<span className="font-bold">Alcance: </span>
@@ -216,28 +235,29 @@ export function SpellRow({ spell }: { spell: Spell }) {
 export function FeatRow({ feat }: { feat: Feat }) {
 	const [expanded, setExpanded] = useState(false);
 	return (
-		<div className="border border-border/40 rounded-lg bg-background/25 overflow-hidden transition-all">
+		<div className="min-w-0 border-b border-border/50">
 			<button
 				type="button"
+				aria-expanded={expanded}
 				onClick={() => setExpanded(!expanded)}
-				className="w-full flex items-center justify-between p-3 text-left hover:bg-background/40 transition-colors cursor-pointer"
+				className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-left transition-colors duration-150 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 			>
 				<div>
 					<span className="font-semibold text-sm text-foreground">
 						{feat.name}
 					</span>
 					{feat.is_homebrew && (
-						<span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">
+						<span className="shrink-0 ml-2 text-xs text-muted-foreground">
 							Homebrew
 						</span>
 					)}
-					<span className="text-[11px] text-muted-foreground ml-2">
-						({feat.category || "Geral"})
-					</span>
+					{feat.category && (
+						<p className="text-xs text-muted-foreground">{feat.category}</p>
+					)}
 				</div>
 				<div className="flex items-center gap-2">
 					{feat.ability_increase && (
-						<span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">
+						<span className="text-right text-xs font-medium text-muted-foreground">
 							{feat.ability_increase}
 						</span>
 					)}
@@ -250,7 +270,7 @@ export function FeatRow({ feat }: { feat: Feat }) {
 			</button>
 
 			{expanded && (
-				<div className="p-3 border-t border-border/40 bg-background/10 space-y-3 text-[12px] leading-relaxed">
+				<div className="space-y-3 px-2 pb-3 pt-1 text-sm leading-relaxed">
 					<div className="grid grid-cols-2 gap-2 text-muted-foreground border-b border-border/20 pb-2">
 						{feat.prerequisites && (
 							<div className="col-span-2">

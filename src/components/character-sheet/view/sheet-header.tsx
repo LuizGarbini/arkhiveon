@@ -162,19 +162,17 @@ export function SheetHeader({
 	return (
 		<header
 			data-slot="sheet-header"
-			className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-xl shadow-black/5 max-md:shadow-none sm:p-6"
+			className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 sm:p-6"
 		>
-			<div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl max-md:hidden" />
-
 			<Link
 				to="/characters"
-				className="relative -ml-1 inline-flex min-h-[44px] items-center gap-1.5 px-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+				className="-ml-1 inline-flex min-h-[44px] items-center gap-2 rounded-md px-1 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<ArrowLeft className="h-3.5 w-3.5" />
 				Personagens
 			</Link>
 
-			<div className="relative mt-2 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+			<div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 				<SheetIdentity
 					character={character}
 					config={config}
@@ -273,8 +271,9 @@ export function SheetHeader({
 			<SheetQuickStats
 				character={character}
 				config={config}
-				health={`${character.health}/${effectiveHealthMax}`}
-				className="relative mt-5"
+				health={`${character.health} / ${effectiveHealthMax}`}
+				page
+				className="mt-5"
 			/>
 
 			{onUpdateTableResources && (
@@ -323,20 +322,22 @@ export function SheetIdentity({
 			character.level ? `Nível ${character.level}` : null,
 		]
 			.filter(Boolean)
-			.join(" · ") || config.tagline;
+			.join(" · ") || (compact ? config.tagline : "");
 	return (
 		<div
 			className={cn(
 				"flex min-w-0 items-center",
 				compact
 					? "gap-3"
-					: "gap-4 sm:gap-5 max-md:flex-col max-md:items-stretch",
+					: "gap-3 sm:gap-5 max-sm:items-start max-[360px]:flex-col max-[360px]:items-stretch",
 			)}
 		>
 			<div
 				className={cn(
-					"relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-border/70",
-					compact ? "h-14 w-14" : "h-20 w-20 max-md:self-start sm:h-24 sm:w-24",
+					"relative flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-border/70",
+					compact
+						? "size-14 rounded-2xl bg-primary/10"
+						: "size-16 rounded-lg bg-background sm:size-24",
 				)}
 			>
 				{characterImageUrl ? (
@@ -362,7 +363,7 @@ export function SheetIdentity({
 						<button
 							type="button"
 							onClick={onOpenImageDialog}
-							className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20 text-white opacity-100 transition hover:bg-black/40 focus:outline-none"
+							className="absolute inset-0 flex cursor-pointer items-center justify-center bg-background/40 text-foreground transition-colors duration-150 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 							aria-label="Alterar imagem do personagem"
 						>
 							<Camera className="h-5 w-5 drop-shadow" />
@@ -374,7 +375,7 @@ export function SheetIdentity({
 			<div className="min-w-0 flex-1">
 				{/* Na mesa o sistema é o da campanha: o painel não repete. */}
 				{!compact && (
-					<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+					<p className="text-xs font-medium text-muted-foreground">
 						{systemLabel(character.system)}
 					</p>
 				)}
@@ -382,8 +383,10 @@ export function SheetIdentity({
 					<Title
 						title={character.characterName}
 						className={cn(
-							"font-display font-bold leading-tight tracking-tight text-foreground max-md:line-clamp-2 max-md:break-words md:overflow-hidden md:text-ellipsis md:whitespace-nowrap",
-							compact ? "text-xl" : "text-3xl max-md:text-xl sm:text-4xl",
+							"min-w-0 font-display font-bold leading-tight tracking-tight text-foreground",
+							compact
+								? "text-xl max-md:line-clamp-2 max-md:break-words md:truncate"
+								: "text-xl [overflow-wrap:anywhere] sm:text-3xl xl:text-4xl",
 						)}
 					>
 						{character.characterName}
@@ -403,7 +406,16 @@ export function SheetIdentity({
 					)}
 					{nameAction}
 				</div>
-				<p className="truncate text-sm text-muted-foreground">{summary}</p>
+				{summary && (
+					<p
+						className={cn(
+							"text-sm text-muted-foreground",
+							compact && "truncate",
+						)}
+					>
+						{summary}
+					</p>
+				)}
 				{character.playerName && (
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
 						Jogador:{" "}
@@ -426,6 +438,7 @@ export function SheetQuickStats({
 	showHealth = true,
 	sceneUnit,
 	showPassive = false,
+	page = false,
 	className,
 }: {
 	character: Character;
@@ -442,6 +455,7 @@ export function SheetQuickStats({
 	compact?: boolean;
 	/** Na mesa o PV fica só no controle; a faixa não repete o número. */
 	showHealth?: boolean;
+	page?: boolean;
 	className?: string;
 }) {
 	// Mesmo valor efetivo do MetricCard (itens vinculados No Corpo).
@@ -450,37 +464,45 @@ export function SheetQuickStats({
 	return (
 		<dl
 			className={cn(
-				"grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60",
-				compact
-					? columns >= 5
-						? "grid-cols-5"
-						: columns === 4
-							? "grid-cols-4"
-							: "grid-cols-3"
-					: "sm:grid-cols-4 max-md:grid-cols-4",
+				"grid grid-cols-2",
+				page
+					? "gap-x-4 border-y border-border/70 max-sm:[&>div:nth-child(n+3)]:border-t max-sm:[&>div:nth-child(n+3)]:border-border/50 sm:grid-cols-4 sm:gap-x-6"
+					: "gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60",
+				!page &&
+					(compact
+						? columns >= 5
+							? "grid-cols-5"
+							: columns === 4
+								? "grid-cols-4"
+								: "grid-cols-3"
+						: "sm:grid-cols-4 max-md:grid-cols-4"),
 				className,
 			)}
 		>
 			{showHealth ? (
 				<QuickStat
-					label="PV"
+					label={page ? "Pontos de vida" : "PV"}
+					page={page}
 					value={health}
 					color="text-foreground"
 					compactValue={compact && health.length > 3}
 				/>
 			) : null}
 			<QuickStat
-				label="CA"
+				label={page ? "Armadura (CA)" : "CA"}
+				page={page}
 				value={String(combat.ac.total)}
 				color="text-foreground"
 			/>
 			<QuickStat
-				label="INIT"
+				label={page ? "Iniciativa" : "INIT"}
+				page={page}
 				value={formatModifier(combat.initiative.total)}
 				color="text-foreground"
 			/>
 			<QuickStat
-				label="MOV"
+				label={page ? "Deslocamento" : "MOV"}
+				page={page}
 				value={formatSpeed(
 					combat.speed.total,
 					speedUnitOf(character, config.speedUnit),

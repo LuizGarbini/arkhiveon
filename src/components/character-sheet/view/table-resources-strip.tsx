@@ -290,9 +290,7 @@ export function TableResourcesStrip({
 		<div className={diceScroll} data-slot="bonus-dice-scroll">
 			{res.bonusDice.length === 0 && (
 				<span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-					{isMobile
-						? "Nenhum dado bônus"
-						: "Nenhum dado bônus · o mestre dá, você registra"}
+					Nenhum dado bônus
 				</span>
 			)}
 			{res.bonusDice.map((die) => (
@@ -341,50 +339,56 @@ export function TableResourcesStrip({
 
 	if (isMobile) {
 		return (
-			<section
-				aria-label="Recursos da mesa"
-				className="relative mt-2 flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-background/50 p-3"
-			>
-				{/* Uma linha por contador, rótulo à esquerda (owner e viewer): com − / + / Queimar não cabe ao lado da Inspiração em 390px. "Pontos Divinos" vira "Divinos" pra não quebrar; o grupo segue lido completo. */}
-				<div className="flex items-center">{inspiration}</div>
-				<div className="flex items-center justify-between gap-2">
-					<span className={cn(labelClass, "whitespace-nowrap")}>Destino</span>
-					{fate}
-				</div>
-				<div className="flex items-center justify-between gap-2">
-					<span className={cn(labelClass, "whitespace-nowrap")}>Divinos</span>
-					{divine}
-				</div>
-				<div className="flex min-w-0 items-center gap-2">
-					{addDie ? (
-						<>
-							{addDie}
-							<span className={cn(separator, "my-1.5")} />
-						</>
-					) : (
-						<span className={labelClass}>Bônus</span>
-					)}
-					{dice}
-				</div>
-				{rollLine}
-			</section>
+			<details className="group mt-2 rounded-lg border border-border/60 bg-background/35">
+				<summary className="flex min-h-[44px] cursor-pointer list-none select-none items-center justify-between gap-2 rounded-lg px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+					Recursos da mesa
+					<ChevronDown
+						aria-hidden="true"
+						className="size-4 text-muted-foreground group-open:rotate-180"
+					/>
+				</summary>
+				<section
+					aria-label="Recursos da mesa"
+					className="flex flex-col gap-2.5 border-t border-border/60 p-3"
+				>
+					<div className="flex items-center">{inspiration}</div>
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<span className={labelClass}>Destino</span>
+						{fate}
+					</div>
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<span className={labelClass}>Divinos</span>
+						{divine}
+					</div>
+					<div className="flex min-w-0 items-center gap-2">
+						{addDie ? (
+							<>
+								{addDie}
+								<span className={cn(separator, "my-1.5")} />
+							</>
+						) : (
+							<span className={labelClass}>Bônus</span>
+						)}
+						{dice}
+					</div>
+					{rollLine}
+				</section>
+			</details>
 		);
 	}
 
 	return (
 		<section
 			aria-label="Recursos da mesa"
-			className="relative mt-2 flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/50 px-3.5 py-2.5"
+			className="relative mt-2 flex flex-col gap-2 rounded-lg border border-border/60 bg-background/35 px-3 py-2.5"
 		>
 			{/* 4 recursos não cabem numa linha sem espremer os dados: contadores em cima, dados embaixo. */}
-			<div className="flex min-h-[36px] min-w-0 items-center gap-2.5">
+			<div className="flex min-h-[36px] min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
 				{inspiration}
-				<span className={separator} />
 				<span className="inline-flex shrink-0 items-center gap-2">
 					<span className={labelClass}>Destino</span>
 					{fate}
 				</span>
-				<span className={separator} />
 				<span className="inline-flex shrink-0 items-center gap-2">
 					<span className={labelClass}>Pontos Divinos</span>
 					{divine}

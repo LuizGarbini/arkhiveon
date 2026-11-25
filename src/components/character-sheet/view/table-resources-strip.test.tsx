@@ -30,7 +30,10 @@ const filled: TableResources = {
 	],
 };
 
-function renderStrip(value: unknown, opts: { readOnly?: boolean } = {}) {
+function renderStrip(
+	value: unknown,
+	opts: { readOnly?: boolean; startCollapsed?: boolean } = {},
+) {
 	const onChange = vi.fn();
 	render(
 		<ToastProvider>
@@ -41,6 +44,10 @@ function renderStrip(value: unknown, opts: { readOnly?: boolean } = {}) {
 			/>
 		</ToastProvider>,
 	);
+	const disclosure = screen.queryByText("Recursos da mesa", {
+		selector: "summary",
+	});
+	if (disclosure && !opts.startCollapsed) fireEvent.click(disclosure);
 	return onChange;
 }
 
@@ -50,6 +57,19 @@ afterEach(() => {
 });
 
 describe("TableResourcesStrip", () => {
+	it("no celular, os recursos começam recolhidos e podem ser abertos pelo título", () => {
+		mockViewport(true);
+		renderStrip(filled, { startCollapsed: true });
+		const summary = screen.getByText("Recursos da mesa", {
+			selector: "summary",
+		});
+		const details = summary.closest("details");
+		expect(details?.hasAttribute("open")).toBe(false);
+		fireEvent.click(summary);
+		expect(details?.hasAttribute("open")).toBe(true);
+		expect(screen.getByRole("group", { name: "Destino 4 de 10" })).toBeTruthy();
+	});
+
 	it("vazio: ★ 0 apagado, ◆ 0/10, CTA + Dado", () => {
 		mockViewport(false);
 		renderStrip(undefined);
