@@ -8,6 +8,7 @@ import {
 	calculateSkillModifier,
 	type EffectiveStats,
 	formatModifier,
+	type SkillProficiencyLevel,
 } from "@/core/rules";
 import type { Character } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -20,14 +21,25 @@ function normalize(value: string): string {
 		.replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Marca de proficiência: anel vazio, ponto cheio ou dois pontos (especialista). */
-function Pips({ level }: { level: "none" | "proficient" | "expertise" }) {
+/** Marca de proficiência: anel vazio, meia, ponto cheio ou dois pontos (especialista). */
+function Pips({ level }: { level: SkillProficiencyLevel }) {
 	if (level === "none") {
 		return (
 			<span
 				aria-hidden
 				className="size-2 rounded-full border border-white/25 bg-black/30"
 			/>
+		);
+	}
+	if (level === "half") {
+		return (
+			<span
+				role="img"
+				aria-label="Meia proficiência"
+				className="flex items-center"
+			>
+				<i className="size-2 rounded-full border border-primary/70 bg-primary/40" />
+			</span>
 		);
 	}
 	return (

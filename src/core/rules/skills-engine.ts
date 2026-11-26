@@ -1,10 +1,37 @@
 import { calculateAbilityModifier } from "./modifier-engine";
 
+export type SkillProficiencyLevel =
+	| "none"
+	| "half"
+	| "proficient"
+	| "expertise";
+
 export interface SkillCalculationInput {
 	attributeScore: number;
 	proficiencyBonus: number;
-	proficiencyLevel: "none" | "proficient" | "expertise" | "half";
+	proficiencyLevel: SkillProficiencyLevel;
 	miscBonus?: number;
+}
+
+/**
+ * Cycles skill proficiency level in table order:
+ * none -> proficient -> expertise -> half (Jack of All Trades) -> none.
+ */
+export function nextSkillProficiencyLevel(
+	current: SkillProficiencyLevel | string | undefined,
+): SkillProficiencyLevel {
+	switch (current) {
+		case "none":
+		case undefined:
+		case "":
+			return "proficient";
+		case "proficient":
+			return "expertise";
+		case "expertise":
+			return "half";
+		default:
+			return "none";
+	}
 }
 
 /**
@@ -36,6 +63,15 @@ export function calculateSkillModifier({
 
 	const totalProficiency = Math.floor(proficiencyBonus * profMultiplier);
 	return baseModifier + totalProficiency + (miscBonus || 0);
+}
+
+/**
+ * Calculates passive check score (10 + full skill modifier, supporting half/proficient/expertise).
+ */
+export function calculatePassiveSkillScore(
+	input: SkillCalculationInput,
+): number {
+	return 10 + calculateSkillModifier(input);
 }
 
 /**

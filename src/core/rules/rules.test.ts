@@ -9,9 +9,11 @@ import {
 	formatModifier,
 } from "./modifier-engine";
 import {
+	calculatePassiveSkillScore,
 	calculateSkillModifier,
 	filterSkillsList,
 	isSkillValueValid,
+	nextSkillProficiencyLevel,
 } from "./skills-engine";
 
 describe("RPG Modifier Engine (Core Rules)", () => {
@@ -267,6 +269,49 @@ describe("RPG Skills Engine (Core Rules)", () => {
 
 			const empty = filterSkillsList(skills, "atlet", "DEX");
 			expect(empty).toHaveLength(0);
+		});
+	});
+
+	describe("calculatePassiveSkillScore", () => {
+		it("supports none, half, proficient, and expertise tiers", () => {
+			expect(
+				calculatePassiveSkillScore({
+					attributeScore: 14, // +2
+					proficiencyBonus: 3,
+					proficiencyLevel: "none",
+				}),
+			).toBe(12);
+			expect(
+				calculatePassiveSkillScore({
+					attributeScore: 14, // +2
+					proficiencyBonus: 3, // half -> +1
+					proficiencyLevel: "half",
+				}),
+			).toBe(13);
+			expect(
+				calculatePassiveSkillScore({
+					attributeScore: 14, // +2
+					proficiencyBonus: 3,
+					proficiencyLevel: "proficient",
+				}),
+			).toBe(15);
+			expect(
+				calculatePassiveSkillScore({
+					attributeScore: 14, // +2
+					proficiencyBonus: 3,
+					proficiencyLevel: "expertise",
+				}),
+			).toBe(18);
+		});
+	});
+
+	describe("nextSkillProficiencyLevel", () => {
+		it("cycles none -> proficient -> expertise -> half -> none", () => {
+			expect(nextSkillProficiencyLevel(undefined)).toBe("proficient");
+			expect(nextSkillProficiencyLevel("none")).toBe("proficient");
+			expect(nextSkillProficiencyLevel("proficient")).toBe("expertise");
+			expect(nextSkillProficiencyLevel("expertise")).toBe("half");
+			expect(nextSkillProficiencyLevel("half")).toBe("none");
 		});
 	});
 });

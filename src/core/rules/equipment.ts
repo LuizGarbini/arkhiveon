@@ -49,6 +49,7 @@ import {
 	calculateProficiencyBonus,
 	formatModifier,
 } from "./modifier-engine";
+import { calculatePassiveSkillScore } from "./skills-engine";
 import {
 	DAMAGE_TYPE_LABELS,
 	getEquippedWeaponAttacks,
@@ -449,14 +450,12 @@ export function computePassivePerception(
 	const proficiency =
 		character.proficiencyBonus ||
 		calculateProficiencyBonus(character.level || 1);
-	const level = character.skillProficiencies?.perception;
-	const bonus =
-		level === "expertise"
-			? proficiency * 2
-			: level === "proficient"
-				? proficiency
-				: 0;
-	return 10 + calculateAbilityModifier(wisdomScore) + bonus;
+	const level = character.skillProficiencies?.perception ?? "none";
+	return calculatePassiveSkillScore({
+		attributeScore: wisdomScore,
+		proficiencyBonus: proficiency,
+		proficiencyLevel: level,
+	});
 }
 
 // ── PV estimado ──────────────────────────────────────────────────────
